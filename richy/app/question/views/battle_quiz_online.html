@@ -2,8 +2,15 @@
 
     <div class="battle-online-view-music" aria-hidden="true">
         <div id="battle-online-view-music-player"></div>
+        <div id="battle-online-demon-danger-music-player"></div>
+        <div id="battle-online-lightning-music-player"></div>
     </div>
 
+    <div class="battle-lightning-effect" ng-if="vm.isHost() && vm.isGiftLightningActive()" aria-hidden="true"><img src="assets/images/battle-lightning.svg" alt=""></div>
+    <div ng-if="vm.exercisePickerOpen" onload="vm.focusExercisePicker()" ng-include="'question/views/battle_online_exercise_folder_modal.html?v=' + vm.exercisePickerVersion"></div>
+    <div class="battle-lightning-notice" ng-if="vm.isGiftLightningActive()" role="status">
+        ⚡ {{vm.room.giftLightning.displayName}} nhặt được Sét may mắn! Cả phòng +10% tỉ lệ Tom đến Pikachu · {{vm.giftLightningSeconds()}}s
+    </div>
     <!-- =====================================================
          HERO
          ===================================================== -->
@@ -62,10 +69,10 @@
             </p>
 
             <label>NGUỒN NỘI DUNG GAME</label>
-                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource($event)" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1&folderPicker=20261016_1'"></div>
             <div class="battle-online-create-form" ng-if="vm.questionSource === 'VOCABULARY'">
 
                 <label>NGUỒN TỪ VỰNG</label>
@@ -361,10 +368,10 @@
             </div>
 
             <label>NGUỒN NỘI DUNG GAME</label>
-                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource($event)" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1&folderPicker=20261016_1'"></div>
             <div class="battle-online-lobby-topic-actions" ng-if="vm.questionSource === 'COMPREHENSIVE'">
                 <button type="button" class="is-save" ng-click="vm.saveLobbyTopics()" ng-disabled="vm.savingLobbyTopics || !vm.selectedExerciseTests.length">LƯU VÀ NẠP ĐỀ</button>
             </div>
@@ -1121,7 +1128,7 @@
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1'"></ng-include>
+                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1&lightning=20261016_1'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
@@ -2079,9 +2086,10 @@
                 </div>
                 <strong>{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType, vm.lastGiftReward)}}</strong>
                 <span ng-if="vm.lastGiftReward.level >= 0">Level {{vm.lastGiftReward.level}}</span>
-                <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType">+{{vm.lastGiftReward.points}} ĐIỂM</b>
+                <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType && vm.lastGiftReward.level !== -4">+{{vm.lastGiftReward.points}} ĐIỂM</b>
+                <b class="battle-online-gift-points" ng-if="vm.lastGiftReward.level === -4">CẢ PHÒNG ĐƯỢC HƯỞNG TRONG 30 GIÂY</b>
                 <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
-                <p>Điểm đã được cộng cho bạn.</p>
+                <p ng-if="vm.lastGiftReward.level !== -4">Điểm đã được cộng cho bạn.</p>
                 <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftOpening ? (vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG') : 'TIẾP TỤC →'}}</button>
             </div>
         </section>
@@ -2981,6 +2989,24 @@
     .battle-online-host-question-clock.is-urgent { color: #d04444; }
     .battle-online-host-timer-toggle { flex-shrink:0; min-height:44px; font-weight:800; }
     .battle-online-match-controls { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .battle-lightning-effect { position:fixed; inset:0; z-index:6; display:grid; place-items:center; pointer-events:none; }
+    body.battle-exercise-picker-open { overflow:hidden; }
+    .battle-exercise-folder-backdrop { position:fixed; inset:0; z-index:11000; background:rgba(22,30,54,.55); display:flex; align-items:center; justify-content:center; padding:18px; }
+    .battle-exercise-folder-modal { display:flex; flex-direction:column; width:min(1100px,100%); max-height:92vh; background:#fff; border-radius:22px; box-shadow:0 24px 70px #19223955; overflow:hidden; text-align:left; }
+    .battle-exercise-folder-modal header,.battle-exercise-folder-modal footer { display:flex; gap:14px; align-items:center; justify-content:space-between; padding:18px 22px; background:#f5f6ff; }
+    .battle-exercise-folder-modal h2 { margin:4px 0; font-size:23px; } .battle-exercise-folder-modal h3 { font-size:17px; margin:20px 0 10px; }
+    .battle-exercise-folder-body { padding:18px 22px; overflow:auto; min-height:0; }
+    .battle-exercise-folder-path { padding:12px 0; } .battle-exercise-folder-path button { border:0; background:none; color:#6248c9; font-weight:700; }
+    .battle-exercise-folder-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+    .battle-exercise-folder-grid button,.battle-exercise-file-list button { display:flex; gap:12px; align-items:center; padding:14px; border:1px solid #dfe4f2; border-radius:12px; background:#fff; text-align:left; overflow-wrap:anywhere; }
+    .battle-exercise-folder-grid button span { font-size:30px; } .battle-exercise-file-list { display:grid; gap:8px; }
+    .battle-exercise-folder-selection { display:flex; flex-wrap:wrap; gap:7px; max-height:100px; overflow:auto; }
+    .battle-exercise-folder-selection > span { padding:7px; border-radius:9px; background:#eae5ff; } .battle-exercise-folder-selection button { border:0; background:none; color:#a52d56; }
+    @media(max-width:600px) { .battle-exercise-folder-backdrop {padding:8px} .battle-exercise-folder-modal {max-height:96vh} .battle-exercise-folder-modal header,.battle-exercise-folder-modal footer,.battle-exercise-folder-body {padding:12px} .battle-exercise-folder-modal footer {align-items:stretch;flex-direction:column} }
+    .battle-lightning-effect img { width:min(48vw,440px); max-height:65vh; opacity:.10; animation:battle-lightning-glow 1.8s ease-in-out infinite; }
+    .battle-lightning-notice { position:relative; z-index:7; margin:10px 0; padding:12px 16px; border:1px solid #f6d86c; border-radius:14px; background:#fff8d9; color:#76510c; font-weight:700; }
+    @keyframes battle-lightning-glow { 0%,100% {opacity:.07;transform:scale(1)} 50% {opacity:.15;transform:scale(1.025)} }
+    @media (prefers-reduced-motion:reduce) { .battle-lightning-effect img {animation:none;opacity:.10} }
     .battle-online-match-controls .btn { min-height:44px; font-weight:700; }
     .battle-online-host-question-controls { padding:10px 16px; border-bottom:1px solid #e2e8f0; }
     .battle-online-host-question-close { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--bo-line); border-radius: 12px; background: var(--bo-card); color: var(--bo-text); font-size: 28px; }

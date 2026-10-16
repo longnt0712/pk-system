@@ -141,6 +141,52 @@
         vm.exerciseSearch = '';
         vm.exercisePage = 1;
         vm.exerciseTotalPages = 1;
+        vm.exercisePickerVersion = $window.APP_VERSION || '20261016_1';
+        vm.exercisePickerOpen = false; vm.exerciseFolderId = null;
+        vm.exerciseFolders = []; vm.visibleExerciseFolders = []; vm.exerciseBreadcrumbs = [];
+        var exerciseFolderRequest = 0, exercisePickerTrigger = null;
+        function rebuildExerciseFolders() {
+            var byId = {}, query = String(vm.exerciseSearch || '').trim().toLocaleLowerCase();
+            vm.exerciseFolders.forEach(function (folder) { byId[String(folder.id)] = folder; });
+            vm.visibleExerciseFolders = vm.exerciseFolders.filter(function (folder) {
+                return query ? String(folder.name || '').toLocaleLowerCase().indexOf(query) >= 0 :
+                    vm.exerciseFolderId == null ? !byId[String(folder.parentId)] : String(folder.parentId) === String(vm.exerciseFolderId);
+            });
+            vm.exerciseBreadcrumbs = [];
+            var current = byId[String(vm.exerciseFolderId)], seen = {};
+            while (current && !seen[String(current.id)]) {
+                seen[String(current.id)] = true; vm.exerciseBreadcrumbs.unshift(current); current = byId[String(current.parentId)];
+            }
+        }
+        vm.openExercisePicker = function (event) {
+            vm.exercisePickerOpen = true; exercisePickerTrigger = (event && event.currentTarget) || exercisePickerTrigger;
+            vm.exerciseFolderError = ''; vm.loadingExerciseFolders = true;
+            var request = ++exerciseFolderRequest, promise = battleService.getExerciseFolders ? battleService.getExerciseFolders() : null;
+            if (promise) {
+                promise.then(function (folders) {
+                    if (request !== exerciseFolderRequest) { return; }
+                    vm.exerciseFolders = folders || []; vm.loadingExerciseFolders = false; rebuildExerciseFolders();
+                }, function () {
+                    if (request !== exerciseFolderRequest) { return; }
+                    vm.loadingExerciseFolders = false; vm.exerciseFolderError = 'Không tải được thư mục. Bấm để thử lại.';
+                });
+            } else { vm.loadingExerciseFolders = false; }
+            $window.document.body.classList.add('battle-exercise-picker-open');
+            $timeout(vm.focusExercisePicker, 0);
+            rebuildExerciseFolders(); return vm.loadExerciseTests(1);
+        };
+        vm.focusExercisePicker = function () {
+            var input = vm.exercisePickerOpen && $window.document.getElementById('battle-exercise-folder-search');
+            if (input && input.focus) { input.focus(); }
+        };
+        vm.closeExercisePicker = function () {
+            vm.exercisePickerOpen = false; exerciseFolderRequest++; exerciseRequestId++;
+            $window.document.body.classList.remove('battle-exercise-picker-open');
+            if (exercisePickerTrigger && exercisePickerTrigger.focus) { exercisePickerTrigger.focus(); }
+            exercisePickerTrigger = null;
+        };
+        vm.openExerciseFolder = function (id) { vm.exerciseFolderId = id == null ? null : id; vm.exerciseSearch = ''; rebuildExerciseFolders(); return vm.loadExerciseTests(1); };
+        vm.searchExerciseCatalog = function () { rebuildExerciseFolders(); return vm.loadExerciseTests(1); };
         vm.exerciseFilterMode = 'ALL';
         vm.exerciseTopicOwnerId = null;
         vm.exerciseTopicCategoryId = null;
@@ -189,7 +235,11 @@
             var requestId = ++exerciseRequestId, filterByTopics = vm.exerciseFilterMode === 'TOPIC';
             vm.loadingExercises = true; vm.exerciseLoadError = '';
             vm.exercisePage = page || 1;
+            var searchingFolders = vm.exercisePickerOpen && String(vm.exerciseSearch || '').trim().length > 0;
             return questionService.getPageForTests({questionType: {id: 11}, type: 100, status: 7, lower: 0, upper: 100,
+                testFolderId: vm.exercisePickerOpen && !searchingFolders ? vm.exerciseFolderId : null,
+                withoutTestFolder: vm.exercisePickerOpen && !searchingFolders && vm.exerciseFolderId == null,
+                includeSubfolders: searchingFolders || !vm.exercisePickerOpen,
                 withoutTopics: vm.exerciseFilterMode === 'UNASSIGNED',
                 topicOwnerUserId: filterByTopics ? vm.exerciseTopicOwnerId : null,
                 topicCategoryId: filterByTopics ? vm.exerciseTopicCategoryId : null,
@@ -204,8 +254,8 @@
                 vm.loadingExercises = false; vm.exerciseTests = []; vm.exerciseLoadError = 'Không tải được danh sách đề.';
             });
         };
-        vm.changeQuestionSource = function () {
-            if (vm.questionSource === 'COMPREHENSIVE') { vm.loadExerciseTests(1); }
+        vm.changeQuestionSource = function (event) {
+            if (vm.questionSource === 'COMPREHENSIVE') { vm.openExercisePicker(event); }
         };
         vm.addExerciseTest = function (test) {
             if (!test || vm.selectedExerciseTests.some(function (item) { return item.id === test.id; })) { return; }
@@ -630,6 +680,11 @@
         vm.giftModalOpen = false;
         var giftModalReturnFocus = null;
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
+        vm.isGiftLightningActive = function () {
+            var effect = vm.room && vm.room.giftLightning;
+            return !!(vm.isLumNgayMode() && vm.room.status === 'PLAYING' && effect && effect.endsAt > serverNow() && effect.startsAt <= serverNow());
+        };
+        vm.giftLightningSeconds = function () { return vm.isGiftLightningActive() ? Math.max(0, Math.ceil((vm.room.giftLightning.endsAt - serverNow()) / 1000)) : 0; };
         vm.giftClaimDisabled = function () {
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
@@ -645,6 +700,7 @@
             return isFinite(level) && level >= 0 && level < 21 ? Math.floor(level) : 0;
         }
         vm.getGiftRewardImage = function (level, skillType, reward) {
+            if (Number(level) === -4) { return getGiftImageWithVersion('assets/images/battle-lightning.svg'); }
             if (skillType) { level = 0; }
             if (level === -1) {
                 return getGiftImageWithVersion('assets/images/learning-pets/lum-ngay/rotten-egg.png');
@@ -663,6 +719,7 @@
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
         vm.getGiftRewardLabel = function (level, skillType, reward) {
+            if (Number(level) === -4) { return 'Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây'; }
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
             if ((level >= 0 || Number(level) === -3) && reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()) {
@@ -805,6 +862,12 @@
         var battleViewMusicConfigReady = false;
         var demonDangerMusicTrackIds = ['MR-ZRkhZK0M'];
         var demonDangerMusicActive = false;
+        var lightningMusicActive = false, lightningMusicPlayer = null, lightningMusicReady = false;
+        var lightningMusicTrackIds = ['gOMUTUvVwEk'], lightningMusicLastTrackId = '', lightningMusicFailures = 0;
+        var demonDangerMusicPlayer = null;
+        var demonDangerMusicPlayerReady = false;
+        var demonDangerMusicLastTrackId = '';
+        var demonDangerMusicLoadFailures = 0;
         var finishCelebrationAudio = null;
         var guessTickAudio = null;
         var lastGuessTickSecond = null;
@@ -2150,7 +2213,7 @@
             });
 
             vm.lobbyTopicEditorOpen = true;
-            if (vm.questionSource === 'COMPREHENSIVE') { vm.loadExerciseTests(1); } else { getTopics(); }
+            if (vm.questionSource === 'COMPREHENSIVE') { vm.openExercisePicker(); } else { getTopics(); }
         }
 
 
@@ -2160,6 +2223,7 @@
             }
 
             vm.lobbyTopicEditorOpen = false;
+            if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
             if (vm.room) { applyRoom(vm.room, false); }
         }
 
@@ -2962,6 +3026,7 @@
             }
 
             if (incoming.status !== 'LOBBY') {
+                if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
                 vm.lobbyTopicEditorOpen = false;
                 vm.petPickerModalOpen = false;
             }
@@ -5291,7 +5356,124 @@
         }
 
         function currentBattleMusicTrackIds() {
-            return demonDangerMusicActive ? demonDangerMusicTrackIds : battleViewMusicTrackIds;
+            return battleViewMusicTrackIds;
+        }
+
+        function hasGiftLightningMusic() {
+            return shouldPlayBattleViewMusic() && vm.isGiftLightningActive() && lightningMusicTrackIds.length > 0;
+        }
+        function pauseLightningMusic() {
+            if (lightningMusicPlayer && lightningMusicReady) {
+                try { lightningMusicPlayer.pauseVideo(); } catch (ignoreLightningPause) { /* Match continues without audio. */ }
+            }
+        }
+        function nextLightningMusic() {
+            if (!lightningMusicTrackIds.length || !lightningMusicReady) { return; }
+            var index = lightningMusicTrackIds.indexOf(lightningMusicLastTrackId);
+            lightningMusicLastTrackId = lightningMusicTrackIds[(index + 1) % lightningMusicTrackIds.length];
+            try { lightningMusicPlayer.loadVideoById(lightningMusicLastTrackId); } catch (ignoreLightningNext) { /* Keep the game playable. */ }
+        }
+        function playLightningMusic() {
+            if (destroyed || !lightningMusicActive || vm.musicPausedByUser || !shouldPlayBattleViewMusic() ||
+                    !lightningMusicTrackIds.length || lightningMusicFailures >= lightningMusicTrackIds.length) { return; }
+            if (!lightningMusicPlayer && $window.YT && typeof $window.YT.Player === 'function' &&
+                    $window.document.getElementById('battle-online-lightning-music-player')) {
+                try {
+                    lightningMusicLastTrackId = lightningMusicTrackIds[0];
+                    lightningMusicPlayer = new $window.YT.Player('battle-online-lightning-music-player', {
+                        height: '200', width: '200', videoId: lightningMusicLastTrackId,
+                        playerVars: {autoplay: 0, controls: 0, disablekb: 1, fs: 0, playsinline: 1, rel: 0},
+                        events: {
+                            onReady: function () { lightningMusicReady = true; playLightningMusic(); },
+                            onStateChange: function (event) {
+                                if (destroyed || !lightningMusicActive) { return; }
+                                $scope.$evalAsync(function () { if (lightningMusicActive) { vm.musicPlaying = event.data === $window.YT.PlayerState.PLAYING; } });
+                                if (event.data === $window.YT.PlayerState.PLAYING) {
+                                    lightningMusicFailures = 0;
+                                    if (vm.musicPausedByUser || !shouldPlayBattleViewMusic()) { pauseLightningMusic(); }
+                                } else if (event.data === $window.YT.PlayerState.ENDED && !vm.musicPausedByUser && shouldPlayBattleViewMusic()) { nextLightningMusic(); }
+                            },
+                            onError: function () {
+                                if (!lightningMusicActive || destroyed) { return; }
+                                lightningMusicFailures++;
+                                if (!vm.musicPausedByUser && lightningMusicFailures < lightningMusicTrackIds.length) { nextLightningMusic(); }
+                            }
+                        }
+                    });
+                } catch (ignoreLightningCreate) { lightningMusicPlayer = null; lightningMusicReady = false; }
+            }
+            if (!lightningMusicPlayer || !lightningMusicReady) { return; }
+            try {
+                lightningMusicPlayer.setVolume(vm.musicVolume); lightningMusicPlayer.unMute();
+                if (lightningMusicPlayer.getPlayerState() !== $window.YT.PlayerState.PLAYING) { lightningMusicPlayer.playVideo(); }
+            } catch (ignoreLightningPlay) { /* A user gesture can retry playback. */ }
+        }
+
+        function pauseDemonDangerMusic() {
+            if (!demonDangerMusicPlayer || !demonDangerMusicPlayerReady) { return; }
+            try { demonDangerMusicPlayer.pauseVideo(); }
+            catch (ignoreDangerPauseError) { /* The warning iframe may be unavailable. */ }
+        }
+
+        function stopDemonDangerMusic() {
+            if (!demonDangerMusicPlayer || !demonDangerMusicPlayerReady) { return; }
+            try { demonDangerMusicPlayer.stopVideo(); }
+            catch (ignoreDangerStopError) { /* Keep the match running. */ }
+        }
+
+        function loadNextDemonDangerMusicTrack() {
+            if (!demonDangerMusicPlayerReady || !demonDangerMusicTrackIds.length) { return; }
+            var index = demonDangerMusicTrackIds.indexOf(demonDangerMusicLastTrackId);
+            demonDangerMusicLastTrackId = demonDangerMusicTrackIds[(index + 1) % demonDangerMusicTrackIds.length];
+            try { demonDangerMusicPlayer.loadVideoById(demonDangerMusicLastTrackId); }
+            catch (ignoreDangerLoadError) { /* Warning playback does not affect the regular playlist. */ }
+        }
+
+        function playDemonDangerMusic() {
+            if (destroyed || !demonDangerMusicActive || vm.musicPausedByUser || !shouldPlayBattleViewMusic() ||
+                    demonDangerMusicLoadFailures >= demonDangerMusicTrackIds.length) { return; }
+            if (!demonDangerMusicPlayer && $window.YT && typeof $window.YT.Player === 'function' &&
+                    $window.document.getElementById('battle-online-demon-danger-music-player')) {
+                try {
+                    demonDangerMusicLastTrackId = demonDangerMusicTrackIds[0];
+                    demonDangerMusicPlayer = new $window.YT.Player('battle-online-demon-danger-music-player', {
+                        height: '200', width: '200', videoId: demonDangerMusicLastTrackId,
+                        playerVars: {autoplay: 0, controls: 0, disablekb: 1, fs: 0, playsinline: 1, rel: 0},
+                        events: {
+                            onReady: function () {
+                                demonDangerMusicPlayerReady = true;
+                                playDemonDangerMusic();
+                            },
+                            onStateChange: function (event) {
+                                if (destroyed || !demonDangerMusicActive) { return; }
+                                $scope.$evalAsync(function () {
+                                    if (demonDangerMusicActive) { vm.musicPlaying = event.data === $window.YT.PlayerState.PLAYING; }
+                                });
+                                if (event.data === $window.YT.PlayerState.PLAYING) {
+                                    demonDangerMusicLoadFailures = 0;
+                                    if (vm.musicPausedByUser || !shouldPlayBattleViewMusic()) { pauseDemonDangerMusic(); }
+                                } else if (event.data === $window.YT.PlayerState.ENDED && !vm.musicPausedByUser && shouldPlayBattleViewMusic()) {
+                                    loadNextDemonDangerMusicTrack();
+                                }
+                            },
+                            onError: function () {
+                                if (destroyed || !demonDangerMusicActive) { return; }
+                                demonDangerMusicLoadFailures++;
+                                if (!vm.musicPausedByUser && shouldPlayBattleViewMusic() &&
+                                        demonDangerMusicLoadFailures < demonDangerMusicTrackIds.length) {
+                                    loadNextDemonDangerMusicTrack();
+                                }
+                            }
+                        }
+                    });
+                } catch (ignoreDangerPlayerError) { demonDangerMusicPlayer = null; demonDangerMusicPlayerReady = false; }
+            }
+            if (!demonDangerMusicPlayer || !demonDangerMusicPlayerReady) { return; }
+            try {
+                demonDangerMusicPlayer.setVolume(vm.musicVolume);
+                demonDangerMusicPlayer.unMute();
+                if (demonDangerMusicPlayer.getPlayerState() !== $window.YT.PlayerState.PLAYING) { demonDangerMusicPlayer.playVideo(); }
+            } catch (ignoreDangerPlayError) { /* A later user gesture can retry playback. */ }
         }
 
         function nextBattleViewMusicTrackId() {
@@ -5440,9 +5622,9 @@
                                 }
                             },
                             onStateChange: function (event) {
-                                if (!destroyed) {
+                                if (!destroyed && !demonDangerMusicActive && !lightningMusicActive) {
                                     $scope.$evalAsync(function () {
-                                        vm.musicPlaying = event.data === $window.YT.PlayerState.PLAYING;
+                                        if (!demonDangerMusicActive && !lightningMusicActive) { vm.musicPlaying = event.data === $window.YT.PlayerState.PLAYING; }
                                     });
                                 }
                                 if (
@@ -5455,6 +5637,7 @@
                                 if (
                                     $window.YT &&
                                     event.data === $window.YT.PlayerState.ENDED &&
+                                    !demonDangerMusicActive && !lightningMusicActive &&
                                     !vm.musicPausedByUser &&
                                     (
                                         shouldPlayBattleViewMusic() ||
@@ -5474,6 +5657,7 @@
                                 if (
                                     battleViewMusicLoadFailures <
                                         currentBattleMusicTrackIds().length &&
+                                    !demonDangerMusicActive && !lightningMusicActive &&
                                     !vm.musicPausedByUser &&
                                     (
                                         shouldPlayBattleViewMusic() ||
@@ -5522,6 +5706,13 @@
 
             ensureBattleViewMusicPlayer();
 
+            if (lightningMusicActive) { pauseBattleViewMusic(); playLightningMusic(); return; }
+            if (demonDangerMusicActive) {
+                pauseBattleViewMusic();
+                playDemonDangerMusic();
+                return;
+            }
+
             if (
                 !battleViewMusicPlayer ||
                 !battleViewMusicPlayerReady
@@ -5565,6 +5756,13 @@
         function stopBattleViewMusic(resetPlaylist) {
             battleViewMusicWaitingForMatch = false;
             vm.musicPlaying = false;
+            demonDangerMusicActive = false;
+            stopDemonDangerMusic();
+            lightningMusicActive = false;
+            if (lightningMusicPlayer && lightningMusicReady) {
+                try { lightningMusicPlayer.stopVideo(); } catch (ignoreLightningStop) { /* Room is closing. */ }
+            }
+            lightningMusicFailures = 0;
 
             if (
                 battleViewMusicPlayer &&
@@ -5585,19 +5783,24 @@
 
 
         function syncBattleViewMusic() {
+            var lightning = hasGiftLightningMusic();
+            if (lightning !== lightningMusicActive) {
+                lightningMusicActive = lightning;
+                if (lightning) { pauseBattleViewMusic(); } else { pauseLightningMusic(); }
+            }
             var danger = hasDemonMusicDanger() && demonDangerMusicTrackIds.length > 0;
             if (danger !== demonDangerMusicActive) {
                 demonDangerMusicActive = danger;
-                battleViewMusicQueue = [];
-                battleViewMusicLoadFailures = 0;
-                battleViewMusicLastTrackId = nextBattleViewMusicTrackId();
-                if (battleViewMusicPlayer && battleViewMusicPlayerReady) {
+                demonDangerMusicLoadFailures = 0;
+                if (danger) {
+                    pauseBattleViewMusic();
+                } else {
+                    stopDemonDangerMusic();
+                }
+                if (danger && demonDangerMusicPlayer && demonDangerMusicPlayerReady) {
                     try {
-                        if (vm.musicPausedByUser || !shouldPlayBattleViewMusic()) {
-                            battleViewMusicPlayer.cueVideoById(battleViewMusicLastTrackId);
-                        } else {
-                            battleViewMusicPlayer.loadVideoById(battleViewMusicLastTrackId);
-                        }
+                        demonDangerMusicLastTrackId = demonDangerMusicTrackIds[0];
+                        demonDangerMusicPlayer.cueVideoById(demonDangerMusicLastTrackId);
                     } catch (ignoreDangerMusicError) { /* Keep the match running. */ }
                 }
             }
@@ -5613,6 +5816,8 @@
                 playBattleViewMusic();
             } else if (!battleViewMusicWaitingForMatch) {
                 pauseBattleViewMusic();
+                pauseDemonDangerMusic();
+                pauseLightningMusic();
             }
         }
 
@@ -5634,9 +5839,18 @@
 
 
         function destroyBattleViewMusic() {
+            lightningMusicActive = false;
+            if (lightningMusicPlayer) { try { lightningMusicPlayer.destroy(); } catch (ignoreLightningDestroy) { /* Route is closing. */ } }
+            lightningMusicPlayer = null; lightningMusicReady = false;
             clearBattleViewMusicApiPoll();
             battleViewMusicApiLoading = false;
             battleViewMusicWaitingForMatch = false;
+            demonDangerMusicActive = false;
+            if (demonDangerMusicPlayer) {
+                try { demonDangerMusicPlayer.destroy(); } catch (ignoreDangerDestroyError) { /* Route is closing. */ }
+            }
+            demonDangerMusicPlayer = null;
+            demonDangerMusicPlayerReady = false;
 
             if (battleViewMusicPlayer) {
                 try {
@@ -5656,8 +5870,13 @@
             return battleService.getActiveMusicTracks().then(function (config) {
                 var trackIds = [];
                 var dangerTrackIds = [];
+                var lightningIds = [];
                 var tracks = [];
                 angular.forEach((config && config.tracks) || [], function (track) {
+                    if (track && track.purpose === 'LUM_LIGHTNING') {
+                        if (track.videoId && lightningIds.indexOf(track.videoId) < 0) { lightningIds.push(track.videoId); }
+                        return;
+                    }
                     if (track && track.purpose === 'DEMON_DANGER') {
                         if (track.videoId && dangerTrackIds.indexOf(track.videoId) < 0) { dangerTrackIds.push(track.videoId); }
                         return;
@@ -5668,6 +5887,7 @@
                     }
                 });
                 demonDangerMusicTrackIds = dangerTrackIds;
+                lightningMusicTrackIds = lightningIds;
                 if (!trackIds.length) { return; }
                 battleViewMusicTrackIds = trackIds;
                 vm.musicTracks = tracks;
@@ -5682,6 +5902,7 @@
 
 
         function getMusicTrackName() {
+            if (lightningMusicActive) { return 'Lụm ngay — Sét may mắn'; }
             if (demonDangerMusicActive) { return 'Nhạc Diệt Quỷ Ngu lúc nguy hiểm'; }
             for (var index = 0; index < vm.musicTracks.length; index += 1) {
                 if (vm.musicTracks[index].videoId === battleViewMusicLastTrackId) {
@@ -5712,6 +5933,8 @@
                 vm.musicPausedByUser = true;
                 vm.musicPlaying = false;
                 pauseBattleViewMusic();
+                pauseDemonDangerMusic();
+                pauseLightningMusic();
             } else {
                 vm.musicPausedByUser = false;
                 playBattleViewMusic();
@@ -5726,7 +5949,7 @@
             ensureBattleViewMusicPlayer();
             if (!battleViewMusicPlayerReady || !battleViewMusicPlayer) { return; }
             try {
-                if (vm.musicPausedByUser) {
+                if (vm.musicPausedByUser || demonDangerMusicActive || lightningMusicActive) {
                     battleViewMusicPlayer.cueVideoById(track.videoId);
                 } else {
                     battleViewMusicPlayer.loadVideoById(track.videoId);
@@ -5751,6 +5974,13 @@
             if (battleViewMusicPlayer && battleViewMusicPlayerReady) {
                 try { battleViewMusicPlayer.setVolume(vm.musicVolume); }
                 catch (ignoreMusicVolumeError) { /* Player may be unavailable. */ }
+            }
+            if (demonDangerMusicPlayer && demonDangerMusicPlayerReady) {
+                try { demonDangerMusicPlayer.setVolume(vm.musicVolume); }
+                catch (ignoreDangerVolumeError) { /* Warning player may be unavailable. */ }
+            }
+            if (lightningMusicPlayer && lightningMusicReady) {
+                try { lightningMusicPlayer.setVolume(vm.musicVolume); } catch (ignoreLightningVolume) { /* Audio is optional. */ }
             }
         }
 
@@ -6450,6 +6680,7 @@
         }
 
         function updateCountdown() {
+            if (lightningMusicActive !== hasGiftLightningMusic()) { syncBattleViewMusic(); }
             updateDemonDefenseView();
             vm.finishedRoomRemainingLabel = '';
             if (vm.room && vm.room.status === 'FINISHED' && vm.room.finishedExpiresAt) {
@@ -7555,6 +7786,19 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.exercisePickerOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) { event.preventDefault(); $scope.$evalAsync(vm.closeExercisePicker); }
+                if (event.key === 'Tab' || event.keyCode === 9) {
+                    var picker = $window.document.getElementById('battle-exercise-folder-modal');
+                    var controls = picker && picker.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex="0"]');
+                    if (controls && controls.length && (!picker.contains($window.document.activeElement) ||
+                            (event.shiftKey && $window.document.activeElement === controls[0]) ||
+                            (!event.shiftKey && $window.document.activeElement === controls[controls.length - 1]))) {
+                        event.preventDefault(); (event.shiftKey ? controls[controls.length - 1] : controls[0]).focus();
+                    }
+                }
+                return;
+            }
             if ((vm.hostVideoQuestionModalOpen || vm.hostVideoQuestionListOpen || vm.hostVideoReplayConfirmOpen) && !vm.giftModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
                     event.preventDefault(); $scope.$evalAsync(vm.hostVideoReplayConfirmOpen ? function () { vm.confirmHostVideoReplay(false); } : vm.hostVideoQuestionModalOpen ? vm.closeHostVideoQuestionModal : vm.closeHostVideoQuestionList); return;
@@ -7759,6 +8003,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
                 $timeout.cancel(videoRetryTimer);
                 vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); clearHostVideoReplay(); clearVideoAnswerToast();
                 angular.element($window).off('resize', hostVideoListResize);

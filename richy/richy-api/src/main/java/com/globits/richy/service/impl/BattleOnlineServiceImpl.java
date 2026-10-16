@@ -55,6 +55,7 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.battle.DemonDefenseGame;
 import com.globits.richy.battle.GiftDropGame;
+import com.globits.richy.battle.GiftLightningGame;
 import com.globits.richy.dto.BattleOnlineGiftClaimDto;
 import com.globits.richy.dto.BattleOnlineGiftClaimResultDto;
 import com.globits.richy.dto.QuestionDto;
@@ -1392,6 +1393,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.videoRevision++;
             room.demonDefense = null;
             room.giftDrop = null;
+            room.giftLightning = null;
             room.giftOpening = false;
             room.giftOpeningEndsAt = 0L;
             room.questionTimerPaused = false;
@@ -1457,6 +1459,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     throw new BattleOnlineException(HttpStatus.CONFLICT, "Vòng bóc trứng đã hết giờ.");
                 }
                 room.giftOpeningEndsAt += 60000L;
+                if (room.giftLightning != null) { room.giftLightning.extendTo(room.giftOpeningEndsAt); }
                 room.matchEndsAt = room.giftOpeningEndsAt;
                 scheduleMatchFinish(room.code, room.matchEndsAt);
             } else if (room.videoSynchronized || !isCountdownLikeMode(room.settings.mode)) {
@@ -1478,6 +1481,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     throw new BattleOnlineException(HttpStatus.CONFLICT, "Trận đấu đã hết giờ.");
                 }
                 room.matchEndsAt += 60000L;
+                if (room.giftLightning != null) { room.giftLightning.extendTo(room.matchEndsAt); }
                 scheduleMatchFinish(room.code, room.matchEndsAt);
             }
             result = snapshotLocked(room, username);
@@ -1760,6 +1764,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             List<String> eggSkills = new ArrayList<String>();
             for (String type : GiftDropGame.SKILL_TYPES) { if (isSkillEnabledLocked(room, type)) { eggSkills.add(type); } }
             room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random, eggSkills);
+            room.giftLightning = room.videoSynchronized ? null : new GiftLightningGame(matchStartsAt, room.matchEndsAt, random);
         }
         room.passwordResetAvailableAt =
                 matchStartsAt + (matchDurationMs / 2L);
@@ -2789,10 +2794,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (player.giftCredits <= 0) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã dùng hết lượt bóc trứng.");
             }
-            GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null);
+            GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null,
+                    room.giftLightning != null && room.giftLightning.isActive(now));
             if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
             player.giftCredits--;
             player.giftCreditVersion++;
+            if (room.giftLightning != null && (!room.giftOpening || hasOutstandingGiftCreditsLocked(room))
+                    && room.giftLightning.tryCollect(now, player.username, displayName(player))) {
+                gift = GiftDropGame.lightningGift(gift.id);
+            }
             if (gift.skillType != null) {
                 player.pendingSkillType = gift.skillType;
                 preparePendingSkillTargetsLocked(room, player);
@@ -2829,6 +2839,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             requirePlaying(room); requireHost(room, username); requireGiftOpeningLocked(room);
             long now = System.currentTimeMillis();
             room.giftOpeningEndsAt = Math.max(now, room.giftOpeningEndsAt) + 60000L;
+            if (room.giftLightning != null) { room.giftLightning.extendTo(room.giftOpeningEndsAt); }
             room.matchEndsAt = room.giftOpeningEndsAt;
             scheduleMatchFinish(room.code, room.giftOpeningEndsAt);
             result = snapshotLocked(room, username);
@@ -6029,6 +6040,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (!player.spectator) { credits.put(player.username, player.giftCredits); }
         }
         room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random);
+        room.giftLightning = new GiftLightningGame(System.currentTimeMillis(), room.giftOpeningEndsAt, random);
         room.giftDrop.prepareFinalPools(credits);
         if (hasOutstandingGiftCreditsLocked(room)) { scheduleMatchFinish(room.code, room.giftOpeningEndsAt); }
     }
@@ -6057,6 +6069,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         room.status = FINISHED;
+        if (room.giftLightning != null) { room.giftLightning.stop(); }
         room.giftOpening = false;
         if (room.videoSynchronized) { room.videoPhase = null; room.videoRevision++; }
         if (room.demonDefense != null) {
@@ -6104,7 +6117,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         for (PlayerState player : room.players.values()) {
             if (player == null || player.spectator || player.userId == null) { continue; }
             try {
-                transaction.execute(status -> {
+                Integer experienceLevel = transaction.execute(status -> {
                     String attemptKey = UUID.nameUUIDFromBytes(
                             ("BATTLE:" + room.battleAttemptId + ":" + player.username)
                                     .getBytes(StandardCharsets.UTF_8)
@@ -6132,8 +6145,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             " | CORRECT: " + player.correctCount +
                             " | INCORRECT: " + player.wrongCount
                     );
-                    result.setNumberOfWords(player.correctCount);
-                    result.setVocabularyExperienceAwardedWords(0);
+                    int awardedWords = Math.max(0, player.correctCount);
+                    result.setNumberOfWords(awardedWords);
+                    result.setVocabularyExperienceAwardedWords(awardedWords);
                     result.setTestTakerPerformance(buildBattleWrongWordsHtml(room, player));
                     result.setCreateDate(LocalDateTime.now());
                     result.setCreatedBy(player.username);
@@ -6143,9 +6157,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         if (topic != null) { result.getTopics().add(topic); }
                     }
 
+                    // Award correct answers, independently of score, in the result transaction.
+                    if (awardedWords > 0) {
+                        user.addDailyVocabularyWords(awardedWords);
+                        userRepository.save(user);
+                    }
                     testResultRepository.saveAndFlush(result);
-                    return null;
+                    return user.getVocabularyExperienceLevel();
                 });
+                if (experienceLevel != null) { player.vocabularyExperienceLevel = experienceLevel; }
             } catch (RuntimeException saveError) {
                 allSaved = false;
                 LOG.error("Failed to save battle result for room " + room.code
@@ -6903,6 +6923,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
         dto.setSettings(roomSettingsDto);
         if (room.giftDrop != null) {
+            if (room.giftLightning != null) { dto.setGiftLightning(room.giftLightning.snapshot(System.currentTimeMillis())); }
             PlayerState viewer = room.players.get(viewerUsername);
             dto.setGiftDrop(viewer != null && !viewer.spectator ? room.giftDrop.snapshot(viewerUsername) : room.giftDrop.snapshot());
             if (viewer != null && !viewer.spectator) { dto.setGiftCredits(viewer.giftCredits); dto.setGiftCreditVersion(viewer.giftCreditVersion); }
@@ -8855,6 +8876,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         long giftOpeningEndsAt;
         DemonDefenseGame demonDefense;
         GiftDropGame giftDrop;
+        GiftLightningGame giftLightning;
         long lastDemonSummaryAt;
         String lastDemonWarningKey = "";
 

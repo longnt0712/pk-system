@@ -7,7 +7,7 @@ const nodeVm = require('node:vm');
 
 function setup({spectator = true, ready = true, storedVolume = null, dangerTracks = []} = {}) {
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
-    let Controller, options, player, hooks;
+    let Controller, options, player, dangerOptions, dangerPlayer, lightningOptions, lightningPlayer, hooks;
     const calls = [], gestures = {}, storage = new Map();
     if (storedVolume !== null) storage.set('battleHostMusicVolume', String(storedVolume));
     const angular = {
@@ -23,27 +23,36 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
         YT: {
             PlayerState: {PLAYING: 1, PAUSED: 2, ENDED: 0},
             Player: function (id, config) {
-                options = config;
-                let state = 2, videoId = config.videoId;
+                const danger = id === 'battle-online-demon-danger-music-player';
+                const lightning = id === 'battle-online-lightning-music-player';
+                const record = (action, ...args) => calls.push([(danger ? 'danger-' : lightning ? 'lightning-' : '') + action, ...args]);
+                let state = 2, videoId = config.videoId, seconds = 0;
                 function change(nextState) { state = nextState; config.events.onStateChange({data: state}); }
-                player = {
-                    setVolume(value) { calls.push(['volume', value]); }, unMute() {},
+                const createdPlayer = {
+                    setVolume(value) { record('volume', value); }, unMute() {},
                     getVideoData() { return {video_id: videoId}; },
                     getPlayerState() { return state; },
-                    playVideo() { calls.push(['play']); change(1); },
-                    pauseVideo() { calls.push(['pause']); change(2); },
-                    stopVideo() { calls.push(['stop']); change(0); },
-                    loadVideoById(value) { videoId = value; calls.push(['load', value]); change(1); },
-                    cueVideoById(value) { videoId = value; calls.push(['cue', value]); change(2); }
+                    getCurrentTime() { return seconds; },
+                    advance(value) { if (state === 1) seconds += value; },
+                    playVideo() { record('play'); change(1); },
+                    pauseVideo() { record('pause'); change(2); },
+                    stopVideo() { seconds = 0; record('stop'); change(0); },
+                    loadVideoById(value) { seconds = 0; videoId = value; record('load', value); change(1); },
+                    cueVideoById(value) { seconds = 0; videoId = value; record('cue', value); change(2); },
+                    end() { change(0); }, error() { config.events.onError(); },
+                    destroy() { record('destroy'); }
                 };
-                return player;
+                if (danger) { dangerOptions = config; dangerPlayer = createdPlayer; }
+                else if (lightning) { lightningOptions = config; lightningPlayer = createdPlayer; }
+                else { options = config; player = createdPlayer; }
+                return createdPlayer;
             }
         }
     };
     const context = nodeVm.createContext({angular, expose(value) { hooks = value; }});
     // Expose private functions only in this isolated test runtime. No production hooks.
     nodeVm.runInContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/, `
-        expose({applyRoom: applyRoom, syncMusic: syncBattleViewMusic, loadConfig: loadBattleViewMusicConfig});
+        expose({applyRoom: applyRoom, syncMusic: syncBattleViewMusic, loadConfig: loadBattleViewMusicConfig, destroyMusic: destroyBattleViewMusic, updateCountdown});
     `), context);
     const timer = () => 1;
     timer.cancel = () => {};
@@ -66,8 +75,19 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
         instance, hooks, calls, storage, room, gestures, document: $window.document,
         async prepare() { await hooks.loadConfig(); if (ready) this.markReady(); },
         markReady() { options.events.onReady({target: player}); },
-        end() { options.events.onStateChange({data: 0}); },
-        error() { options.events.onError(); }
+        markDangerReady() { assert.ok(dangerOptions); dangerOptions.events.onReady({target: dangerPlayer}); },
+        markLightningReady() { assert.ok(lightningOptions); lightningOptions.events.onReady({target: lightningPlayer}); },
+        endLightning() { lightningPlayer.end(); },
+        advanceLightning(seconds) { lightningPlayer.advance(seconds); },
+        get lightningPosition() { return lightningPlayer && lightningPlayer.getCurrentTime(); },
+        get lightningState() { return lightningPlayer && lightningPlayer.getPlayerState(); },
+        end() { player.end(); }, error() { player.error(); },
+        endDanger() { dangerPlayer.end(); }, errorDanger() { dangerPlayer.error(); },
+        advance(seconds) { player.advance(seconds); },
+        get track() { return player.getVideoData().video_id; },
+        get position() { return player.getCurrentTime(); },
+        get state() { return player.getPlayerState(); },
+        get dangerState() { return dangerPlayer && dangerPlayer.getPlayerState(); }
     };
 }
 
@@ -257,21 +277,26 @@ test('password guessing uses a full-width modal and single-column mobile choices
 });
 
 
-test('demon danger switches once, repeats danger music, and restores regular music when safe', async () => {
+test('demon danger pauses the background and resumes the exact track and position without reloading it', async () => {
     const h = setup({dangerTracks: [{videoId: 'MR-ZRkhZK0M', purpose: 'DEMON_DANGER'}]});
     await h.prepare();
+    h.instance.selectMusicTrack(h.instance.musicTracks[2]); h.advance(47);
+    const original = h.track, loads = h.calls.filter(c => c[0] === 'load').length;
     h.instance.room.settings.mode = 'DEMON_DEFENSE';
     h.instance.demonArena = {teams: [{danger: true}, {danger: false}]};
     h.hooks.syncMusic();
-    assert.deepEqual(h.calls.filter(c => c[0] === 'load').at(-1), ['load', 'MR-ZRkhZK0M']);
-    const count = h.calls.filter(c => c[0] === 'load').length;
+    assert.equal(h.state, 2); h.advance(20); assert.equal(h.position, 47);
+    h.markDangerReady(); assert.equal(h.dangerState, 1);
+    const count = h.calls.filter(c => c[0] === 'danger-load').length;
     h.hooks.syncMusic();
-    assert.equal(h.calls.filter(c => c[0] === 'load').length, count);
-    h.end();
-    assert.deepEqual(h.calls.filter(c => c[0] === 'load').at(-1), ['load', 'MR-ZRkhZK0M']);
+    assert.equal(h.calls.filter(c => c[0] === 'danger-load').length, count);
+    h.endDanger();
+    assert.deepEqual(h.calls.filter(c => c[0] === 'danger-load').at(-1), ['danger-load', 'MR-ZRkhZK0M']);
     h.instance.demonArena.teams[0].eliminatedAt = 123;
     h.hooks.syncMusic();
-    assert.notEqual(h.calls.filter(c => c[0] === 'load').at(-1)[1], 'MR-ZRkhZK0M');
+    assert.equal(h.state, 1); assert.equal(h.track, original); assert.equal(h.position, 47);
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
+    assert.equal(h.dangerState, 0);
     h.instance.room.settings.mode = 'COUNTDOWN';
     h.instance.demonArena.teams[0].eliminatedAt = null;
     h.hooks.syncMusic();
@@ -287,7 +312,7 @@ test('danger music respects manual pause and disabled danger tracks', async () =
     const loads = h.calls.filter(c => c[0] === 'load').length;
     h.hooks.syncMusic();
     assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
-    assert.deepEqual(h.calls.filter(c => c[0] === 'cue').at(-1), ['cue', 'MR-ZRkhZK0M']);
+    assert.equal(h.calls.some(c => c[0].startsWith('danger-')), false);
     assert.equal(h.instance.musicPlaying, false);
     const disabled = setup();
     await disabled.prepare();
@@ -304,7 +329,103 @@ test('a failed danger song is not repeatedly reloaded using the regular playlist
     h.instance.room.settings.mode = 'DEMON_DEFENSE';
     h.instance.demonArena = {teams: [{danger: true}]};
     h.hooks.syncMusic();
+    h.markDangerReady();
     const loads = h.calls.filter(c => c[0] === 'load').length;
-    h.error();
+    const warningPlays = h.calls.filter(c => c[0] === 'danger-play').length;
+    h.errorDanger(); h.hooks.syncMusic();
     assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
+    assert.equal(h.calls.filter(c => c[0] === 'danger-play').length, warningPlays);
+});
+
+test('pausing during a warning keeps the background paused when danger clears until the host presses play', async () => {
+    const h = setup({dangerTracks: [{videoId: 'warningSong', purpose: 'DEMON_DANGER'}]});
+    await h.prepare(); h.advance(38); const track = h.track;
+    h.instance.room.settings.mode = 'DEMON_DEFENSE'; h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic(); h.markDangerReady(); h.instance.toggleMusicPlayback();
+    assert.equal(h.instance.musicPausedByUser, true); assert.equal(h.dangerState, 2);
+    h.instance.demonArena.teams[0].danger = false; h.hooks.syncMusic();
+    assert.equal(h.state, 2); assert.equal(h.instance.musicPlaying, false);
+    h.instance.toggleMusicPlayback();
+    assert.equal(h.state, 1); assert.equal(h.track, track); assert.equal(h.position, 38);
+});
+
+test('a warning player that becomes ready after danger clears never interrupts the resumed background', async () => {
+    const h = setup({dangerTracks: [{videoId: 'warningSong', purpose: 'DEMON_DANGER'}]});
+    await h.prepare(); h.advance(23); const track = h.track;
+    h.instance.room.settings.mode = 'DEMON_DEFENSE'; h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic(); h.instance.demonArena.teams[0].danger = false; h.hooks.syncMusic(); h.markDangerReady();
+    assert.equal(h.calls.some(c => c[0] === 'danger-play'), false);
+    assert.equal(h.state, 1); assert.equal(h.track, track); assert.equal(h.position, 23);
+});
+
+test('late end/error callbacks and repeated warnings do not advance the background playlist', async () => {
+    const h = setup({dangerTracks: [{videoId: 'warningSong', purpose: 'DEMON_DANGER'}]});
+    await h.prepare(); h.instance.selectMusicTrack(h.instance.musicTracks[1]); h.advance(31);
+    const track = h.track, loads = h.calls.filter(c => c[0] === 'load').length;
+    h.instance.room.settings.mode = 'DEMON_DEFENSE'; h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic(); h.markDangerReady(); h.end(); h.error();
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
+    for (let cycle = 0; cycle < 3; cycle++) {
+        h.instance.demonArena.teams[0].danger = false; h.hooks.syncMusic(); h.endDanger();
+        assert.equal(h.state, 1); assert.equal(h.track, track); assert.equal(h.position, 31);
+        h.instance.demonArena.teams[0].danger = true; h.hooks.syncMusic();
+    }
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
+});
+
+test('volume and an explicit background selection during danger are kept when the warning ends', async () => {
+    const h = setup({dangerTracks: [{videoId: 'warningSong', purpose: 'DEMON_DANGER'}]});
+    await h.prepare(); h.instance.room.settings.mode = 'DEMON_DEFENSE'; h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic(); h.markDangerReady();
+    h.instance.musicVolume = 26; h.instance.updateMusicVolume();
+    assert.deepEqual(h.calls.filter(c => c[0] === 'danger-volume').at(-1), ['danger-volume', 26]);
+    h.instance.selectMusicTrack(h.instance.musicTracks[3]); assert.equal(h.state, 2);
+    h.instance.demonArena.teams[0].danger = false; h.hooks.syncMusic();
+    assert.equal(h.track, 'fourthTrack'); assert.equal(h.state, 1);
+});
+
+test('finishing or destroying the view releases both players and late warning events cannot restart music', async () => {
+    const h = setup({dangerTracks: [{videoId: 'warningSong', purpose: 'DEMON_DANGER'}]});
+    await h.prepare(); h.instance.room.settings.mode = 'DEMON_DEFENSE'; h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic(); h.markDangerReady(); h.hooks.applyRoom(h.room('FINISHED'), false);
+    const loads = h.calls.filter(c => c[0] === 'load' || c[0] === 'danger-load').length;
+    h.endDanger(); assert.equal(h.calls.filter(c => c[0] === 'load' || c[0] === 'danger-load').length, loads);
+    assert.equal(h.instance.musicPlaying, false);
+    h.hooks.destroyMusic(); assert.ok(h.calls.some(c => c[0] === 'destroy')); assert.ok(h.calls.some(c => c[0] === 'danger-destroy'));
+});
+
+function collectLightning(h) {
+    h.instance.room.settings.mode = 'LUM_NGAY';
+    h.instance.room.giftLightning = {startsAt: Date.now()-100, endsAt: Date.now()+30000, username: 'alice'};
+    h.hooks.syncMusic();
+}
+test('lightning resumes the same song across pickups and the background resumes its own position', async () => {
+    const h = setup({dangerTracks: [{videoId: 'gOMUTUvVwEk', purpose: 'LUM_LIGHTNING'}]});
+    await h.prepare(); h.advance(47); const track = h.track;
+    collectLightning(h); h.markLightningReady(); h.advanceLightning(18);
+    assert.equal(h.state, 2); assert.equal(h.position, 47); assert.equal(h.lightningState, 1);
+    assert.equal(h.instance.getMusicTrackName(), 'Lụm ngay — Sét may mắn');
+    h.instance.room.giftLightning.endsAt = Date.now()-1; h.hooks.updateCountdown();
+    assert.equal(h.state, 1); assert.equal(h.track, track); assert.equal(h.position, 47);
+    assert.equal(h.lightningState, 2); assert.equal(h.lightningPosition, 18);
+    collectLightning(h); h.advanceLightning(12);
+    assert.equal(h.lightningPosition, 30); assert.equal(h.calls.some(c => c[0] === 'lightning-load'), false);
+    h.endLightning(); assert.deepEqual(h.calls.at(-1), ['lightning-load', 'gOMUTUvVwEk']);
+    assert.equal(h.lightningPosition, 0);
+    h.hooks.applyRoom(h.room('FINISHED'), false);
+    assert.equal(h.lightningState, 0); assert.equal(h.instance.musicPlaying, false);
+    h.endLightning(); h.hooks.destroyMusic();
+    assert.ok(h.calls.some(c => c[0] === 'lightning-destroy'));
+});
+test('lightning audio respects manual pause, saved volume and disabled tracks', async () => {
+    const h = setup({dangerTracks: [{videoId: 'gOMUTUvVwEk', purpose: 'LUM_LIGHTNING'}]});
+    await h.prepare(); collectLightning(h); h.markLightningReady(); h.advanceLightning(9);
+    h.instance.musicVolume = 21; h.instance.updateMusicVolume();
+    assert.deepEqual(h.calls.filter(c => c[0] === 'lightning-volume').at(-1), ['lightning-volume', 21]);
+    h.instance.toggleMusicPlayback(); h.hooks.syncMusic(); h.gestures.click();
+    assert.equal(h.lightningState, 2); assert.equal(h.state, 2);
+    h.instance.toggleMusicPlayback(); assert.equal(h.lightningState, 1); assert.equal(h.lightningPosition, 9);
+    const disabled = setup(); await disabled.prepare(); collectLightning(disabled);
+    assert.equal(disabled.state, 1); assert.equal(disabled.lightningState, undefined);
+    assert.equal(disabled.instance.isGiftLightningActive(), true, 'muting music never disables the reward');
 });
