@@ -33,6 +33,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
   await page.evaluate(({testMode})=>{
    window.App={initAjax(){}};
    angular.module('Hrm.Question',['ui.bootstrap']).value('settings',{}).value('$cookies',{get(){return '{"id":7}';}})
+    .value('TestWordExport',{open(){throw new Error('Unexpected export in folder test');}})
     .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':testMode==='DAILY_LISTENING'?'/daily_listening_tests':'/ielts_'+testMode.toLowerCase()+'_tests';},search(){return {};}}).value('blockUI',{start(){},stop(){}})
     .run(['$rootScope',function(root){root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){

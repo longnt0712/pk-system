@@ -1,0 +1,25 @@
+<div class="modal-header">
+    <button type="button" class="close" aria-label="Đóng" ng-click="exportVm.cancel()" ng-disabled="exportVm.busy"><span aria-hidden="true">&times;</span></button>
+    <h3 class="modal-title"><i class="fa fa-file-word-o" aria-hidden="true"></i> Xuất bài test ra Word</h3>
+</div>
+<div class="modal-body">
+    <p><strong ng-bind="exportVm.title"></strong></p>
+    <p>File gồm đề bài, câu hỏi và các lựa chọn trả lời. Không kèm đáp án hoặc gợi ý giải.</p>
+    <fieldset ng-disabled="exportVm.busy">
+        <legend style="font-size:16px;margin-bottom:12px">Thứ tự trong file Word</legend>
+        <div class="radio"><label><input type="radio" name="wordExportOrder" ng-model="exportVm.shuffle" ng-value="false" ng-change="exportVm.orderChanged()"> Giữ thứ tự gốc</label></div>
+        <div class="radio"><label><input type="radio" name="wordExportOrder" ng-model="exportVm.shuffle" ng-value="true" ng-change="exportVm.orderChanged()"> Xáo câu hỏi và các phương án trả lời</label></div>
+        <p class="help-block">Giữ nguyên passage và các nhóm câu dùng chung nội dung. Việc xáo chỉ áp dụng cho file được tải xuống.</p>
+    </fieldset>
+    <div class="alert alert-danger" role="alert" ng-if="exportVm.error" ng-bind="exportVm.error"></div>
+    <div class="alert alert-warning" role="alert" ng-if="exportVm.warnings.length">
+        <p ng-repeat="warning in exportVm.warnings track by $index" ng-bind="warning"></p>
+        <p>Bạn có thể tải file và bổ sung các hình còn thiếu, hoặc hủy để kiểm tra lại nội dung bài.</p>
+    </div>
+    <p role="status" ng-if="exportVm.busy"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tạo file Word...</p>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" ng-click="exportVm.cancel()" ng-disabled="exportVm.busy">Hủy</button>
+    <button type="button" class="btn btn-warning" ng-if="exportVm.warnings.length" ng-click="exportVm.downloadWithWarnings()">Tải file và bổ sung hình sau</button>
+    <button type="button" class="btn btn-primary" ng-click="exportVm.confirm()" ng-disabled="exportVm.busy"><i class="fa fa-download" aria-hidden="true"></i> {{exportVm.busy ? 'Đang tạo...' : 'Tải file Word'}}</button>
+</div>

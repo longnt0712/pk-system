@@ -95,6 +95,7 @@
                                 </div>
                                 <div class="test-explorer-file-actions">
                                     <button type="button" class="test-explorer-action--edit" ng-click="editCreateIELTSReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id] || vm.catalogMovePending"><i class="fa fa-pencil" aria-hidden="true"></i> Sửa bài</button>
+                                    <button type="button" class="test-explorer-action--export" ng-click="vm.exportTestWord(item)" ng-disabled="vm.exportingWord || vm.catalogStatusUpdating[item.id] || vm.catalogTitleUpdating[item.id] || vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending"><i class="fa" ng-class="vm.exportingWord && vm.exportingWordId == item.id ? 'fa-spinner fa-spin' : 'fa-file-word-o'" aria-hidden="true"></i> Xuất Word</button>
                                     <button type="button" class="test-explorer-action--move" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading || vm.isCatalogTitleSaving() || vm.isCatalogStatusSaving()"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
                                     <button type="button" class="test-explorer-action--hide" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogMovePending || vm.catalogStatusUpdating[item.id] || vm.catalogTitleUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
                                     <button type="button" class="test-explorer-action--restore" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogMovePending || vm.catalogStatusUpdating[item.id] || vm.catalogTitleUpdating[item.id]"><i class="fa fa-undo" aria-hidden="true"></i> Khôi phục</button>
@@ -1437,6 +1438,9 @@
             <span class="is-ready" ng-if="vm.builderValidation.valid">· đã sẵn sàng</span>
         </div>
         <div>
+            <button type="button" class="btn btn-default" ng-click="vm.exportTestWord()" ng-disabled="vm.exportingWord || vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending">
+                <i class="fa" ng-class="vm.exportingWord && !vm.exportingWordId ? 'fa-spinner fa-spin' : 'fa-file-word-o'" aria-hidden="true"></i> Xuất Word
+            </button>
             <button type="button" class="btn btn-default" ng-click="vm.previewReadingTest(1)">
                 <i class="fa fa-eye"></i> Preview đề
             </button>

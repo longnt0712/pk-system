@@ -23,13 +23,15 @@
         '$cookies',
         'ComprehensiveVideo',
         'ComprehensiveListening',
-        'ComprehensiveFolders'
+        'ComprehensiveFolders',
+        '$q',
+        'TestWordExport'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders,$q,wordExport) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -1819,6 +1821,25 @@
                 // The following setItem call will show the useful error if storage is unavailable.
             }
         }
+
+        vm.exportTestWord = function (item) {
+            if (vm.exportingWord || vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending ||
+                (item && ((vm.catalogStatusUpdating || {})[item.id] || (vm.catalogTitleUpdating || {})[item.id]))) { return; }
+            vm.exportingWord = true;
+            vm.exportingWordId = item ? item.id : null;
+            // Catalog rows omit the question tree; the editor exports a snapshot of unsaved changes.
+            var request = item ? service.getOne(item.id) : $q.when(angular.copy(vm.ieltsReadingTest));
+            return request.then(function (test) {
+                if (!test || (item && !test.id)) { throw new Error('Không tải được nội dung bài để xuất Word.'); }
+                return wordExport.open(angular.copy(test), {testMode: vm.folderTestMode});
+            }).catch(function (error) {
+                if (error === 'cancel' || error === 'backdrop click' || error === 'escape key press') { return; }
+                toastr.error((error && error.message) || 'Không tải được nội dung bài để xuất Word. Bạn có thể thử lại.', 'Xuất Word');
+            }).finally(function () {
+                vm.exportingWord = false;
+                vm.exportingWordId = null;
+            });
+        };
 
         vm.previewReadingTest = function (partIndex) {
             var maximumPreviewPart = vm.isFlexibleMode ? 1 : (vm.isListeningMode ? 4 : 3);

@@ -40,6 +40,7 @@ async function fixture(browser,mode,creator,folder){
    const module=angular.module('Hrm.Question',['ui.router','ui.bootstrap']);
    module.value('settings',{}).value('$cookies',{get(){return '{"id":7,"roles":[{"name":"ROLE_ADMIN"}]}';}})
     .value('blockUI',{start(){},stop(){}}).value('toastr',{success(){},error(){},warning(){}})
+    .value('TestWordExport',{open(){throw new Error('Unexpected export in folder test');}})
     .value('ComprehensiveListening',{transcriptText:value=>value||''})
     .run(['$rootScope',root=>{root.settings={layout:{}};}])
     .factory('TestFolderService',['$q',q=>({getTestFolders(){return q.when(folders);}})])

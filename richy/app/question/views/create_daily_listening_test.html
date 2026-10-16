@@ -39,6 +39,7 @@
                         <div class="test-explorer-file-main"><h3 class="test-explorer-name" ng-bind="item.title || item.question"></h3><test-publication-status test="item" disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.saving || vm.editing || vm.importDialogOpen" on-busy-change="vm.catalogStatusUpdating[test.id]=busy" on-changed="vm.catalogTestStatusChanged(test, previousStatus)"></test-publication-status></div>
                         <div class="test-explorer-file-actions">
                             <button type="button" class="test-explorer-action--edit" ng-click="vm.edit(item)" ng-disabled="vm.catalogStatusUpdating[item.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen"><i class="fa fa-pencil" aria-hidden="true"></i> Sửa bài</button>
+                            <button type="button" class="test-explorer-action--export" ng-click="vm.exportTestWord(item)" ng-disabled="vm.exportingWord || vm.catalogStatusUpdating[item.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.importDialogOpen"><i class="fa" ng-class="vm.exportingWord && vm.exportingWordId == item.id ? 'fa-spinner fa-spin' : 'fa-file-word-o'" aria-hidden="true"></i> Xuất Word</button>
                             <a class="test-explorer-action--view" draggable="false" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}"><i class="fa fa-headphones" aria-hidden="true"></i> Mở bài nghe</a>
                             <button type="button" class="test-explorer-action--move" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.saving || vm.editing || vm.loading || vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.importDialogOpen || vm.isCatalogStatusSaving()"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
                         </div>
@@ -78,6 +79,7 @@
             <div class="reading-builder-actionbar">
                 <div><strong>{{vm.draft.id ? 'Đang sửa bài nghe' : 'Bài nghe mới'}}</strong><span> · Hoàn thành từ 90% gaps</span></div>
                 <div>
+                    <button type="button" class="btn btn-default" ng-click="vm.exportTestWord()" ng-disabled="vm.exportingWord || vm.importDialogOpen"><i class="fa" ng-class="vm.exportingWord && !vm.exportingWordId ? 'fa-spinner fa-spin' : 'fa-file-word-o'" aria-hidden="true"></i> Xuất Word</button>
                     <a ng-if="vm.draft.id" class="btn btn-default" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(vm.draft)}}"><i class="fa fa-eye" aria-hidden="true"></i> Mở bài đã lưu</a>
                     <button type="submit" class="btn btn-success"><i class="fa" ng-class="vm.saving ? 'fa-spinner fa-spin' : 'fa-save'" aria-hidden="true"></i> {{vm.saving ? 'Đang lưu...' : 'Lưu bài nghe'}}</button>
                 </div>

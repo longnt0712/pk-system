@@ -1,8 +1,8 @@
 (function () {
     'use strict';
     angular.module('Hrm.Question').controller('DailyListeningTestController', [
-        '$cookies', '$location', '$window', 'settings', 'QuestionService', 'ComprehensiveListening', 'toastr', '$uibModal', '$q', 'ComprehensiveFolders', '$scope',
-        function ($cookies, $location, $window, settings, service, listening, toastr, modal, $q, folders, $scope) {
+        '$cookies', '$location', '$window', 'settings', 'QuestionService', 'ComprehensiveListening', 'toastr', '$uibModal', '$q', 'ComprehensiveFolders', '$scope', 'TestWordExport',
+        function ($cookies, $location, $window, settings, service, listening, toastr, modal, $q, folders, $scope, wordExport) {
             var vm = this, requestId = 0;
             try { vm.currentUser = JSON.parse($cookies.get('education.user') || '{}'); }
             catch (ignoreCookie) { vm.currentUser = {}; }
@@ -29,6 +29,29 @@
                 var editor = $window.document.getElementById && $window.document.getElementById('daily-listening-editor');
                 if (editor && editor.scrollIntoView) { editor.scrollIntoView({behavior: 'smooth', block: 'start'}); }
             }
+            vm.exportTestWord = function (item) {
+                if (vm.exportingWord || vm.saving || vm.editing || vm.catalogMovePending || vm.importDialogOpen ||
+                    (item && vm.catalogStatusUpdating[item.id])) { return; }
+                vm.exportingWord = true;
+                vm.exportingWordId = item ? item.id : null;
+                var snapshot;
+                if (!item) {
+                    snapshot = angular.copy(vm.draft);
+                    snapshot.title = snapshot.question;
+                    snapshot.motherTongue = vm.transcript === vm.originalTranscriptText ? vm.originalTranscript : vm.transcript;
+                }
+                var request = item ? service.getOne(item.id) : $q.when(snapshot);
+                return request.then(function (test) {
+                    if (!test || (item && (!test.id || !isListening(test)))) { throw new Error('Không tải được nội dung bài Daily Listening để xuất Word.'); }
+                    return wordExport.open(angular.copy(test), {testMode: vm.folderTestMode});
+                }).catch(function (error) {
+                    if (error === 'cancel' || error === 'backdrop click' || error === 'escape key press') { return; }
+                    toastr.error((error && error.message) || 'Không tải được nội dung bài để xuất Word. Bạn có thể thử lại.', 'Xuất Word');
+                }).finally(function () {
+                    vm.exportingWord = false;
+                    vm.exportingWordId = null;
+                });
+            };
             vm.preview = function (item) { return text(item.motherTongue).trim().slice(0, 160); };
             vm.practiceUrl = function (item) { return 'daily_listening/' + encodeURIComponent(item.id); };
             vm.load = function () {

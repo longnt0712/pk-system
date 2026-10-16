@@ -33,6 +33,7 @@ async function fixture(browser,width,learner=false,record=shared){
     {...structuredClone(record),id:23,question:'Vocabulary',status:1,questionType:{id:6},testFormat:null,pronounce:''}];window.statusCalls=[];window.saveCalls=[];window.pageCalls=[];window.results=[];
    const cookie=JSON.stringify({id:7,username:'Teacher',roles:[{name:'ROLE_ADMIN'}],person:{firstName:'Teacher'}});
    angular.module('Hrm.Question',['ui.bootstrap','ngSanitize']).value('settings',{})
+    .value('TestWordExport',{open(){throw Error('Unexpected export in folder test');}})
     .value('$cookies',{get(){return cookie;},getAll(){return{'education.user':cookie};}})
     .value('$location',{path(){return learner?'/daily_listening/21':'/create_daily_listening_test';},search(){return {};}})
     .value('$stateParams',learner?{dailyListeningId:String(record.id)}:{})
