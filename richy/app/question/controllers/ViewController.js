@@ -3970,10 +3970,13 @@
         function restoreDailyListeningAudioPosition(seconds) {
             seconds = Math.max(0, Number(seconds) || 0);
             if (!seconds) { return; }
+            var seekRevision = dailyListeningSeekRevision;
 
             $timeout(function () {
+                if (seekRevision !== dailyListeningSeekRevision || $scope.$$destroyed) { return; }
                 if (vm.isYoutubeAudio) {
                     runYoutubeAction(function (player) {
+                        if (seekRevision !== dailyListeningSeekRevision) { return; }
                         try { player.seekTo(seconds, true); } catch (ignore) {}
                     });
                     return;
@@ -3982,6 +3985,7 @@
                 var audio = getMainAudio();
                 if (!audio) { return; }
                 var applyTime = function () {
+                    if (seekRevision !== dailyListeningSeekRevision || $scope.$$destroyed) { return; }
                     try { audio.currentTime = Math.min(seconds, isFinite(audio.duration) ? audio.duration : seconds); }
                     catch (ignore) {}
                 };
@@ -4558,6 +4562,8 @@
         $scope.$on('$destroy', unbindGapAudioState);
         vm.setUpAudio = function () {
             vm.gapAudioPlaying = false;
+            dailyListeningSeekRevision++;
+            clearDailyListeningSeekWait();
             unbindGapAudioState();
             mainAudio = document.getElementById('main-audio');
 
@@ -4675,6 +4681,46 @@
             } else {
                 audio.pause();
             }
+        };
+
+        var dailyListeningSeekWait = null;
+        var dailyListeningSeekRevision = 0;
+        function clearDailyListeningSeekWait() {
+            if (dailyListeningSeekWait) {
+                dailyListeningSeekWait.audio.removeEventListener('loadedmetadata', dailyListeningSeekWait.apply);
+                dailyListeningSeekWait = null;
+            }
+        }
+        $scope.$on('$destroy', clearDailyListeningSeekWait);
+
+        vm.seekDailyListeningTo = function (seconds) {
+            seconds = Number(seconds);
+            if (!isFinite(seconds) || seconds < 0) { return; }
+            dailyListeningSeekRevision++;
+            function boundedTime(duration) { return isFinite(duration) && duration > 0 ? Math.min(seconds, duration) : seconds; }
+            clearDailyListeningSeekWait();
+            if (vm.isYoutubeAudio) {
+                runYoutubeAction(function (player) {
+                    player.seekTo(boundedTime(Number(player.getDuration())), true);
+                    player.playVideo();
+                    scheduleDailyListeningDraftSave();
+                });
+                return;
+            }
+            var audio = getMainAudio();
+            if (!audio) { return; }
+            function applyTime() {
+                clearDailyListeningSeekWait();
+                audio.currentTime = boundedTime(audio.duration);
+                scheduleDailyListeningDraftSave();
+            }
+            if (audio.readyState >= 1) { applyTime(); }
+            else {
+                dailyListeningSeekWait = {audio: audio, apply: applyTime};
+                audio.addEventListener('loadedmetadata', applyTime);
+            }
+            var playing = audio.play();
+            if (playing && playing.catch) { playing.catch(angular.noop); }
         };
 
         vm.backwardAudio = function (e) {

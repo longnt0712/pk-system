@@ -1042,7 +1042,7 @@
                                                  'gap-english-content': vm.mode.id == 8,
                                                  'daily-listening-transcript': vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING',
                                                  'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
-                                             }" compile="vm.fillingGapQuestion"></div>
+                                             }" compile="vm.fillingGapQuestion" daily-listening-timestamps="vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING'" on-timestamp-seek="vm.seekDailyListeningTo(seconds)"></div>
                                     </div>
                                 </div>
 
@@ -1078,7 +1078,7 @@
                                                      'gap-english-content': vm.mode.id == 8,
                                                      'daily-listening-transcript': vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING',
                                                      'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
-                                                 }" compile="vm.fillingGapQuestion"></div>
+                                                 }" compile="vm.fillingGapQuestion" daily-listening-timestamps="vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING'" on-timestamp-seek="vm.seekDailyListeningTo(seconds)"></div>
                                         </div>
                                     </div>
 

@@ -36,17 +36,17 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
    await page.addStyleTag({content:shellStyles});
    await page.evaluate(()=>{document.documentElement.classList.add('global-dark-mode');document.body.classList.add('global-dark-mode');});
   }
-  if(options.youtube)await page.evaluate(()=>{
+  if(options.youtube)await page.evaluate(options=>{
    window.ytCalls=[];window.YT={PlayerState:{PLAYING:1,PAUSED:2,BUFFERING:3,ENDED:0},Player:function(id,config){
     let state=2,time=12;const host=document.getElementById(id);host.style.cssText='height:100%;display:grid;place-content:center;text-align:center;background:linear-gradient(140deg,#213a5d,#4f789b);color:white;font-family:system-ui';
     host.innerHTML='<div style="font-size:36px;margin-bottom:16px">▶</div><div style="font-size:18px;font-weight:600">Listening practice</div><div style="font-size:12px;opacity:.7;margin-top:8px">YouTube · Video preview</div>';
-    this.getCurrentTime=()=>time;this.getDuration=()=>120;this.getPlayerState=()=>state;
+    this.getCurrentTime=()=>time;this.getDuration=()=>options.youtubeDuration||120;this.getPlayerState=()=>state;
     this.seekTo=value=>{time=value;ytCalls.push(['seek',value]);};this.setPlaybackRate=value=>ytCalls.push(['speed',value]);this.getAvailablePlaybackRates=()=>[.5,1,1.5,2];this.setVolume=value=>ytCalls.push(['volume',value]);
     this.playVideo=()=>{state=1;ytCalls.push(['play']);config.events.onStateChange({data:state,target:this});};
     this.pauseVideo=()=>{state=2;ytCalls.push(['pause']);config.events.onStateChange({data:state,target:this});};this.stopVideo=()=>{state=0;};this.destroy=()=>{host.remove();};
-    window.ytPreview=this;setTimeout(()=>config.events.onReady({target:this}),0);
+    window.ytPreview=this;if(options.holdYoutubeReady)window.releaseYoutubeReady=()=>config.events.onReady({target:this});else setTimeout(()=>config.events.onReady({target:this}),options.youtubeReadyDelay||0);
    }};
-  });
+  },options);
   await page.evaluate(({learner,record,options})=>{
    window.App={initAjax(){}};localStorage.setItem('fillingGapRatePercent','100');
    (options.localDrafts||[]).forEach(draft=>localStorage.setItem('daily-listening-progress:v1:7:'+draft.card.id,JSON.stringify(draft)));
@@ -84,7 +84,7 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
      saveTestResult(dto){window.results.push(structuredClone(dto));return q.when({id:101});}
     };}]);
   },{learner,record,options});
-  for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
+  for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders','DailyListeningTimestamps'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
   await page.evaluate(()=>{
    window.folders=[];window.folderCalls=[];window.moveCalls=[];window.folderSaveCalls=[];
    angular.module('Hrm.Question').factory('TestFolderService',['$q',q=>({
@@ -438,6 +438,60 @@ test('dashboard resume restores older local and cloud drafts in the iOS page wit
    await current.waitForFunction(()=>results.length===1);assert.equal(await current.evaluate(()=>results[0].testTime),'GAPS 90%');
    assert.equal(await current.evaluate(key=>localStorage.getItem(key),key),null);assert.deepEqual(resumed.errors,[]);await current.close();
   }
+ }finally{await browser.close();}
+});
+
+test('transcript timestamp links seek YouTube by click and Enter without changing gaps, including clicks before readiness',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const transcript="[00:00] Anna: one two.\n\n[00:18] Ben: three four.\n[01:25] Anna: five six.\n[01:02:03] Ben: seven eight.\n\n[00:75] and [1:99:03] stay as text. <secret> {{vm.currentUser.id}}";
+ const record={...shared,question:'Timestamp practice',motherTongue:transcript,pronounce:'https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=45'};
+ try{for(const width of [1366,390]){
+  const held=width===390,{page,errors}=await fixture(browser,width,true,record,{youtube:true,youtubeDuration:4000,holdYoutubeReady:held,dark:held});
+  const links=page.locator('.daily-listening-timestamp');await page.getByRole('link',{name:'Nghe từ 00:18',exact:true}).waitFor();assert.equal(await links.count(),4);
+  const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers));await page.locator('#gap-number-'+answers[0][0]).fill(answers[0][1]);
+  await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,answers[0][0]);
+  const before=await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:qaVm.gapValues,percentage:qaVm.percentage}));
+  if(!held)await page.waitForFunction(()=>window.youtubeGapPlayerDebug!=null);
+  await page.getByRole('link',{name:'Nghe từ 00:18',exact:true}).click();
+  if(!held)await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===18);
+  await page.getByRole('link',{name:'Nghe từ 01:25',exact:true}).click();
+  if(held){assert.equal(await page.evaluate(()=>window.youtubeGapPlayerDebug==null),true);await page.evaluate(()=>releaseYoutubeReady());}
+  await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===85 && qaVm.gapAudioPlaying===true);
+  await page.getByRole('link',{name:'Nghe từ 01:02:03',exact:true}).click();await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===3723);
+  const zero=page.getByRole('link',{name:'Nghe từ 00:00',exact:true});await zero.focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===0);
+  assert.equal(await page.evaluate(()=>location.hash),'');assert.equal(await readRenderedTranscript(page),transcript);
+  assert.deepEqual(await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:qaVm.gapValues,percentage:qaVm.percentage})),before);
+  const color=await zero.evaluate(el=>getComputedStyle(el).color);assert.equal(color,held?'rgb(117, 183, 255)':'rgb(0, 122, 255)');
+  assert.equal(await page.locator('.daily-listening-transcript secret').count(),0);assert.equal(await links.locator('a').count(),0);
+  await page.screenshot({path:path.join(repo,'.tmp/daily-listening-timestamps-youtube-'+width+'.png'),fullPage:true});
+  await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);assert.equal(await links.count(),4);
+  assert.equal(await page.evaluate(()=>getOneCalls.length),1);assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('transcript timestamp links play native audio and decorate older resumed drafts while preserving their saved HTML and answers',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const transcript='[00:00] Mom: one two.\n\n[00:02] Candace: three four five.\n\n[00:05] Mom: six seven eight nine ten.';
+ const record={...shared,motherTongue:transcript},key='daily-listening-progress:v1:7:'+record.id;
+ try{
+  const original=await fixture(browser,1366,true,record),page=original.page;await page.getByRole('link',{name:'Nghe từ 00:02',exact:true}).waitFor();
+  await page.waitForFunction(()=>document.getElementById('main-audio').readyState>=1);
+  await page.getByRole('link',{name:'Nghe từ 00:02',exact:true}).click();await page.waitForFunction(()=>{const audio=document.getElementById('main-audio');return !audio.paused && audio.currentTime>=2 && audio.currentTime<3;});
+  await page.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).click();
+  const [index,answer]=await page.evaluate(()=>Object.entries(qaVm.gapAnswers)[0]);await page.locator('#gap-number-'+index).fill(answer);await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,index);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.saveDailyListeningDraft()));
+  const draft=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);assert.equal(draft.fillingGapQuestion.includes('daily-listening-timestamp'),false);
+  delete draft.dailyListeningId;delete draft.card.testFormat;delete draft.card.questionType;
+  assert.deepEqual(original.errors,[]);await page.close();
+  const resumed=await fixture(browser,390,true,record,{localDrafts:[draft],resumeDashboard:record.id}),current=resumed.page;
+  await current.waitForFunction(()=>qaVm.dailyListeningDraftRestored===true);await current.getByRole('link',{name:'Nghe từ 00:05',exact:true}).waitFor();
+  assert.equal(await current.locator('.daily-listening-timestamp').count(),3);assert.equal(await readRenderedTranscript(current),transcript);
+  assert.equal(await current.evaluate(()=>qaVm.fillingGapQuestion),draft.fillingGapQuestion);assert.equal(await current.locator('#gap-number-'+index).inputValue(),answer);
+  await current.getByRole('link',{name:'Nghe từ 00:05',exact:true}).click();await current.waitForFunction(()=>{const audio=document.getElementById('main-audio');return !audio.paused && audio.currentTime>=5 && audio.currentTime<6;});
+  await current.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).click();
+  assert.equal(await current.evaluate(()=>qaVm.percentage),draft.percentage);assert.deepEqual(await current.evaluate(()=>qaVm.gapAnswers),draft.gapAnswers);
+  assert.equal(await current.evaluate(()=>getOneCalls.length),1);assert.deepEqual(resumed.errors,[]);
+  await current.screenshot({path:path.join(repo,'.tmp/daily-listening-timestamps-resumed-mobile.png'),fullPage:true});await current.close();
  }finally{await browser.close();}
 });
 
