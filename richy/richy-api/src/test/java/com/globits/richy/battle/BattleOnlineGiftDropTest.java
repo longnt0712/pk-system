@@ -146,6 +146,23 @@ public class BattleOnlineGiftDropTest {
         assertEquals(1,hostRoom.getGiftDrop().claims.size());
     }
 
+    @Test public void claimingPerryUsesMamHocPointsAndPublishesPerrysOwnImageAndLabel() throws Exception {
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return bound - 1; } });
+        set(room,"giftDrop",pool);
+        BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());
+        assertFalse(json.contains("Perry")); assertFalse(json.contains("rewardLevel"));
+        set(alice,"giftCredits",1); set(alice,"score",5D);
+        BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1","alice",request(before.getGiftDrop().gifts.get(0).id));
+        assertEquals(21,result.getRewardLevel()); assertEquals(30D,result.getPoints(),0D);
+        assertEquals("Perry",result.getRewardLabel());
+        assertTrue(result.getRewardImage().startsWith("assets/images/learning-pets/perry/"));
+        assertEquals(35D,(Double)get(alice,"score"),0D); assertEquals(0,get(alice,"giftCredits"));
+        GiftDropGame.ClaimRecord claim = service.getRoom("GIFTS1","host").getGiftDrop().claims.get(0);
+        assertEquals(21,claim.rewardLevel); assertEquals("Perry",claim.rewardLabel);
+        assertEquals(result.getRewardImage(),claim.rewardImage); assertEquals(30D,claim.points,0D);
+    }
+
     @Test public void noCreditSpectatorFreezeWrongPenaltyAndOtherModesCannotClaim() {
         String id=pool.snapshot("alice").gifts.get(0).id;
         rejected("alice",id); set(host,"giftCredits",1); rejected("host",id); set(alice,"giftCredits",1);
@@ -202,6 +219,30 @@ public class BattleOnlineGiftDropTest {
         try { json=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(result); } catch(Exception error) { throw new AssertionError(error); }
         assertTrue(json.contains("\"points\":0.5"));
         rejected("alice",id); assertEquals(4D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
+    }
+
+    @Test public void perryHatScoresExactlyOnePointEvenForTheDoubleCarrierAndKeepsPrivateRewardsHidden() throws Exception {
+        final int hatTicket = (Integer)get(new GiftDropGame(10000,new Random(1)),"rottenWeight");
+        pool = new GiftDropGame(10000,new Random() { @Override public int nextInt(int bound) { return hatTicket; } });
+        set(room,"giftDrop",pool);
+        BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
+        String closedJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());
+        assertFalse(closedJson.contains("Mũ Perry")); assertFalse(closedJson.contains("perry-hat.png"));
+        assertFalse(closedJson.contains("rewardLevel")); assertFalse(closedJson.contains("points"));
+        set(get(room,"settings"),"teamCount",2); set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1);
+        set(alice,"giftCredits",2); set(alice,"score",3.5D);
+        String id = before.getGiftDrop().gifts.get(0).id;
+        BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1","alice",request(id));
+        assertEquals(GiftDropGame.PERRY_HAT_LEVEL,result.getRewardLevel()); assertEquals(1D,result.getPoints(),0D);
+        assertEquals(4.5D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
+        assertNull(result.getSkillType()); assertNull(result.getRoom().getPendingSkillType());
+        assertEquals("Mũ Perry",result.getRewardLabel());
+        assertEquals("assets/images/learning-pets/perry/perry-hat.png",result.getRewardImage());
+        GiftDropGame.ClaimRecord claim = service.getRoom("GIFTS1","host").getGiftDrop().claims.get(0);
+        assertEquals(GiftDropGame.PERRY_HAT_LEVEL,claim.rewardLevel); assertEquals(1D,claim.points,0D);
+        assertEquals("alice",claim.username); assertEquals(result.getRewardLabel(),claim.rewardLabel);
+        assertEquals(result.getRewardImage(),claim.rewardImage);
+        rejected("alice",id); assertEquals(4.5D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
     }
 
     @Test public void twoSimultaneousClaimsOfTheSameGiftHaveExactlyOneWinner() throws Exception {

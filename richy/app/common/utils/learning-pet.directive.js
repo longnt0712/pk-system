@@ -47,6 +47,7 @@
             var capybaraEggUrl = 'assets/images/learning-pets/capybara/egg-level-3.png?v=' + version;
             var capybaraCrackedEggUrl = 'assets/images/learning-pets/capybara/egg-level-4.png?v=' + version;
             var capybaraPetUrl = 'assets/images/learning-pets/capybara/pet-level-5.png?v=' + version;
+            var perryPetUrl = 'assets/images/learning-pets/perry/pet-level-4.png?v=' + version;
             var cuteDogEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-6.png?v=' + version;
             var cuteDogCrackedEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-7.png?v=' + version;
             var cuteDogPetUrl = 'assets/images/learning-pets/cute-dog/pet-level-8.png?v=' + version;
@@ -99,6 +100,7 @@
             vm.selectingPet = false;
             vm.petSelectionError = '';
             vm.hasNewCapybaraEgg = false;
+            vm.hasNewPerry = false;
             vm.hasNewCuteDogEgg = false;
             vm.hasNewCuteTomCatEgg = false;
             vm.hasNewJerryMouseEgg = false;
@@ -120,6 +122,9 @@
                 if (admin) { level = Math.max(level, 20); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_PERRY' && level < 4) {
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_DOG' && level < 6) {
@@ -164,6 +169,17 @@
                     vm.hasNewCapybaraEgg = !admin && hasUnseenCapybaraEgg(user);
                 } else {
                     vm.hasNewCapybaraEgg = false;
+                }
+
+                vm.hasNewPerry = level >= 4 && !admin && hasUnseenPerry(user);
+                if (level >= 4) {
+                    vm.availablePets.push({
+                        key: 'CUTE_PERRY',
+                        name: 'Perry',
+                        description: 'Có ngay từ level 4',
+                        image: perryPetUrl,
+                        isNew: vm.hasNewPerry
+                    });
                 }
 
                 if (level >= 6) {
@@ -256,6 +272,11 @@
                     vm.hasNewPikachuEgg = false;
                 }
 
+                if (selectedPet === 'CUTE_PERRY') {
+                    vm.petForm = 'perry-hatched';
+                    vm.petImage = perryPetUrl;
+                    return;
+                }
                 if (selectedPet === 'CAPYBARA_EGG') {
                     vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
                     vm.petImage = level >= 5
@@ -334,6 +355,28 @@
                 vm.hasNewCapybaraEgg = false;
                 angular.forEach(vm.availablePets, function (item) {
                     if (item.key === 'CAPYBARA_EGG') { item.isNew = false; }
+                });
+            }
+
+            function perrySeenKey(user) {
+                return 'learning-pet:perry-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenPerry(user) {
+                try {
+                    return $window.localStorage.getItem(perrySeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markPerrySeen(user) {
+                try {
+                    $window.localStorage.setItem(perrySeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewPerry = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_PERRY') { item.isNew = false; }
                 });
             }
 
@@ -493,6 +536,9 @@
                         try { $cookies.putObject('education.user', user); } catch (ignoreCookie) {}
                         if (user.selectedLearningPet === 'CAPYBARA_EGG') {
                             markCapybaraEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_PERRY') {
+                            markPerrySeen(user);
                         }
                         if (user.selectedLearningPet === 'CUTE_DOG') {
                             markCuteDogEggSeen(user);
@@ -837,6 +883,7 @@
             function updateMessage() {
                 vm.notificationCount = vm.pendingTaskCount + vm.drafts.length +
                         (vm.hasNewCapybaraEgg ? 1 : 0) +
+                        (vm.hasNewPerry ? 1 : 0) +
                         (vm.hasNewCuteDogEgg ? 1 : 0) +
                         (vm.hasNewCuteTomCatEgg ? 1 : 0) +
                         (vm.hasNewJerryMouseEgg ? 1 : 0) +
@@ -857,6 +904,9 @@
                 } else if (vm.hasNewCuteDogEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Cute Dog mới!';
                     vm.message = 'Level 6 đã mở khóa trứng Cute Dog. Level 7 trứng sẽ nứt và level 8 sẽ nở.';
+                } else if (vm.hasNewPerry) {
+                    vm.summaryTitle = 'Bạn có pet Perry mới!';
+                    vm.message = 'Level 4 đã mở khóa Perry. Bạn có thể chọn Perry ngay trong bộ sưu tập pet.';
                 } else if (vm.hasNewCapybaraEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng mới!';
                     vm.message = 'Level 3 đã mở khóa trứng capybara. Level 4 trứng sẽ nứt và level 5 sẽ nở.';
@@ -1069,6 +1119,9 @@
                 vm.minimized = false;
                 if (vm.hasNewCapybaraEgg) {
                     markCapybaraEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewPerry) {
+                    markPerrySeen(readCurrentUser());
                 }
                 if (vm.hasNewCuteDogEgg) {
                     markCuteDogEggSeen(readCurrentUser());

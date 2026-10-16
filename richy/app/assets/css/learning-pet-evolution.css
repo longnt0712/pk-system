@@ -22,7 +22,8 @@
 .learning-pet-egg.is-cute-tom-cat-pet,
 .learning-pet-egg.is-jerry-mouse-pet,
 .learning-pet-egg.is-tuffy-mouse-pet,
-.learning-pet-egg.is-pikachu-pet {
+.learning-pet-egg.is-pikachu-pet,
+.learning-pet-egg.is-perry-pet {
     width: 104px;
     height: 108px;
 }
@@ -156,7 +157,8 @@
 img[src*="assets/images/learning-pets/cute-tom-cat/"],
 img[src*="assets/images/learning-pets/jerry-mouse/"],
 img[src*="assets/images/learning-pets/tuffy-mouse/"],
-img[src*="assets/images/learning-pets/pikachu/"] {
+img[src*="assets/images/learning-pets/pikachu/"],
+img[src*="assets/images/learning-pets/perry/"] {
     image-rendering: auto !important;
 }
 

@@ -124,6 +124,46 @@ public class GiftDropGameTest {
         }
     }
 
+    @Test public void perryMatchesHatchedMamHocExactlyWithoutChangingNewFamilyRarityForEverySkillCombination() {
+        for (boolean includeFuturePet : new boolean[] {false,true}) {
+            List<PetRewardCatalog.Reward> catalog = knownCatalog();
+            catalog.add(new PetRewardCatalog.Reward(21,"assets/images/learning-pets/perry/perry.png","Perry","perry","hatched",2));
+            if (includeFuturePet) {
+                catalog.add(new PetRewardCatalog.Reward(22,"future-egg.png","Future egg","future","egg-intact"));
+                catalog.add(new PetRewardCatalog.Reward(23,"future-cracked.png","Future cracked","future","egg-cracked"));
+                catalog.add(new PetRewardCatalog.Reward(24,"future-pet.png","Future","future","hatched"));
+            }
+            for (int mask = 0; mask < (1 << GiftDropGame.SKILL_TYPES.size()); mask++) {
+                List<String> skills = new ArrayList<String>();
+                for (int index = 0; index < GiftDropGame.SKILL_TYPES.size(); index++) {
+                    if ((mask & (1 << index)) != 0) { skills.add(GiftDropGame.SKILL_TYPES.get(index)); }
+                }
+                TicketRandom random = new TicketRandom();
+                GiftDropGame game = new GiftDropGame(10,random,skills,catalog);
+                int mamHocTickets = ticketsForLevel(game,random,2), perryTickets = ticketsForLevel(game,random,21);
+                assertTrue(mamHocTickets > 0);
+                assertEquals("Perry and the grown Mầm Học must have identical probabilities with skills " + skills,mamHocTickets,perryTickets);
+                int first = firstTicketForLevel(game,random,21);
+                GiftDropGame.Gift perry = giftAt(game,random,first);
+                assertEquals(21,perry.rewardLevel); assertEquals("Perry",perry.rewardLabel);
+                assertEquals("assets/images/learning-pets/perry/perry.png",perry.rewardImage);
+                assertEquals(30D,perry.points,0D);
+                assertEquals(giftAt(game,random,firstTicketForLevel(game,random,2)).points,perry.points,0D);
+                assertEquals(20,giftAt(game,random,first - 1).rewardLevel);
+                assertEquals(21,giftAt(game,random,first + perryTickets - 1).rewardLevel);
+                for (int[] expected : new int[][] {{12,6300},{13,4700},{14,3600},{15,6200},{16,4600},{17,3500},{18,6100},{19,4500},{20,3400}}) {
+                    assertEquals("Existing rare reward " + expected[0],expected[1],ticketsForLevel(game,random,expected[0]));
+                }
+                if (includeFuturePet) {
+                    assertEquals(22,giftAt(game,random,first + perryTickets).rewardLevel);
+                    assertEquals(6000,ticketsForLevel(game,random,22));
+                    assertEquals(4400,ticketsForLevel(game,random,23));
+                    assertEquals(3300,ticketsForLevel(game,random,24));
+                } else { assertEquals(21,giftAt(game,random,999999).rewardLevel); }
+            }
+        }
+    }
+
     @Test public void injectedFutureRewardsHaveNoLevelCapAndClaimsKeepTheirMetadata() {
         for (final int level : new int[] {21,22,23,120,210}) {
             List<PetRewardCatalog.Reward> rewards = knownCatalog();
@@ -164,6 +204,72 @@ public class GiftDropGameTest {
             GiftDropGame game = new GiftDropGame(base, new Random() { public int nextInt(int bound) { return 0; } });
             GiftDropGame.Gift gift = game.claim("alice", game.snapshot("alice").gifts.get(0).id);
             assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL, gift.rewardLevel); assertEquals(0.5D, gift.points, 0D);
+        }
+    }
+
+    @Test public void perryHatHasExactlyTheRottenEggProbabilityForAllSkillChoicesAndFuturePets() {
+        for (boolean includeFuturePet : new boolean[] {false,true}) {
+            List<PetRewardCatalog.Reward> catalog = new ArrayList<PetRewardCatalog.Reward>(PetRewardCatalog.rewards());
+            if (includeFuturePet) {
+                catalog.add(new PetRewardCatalog.Reward(22,"future-egg.png","Future egg","future","egg-intact"));
+                catalog.add(new PetRewardCatalog.Reward(23,"future-cracked.png","Future cracked","future","egg-cracked"));
+                catalog.add(new PetRewardCatalog.Reward(24,"future-pet.png","Future","future","hatched"));
+            }
+            for (int mask = 0; mask < (1 << GiftDropGame.SKILL_TYPES.size()); mask++) {
+                List<String> skills = new ArrayList<String>();
+                for (int i = 0; i < GiftDropGame.SKILL_TYPES.size(); i++) {
+                    if ((mask & (1 << i)) != 0) { skills.add(GiftDropGame.SKILL_TYPES.get(i)); }
+                }
+                TicketRandom random = new TicketRandom();
+                GiftDropGame game = new GiftDropGame(10,random,skills,catalog);
+                int firstPet = firstTicketForLevel(game,random,0);
+                int low = 0, high = firstPet;
+                while (low < high) {
+                    int middle = low + (high - low) / 2;
+                    if (giftAt(game,random,middle).skillType != null) { low = middle + 1; }
+                    else { high = middle; }
+                }
+                int firstRotten = low;
+                high = firstPet;
+                while (low < high) {
+                    int middle = low + (high - low) / 2;
+                    if (giftAt(game,random,middle).rewardLevel == GiftDropGame.ROTTEN_EGG_LEVEL) { low = middle + 1; }
+                    else { high = middle; }
+                }
+                int firstHat = low, rottenTickets = firstHat - firstRotten, hatTickets = firstPet - firstHat;
+                assertTrue(rottenTickets > 0);
+                assertEquals("Mũ Perry and rotten eggs with skills " + skills,rottenTickets,hatTickets);
+                assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,giftAt(game,random,firstRotten).rewardLevel);
+                assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,giftAt(game,random,firstHat - 1).rewardLevel);
+                for (int ticket : new int[] {firstHat,firstPet - 1}) {
+                    GiftDropGame.Gift hat = giftAt(game,random,ticket);
+                    assertEquals(GiftDropGame.PERRY_HAT_LEVEL,hat.rewardLevel); assertEquals(1D,hat.points,0D);
+                    assertNull(hat.skillType); assertEquals("Mũ Perry",hat.rewardLabel);
+                    assertEquals("assets/images/learning-pets/perry/perry-hat.png",hat.rewardImage);
+                }
+                assertEquals(0,giftAt(game,random,firstPet).rewardLevel);
+                int total = firstRotten + rottenTickets + hatTickets;
+                for (PetRewardCatalog.Reward reward : catalog) { total += ticketsForLevel(game,random,reward.level); }
+                assertEquals("The complete draw must still contain one million tickets",1000000,total);
+                assertEquals(ticketsForLevel(game,random,2),ticketsForLevel(game,random,21));
+                for (int[] expected : new int[][] {{12,6300},{13,4700},{14,3600},{15,6200},{16,4600},{17,3500},{18,6100},{19,4500},{20,3400}}) {
+                    assertEquals(expected[1],ticketsForLevel(game,random,expected[0]));
+                }
+            }
+        }
+    }
+
+    @Test public void perryHatAlwaysGivesOnePointRegardlessOfConfiguredBasePoints() {
+        for (int base : new int[] {1,10,10000}) {
+            TicketRandom random = new TicketRandom();
+            GiftDropGame game = new GiftDropGame(base,random);
+            int firstPet = firstTicketForLevel(game,random,0);
+            GiftDropGame.Gift hat = giftAt(game,random,firstPet - 1);
+            assertEquals(GiftDropGame.PERRY_HAT_LEVEL,hat.rewardLevel); assertEquals(1D,hat.points,0D);
+            game.recordClaim(hat,"alice","Alice",hat.points,123L);
+            GiftDropGame.ClaimRecord record = game.snapshot().claims.get(0);
+            assertEquals(hat.rewardLevel,record.rewardLevel); assertEquals(1D,record.points,0D);
+            assertEquals(hat.rewardImage,record.rewardImage); assertEquals(hat.rewardLabel,record.rewardLabel);
         }
     }
 }

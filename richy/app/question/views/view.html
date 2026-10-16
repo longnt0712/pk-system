@@ -1,4 +1,4 @@
-<div class="row margin-top-10" ng-class="{'daily-listening-ios': vm.isStandaloneDailyListening}">
+<div class="row margin-top-10" ng-class="{'daily-listening-ios': vm.isStandaloneDailyListening, 'dl-mobile-options-open': vm.mobileListeningOptionsOpen}" daily-listening-mobile="vm.isStandaloneDailyListening">
     <div class="col-md-12">
 
         <div class="portlet light bordered">
@@ -178,6 +178,7 @@
                 </div>
                 <section ng-if="vm.isStandaloneDailyListening" class="daily-listening-standalone-heading">
                     <a class="ios-dl-back" href="daily_listening_tests"><i class="fa fa-chevron-left" aria-hidden="true"></i> Thư viện bài nghe</a>
+                    <button type="button" class="ios-dl-options-toggle" ng-click="vm.mobileListeningOptionsOpen = !vm.mobileListeningOptionsOpen" aria-expanded="{{!!vm.mobileListeningOptionsOpen}}" aria-controls="ios-dl-lesson-options"><i class="fa fa-sliders" aria-hidden="true"></i> Tuỳ chọn</button>
                     <div class="ios-dl-page-heading">
                         <div class="ios-dl-app-icon" aria-hidden="true"><i class="fa fa-headphones"></i></div>
                         <div><p class="ios-dl-eyebrow">MỖI NGÀY MỘT CHÚT TIẾN BỘ</p><h1>Daily Listening</h1><p>Nghe và điền từ. Đúng từ 90% gaps là hoàn thành.</p></div>
@@ -925,7 +926,7 @@
                                         <i class="fa-solid fa-chevron-up"></i>
                                     </button>
                                 </span>
-                                    <div class="ios-dl-lesson-actions" ng-if="vm.isStandaloneDailyListening">
+                                    <div id="ios-dl-lesson-options" class="ios-dl-lesson-actions" ng-if="vm.isStandaloneDailyListening">
                                         <div class="ios-dl-gap-setting"><label for="ios-dl-gap-rate">Ẩn từ</label><button type="button" ng-click="vm.adjustGapRate(-5)" ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent" aria-label="Giảm Gap rate 5%"><i class="fa fa-minus" aria-hidden="true"></i></button><input id="ios-dl-gap-rate" type="number" min="30" max="100" step="5" inputmode="numeric" ng-model="vm.gapRatePercent" ng-change="vm.changeGapRate()" ng-model-options="{debounce:500}" aria-label="Tỷ lệ gaps"><span>%</span><button type="button" ng-click="vm.adjustGapRate(5)" ng-disabled="vm.gapRatePercent >= vm.maxGapRatePercent" aria-label="Tăng Gap rate 5%"><i class="fa fa-plus" aria-hidden="true"></i></button></div>
                                         <button type="button" class="ios-dl-submit" ng-click="vm.saveTestResult()" ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id"><i class="fa" ng-class="vm.savingTestResult ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i> {{vm.savingTestResult ? 'Đang lưu...' : vm.isSaveTestResult ? 'Đã nộp' : 'Nộp bài'}}</button>
                                     </div>
@@ -1033,7 +1034,7 @@
                             <!-- =========================
                                  KHÔNG PHẢI YOUTUBE: giữ layout cũ
                             ========================== -->
-                            <div ng-if="vm.mode.id == 11 || vm.mode.id == 15 || !vm.isYoutubeAudio">
+                            <div class="ios-dl-audio-workspace" ng-if="vm.mode.id == 11 || vm.mode.id == 15 || !vm.isYoutubeAudio">
 
                                 <div class="row margin-top-10 margin-bottom-10 filling-content gap-filling-scroll-box">
                                     <div class="col-md-12">

@@ -22,6 +22,7 @@
 .daily-listening-ios > .col-md-12 > .portlet.light.bordered {padding: 0; margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important;}
 .daily-listening-ios > .col-md-12 > .portlet > .portlet-body {padding: 0;}
 .daily-listening-ios .daily-listening-standalone-heading {margin-bottom: 28px;}
+.daily-listening-ios .ios-dl-options-toggle {display: none;}
 .daily-listening-ios .ios-dl-back {display: inline-flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 20px; color: #3867a0; font-size: 13px; font-weight: 500; text-decoration: none;}
 .daily-listening-ios .ios-dl-page-heading {display: flex; align-items: center; gap: 18px;}
 .daily-listening-ios .ios-dl-app-icon {display: grid; place-items: center; flex: 0 0 62px; height: 62px; border: 1px solid white; border-radius: 20px; background: linear-gradient(145deg, #fff, #dfebff); color: #1677ee; box-shadow: 0 6px 18px #467bc31a, inset 0 2px 0 #fff; font-size: 28px;}
@@ -157,3 +158,68 @@
     .global-dark-mode .daily-listening-ios {--dl-surface: #1f2b3e; --dl-content: #192435;}
     .global-dark-mode .daily-listening-ios .ios-dl-transport {background: #20314b;}
 }
+
+/* Mobile keeps the media in the visible viewport; only the transcript scrolls. */
+html.daily-listening-mobile-open, body.daily-listening-mobile-open {overflow: hidden !important; overscroll-behavior: none;}
+body.daily-listening-mobile-open .fade-in-up {animation: none !important; transform: none !important;}
+.daily-listening-ios.dl-mobile-workspace {position: fixed; z-index: 1040; top: var(--dl-viewport-top, 0px); left: var(--dl-viewport-left, 0px); width: var(--dl-viewport-width, 100vw); height: var(--dl-viewport-height, 100dvh); margin: 0 !important; padding: max(6px, env(safe-area-inset-top, 0px)) 10px max(8px, env(safe-area-inset-bottom, 0px)); border: 0; border-radius: 0; overflow: hidden; display: flex; flex-direction: column;}
+.daily-listening-ios.dl-mobile-workspace > .col-md-12:first-child,
+.daily-listening-ios.dl-mobile-workspace > .col-md-12 > .portlet,
+.daily-listening-ios.dl-mobile-workspace > .col-md-12 > .portlet > .portlet-body {display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-standalone-heading {display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; flex: 0 0 auto; gap: 4px; margin: 0 0 6px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-page-heading {display: none;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-back {margin: 0; padding: 6px 2px; font-size: 12px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-options-toggle {display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--dl-edge); border-radius: 18px; color: var(--dl-ink); background: var(--dl-surface); font-size: 12px;}
+.daily-listening-ios.dl-mobile-workspace .gap-english-theme,
+.daily-listening-ios.dl-mobile-workspace .gap-filling-equal-row,
+.daily-listening-ios.dl-mobile-workspace .gap-right-filling-col {display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%;}
+.daily-listening-ios.dl-mobile-workspace .gap-right-filling-col {gap: 6px;}
+.daily-listening-ios.dl-mobile-workspace .gap-top-info-box {display: grid; grid-template-columns: minmax(0, 1fr) 78px; align-items: center; column-gap: 12px; flex: 0 0 auto; margin: 0; padding: 7px 10px; border-radius: 13px;}
+.daily-listening-ios.dl-mobile-workspace .gap-top-info-box h2 {grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.5; margin: 0;}
+.daily-listening-ios.dl-mobile-workspace .gap-top-info-line {display: contents;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-progress {grid-column: 2; grid-row: 1; width: 78px; min-width: 0; max-width: none;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-progress > div:first-child {justify-content: flex-end; margin-bottom: 3px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-progress > div:first-child > span {display: none;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-progress strong {font-size: 12px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-progress-track {height: 3px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-lesson-actions {display: none; grid-column: 1 / -1; margin-top: 6px; width: 100%;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-options-open .ios-dl-lesson-actions {display: flex; justify-content: space-between; position: absolute; z-index: 3; top: calc(max(6px, env(safe-area-inset-top, 0px)) + 38px); left: 10px; right: 10px; width: auto; margin: 0; padding: 12px; max-height: calc(var(--dl-viewport-height, 100dvh) - 70px); overflow-y: auto; border: 1px solid var(--dl-edge); border-radius: 16px; background: var(--dl-content); box-shadow: 0 10px 28px #17223528;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-gap-setting input {font-size: 16px;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-draft-status {grid-column: 1 / -1; margin-top: 3px; font-size: 10px; line-height: 1.3;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-split-layout,
+.daily-listening-ios.dl-mobile-workspace .ios-dl-audio-workspace {display: contents;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-left {order: 1; flex: 0 0 auto; border-radius: 16px;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-left .ios-dl-panel-heading {display: none;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-left .audio-menu {padding: 4px;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-left .gap-youtube-player-wrap {height: clamp(70px, calc(var(--dl-viewport-height, 100dvh) * .27), 200px); aspect-ratio: auto; border-radius: 12px;}
+.daily-listening-ios.dl-mobile-workspace .gap-youtube-player-wrap iframe {width: 100% !important; height: 100% !important;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-controls {display: flex; flex-direction: column; gap: 4px; order: 2; flex: 0 0 auto; width: 100%; margin: 0;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-media-strip {order: 0; width: 100%; padding: 3px 6px; margin: 0;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-adjustments {order: 1; justify-content: space-between; flex-wrap: nowrap; gap: 6px; width: 100%;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-stepper {flex: 1; min-width: 0; justify-content: space-between; gap: 3px; min-height: 34px; padding: 3px 6px; font-size: 11px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-stepper button {width: 26px; height: 26px; padding: 0;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-stepper output {min-width: 30px; font-size: 11px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-transport {position: static; order: 2; align-self: center; min-width: 0; padding: 2px 16px; gap: 20px; left: auto; bottom: auto; transform: none; box-shadow: var(--dl-shadow);}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-controls .ios-dl-transport button {width: 38px; height: 38px; min-width: 38px; min-height: 38px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-controls .ios-dl-transport .ios-dl-play {width: 40px; height: 40px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-keyboard-hint {display: none;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-right,
+.daily-listening-ios.dl-mobile-workspace .gap-filling-scroll-box {display: flex; flex-direction: column; order: 3; flex: 1; min-height: 0; border-radius: 16px;}
+.daily-listening-ios.dl-mobile-workspace .youtube-gap-right .filling-content,
+.daily-listening-ios.dl-mobile-workspace .filling-content > .col-md-12 {display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; overflow: hidden;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-panel-heading {flex: 0 0 auto; min-height: 32px; padding: 8px 12px; font-size: 11px;}
+.daily-listening-ios.dl-mobile-workspace .ios-dl-panel-heading small {font-size: 9px;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-transcript {flex: 1; min-height: 0; max-height: none; padding: 14px 12px 28px; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; font-size: 15px; line-height: 2.35; scroll-padding: 12px;}
+.daily-listening-ios.dl-mobile-workspace input.gap-inline-input {font-size: 16px !important; scroll-margin: 12px;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-resume-banner {margin: 0 0 6px; padding: 8px; border-radius: 13px;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-resume-copy {font-size: 12px;}
+.daily-listening-ios.dl-mobile-workspace .daily-listening-resume-actions button {min-height: 30px; padding: 5px 9px;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .gap-top-info-box {display: contents;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .gap-top-info-box h2,
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .ios-dl-progress,
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .daily-listening-draft-status {display: none;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .youtube-gap-left .gap-youtube-player-wrap {height: clamp(64px, calc(var(--dl-viewport-height, 100dvh) * .22), 130px);}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .daily-listening-transcript {padding: 8px 10px 16px;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .ios-dl-controls .ios-dl-transport button {width: 30px; height: 30px; min-width: 30px; min-height: 30px;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .ios-dl-controls .ios-dl-transport .ios-dl-play {width: 32px; height: 32px;}
+.daily-listening-ios.dl-mobile-workspace.dl-mobile-compact .ios-dl-panel-heading {min-height: 26px; padding: 5px 10px;}

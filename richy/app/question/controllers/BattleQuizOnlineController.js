@@ -649,8 +649,14 @@
             if (level === -1) {
                 return getGiftImageWithVersion('assets/images/learning-pets/lum-ngay/rotten-egg.png');
             }
-            if (!skillType && level >= 0 && reward && typeof reward.rewardImage === 'string' && reward.rewardImage.trim()) {
+            if (!skillType && (level >= 0 || Number(level) === -3) && reward && typeof reward.rewardImage === 'string' && reward.rewardImage.trim()) {
                 return getGiftImageWithVersion(reward.rewardImage.trim());
+            }
+            if (!skillType && Number(level) === -3) {
+                return getGiftImageWithVersion('assets/images/learning-pets/perry/perry-hat.png');
+            }
+            if (!skillType && Number(level) === 21) {
+                return getGiftImageWithVersion('assets/images/learning-pets/perry/pet-level-4.png');
             }
             level = getLegacyGiftRewardLevel(level);
             var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE','CUTE_TUFFY_MOUSE','CUTE_PIKACHU'];
@@ -659,9 +665,11 @@
         vm.getGiftRewardLabel = function (level, skillType, reward) {
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
-            if (level >= 0 && reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()) {
+            if ((level >= 0 || Number(level) === -3) && reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()) {
                 return reward.rewardLabel.trim();
             }
+            if (Number(level) === -3) { return 'Mũ Perry'; }
+            if (Number(level) === 21) { return 'Perry'; }
             level = getLegacyGiftRewardLevel(level);
             var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];
             return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
@@ -1145,6 +1153,10 @@
                 level = Math.max(level, 20);
             }
 
+            if (petKey === 'CUTE_PERRY' && level >= 4) {
+                return 'assets/images/learning-pets/perry/pet-level-4.png' + suffix;
+            }
+
             if (petKey === 'CUTE_PIKACHU' && level >= 18) {
                 if (level >= 20) {
                     return 'assets/images/learning-pets/pikachu/pet-level-20.png' + suffix;
@@ -1251,6 +1263,9 @@
                         ? 'Capybara'
                         : (level === 4 ? 'Trứng capybara đang nứt' : 'Trứng capybara')
                 });
+            }
+            if (level >= 4) {
+                battlePetOptions.push({key: 'CUTE_PERRY', label: 'Perry'});
             }
             if (level >= 6) {
                 battlePetOptions.push({

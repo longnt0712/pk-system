@@ -8,7 +8,7 @@ const old={id:21,question:'Listening cũ',pronounce:'http://daily-listening-crea
 const css=['assets/css/external/bootstrap.min.css','assets/css/external/font-awesome.min.css','assets/css/components-md.min.css','assets/css/test-builder.css','assets/css/daily-listening-builder.css','assets/css/daily-listening-player.css','assets/css/comprehensive-listening.css','assets/css/comprehensive-folders.css'].map(name=>fs.readFileSync(path.join(app,name),'utf8')).join('\n');
 const shared={...old,title:old.question,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7};
 async function fixture(browser,width,learner=false,record=shared,options={}){
- const page=await browser.newPage({viewport:{width,height:950},timezoneId:'Asia/Bangkok'}),errors=[];page.setDefaultTimeout(12000);
+ const page=await browser.newPage({viewport:{width,height:options.height||950},hasTouch:!!options.touch,timezoneId:'Asia/Bangkok'}),errors=[];page.setDefaultTimeout(12000);
  page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());
  await page.route('**/*',route=>{
   const url=new URL(route.request().url());
@@ -28,9 +28,10 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
  if(options.reducedMotion)await page.emulateMedia({reducedMotion:'reduce'});
  async function mount(){
   const template=fs.readFileSync(path.join(app,'question/views/'+(learner?'view.html':'create_daily_listening_test.html')),'utf8');
-  await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>'+css+
+  await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+
    'body{padding:16px!important;}main{max-width:1200px;margin:auto;padding:0 15px;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:8px!important;}}</style></head><body><main id="qa" ng-controller="'+(learner?'ViewController':'DailyListeningTestController')+' as vm">'+template+'</main></body></html>');
   for(const script of ['jquery.min.js','angular.min.js','angular-sanitize.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external/'+script)});
+  if(options.visualViewport)await page.evaluate(dimensions=>{window.qaViewport=new EventTarget();Object.assign(qaViewport,{offsetTop:0,offsetLeft:0,scale:1},dimensions);Object.defineProperty(window,'visualViewport',{configurable:true,value:qaViewport});},options.visualViewport);
   if(options.dark){
    const shellStyles=Array.from(fs.readFileSync(path.join(app,'index.html'),'utf8').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi),match=>match[1]).join('\n');
    await page.addStyleTag({content:shellStyles});
@@ -84,7 +85,7 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
      saveTestResult(dto){window.results.push(structuredClone(dto));return q.when({id:101});}
     };}]);
   },{learner,record,options});
-  for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders','DailyListeningTimestamps'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
+  for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders','DailyListeningTimestamps','DailyListeningMobile'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
   await page.evaluate(()=>{
    window.folders=[];window.folderCalls=[];window.moveCalls=[];window.folderSaveCalls=[];
    angular.module('Hrm.Question').factory('TestFolderService',['$q',q=>({
@@ -345,6 +346,8 @@ function readRenderedTranscript(page){return page.locator('.daily-listening-tran
  });return copy.textContent;
 });}
 
+async function openLessonOptions(page){const toggle=page.getByRole('button',{name:'Tuỳ chọn',exact:true});if(await toggle.isVisible()&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();}
+
 test('pasted Daily Listening layout survives save and reopen and is identical in learner gaps, including resumed progress',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
  const transcript='  Mom: one two\n\nCandace: three four\nfive\t six\nseven eight\nnine ten.\n';
@@ -464,7 +467,7 @@ test('transcript timestamp links seek YouTube by click and Enter without changin
   const color=await zero.evaluate(el=>getComputedStyle(el).color);assert.equal(color,held?'rgb(117, 183, 255)':'rgb(0, 122, 255)');
   assert.equal(await page.locator('.daily-listening-transcript secret').count(),0);assert.equal(await links.locator('a').count(),0);
   await page.screenshot({path:path.join(repo,'.tmp/daily-listening-timestamps-youtube-'+width+'.png'),fullPage:true});
-  await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);assert.equal(await links.count(),4);
+  await openLessonOptions(page);await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);assert.equal(await links.count(),4);
   assert.equal(await page.evaluate(()=>getOneCalls.length),1);assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });
@@ -495,6 +498,59 @@ test('transcript timestamp links play native audio and decorate older resumed dr
  }finally{await browser.close();}
 });
 
+test('mobile listening keeps video and controls above a scrolling transcript through keyboard, rotation and desktop transitions',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const transcript=Array.from({length:32},(_,i)=>'[00:'+String(i).padStart(2,'0')+'] Mom: one two three four five six seven eight nine ten.').join('\n\n');
+ try{for(const [width,height,youtube,dark] of [[320,740,true,false],[390,844,true,true],[390,844,false,false]]){
+  const record={...shared,motherTongue:transcript,pronounce:youtube?'https://www.youtube.com/watch?v=aqz-KE-bpKQ':shared.pronounce};
+  const {page,errors}=await fixture(browser,width,true,record,{height,touch:true,youtube,dark,visualViewport:{width,height}});
+  await page.locator('.dl-mobile-workspace').waitFor();await page.locator('input[id^="gap-number-"]').first().waitFor();
+  await page.evaluate(()=>{document.getElementById('qa').classList.add('fade-in-up');document.getElementById('qa').style.transform='translateY(90px)';});
+  if(youtube)await page.waitForFunction(()=>window.youtubeGapPlayerDebug!=null);
+  const root=page.locator('.dl-mobile-workspace'),scroll=page.locator('.daily-listening-transcript').filter({visible:true}).first(),controls=page.locator('.ios-dl-controls');
+  const firstRoot=await root.boundingBox();assert.ok(Math.abs(firstRoot.y)<1&&Math.abs(firstRoot.height-height)<1);
+  const scrollBox=await scroll.boundingBox();assert.ok(scrollBox.height>150&&scrollBox.y+scrollBox.height<=height+1);
+  assert.equal(await scroll.evaluate(el=>getComputedStyle(el).overflowY),'auto');
+  assert.equal(await page.locator('input[id^="gap-number-"]').first().evaluate(el=>getComputedStyle(el).fontSize),'16px');
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).overflowY),'hidden');
+  await page.evaluate(()=>window.keptMedia=document.querySelector('.youtube-gap-left .gap-youtube-player-wrap')||document.getElementById('main-audio'));
+  const top=await controls.boundingBox(),video=youtube?await page.locator('.youtube-gap-left').boundingBox():null;
+  await scroll.evaluate(el=>el.scrollTop=el.scrollHeight);const afterScroll=await controls.boundingBox();assert.ok(Math.abs(afterScroll.y-top.y)<1);
+  if(video){const current=await page.locator('.youtube-gap-left').boundingBox();assert.ok(Math.abs(current.y-video.y)<1);}
+  const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers)),position=Math.floor(answers.length*.75),[index,answer]=answers[position];
+  await page.locator('#gap-number-'+index).focus();
+  await page.evaluate(()=>{Object.assign(qaViewport,{height:360,offsetTop:72,offsetLeft:0});qaViewport.dispatchEvent(new Event('resize'));qaViewport.dispatchEvent(new Event('scroll'));});
+  await page.waitForFunction(()=>document.querySelector('.dl-mobile-workspace').style.getPropertyValue('--dl-viewport-height')==='360px');
+  const keyboardRoot=await root.boundingBox(),keyboardControls=await controls.boundingBox(),keyboardScroll=await scroll.boundingBox();
+  assert.ok(Math.abs(keyboardRoot.y-72)<1&&Math.abs(keyboardRoot.height-360)<1);assert.ok(keyboardScroll.height>=60,JSON.stringify(keyboardScroll));
+  assert.ok(keyboardControls.y>=keyboardRoot.y&&keyboardControls.y+keyboardControls.height<=keyboardScroll.y+1);
+  assert.ok(keyboardScroll.y+keyboardScroll.height<=432+1);
+  if(youtube){const current=await page.locator('.youtube-gap-left').boundingBox();assert.ok(current.y>=72&&current.y+current.height<=keyboardControls.y+1);assert.ok(current.height<video.height);}
+  await page.locator('#gap-number-'+index).fill(answer);await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,index);
+  await page.waitForFunction(index=>document.activeElement.id==='gap-number-'+index,answers[position+1][0]);
+  await page.waitForFunction(()=>{const input=document.activeElement.getBoundingClientRect(),scroll=document.activeElement.closest('.daily-listening-transcript').getBoundingClientRect();return input.top>=scroll.top+5&&input.bottom<=scroll.bottom-5;});
+  await page.getByRole('button',{name:'Tăng tốc độ',exact:true}).click();assert.equal(await page.evaluate(()=>qaVm.playbackValue),1.1);
+  assert.equal(await page.locator('#gap-number-'+index).inputValue(),answer);assert.equal(await page.evaluate(()=>keptMedia===(document.querySelector('.youtube-gap-left .gap-youtube-player-wrap')||document.getElementById('main-audio'))),true);
+  await page.screenshot({path:path.join(repo,'.tmp/daily-mobile-keyboard-'+(youtube?'youtube':'audio')+'-'+width+'.png')});
+  await openLessonOptions(page);await page.getByRole('button',{name:'Nộp bài',exact:true}).waitFor();assert.ok(Math.abs((await scroll.boundingBox()).height-keyboardScroll.height)<1);
+  assert.equal(await page.locator('#ios-dl-gap-rate').evaluate(el=>getComputedStyle(el).fontSize),'16px');await page.getByRole('button',{name:'Tuỳ chọn',exact:true}).click();
+  await page.evaluate(({width,height})=>{Object.assign(qaViewport,{width,height,offsetTop:0});qaViewport.dispatchEvent(new Event('resize'));}, {width,height});
+  await page.waitForFunction(()=>!document.querySelector('.dl-mobile-compact'));
+  await page.screenshot({path:path.join(repo,'.tmp/daily-mobile-workspace-'+(youtube?'youtube':'audio')+'-'+width+'.png')});
+  await page.setViewportSize({width:844,height:390});await page.evaluate(()=>{Object.assign(qaViewport,{width:844,height:390});qaViewport.dispatchEvent(new Event('resize'));window.dispatchEvent(new Event('orientationchange'));});
+  await page.waitForFunction(()=>document.querySelector('.dl-mobile-workspace').style.getPropertyValue('--dl-viewport-width')==='844px');assert.ok((await scroll.boundingBox()).height>=60);
+  assert.equal(await page.evaluate(()=>keptMedia===(document.querySelector('.youtube-gap-left .gap-youtube-player-wrap')||document.getElementById('main-audio'))),true);
+  await page.setViewportSize({width:1366,height:950});await page.waitForFunction(()=>!document.querySelector('.dl-mobile-workspace'));
+  assert.equal(await page.evaluate(()=>document.documentElement.classList.contains('daily-listening-mobile-open')),false);
+  assert.equal(await page.evaluate(()=>getOneCalls.length),1);
+  await page.setViewportSize({width:390,height:844});await root.waitFor();
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$destroy());
+  assert.equal(await page.evaluate(()=>document.body.classList.contains('daily-listening-mobile-open')),false);
+  assert.equal(await page.evaluate(()=>document.querySelector('.daily-listening-ios').style.getPropertyValue('--dl-viewport-height')),'');
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
 test('iOS listening audio controls stay readable and functional on desktop and mobile',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
  try{for(const width of [1366,390]){
@@ -514,9 +570,9 @@ test('iOS listening audio controls stay readable and functional on desktop and m
   assert.equal(await page.locator('.gap-top-info-box h2').evaluate(el=>getComputedStyle(el).color),'rgb(23, 34, 53)');
   assert.equal(await page.locator('.gap-english-theme').evaluate(el=>getComputedStyle(el,'::after').display),'none');
   assert.equal(await page.locator('.ios-dl-transport').getByRole('button',{name:'Forward 3 seconds'}).evaluate(el=>getComputedStyle(el).color),'rgb(51, 81, 110)');
-  if(width===390){const box=await page.locator('.ios-dl-transport').boundingBox();assert.ok(box.y+box.height<=950 && box.y>800);}
+  if(width===390){const box=await page.locator('.ios-dl-transport').boundingBox(),transcript=await page.locator('.gap-filling-scroll-box').boundingBox();assert.ok(box.y<350 && transcript.y>=box.y+box.height);}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:path.join(repo,'.tmp/daily-ios-audio-'+width+'.png'),fullPage:true});
-  await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);
+  await openLessonOptions(page);await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);
   await page.getByRole('button',{name:'Tăng Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===100);
   assert.equal(await page.evaluate(()=>pageCalls.length),0);assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
@@ -540,7 +596,7 @@ test('iOS YouTube layout adapts to narrow screens and dark mode with synchronize
   assert.equal(await page.evaluate(()=>qaVm.gapAudioPlaying),false);
   const transcriptLayout=await page.locator('.youtube-gap-right .filling-content').evaluate(element=>({height:element.clientHeight,contentHeight:element.scrollHeight}));
   assert.ok(transcriptLayout.contentHeight<=transcriptLayout.height+1,'The transcript container must not clip its content');
-  if(width<992){const transcript=await page.locator('.youtube-gap-right .daily-listening-transcript').evaluate(element=>({height:element.clientHeight,contentHeight:element.scrollHeight}));assert.ok(transcript.contentHeight<=transcript.height+1,'The mobile transcript must use the page scroll');}
+  if(width<992 && !await page.locator('.dl-mobile-workspace').count()){const transcript=await page.locator('.youtube-gap-right .daily-listening-transcript').evaluate(element=>({height:element.clientHeight,contentHeight:element.scrollHeight}));assert.ok(transcript.contentHeight<=transcript.height+1,'The tablet transcript must use the page scroll');}
   if(dark){
    assert.equal(await page.locator('.ios-dl-play').evaluate(element=>getComputedStyle(element).backgroundColor),'rgb(22, 119, 237)');
    assert.equal(await page.locator('.ios-dl-submit').evaluate(element=>getComputedStyle(element).backgroundColor),'rgb(33, 70, 109)');

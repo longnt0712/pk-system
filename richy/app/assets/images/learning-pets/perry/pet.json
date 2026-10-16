@@ -1,0 +1,15 @@
+{
+  "id": "perry",
+  "name": "Perry",
+  "selectionKey": "CUTE_PERRY",
+  "unlockVocabularyExperienceLevel": 4,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 4,
+      "battleRewardLevel": 21,
+      "battleRewardReferenceLevel": 2,
+      "form": "hatched",
+      "file": "pet-level-4.png"
+    }
+  ]
+}

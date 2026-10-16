@@ -7,6 +7,8 @@ public class GiftDropGame {
     public static final int ROTTEN_EGG_LEVEL = -1;
     public static final double ROTTEN_EGG_POINTS = 0.5D;
     public static final int SKILL_EGG_LEVEL = -2;
+    public static final int PERRY_HAT_LEVEL = -3;
+    public static final double PERRY_HAT_POINTS = 1D;
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
@@ -77,12 +79,10 @@ public class GiftDropGame {
     private final List<ClaimRecord> claims = new ArrayList<ClaimRecord>();
     private final List<String> skillTypes = new ArrayList<String>();
     private final int basePoints;
-    private final List<PetRewardCatalog.Reward> commonRewards = new ArrayList<PetRewardCatalog.Reward>();
-    private final List<PetRewardCatalog.Reward> newRewards = new ArrayList<PetRewardCatalog.Reward>();
-    private final int[] weights, newWeights;
+    private final List<PetRewardCatalog.Reward> rewards;
+    private final int[] rewardWeights;
     private final int[] skillWeights;
-    private final int rottenWeight;
-    private final int totalWeight;
+    private final int rottenWeight, perryHatWeight;
     private final Random random;
     private long version, nextId;
     private boolean finalPools;
@@ -103,35 +103,48 @@ public class GiftDropGame {
                 return Integer.compare(left.level, right.level);
             }
         });
-        Set<Integer> levels = new HashSet<Integer>();
+        Map<Integer, PetRewardCatalog.Reward> byLevel = new HashMap<Integer, PetRewardCatalog.Reward>();
         for (PetRewardCatalog.Reward reward : sorted) {
-            if (!levels.add(reward.level)) { throw new IllegalArgumentException("Duplicate pet reward level"); }
-            (reward.level < NEW_REWARD_MIN_LEVEL ? commonRewards : newRewards).add(reward);
+            if (byLevel.put(reward.level, reward) != null) { throw new IllegalArgumentException("Duplicate pet reward level"); }
         }
-        weights = new int[commonRewards.size()]; newWeights = new int[newRewards.size()];
+        List<PetRewardCatalog.Reward> commonRewards = new ArrayList<PetRewardCatalog.Reward>();
+        List<PetRewardCatalog.Reward> newRewards = new ArrayList<PetRewardCatalog.Reward>();
+        for (PetRewardCatalog.Reward reward : sorted) {
+            PetRewardCatalog.Reward source = byLevel.get(reward.referenceLevel);
+            if (source == null || source.referenceLevel != source.level) { throw new IllegalArgumentException("Invalid pet reward reference"); }
+            (reward.referenceLevel < NEW_REWARD_MIN_LEVEL ? commonRewards : newRewards).add(reward);
+        }
+        int[] newWeights = new int[newRewards.size()];
         skillWeights = new int[skillTypes.size()];
-        int[] originalWeights = new int[skillTypes.size() + 1 + commonRewards.size()];
+        int rottenIndex = skillTypes.size(), perryHatIndex = rottenIndex + 1, commonOffset = perryHatIndex + 1;
+        int[] originalWeights = new int[commonOffset + commonRewards.size()];
         Arrays.fill(originalWeights, 0, skillTypes.size(), SKILL_EGG_WEIGHT);
-        originalWeights[skillTypes.size()] = ROTTEN_EGG_WEIGHT;
-        int originalTotal = ROTTEN_EGG_WEIGHT + skillTypes.size() * SKILL_EGG_WEIGHT;
+        originalWeights[rottenIndex] = ROTTEN_EGG_WEIGHT;
+        originalWeights[perryHatIndex] = ROTTEN_EGG_WEIGHT;
+        int originalTotal = 2 * ROTTEN_EGG_WEIGHT + skillTypes.size() * SKILL_EGG_WEIGHT;
         int[] fixedTickets = new int[originalWeights.length];
         int fixedTotal = 0, fixedOriginalWeight = 0;
         for (int i = 0; i < commonRewards.size(); i++) {
-            int level = commonRewards.get(i).level;
+            PetRewardCatalog.Reward source = byLevel.get(commonRewards.get(i).referenceLevel);
+            int level = source.level;
             int weight = rewardWeight(level);
-            int index = skillTypes.size() + 1 + i;
+            int index = commonOffset + i;
             originalWeights[index] = weight; originalTotal += weight;
             if (level >= NEW_REWARD_MIN_LEVEL - 3) {
-                fixedTickets[index] = JERRY_FORM_TICKETS[commonRewards.get(i).stageIndex];
+                fixedTickets[index] = JERRY_FORM_TICKETS[source.stageIndex];
                 fixedTotal += fixedTickets[index]; fixedOriginalWeight += weight;
             }
         }
         Map<String, Integer> newFamilies = new LinkedHashMap<String, Integer>();
+        for (PetRewardCatalog.Reward reward : newRewards) {
+            if (reward.referenceLevel == reward.level && !newFamilies.containsKey(reward.petId)) {
+                newFamilies.put(reward.petId, newFamilies.size() + 1);
+            }
+        }
         int newTotal = 0;
         for (int i = 0; i < newWeights.length; i++) {
-            PetRewardCatalog.Reward reward = newRewards.get(i);
+            PetRewardCatalog.Reward reward = byLevel.get(newRewards.get(i).referenceLevel);
             Integer familyOrder = newFamilies.get(reward.petId);
-            if (familyOrder == null) { familyOrder = newFamilies.size() + 1; newFamilies.put(reward.petId, familyOrder); }
             newWeights[i] = Math.max(NEW_REWARD_STEP,
                     JERRY_FORM_TICKETS[reward.stageIndex] - NEW_REWARD_STEP * familyOrder);
             newTotal += newWeights[i];
@@ -139,7 +152,7 @@ public class GiftDropGame {
         int remainingTickets = DRAW_RESOLUTION - newTotal - fixedTotal;
         if (remainingTickets <= 0) { throw new IllegalArgumentException("Pet reward probabilities exceed 100%"); }
         int remainingWeight = originalTotal - fixedOriginalWeight;
-        int cumulativeWeight = 0, assignedTickets = 0, commonTotal = 0;
+        int cumulativeWeight = 0, assignedTickets = 0;
         // Preserve all three Jerry reference probabilities. Other original rewards share
         // the remaining probability in their existing weight ratios.
         for (int i = 0; i < originalWeights.length; i++) {
@@ -151,12 +164,43 @@ public class GiftDropGame {
                 tickets = cumulativeTickets - assignedTickets; assignedTickets = cumulativeTickets;
             }
             originalWeights[i] = tickets;
-            if (i > skillTypes.size()) { commonTotal += tickets; }
+        }
+        // Matching raw weights can differ by one ticket after cumulative rounding.
+        // Copy the source's final ticket count exactly for both matching pairs,
+        // then balance rounding in an independent common reward (or enabled skill).
+        int roundingDelta = originalWeights[perryHatIndex] - originalWeights[rottenIndex];
+        originalWeights[perryHatIndex] = originalWeights[rottenIndex];
+        Map<Integer, Integer> commonIndexes = new HashMap<Integer, Integer>();
+        Set<Integer> aliasedLevels = new HashSet<Integer>();
+        for (int i = 0; i < commonRewards.size(); i++) {
+            PetRewardCatalog.Reward reward = commonRewards.get(i);
+            commonIndexes.put(reward.level, commonOffset + i);
+            if (reward.referenceLevel != reward.level) { aliasedLevels.add(reward.referenceLevel); }
+        }
+        for (PetRewardCatalog.Reward reward : commonRewards) {
+            if (reward.referenceLevel == reward.level) { continue; }
+            int index = commonIndexes.get(reward.level), sourceIndex = commonIndexes.get(reward.referenceLevel);
+            roundingDelta += originalWeights[index] - originalWeights[sourceIndex];
+            originalWeights[index] = originalWeights[sourceIndex];
+        }
+        int roundingIndex = skillTypes.isEmpty() ? -1 : 0;
+        for (PetRewardCatalog.Reward reward : commonRewards) {
+            int index = commonIndexes.get(reward.level);
+            if (reward.referenceLevel == reward.level && !aliasedLevels.contains(reward.level) && fixedTickets[index] == 0) {
+                roundingIndex = index; break;
+            }
+        }
+        if (roundingDelta != 0) {
+            if (roundingIndex < 0) { throw new IllegalArgumentException("No independent reward to balance probability rounding"); }
+            originalWeights[roundingIndex] += roundingDelta;
         }
         for (int i = 0; i < skillWeights.length; i++) { skillWeights[i] = originalWeights[i]; }
-        rottenWeight = originalWeights[skillTypes.size()];
-        System.arraycopy(originalWeights, skillTypes.size() + 1, weights, 0, weights.length);
-        totalWeight = commonTotal;
+        rottenWeight = originalWeights[rottenIndex]; perryHatWeight = originalWeights[perryHatIndex];
+        Map<Integer, Integer> ticketsByLevel = new HashMap<Integer, Integer>();
+        for (PetRewardCatalog.Reward reward : commonRewards) { ticketsByLevel.put(reward.level, originalWeights[commonIndexes.get(reward.level)]); }
+        for (int i = 0; i < newRewards.size(); i++) { ticketsByLevel.put(newRewards.get(i).level, newWeights[i]); }
+        rewards = sorted; rewardWeights = new int[rewards.size()];
+        for (int i = 0; i < rewards.size(); i++) { rewardWeights[i] = ticketsByLevel.get(rewards.get(i).level); }
     }
     private static int rewardWeight(int index) { return Math.max(1, (int) Math.round(10000D * Math.pow(0.75D, index))); }
     private PlayerPool poolFor(String username) {
@@ -177,8 +221,12 @@ public class GiftDropGame {
         }
         if (draw < rottenWeight) { return new Gift(id, ROTTEN_EGG_LEVEL, ROTTEN_EGG_POINTS); }
         draw -= rottenWeight;
-        if (draw < totalWeight) { return petGift(id, pickReward(commonRewards, weights, draw)); }
-        return petGift(id, pickReward(newRewards, newWeights, draw - totalWeight));
+        if (draw < perryHatWeight) {
+            return new Gift(id, PERRY_HAT_LEVEL, PERRY_HAT_POINTS, null,
+                    "assets/images/learning-pets/perry/perry-hat.png", "Mũ Perry");
+        }
+        draw -= perryHatWeight;
+        return petGift(id, pickReward(rewards, rewardWeights, draw));
     }
     private static PetRewardCatalog.Reward pickReward(List<PetRewardCatalog.Reward> rewards, int[] rewardWeights, int draw) {
         int index = 0;
@@ -186,7 +234,7 @@ public class GiftDropGame {
         return rewards.get(index);
     }
     private Gift petGift(String id, PetRewardCatalog.Reward reward) {
-        return new Gift(id, reward.level, basePoints * (reward.level + 1D), null, reward.image, reward.label);
+        return new Gift(id, reward.level, basePoints * (reward.referenceLevel + 1D), null, reward.image, reward.label);
     }
     public void prepareFinalPools(Map<String, Integer> credits) {
         playerPools.clear(); finalPools = true;

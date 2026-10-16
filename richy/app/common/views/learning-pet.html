@@ -19,7 +19,7 @@
                         ng-click="pet.openPetPicker($event)" aria-haspopup="dialog">
                     <span class="learning-pet-choice-image">
                         <img ng-src="{{pet.selectedPet().image}}" alt="" aria-hidden="true"
-                             ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU'}">
+                             ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'}">
                     </span>
                     <span class="learning-pet-picker-copy">
                         <strong>Chọn pet</strong>
@@ -68,7 +68,8 @@
                     'is-jerry-mouse-pet': pet.petForm === 'jerry-mouse-hatched',
                     'is-tuffy-mouse-pet': pet.petForm === 'tuffy-mouse-hatched',
                     'is-pikachu-pet': pet.petForm === 'pikachu-hatched',
-                    'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU'
+                    'is-perry-pet': pet.petForm === 'perry-hatched',
+                    'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'
                  }"
                  ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-pikachu" ng-if="pet.petForm === 'pikachu-hatched'" aria-hidden="true">

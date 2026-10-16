@@ -96,12 +96,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private static final String PET_MAM_HOC = "MAM_HOC";
     private static final String PET_CAPYBARA_EGG = "CAPYBARA_EGG";
+    private static final String PET_CUTE_PERRY = "CUTE_PERRY";
     private static final String PET_CUTE_DOG = "CUTE_DOG";
     private static final String PET_CUTE_TOM_CAT = "CUTE_TOM_CAT";
     private static final String PET_CUTE_JERRY_MOUSE = "CUTE_JERRY_MOUSE";
     private static final String PET_CUTE_TUFFY_MOUSE = "CUTE_TUFFY_MOUSE";
     private static final String PET_CUTE_PIKACHU = "CUTE_PIKACHU";
     private static final int CAPYBARA_UNLOCK_LEVEL = 3;
+    private static final int CUTE_PERRY_UNLOCK_LEVEL = 4;
     private static final int CUTE_DOG_UNLOCK_LEVEL = 6;
     private static final int CUTE_TOM_CAT_UNLOCK_LEVEL = 9;
     private static final int CUTE_JERRY_MOUSE_UNLOCK_LEVEL = 12;
@@ -290,6 +292,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     "Trứng capybara được mở khóa khi đạt level 3."
             );
         }
+        if (!allPetsUnlocked && PET_CUTE_PERRY.equals(selectedPet) && level < CUTE_PERRY_UNLOCK_LEVEL) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Perry được mở khóa khi đạt level 4."
+            );
+        }
         if (!allPetsUnlocked && PET_CUTE_DOG.equals(selectedPet) && level < CUTE_DOG_UNLOCK_LEVEL) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
@@ -377,6 +385,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || level >= CAPYBARA_UNLOCK_LEVEL) {
             unlocked.add(PET_CAPYBARA_EGG);
         }
+        if (allPetsUnlocked || level >= CUTE_PERRY_UNLOCK_LEVEL) {
+            unlocked.add(PET_CUTE_PERRY);
+        }
         if (allPetsUnlocked || level >= CUTE_DOG_UNLOCK_LEVEL) {
             unlocked.add(PET_CUTE_DOG);
         }
@@ -410,6 +421,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String normalized = clean(petKey).toUpperCase(Locale.ROOT);
         if (PET_CAPYBARA_EGG.equals(normalized)) {
             return PET_CAPYBARA_EGG;
+        }
+        if (PET_CUTE_PERRY.equals(normalized)) {
+            return PET_CUTE_PERRY;
         }
         if (PET_CUTE_DOG.equals(normalized)) {
             return PET_CUTE_DOG;
@@ -2785,6 +2799,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
             player.score = roundScoreToOneDecimal(player.score + gift.points);
             double awardedPoints = gift.rewardLevel == GiftDropGame.ROTTEN_EGG_LEVEL
+                    || gift.rewardLevel == GiftDropGame.PERRY_HAT_LEVEL
                     ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
             room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
             result.setSkillType(gift.skillType);
@@ -8210,6 +8225,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (
             !identity.allPetsUnlocked && PET_CAPYBARA_EGG.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CAPYBARA_UNLOCK_LEVEL
+        ) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
+        if (
+            !identity.allPetsUnlocked && PET_CUTE_PERRY.equals(identity.selectedPetKey) &&
+            identity.vocabularyExperienceLevel < CUTE_PERRY_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }

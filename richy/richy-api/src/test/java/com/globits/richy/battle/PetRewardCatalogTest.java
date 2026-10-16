@@ -21,7 +21,7 @@ public class PetRewardCatalogTest {
         catch (IOException expected) { }
     }
 
-    @Test public void packagedWebsiteManifestsSupplyEveryStageIncludingDogTuffyAndPikachu() {
+    @Test public void packagedWebsiteManifestsSupplyEveryStageIncludingDogTuffyPikachuAndPerry() {
         List<PetRewardCatalog.Reward> packaged = PetRewardCatalog.rewards();
         assertTrue(packaged.size() >= 21);
         Map<Integer,PetRewardCatalog.Reward> rewards = new HashMap<Integer,PetRewardCatalog.Reward>();
@@ -40,6 +40,11 @@ public class PetRewardCatalogTest {
         assertEquals("Trứng Chuột Tuffy",rewards.get(15).label);
         assertEquals("assets/images/learning-pets/pikachu/egg-level-19.png",rewards.get(19).image);
         assertEquals("Pikachu",rewards.get(20).label);
+        assertNotNull(rewards.get(21));
+        assertEquals("Perry",rewards.get(21).label);
+        assertEquals("perry",rewards.get(21).petId);
+        assertEquals("hatched",rewards.get(21).form);
+        assertEquals(2,rewards.get(21).referenceLevel);
         try { packaged.clear(); fail("Shared catalog must be immutable"); } catch (UnsupportedOperationException expected) { }
     }
 
@@ -68,6 +73,39 @@ public class PetRewardCatalogTest {
                     + stage("2","hatched",file) + "]}");
             assertEquals("assets/images/learning-pets/atlas-pet/pet.png",PetRewardCatalog.read(new Resource[] {manifest}).get(0).image);
         }
+    }
+
+    @Test public void standalonePetsCanShareAnUnlockLevelAndReferenceAnExistingBattleReward() throws Exception {
+        Resource perry = pet("perry","Perry",stage("4","hatched","perry.png")
+                .replace("\"form\"","\"battleRewardLevel\":21,\"battleRewardReferenceLevel\":2,\"form\""));
+        List<PetRewardCatalog.Reward> rewards = PetRewardCatalog.read(new Resource[] {
+            perry,pet("mam-hoc","Mầm Học",stage("2","hatched","mam-hoc.png")),
+            pet("capybara","Capybara",stage("4","egg-cracked","capybara.png"))
+        });
+        assertEquals(3,rewards.size());
+        assertEquals(2,rewards.get(0).referenceLevel);
+        assertEquals(4,rewards.get(1).referenceLevel);
+        assertEquals(21,rewards.get(2).level); assertEquals(2,rewards.get(2).referenceLevel);
+        assertEquals("Perry",rewards.get(2).label);
+        assertEquals("assets/images/learning-pets/perry/perry.png",rewards.get(2).image);
+    }
+
+    @Test public void battleRewardOverridesRequireValidUniqueLevelsAndDirectExistingReferences() {
+        Resource mamHoc = pet("mam-hoc","Mầm Học",stage("2","hatched","mam-hoc.png"));
+        for (String field : Arrays.asList("battleRewardLevel","battleRewardReferenceLevel")) {
+            for (String invalid : Arrays.asList("-1","1.5","\"21\"","null","4294967296")) {
+                rejected(mamHoc,pet("perry","Perry",stage("4","hatched","perry.png")
+                        .replace("\"form\"","\"" + field + "\":" + invalid + ",\"form\"")));
+            }
+        }
+        rejected(mamHoc,pet("perry","Perry",stage("4","hatched","perry.png")
+                .replace("\"form\"","\"battleRewardLevel\":2,\"form\"")));
+        rejected(mamHoc,pet("perry","Perry",stage("4","hatched","perry.png")
+                .replace("\"form\"","\"battleRewardReferenceLevel\":99,\"form\"")));
+        rejected(mamHoc,pet("perry","Perry",stage("4","hatched","perry.png")
+                .replace("\"form\"","\"battleRewardReferenceLevel\":2,\"form\"")),
+                pet("chained","Chained",stage("5","hatched","chained.png")
+                        .replace("\"form\"","\"battleRewardReferenceLevel\":4,\"form\"")));
     }
 
     @Test public void duplicateLevelsAcrossOrWithinPetsAreRejected() {

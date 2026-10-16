@@ -17,6 +17,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 public final class PetRewardCatalog {
     public static final class Reward {
         public final int level;
+        public final int referenceLevel;
         public final String image, label;
         public final String petId, form;
         public final int stageIndex;
@@ -27,14 +28,18 @@ public final class PetRewardCatalog {
         }
 
         public Reward(int level, String image, String label, String petId, String form) {
-            if (level < 0 || image == null || label == null || petId == null || petId.trim().isEmpty()) {
+            this(level, image, label, petId, form, level);
+        }
+
+        public Reward(int level, String image, String label, String petId, String form, int referenceLevel) {
+            if (level < 0 || referenceLevel < 0 || image == null || label == null || petId == null || petId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Pet reward requires a level, image and label");
             }
             if ("egg-intact".equals(form)) { stageIndex = 0; }
             else if ("egg-cracked".equals(form)) { stageIndex = 1; }
             else if ("hatched".equals(form)) { stageIndex = 2; }
             else { throw new IllegalArgumentException("Unknown pet reward form"); }
-            this.level = level; this.image = image; this.label = label;
+            this.level = level; this.referenceLevel = referenceLevel; this.image = image; this.label = label;
             this.petId = petId; this.form = form;
         }
     }
@@ -73,7 +78,9 @@ public final class PetRewardCatalog {
             }
             for (JsonNode stage : pet.path("evolution")) {
                 JsonNode minimum = stage.path("minimumVocabularyExperienceLevel");
-                int level = minimum.asInt(-1);
+                JsonNode rewardLevel = stage.has("battleRewardLevel") ? stage.path("battleRewardLevel") : minimum;
+                JsonNode reference = stage.has("battleRewardReferenceLevel") ? stage.path("battleRewardReferenceLevel") : rewardLevel;
+                int level = rewardLevel.asInt(-1), referenceLevel = reference.asInt(-1);
                 String form = stage.path("form").asText();
                 String file = stage.path("file").asText();
                 JsonNode atlas = pet.path("atlas");
@@ -85,14 +92,24 @@ public final class PetRewardCatalog {
                 else if ("egg-cracked".equals(form)) { prefix = "Trứng vỡ "; }
                 else if ("hatched".equals(form)) { prefix = ""; }
                 else { throw new IOException("Unknown pet reward form: " + form); }
-                if (!minimum.isIntegralNumber() || !minimum.canConvertToInt() || level < 0 || !levels.add(level)
+                if (!minimum.isIntegralNumber() || !minimum.canConvertToInt() || minimum.asInt(-1) < 0
+                        || !rewardLevel.isIntegralNumber() || !rewardLevel.canConvertToInt() || level < 0 || !levels.add(level)
+                        || !reference.isIntegralNumber() || !reference.canConvertToInt() || referenceLevel < 0
                         || !file.matches("[a-zA-Z0-9_-]+\\.(png|webp|svg|avif|jpg|jpeg)")) {
                     throw new IOException("Invalid or duplicate pet reward level/image: " + manifest.getDescription());
                 }
-                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form));
+                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form, referenceLevel));
             }
         }
         if (rewards.isEmpty()) { throw new IOException("No pet reward manifests were packaged"); }
+        for (Reward reward : rewards) {
+            if (reward.referenceLevel == reward.level) { continue; }
+            Reward source = null;
+            for (Reward candidate : rewards) { if (candidate.level == reward.referenceLevel) { source = candidate; break; } }
+            if (source == null || source.referenceLevel != source.level) {
+                throw new IOException("Pet reward reference must identify an existing original reward: " + reward.level);
+            }
+        }
         Collections.sort(rewards, new Comparator<Reward>() {
             @Override public int compare(Reward left, Reward right) { return Integer.compare(left.level, right.level); }
         });

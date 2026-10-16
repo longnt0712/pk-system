@@ -66,13 +66,53 @@ test('legacy and special egg rewards keep safe fallback artwork and labels',()=>
  assert.equal(h.vm.getGiftRewardLabel(-1,null,metadata),'Trứng thối');
  assert.equal(h.vm.getGiftRewardImage(-2,'INVERT',metadata),h.vm.getGiftRewardImage(0));
  assert.equal(h.vm.getGiftRewardLabel(-2,'INVERT',metadata),h.vm.getGiftRewardLabel(-2,'INVERT'));
- for(const level of [21,undefined,NaN,-2]) {
+ for(const level of [22,undefined,NaN,-2]) {
   assert.equal(h.vm.getGiftRewardImage(level),h.vm.getGiftRewardImage(0));
   assert.equal(h.vm.getGiftRewardLabel(level),'Trứng Mầm Học');
  }
  assert.equal(h.vm.getGiftRewardImage(20,null,{rewardImage:' '}),h.vm.getGiftRewardImage(20));
  assert.equal(h.vm.getGiftRewardLabel(20,null,{rewardLabel:' '}),'Pikachu');
 });
+test('Perry reveals immediately as the full pet and keeps its artwork in host history',async()=>{
+ const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+ const reward={rewardImage:'assets/images/learning-pets/perry/pet-level-4.png',rewardLabel:'Perry'};
+ const next=h.room(0,2);next.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:21,points:30,...reward}];
+ h.resolve({room:next,rewardLevel:21,points:30,...reward});await pending;
+ assert.equal(h.vm.getGiftRewardImage(21),reward.rewardImage+'?v=qa');
+ assert.equal(h.vm.getGiftRewardLabel(21),'Perry');
+ assert.equal(h.vm.getGiftRewardImage(21,null,h.vm.lastGiftReward),reward.rewardImage+'?v=qa');
+ assert.equal(h.vm.getGiftRewardLabel(21,null,h.vm.lastGiftReward),'Perry');
+ assert.equal(h.vm.lastGiftReward.points,30);
+ assert.ok(fs.existsSync(path.join(__dirname,'..',reward.rewardImage)));
+ const host=setup('host');host.hooks.applyRoom(next,true);
+ const claim=host.vm.room.giftDrop.claims[0];
+ assert.equal(host.vm.getGiftRewardImage(claim.rewardLevel,claim.skillType,claim),reward.rewardImage+'?v=qa');
+ assert.equal(host.vm.getGiftRewardLabel(claim.rewardLevel,claim.skillType,claim),'Perry');
+});
+
+test('Perry hat reveals as a one-point prize and stays identifiable in host history',async()=>{
+ const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+ const reward={rewardImage:'assets/images/learning-pets/perry/perry-hat.png',rewardLabel:'Mũ Perry'};
+ const next=h.room(0,2);next.players[1].score=1;
+ next.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:-3,points:1,...reward}];
+ h.resolve({room:next,rewardLevel:-3,points:1,...reward});await pending;
+ assert.deepEqual(plain(h.vm.lastGiftReward),{level:-3,points:1,...reward});
+ assert.equal(h.vm.room.players[1].score,1);
+ assert.equal(h.vm.getGiftRewardImage(-3),reward.rewardImage+'?v=qa');
+ assert.equal(h.vm.getGiftRewardLabel(-3),'Mũ Perry');
+ assert.equal(h.vm.getGiftRewardImage(-3,null,h.vm.lastGiftReward),reward.rewardImage+'?v=qa');
+ assert.equal(h.vm.getGiftRewardLabel(-3,null,h.vm.lastGiftReward),'Mũ Perry');
+ assert.ok(fs.existsSync(path.join(__dirname,'..',reward.rewardImage)));
+ const host=setup('host');host.hooks.applyRoom(next,true);
+ const claim=host.vm.room.giftDrop.claims[0];
+ assert.equal(host.vm.getGiftRewardImage(claim.rewardLevel,claim.skillType,claim),reward.rewardImage+'?v=qa');
+ assert.equal(host.vm.getGiftRewardLabel(claim.rewardLevel,claim.skillType,claim),'Mũ Perry');
+ assert.equal(claim.points,1);
+ assert.equal(h.vm.getGiftRewardImage(-3,'INVERT',reward),h.vm.getGiftRewardImage(0));
+ assert.notEqual(h.vm.getGiftRewardLabel(-3,'INVERT',reward),'Mũ Perry');
+ assert.equal(h.vm.getGiftRewardImage(-9,null,reward),h.vm.getGiftRewardImage(0));
+});
+
 test('only an active player with credit can pick during the final egg phase',()=>{
  for(const state of ['no-credit','spectator','claiming','finished','pending-skill','before-phase']) {
   const h=setup(),room=h.room();
