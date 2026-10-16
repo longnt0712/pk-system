@@ -5,9 +5,9 @@ const app=path.join(__dirname,'..'),repo=path.resolve(app,'../..');
 const chrome=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
 const old={id:21,question:'Listening cũ',pronounce:'http://daily-listening-creator.test/audio.wav',motherTongue:'<p>one two three four five six seven eight nine ten.</p>',
  questionType:{id:6},status:5,user:{id:7},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
-const css=['assets/css/external/bootstrap.min.css','assets/css/external/font-awesome.min.css','assets/css/components-md.min.css','assets/css/test-builder.css','assets/css/daily-listening-builder.css','assets/css/comprehensive-listening.css','assets/css/comprehensive-folders.css'].map(name=>fs.readFileSync(path.join(app,name),'utf8')).join('\n');
+const css=['assets/css/external/bootstrap.min.css','assets/css/external/font-awesome.min.css','assets/css/components-md.min.css','assets/css/test-builder.css','assets/css/daily-listening-builder.css','assets/css/daily-listening-player.css','assets/css/comprehensive-listening.css','assets/css/comprehensive-folders.css'].map(name=>fs.readFileSync(path.join(app,name),'utf8')).join('\n');
 const shared={...old,title:old.question,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7};
-async function fixture(browser,width,learner=false,record=shared){
+async function fixture(browser,width,learner=false,record=shared,options={}){
  const page=await browser.newPage({viewport:{width,height:950},timezoneId:'Asia/Bangkok'}),errors=[];page.setDefaultTimeout(12000);
  page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());
  await page.route('**/*',route=>{
@@ -16,17 +16,37 @@ async function fixture(browser,width,learner=false,record=shared){
   if(url.pathname==='/audio.wav'){
    const audio=Buffer.alloc(44+8000*2*10);audio.write('RIFF');audio.writeUInt32LE(audio.length-8,4);audio.write('WAVE',8);audio.write('fmt ',12);
    audio.writeUInt32LE(16,16);audio.writeUInt16LE(1,20);audio.writeUInt16LE(1,22);audio.writeUInt32LE(8000,24);audio.writeUInt32LE(16000,28);audio.writeUInt16LE(2,32);audio.writeUInt16LE(16,34);audio.write('data',36);audio.writeUInt32LE(audio.length-44,40);
-   return route.fulfill({contentType:'audio/wav',body:audio});
+   const range=route.request().headers()['range'];
+   if(range){const match=range.match(/bytes=(\d+)-(\d*)/),start=Number(match[1]),end=match[2]?Math.min(Number(match[2]),audio.length-1):audio.length-1;
+    return route.fulfill({status:206,contentType:'audio/wav',headers:{'Accept-Ranges':'bytes','Content-Range':'bytes '+start+'-'+end+'/'+audio.length},body:audio.subarray(start,end+1)});}
+   return route.fulfill({contentType:'audio/wav',headers:{'Accept-Ranges':'bytes'},body:audio});
   }
   if(/fontawesome-webfont\.(woff2?|ttf|eot)/.test(url.pathname))return route.fulfill({body:fs.readFileSync(path.join(app,'assets/fonts/'+url.pathname.split('/').pop()))});
   return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});
  });
  await page.goto('http://daily-listening-creator.test');
+ if(options.reducedMotion)await page.emulateMedia({reducedMotion:'reduce'});
  async function mount(){
   const template=fs.readFileSync(path.join(app,'question/views/'+(learner?'view.html':'create_daily_listening_test.html')),'utf8');
   await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>'+css+
    'body{padding:16px!important;}main{max-width:1200px;margin:auto;padding:0 15px;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:8px!important;}}</style></head><body><main id="qa" ng-controller="'+(learner?'ViewController':'DailyListeningTestController')+' as vm">'+template+'</main></body></html>');
   for(const script of ['jquery.min.js','angular.min.js','angular-sanitize.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external/'+script)});
+  if(options.dark){
+   const shellStyles=Array.from(fs.readFileSync(path.join(app,'index.html'),'utf8').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi),match=>match[1]).join('\n');
+   await page.addStyleTag({content:shellStyles});
+   await page.evaluate(()=>{document.documentElement.classList.add('global-dark-mode');document.body.classList.add('global-dark-mode');});
+  }
+  if(options.youtube)await page.evaluate(()=>{
+   window.ytCalls=[];window.YT={PlayerState:{PLAYING:1,PAUSED:2,BUFFERING:3,ENDED:0},Player:function(id,config){
+    let state=2,time=12;const host=document.getElementById(id);host.style.cssText='height:100%;display:grid;place-content:center;text-align:center;background:linear-gradient(140deg,#213a5d,#4f789b);color:white;font-family:system-ui';
+    host.innerHTML='<div style="font-size:36px;margin-bottom:16px">▶</div><div style="font-size:18px;font-weight:600">Listening practice</div><div style="font-size:12px;opacity:.7;margin-top:8px">YouTube · Video preview</div>';
+    this.getCurrentTime=()=>time;this.getDuration=()=>120;this.getPlayerState=()=>state;
+    this.seekTo=value=>{time=value;ytCalls.push(['seek',value]);};this.setPlaybackRate=value=>ytCalls.push(['speed',value]);this.getAvailablePlaybackRates=()=>[.5,1,1.5,2];this.setVolume=value=>ytCalls.push(['volume',value]);
+    this.playVideo=()=>{state=1;ytCalls.push(['play']);config.events.onStateChange({data:state,target:this});};
+    this.pauseVideo=()=>{state=2;ytCalls.push(['pause']);config.events.onStateChange({data:state,target:this});};this.stopVideo=()=>{state=0;};this.destroy=()=>{host.remove();};
+    window.ytPreview=this;setTimeout(()=>config.events.onReady({target:this}),0);
+   }};
+  });
   await page.evaluate(({learner,record})=>{
    window.App={initAjax(){}};localStorage.setItem('fillingGapRatePercent','100');
    window.records=[structuredClone(record),{...structuredClone(record),id:22,question:'Other teacher',title:'Other teacher',user:{id:8}},
@@ -364,5 +384,61 @@ test('imported HTML paragraphs render like the editor and plain transcript marku
   assert.equal(await readRenderedTranscript(page),expected);assert.equal(await page.locator('.daily-listening-transcript secret').count(),0);
   const editorText=await page.evaluate(stored=>angular.element(document.getElementById('qa')).injector().get('ComprehensiveListening').transcriptText(stored),stored);assert.equal(editorText,expected);
   assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('iOS listening audio controls stay readable and functional on desktop and mobile',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const width of [1366,390]){
+  const record={...shared,question:'A day at school',title:'A day at school',motherTongue:'Mom: one two three four five.\n\nCandace: six seven eight nine ten.'};
+  const {page,errors}=await fixture(browser,width,true,record);await page.locator('input[id^="gap-number-"]').first().waitFor();
+  await page.getByRole('button',{name:'Phát bài nghe',exact:true}).click();await page.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).waitFor();
+  assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.paused),false);
+  await page.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).click();await page.getByRole('button',{name:'Phát bài nghe',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Tăng tốc độ',exact:true}).click();assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.playbackRate),1.1);
+  await page.getByRole('button',{name:'Giảm âm lượng',exact:true}).click();assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.volume),.95);
+  await page.waitForFunction(()=>document.getElementById('main-audio').readyState>=1&&document.getElementById('main-audio').duration>=10);
+  await page.locator('#main-audio').evaluate(audio=>audio.currentTime=2);await page.waitForFunction(()=>document.getElementById('main-audio').currentTime===2);
+  await page.getByRole('button',{name:'Forward 3 seconds',exact:true}).click();assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.currentTime),5);
+  await page.getByRole('button',{name:'Playback 3 seconds',exact:true}).click();assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.currentTime),2);
+  const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers));await page.locator('#gap-number-'+answers[0][0]).fill(answers[0][1]);
+  await page.waitForFunction(()=>qaVm.percentage===10);assert.equal(await page.getByRole('progressbar',{name:'Tiến độ bài nghe'}).getAttribute('aria-valuenow'),'10');
+  assert.equal(await page.locator('.gap-top-info-box h2').evaluate(el=>getComputedStyle(el).color),'rgb(23, 34, 53)');
+  assert.equal(await page.locator('.gap-english-theme').evaluate(el=>getComputedStyle(el,'::after').display),'none');
+  assert.equal(await page.locator('.ios-dl-transport').getByRole('button',{name:'Forward 3 seconds'}).evaluate(el=>getComputedStyle(el).color),'rgb(51, 81, 110)');
+  if(width===390){const box=await page.locator('.ios-dl-transport').boundingBox();assert.ok(box.y+box.height<=950 && box.y>800);}
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:path.join(repo,'.tmp/daily-ios-audio-'+width+'.png'),fullPage:true});
+  await page.getByRole('button',{name:'Giảm Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===95);
+  await page.getByRole('button',{name:'Tăng Gap rate 5%',exact:true}).click();await page.waitForFunction(()=>qaVm.gapRatePercent===100);
+  assert.equal(await page.evaluate(()=>pageCalls.length),0);assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('iOS YouTube layout adapts to narrow screens and dark mode with synchronized playback controls',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const record={...shared,question:'The summer vacation plan',title:'The summer vacation plan',pronounce:'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+  motherTongue:"[00:00] Singers: There's a hundred and four days of summer vacation.\n\n[00:03] Singers: Then school comes along just to end it.\n\n[00:05] Singers: So the annual problem for our generation is finding a good way to spend it.\n\nPhineas: Hey, Ferb. I know what we're going to do today!"};
+ try{for(const [width,dark] of [[1366,false],[1024,false],[768,false],[390,false],[390,true]]){
+  const {page,errors}=await fixture(browser,width,true,record,{youtube:true,dark,reducedMotion:dark});
+  await page.waitForFunction(()=>window.youtubeGapPlayerDebug!=null);await page.locator('input[id^="gap-number-"]').first().waitFor();
+  assert.equal(await page.locator('#main-audio').count(),0);
+  const left=await page.locator('.youtube-gap-left').boundingBox(),right=await page.locator('.youtube-gap-right').boundingBox();
+  if(width>=992)assert.ok(right.x>=left.x+left.width+15);else assert.ok(right.y>=left.y+left.height+10);
+  await page.getByRole('button',{name:'Phát bài nghe',exact:true}).click();await page.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Tăng tốc độ',exact:true}).click();await page.getByRole('button',{name:'Giảm âm lượng',exact:true}).click();
+  await page.getByRole('button',{name:'Forward 3 seconds',exact:true}).click();await page.getByRole('button',{name:'Playback 3 seconds',exact:true}).click();
+  const calls=await page.evaluate(()=>ytCalls);assert.ok(calls.some(call=>call[0]==='speed'&&call[1]===1.1));assert.ok(calls.some(call=>call[0]==='volume'&&call[1]===95));assert.ok(calls.some(call=>call[0]==='seek'&&call[1]===15));
+  await page.waitForTimeout(320);await page.getByRole('button',{name:'Tạm dừng bài nghe',exact:true}).click();await page.getByRole('button',{name:'Phát bài nghe',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>qaVm.gapAudioPlaying),false);
+  const transcriptLayout=await page.locator('.youtube-gap-right .filling-content').evaluate(element=>({height:element.clientHeight,contentHeight:element.scrollHeight}));
+  assert.ok(transcriptLayout.contentHeight<=transcriptLayout.height+1,'The transcript container must not clip its content');
+  if(width<992){const transcript=await page.locator('.youtube-gap-right .daily-listening-transcript').evaluate(element=>({height:element.clientHeight,contentHeight:element.scrollHeight}));assert.ok(transcript.contentHeight<=transcript.height+1,'The mobile transcript must use the page scroll');}
+  if(dark){
+   assert.equal(await page.locator('.ios-dl-play').evaluate(element=>getComputedStyle(element).backgroundColor),'rgb(22, 119, 237)');
+   assert.equal(await page.locator('.ios-dl-submit').evaluate(element=>getComputedStyle(element).backgroundColor),'rgb(33, 70, 109)');
+   assert.equal(await page.locator('.daily-listening-ios > .col-md-12 > .portlet').first().evaluate(element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)');
+  }
+  if(width===1366 || width===390)await page.screenshot({path:path.join(repo,'.tmp/daily-ios-youtube-'+width+(dark?'-dark':'')+'.png'),fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

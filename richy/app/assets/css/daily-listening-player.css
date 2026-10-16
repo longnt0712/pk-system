@@ -1,0 +1,155 @@
+/* Daily Listening only: glass controls, quiet surfaces, readable lesson content. */
+.daily-listening-ios {
+    --dl-ink: #172235;
+    --dl-muted: #617087;
+    --dl-blue: #007aff;
+    --dl-surface: rgba(255, 255, 255, .82);
+    --dl-content: rgba(255, 255, 255, .94);
+    --dl-edge: rgba(255, 255, 255, .95);
+    --dl-shadow: 0 12px 36px rgba(35, 58, 98, .065), inset 0 1px 0 rgba(255, 255, 255, .95);
+    position: relative;
+    margin: 10px 0 24px;
+    padding: 28px clamp(16px, 3vw, 40px) 36px;
+    border: 1px solid rgba(219, 227, 240, .7);
+    border-radius: 30px;
+    background: radial-gradient(ellipse at 92% 2%, #dbeaff 0, transparent 38%), radial-gradient(ellipse at 2% 30%, #e9e3fa 0, transparent 40%), #f3f5fa;
+    color: var(--dl-ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+.daily-listening-ios > .col-md-12 {float: none; width: 100%; padding: 0;}
+.daily-listening-ios > .col-md-12 + .col-md-12 {display: none;}
+.daily-listening-ios > .col-md-12 > .portlet.light.bordered {padding: 0; margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important;}
+.daily-listening-ios > .col-md-12 > .portlet > .portlet-body {padding: 0;}
+.daily-listening-ios .daily-listening-standalone-heading {margin-bottom: 28px;}
+.daily-listening-ios .ios-dl-back {display: inline-flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 20px; color: #3867a0; font-size: 13px; font-weight: 500; text-decoration: none;}
+.daily-listening-ios .ios-dl-page-heading {display: flex; align-items: center; gap: 18px;}
+.daily-listening-ios .ios-dl-app-icon {display: grid; place-items: center; flex: 0 0 62px; height: 62px; border: 1px solid white; border-radius: 20px; background: linear-gradient(145deg, #fff, #dfebff); color: #1677ee; box-shadow: 0 6px 18px #467bc31a, inset 0 2px 0 #fff; font-size: 28px;}
+.daily-listening-ios .ios-dl-eyebrow {color: #77849b; font-size: 10px; letter-spacing: 1.6px; font-weight: 650; margin: 0 0 6px;}
+.daily-listening-ios h1 {margin: 0 0 8px; color: var(--dl-ink); font-size: clamp(28px, 3vw, 38px); line-height: 1.15; font-weight: 700; letter-spacing: -1.4px;}
+.daily-listening-ios .ios-dl-page-heading p:last-child {color: var(--dl-muted); font-size: 13px; margin: 0; line-height: 1.7;}
+.daily-listening-ios .ios-dl-goal {display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; margin-left: auto; padding: 10px 14px; border: 1px solid var(--dl-edge); border-radius: 22px; background: var(--dl-surface); color: #426586; font-size: 12px; font-weight: 600; box-shadow: var(--dl-shadow);}
+.daily-listening-ios .ios-dl-goal i {color: #2aa27b;}
+.daily-listening-ios .gap-english-theme {padding: 0; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible;}
+.daily-listening-ios .gap-english-theme::before, .daily-listening-ios .gap-english-theme::after, .daily-listening-ios .audio-menu::before {display: none;}
+.daily-listening-ios .gap-filling-equal-row {display: block; clear: both; margin: 0;}
+.daily-listening-ios .gap-right-filling-col {float: none; padding: 0; width: 100% !important; min-width: 0; max-width: none;}
+.daily-listening-ios .gap-top-info-box {padding: 22px 24px; margin-bottom: 16px; border: 1px solid var(--dl-edge); border-radius: 24px; background: var(--dl-surface); box-shadow: var(--dl-shadow); text-align: left; backdrop-filter: blur(22px) saturate(135%); -webkit-backdrop-filter: blur(22px) saturate(135%);}
+.daily-listening-ios .gap-top-info-box h2 {margin: 0 0 20px; color: var(--dl-ink) !important; font-size: 22px; font-weight: 650 !important; line-height: 1.4; letter-spacing: -.5px; overflow-wrap: anywhere;}
+.daily-listening-ios .gap-top-info-line {display: flex; width: 100%; justify-content: flex-start; align-items: center; gap: 12px 24px;}
+.daily-listening-ios .ios-dl-progress {width: 240px; flex: 1; min-width: 160px; max-width: 330px;}
+.daily-listening-ios .ios-dl-progress > div:first-child {display: flex; align-items: center; justify-content: space-between; color: var(--dl-muted); font-size: 12px; margin-bottom: 9px;}
+.daily-listening-ios .ios-dl-progress strong {color: var(--dl-blue); font-size: 15px; font-variant-numeric: tabular-nums;}
+.daily-listening-ios .ios-dl-progress-track {height: 6px; border-radius: 20px; background: #e4ebf5; overflow: hidden;}
+.daily-listening-ios .ios-dl-progress-track span {display: block; height: 100%; background: linear-gradient(90deg, #54adff, #007aff); border-radius: inherit; transition: width .25s ease;}
+.daily-listening-ios .daily-listening-draft-status {order: 3; width: 100%; margin: 0; color: #397961; font-size: 12px; font-weight: 500;}
+.daily-listening-ios .daily-listening-draft-status.is-error {color: #b42342;}
+.daily-listening-ios .ios-dl-lesson-actions {display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-left: auto;}
+.daily-listening-ios .ios-dl-gap-setting {display: flex; align-items: center; gap: 6px; height: 42px; padding: 4px 7px 4px 12px; border: 1px solid #e1e8f3; border-radius: 24px; background: #f7f9fd; font-size: 12px; color: var(--dl-muted);}
+.daily-listening-ios .ios-dl-gap-setting label {font-weight: 500; margin: 0 6px 0 0;}
+.daily-listening-ios .ios-dl-gap-setting input {width: 36px; border: 0; padding: 0; background: transparent; color: var(--dl-ink); text-align: center; font-size: 13px; font-weight: 600; -moz-appearance: textfield;}
+.daily-listening-ios input[type=number]::-webkit-inner-spin-button {appearance: none; margin: 0;}
+.daily-listening-ios .gap-english-theme button:nth-of-type(n) {margin: 0; border: 1px solid #e2e8f1 !important; border-radius: 50% !important; background: var(--dl-surface) !important; color: #33516e !important; box-shadow: 0 2px 5px #26477108; font-weight: 600; text-transform: none; transition: background-color .18s, box-shadow .18s, transform .18s;}
+.daily-listening-ios .gap-english-theme button:hover {transform: none; filter: none; background: #edf4ff !important; box-shadow: 0 3px 10px #3678ce14;}
+.daily-listening-ios .gap-english-theme button:disabled {opacity: .45; cursor: default; box-shadow: none;}
+.daily-listening-ios .ios-dl-gap-setting button {width: 28px; height: 28px; padding: 0; font-size: 10px;}
+.daily-listening-ios .gap-english-theme button.ios-dl-submit {display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 10px 18px; border-radius: 24px !important; border-color: #fff !important; background: #e9f2ff !important; color: #0766d0 !important; font-size: 12px;}
+.daily-listening-ios .ios-dl-controls {display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; margin: 0 0 24px;}
+.daily-listening-ios .ios-dl-media-strip {display: flex; grid-column: 1 / -1; align-items: center; gap: 12px; padding: 8px 16px; border: 1px solid var(--dl-edge); border-radius: 20px; background: var(--dl-surface); box-shadow: var(--dl-shadow); color: #647c9c;}
+.daily-listening-ios .ios-dl-media-strip audio {display: block; width: 100%; height: 40px; color-scheme: light;}
+.daily-listening-ios .ios-dl-media-strip #main-audio {width: 100% !important; max-width: none; height: 40px; margin: 0; box-shadow: none;}
+.daily-listening-ios .ios-dl-transport {display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 14px; border: 1px solid var(--dl-edge); border-radius: 40px; background: rgba(255,255,255,.7); box-shadow: var(--dl-shadow); backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);}
+.daily-listening-ios .ios-dl-controls .ios-dl-transport button {display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: 40px; height: 40px; padding: 0; border: 0 !important; background: transparent !important; box-shadow: none; font-size: 15px;}
+.daily-listening-ios .ios-dl-transport button span {font-size: 9px; font-weight: 650;}
+.daily-listening-ios .ios-dl-transport button.ios-dl-play {width: 46px; height: 46px; color: white !important; background: linear-gradient(155deg, #3298ff, #007aff) !important; box-shadow: 0 4px 10px #007aff30, inset 0 1px 0 #ffffff40;}
+.daily-listening-ios .ios-dl-adjustments {display: flex; justify-content: flex-end; flex-wrap: wrap; align-items: center; gap: 10px;}
+.daily-listening-ios .ios-dl-stepper {display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 5px 9px 5px 14px; border: 1px solid var(--dl-edge); border-radius: 28px; background: var(--dl-surface); color: var(--dl-muted); font-size: 12px; box-shadow: var(--dl-shadow);}
+.daily-listening-ios .ios-dl-stepper button {width: 28px; height: 28px; padding: 0; font-size: 10px;}
+.daily-listening-ios .ios-dl-stepper output {padding: 0; min-width: 38px; color: var(--dl-ink); font-size: 12px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums;}
+.daily-listening-ios .ios-dl-keyboard-hint {grid-column: 1 / -1; text-align: right; margin: -2px 2px 0; color: #7b899d; font-size: 11px;}
+.daily-listening-ios kbd {background: #ffffff91; border: 1px solid #dce3ee; padding: 2px 4px; border-radius: 5px; box-shadow: none; color: #718097; font-family: inherit; font-size: 10px;}
+.daily-listening-ios .ios-dl-keyboard-hint span {padding: 0 7px;}
+.daily-listening-ios .youtube-gap-split-layout {display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 20px; margin: 0; align-items: start;}
+.daily-listening-ios .youtube-gap-left, .daily-listening-ios .youtube-gap-right {position: static; width: 100%; max-width: none; min-width: 0; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--dl-edge); border-radius: 24px; background: var(--dl-content); box-shadow: var(--dl-shadow);}
+.daily-listening-ios .ios-dl-panel-heading {display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 18px 22px; border-bottom: 1px solid #eef1f6; color: #354760; font-size: 13px; font-weight: 600;}
+.daily-listening-ios .ios-dl-panel-heading span {display: inline-flex; gap: 9px; align-items: center;}
+.daily-listening-ios .ios-dl-panel-heading i {color: #7894b3;}
+.daily-listening-ios .ios-dl-panel-heading small {font-size: 11px; font-weight: 400; color: #8794a8;}
+.daily-listening-ios .youtube-gap-left .audio-menu {padding: 12px; margin: 0 !important; border: 0; border-radius: 0; background: transparent; box-shadow: none;}
+.daily-listening-ios .youtube-gap-left .audio-menu::before {display: none;}
+.daily-listening-ios .audio-menu > .col-md-12 {padding: 0; float: none;}
+.daily-listening-ios .gap-youtube-player-wrap {width: 100% !important; margin: 0 !important; border-radius: 16px; background: #162337; box-shadow: none;}
+.daily-listening-ios .filling-content {padding: 0; margin: 0 !important; max-height: none; overflow: visible; text-align: left;}
+.daily-listening-ios .filling-content > .col-md-12 {float: none; padding: 0;}
+.daily-listening-ios .gap-filling-scroll-box {border: 1px solid var(--dl-edge); border-radius: 24px; background: var(--dl-content); box-shadow: var(--dl-shadow); overflow: hidden;}
+.daily-listening-ios .daily-listening-transcript {padding: 24px; font-size: 15px; font-weight: 400 !important; line-height: 2.35; letter-spacing: .05px; word-spacing: normal; color: #354258; text-shadow: none; overflow-wrap: anywhere; white-space: pre-wrap;}
+.daily-listening-ios .daily-listening-transcript::first-letter {font-size: inherit; font-weight: inherit; color: inherit;}
+.daily-listening-ios .youtube-gap-right .daily-listening-transcript {max-height: min(64vh, 760px); min-height: 280px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #c7d4e6 transparent;}
+.daily-listening-ios .gap-inline-wrap {gap: 4px; margin: 2px 2px;}
+.daily-listening-ios input.gap-inline-input {width: 84px !important; min-width: 60px; height: 29px; padding: 3px 6px; border: 0 !important; border-bottom: 1.5px solid #b7cce6 !important; border-radius: 7px 7px 4px 4px; background: #eef4fc; color: #1559a3; font-family: inherit; font-size: 14px !important; line-height: 1.4; box-shadow: inset 0 1px 2px #3866a008; transition: box-shadow .15s; scroll-margin-top: 100px;}
+.daily-listening-ios input.gap-inline-input:focus {outline: 0; border-bottom-color: var(--dl-blue) !important; box-shadow: 0 0 0 3px #007aff20;}
+.daily-listening-ios .gap-inline-speaker {font-size: 10px; color: #98abc2; margin: 0;}
+.daily-listening-ios .daily-listening-resume-banner {border: 1px solid var(--dl-edge); border-radius: 18px; background: var(--dl-surface); color: #385c86; box-shadow: var(--dl-shadow);}
+.daily-listening-ios .daily-listening-resume-actions button {min-height: 38px; padding: 8px 14px; border-radius: 22px !important; font-size: 12px;}
+.daily-listening-ios button:focus-visible, .daily-listening-ios a:focus-visible, .daily-listening-ios input:focus-visible {outline: 3px solid #007aff70; outline-offset: 3px;}
+@media (max-width: 991px) {
+    .daily-listening-ios .youtube-gap-split-layout {grid-template-columns: minmax(0, 1fr);}
+    .daily-listening-ios .youtube-gap-right .daily-listening-transcript {max-height: none; overflow-y: visible;}
+}
+@media (max-width: 600px) {
+    .daily-listening-ios {margin: 0 0 12px; padding: 18px 12px 104px; border-radius: 22px;}
+    .daily-listening-ios .ios-dl-back {margin-bottom: 16px;}
+    .daily-listening-ios .daily-listening-standalone-heading {margin-bottom: 20px;}
+    .daily-listening-ios .ios-dl-page-heading {gap: 12px; flex-wrap: wrap;}
+    .daily-listening-ios .ios-dl-app-icon {flex-basis: 46px; height: 46px; border-radius: 15px; font-size: 21px;}
+    .daily-listening-ios .ios-dl-eyebrow {font-size: 8px; letter-spacing: .8px;}
+    .daily-listening-ios h1 {font-size: 27px; letter-spacing: -.9px;}
+    .daily-listening-ios .ios-dl-page-heading > div:nth-child(2) {flex: 1; min-width: 0;}
+    .daily-listening-ios .ios-dl-page-heading p:last-child {font-size: 11px;}
+    .daily-listening-ios .ios-dl-goal {display: none;}
+    .daily-listening-ios .gap-top-info-box {padding: 18px 16px; border-radius: 20px;}
+    .daily-listening-ios .gap-top-info-box h2 {font-size: 19px; margin-bottom: 16px;}
+    .daily-listening-ios .ios-dl-progress {max-width: none; width: 100%; flex-basis: 100%;}
+    .daily-listening-ios .ios-dl-lesson-actions {width: 100%; justify-content: space-between; margin-top: 4px;}
+    .daily-listening-ios .gap-english-theme button.ios-dl-submit {padding: 10px 12px; font-size: 11px;}
+    .daily-listening-ios .ios-dl-controls {display: block; margin-bottom: 18px;}
+    .daily-listening-ios .ios-dl-media-strip {padding: 4px 8px; margin-bottom: 12px;}
+    .daily-listening-ios .ios-dl-media-strip > i {display: none;}
+    .daily-listening-ios .ios-dl-adjustments {justify-content: space-between; gap: 8px;}
+    .daily-listening-ios .ios-dl-stepper {gap: 4px; padding: 5px 6px 5px 9px; font-size: 11px; flex: 1; justify-content: space-between;}
+    .daily-listening-ios .ios-dl-stepper button {width: 26px; height: 28px;}
+    .daily-listening-ios .ios-dl-stepper output {min-width: 32px; font-size: 11px;}
+    .daily-listening-ios .ios-dl-transport {position: fixed; z-index: 1040; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); gap: 24px; min-width: 240px; padding: 8px 16px; border-color: white; background: rgba(247, 250, 255, .87); box-shadow: 0 8px 32px #223e6529, inset 0 1px 0 white;}
+    .daily-listening-ios .ios-dl-transport button {min-height: 44px; min-width: 44px;}
+    .daily-listening-ios .ios-dl-keyboard-hint {display: none;}
+    .daily-listening-ios .youtube-gap-split-layout {gap: 16px;}
+    .daily-listening-ios .youtube-gap-left, .daily-listening-ios .youtube-gap-right, .daily-listening-ios .gap-filling-scroll-box {border-radius: 20px;}
+    .daily-listening-ios .ios-dl-panel-heading {padding: 16px; min-height: 54px; font-size: 12px; gap: 8px;}
+    .daily-listening-ios .ios-dl-panel-heading small {font-size: 10px;}
+    .daily-listening-ios .daily-listening-transcript {padding: 18px 16px 26px; font-size: 14px; line-height: 2.5;}
+    .daily-listening-ios input.gap-inline-input {width: 72px !important; min-width: 56px; font-size: 14px !important;}
+    .daily-listening-ios .daily-listening-resume-banner {flex-wrap: wrap;}
+    .daily-listening-ios .daily-listening-resume-copy span {white-space: normal;}
+}
+.global-dark-mode .daily-listening-ios {--dl-ink: #eaf0fa; --dl-muted: #a1b0c4; --dl-blue: #75b7ff; --dl-surface: rgba(31,43,62,.88); --dl-content: rgba(25,36,53,.97); --dl-edge: rgba(135,163,202,.2); --dl-shadow: 0 12px 36px #00000020, inset 0 1px 0 #ffffff09; background: radial-gradient(ellipse at 90% 0, #243c60, transparent 45%), #121d2d; border-color: #304057;}
+.global-dark-mode .daily-listening-ios .daily-listening-transcript, .global-dark-mode .daily-listening-ios .ios-dl-panel-heading {color: #d8e2f2;}
+.global-dark-mode .daily-listening-ios .ios-dl-gap-setting, .global-dark-mode .daily-listening-ios .ios-dl-transport {background: #20314bd9; border-color: #3e5270;}
+.global-dark-mode .daily-listening-ios .gap-english-theme button {color: #bcd9ff !important; border-color: #3e5270 !important;}
+.global-dark-mode .daily-listening-ios .gap-english-theme button:hover {background: #2b4467 !important;}
+.global-dark-mode .daily-listening-ios input.gap-inline-input {background: #273b56; color: #c9e0ff; border-bottom-color: #5e7a9d !important;}
+.global-dark-mode .daily-listening-ios .ios-dl-controls .ios-dl-transport button.ios-dl-play {background: #1677ed !important; color: white !important;}
+.global-dark-mode .daily-listening-ios .gap-english-theme button.ios-dl-submit {background: #21466d !important; color: #bcd9ff !important; border-color: #3e5270 !important;}
+.global-dark-mode .daily-listening-ios .ios-dl-panel-heading {border-bottom-color: #34445c;}
+.global-dark-mode .daily-listening-ios .ios-dl-media-strip audio {color-scheme: dark;}
+.global-dark-mode .daily-listening-ios .ios-dl-progress-track {background: #33465f;}
+.global-dark-mode .daily-listening-ios .ios-dl-goal, .global-dark-mode .daily-listening-ios .ios-dl-back {color: #a8ccff;}
+.global-dark-mode .daily-listening-ios input.gap-inline-input[style*="background"] {color: #173a46;}
+@media (prefers-reduced-motion: reduce) {
+    .daily-listening-ios *, .daily-listening-ios *::before, .daily-listening-ios *::after {transition: none !important; animation: none !important;}
+}
+@media (prefers-reduced-transparency: reduce) {
+    .daily-listening-ios {--dl-surface: #fff; --dl-content: #fff;}
+    .daily-listening-ios .ios-dl-transport {background: #f7faff; backdrop-filter: none; -webkit-backdrop-filter: none;}
+    .global-dark-mode .daily-listening-ios {--dl-surface: #1f2b3e; --dl-content: #192435;}
+    .global-dark-mode .daily-listening-ios .ios-dl-transport {background: #20314b;}
+}

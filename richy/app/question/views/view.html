@@ -1,4 +1,4 @@
-<div class="row margin-top-10">
+<div class="row margin-top-10" ng-class="{'daily-listening-ios': vm.isStandaloneDailyListening}">
     <div class="col-md-12">
 
         <div class="portlet light bordered">
@@ -177,12 +177,16 @@
 
                 </div>
                 <section ng-if="vm.isStandaloneDailyListening" class="daily-listening-standalone-heading">
-                    <h1>Daily Listening</h1>
-                    <p>Nghe và điền từ vào gaps. Đạt ít nhất 90% gaps là hoàn thành.</p>
+                    <a class="ios-dl-back" href="daily_listening_tests"><i class="fa fa-chevron-left" aria-hidden="true"></i> Thư viện bài nghe</a>
+                    <div class="ios-dl-page-heading">
+                        <div class="ios-dl-app-icon" aria-hidden="true"><i class="fa fa-headphones"></i></div>
+                        <div><p class="ios-dl-eyebrow">MỖI NGÀY MỘT CHÚT TIẾN BỘ</p><h1>Daily Listening</h1><p>Nghe và điền từ. Đúng từ 90% gaps là hoàn thành.</p></div>
+                        <span class="ios-dl-goal"><i class="fa fa-check-circle" aria-hidden="true"></i> Mục tiêu 90%</span>
+                    </div>
                     <p ng-if="vm.standaloneListeningLoading" role="status">Đang tải bài nghe...</p>
                     <p ng-if="vm.standaloneListeningError" role="alert">{{vm.standaloneListeningError}} <button type="button" class="btn btn-default btn-sm" ng-click="vm.getPageFlashCard()">Thử lại</button></p>
                 </section>
-                <div ng-hide="vm.mode.id == 9 || vm.mode.id == 10" class="row">
+                <div ng-hide="vm.isStandaloneDailyListening || vm.mode.id == 9 || vm.mode.id == 10" class="row">
                     <div class="col-md-12 bold text-center" style="margin-top:7px">
                         <span>{{vm.showDateTime}}</span>
                     </div>
@@ -885,9 +889,13 @@
                                         <i ng-class="vm.showGapTitleTable ? 'fa fa-eye-slash' : 'fa fa-list'"></i> {{ vm.showGapTitleTable ? 'Ẩn Title' : 'Hiện Title' }}
                                     </button>
 
-                                    <span>Progress: {{vm.percentage}}%</span>
+                                    <span ng-if="!vm.isStandaloneDailyListening">Progress: {{vm.percentage}}%</span>
+                                    <div ng-if="vm.isStandaloneDailyListening" class="ios-dl-progress">
+                                        <div><span>Tiến độ bài nghe</span><strong>{{vm.percentage || 0}}%</strong></div>
+                                        <div class="ios-dl-progress-track" role="progressbar" aria-label="Tiến độ bài nghe" aria-valuenow="{{vm.percentage || 0}}" aria-valuemin="0" aria-valuemax="100"><span ng-style="{'width': (vm.percentage || 0) + '%'}"></span></div>
+                                    </div>
 
-                                    <span class="daily-listening-surrender-wrap">
+                                    <span class="daily-listening-surrender-wrap" ng-if="!vm.isStandaloneDailyListening">
                                         <button class="btn btn-danger" ng-click="vm.saveTestResult()"
                                                 ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id">
                                             SURRENDER
@@ -902,7 +910,7 @@
                                         {{vm.dailyListeningDraftMessage}}
                                     </small>
 
-                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15" class="gap-rate-control">
+                                <span ng-if="!vm.isStandaloneDailyListening && (vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15)" class="gap-rate-control">
                                     <label class="bold gap-rate-label">Gap rate:</label>
 
                                     <button type="button" class="btn btn-default btn-sm gap-rate-btn" ng-click="vm.adjustGapRate(-5)" ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent" title="Giảm 5%" aria-label="Giảm Gap rate 5%">
@@ -917,6 +925,10 @@
                                         <i class="fa-solid fa-chevron-up"></i>
                                     </button>
                                 </span>
+                                    <div class="ios-dl-lesson-actions" ng-if="vm.isStandaloneDailyListening">
+                                        <div class="ios-dl-gap-setting"><label for="ios-dl-gap-rate">Ẩn từ</label><button type="button" ng-click="vm.adjustGapRate(-5)" ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent" aria-label="Giảm Gap rate 5%"><i class="fa fa-minus" aria-hidden="true"></i></button><input id="ios-dl-gap-rate" type="number" min="30" max="100" step="5" inputmode="numeric" ng-model="vm.gapRatePercent" ng-change="vm.changeGapRate()" ng-model-options="{debounce:500}" aria-label="Tỷ lệ gaps"><span>%</span><button type="button" ng-click="vm.adjustGapRate(5)" ng-disabled="vm.gapRatePercent >= vm.maxGapRatePercent" aria-label="Tăng Gap rate 5%"><i class="fa fa-plus" aria-hidden="true"></i></button></div>
+                                        <button type="button" class="ios-dl-submit" ng-click="vm.saveTestResult()" ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id"><i class="fa" ng-class="vm.savingTestResult ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i> {{vm.savingTestResult ? 'Đang lưu...' : vm.isSaveTestResult ? 'Đã nộp' : 'Nộp bài'}}</button>
+                                    </div>
                                 <span ng-if="vm.mode.id == 15" class="gap-rate-control gap-vni2-max-words-control">
                                     <label class="bold gap-rate-label">Max từ / gap:</label>
 
@@ -929,7 +941,7 @@
                             </div>
 
                             <!-- MOBILE FIXED AUDIO/YOUTUBE CONTROLS -->
-                            <div class="gap-mobile-fixed-audio-controls" ng-if="vm.mode.id == 8">
+                            <div class="gap-mobile-fixed-audio-controls" ng-if="vm.mode.id == 8 && !vm.isStandaloneDailyListening">
 
                                 <button type="button" class="gap-mobile-audio-btn gap-mobile-back-btn" ng-click="vm.backwardAudio($event)" aria-label="Playback 3 seconds">
                                     <i class="fa fa-backward" aria-hidden="true"></i>
@@ -946,7 +958,20 @@
 
                             </div>
 
-                            <div class="gap-main-control-box" ng-if="vm.mode.id != 11 && vm.mode.id != 15">
+                            <div class="ios-dl-controls" ng-if="vm.isStandaloneDailyListening" aria-label="Điều khiển bài nghe">
+                                <div class="ios-dl-media-strip" ng-if="!vm.isYoutubeAudio"><i class="fa fa-music" aria-hidden="true"></i><audio id="main-audio" controls controlsList="nodownload" aria-label="Audio bài nghe"></audio></div>
+                                <div class="ios-dl-transport" role="group" aria-label="Phát bài nghe">
+                                    <button type="button" ng-click="vm.backwardAudio($event)" aria-label="Playback 3 seconds"><i class="fa fa-backward" aria-hidden="true"></i><span>3s</span></button>
+                                    <button type="button" class="ios-dl-play" ng-click="vm.togglePauseAudio($event)" aria-label="{{vm.gapAudioPlaying ? 'Tạm dừng bài nghe' : 'Phát bài nghe'}}" aria-pressed="{{!!vm.gapAudioPlaying}}"><i class="fa" ng-class="vm.gapAudioPlaying ? 'fa-pause' : 'fa-play'" aria-hidden="true"></i></button>
+                                    <button type="button" ng-click="vm.forwardAudio($event)" aria-label="Forward 3 seconds"><i class="fa fa-forward" aria-hidden="true"></i><span>3s</span></button>
+                                </div>
+                                <div class="ios-dl-adjustments">
+                                    <div class="ios-dl-stepper" role="group" aria-label="Tốc độ phát"><span>Tốc độ</span><button type="button" ng-click="vm.decreaseSpeed()" ng-disabled="vm.playbackValue <= 0.6" aria-label="Giảm tốc độ"><i class="fa fa-minus" aria-hidden="true"></i></button><output>{{vm.playbackValue | number:1}}×</output><button type="button" ng-click="vm.increaseSpeed()" ng-disabled="vm.playbackValue >= 4" aria-label="Tăng tốc độ"><i class="fa fa-plus" aria-hidden="true"></i></button></div>
+                                    <div class="ios-dl-stepper" role="group" aria-label="Âm lượng"><i class="fa fa-volume-up" aria-hidden="true"></i><span class="sr-only">Âm lượng</span><button type="button" ng-click="vm.decreaseVolume()" ng-disabled="vm.volumeValue <= 0" aria-label="Giảm âm lượng"><i class="fa fa-minus" aria-hidden="true"></i></button><output>{{vm.volumeValue * 100 | number:0}}%</output><button type="button" ng-click="vm.increaseVolume()" ng-disabled="vm.volumeValue >= 1" aria-label="Tăng âm lượng"><i class="fa fa-plus" aria-hidden="true"></i></button></div>
+                                </div>
+                                <p class="ios-dl-keyboard-hint"><kbd>Space</kbd> Phát / dừng <span>·</span> <kbd>←</kbd><kbd>→</kbd> Tua 3 giây</p>
+                            </div>
+                            <div class="gap-main-control-box" ng-if="!vm.isStandaloneDailyListening && vm.mode.id != 11 && vm.mode.id != 15">
 
                                 <div ng-if="vm.isYoutubeAudio" class="gap-youtube-note">
                                     YouTube mode: dùng nút dưới đây để pause / back 3s / forward 3s
@@ -1012,6 +1037,7 @@
 
                                 <div class="row margin-top-10 margin-bottom-10 filling-content gap-filling-scroll-box">
                                     <div class="col-md-12">
+                                        <div class="ios-dl-panel-heading" ng-if="vm.isStandaloneDailyListening"><span><i class="fa fa-pencil" aria-hidden="true"></i> Điền từ còn thiếu</span><small>Nghe kỹ, điền từng từ</small></div>
                                         <div class="bold" ng-class="{
                                                  'gap-english-content': vm.mode.id == 8,
                                                  'daily-listening-transcript': vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING',
@@ -1031,6 +1057,7 @@
                             <div ng-if="vm.mode.id != 11 && vm.mode.id != 15 && vm.isYoutubeAudio" class="youtube-gap-split-layout">
 
                                 <div class="youtube-gap-left">
+                                    <div class="ios-dl-panel-heading" ng-if="vm.isStandaloneDailyListening"><span><i class="fa fa-play-circle" aria-hidden="true"></i> Video bài nghe</span><small>YouTube</small></div>
                                     <div class="row audio-menu">
                                         <div class="col-md-12 text-center">
 
@@ -1043,6 +1070,7 @@
                                 </div>
 
                                 <div class="youtube-gap-right">
+                                    <div class="ios-dl-panel-heading" ng-if="vm.isStandaloneDailyListening"><span><i class="fa fa-pencil" aria-hidden="true"></i> Điền từ còn thiếu</span><small>Nghe kỹ, điền từng từ</small></div>
 
                                     <div class="row margin-top-10 margin-bottom-10 filling-content">
                                         <div class="col-md-12">

@@ -4411,6 +4411,7 @@
                                 }
                             },
                             onStateChange: function (event) {
+                                if (!$scope.$$destroyed) { $scope.$evalAsync(function () { vm.gapAudioPlaying = event.data === 1 || event.data === 3; }); }
                                 // console.log('YOUTUBE STATE:', event.data);
 
                                 if (window.YT &&
@@ -4522,7 +4523,22 @@
             });
         }
 
+        var gapAudioStateElement = null;
+        function syncGapAudioPlaying() {
+            if (!$scope.$$destroyed && gapAudioStateElement) {
+                $scope.$evalAsync(function () { vm.gapAudioPlaying = !!gapAudioStateElement && !gapAudioStateElement.paused && !gapAudioStateElement.ended; });
+            }
+        }
+        function unbindGapAudioState() {
+            if (gapAudioStateElement) {
+                ['play', 'pause', 'ended', 'emptied'].forEach(function (name) { gapAudioStateElement.removeEventListener(name, syncGapAudioPlaying); });
+                gapAudioStateElement = null;
+            }
+        }
+        $scope.$on('$destroy', unbindGapAudioState);
         vm.setUpAudio = function () {
+            vm.gapAudioPlaying = false;
+            unbindGapAudioState();
             mainAudio = document.getElementById('main-audio');
 
             var mediaUrl = '';
@@ -4564,6 +4580,8 @@
                 audio.src = mediaUrl;
                 audio.load();
                 audio.loop = true;
+                gapAudioStateElement = audio;
+                ['play', 'pause', 'ended', 'emptied'].forEach(function (name) { audio.addEventListener(name, syncGapAudioPlaying); });
 
                 applyNormalAudioSettings();
             }, 0);
