@@ -5,6 +5,26 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class GiftDropGameTest {
+    private int firstBoostedTicket(GiftDropGame game, TicketRandom random, int level) {
+        int low=0, high=1000000;
+        while(low<high){int middle=low+(high-low)/2;random.ticket=middle;String user="boost-"+middle;
+            GiftDropGame.Gift gift=game.claim(user,game.snapshot(user).gifts.get(0).id,true);
+            if(gift.rewardLevel<level){low=middle+1;}else{high=middle;}}
+        return low;
+    }
+    @Test public void lightningRaisesEachTomThroughPikachuChanceByTenPercentWithoutChangingIdsOrPoints() {
+        TicketRandom random=new TicketRandom(); GiftDropGame game=new GiftDropGame(10,random,Collections.<String>emptyList(),knownCatalog());
+        for(int level=9;level<=20;level++){
+            int normal=ticketsForLevel(game,random,level);
+            int boosted=firstBoostedTicket(game,random,level+1)-firstBoostedTicket(game,random,level);
+            assertEquals("Level "+level,Math.round(normal*1.1D),boosted);
+        }
+        int ticket=firstBoostedTicket(game,random,9);random.ticket=ticket;
+        String id=game.snapshot("before-lightning").gifts.get(0).id;
+        GiftDropGame.Gift gift=game.claim("before-lightning",id,true);
+        assertEquals(id,gift.id);assertEquals(9,gift.rewardLevel);assertEquals(100D,gift.points,0D);
+        assertEquals(0D,GiftDropGame.lightningGift("lightning").points,0D);
+    }
     @Test public void everyPlayerImmediatelyHasThreeEggsAndClaimsRefillOnlyTheirOwnPool() {
         GiftDropGame game = new GiftDropGame(10, new Random(3));
         GiftDropGame.Snapshot alice = game.snapshot("alice"), bob = game.snapshot("bob");

@@ -1,52 +1,10 @@
 <div class="battle-exercise-picker">
     <label>ĐỀ BÀI TẬP TỔNG HỢP</label>
-    <div class="battle-exercise-filters">
-        <label>Lọc đề
-            <select class="form-control" ng-model="vm.exerciseFilterMode" ng-change="vm.changeExerciseFilter()">
-                <option value="ALL">Tất cả đề</option><option value="TOPIC">Theo topic</option><option value="UNASSIGNED">Chưa gắn topic</option>
-            </select>
-        </label>
-        <label>Nguồn topic
-            <select class="form-control" ng-model="vm.exerciseTopicOwnerId" ng-change="vm.changeExerciseTopicSource()"
-                    ng-disabled="vm.exerciseFilterMode !== 'TOPIC'" ng-options="owner.id as owner.name for owner in vm.topicOwners"></select>
-        </label>
-        <label>Category / Grade
-            <select class="form-control" ng-model="vm.exerciseTopicCategoryId" ng-change="vm.changeExerciseTopicCategory()"
-                    ng-disabled="vm.exerciseFilterMode !== 'TOPIC' || vm.loadingExerciseTopics"
-                    ng-options="category.id as category.name for category in vm.exerciseTopicCategories"><option value="">Tất cả category</option></select>
-        </label>
-        <label>Topic
-            <ui-select theme="bootstrap" ng-model="vm.exerciseTopicId" ng-change="vm.loadExerciseTests(1)"
-                       ng-disabled="vm.exerciseFilterMode !== 'TOPIC' || vm.loadingExerciseTopics">
-                <ui-select-match allow-clear="true" placeholder="Tìm / chọn topic...">{{$select.selected.name}}</ui-select-match>
-                <ui-select-choices repeat="topic.id as topic in vm.exerciseTopics | filter:$select.search">
-                    <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                </ui-select-choices>
-            </ui-select>
-        </label>
-    </div>
-    <p ng-if="vm.loadingExerciseTopics && vm.exerciseFilterMode === 'TOPIC'">Đang tải topic...</p>
-    <button type="button" class="btn btn-default" ng-if="vm.exerciseTopicError && vm.exerciseFilterMode === 'TOPIC'" ng-click="vm.loadExerciseTopicSource()">{{vm.exerciseTopicError}}</button>
-    <form ng-submit="vm.loadExerciseTests(1)" class="battle-exercise-search">
-        <input class="form-control" type="search" ng-model="vm.exerciseSearch" placeholder="Tìm theo tên đề..." />
-        <button class="btn btn-default" type="submit" ng-disabled="vm.loadingExercises">Tìm đề</button>
-    </form>
-    <p ng-if="vm.loadingExercises">Đang tải đề...</p>
-    <p class="text-danger" ng-if="vm.exerciseLoadError">{{vm.exerciseLoadError}}</p>
-    <div class="battle-exercise-catalog" ng-if="!vm.loadingExercises">
-        <button type="button" class="btn btn-default" ng-repeat="test in vm.exerciseTests track by test.id"
-                ng-click="vm.addExerciseTest(test)">＋ {{test.title || ('Đề ' + test.id)}}</button>
-        <p ng-if="!vm.exerciseTests.length && !vm.exerciseLoadError">Không có đề đã xuất bản phù hợp.</p>
-    </div>
-    <div class="battle-exercise-search">
-        <button type="button" class="btn btn-default" ng-disabled="vm.exercisePage <= 1 || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage - 1)">Trang trước</button>
-        <span>{{vm.exercisePage}} / {{vm.exerciseTotalPages}}</span>
-        <button type="button" class="btn btn-default" ng-disabled="vm.exercisePage >= vm.exerciseTotalPages || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage + 1)">Trang sau</button>
-    </div>
+    <button type="button" class="btn btn-primary" ng-click="vm.openExercisePicker($event)">📁 Chọn đề theo thư mục / tìm tên</button>
     <div class="battle-online-selected-topics">
         <div class="battle-online-selected-topic" ng-repeat="test in vm.selectedExerciseTests track by test.id">
             <strong>{{test.title}}</strong><button type="button" ng-click="vm.removeExerciseTest(test)" aria-label="Bỏ đề">×</button>
         </div>
     </div>
-    <p>Mỗi câu con trong package là một lượt chơi riêng. Với trắc nghiệm một đáp án, bấm đáp án để trả lời ngay như flashcard.</p>
+    <p>Mỗi câu con trong đề là một lượt chơi riêng.</p>
 </div>

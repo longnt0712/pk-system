@@ -87,6 +87,10 @@
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode)
             ).then(function (response) { return response.data; });
         };
+        self.getExerciseFolders = function () {
+            return $http.get(apiUrl.replace(/battle-online$/, 'test_folder'), {params: {allTeachers: true, testMode: 'COMPREHENSIVE'}})
+                .then(function (response) { return response.data; });
+        };
 
         self.extendMatchTime = function (roomCode) {
             return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/time-extension', {}, {timeout: 10000})

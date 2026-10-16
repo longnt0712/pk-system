@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 360">
+  <defs><linearGradient id="bolt" x1="0" x2=".8" y2="1"><stop stop-color="#fff447"/><stop offset=".5" stop-color="#ffc400"/><stop offset="1" stop-color="#ff7613"/></linearGradient></defs>
+  <path d="M213 13 61 167h73L35 344l210-210h-83L263 8Z" fill="url(#bolt)" stroke="#25202a" stroke-width="9" stroke-linejoin="miter"/>
+  <path d="m213 32-125 122h72L69 295l150-145h-79Z" fill="none" stroke="#fff79a" stroke-width="5"/>
+  <path d="m48 157-35 72h30L18 284l75-90H60l23-52Z" fill="#ffc900" stroke="#25202a" stroke-width="6"/>
+</svg>

@@ -79,7 +79,7 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
             if (item == null) { continue; }
             String purpose = trim(item.getPurpose());
             if (purpose.isEmpty()) { purpose = "BATTLE"; }
-            if (!"BATTLE".equals(purpose) && !"DEMON_DANGER".equals(purpose)) {
+            if (!"BATTLE".equals(purpose) && !"DEMON_DANGER".equals(purpose) && !"LUM_LIGHTNING".equals(purpose)) {
                 throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Loại nhạc không hợp lệ.");
             }
             String inputUrl = trim(item.getUrl());
@@ -150,6 +150,7 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
                 result.getTracks().add(item);
             }
             addDefaultDangerTrack(result);
+            addDefaultLightningTrack(result);
             return result;
         }
 
@@ -159,6 +160,9 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
             hasDangerTrack = hasDangerTrack || "DEMON_DANGER".equals(track.getPurpose());
         }
         if (!hasDangerTrack) { addDefaultDangerTrack(result); }
+        boolean hasLightningTrack = false;
+        for (BattleMusicTrackDto track : result.getTracks()) { hasLightningTrack |= "LUM_LIGHTNING".equals(track.getPurpose()); }
+        if (!hasLightningTrack) { addDefaultLightningTrack(result); }
         return result;
     }
 
@@ -170,6 +174,13 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
         track.setUrl("https://www.youtube.com/watch?v=MR-ZRkhZK0M");
         track.setDisplayOrder(config.getTracks().size());
         config.getTracks().add(track);
+    }
+
+    private void addDefaultLightningTrack(BattleMusicConfigDto config) {
+        BattleMusicTrackDto track = new BattleMusicTrackDto();
+        track.setName("Lụm ngay — Sét may mắn"); track.setPurpose("LUM_LIGHTNING");
+        track.setVideoId("gOMUTUvVwEk"); track.setUrl("https://www.youtube.com/watch?v=gOMUTUvVwEk");
+        track.setEnabled(Boolean.TRUE); track.setDisplayOrder(config.getTracks().size()); config.getTracks().add(track);
     }
 
     private String extractVideoId(String value) {

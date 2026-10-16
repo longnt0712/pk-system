@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.globits.richy.battle.DemonDefenseGame;
 import com.globits.richy.battle.GiftDropGame;
+import com.globits.richy.battle.GiftLightningGame;
 
 public class BattleOnlineRoomDto implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -72,6 +73,9 @@ public class BattleOnlineRoomDto implements Serializable {
     private int dumbBallMaxDistance;
     private DemonDefenseGame.Snapshot demonDefense;
     private GiftDropGame.Snapshot giftDrop;
+    private GiftLightningGame.Snapshot giftLightning;
+    public GiftLightningGame.Snapshot getGiftLightning() { return giftLightning; }
+    public void setGiftLightning(GiftLightningGame.Snapshot value) { giftLightning = value; }
     private Integer giftCredits;
     private Long giftCreditVersion;
     public Long getGiftCreditVersion() { return giftCreditVersion; }

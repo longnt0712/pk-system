@@ -60,7 +60,7 @@ public class BattleMusicConfigServiceTest {
         assertEquals("RRpINBQCI48", danger(saved).getVideoId());
         assertEquals("https://www.youtube.com/watch?v=RRpINBQCI48", danger(saved).getUrl());
         assertEquals("Custom danger song", danger(service.getActiveConfig()).getName());
-        assertEquals(4, stored.size());
+        assertEquals(5, stored.size());
     }
 
     @Test public void disabledDangerSongStaysDisabledAfterSave() {
@@ -69,7 +69,7 @@ public class BattleMusicConfigServiceTest {
         service.saveConfig(config);
         assertFalse(danger(service.getAdminConfig()).getEnabled());
         for (BattleMusicTrackDto track : service.getActiveConfig().getTracks()) {
-            assertEquals("BATTLE", track.getPurpose());
+            assertNotEquals("DEMON_DANGER", track.getPurpose());
         }
     }
 
@@ -78,6 +78,16 @@ public class BattleMusicConfigServiceTest {
         danger(config).setUrl("invalid video");
         try { service.saveConfig(config); fail("Invalid link must be rejected"); }
         catch (BattleOnlineException expected) { verify(repository, never()).deleteAll(); }
+    }
+    @Test public void lightningMusicHasItsOwnEditablePurposeAndCanBeDisabled() {
+        BattleMusicConfigDto config=service.getAdminConfig(); BattleMusicTrackDto lightning=null;
+        for(BattleMusicTrackDto track:config.getTracks()){if("LUM_LIGHTNING".equals(track.getPurpose())){lightning=track;}}
+        assertNotNull(lightning);assertEquals("gOMUTUvVwEk",lightning.getVideoId());
+        lightning.setUrl("https://youtu.be/RRpINBQCI48"); lightning.setEnabled(false); service.saveConfig(config);
+        boolean saved=false;
+        for(BattleMusicTrackDto track:service.getAdminConfig().getTracks()){if("LUM_LIGHTNING".equals(track.getPurpose())){saved=true;assertEquals("RRpINBQCI48",track.getVideoId());assertFalse(track.getEnabled());}}
+        assertTrue(saved);
+        for(BattleMusicTrackDto track:service.getActiveConfig().getTracks()){assertNotEquals("LUM_LIGHTNING",track.getPurpose());}
     }
 
     @Test public void onlyDangerMusicCannotReplaceTheRegularPlaylist() {

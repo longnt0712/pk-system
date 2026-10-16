@@ -11,13 +11,13 @@ function exerciseForm(scope) {
  return scope;
 }
 function setup(username='alice') {
- let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[],listCalls=[],reopenCalls=[];
+ let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[],listCalls=[],reopenCalls=[],folderCalls=[];
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(){},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
- const service={answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
+ const service={getExerciseFolders(){return new Promise((resolve,reject)=>folderCalls.push({resolve,reject}));},answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
   getVideoQuestions(...args){return new Promise((resolve,reject)=>listCalls.push({args,resolve,reject}));},
   reopenVideoQuestion(...args){return new Promise((resolve,reject)=>reopenCalls.push({args,resolve,reject}));},
   videoEvent(...args){return new Promise((resolve,reject)=>videoCalls.push({args,resolve,reject}));}};
@@ -30,7 +30,7 @@ function setup(username='alice') {
    players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false,teamNumber:1},{username:'bob',connected:true,spectator:false,teamNumber:2}],recentEvents:[],
    currentQuestion:{id:102,sequence:seq,answers:[],exercise:{answerMode:'TEXT',type:11,items:[{id:'103',number:1},{id:'104',number:2}]}}};
  }
- return {vm,hooks,calls,warnings,videoCalls,listCalls,reopenCalls,room,resolve(result){resolveAnswer(result);}};
+ return {vm,hooks,calls,warnings,videoCalls,listCalls,reopenCalls,folderCalls,window,room,resolve(result){resolveAnswer(result);}};
 }
 function videoRoom(h,mode='CLASSIC',phase='WATCHING',seq=1,revision=1) {
  const room=h.room(mode,seq); Object.assign(room,{videoSynchronized:true,videoPhase:phase,videoRevision:revision,
@@ -243,7 +243,9 @@ test('Guess timeout submits partial answers once and a late response cannot rewi
 });
 test('canceling the lobby editor restores saved source and exercises',()=>{
  const h=setup('host'),room=h.room();room.status='LOBBY';h.hooks.applyRoom(room,false);
- h.vm.lobbyTopicEditorOpen=true;h.vm.questionSource='VOCABULARY';h.vm.selectedExerciseTests=[];h.vm.closeLobbyTopicEditor();
+ h.vm.openLobbyTopicEditor();assert.equal(h.vm.exercisePickerOpen,true);
+ h.vm.questionSource='VOCABULARY';h.vm.selectedExerciseTests=[];h.vm.closeLobbyTopicEditor();
+ assert.equal(h.vm.exercisePickerOpen,false);
  assert.equal(h.vm.questionSource,'COMPREHENSIVE');assert.deepEqual(plain(h.vm.selectedExerciseTests),[{id:100,title:'Đề tổng hợp'}]);
 });
 
@@ -294,4 +296,37 @@ test('team summaries keep stable references until the scores actually change',()
  const h=setup();h.hooks.applyRoom(h.room(),false);
  const first=h.vm.getTeamSummaries();assert.strictEqual(first,h.vm.getTeamSummaries());
  h.vm.room.players[1].score=5;const changed=h.vm.getTeamSummaries();assert.notStrictEqual(changed,first);assert.equal(changed[0].score,5);
+});
+
+test('comprehensive picker navigates folders and searches both folder and file names globally',async()=>{
+ const h=setup();h.vm.questionSource='COMPREHENSIVE';h.vm.changeQuestionSource();
+ assert.equal(h.vm.exercisePickerOpen,true);h.folderCalls[0].resolve([
+  {id:1,name:'Grade 8',parentId:null},{id:2,name:'Grammar',parentId:1},{id:3,name:'Video lessons',parentId:null}
+ ]);await new Promise(setImmediate);
+ assert.deepEqual(plain(h.vm.visibleExerciseFolders.map(f=>f.id)),[1,3]);
+ assert.equal(h.calls.at(-1)[0].withoutTestFolder,true);
+ await h.vm.openExerciseFolder(1);assert.deepEqual(plain(h.vm.visibleExerciseFolders.map(f=>f.id)),[2]);
+ assert.equal(h.calls.at(-1)[0].testFolderId,1);assert.equal(h.calls.at(-1)[0].includeSubfolders,false);
+ await h.vm.openExerciseFolder(2);assert.deepEqual(plain(h.vm.exerciseBreadcrumbs.map(f=>f.id)),[1,2]);
+ h.vm.exerciseSearch='VIDEO';await h.vm.searchExerciseCatalog();
+ assert.deepEqual(plain(h.vm.visibleExerciseFolders.map(f=>f.id)),[3]);
+ const dto=h.calls.at(-1)[0];assert.equal(dto.textSearch,'VIDEO');assert.equal(dto.testFolderId,null);
+ assert.equal(dto.includeSubfolders,true);assert.equal(dto.withoutTestFolder,false);assert.equal(dto.testFormat,'COMPREHENSIVE');
+ await h.vm.openExerciseFolder(null);assert.equal(h.vm.exerciseSearch,'');assert.equal(h.vm.exerciseBreadcrumbs.length,0);
+ for(let id=1;id<=11;id++)h.vm.addExerciseTest({id,title:'Test '+id});
+ assert.equal(h.vm.selectedExerciseTests.length,10);assert.equal(h.warnings.length,1);
+ h.vm.closeExercisePicker();assert.equal(h.vm.selectedExerciseTests.length,10);
+});
+test('closed or superseded folder requests cannot replace the current list, and Escape restores focus',async()=>{
+ const h=setup();let focus=0,prevented=0;const locked=new Set();
+ h.window.document.body.classList={add(c){locked.add(c);},remove(c){locked.delete(c);}};
+ await h.vm.openExercisePicker({currentTarget:{focus(){focus++;}}});
+ assert.ok(locked.has('battle-exercise-picker-open'));
+ h.hooks.keydownHandler({key:'Escape',preventDefault(){prevented++;}});
+ assert.equal(h.vm.exercisePickerOpen,false);assert.equal(prevented,1);assert.equal(focus,1);assert.equal(locked.size,0);
+ h.folderCalls[0].resolve([{id:1,name:'Old folder'}]);await new Promise(setImmediate);
+ assert.equal(h.vm.exerciseFolders.length,0);
+ await h.vm.openExercisePicker();await h.vm.openExercisePicker();
+ h.folderCalls[2].resolve([{id:3,name:'Current folder'}]);h.folderCalls[1].reject(new Error('old error'));
+ await new Promise(setImmediate);assert.equal(h.vm.exerciseFolderError,'');assert.equal(h.vm.exerciseFolders[0].id,3);
 });

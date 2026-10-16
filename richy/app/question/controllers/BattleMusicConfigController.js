@@ -19,7 +19,9 @@
             {purpose: 'BATTLE', title: 'Nhạc chung', label: 'TẤT CẢ MODE BATTLE ONLINE', icon: 'fa-music',
                 description: 'Phát ngẫu nhiên trong các mode Battle Online. Đây là nhạc nền khi trận đấu diễn ra bình thường.', addLabel: 'Thêm nhạc chung'},
             {purpose: 'DEMON_DANGER', title: 'Nhạc lúc nguy hiểm', label: 'MODE DIỆT QUỶ NGU', icon: 'fa-exclamation-triangle',
-                description: 'Phát khi có đội còn sống chạm ngưỡng nguy hiểm trong Diệt Quỷ Ngu. Khi an toàn, nhạc chung phát trở lại.', addLabel: 'Thêm nhạc nguy hiểm'}
+                description: 'Phát khi có đội còn sống chạm ngưỡng nguy hiểm trong Diệt Quỷ Ngu. Khi an toàn, nhạc chung phát trở lại.', addLabel: 'Thêm nhạc nguy hiểm'},
+            {purpose: 'LUM_LIGHTNING', title: 'Nhạc Sét may mắn', label: 'MODE LỤM NGAY', icon: 'fa-bolt',
+                description: 'Phát trong 30 giây cả phòng hưởng sét. Giữa các đợt, nhạc này tạm dừng và tiếp tục từ vị trí cũ; hết bài mới phát lại.', addLabel: 'Thêm nhạc sét'}
         ];
 
         function setTracks(tracks) {
@@ -33,7 +35,7 @@
 
         vm.addTrack = function (purpose) {
             vm.tracks.push({
-                name: (purpose === 'DEMON_DANGER' ? 'Nhạc nguy hiểm ' : 'Battle music ') + (vm.tracks.length + 1),
+                name: (purpose === 'DEMON_DANGER' ? 'Nhạc nguy hiểm ' : purpose === 'LUM_LIGHTNING' ? 'Nhạc Sét may mắn ' : 'Battle music ') + (vm.tracks.length + 1),
                 url: '',
                 enabled: true,
                 purpose: purpose || 'BATTLE'

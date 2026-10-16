@@ -1,0 +1,24 @@
+<div class="battle-exercise-folder-backdrop" ng-click="vm.closeExercisePicker()">
+  <section id="battle-exercise-folder-modal" class="battle-exercise-folder-modal" role="dialog" aria-modal="true" aria-labelledby="battle-exercise-folder-title" ng-click="$event.stopPropagation()">
+    <header><div><small>ĐỀ TỔNG HỢP • BATTLE ONLINE</small><h2 id="battle-exercise-folder-title">Chọn đề theo thư mục</h2></div><button type="button" class="btn btn-default" aria-label="Đóng bộ chọn đề" ng-click="vm.closeExercisePicker()">×</button></header>
+    <div class="battle-exercise-folder-body">
+      <form class="battle-exercise-search" ng-submit="vm.searchExerciseCatalog()"><input id="battle-exercise-folder-search" class="form-control" type="search" ng-model="vm.exerciseSearch" placeholder="Tìm tên đề hoặc thư mục trong toàn bộ thư viện…"><button class="btn btn-primary" type="submit" ng-disabled="vm.loadingExercises">Tìm kiếm</button></form>
+      <div class="battle-exercise-filters">
+        <label>Lọc đề<select class="form-control" ng-model="vm.exerciseFilterMode" ng-change="vm.changeExerciseFilter()"><option value="ALL">Tất cả đề</option><option value="TOPIC">Theo topic</option><option value="UNASSIGNED">Chưa gắn topic</option></select></label>
+        <label ng-if="vm.exerciseFilterMode === 'TOPIC'">Nguồn topic<select class="form-control" ng-model="vm.exerciseTopicOwnerId" ng-change="vm.changeExerciseTopicSource()" ng-options="owner.id as owner.name for owner in vm.topicOwners"></select></label>
+        <label ng-if="vm.exerciseFilterMode === 'TOPIC'">Category / Grade<select class="form-control" ng-model="vm.exerciseTopicCategoryId" ng-change="vm.changeExerciseTopicCategory()" ng-options="category.id as category.name for category in vm.exerciseTopicCategories"><option value="">Tất cả category</option></select></label>
+        <label ng-if="vm.exerciseFilterMode === 'TOPIC'">Topic<select class="form-control" ng-model="vm.exerciseTopicId" ng-change="vm.loadExerciseTests(1)" ng-options="topic.id as topic.name for topic in vm.exerciseTopics"><option value="">Tất cả topic</option></select></label>
+      </div>
+      <p ng-if="vm.loadingExerciseTopics">Đang tải topic…</p><button type="button" class="btn btn-default" ng-if="vm.exerciseTopicError" ng-click="vm.loadExerciseTopicSource()">{{vm.exerciseTopicError}}</button>
+      <nav class="battle-exercise-folder-path" aria-label="Đường dẫn thư mục"><button type="button" ng-click="vm.openExerciseFolder(null)">Thư viện</button><span ng-repeat="folder in vm.exerciseBreadcrumbs track by folder.id"> / <button type="button" ng-click="vm.openExerciseFolder(folder.id)">{{folder.name}}</button></span></nav>
+      <p ng-if="vm.loadingExerciseFolders">Đang tải thư mục…</p><button type="button" class="btn btn-default" ng-if="vm.exerciseFolderError" ng-click="vm.openExercisePicker()">{{vm.exerciseFolderError}}</button>
+      <h3>Thư mục</h3><div class="battle-exercise-folder-grid"><button type="button" ng-repeat="folder in vm.visibleExerciseFolders track by folder.id" ng-click="vm.openExerciseFolder(folder.id)"><span aria-hidden="true">📁</span><strong>{{folder.name}}</strong></button></div>
+      <p class="text-muted" ng-if="!vm.loadingExerciseFolders && !vm.visibleExerciseFolders.length">Không có thư mục phù hợp.</p>
+      <h3>{{vm.exerciseSearch ? 'Đề tìm thấy trong toàn bộ thư viện' : 'Đề trong thư mục này'}}</h3>
+      <p ng-if="vm.loadingExercises">Đang tải đề…</p><p class="text-danger" ng-if="vm.exerciseLoadError">{{vm.exerciseLoadError}}</p>
+      <div class="battle-exercise-file-list" ng-if="!vm.loadingExercises"><button type="button" ng-repeat="test in vm.exerciseTests track by test.id" ng-click="vm.addExerciseTest(test)">📄 ＋ {{test.title || ('Đề ' + test.id)}}</button><p ng-if="!vm.exerciseTests.length">Không có đề đã xuất bản phù hợp.</p></div>
+      <div class="battle-exercise-search"><button type="button" class="btn btn-default" ng-disabled="vm.exercisePage <= 1 || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage-1)">Trang trước</button><span>{{vm.exercisePage}} / {{vm.exerciseTotalPages}}</span><button type="button" class="btn btn-default" ng-disabled="vm.exercisePage >= vm.exerciseTotalPages || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage+1)">Trang sau</button></div>
+    </div>
+    <footer><div class="battle-exercise-folder-selection"><span ng-repeat="test in vm.selectedExerciseTests track by test.id">{{test.title}} <button type="button" aria-label="Bỏ đề" ng-click="vm.removeExerciseTest(test)">×</button></span><span ng-if="!vm.selectedExerciseTests.length">Chưa chọn đề. Bạn có thể chọn tối đa 10 đề.</span></div><button type="button" class="btn btn-primary" ng-click="vm.closeExercisePicker()">Xong · {{vm.selectedExerciseTests.length}} đề</button></footer>
+  </section>
+</div>

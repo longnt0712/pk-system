@@ -8,6 +8,7 @@ public class GiftDropGame {
     public static final double ROTTEN_EGG_POINTS = 0.5D;
     public static final int SKILL_EGG_LEVEL = -2;
     public static final int PERRY_HAT_LEVEL = -3;
+    public static final int LIGHTNING_LEVEL = -4;
     public static final double PERRY_HAT_POINTS = 1D;
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
@@ -25,13 +26,18 @@ public class GiftDropGame {
         public final double points;
         public final String skillType;
         public final String rewardImage, rewardLabel;
+        private final int drawTicket;
         Gift(String id, int rewardLevel, double points) { this(id, rewardLevel, points, null); }
         Gift(String id, int rewardLevel, double points, String skillType) {
             this(id, rewardLevel, points, skillType, null, null);
         }
         Gift(String id, int rewardLevel, double points, String skillType, String rewardImage, String rewardLabel) {
+            this(id, rewardLevel, points, skillType, rewardImage, rewardLabel, -1);
+        }
+        private Gift(String id, int rewardLevel, double points, String skillType, String rewardImage, String rewardLabel, int drawTicket) {
             this.id = id; this.rewardLevel = rewardLevel; this.points = points; this.skillType = skillType;
             this.rewardImage = rewardImage; this.rewardLabel = rewardLabel;
+            this.drawTicket = drawTicket;
         }
     }
     public static class ClaimRecord {
@@ -83,6 +89,7 @@ public class GiftDropGame {
     private final int[] rewardWeights;
     private final int[] skillWeights;
     private final int rottenWeight, perryHatWeight;
+    private final int[] normalDrawWeights, lightningDrawWeights;
     private final Random random;
     private long version, nextId;
     private boolean finalPools;
@@ -201,6 +208,32 @@ public class GiftDropGame {
         for (int i = 0; i < newRewards.size(); i++) { ticketsByLevel.put(newRewards.get(i).level, newWeights[i]); }
         rewards = sorted; rewardWeights = new int[rewards.size()];
         for (int i = 0; i < rewards.size(); i++) { rewardWeights[i] = ticketsByLevel.get(rewards.get(i).level); }
+        normalDrawWeights = new int[skillWeights.length + 2 + rewardWeights.length];
+        System.arraycopy(skillWeights, 0, normalDrawWeights, 0, skillWeights.length);
+        normalDrawWeights[skillWeights.length] = rottenWeight;
+        normalDrawWeights[skillWeights.length + 1] = perryHatWeight;
+        System.arraycopy(rewardWeights, 0, normalDrawWeights, skillWeights.length + 2, rewardWeights.length);
+        lightningDrawWeights = boostedWeights();
+    }
+    private int[] boostedWeights() {
+        int[] boosted = normalDrawWeights.clone();
+        boolean[] target = new boolean[boosted.length];
+        int targetBefore = 0, targetAfter = 0;
+        for (int i = 0; i < rewards.size(); i++) {
+            if (rewards.get(i).referenceLevel < 9 || rewards.get(i).referenceLevel > 20) { continue; }
+            int index = skillWeights.length + 2 + i;
+            target[index] = true; targetBefore += normalDrawWeights[index];
+            boosted[index] = (int) Math.round(normalDrawWeights[index] * 1.10D); targetAfter += boosted[index];
+        }
+        if (targetBefore == 0 || targetAfter >= DRAW_RESOLUTION) { return normalDrawWeights.clone(); }
+        long cumulative = 0L, assigned = 0L;
+        for (int i = 0; i < boosted.length; i++) {
+            if (target[i]) { continue; }
+            cumulative += normalDrawWeights[i];
+            long tickets = cumulative * (DRAW_RESOLUTION - targetAfter) / (DRAW_RESOLUTION - targetBefore);
+            boosted[i] = (int) (tickets - assigned); assigned = tickets;
+        }
+        return boosted;
     }
     private static int rewardWeight(int index) { return Math.max(1, (int) Math.round(10000D * Math.pow(0.75D, index))); }
     private PlayerPool poolFor(String username) {
@@ -214,24 +247,22 @@ public class GiftDropGame {
     }
     private Gift drawGift() {
         String id = gameId + ":" + (++nextId);
-        int draw = random.nextInt(DRAW_RESOLUTION);
-        for (int i = 0; i < skillWeights.length; i++) {
-            if (draw < skillWeights[i]) { return new Gift(id, SKILL_EGG_LEVEL, 0D, skillTypes.get(i)); }
-            draw -= skillWeights[i];
-        }
-        if (draw < rottenWeight) { return new Gift(id, ROTTEN_EGG_LEVEL, ROTTEN_EGG_POINTS); }
-        draw -= rottenWeight;
-        if (draw < perryHatWeight) {
-            return new Gift(id, PERRY_HAT_LEVEL, PERRY_HAT_POINTS, null,
-                    "assets/images/learning-pets/perry/perry-hat.png", "Mũ Perry");
-        }
-        draw -= perryHatWeight;
-        return petGift(id, pickReward(rewards, rewardWeights, draw));
+        return giftForTicket(id, random.nextInt(DRAW_RESOLUTION), false);
     }
-    private static PetRewardCatalog.Reward pickReward(List<PetRewardCatalog.Reward> rewards, int[] rewardWeights, int draw) {
-        int index = 0;
-        while (index < rewardWeights.length - 1 && draw >= rewardWeights[index]) { draw -= rewardWeights[index++]; }
-        return rewards.get(index);
+    private Gift giftForTicket(String id, int ticket, boolean lightning) {
+        int[] weights = lightning ? lightningDrawWeights : normalDrawWeights;
+        int index = 0, remaining = ticket;
+        while (index < weights.length - 1 && remaining >= weights[index]) { remaining -= weights[index++]; }
+        Gift gift;
+        if (index < skillWeights.length) { gift = new Gift(id, SKILL_EGG_LEVEL, 0D, skillTypes.get(index)); }
+        else if (index == skillWeights.length) { gift = new Gift(id, ROTTEN_EGG_LEVEL, ROTTEN_EGG_POINTS); }
+        else if (index == skillWeights.length + 1) {
+            gift = new Gift(id, PERRY_HAT_LEVEL, PERRY_HAT_POINTS, null, "assets/images/learning-pets/perry/perry-hat.png", "Mũ Perry");
+        } else { gift = petGift(id, rewards.get(index - skillWeights.length - 2)); }
+        return new Gift(gift.id, gift.rewardLevel, gift.points, gift.skillType, gift.rewardImage, gift.rewardLabel, ticket);
+    }
+    public static Gift lightningGift(String id) {
+        return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-lightning.svg", "Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
     }
     private Gift petGift(String id, PetRewardCatalog.Reward reward) {
         return new Gift(id, reward.level, basePoints * (reward.referenceLevel + 1D), null, reward.image, reward.label);
@@ -249,13 +280,16 @@ public class GiftDropGame {
         version++;
     }
     public Gift claim(String username, String id) {
+        return claim(username, id, false);
+    }
+    public Gift claim(String username, String id, boolean lightning) {
         PlayerPool pool = playerPools.get(username);
         Gift gift = pool == null ? null : pool.gifts.remove(id);
         if (gift != null) {
             if (!finalPools) { Gift replacement = drawGift(); pool.gifts.put(replacement.id, replacement); }
             pool.version++; version++;
         }
-        return gift;
+        return gift != null && lightning && gift.drawTicket >= 0 ? giftForTicket(gift.id, gift.drawTicket, true) : gift;
     }
     public void recordClaim(Gift gift, String username, String displayName, double awardedPoints, long now) {
         claims.add(0, new ClaimRecord(gift, username, displayName, awardedPoints, now));
