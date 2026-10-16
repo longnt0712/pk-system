@@ -1660,7 +1660,7 @@
                     </div>
                     <h1><i class="fa fa-book"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testName}}</h1>
                     <h1><i class="fa fa-user"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTakerName}}</h1>
-                    <h1><i class="fa fa-clock"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTime}}</h1>
+                    <h1><i class="fa fa-clock"></i> &nbsp;<i class="fa fa-caret-right"></i> <small ng-if="vm.isWritingRoute">Thời gian làm bài: </small>{{vm.submittedDurationLabel(vm.testResultAfterSubmitting)}}</h1>
                     <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
                     <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isFlexibleRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
@@ -1669,6 +1669,10 @@
                             ng-click="vm.continueAssignedParts()">
                         Tiếp tục {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · Part {{vm.nextAssignmentParts.join(', ')}}
                     </button>
+                    <p ng-if="vm.isWritingRoute && vm.isWritingGrading" role="status" aria-live="polite">
+                        <i class="fa fa-spinner fa-spin"></i> Bài đã được lưu. Đang chấm Writing bằng GPT...
+                    </p>
+                    <p class="text-warning" ng-if="vm.isWritingRoute && vm.writingGradingError && !vm.isWritingGrading" role="status" aria-live="polite">{{vm.writingGradingError}}</p>
                     <button type="button"
                             class="gpt-regrade-btn"
                             ng-if="vm.canRetryWritingGrade(vm.testResultAfterSubmitting)"

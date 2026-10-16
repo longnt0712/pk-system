@@ -2453,8 +2453,14 @@
             if (vm.testSessionMode === 'STUDY' && draft.sessionMode === 'STUDY') {
                 timerRestoredFromDraft = true;
                 setStudyElapsedSeconds(Number(draft.elapsedSeconds) || 0);
-            } else if (vm.testSessionMode !== 'STUDY' && Number(draft.remainingSeconds) > 0) {
+            } else if (vm.testSessionMode !== 'STUDY' && draft.remainingSeconds != null &&
+                    isFinite(Number(draft.remainingSeconds)) && Number(draft.remainingSeconds) >= 0) {
                 timerRestoredFromDraft = true;
+                // Keep the saved elapsed time even when the loaded task subset
+                // has a different time budget, including drafts from older builds.
+                seriousTotalSeconds = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds))
+                    ? Number(draft.remainingSeconds) + Math.max(0, Number(draft.elapsedSeconds))
+                    : Math.max(seriousTotalSeconds, Number(draft.remainingSeconds));
                 setCountdownSeconds(Number(draft.remainingSeconds));
             }
             vm.annotationNotes = angular.copy(draft.annotationNotes || []);
@@ -3318,23 +3324,32 @@
             });
         };
 
-        function showSubmittedTestResult(resultId, completed) {
-            service.getOneTestResult(resultId).then(function (data1) {
-                vm.testResultAfterSubmitting = data1;
+        function displaySubmittedTestResult(result) {
+            if (!result || $scope.$$destroyed) { return; }
+            // The save endpoint returns a summary without answer rows. Keep the
+            // essay we just submitted available while grading runs separately.
+            if (vm.isWritingRoute && (!result.questionAnswerTestResult || !result.questionAnswerTestResult.length)) {
+                result.questionAnswerTestResult = angular.copy(vm.testResult.questionAnswerTestResult || []);
+            }
+            vm.testResultAfterSubmitting = result;
+            vm.passageNumber = 4;
+            vm.percentageAfterSubmit = (result.correctAnswer / vm.resultQuestionTotal) * 100;
+            vm.textBandScore = vm.isFlexibleRoute ?
+                (result.correctAnswer + '/' + vm.resultQuestionTotal) :
+                ('Band ' + result.bandScore);
 
-                vm.passageNumber = 4;
-                console.log(vm.testResultAfterSubmitting);
-
-                vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
-                vm.textBandScore = vm.isFlexibleRoute ?
-                    (vm.testResultAfterSubmitting.correctAnswer + '/' + vm.resultQuestionTotal) :
-                    ('Band ' + vm.testResultAfterSubmitting.bandScore.toString());
-
-                var x = document.getElementById('circlechart');
-                x.setAttribute("data-percentage", vm.percentageAfterSubmit.toString());
+            var chart = document.getElementById('circlechart');
+            if (chart) {
+                chart.setAttribute('data-percentage', vm.percentageAfterSubmit.toString());
                 $('.circlechart').circlechart(vm.textBandScore);
-                blockUI.stop();
-                if (completed) { completed(data1); }
+            }
+            blockUI.stop();
+        }
+
+        function showSubmittedTestResult(resultId, completed) {
+            service.getOneTestResult(resultId).then(function (result) {
+                displaySubmittedTestResult(result);
+                if (completed) { completed(result); }
             }, function failure() {
                 blockUI.stop();
                 if (completed) { completed(null); }
@@ -3342,32 +3357,58 @@
             });
         }
 
+        vm.submittedDurationLabel = function (result) {
+            if (!result) { return ''; }
+            if (vm.isWritingRoute && result.activeDurationSeconds != null &&
+                    isFinite(Number(result.activeDurationSeconds)) && Number(result.activeDurationSeconds) >= 0) {
+                return formatTimerClock(result.activeDurationSeconds);
+            }
+            return result.testTime;
+        };
+
+        vm.isWritingGrading = false;
         vm.isRetryingWritingGrade = false;
+        vm.writingGradingError = '';
         vm.canRetryWritingGrade = function (result) {
-            if (!vm.isWritingRoute || !result || !result.id) { return false; }
+            if (!vm.isWritingRoute || vm.isWritingGrading || !result || !result.id) { return false; }
             return ['FAILED', 'NOT_CONFIGURED', 'PENDING', 'PROCESSING']
                 .indexOf(result.aiGradingStatus) >= 0;
         };
 
+        function gradeSubmittedWritingResult(result, isRetry) {
+            vm.isWritingGrading = true;
+            vm.isRetryingWritingGrade = isRetry === true;
+            vm.writingGradingError = '';
+            service.gradeWritingTestResult(result.id).then(function (gradedResult) {
+                vm.isWritingGrading = false;
+                vm.isRetryingWritingGrade = false;
+                // Grading returns only AI fields on a DTO with empty/default
+                // result fields. Do not replace the saved essay, time or score.
+                if (gradedResult && String(gradedResult.id) === String(result.id)) {
+                    var updatedResult = angular.copy(vm.testResultAfterSubmitting || result);
+                    angular.forEach(['aiGradingProvider', 'aiGradingStatus', 'aiGradingModel',
+                        'aiOverallBand', 'aiGradingFeedback', 'aiGradingError'], function (field) {
+                        updatedResult[field] = gradedResult[field];
+                    });
+                    displaySubmittedTestResult(updatedResult);
+                }
+                if (gradedResult && gradedResult.aiGradingStatus === 'COMPLETED') {
+                    if (isRetry) { toastr.success('Bài Writing đã được chấm lại bằng GPT.', 'Thông báo'); }
+                } else {
+                    vm.writingGradingError = (gradedResult && gradedResult.aiGradingError)
+                        || 'Bài Writing đã được lưu. Chưa thể chấm bằng GPT, bạn có thể thử chấm lại.';
+                }
+            }, function () {
+                vm.isWritingGrading = false;
+                vm.isRetryingWritingGrade = false;
+                vm.writingGradingError = 'Bài Writing đã được lưu. Chưa nhận được kết quả chấm GPT, bạn có thể thử chấm lại.';
+            });
+        }
+
         vm.retryWritingGrade = function () {
             var result = vm.testResultAfterSubmitting;
             if (vm.isRetryingWritingGrade || !vm.canRetryWritingGrade(result)) { return; }
-            vm.isRetryingWritingGrade = true;
-            service.gradeWritingTestResult(result.id).then(function () {
-                showSubmittedTestResult(result.id, function (reloadedResult) {
-                    vm.isRetryingWritingGrade = false;
-                    if (!reloadedResult) { return; }
-                    if (reloadedResult.aiGradingStatus === 'COMPLETED') {
-                        toastr.success('Bài Writing đã được chấm lại bằng GPT.', 'Thông báo');
-                    } else {
-                        toastr.warning((reloadedResult && reloadedResult.aiGradingError)
-                            || 'Chưa thể chấm lại bài Writing. Vui lòng thử lại sau.', 'Thông báo');
-                    }
-                });
-            }, function () {
-                vm.isRetryingWritingGrade = false;
-                toastr.error('Không thể gửi lại bài Writing để chấm.', 'Thông báo');
-            });
+            gradeSubmittedWritingResult(result, true);
         };
 
         vm.saveTestResult = function () {
@@ -3454,13 +3495,10 @@
                 $timeout.cancel(readingDraftAutosaveTimer);
 
                 if (vm.isWritingRoute) {
-                    service.gradeWritingTestResult(data.id).then(function (gradedResult) {
-                        showSubmittedTestResult((gradedResult && gradedResult.id) || data.id);
-                    }, function () {
-                        // The submission has already been saved. Loading it here keeps
-                        // Finish reliable even when the grading provider is unavailable.
-                        showSubmittedTestResult(data.id);
-                    });
+                    // Saving is complete even if GPT is slow or unavailable. Show the
+                    // saved response immediately so students never need to resubmit.
+                    displaySubmittedTestResult(data);
+                    gradeSubmittedWritingResult(data, false);
                 } else {
                     showSubmittedTestResult(data.id);
                 }
@@ -3578,6 +3616,7 @@
         var studyElapsedSeconds = 0;
         var studyActiveSince = null;
         var timerRestoredFromDraft = false;
+        var timerStarted = false;
         var audio = document.getElementById("audio1");
         
         vm.showAudioListening = vm.isListeningRoute && vm.testSessionMode === 'STUDY';
@@ -3691,7 +3730,19 @@
         };
 
         $scope.startCount = function() {
-            $scope.refreshTimer();
+            $timeout.cancel(mytimeout);
+            if (vm.isStudyMode()) {
+                countdownEndsAt = null;
+                resumeStudyTimer();
+            } else if (!timerStarted) {
+                // Loading has already selected the task budget or restored a draft.
+                // Start from that value instead of replacing it with 60 minutes.
+                setCountdownSeconds($scope.counter);
+            } else {
+                syncCountdownFromDeadline();
+            }
+            if (!timerStarted) { trackAudioDuration(getMainAudio()); }
+            timerStarted = true;
             $scope.isRunning = false;
             mytimeout = $timeout($scope.onTimeout, 1000);
             // audio.load();
@@ -3699,32 +3750,35 @@
 
         function trackAudioDuration(audioElement) {
             if (!vm.isListeningRoute || !audioElement) { return; }
-            audioElement.onloadedmetadata = function() {
+            function updateAudioDuration() {
                 vm.totalAudioSeconds = audioElement.duration;
-                if (vm.totalAudioSeconds > 0) {
-                    seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60,
-                        Number($scope.counter) || 0);
-                    if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
-                    $scope.$evalAsync();
+                if (isFinite(vm.totalAudioSeconds) && vm.totalAudioSeconds > 0 &&
+                        !vm.isStudyMode() && !timerRestoredFromDraft) {
+                    var elapsedSeconds = getActiveDurationSeconds();
+                    seriousTotalSeconds = Math.max(seriousTotalSeconds, parseInt(vm.totalAudioSeconds, 10) + 60);
+                    setCountdownSeconds(seriousTotalSeconds - elapsedSeconds);
                 }
+            }
+            audioElement.onloadedmetadata = function() {
+                updateAudioDuration();
+                $scope.$evalAsync();
             };
             if (isFinite(audioElement.duration) && audioElement.duration > 0) {
-                vm.totalAudioSeconds = audioElement.duration;
-                seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60,
-                    Number($scope.counter) || 0);
-                if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
+                updateAudioDuration();
             }
         }
 
         $scope.refreshTimer = function () {
             $timeout.cancel(mytimeout);
+            mytimeout = null;
+            timerStarted = false;
+            timerRestoredFromDraft = false;
             if (vm.isStudyMode()) {
                 countdownEndsAt = null;
                 setStudyElapsedSeconds(0);
                 return;
             }
-            seriousTotalSeconds = 3600;
-            setCountdownSeconds(3600);
+            setCountdownSeconds(seriousTotalSeconds);
             vm.totalAudioSeconds = 0;
             trackAudioDuration(getMainAudio());
         };

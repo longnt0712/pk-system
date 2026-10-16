@@ -51,9 +51,12 @@ for(const endingType of [14,15])for(const hasVideo of [true,false])test('assigne
   assert.equal(await page.evaluate(()=>qaVm.testResult.questionAnswerTestResult.length),13);
   assert.equal(await page.evaluate(()=>qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0].sentenceEndingSlots[0].items[0].answerIndex),1);
   assert.equal(await page.evaluate(()=>qaVm.annotationNotes[0].specificNote),'Keep this note');
-  assert.ok(await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().counter>3440));
+  const remaining=await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().counter);
+  assert.ok(remaining>3440&&remaining<=3450,'resume keeps the saved 3450 seconds, not a fresh hour');
   await page.waitForFunction(()=>saved.length>0);
   const restored=await page.evaluate(()=>JSON.parse(saved.at(-1).payload));
+  assert.ok(restored.remainingSeconds>3440&&restored.remainingSeconds<=3450);
+  assert.ok(restored.elapsedSeconds>=150&&restored.elapsedSeconds<160,'resume keeps the elapsed 150 seconds');
   assert.equal(restored.results.length,13);assert.equal(restored.annotationNotes[0].specificNote,'Keep this note');
   assert.deepEqual(restored.annotations,await page.evaluate(()=>originalDraft.annotations));
   await page.evaluate(()=>{const pack=qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0];qaVm.dropSentenceEnding(pack,0,pack.sentenceEndingBank[2]);});
