@@ -252,6 +252,7 @@
 .ielts-test-library-page .test-explorer-file-actions { gap: 8px; padding: 0 14px 16px; }
 .ielts-test-library-page .test-explorer-file-actions > a { justify-content: center; width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid var(--library-divider); border-radius: 999px; color: var(--library-muted); background: var(--library-glass); box-shadow: inset 0 1px 0 #ffffffb3; font-size: 12px; font-weight: 600; text-decoration: none; }
 .ielts-test-library-page .test-explorer-file-actions > .library-action--study { justify-content: space-between; border-color: transparent; color: var(--library-on-accent); background: var(--library-accent); box-shadow: 0 4px 10px #253b6012, inset 0 1px 0 #ffffff40; font-weight: 600; }
+.ielts-test-library-page.is-writing-library .test-explorer-file-actions > .library-action--study { justify-content: center; text-align: center; }
 .ielts-test-library-page .library-action--study > .fa-play { font-size: 8px; }
 .ielts-test-library-page .test-explorer-file-actions > a:hover { filter: none; box-shadow: none; border-color: var(--library-accent); color: var(--library-accent); background: var(--library-tint); }
 .ielts-test-library-page .test-explorer-file-actions > .library-action--study:hover { color: var(--library-on-accent); background: var(--library-accent); filter: brightness(.94); }

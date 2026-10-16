@@ -60,7 +60,7 @@
         <i class="fa fa-eye"></i> PREVIEW MODE <span ng-if="!vm.isFlexibleRoute">· Part {{vm.passageNumber}}</span>
         <span>This is the candidate view</span>
     </div>
-    <div class="idp-exam-topbar" ng-show="vm.isStartTest && vm.passageNumber != 4">
+    <div class="idp-exam-topbar" ng-class="{'has-session-label': vm.isPartAssignment && !vm.isPreviewMode}" ng-show="vm.isStartTest && vm.passageNumber != 4">
         <button type="button"
                 class="idp-home-logo-button"
                 ng-click="vm.confirmLeaveTest($event)"
@@ -81,6 +81,10 @@
                  src="assets/images/troop.jpg"
                  alt="IELTS Room logo">
         </button>
+        <div class="idp-exam-session" ng-if="vm.isPartAssignment && !vm.isPreviewMode">
+            <strong>{{vm.testSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · {{vm.assignedPartsLabel()}}</strong>
+            <span ng-if="vm.nextAssignmentParts.length">Tiếp theo: {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} Part {{vm.nextAssignmentParts.join(', ')}}</span>
+        </div>
         <div class="idp-exam-tools">
             <small ng-if="vm.readingDraftSyncStatus && !vm.isPreviewMode"
                    role="status" aria-live="polite"
@@ -122,17 +126,13 @@
                 <i class="fa fa-check-square-o" aria-hidden="true"></i>
                 <span>Check đáp án</span>
             </button>
-            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
+            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
                 {{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}
             </button>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12 idp-exam-stage" style="background-color: #E1EDF4;" ng-show="vm.isStartTest && vm.passageNumber != 4">
-            <div class="alert alert-info" ng-if="vm.isPartAssignment && !vm.isPreviewMode" style="margin: 10px 0">
-                <strong>{{vm.testSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · {{vm.assignedPartsLabel()}}</strong>
-                <span ng-if="vm.nextAssignmentParts.length"> · Tiếp theo: {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} Part {{vm.nextAssignmentParts.join(', ')}}</span>
-            </div>
             <div class="portlet bg-white bordered idp-candidate-bar">
                 <div class="portlet-body">
                     <div class="row" ng-hide="vm.passageNumber == 4">
@@ -150,7 +150,7 @@
                                 <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
-                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
+                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
                                     <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}</span>
                                 </button>
                             </div>
@@ -159,7 +159,7 @@
 
                         <div class="row for-media text-center idp-candidate-mobile" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
                         <div class="col-md-6 margin-top-10">
-                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish'}}</span></button>
+                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish'}}</span></button>
                         </div>
                         <div class="col-md-6">
                             <p class="idp-timer" ng-click="vm.toggleTimerDetails()">
@@ -192,7 +192,7 @@
                                 <button ng-click="vm.decreaseSpeed()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
                                 <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
                             </div>
-                            <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
+                            <div ng-show="!vm.isListeningRoute" class="col-md-12 idp-text-part-instruction" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
                                 <h4 ng-if="vm.isComprehensiveRoute">{{vm.hasComprehensiveVideo() ? 'Xem video bên trái. Câu hỏi xuất hiện và video dừng tại mốc đã đặt.' : 'Làm lần lượt các câu hỏi bên dưới.'}}</h4>
                                 <div ng-if="vm.isWritingRoute" class="idp-writing-part-instruction">
@@ -2187,12 +2187,19 @@
     }
 
     .idp-writing-page .idp-instruction-bar .portlet-body {
-        padding: 10px 18px !important;
+        padding: 6px 12px !important;
     }
 
     .idp-writing-page .idp-instruction-bar .row,
     .idp-writing-page .idp-instruction-bar .col-md-12 {
         margin: 0 !important;
+    }
+
+    .idp-writing-part-instruction {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 3px 8px;
     }
 
     .idp-writing-part-instruction h3 {
@@ -3849,6 +3856,27 @@
         background: #ffffff;
     }
 
+    .idp-exam-session {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 360px;
+        margin: 0 12px;
+        color: #375582;
+        font-size: 12px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .idp-exam-session strong {
+        font-size: inherit;
+        font-weight: 600;
+    }
+
+    .idp-exam-session > span {
+        display: block;
+        font-size: 10px !important;
+    }
+
     .idp-exam-tools {
         display: flex;
         align-items: center;
@@ -4072,15 +4100,22 @@
 
     /* Passage instruction band */
     .idp-instruction-bar {
-        margin: 16px 0 0 !important;
+        margin: 8px 0 0 !important;
         border: 1px solid #d4d5d7 !important;
         border-radius: 3px !important;
         background: #f3f3f0;
     }
 
     .idp-instruction-bar > .portlet-body {
-        min-height: 72px;
-        padding: 11px 16px !important;
+        min-height: 0;
+        padding: 6px 12px !important;
+    }
+
+    .idp-instruction-bar .idp-text-part-instruction {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 3px 8px;
     }
 
     .idp-instruction-bar .row {
@@ -4093,9 +4128,10 @@
     }
 
     .idp-instruction-bar h3 {
-        margin: 0 0 3px !important;
+        flex-shrink: 0;
+        margin: 0 !important;
         color: #111214;
-        font-size: 16px !important;
+        font-size: 12px !important;
         line-height: 1.2;
         font-weight: 700;
     }
@@ -4103,7 +4139,7 @@
     .idp-instruction-bar h4 {
         margin: 0;
         color: #17181a;
-        font-size: 14px !important;
+        font-size: 12px !important;
         line-height: 1.45;
         font-weight: 400;
     }
@@ -5524,6 +5560,24 @@
             margin-left: 8px;
         }
 
+        .idp-exam-topbar.has-session-label .idp-exam-name {
+            display: none;
+        }
+
+        .idp-exam-session {
+            flex: 1 1 0;
+            max-width: none;
+            margin: 0 8px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .idp-exam-topbar.has-session-label .idp-exam-tools > small {
+            max-width: 48px;
+            font-size: 10px;
+            line-height: 1.2;
+        }
+
         .idp-exam-tools {
             display: flex;
             flex: 0 0 auto;
@@ -5649,8 +5703,8 @@
         }
 
         .idp-instruction-bar > .portlet-body {
-            min-height: 55px;
-            padding: 10px 12px !important;
+            min-height: 0;
+            padding: 6px 10px !important;
         }
 
         .idp-workspace {
