@@ -453,7 +453,7 @@ test('transcript timestamp links seek YouTube by click and Enter without changin
   const links=page.locator('.daily-listening-timestamp');await page.getByRole('link',{name:'Nghe từ 00:18',exact:true}).waitFor();assert.equal(await links.count(),4);
   const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers));await page.locator('#gap-number-'+answers[0][0]).fill(answers[0][1]);
   await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,answers[0][0]);
-  const before=await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:qaVm.gapValues,percentage:qaVm.percentage}));
+  const before=await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:Object.fromEntries(Object.keys(qaVm.gapAnswers).map(index=>[index,qaVm.gapValues[index]||''])),percentage:qaVm.percentage}));
   if(!held)await page.waitForFunction(()=>window.youtubeGapPlayerDebug!=null);
   await page.getByRole('link',{name:'Nghe từ 00:18',exact:true}).click();
   if(!held)await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===18);
@@ -463,7 +463,7 @@ test('transcript timestamp links seek YouTube by click and Enter without changin
   await page.getByRole('link',{name:'Nghe từ 01:02:03',exact:true}).click();await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===3723);
   const zero=page.getByRole('link',{name:'Nghe từ 00:00',exact:true});await zero.focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>youtubeGapPlayerDebug.getCurrentTime()===0);
   assert.equal(await page.evaluate(()=>location.hash),'');assert.equal(await readRenderedTranscript(page),transcript);
-  assert.deepEqual(await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:qaVm.gapValues,percentage:qaVm.percentage})),before);
+  assert.deepEqual(await page.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:Object.fromEntries(Object.keys(qaVm.gapAnswers).map(index=>[index,qaVm.gapValues[index]||''])),percentage:qaVm.percentage})),before);
   const color=await zero.evaluate(el=>getComputedStyle(el).color);assert.equal(color,held?'rgb(117, 183, 255)':'rgb(0, 122, 255)');
   assert.equal(await page.locator('.daily-listening-transcript secret').count(),0);assert.equal(await links.locator('a').count(),0);
   await page.screenshot({path:path.join(repo,'.tmp/daily-listening-timestamps-youtube-'+width+'.png'),fullPage:true});
@@ -533,7 +533,7 @@ test('mobile listening keeps video and controls above a scrolling transcript thr
   assert.equal(await page.locator('#gap-number-'+index).inputValue(),answer);assert.equal(await page.evaluate(()=>keptMedia===(document.querySelector('.youtube-gap-left .gap-youtube-player-wrap')||document.getElementById('main-audio'))),true);
   await page.screenshot({path:path.join(repo,'.tmp/daily-mobile-keyboard-'+(youtube?'youtube':'audio')+'-'+width+'.png')});
   await openLessonOptions(page);await page.getByRole('button',{name:'Nộp bài',exact:true}).waitFor();assert.ok(Math.abs((await scroll.boundingBox()).height-keyboardScroll.height)<1);
-  assert.equal(await page.locator('#ios-dl-gap-rate').evaluate(el=>getComputedStyle(el).fontSize),'16px');await page.getByRole('button',{name:'Tuỳ chọn',exact:true}).click();
+  assert.equal(await page.locator('#ios-dl-gap-rate').evaluate(el=>getComputedStyle(el).fontSize),'16px');await page.locator('#ios-dl-gap-rate').click();await page.getByRole('button',{name:'Tuỳ chọn',exact:true}).click();
   await page.evaluate(({width,height})=>{Object.assign(qaViewport,{width,height,offsetTop:0});qaViewport.dispatchEvent(new Event('resize'));}, {width,height});
   await page.waitForFunction(()=>!document.querySelector('.dl-mobile-compact'));
   await page.screenshot({path:path.join(repo,'.tmp/daily-mobile-workspace-'+(youtube?'youtube':'audio')+'-'+width+'.png')});
