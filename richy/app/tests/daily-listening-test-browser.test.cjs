@@ -47,8 +47,11 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
     window.ytPreview=this;setTimeout(()=>config.events.onReady({target:this}),0);
    }};
   });
-  await page.evaluate(({learner,record})=>{
+  await page.evaluate(({learner,record,options})=>{
    window.App={initAjax(){}};localStorage.setItem('fillingGapRatePercent','100');
+   (options.localDrafts||[]).forEach(draft=>localStorage.setItem('daily-listening-progress:v1:7:'+draft.card.id,JSON.stringify(draft)));
+   if(options.resumeDashboard)sessionStorage.setItem('daily-listening-dashboard-resume:v1:7',String(options.resumeDashboard));
+   window.learningDrafts=options.serverDrafts||[];window.draftSaves=[];window.getOneCalls=[];
    window.records=[structuredClone(record),{...structuredClone(record),id:22,question:'Other teacher',title:'Other teacher',user:{id:8}},
     {...structuredClone(record),id:23,question:'Vocabulary',status:1,questionType:{id:6},testFormat:null,pronounce:''}];window.statusCalls=[];window.saveCalls=[];window.pageCalls=[];window.results=[];
    const cookie=JSON.stringify({id:7,username:'Teacher',roles:[{name:'ROLE_ADMIN'}],person:{firstName:'Teacher'}});
@@ -69,7 +72,7 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
      getLegacyDailyListening(dto,index,size){const data=window.records.filter(item=>item.questionType.id===6&&(dto.status===3||item.status===5)&&item.pronounce&&item.motherTongue&&(!dto.textSearch||item.question.includes(dto.textSearch)));
       return q.when({content:structuredClone(data.slice((index-1)*size,index*size)),totalElements:data.length});},
      migrateDailyListening(id){const dto=structuredClone(window.records.find(item=>item.id===id));return this.saveDailyListening({...dto,userId:dto.user.id,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7});},
-     getOne(id){return q.when(structuredClone(window.records.find(item=>String(item.id)===String(id))));},
+     getOne(id){window.getOneCalls.push(id);const result=structuredClone(window.records.find(item=>String(item.id)===String(id)));if(!options.lessonDelay)return q.when(result);const deferred=q.defer();setTimeout(()=>deferred.resolve(result),options.lessonDelay);return deferred.promise;},
      saveDailyListening(dto){window.saveCalls.push(structuredClone(dto));const deferred=q.defer();function finish(){
       if(window.failSave||(window.failSaveId!=null&&window.failSaveId===dto.id)){deferred.reject({data:{message:'Lưu lỗi thử nghiệm'}});return;}
       const saved={...structuredClone(dto),id:dto.id||30+window.saveCalls.length,title:dto.question,user:{id:dto.userId||7}};
@@ -77,10 +80,10 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
       deferred.resolve(structuredClone(saved));}
       if(window.holdSave)window.releaseSave=finish;else finish();return deferred.promise;
      },
-     getTableDefinitionQuestions(){return[];},getLearningDrafts(){return q.when([]);},saveLearningDraft(){return q.when({id:1});},deleteLearningDraft(){return q.when(true);},
+     getTableDefinitionQuestions(){return[];},getLearningDrafts(){if(!options.draftsDelay)return q.when(structuredClone(window.learningDrafts));const deferred=q.defer();setTimeout(()=>deferred.resolve(structuredClone(window.learningDrafts)),options.draftsDelay);return deferred.promise;},saveLearningDraft(dto){window.draftSaves.push(structuredClone(dto));return q.when({id:1});},deleteLearningDraft(){return q.when(true);},
      saveTestResult(dto){window.results.push(structuredClone(dto));return q.when({id:101});}
     };}]);
-  },{learner,record});
+  },{learner,record,options});
   for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
   await page.evaluate(()=>{
    window.folders=[];window.folderCalls=[];window.moveCalls=[];window.folderSaveCalls=[];
@@ -385,6 +388,57 @@ test('imported HTML paragraphs render like the editor and plain transcript marku
   const editorText=await page.evaluate(stored=>angular.element(document.getElementById('qa')).injector().get('ComprehensiveListening').transcriptText(stored),stored);assert.equal(editorText,expected);
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
+});
+
+test('dashboard resume restores older local and cloud drafts in the iOS page with the exact transcript, gaps and typed answers',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const transcript='  Mom: one two\n\nCandace: three four\nfive\t six\nseven eight\nnine ten.\n';
+ const record={...shared,question:'Continue this conversation',title:'Continue this conversation',motherTongue:transcript};
+ const key='daily-listening-progress:v1:7:'+record.id;
+ try{
+  const original=await fixture(browser,1366,true,record),page=original.page;
+  await page.locator('input[id^="gap-number-"]').first().waitFor();
+  const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers));
+  await page.locator('#gap-number-'+answers[0][0]).fill(answers[0][1]);await page.waitForFunction(()=>qaVm.percentage===10);
+  await page.locator('#gap-number-'+answers[1][0]).fill('unfinished');
+  await page.getByRole('button',{name:'Tăng tốc độ',exact:true}).click();await page.getByRole('button',{name:'Giảm âm lượng',exact:true}).click();
+  await page.waitForFunction(()=>document.getElementById('main-audio').readyState>=1);
+  await page.locator('#main-audio').evaluate(audio=>audio.currentTime=2);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.saveDailyListeningDraft()));
+  const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
+  assert.equal(saved.dailyListeningId,record.id);assert.equal(saved.card.testFormat,'DAILY_LISTENING');assert.equal(saved.card.questionType.id,11);
+  assert.equal(saved.card.motherTongue,transcript);assert.deepEqual(original.errors,[]);await page.close();
+  const old=structuredClone(saved);delete old.dailyListeningId;delete old.card.testFormat;delete old.card.questionType;delete old.card.status;
+  const unrelated={...structuredClone(old),updatedAt:old.updatedAt+1000,card:{...old.card,id:22,question:'A newer unrelated draft'}};
+  for(const [width,options] of [
+   [1366,{localDrafts:[old,unrelated],lessonDelay:350}],
+   [390,{serverDrafts:[{draftKey:key,draftType:'DAILY_LISTENING',payload:JSON.stringify(old),savedAt:old.updatedAt}],draftsDelay:350}],
+   [390,{localDrafts:[saved]}]
+  ]){
+   const resumed=await fixture(browser,width,true,record,{...options,resumeDashboard:record.id}),current=resumed.page;
+   await current.waitForFunction(()=>qaVm.dailyListeningDraftRestored===true && !qaVm.standaloneListeningLoading);
+   await current.waitForFunction(()=>document.getElementById('main-audio').currentTime>=1.9);
+   assert.equal(await readRenderedTranscript(current),transcript);
+   assert.equal(await current.locator('.daily-listening-transcript').first().evaluate(el=>getComputedStyle(el).whiteSpace),'pre-wrap');
+   assert.equal(await current.locator('.daily-listening-ios').count(),1);assert.equal(await current.locator('.ios-dl-controls').isVisible(),true);
+   assert.equal(await current.locator('.gap-main-control-box').count(),0);assert.equal(await current.locator('.daily-listening-resume-banner').count(),0);
+   const restored=await current.evaluate(()=>({html:qaVm.fillingGapQuestion,answers:qaVm.gapAnswers,values:qaVm.gapValues,attempt:qaVm.dailyListeningAttemptKey,
+    percentage:qaVm.percentage,rate:qaVm.gapRatePercent,speed:qaVm.playbackValue,volume:qaVm.volumeValue,showTable:qaVm.showGapTitleTable,loads:getOneCalls.length,
+    flag:sessionStorage.getItem('daily-listening-dashboard-resume:v1:7')}));
+   assert.equal(restored.html,saved.fillingGapQuestion);assert.deepEqual(restored.answers,saved.gapAnswers);assert.deepEqual(restored.values,saved.gapValues);
+   assert.equal(restored.attempt,saved.clientAttemptKey);assert.equal(restored.percentage,10);assert.equal(restored.rate,saved.gapRatePercent);
+   assert.equal(restored.speed,1.1);assert.equal(restored.volume,.95);assert.equal(restored.showTable,false);assert.equal(restored.loads,1);assert.equal(restored.flag,null);
+   assert.equal(await current.locator('#gap-number-'+answers[0][0]).inputValue(),answers[0][1]);assert.equal(await current.locator('#gap-number-'+answers[1][0]).inputValue(),'unfinished');
+   assert.equal(await current.evaluate(()=>results.length),0);
+   await current.screenshot({path:path.join(repo,'.tmp/daily-listening-dashboard-resume-'+width+(options.serverDrafts?'-cloud':'')+'.png'),fullPage:true});
+   for(let i=1;i<9;i++){
+    await current.locator('#gap-number-'+answers[i][0]).fill(answers[i][1]);await current.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,answers[i][0]);
+    if(i<8)await current.waitForFunction(index=>document.activeElement.id==='gap-number-'+index,answers[i+1][0]);
+   }
+   await current.waitForFunction(()=>results.length===1);assert.equal(await current.evaluate(()=>results[0].testTime),'GAPS 90%');
+   assert.equal(await current.evaluate(key=>localStorage.getItem(key),key),null);assert.deepEqual(resumed.errors,[]);await current.close();
+  }
+ }finally{await browser.close();}
 });
 
 test('iOS listening audio controls stay readable and functional on desktop and mobile',async()=>{

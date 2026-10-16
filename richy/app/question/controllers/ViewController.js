@@ -715,6 +715,7 @@
                     vm.showMcqQuestion = false;
                     vm.scrollToMcqTop();
                 }
+                resumeDailyListeningFromDashboard();
             }, function () {
                 blockUI.stop(); vm.standaloneListeningLoading = false;
                 if (vm.isStandaloneDailyListening) {
@@ -3684,6 +3685,7 @@
 
         var dailyListeningDraftSaveTimer = null;
         var dailyListeningDraftHeartbeatTimer = null;
+        var dailyListeningDraftsLoaded = false;
         vm.dailyListeningDraftAvailable = null;
         vm.dailyListeningDraftRestored = false;
         vm.dailyListeningDraftStatus = 'idle';
@@ -3770,8 +3772,9 @@
                 && Number(draft.updatedAt) > 0);
         }
 
-        function findLatestDailyListeningDraft() {
+        function findLatestDailyListeningDraft(questionId) {
             var prefix = dailyListeningDraftPrefix();
+            var targetId = vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId : questionId;
             var latest = null;
             var staleKeys = [];
 
@@ -3779,7 +3782,7 @@
                 for (var i = 0; i < window.localStorage.length; i++) {
                     var key = window.localStorage.key(i);
                     if (!key || key.indexOf(prefix) !== 0) { continue; }
-                    if (vm.isStandaloneDailyListening && key !== dailyListeningDraftKey(vm.standaloneDailyListeningId)) { continue; }
+                    if (targetId != null && key !== dailyListeningDraftKey(targetId)) { continue; }
 
                     var draft = null;
                     try { draft = JSON.parse(window.localStorage.getItem(key)); } catch (ignore) {}
@@ -3839,6 +3842,9 @@
                 question: card.question || '',
                 motherTongue: card.motherTongue || '',
                 pronounce: card.pronounce || '',
+                testFormat: card.testFormat || null,
+                questionType: angular.copy(card.questionType || null),
+                status: card.status,
                 questionTopics: angular.copy(card.questionTopics || [])
             };
         }
@@ -3860,6 +3866,7 @@
                 ownerId: vm.currentUser.id,
                 updatedAt: Date.now(),
                 clientAttemptKey: vm.dailyListeningAttemptKey,
+                dailyListeningId: vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId : null,
                 assignmentTaskId: vm.assignmentLaunch.taskId || null,
                 assignmentTopicId: vm.assignmentLaunch.topicId || null,
                 assignmentCategoryId: vm.assignmentLaunch.categoryId || null,
@@ -4033,7 +4040,7 @@
             vm.percentage = Number(draft.percentage) || 0;
             vm.playbackValue = Number(draft.playbackValue) || 1;
             vm.volumeValue = isFinite(Number(draft.volumeValue)) ? Number(draft.volumeValue) : 1;
-            vm.showGapTitleTable = draft.showGapTitleTable !== false;
+            vm.showGapTitleTable = !vm.isStandaloneDailyListening && draft.showGapTitleTable !== false;
             vm.dailyListeningAttemptKey = draft.clientAttemptKey;
             vm.dailyListeningDraftRestored = true;
             vm.dailyListeningDraftStarted = true;
@@ -4073,16 +4080,29 @@
             persistDailyListeningDraft(false, false);
         }
 
-        function initializeDailyListeningDrafts() {
-            vm.refreshDailyListeningDraft();
+        function resumeDailyListeningFromDashboard() {
+            if (!dailyListeningDraftsLoaded) { return; }
+            // Loading the lesson after restoring a draft would replace its saved gaps and answers.
+            var sourceId = vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId : vm.assignmentLaunch.sourceQuestionId;
+            if (sourceId && (vm.isStandaloneDailyListening || vm.assignmentLaunch.topicId) && (vm.standaloneListeningLoading || !vm.currentCard
+                    || String(vm.currentCard.id) !== String(sourceId))) { return; }
             try {
                 var dashboardListeningResumeKey = 'daily-listening-dashboard-resume:v1:'
                     + String(vm.currentUser && vm.currentUser.id || '');
-                if (!vm.isStandaloneDailyListening && window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
+                var requestedId = window.sessionStorage.getItem(dashboardListeningResumeKey);
+                if (!requestedId) { return; }
+                var draft = findLatestDailyListeningDraft(sourceId || (requestedId === '1' ? null : requestedId));
+                if (requestedId && draft && (requestedId === '1' || requestedId === String(draft.card.id))) {
                     window.sessionStorage.removeItem(dashboardListeningResumeKey);
+                    vm.dailyListeningDraftAvailable = draft;
                     $timeout(function () { vm.resumeDailyListeningDraft(); }, 0);
                 }
             } catch (ignoreDashboardListeningResumeError) {}
+        }
+        function initializeDailyListeningDrafts() {
+            dailyListeningDraftsLoaded = true;
+            vm.refreshDailyListeningDraft();
+            resumeDailyListeningFromDashboard();
         }
         var dailyListeningLearningDraftsReady = loadDailyListeningLearningDrafts();
         if (dailyListeningLearningDraftsReady && angular.isFunction(dailyListeningLearningDraftsReady.finally)) {

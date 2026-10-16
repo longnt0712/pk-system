@@ -325,7 +325,7 @@
                     kind: 'DAILY_LISTENING',
                     storageKey: key,
                     title: draft.card.question || 'Daily Listening',
-                    dailyListeningId: draft.card.testFormat === 'DAILY_LISTENING' ? draft.card.id : null,
+                    dailyListeningId: draft.dailyListeningId || draft.card.id,
                     savedAt: Number(draft.updatedAt) || 0,
                     progressLabel: 'Tiến độ',
                     progressValue: (Number(draft.percentage) || 0) + '%',
@@ -394,11 +394,12 @@
                 return;
             }
             if (draft.kind === 'DAILY_LISTENING') {
-                if (draft.dailyListeningId && !draft.assignmentTaskId) {
-                    $state.go('application.daily_listening_actual_test', {dailyListeningId: draft.dailyListeningId});
+                var listeningId = draft.dailyListeningId || draft.assignmentSourceQuestionId;
+                try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + vm.myUser.id, String(listeningId || '1')); } catch (ignoreListeningResumeFlagError) {}
+                if (listeningId && !draft.assignmentTaskId) {
+                    $state.go('application.daily_listening_actual_test', {dailyListeningId: listeningId});
                     return;
                 }
-                try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreListeningResumeFlagError) {}
                 $state.go('application.view', {
                     listFlashCard: 0,
                     assignmentTaskId: draft.assignmentTaskId,
@@ -425,7 +426,12 @@
             try { $window.localStorage.removeItem(draft.storageKey); }
             catch (ignoreDraftCancelError) { return; }
             var deleteUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/delete';
-            $http.post(deleteUrl, {draftKey: draft.storageKey}).finally(function () {
+            var userId = vm.myUser.id;
+            return $http.post(deleteUrl, {draftKey: draft.storageKey}).then(function (response) {
+                if (response.data === true) {
+                    $rootScope.$broadcast('learningDraftDismissed', {draftKey: draft.storageKey, userId: userId});
+                }
+            }, angular.noop).finally(function () {
                 vm.loadResumeDrafts();
             });
         };
@@ -456,6 +462,7 @@
             vm.resumeDrafts = vm.resumeDrafts.filter(function (item) {
                 return item.storageKey !== draft.storageKey;
             });
+            $rootScope.$broadcast('learningDraftDismissed', {draftKey: draft.storageKey, userId: vm.myUser.id});
 
             var saveUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/save';
             $http.post(saveUrl, {

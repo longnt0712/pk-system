@@ -74,10 +74,12 @@ test('Daily Listening service calls the shared APIs and retains backend validati
 test('dashboard and learning pet resume shared listening directly while preserving assigned legacy launches',()=>{
  for(const [name,start,end] of [['dashboards/controllers/DashboardController.js','        vm.resumeDraft =','        vm.cancelDraft ='],
   ['common/utils/learning-pet.directive.js','            vm.resumeDraft =','            vm.selectSection =']]){
-  const calls=[],vm={myUser:{id:7}},context={vm,readCurrentUser:()=>({id:7}),$window:{sessionStorage:{setItem(){}}},$state:{go(state,params){calls.push({state,params:plain(params)});}}};
+  const calls=[],flags=[],vm={myUser:{id:7}},context={vm,readCurrentUser:()=>({id:7}),$window:{sessionStorage:{setItem(key,value){flags.push([key,value]);}}},$state:{go(state,params){calls.push({state,params:plain(params)});}}};
   nodeVm.runInNewContext(section(fs.readFileSync(path.join(app,name),'utf8'),start,end),context);
   vm.resumeDraft({kind:'DAILY_LISTENING',dailyListeningId:21});assert.equal(calls[0].state,'application.daily_listening_actual_test');assert.equal(calls[0].params.dailyListeningId,21);
   vm.resumeDraft({kind:'DAILY_LISTENING',dailyListeningId:21,assignmentTaskId:10,assignmentSourceQuestionId:21});assert.equal(calls[1].state,'application.view');assert.equal(calls[1].params.assignmentTaskId,10);
+  vm.resumeDraft({kind:'DAILY_LISTENING',assignmentSourceQuestionId:21});assert.equal(calls[2].state,'application.daily_listening_actual_test');assert.equal(calls[2].params.dailyListeningId,21);
+  assert.deepEqual(flags,Array.from({length:3},()=>['daily-listening-dashboard-resume:v1:7','21']));
  }
 });
 test('standalone playback loads the exact legacy record without a topic or the shared source filter',async()=>{
@@ -87,7 +89,7 @@ test('standalone playback loads the exact legacy record without a topic or the s
   const context={vm,angular:{copy:structuredClone,isArray:Array.isArray,isUndefined:value=>value===undefined,forEach(items,fn){items.forEach(fn);}},
    service:{getOne(id){calls.push(id);return Promise.resolve({id,question:'Old',motherTongue:'Transcript',questionType:{id:6},status:valid?5:1});},getPageForGames(){throw Error('Wrong source');}},
    blockUI:{start(){calls.push('start');},stop(){calls.push('stop');}},toastr:{error(){}},alert(){throw Error('Topic requested');},
-   createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,$scope:{chooseFillingGaps(){calls.push('gaps');}}};
+   createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,resumeDailyListeningFromDashboard(){calls.push('resume');},$scope:{chooseFillingGaps(){calls.push('gaps');}}};
   nodeVm.runInNewContext(section(legacy,'        vm.getPageFlashCard = function','        vm.createQuiz ='),context);vm.getPageFlashCard();await tick();
   assert.equal(calls.includes(21),true);assert.equal(vm.standaloneListeningLoading,false);
   if(valid){assert.equal(vm.currentCard.id,21);assert.equal(vm.fillingGapQuestion,'Gaps: Transcript');assert.equal(vm.showGapTitleTable,false);assert.equal(calls.includes('gaps'),true);}
@@ -122,8 +124,25 @@ test('a standalone lesson finds its own saved draft and leaves other listening d
  const context={vm:{isStandaloneDailyListening:true,standaloneDailyListeningId:21},window:{localStorage:{get length(){return values.size;},key:index=>Array.from(values.keys())[index],getItem:key=>values.get(key),removeItem:key=>values.delete(key)}},
   dailyListeningDraftPrefix:()=> 'daily-listening-progress:v1:7:',dailyListeningDraftKey:id=>'daily-listening-progress:v1:7:'+id,isValidDailyListeningDraft:()=>true,
   angular:{forEach(items,fn){items.forEach(fn);}},deleteDailyListeningLearningDraft(){throw Error('Deleted another draft');}};
- nodeVm.runInNewContext(section(legacy,'        function findLatestDailyListeningDraft()','        vm.refreshDailyListeningDraft ='),context);
+ nodeVm.runInNewContext(section(legacy,'        function findLatestDailyListeningDraft(','        vm.refreshDailyListeningDraft ='),context);
  assert.equal(context.findLatestDailyListeningDraft().card.id,21);assert.equal(values.size,2);
+ context.vm.isStandaloneDailyListening=false;
+ assert.equal(context.findLatestDailyListeningDraft(21).card.id,21);assert.equal(context.findLatestDailyListeningDraft(22).card.id,22);assert.equal(values.size,2);
+});
+test('automatic listening resume waits for both resources and preserves assigned launches without a topic',()=>{
+ for(const [standalone,topicId,cardLoaded,draftsLoaded,shouldResume] of [
+  [true,null,false,true,false],[true,null,true,false,false],[true,null,true,true,true],
+  [false,2,false,true,false],[false,2,true,true,true],[false,null,false,true,true]
+ ]){
+  const callbacks=[],removed=[],draft={card:{id:21}};
+  const vm={isStandaloneDailyListening:standalone,standaloneDailyListeningId:21,assignmentLaunch:{sourceQuestionId:21,topicId},
+   currentUser:{id:7},currentCard:cardLoaded?{id:21}:null,resumeDailyListeningDraft(){}};
+  const context={vm,dailyListeningDraftsLoaded:draftsLoaded,$timeout:callback=>callbacks.push(callback),
+   window:{sessionStorage:{getItem:()=> '21',removeItem:key=>removed.push(key)}},findLatestDailyListeningDraft(id){assert.equal(id,21);return draft;}};
+  nodeVm.runInNewContext(section(legacy,'        function resumeDailyListeningFromDashboard()','        function initializeDailyListeningDrafts()'),context);
+  context.resumeDailyListeningFromDashboard();assert.equal(callbacks.length,shouldResume?1:0);assert.equal(removed.length,shouldResume?1:0);
+  if(shouldResume)assert.equal(vm.dailyListeningDraftAvailable,draft);
+ }
 });
 test('Daily Listening has its own creation and playback routes and is hidden from new comprehensive package choices',async()=>{
  const states={};const angular={module(){return {
@@ -148,7 +167,7 @@ test('draft Daily Listening preview is available to its authoring admin while le
   nodeVm.runInNewContext(section(legacy,'        vm.getPageFlashCard = function','        vm.createQuiz ='),{vm,
    angular:{copy:structuredClone,isArray:Array.isArray,isUndefined:value=>value===undefined,forEach(items,fn){items.forEach(fn);}},
    service:{getOne(id){return Promise.resolve({id,question:'Shared',motherTongue:'Transcript',questionType:{id:11},testFormat:'DAILY_LISTENING',status});}},blockUI:{start(){},stop(){}},toastr:{error(){}},
-   createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,$scope:{chooseFillingGaps(){}}});
+   createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,resumeDailyListeningFromDashboard(){},$scope:{chooseFillingGaps(){}}});
   vm.getPageFlashCard();await tick();assert.equal(!!vm.currentCard,allowed);if(!allowed)assert.match(vm.standaloneListeningError,/Không tải/);
  }
 });

@@ -25,6 +25,7 @@
             var spriteTimer = null;
             var refreshTimer = null;
             var greetingTimer = null;
+            var draftsRevision = 0;
             var frameIndex = 0;
             var currentAnimation = '';
             var liveUser = null;
@@ -948,7 +949,7 @@
                     draft.progressValue = (Number(payload.currentPosition) || 0) + '/' + (Number(payload.totalCard) || (payload.questions || []).length || 0) + ' từ';
                 } else if (kind === 'DAILY_LISTENING') {
                     draft.typeLabel = 'Daily Listening';
-                    draft.dailyListeningId = (payload.card || {}).testFormat === 'DAILY_LISTENING' ? payload.card.id : null;
+                    draft.dailyListeningId = payload.dailyListeningId || (payload.card || {}).id || null;
                     draft.title = item.title || (payload.card || {}).question || 'Daily Listening';
                     draft.progressLabel = 'Tiến độ';
                     draft.progressValue = (Number(payload.percentage) || 0) + '%';
@@ -974,18 +975,22 @@
                 vm.error = false;
                 playAnimation('working');
                 var apiRoot = settings.api.baseUrl + settings.api.apiV1Url;
+                var requestedDraftsRevision = draftsRevision;
                 return $q.all([
                     $http.get(apiRoot + 'enrolment_class/schedule/my-assignments'),
                     $http.get(apiRoot + 'test_result/drafts')
                 ]).then(function (responses) {
                     vm.tasks = activeAssignedTasks(responses[0].data);
                     vm.pendingTaskCount = vm.tasks.length;
-                    vm.drafts = [];
-                    angular.forEach(angular.isArray(responses[1].data) ? responses[1].data : [], function (item) {
-                        var draft = parseDraft(item);
-                        if (draft) { vm.drafts.push(draft); }
-                    });
-                    vm.drafts.sort(function (a, b) { return b.savedAt - a.savedAt; });
+                    // A response started before a dismissal must not restore its draft or local cache.
+                    if (requestedDraftsRevision === draftsRevision) {
+                        vm.drafts = [];
+                        angular.forEach(angular.isArray(responses[1].data) ? responses[1].data : [], function (item) {
+                            var draft = parseDraft(item);
+                            if (draft) { vm.drafts.push(draft); }
+                        });
+                        vm.drafts.sort(function (a, b) { return b.savedAt - a.savedAt; });
+                    }
                     updateMessage();
                 }, function () {
                     vm.error = true;
@@ -1038,11 +1043,12 @@
                     try { $window.sessionStorage.setItem('daily-vocab-dashboard-resume:v1:' + user.id, '1'); } catch (ignoreVocabFlag) {}
                     $state.go('application.daily_vocab', {listFlashCard: 0});
                 } else if (draft.kind === 'DAILY_LISTENING') {
-                    if (draft.dailyListeningId && !draft.assignmentTaskId) {
-                        $state.go('application.daily_listening_actual_test', {dailyListeningId: draft.dailyListeningId});
+                    var listeningId = draft.dailyListeningId || draft.assignmentSourceQuestionId;
+                    try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + user.id, String(listeningId || '1')); } catch (ignoreListeningFlag) {}
+                    if (listeningId && !draft.assignmentTaskId) {
+                        $state.go('application.daily_listening_actual_test', {dailyListeningId: listeningId});
                         return;
                     }
-                    try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + user.id, '1'); } catch (ignoreListeningFlag) {}
                     $state.go('application.view', {listFlashCard: 0, assignmentTaskId: draft.assignmentTaskId, assignmentTopicId: draft.assignmentTopicId, assignmentCategoryId: draft.assignmentCategoryId, assignmentSourceQuestionId: draft.assignmentSourceQuestionId});
                 } else if (draft.testId) {
                     $state.go(draft.testMode === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
@@ -1140,6 +1146,16 @@
                 liveUser = user;
                 updatePetForm(user);
             });
+            var draftDismissedListener = $rootScope.$on('learningDraftDismissed', function (event, draft) {
+                var user = readCurrentUser();
+                if (!draft || !draft.draftKey || !user || String(draft.userId) !== String(user.id)) { return; }
+                draftsRevision++;
+                vm.drafts = vm.drafts.filter(function (item) {
+                    return item.storageKey !== draft.draftKey;
+                });
+                updateMessage();
+                if (vm.visible) { playAnimation(derivedAnimation()); }
+            });
             var routeListener = $scope.$on('$stateChangeSuccess', function () {
                 vm.visible = shouldDisplay();
                 if (!vm.visible) {
@@ -1173,6 +1189,7 @@
                 permissionsListener();
                 userListener();
                 petSelectionListener();
+                draftDismissedListener();
                 routeListener();
             });
         }
