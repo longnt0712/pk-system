@@ -276,81 +276,81 @@
         vm.showLevelTable = false;
         vm.levelTableLoading = false;
         vm.levelTableWords = [];
-        vm.selectedListeningCardIds = {};
-        vm.listeningDeleteBusy = false;
-        vm.listeningDeleteConfirmOpen = false;
+        vm.selectedFlashCardIds = {};
+        vm.flashCardDeleteBusy = false;
+        vm.flashCardDeleteConfirmOpen = false;
         vm.flashCardsLoading = false;
 
         vm.isListeningFlashCardList = function () {
             return !!vm.status && vm.status.id === 5 && vm.searchDto.status === 5;
         };
 
-        function getSelectableListeningCards() {
-            if (!vm.isListeningFlashCardList() || vm.flashCardsLoading) {
+        function getSelectableFlashCards() {
+            if (vm.flashCardsLoading) {
                 return [];
             }
             return (vm.questions || []).filter(function (item) {
-                return item && item.id && item.status === 5 && !item._rowSaving && !item._levelSaving;
+                return item && item.id && !item._rowSaving && !item._levelSaving;
             });
         }
 
-        vm.getSelectedListeningCards = function () {
-            return getSelectableListeningCards().filter(function (item) {
-                return vm.selectedListeningCardIds[item.id] === true;
+        vm.getSelectedFlashCards = function () {
+            return getSelectableFlashCards().filter(function (item) {
+                return vm.selectedFlashCardIds[item.id] === true;
             });
         };
 
-        vm.allListeningCardsSelected = function () {
-            var cards = getSelectableListeningCards();
-            return cards.length > 0 && cards.length === vm.getSelectedListeningCards().length;
+        vm.allFlashCardsSelected = function () {
+            var cards = getSelectableFlashCards();
+            return cards.length > 0 && cards.length === vm.getSelectedFlashCards().length;
         };
 
-        vm.toggleAllListeningCards = function () {
-            if (vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen) {
+        vm.toggleAllFlashCards = function () {
+            if (vm.flashCardDeleteBusy || vm.flashCardDeleteConfirmOpen) {
                 return;
             }
-            var selectAll = !vm.allListeningCardsSelected();
-            vm.selectedListeningCardIds = {};
-            angular.forEach(getSelectableListeningCards(), function (item) {
+            var selectAll = !vm.allFlashCardsSelected();
+            vm.selectedFlashCardIds = {};
+            angular.forEach(getSelectableFlashCards(), function (item) {
                 if (selectAll) {
-                    vm.selectedListeningCardIds[item.id] = true;
+                    vm.selectedFlashCardIds[item.id] = true;
                 }
             });
         };
 
-        function confirmDeleteListeningCards(cards) {
-            if (!cards.length || vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen) {
+        function confirmDeleteFlashCards(cards) {
+            if (!cards.length || vm.flashCardDeleteBusy || vm.flashCardDeleteConfirmOpen) {
                 return;
             }
             // Snapshot the visible selection before opening the confirmation dialog.
             cards = cards.map(function (item) {
                 return {id: item.id, question: item.question, motherTongue: item.motherTongue};
             });
-            vm.listeningDeleteConfirmOpen = true;
+            vm.flashCardDeleteConfirmOpen = true;
             var modalInstance = modal.open({
                 animation: true,
-                templateUrl: 'confirm_delete_listening_cards_modal.html',
+                templateUrl: 'confirm_delete_flashcards_modal.html',
                 scope: $scope,
                 size: 'md',
                 controller: ['$scope', function (confirmScope) {
-                    confirmScope.listeningCardsToDelete = cards;
+                    confirmScope.flashCardsToDelete = cards;
                 }]
             });
 
             modalInstance.result.then(function (confirm) {
-                vm.listeningDeleteConfirmOpen = false;
+                vm.flashCardDeleteConfirmOpen = false;
                 if (confirm !== 'yes') {
                     return;
                 }
-                vm.listeningDeleteBusy = true;
-                vm.listeningDeleteCompleted = 0;
-                vm.listeningDeleteTotal = cards.length;
+                vm.flashCardDeleteBusy = true;
+                vm.flashCardDeleteCompleted = 0;
+                vm.flashCardDeleteTotal = cards.length;
                 blockUI.start();
                 var deletedCount = 0;
                 var failedCount = 0;
 
                 function deleteNext(index) {
-                    vm.listeningDeleteCompleted = index;
+                    vm.flashCardDeleteCompleted = index;
                     if (index < cards.length) {
                         // Use the existing API sequentially and inspect its boolean result.
                         service.deleteObject(cards[index].id).then(function (deleted) {
@@ -367,13 +367,13 @@
                         return;
                     }
 
-                    vm.listeningDeleteBusy = false;
+                    vm.flashCardDeleteBusy = false;
                     blockUI.stop();
                     if (failedCount > 0) {
                         toastr.error('Không thể xóa ' + failedCount + ' thẻ. Vui lòng thử lại.');
                     }
                     if (deletedCount > 0) {
-                        toastr.success('Đã xóa ' + deletedCount + ' flashcard Listening.');
+                        toastr.success('Đã xóa ' + deletedCount + ' flashcard.');
                         var remaining = Math.max(0, vm.searchDto.totalItems - deletedCount);
                         var lastPage = Math.max(1, Math.ceil(remaining / vm.searchDto.pageSize));
                         vm.searchDto.pageIndex = Math.min(vm.searchDto.pageIndex, lastPage);
@@ -386,19 +386,22 @@
 
                 deleteNext(0);
             }, function () {
-                vm.listeningDeleteConfirmOpen = false;
+                vm.flashCardDeleteConfirmOpen = false;
             });
         }
 
         vm.deleteListeningCard = function (item) {
-            var cards = getSelectableListeningCards().filter(function (card) {
+            if (!vm.isListeningFlashCardList() || !item || item.status !== 5) {
+                return;
+            }
+            var cards = getSelectableFlashCards().filter(function (card) {
                 return card === item;
             });
-            confirmDeleteListeningCards(cards);
+            confirmDeleteFlashCards(cards);
         };
 
-        vm.deleteSelectedListeningCards = function () {
-            confirmDeleteListeningCards(vm.getSelectedListeningCards());
+        vm.deleteSelectedFlashCards = function () {
+            confirmDeleteFlashCards(vm.getSelectedFlashCards());
         };
 
         // $scope.setPage = function (pageNo) {
@@ -441,7 +444,7 @@
 
 
         vm.getPageFlashCard = function () {
-            vm.selectedListeningCardIds = {};
+            vm.selectedFlashCardIds = {};
             vm.flashCardsLoading = true;
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.username = vm.currentUser.username;
@@ -450,7 +453,7 @@
             return service.getPage(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 vm.questions = data.content;
                 vm.flashCardsLoading = false;
-                vm.selectedListeningCardIds = {};
+                vm.selectedFlashCardIds = {};
                 blockUI.stop();
                 
                 //tạm thời
