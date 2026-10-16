@@ -88,6 +88,7 @@
             vm.spriteStyle = {};
             vm.spriteReady = false;
             vm.hatchedFallbackImage = 'assets/images/learning-pets/mam-hoc/pet-hatched-fallback.png?v=' + version;
+            vm.pikachuLightningImage = 'assets/images/learning-pets/pikachu/pet-lightning.png?v=' + version;
             vm.shellStyle = {};
             vm.dragging = false;
             vm.petForm = 'egg-intact';

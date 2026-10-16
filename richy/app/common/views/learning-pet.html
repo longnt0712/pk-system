@@ -70,7 +70,13 @@
                     'is-pikachu-pet': pet.petForm === 'pikachu-hatched',
                     'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU'
                  }"
-                 ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+                 ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+            <span class="learning-pet-pikachu" ng-if="pet.petForm === 'pikachu-hatched'" aria-hidden="true">
+                <img class="learning-pet-pikachu__body" ng-src="{{pet.petImage}}" draggable="false" alt="" />
+                <span class="learning-pet-pikachu__electricity" aria-hidden="true">
+                    <img class="learning-pet-pikachu__bolt" ng-src="{{pet.pikachuLightningImage}}" draggable="false" alt="" />
+                </span>
+            </span>
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
         </button>
         <button type="button" class="learning-pet-minimize" ng-click="pet.toggleMinimized($event)" ng-attr-aria-label="{{pet.minimized ? 'Hiện Mầm Học' : 'Thu nhỏ Mầm Học'}}"><i class="fa" ng-class="pet.minimized ? 'fa-commenting' : 'fa-minus'"></i></button>

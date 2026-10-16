@@ -33,7 +33,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
   await page.evaluate(({testMode})=>{
    window.App={initAjax(){}};
    angular.module('Hrm.Question',['ui.bootstrap']).value('settings',{}).value('$cookies',{get(){return '{"id":7}';}})
-    .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':'/ielts_'+testMode.toLowerCase()+'_tests';},search(){return {};}}).value('blockUI',{start(){},stop(){}})
+    .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':testMode==='DAILY_LISTENING'?'/daily_listening_tests':'/ielts_'+testMode.toLowerCase()+'_tests';},search(){return {};}}).value('blockUI',{start(){},stop(){}})
     .run(['$rootScope',function(root){root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){
      window.folderData=[{id:1,name:'Listening',parentId:null,ownerId:7,ownerName:'Teacher A',canManage:true},
@@ -81,6 +81,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
        }
        if(window.holdMove)window.releaseMove=finish;else finish();return deferred.promise;
       },
+      getDailyListeningTests(dto,index,size){return this.getPageForTests(dto,index,size);},
       getPageForTests(dto,index,size){
        if(window.failTests)return q.reject({status:500});
        window.testRequests.push({...dto,requestedPageIndex:index,requestedPageSize:size});
@@ -115,29 +116,42 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  await mount();return {page,errors,mount};
 }
 
-test('all four test modes show ten tests per page in admin and library, with ten columns on large screens',async()=>{
+test('all five libraries show six columns on desktop and responsive cards; admin retains its existing grid',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
- try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE'])for(const teacher of [true,false]){
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE','DAILY_LISTENING'])for(const teacher of (mode==='DAILY_LISTENING'?[false]:[true,false])){
   const {page,errors}=await fixture(browser,1920,teacher,mode);
   await page.evaluate(()=>{
-   window.testData=Array.from({length:11},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
+   window.testData=Array.from({length:11},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,hasWritingTask1:true,hasWritingTask2:true,
     title:index%2?'IELTS Academic Reading — The invention of television / Bluefin tuna / Children and playing':'Cambridge IELTS '+(index+1)}));
    angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest?qaVm.getPageCreateIELTSReadingTest():qaVm.loadTests());
   });
   await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===10);
   assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageSize),10);
-  for(const [width,columns] of [[1920,10],[1366,5],[768,2],[390,1]]){
+  for(const [width,columns] of (teacher?[[1920,10],[1366,5],[768,2],[390,1]]:[[1920,6],[1366,6],[1100,4],[768,2],[390,1],[320,1]])){
    await page.setViewportSize({width,height:1000});
    const layout=await page.locator('.test-explorer-file').evaluateAll(cards=>cards.map(card=>{
     const rect=card.getBoundingClientRect();return {x:Math.round(rect.x),y:Math.round(rect.y),height:Math.round(rect.height)};
    }));
-   assert.equal(new Set(layout.map(card=>card.x)).size,columns);
-   assert.equal(new Set(layout.map(card=>card.y)).size,10/columns);
+   assert.equal(new Set(layout.map(card=>card.x)).size,columns,mode+' columns at '+width);
+   assert.equal(new Set(layout.map(card=>card.y)).size,Math.ceil(10/columns),mode+' rows at '+width);
    assert.equal(new Set(layout.map(card=>card.height)).size,1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   }
   await page.setViewportSize({width:1920,height:1000});
-  await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-grid-ten-columns-'+mode.toLowerCase()+'-'+(teacher?'admin':'library')+'.png')});
+  await page.locator(teacher?'.test-folder-explorer':'.reading-test-catalog').screenshot({animations:'disabled',path:path.join(repo,'.tmp/test-grid-'+(teacher?'ten':'six')+'-columns-'+mode.toLowerCase()+'-'+(teacher?'admin':'library')+'.png')});
+  if(!teacher){
+   await page.evaluate(()=>document.documentElement.classList.add('global-dark-mode'));
+   await page.locator('.reading-test-catalog').screenshot({animations:'disabled',path:path.join(repo,'.tmp/test-grid-six-columns-'+mode.toLowerCase()+'-dark.png')});
+   await page.evaluate(()=>document.documentElement.classList.remove('global-dark-mode'));
+   for(const width of [1366,390,320]){
+    await page.setViewportSize({width,height:1000});
+    await page.locator('.test-explorer-view').click();
+    assert.equal(await page.locator('.test-explorer-file').evaluateAll(cards=>new Set(cards.map(card=>Math.round(card.getBoundingClientRect().x))).size),1);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,mode+' list overflows at '+width);
+    await page.locator('.test-explorer-view').click();
+   }
+   await page.setViewportSize({width:1920,height:1000});
+  }
   await page.locator('ul.pagination').getByRole('link',{name:teacher?'Sau':'›',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===1);
   assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests[0].id),110);

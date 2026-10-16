@@ -33,7 +33,7 @@ public class BattleOnlineGiftDropTest {
         set(get(room,"settings"),"mode","LUM_NGAY"); set(get(room,"settings"),"skillsEnabled",false);
         alice=player("alice"); bob=player("bob"); host=player("host"); set(host,"host",true); set(host,"spectator",true);
         Map<String,Object> players=(Map<String,Object>)get(room,"players"); players.put("alice",alice); players.put("bob",bob); players.put("host",host);
-        pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return bound == 3 ? 0 : 10000; } }); set(room,"giftDrop",pool);
+        pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return bound / 2; } }); set(room,"giftDrop",pool);
         ((Map<String,Object>)get(service,"rooms")).put("GIFTS1",room);
         service.getRoom("GIFTS1","alice");
     }
@@ -106,10 +106,44 @@ public class BattleOnlineGiftDropTest {
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D); assertEquals(Integer.valueOf(1),result.getRoom().getGiftCredits());
         assertEquals(1,result.getRoom().getGiftDrop().claims.size());
         assertEquals(result.getPoints(),result.getRoom().getGiftDrop().claims.get(0).points,0D);
+        PetRewardCatalog.Reward selectedReward = null;
+        for (PetRewardCatalog.Reward reward : PetRewardCatalog.rewards()) {
+            if (reward.level == result.getRewardLevel()) { selectedReward = reward; break; }
+        }
+        assertNotNull(selectedReward);
+        assertEquals(selectedReward.image,result.getRewardImage());
+        assertEquals(selectedReward.label,result.getRewardLabel());
+        assertEquals(result.getRewardImage(),result.getRoom().getGiftDrop().claims.get(0).rewardImage);
+        assertEquals(result.getRewardLabel(),result.getRoom().getGiftDrop().claims.get(0).rewardLabel);
         rejected("alice",id); assertEquals(1,get(alice,"giftCredits"));
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D);
         BattleOnlineRoomDto publicRoom=ReflectionTestUtils.invokeMethod(service,"snapshotLocked",room,(String)null);
         assertNull(publicRoom.getGiftCredits()); assertNull(publicRoom.getGiftCreditVersion()); assertEquals(3,publicRoom.getGiftDrop().capacity); assertNull(publicRoom.getGiftDrop().gifts);
+        assertEquals(result.getRewardImage(),publicRoom.getGiftDrop().claims.get(0).rewardImage);
+        assertEquals(result.getRewardLabel(),publicRoom.getGiftDrop().claims.get(0).rewardLabel);
+    }
+
+    @Test public void futurePetsExposeMetadataOnlyAfterAPrivateCreditBackedClaim() throws Exception {
+        PetRewardCatalog.Reward future = new PetRewardCatalog.Reward(23,"assets/images/learning-pets/future-pet/pet-level-23.png","Pet mới");
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return bound - 1; } },
+                Collections.<String>emptyList(),Arrays.asList(PetRewardCatalog.rewards().get(0),future));
+        set(room,"giftDrop",pool);
+        BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());
+        assertFalse(json.contains("rewardImage")); assertFalse(json.contains("rewardLabel")); assertFalse(json.contains("rewardLevel"));
+        String id = before.getGiftDrop().gifts.get(0).id;
+        set(alice,"giftCredits",2); set(alice,"score",5D); set(bob,"giftCredits",1);
+        rejected("bob",id); assertEquals(1,get(bob,"giftCredits"));
+        BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1","alice",request(id));
+        assertEquals(23,result.getRewardLevel()); assertEquals(240D,result.getPoints(),0D);
+        assertEquals(future.image,result.getRewardImage()); assertEquals(future.label,result.getRewardLabel());
+        assertEquals(245D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
+        rejected("alice",id); assertEquals(245D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
+        BattleOnlineRoomDto hostRoom = service.getRoom("GIFTS1","host");
+        GiftDropGame.ClaimRecord claim = hostRoom.getGiftDrop().claims.get(0);
+        assertEquals(future.image,claim.rewardImage); assertEquals(future.label,claim.rewardLabel);
+        assertEquals("alice",claim.username); assertEquals(23,claim.rewardLevel); assertEquals(240D,claim.points,0D);
+        assertEquals(1,hostRoom.getGiftDrop().claims.size());
     }
 
     @Test public void noCreditSpectatorFreezeWrongPenaltyAndOtherModesCannotClaim() {

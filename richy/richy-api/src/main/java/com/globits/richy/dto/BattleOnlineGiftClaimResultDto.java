@@ -4,6 +4,12 @@ public class BattleOnlineGiftClaimResultDto {
     private int rewardLevel;
     private double points;
     private String skillType;
+    private String rewardImage;
+    private String rewardLabel;
+    public String getRewardImage() { return rewardImage; }
+    public void setRewardImage(String rewardImage) { this.rewardImage = rewardImage; }
+    public String getRewardLabel() { return rewardLabel; }
+    public void setRewardLabel(String rewardLabel) { this.rewardLabel = rewardLabel; }
     public String getSkillType() { return skillType; }
     public void setSkillType(String skillType) { this.skillType = skillType; }
     private BattleOnlineRoomDto room;

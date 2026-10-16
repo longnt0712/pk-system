@@ -53,6 +53,7 @@
 .test-explorer-file-content::after {content: ''; position: absolute; top: 17px; left: 16px; width: 30px; height: 2px; background: var(--paper-edge); box-shadow: 0 6px 0 var(--paper-edge); opacity: .6; pointer-events: none;}
 .test-explorer-file:hover, .test-explorer-file:focus-within {--paper-edge: #818cf8; --paper-front: #eef2ff; --paper-back: #c7d2fe; --paper-fold: #dbe4ff; filter: drop-shadow(0 0 4px rgba(99, 102, 241, .25)) drop-shadow(0 5px 5px rgba(99, 102, 241, .14));}
 .test-explorer-folder-icon {display: block; font-size: 68px; line-height: 1.1; color: #f5bf31; text-shadow: 0 2px 0 #d99a12; margin-bottom: 12px;}
+.library-folder-apps {display: none;}
 .test-explorer-name {display: block; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere;}
 .test-explorer-name small {display: block; color: #64748b; font-size: 11px; margin-top: 3px;}
 .test-explorer-file-main {display: block; flex: 1; border: 0; background: transparent; width: 100%; color: #334155; padding: 38px 16px 12px; text-align: center; text-decoration: none !important;}

@@ -636,18 +636,33 @@
             if (vm.room.videoSynchronized) { return vm.room.giftOpening !== true; }
             return vm.answerLocked || vm.usingSkill || isMeFrozen() || isWrongAnswerPenaltyActive();
         };
-        vm.getGiftRewardImage = function (level, skillType) {
+        function getGiftImageWithVersion(image) {
+            var version = $window.APP_VERSION || '';
+            return image + (version ? (image.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(version) : '');
+        }
+        function getLegacyGiftRewardLevel(level) {
+            level = Number(level);
+            return isFinite(level) && level >= 0 && level < 21 ? Math.floor(level) : 0;
+        }
+        vm.getGiftRewardImage = function (level, skillType, reward) {
             if (skillType) { level = 0; }
             if (level === -1) {
-                var version = $window.APP_VERSION || '';
-                return 'assets/images/learning-pets/lum-ngay/rotten-egg.png' + (version ? '?v=' + encodeURIComponent(version) : '');
+                return getGiftImageWithVersion('assets/images/learning-pets/lum-ngay/rotten-egg.png');
             }
+            if (!skillType && level >= 0 && reward && typeof reward.rewardImage === 'string' && reward.rewardImage.trim()) {
+                return getGiftImageWithVersion(reward.rewardImage.trim());
+            }
+            level = getLegacyGiftRewardLevel(level);
             var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE','CUTE_TUFFY_MOUSE','CUTE_PIKACHU'];
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
-        vm.getGiftRewardLabel = function (level, skillType) {
+        vm.getGiftRewardLabel = function (level, skillType, reward) {
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
+            if (level >= 0 && reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()) {
+                return reward.rewardLabel.trim();
+            }
+            level = getLegacyGiftRewardLevel(level);
             var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];
             return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
         };
@@ -707,6 +722,8 @@
                         (result.room.videoSynchronized && result.room.giftOpening !== true)) { return; }
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
+                if (result.rewardImage) { vm.lastGiftReward.rewardImage = result.rewardImage; }
+                if (result.rewardLabel) { vm.lastGiftReward.rewardLabel = result.rewardLabel; }
                 focusGiftModal('.battle-online-gift-continue');
             }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
             .finally(function () { vm.claimingGift = false; });

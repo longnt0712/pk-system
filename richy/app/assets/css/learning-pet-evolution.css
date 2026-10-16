@@ -27,6 +27,59 @@
     height: 108px;
 }
 
+/* The reference pose stays still; only its original lightning pixels flash. */
+.learning-pet-pikachu {
+    position: relative;
+    display: block;
+    width: 104px;
+    height: 108px;
+    isolation: isolate;
+    pointer-events: none;
+    user-select: none;
+    animation: none;
+    transform: none;
+}
+
+.learning-pet-pikachu img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: auto;
+    pointer-events: none;
+}
+
+.learning-pet-pikachu__electricity {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+}
+
+.learning-pet-pikachu__bolt {
+    opacity: 0;
+    filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 4px #fff3b5) drop-shadow(0 0 7px #ffd541a6);
+    animation: learning-pet-pikachu-lightning 7.2s ease-in-out infinite;
+}
+
+/* A long quiet interval, then two brief flashes of the source-image streaks. */
+@keyframes learning-pet-pikachu-lightning {
+    0%, 74%, 84%, 94%, 100% { opacity: 0; }
+    76%, 86% { opacity: 1; }
+    79% { opacity: .12; }
+    89% { opacity: .2; }
+}
+
+.learning-pet-shell.is-dragging .learning-pet-pikachu__bolt {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .learning-pet-shell .learning-pet-pikachu__bolt {
+        animation: none !important;
+        opacity: 0;
+    }
+}
 .learning-pet-collection {
     padding: 12px 14px 4px;
 }

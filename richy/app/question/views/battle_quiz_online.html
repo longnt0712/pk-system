@@ -908,7 +908,7 @@
                 </span>
                 <span ng-if="vm.isLumNgayMode()">
                     Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới nhận điểm hoặc skill.
-                    Mỗi người có sẵn 3 trứng trong pool riêng. Quà level cao hiếm hơn và cho nhiều điểm hơn.
+                    Mỗi người có sẵn 3 trứng trong pool riêng. Ở cùng dạng trứng, pet mới hiếm hơn và cho nhiều điểm hơn.
                 </span>
                 <span ng-if="vm.room.settings.mode === 'MONEY_BEG'">
                     Mỗi người chọn mật khẩu riêng. Skill HACK chiếm khoảng 7% số lượt skill;
@@ -2074,10 +2074,10 @@
             </div>
             <div class="battle-online-gift-reveal" ng-if="vm.lastGiftReward" aria-live="polite">
                 <div class="battle-online-gift-art" ng-class="{'is-skill-egg': vm.lastGiftReward.skillType}">
-                    <img ng-src="{{vm.getGiftRewardImage(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}" alt="{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}">
+                    <img ng-src="{{vm.getGiftRewardImage(vm.lastGiftReward.level, vm.lastGiftReward.skillType, vm.lastGiftReward)}}" alt="{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType, vm.lastGiftReward)}}">
                     <b ng-if="vm.lastGiftReward.skillType" class="battle-online-gift-skill-icon">{{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
                 </div>
-                <strong>{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}</strong>
+                <strong>{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType, vm.lastGiftReward)}}</strong>
                 <span ng-if="vm.lastGiftReward.level >= 0">Level {{vm.lastGiftReward.level}}</span>
                 <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType">+{{vm.lastGiftReward.points}} ĐIỂM</b>
                 <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
