@@ -8,7 +8,7 @@ const nodeVm = require('node:vm');
 function setup({spectator = true, ready = true, storedVolume = null, dangerTracks = []} = {}) {
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
     let Controller, options, player, dangerOptions, dangerPlayer, lightningOptions, lightningPlayer, hooks;
-    const calls = [], gestures = {}, storage = new Map();
+    const calls = [], gestures = {}, storage = new Map(), speech = [], classicRequests = [];
     if (storedVolume !== null) storage.set('battleHostMusicVolume', String(storedVolume));
     const angular = {
         module() { return {controller(name, fn) { Controller = fn; }}; },
@@ -17,6 +17,7 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
         element() { return {on(name, fn) { gestures[name] = fn; }, off() {}}; }
     };
     const $window = {
+        EnglishSpeech: {speak(text) { speech.push(['speak', text]); }, cancel() { speech.push(['cancel']); }},
         location: {origin: 'https://battle.example'}, navigator: {},
         localStorage: {getItem(key) { return storage.get(key) ?? null; }, setItem(key, value) { storage.set(key, value); }},
         document: {body: {classList: {add() {}, remove() {}}}, getElementById() { return {}; }},
@@ -60,7 +61,9 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
     const instance = new Controller({}, scope, {go() {}}, {}, timer, timer,
         {get() { return JSON.stringify({id: 1, username: 'teacher'}); }}, $window,
         {warning() {}, error() {}}, {}, {},
-        {getActiveMusicTracks() { return Promise.resolve({tracks: [
+        {setClassicAutoAdvance(...args) { return new Promise(resolve=>classicRequests.push({action:'auto',args,resolve})); },
+         nextClassicQuestion(...args) { return new Promise(resolve=>classicRequests.push({action:'next',args,resolve})); },
+         getActiveMusicTracks() { return Promise.resolve({tracks: [
             {videoId: 'firstTrack1', name: 'First song'},
             {videoId: 'secondTrack', name: 'Second song'},
             {videoId: 'thirdTrack3', name: 'Third song'},
@@ -72,7 +75,7 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
     }
     instance.room = room();
     return {
-        instance, hooks, calls, storage, room, gestures, document: $window.document,
+        instance, hooks, calls, storage, room, gestures, speech, classicRequests, document: $window.document,
         async prepare() { await hooks.loadConfig(); if (ready) this.markReady(); },
         markReady() { options.events.onReady({target: player}); },
         markDangerReady() { assert.ok(dangerOptions); dangerOptions.events.onReady({target: dangerPlayer}); },
@@ -428,4 +431,54 @@ test('lightning audio respects manual pause, saved volume and disabled tracks', 
     const disabled = setup(); await disabled.prepare(); collectLightning(disabled);
     assert.equal(disabled.state, 1); assert.equal(disabled.lightningState, undefined);
     assert.equal(disabled.instance.isGiftLightningActive(), true, 'muting music never disables the reward');
+});
+
+test('auto reading defaults on, cancels immediately, survives room updates and leaves manual speech and music available', async () => {
+    const h=setup({spectator:false}); await h.prepare();
+    const question=(seq,text)=>Object.assign(h.room(),{questionEndsAt:Date.now()+60000,currentQuestion:{id:seq,sequence:seq,question:text}});
+    assert.equal(h.instance.autoReadEnabled,true);
+    h.hooks.applyRoom(question(1,'hello'),false);assert.deepEqual(h.speech,[['speak','hello']]);
+    h.instance.toggleAutoRead();assert.equal(h.instance.autoReadEnabled,false);assert.deepEqual(h.speech.at(-1),['cancel']);
+    assert.equal(h.state,1,'music keeps playing');
+    h.hooks.applyRoom(question(2,'world'),false);assert.equal(h.speech.length,2);
+    h.instance.sayCurrentQuestion();assert.deepEqual(h.speech.at(-1),['speak','world']);
+    h.hooks.applyRoom(question(2,'world'),true);assert.equal(h.instance.autoReadEnabled,false);assert.equal(h.speech.length,3);
+    h.instance.toggleAutoRead();h.hooks.applyRoom(question(3,'again'),true);assert.deepEqual(h.speech.at(-1),['speak','again']);
+    assert.equal(setup().instance.autoReadEnabled,true,'a newly opened Battle page defaults on');
+});
+test('muted Guess reveals do not read aloud or replay later; the next enabled reveal speaks once',()=>{
+    const h=setup();h.instance.toggleAutoRead();
+    const reveal=seq=>Object.assign(h.room(),{settings:{mode:'GUESS_WORD'},guessPhase:'REVIEW',guessAnswerRevealed:true,lastGuessWord:'example',lastGuessSequence:seq});
+    h.hooks.applyRoom(reveal(1),false);assert.deepEqual(h.speech,[['cancel']]);
+    h.instance.toggleAutoRead();h.hooks.applyRoom(reveal(1),true);assert.equal(h.speech.length,1);
+    h.hooks.applyRoom(reveal(2),true);assert.deepEqual(h.speech.at(-1),['speak','example']);
+    h.hooks.applyRoom(reveal(2),true);assert.equal(h.speech.length,2);
+});
+
+test('Classic controls use server state, serialize clicks, reject early Next and ignore delayed responses for an old question',async()=>{
+    const h=setup();
+    const room=(seq=1,manual=false,review=false)=>Object.assign(h.room(),{settings:{mode:'CLASSIC'},currentQuestion:{id:seq,sequence:seq,question:'Hello'},questionEndsAt:review?Date.now()-1:Date.now()+60000,classicAutoAdvance:!manual,classicAnswerRevealed:review});
+    h.hooks.applyRoom(room(),false);assert.equal(h.instance.isClassicAuto(),true);
+    h.instance.toggleClassicAuto();h.instance.toggleClassicAuto();assert.equal(h.classicRequests.length,1);
+    assert.deepEqual(h.classicRequests[0].args,['ABC123',false]);assert.equal(h.instance.matchControlBusy,true);
+    h.classicRequests[0].resolve(room(1,true));await new Promise(setImmediate);
+    assert.equal(h.instance.isClassicAuto(),false);assert.equal(h.instance.matchControlBusy,false);
+    h.instance.nextClassicQuestion();assert.equal(h.classicRequests.length,1);
+    const review=room(1,true,true);h.hooks.applyRoom(review,true);h.instance.nextClassicQuestion();
+    assert.deepEqual(h.classicRequests[1].args,['ABC123',1,review.questionEndsAt]);
+    h.classicRequests[1].resolve(room(2,true));await new Promise(setImmediate);
+    assert.equal(h.instance.room.currentQuestion.sequence,2);assert.equal(h.instance.room.classicAnswerRevealed,false);
+    h.instance.toggleClassicAuto();h.hooks.applyRoom(room(3),true);h.classicRequests[2].resolve(room(2));await new Promise(setImmediate);
+    assert.equal(h.instance.room.currentQuestion.sequence,3);
+    h.instance.room.hostUsername='other';h.instance.toggleClassicAuto();assert.equal(h.classicRequests.length,3);
+});
+
+test('a delayed snapshot cannot hide Classic review, while a newer host Next clears it',()=>{
+    const h=setup(),now=Date.now();
+    const review=Object.assign(h.room(),{serverTime:now,settings:{mode:'CLASSIC'},classicAutoAdvance:false,classicAnswerRevealed:true,classicCorrectAnswer:'hello',questionEndsAt:now-1,currentQuestion:{id:1,sequence:1}});
+    h.hooks.applyRoom(review,true);
+    h.hooks.applyRoom({...review,serverTime:now-100,classicAnswerRevealed:false,classicCorrectAnswer:null},false);
+    assert.equal(h.instance.room.classicAnswerRevealed,true);assert.equal(h.instance.room.classicCorrectAnswer,'hello');
+    h.hooks.applyRoom({...review,serverTime:now+1,classicAnswerRevealed:false,classicCorrectAnswer:null,currentQuestion:{id:2,sequence:2}},true);
+    assert.equal(h.instance.room.classicAnswerRevealed,false);assert.equal(h.instance.room.currentQuestion.sequence,2);
 });

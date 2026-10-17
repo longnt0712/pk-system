@@ -228,6 +228,18 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/classic-auto", method = RequestMethod.POST)
+    public BattleOnlineRoomDto setClassicAutoAdvance(@PathVariable String roomCode,
+            @RequestBody com.globits.richy.dto.BattleOnlineClassicControlDto dto) {
+        return battleOnlineService.setClassicAutoAdvance(roomCode, currentUsername(), dto.isAutoAdvance());
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/classic-next", method = RequestMethod.POST)
+    public BattleOnlineRoomDto nextClassicQuestion(@PathVariable String roomCode,
+            @RequestBody com.globits.richy.dto.BattleOnlineClassicControlDto dto) {
+        return battleOnlineService.nextClassicQuestion(roomCode, currentUsername(), dto.getQuestionSequence(), dto.getQuestionEndsAt());
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/video", method = RequestMethod.POST)
     public BattleOnlineRoomDto videoEvent(@PathVariable String roomCode,
             @RequestBody com.globits.richy.dto.BattleOnlineVideoDto dto) {

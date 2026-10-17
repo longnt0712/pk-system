@@ -13,6 +13,17 @@ public class BattleOnlineRoomDto implements Serializable {
     private String code;
     private String status;
     private String hostUsername;
+    private boolean classicAutoAdvance = true, classicAnswerRevealed;
+    private String classicCorrectAnswer;
+    private List<BattleOnlineClassicAnswerDto> classicStudentAnswers = new ArrayList<BattleOnlineClassicAnswerDto>();
+    public List<BattleOnlineClassicAnswerDto> getClassicStudentAnswers() { return classicStudentAnswers; }
+    public void setClassicStudentAnswers(List<BattleOnlineClassicAnswerDto> value) { classicStudentAnswers = value; }
+    public boolean isClassicAutoAdvance() { return classicAutoAdvance; }
+    public void setClassicAutoAdvance(boolean value) { classicAutoAdvance = value; }
+    public boolean isClassicAnswerRevealed() { return classicAnswerRevealed; }
+    public void setClassicAnswerRevealed(boolean value) { classicAnswerRevealed = value; }
+    public String getClassicCorrectAnswer() { return classicCorrectAnswer; }
+    public void setClassicCorrectAnswer(String value) { classicCorrectAnswer = value; }
 
     private List<BattleOnlinePlayerDto> players =
             new ArrayList<BattleOnlinePlayerDto>();

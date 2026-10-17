@@ -41,6 +41,7 @@ import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineEventDto;
 import com.globits.richy.dto.BattleOnlineGuessAnswerDto;
+import com.globits.richy.dto.BattleOnlineClassicAnswerDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
@@ -742,7 +743,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 player.allPetsUnlocked = identity.allPetsUnlocked;
                 player.selectedPetKey = identity.selectedPetKey;
                 player.connected = true;
-                player.ready = PLAYING.equals(room.status);
+                player.ready = true;
 
                 room.players.put(username, player);
 
@@ -2214,6 +2215,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     false
             );
 
+            if (MODE_CLASSIC.equals(room.settings.mode)) {
+                String selected = question.exercise != null ? exerciseSubmissionSummary(question, answerDto)
+                        : normalizeAnswerKey(answerDto.getAnswerKey()) + ". " + findAnswerText(question, answerDto.getAnswerKey());
+                room.currentClassicAnswers.put(player.username, new ClassicAnswerState(selected, correct));
+            }
+
             if (correct) {
                 if (correctOrder == 1) {
                     result.setMessage(
@@ -2234,7 +2241,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room.classicQuestionIndex;
 
             advanceSoon =
-                    !room.videoSynchronized && allConnectedClassicAnsweredLocked(
+                    !room.videoSynchronized && room.classicAutoAdvance && allConnectedClassicAnsweredLocked(
                         room
                     );
             if (room.videoSynchronized) {
@@ -3969,7 +3976,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
         synchronized (room) {
             requirePlaying(room); requireHost(room, username);
-            if (!room.videoSynchronized || !"ANSWERING".equals(room.videoPhase)) {
+            if (!room.videoSynchronized || !"ANSWERING".equals(room.videoPhase) || room.classicAnswerRevealed) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ tạm dừng được khi câu hỏi video đang mở.");
             }
             boolean pause = request != null && request.isPaused();
@@ -4029,6 +4036,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private void openVideoAnswerWindowLocked(RoomState room, int seconds) {
+        room.classicAnswerRevealed = false;
+        room.currentClassicAnswers.clear();
         setVideoDemonPausedLocked(room, false);
         room.videoPhase = "ANSWERING";
         room.videoRevision++;
@@ -4058,9 +4067,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private void finishVideoAnswerWindowLocked(RoomState room) {
+        finishVideoAnswerWindowLocked(room, false);
+    }
+
+    private void finishVideoAnswerWindowLocked(RoomState room, boolean hostNext) {
         if (!"ANSWERING".equals(room.videoPhase) ||
                 (room.questionTimerPaused && !allConnectedClassicAnsweredLocked(room)) ||
                 (!room.questionTimerPaused && System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room))) { return; }
+        if (!hostNext && MODE_CLASSIC.equals(room.settings.mode) && !room.classicAutoAdvance) {
+            if (!room.questionTimerPaused && System.currentTimeMillis() >= room.questionEndsAt) { revealClassicAnswerLocked(room); }
+            return;
+        }
+        room.classicAnswerRevealed = false;
         cancelClassicTimer(room.code);
         room.questionTimerPaused = false;
         room.questionTimerRemainingMillis = 0L;
@@ -4084,6 +4102,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void startClassicQuestionLocked(
             RoomState room) {
+        room.classicAnswerRevealed = false;
+        room.currentClassicAnswers.clear();
 
         if (
             room.classicQuestionIndex < 0 ||
@@ -4312,15 +4332,21 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     advanceGuessQuestionLocked(room);
                 }
             } else {
-                if (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room)) { return; }
-                recordUnansweredClassicPlayersLocked(room);
-                int next = room.classicQuestionIndex + 1;
-
-                if (next >= room.classicQuestions.size()) {
-                    finishMatchLocked(room);
+                if (!room.classicAutoAdvance) {
+                    if (System.currentTimeMillis() < room.questionEndsAt) {
+                        scheduleClassicAdvance(room.code, room.classicQuestionIndex, room.questionEndsAt - System.currentTimeMillis() + 80L);
+                    } else { revealClassicAnswerLocked(room); }
                 } else {
-                    room.classicQuestionIndex = next;
-                    startClassicQuestionLocked(room);
+                    if (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room)) { return; }
+                    recordUnansweredClassicPlayersLocked(room);
+                    int next = room.classicQuestionIndex + 1;
+
+                    if (next >= room.classicQuestions.size()) {
+                        finishMatchLocked(room);
+                    } else {
+                        room.classicQuestionIndex = next;
+                        startClassicQuestionLocked(room);
+                    }
                 }
             }
         }
@@ -4338,6 +4364,61 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.classicQuestionIndex = next;
             startClassicQuestionLocked(room);
         }
+    }
+
+    private void revealClassicAnswerLocked(RoomState room) {
+        if (room.classicAnswerRevealed) { return; }
+        recordUnansweredClassicPlayersLocked(room);
+        room.classicAnswerRevealed = true;
+        if (room.videoSynchronized) { room.videoRevision++; }
+    }
+
+    @Override
+    public BattleOnlineRoomDto setClassicAutoAdvance(String roomCode, String username, boolean enabled) {
+        username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room); requireHost(room, username);
+            if (!MODE_CLASSIC.equals(room.settings.mode)) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ dùng Auto trong mode Classic."); }
+            room.classicAutoAdvance = enabled;
+            if (room.videoSynchronized) { room.videoRevision++; }
+            if (enabled && room.classicAnswerRevealed) {
+                room.classicAnswerRevealed = false;
+                if (room.videoSynchronized) { finishVideoAnswerWindowLocked(room, true); }
+                else { advanceClassicRoundLocked(room); }
+            } else if (enabled && room.videoSynchronized && allConnectedClassicAnsweredLocked(room)) {
+                finishVideoAnswerWindowLocked(room);
+            } else if (!room.videoSynchronized || "ANSWERING".equals(room.videoPhase)) {
+                if (!room.questionTimerPaused && !room.classicAnswerRevealed) {
+                    long delay = enabled && allConnectedClassicAnsweredLocked(room) ? 250L : room.questionEndsAt - System.currentTimeMillis() + 80L;
+                    scheduleClassicAdvance(room.code, room.classicQuestionIndex, Math.max(20L, delay));
+                }
+            }
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room); return result;
+    }
+
+    @Override
+    public BattleOnlineRoomDto nextClassicQuestion(String roomCode, String username, long sequence, long questionEndsAt) {
+        username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room); requireHost(room, username);
+            if (!MODE_CLASSIC.equals(room.settings.mode) || room.classicAutoAdvance || !room.classicAnswerRevealed ||
+                    sequence != room.classicQuestionIndex + 1L || questionEndsAt != room.questionEndsAt) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết giờ và hiện đáp án trước khi Next câu.");
+            }
+            if (room.videoSynchronized) { finishVideoAnswerWindowLocked(room, true); }
+            else { advanceClassicRoundLocked(room); }
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room); return result;
+    }
+
+    private void advanceClassicRoundLocked(RoomState room) {
+        cancelClassicTimer(room.code);
+        room.classicAnswerRevealed = false;
+        if (room.classicQuestionIndex + 1 >= room.classicQuestions.size()) { finishMatchLocked(room); }
+        else { room.classicQuestionIndex++; startClassicQuestionLocked(room); }
     }
 
 
@@ -6936,6 +7017,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setQuestionEndsAt(
                 room.questionEndsAt
         );
+        dto.setClassicAutoAdvance(room.classicAutoAdvance);
+        boolean classicReview = PLAYING.equals(room.status) && MODE_CLASSIC.equals(room.settings.mode) && room.classicAnswerRevealed;
+        dto.setClassicAnswerRevealed(classicReview);
+        if (classicReview) {
+            QuestionState reviewed = currentClassicQuestionLocked(room);
+            if (reviewed != null) {
+                String answer = reviewed.exercise != null ? reviewed.exercise.correctSummary() : findAnswerText(reviewed, reviewed.correctKey);
+                dto.setClassicCorrectAnswer(isBlank(answer) ? reviewed.correctText : answer);
+            }
+        }
         dto.setQuestionTimerPaused(room.questionTimerPaused);
         dto.setQuestionTimerRemainingMillis(room.questionTimerRemainingMillis);
         dto.setVideoSynchronized(room.videoSynchronized || (LOBBY.equals(room.status) && hasVideoQuestions(room)));
@@ -7275,6 +7366,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         sortAndRankPlayers(players);
 
         dto.setPlayers(players);
+
+        if (classicReview && !room.classicAutoAdvance) {
+            for (BattleOnlinePlayerDto player : players) {
+                if (player.isSpectator()) { continue; }
+                ClassicAnswerState answer = room.currentClassicAnswers.get(player.getUsername());
+                BattleOnlineClassicAnswerDto row = new BattleOnlineClassicAnswerDto();
+                row.setUsername(player.getUsername()); row.setDisplayName(player.getDisplayName());
+                row.setAnswered(answer != null); row.setCorrect(answer != null && answer.correct);
+                row.setAnswer(answer != null ? answer.answer : "");
+                dto.getClassicStudentAnswers().add(row);
+            }
+        }
 
         return dto;
     }
@@ -8790,6 +8893,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private static class RoomState {
+        boolean classicAutoAdvance = true, classicAnswerRevealed;
+        final Map<String, ClassicAnswerState> currentClassicAnswers = new LinkedHashMap<String, ClassicAnswerState>();
         long videoDemonPausedAt;
         long videoDemonPauseMillis;
         boolean videoSynchronized;
@@ -9056,5 +9161,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         boolean correct;
         int correctOrder;
         double scoreDelta;
+    }
+
+    private static class ClassicAnswerState {
+        final String answer;
+        final boolean correct;
+        ClassicAnswerState(String answer, boolean correct) { this.answer = answer; this.correct = correct; }
     }
 }

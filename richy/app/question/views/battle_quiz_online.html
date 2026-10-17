@@ -1059,7 +1059,7 @@
         <button type="button" class="btn btn-default" ng-click="vm.toggleHostVideoFullscreen()">
             {{vm.hostVideoFullscreen ? '⛶ Thu nhỏ' : '⛶ Toàn màn hình'}}
         </button>
-        <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+        <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
         <p class="comprehensive-video-error" ng-if="vm.videoSyncError" role="alert">{{vm.videoSyncError}}</p>
     </section>
     <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionModalOpen"
@@ -1078,14 +1078,15 @@
                 </button>
                 <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoQuestionModal()" aria-label="Đóng câu hỏi">×</button>
             </header>
-            <div class="battle-online-host-question-controls" ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+            <div class="battle-online-host-question-controls" ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
             <div class="battle-online-host-question-body">
                 <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers"
                                       disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
                 <button type="button" class="btn btn-primary" ng-if="!vm.isSpectator() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'"
                         ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+                <section class="battle-online-classic-review" ng-if="vm.isClassicMode() && vm.room.classicAnswerRevealed" role="status"><small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong></section>
             </div>
-            <footer>Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.</footer>
+            <footer>{{vm.isClassicMode() && !vm.isClassicAuto() ? 'Hết giờ sẽ hiện đáp án. Giáo viên bấm Next câu để tiếp tục video.' : 'Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.'}}</footer>
         </section>
     </div>
     </div>
@@ -1128,7 +1129,7 @@
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1&lightning=20261016_1'"></ng-include>
+                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1&lightning=20261016_1&autoRead=20261017_1&classicControl=20261017_2'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
@@ -1220,7 +1221,7 @@
                  ng-if="vm.isGuessWordMode()">
                 <span>🔤 GUESS THE WORD • CÂU <b>{{vm.room.currentQuestionIndex}}</b> / {{vm.room.totalQuestions}}</span>
                 <div class="battle-online-countdown" ng-class="{'is-danger': vm.countdown <= 3}">⏱ {{vm.countdown}}</div>
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
             </div>
 
             <div class="battle-online-guess-timer" ng-if="vm.isGuessWordMode()">
@@ -1228,11 +1229,11 @@
             </div>
 
             <!-- CLASSIC TOP -->
-            <div class="battle-online-game-topline"
+            <div class="battle-online-game-topline battle-online-classic-topline"
                  ng-if="vm.room.settings.mode === 'CLASSIC'">
 
                 <span>
-                    🎯 CLASSIC • CÂU
+                    🎯 CLASSIC <span class="battle-online-progress-caption">• CÂU</span>
                     <b>{{vm.room.currentQuestionIndex}}</b>
                     /
                     {{vm.room.totalQuestions}}
@@ -1246,7 +1247,7 @@
                     ⏱ {{vm.countdown}}
                 </div>
 
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
 
             </div>
 
@@ -1257,7 +1258,7 @@
 
                 <span>
                     {{vm.getBattleModeLabel()}}
-                    • {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}
+                    <span class="battle-online-progress-caption">• {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}</span>
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
                     {{vm.room.totalLessonWords || vm.room.totalQuestions}}
@@ -1276,7 +1277,7 @@
                     ⏱ {{vm.formatTime(vm.countdown)}}
                 </div>
 
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
 
             </div>
 
@@ -1490,6 +1491,10 @@
             </div>
 
 
+            <section class="battle-online-classic-review" ng-if="vm.isClassicMode() && vm.room.classicAnswerRevealed" role="status">
+                <small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong>
+            </section>
+
             <section class="demon-student-track" ng-if="vm.getMyDemonTeam()"
                      ng-class="{'is-danger': vm.getMyDemonTeam().danger, 'is-eliminated': vm.getMyDemonTeam().eliminatedAt}"
                      aria-label="Trạng thái phòng thủ của đội bạn">
@@ -1517,15 +1522,9 @@
             </section>
 
             <div class="battle-online-gift-slot"
-                 ng-if="vm.isLumNgayMode()">
-                <section class="battle-online-gift-box" ng-if="!vm.room.giftOpening">
-                    <header><strong>🎁 LỤM NGAY</strong><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} món</span></header>
-                    <p ng-if="vm.room.videoSynchronized">Trả lời đúng để tích lũy lượt bóc. Hết video, bạn có 3 phút để chọn trứng!</p>
-                    <p ng-if="!vm.room.videoSynchronized">Mỗi câu đúng sẽ hiện 3 quả trứng để bạn chọn và bóc ngay 1 quả.</p>
-                    <b class="battle-online-gift-credits">Lượt bóc của bạn: {{vm.room.giftCredits || 0}}</b>
-                    <button type="button" class="battle-online-gift-open" ng-if="!vm.room.videoSynchronized && vm.room.giftCredits > 0"
-                            ng-click="vm.openGiftModal()" ng-disabled="vm.giftClaimDisabled() || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
-                </section>
+                 ng-if="vm.isLumNgayMode() && !vm.room.giftOpening && !vm.room.videoSynchronized && vm.room.giftCredits > 0">
+                <button type="button" class="battle-online-gift-open"
+                        ng-click="vm.openGiftModal()" ng-disabled="vm.giftClaimDisabled() || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
             </div>
 
             <div class="battle-online-guess-feedback-slot"
@@ -1609,7 +1608,7 @@
 
                 <span>
                     {{vm.getBattleModeLabel()}}
-                    • {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}
+                    <span class="battle-online-progress-caption">• {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}</span>
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
                     {{vm.room.totalLessonWords || vm.room.totalQuestions}}
@@ -1628,7 +1627,7 @@
                     ⏱ {{vm.formatTime(vm.countdown)}}
                 </div>
 
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
 
             </div>
 
@@ -1660,7 +1659,7 @@
                     vm.lastAnswerCorrect === null
                  ">
 
-                ⏳ Chờ người chơi khác / câu tiếp theo...
+                ⏳ {{vm.room.classicAnswerRevealed && !vm.isClassicAuto() ? 'Chờ giáo viên bấm Next câu...' : 'Chờ người chơi khác / câu tiếp theo...'}}
             </div>
 
             <div class="battle-online-key-help"
@@ -1695,14 +1694,15 @@
                 <strong>{{vm.room.currentQuestion.question}}</strong>
                 <span>{{vm.room.currentQuestion.pronounce}}</span>
                 <b>⏱ {{vm.countdown}}s</b>
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
+                <section class="battle-online-classic-review" ng-if="vm.room.classicAnswerRevealed" role="status"><small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong></section>
             </div>
 
             <div class="battle-online-spectator-question"
                  ng-if="vm.isCountdownMode()">
                 <small>THỜI GIAN CÒN LẠI</small>
                 <strong>⏳ {{vm.formatTime(vm.countdown)}}</strong>
-                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
             </div>
 
@@ -1823,6 +1823,9 @@
                 </b>
             </div>
 
+            <div ng-if="vm.isClassicMode() && !vm.isClassicAuto() && vm.room.classicAnswerRevealed"
+                 ng-include="'question/views/battle_online_classic_answers.html?classicAnswers=20261017_1'"></div>
+
             <div class="battle-online-event-board"
                  ng-class="{'is-mobile-modal-only': vm.isCountdownMode()}"
                  ng-if="vm.room.recentEvents.length">
@@ -1847,7 +1850,7 @@
          FINISHED
          ===================================================== -->
     <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode() && (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')"
-                src="'question/views/battle_online_demon_arena.html?matchControls=20261014_1'"></ng-include>
+                src="'question/views/battle_online_demon_arena.html?autoRead=20261017_1&classicControl=20261017_2&matchControls=20261017_2'"></ng-include>
 
     <section class="battle-online-card battle-online-finished"
              ng-if="vm.room && vm.room.status === 'FINISHED'">
@@ -2066,7 +2069,7 @@
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
                 <p class="battle-online-gift-modal-hint" ng-if="!vm.room.giftOpening">Chọn 1 trong 3 quả trứng. Bóc xong bạn sẽ tiếp tục trả lời câu kế tiếp.</p>
                 <div class="battle-online-gift-host-controls" ng-if="vm.isHost() && vm.room.giftOpening">
-                    <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+                    <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
                 </div>
                 <div class="battle-online-gift-modal-meta"><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} trứng</span><b>{{vm.room.giftCredits || 0}} lượt bóc</b></div>
                 <div class="battle-online-gift-grid" ng-if="vm.room.giftDrop.gifts.length">
@@ -2428,6 +2431,9 @@
                     </b>
                 </div>
 
+                <div ng-if="vm.isClassicMode() && !vm.isClassicAuto() && vm.room.classicAnswerRevealed"
+                     ng-include="'question/views/battle_online_classic_answers.html?classicAnswers=20261017_1'"></div>
+
                 <div class="battle-online-event-board"
                      ng-class="{'is-mobile-modal-only': vm.isCountdownMode()}"
                      ng-if="vm.room.recentEvents.length">
@@ -2739,10 +2745,6 @@
     .demon-team-card.is-danger { border-color: #ff6c53; }
     .demon-team-card.is-winner { border-color: #ffd666; }
     .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
-    .battle-online-gift-box { margin:18px 0; padding:18px; border:2px solid #b3a0ff; border-radius:20px; background:linear-gradient(135deg,#faf6ff,#effaff); }
-    .battle-online-gift-box header { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; color:#623acf; }
-    .battle-online-gift-box p { margin:10px 0; color:#63708d; font-size:13px; }
-    .battle-online-gift-credits { display:inline-block; padding:6px 12px; border-radius:10px; background:#e6f7ee; color:#16815b; }
     .battle-online-gift-open,.battle-online-gift-continue { border:0; border-radius:14px; padding:12px 20px; color:#fff; background:linear-gradient(135deg,#8654ef,#5864ee); font-weight:900; }
     .battle-online-gift-open { margin-left:10px; }
     body.battle-gift-modal-open { overflow:hidden; }
@@ -2835,7 +2837,10 @@
     @media (max-width:600px) { .battle-exercise-filters { grid-template-columns:1fr; } }
     .battle-exercise-catalog { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
     .battle-exercise-catalog .btn { white-space:normal; text-align:left; }
-    .battle-exercise-form { text-align:left; font-size:16px; line-height:1.65; overflow-wrap:anywhere; }
+    .battle-exercise-form { text-align:left; font-size:16px; line-height:1.35; overflow-wrap:anywhere; }
+    .battle-exercise-form > h3 { margin:6px 0; line-height:1.25; }
+    .battle-exercise-form p { margin:0 0 6px; line-height:1.35; }
+    .battle-exercise-instructions { margin:6px 0; line-height:1.35; }
     .battle-exercise-form label { display:block; margin:10px 0; }
     .battle-exercise-form img { max-width:100%; height:auto; }
     .battle-exercise-form table { max-width:100%; display:block; overflow:auto; }
@@ -2989,9 +2994,25 @@
     .battle-online-host-question-clock.is-urgent { color: #d04444; }
     .battle-online-host-timer-toggle { flex-shrink:0; min-height:44px; font-weight:800; }
     .battle-online-match-controls { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .battle-online-match-time-actions,.battle-online-classic-advance-controls { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .battle-online-classic-review { margin:14px 0; padding:16px 20px; border:2px solid #42b98a; border-radius:16px; background:linear-gradient(135deg,#e7fff2,#f2fffa); box-shadow:0 5px 18px #16845c26; color:#12593e; text-align:center; }
+    .battle-online-classic-review small { display:block; font-size:12px; font-weight:800; letter-spacing:.04em; }
+    .battle-online-classic-review strong { display:block; margin-top:6px; font-size:clamp(18px,2vw,26px); white-space:pre-wrap; overflow-wrap:anywhere; }
+    .battle-online-classic-answers { margin-top:18px; padding-top:14px; border-top:1px solid var(--bo-line); }
+    .battle-online-classic-answers header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; margin-bottom:10px; }
+    .battle-online-classic-answers h3 { margin:0; font-size:16px; font-weight:800; line-height:1.3; }
+    .battle-online-classic-answers header > span { color:var(--bo-muted); font-size:11px; }
+    .battle-online-classic-answers ul { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+    .battle-online-classic-answers li { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:5px 8px; padding:10px 12px; border:1px solid var(--bo-line); border-radius:12px; background:var(--bo-soft); line-height:1.35; }
+    .battle-online-classic-answers li > strong { min-width:0; overflow-wrap:anywhere; font-size:13px; }
+    .battle-online-classic-answer-status { padding:3px 7px; border-radius:7px; background:#e7ebf1; color:#536177; font-size:11px; font-weight:800; white-space:nowrap; }
+    .battle-online-classic-answers .is-correct .battle-online-classic-answer-status { background:#ddf7e8; color:#166640; }
+    .battle-online-classic-answers .is-wrong .battle-online-classic-answer-status { background:#ffe5e9; color:#ad284b; }
+    .battle-online-classic-answers li > p { grid-column:1 / -1; margin:0; color:var(--bo-text); font-size:13px; line-height:1.35; white-space:pre-wrap; overflow-wrap:anywhere; }
     .battle-lightning-effect { position:fixed; inset:0; z-index:6; display:grid; place-items:center; pointer-events:none; }
     body.battle-exercise-picker-open { overflow:hidden; }
-    .battle-exercise-folder-backdrop { position:fixed; inset:0; z-index:11000; background:rgba(22,30,54,.55); display:flex; align-items:center; justify-content:center; padding:18px; }
+    /* Keep the folder picker above the lobby dialog (20000) and its detached dropdowns (30001). */
+    .battle-exercise-folder-backdrop { position:fixed; inset:0; z-index:31000; background:rgba(22,30,54,.55); display:flex; align-items:center; justify-content:center; padding:18px; }
     .battle-exercise-folder-modal { display:flex; flex-direction:column; width:min(1100px,100%); max-height:92vh; background:#fff; border-radius:22px; box-shadow:0 24px 70px #19223955; overflow:hidden; text-align:left; }
     .battle-exercise-folder-modal header,.battle-exercise-folder-modal footer { display:flex; gap:14px; align-items:center; justify-content:space-between; padding:18px 22px; background:#f5f6ff; }
     .battle-exercise-folder-modal h2 { margin:4px 0; font-size:23px; } .battle-exercise-folder-modal h3 { font-size:17px; margin:20px 0 10px; }
@@ -3008,6 +3029,28 @@
     @keyframes battle-lightning-glow { 0%,100% {opacity:.07;transform:scale(1)} 50% {opacity:.15;transform:scale(1.025)} }
     @media (prefers-reduced-motion:reduce) { .battle-lightning-effect img {animation:none;opacity:.10} }
     .battle-online-match-controls .btn { min-height:44px; font-weight:700; }
+    .battle-online-auto-read { display:inline-flex; align-items:center; gap:8px; }
+    .battle-online-auto-read-track { position:relative; width:36px; height:20px; border-radius:12px; background:#8d96a5; }
+    .battle-online-auto-read-track::after { content:''; position:absolute; left:2px; top:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; }
+    .battle-online-auto-read.is-enabled .battle-online-auto-read-track { background:#28a879; }
+    .battle-online-auto-read.is-enabled .battle-online-auto-read-track::after { transform:translateX(16px); }
+    @media (max-width:767px) {
+        .battle-online-question-card { display:flex; flex-direction:column; }
+        .battle-online-question-card > .battle-online-game-topline { order:1; display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:6px 10px; margin-top:12px; padding-top:10px; border-top:1px solid var(--bo-line); }
+        .battle-online-question-card > .battle-online-game-topline > span { min-width:0; font-size:10px; line-height:1.4; }
+        .battle-online-question-card > .battle-online-game-topline > .battle-online-countdown { grid-column:2; grid-row:1; min-width:60px; padding:5px 8px; font-size:14px; }
+        .battle-online-question-card > .battle-online-classic-topline > .battle-online-countdown { min-width:44px; padding:5px 4px; font-size:12px; }
+        .battle-online-question-card > .battle-online-game-topline > [ng-include], .battle-online-question-card > .battle-online-game-topline .battle-online-match-controls { display:contents; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-match-time-actions { grid-row:2; grid-column:1 / -1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-classic-advance-controls { grid-row:1; grid-column:3; flex-wrap:nowrap; gap:4px; }
+        .battle-online-question-card > .battle-online-game-topline .btn { min-width:0; min-height:36px; padding:6px 4px; font-size:11px; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-auto-read { justify-content:center; gap:4px; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-auto-read-state, .battle-online-question-card > .battle-online-game-topline .battle-online-progress-caption { display:none; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-auto-read-track { flex-shrink:0; width:26px; height:16px; }
+        .battle-online-question-card > .battle-online-game-topline .battle-online-auto-read-track::after { width:12px; height:12px; }
+        .battle-online-question-card > .battle-online-game-topline .is-enabled .battle-online-auto-read-track::after { transform:translateX(10px); }
+        .is-demon-student .battle-online-question-card > .battle-online-game-topline { display:none; }
+    }
     .battle-online-host-question-controls { padding:10px 16px; border-bottom:1px solid #e2e8f0; }
     .battle-online-host-question-close { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--bo-line); border-radius: 12px; background: var(--bo-card); color: var(--bo-text); font-size: 28px; }
     .battle-online-host-question-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px clamp(16px, 4vw, 64px); font-size: clamp(18px, 2vw, 24px); }

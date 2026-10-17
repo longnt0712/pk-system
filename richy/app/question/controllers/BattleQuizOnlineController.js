@@ -327,6 +327,24 @@
             return runHostMatchControl('extendMatchTime');
         };
         vm.finishMatch = function () { return runHostMatchControl('finishMatch'); };
+        vm.isClassicMode = function () { return !!(vm.room && vm.room.settings && vm.room.settings.mode === 'CLASSIC'); };
+        vm.isClassicAuto = function () { return !vm.room || vm.room.classicAutoAdvance !== false; };
+        function runClassicControl(action) {
+            if (!vm.isClassicMode() || vm.room.status !== 'PLAYING' || !isHost() || vm.matchControlBusy) { return; }
+            if (action === 'nextClassicQuestion' && (vm.isClassicAuto() || !vm.room.classicAnswerRevealed)) { return; }
+            var code = vm.room.code, sequence = vm.room.currentQuestion && vm.room.currentQuestion.sequence;
+            var deadline = vm.room.questionEndsAt;
+            vm.matchControlBusy = true;
+            var request = action === 'setClassicAutoAdvance'
+                ? battleService.setClassicAutoAdvance(code, !vm.isClassicAuto())
+                : battleService.nextClassicQuestion(code, sequence, deadline);
+            return request.then(function (room) {
+                if (vm.room && vm.room.code === code && vm.room.questionEndsAt === deadline &&
+                        (vm.room.currentQuestion && vm.room.currentQuestion.sequence) === sequence) { applyRoom(room, false); }
+            }, showRequestError).finally(function () { vm.matchControlBusy = false; });
+        }
+        vm.toggleClassicAuto = function () { return runClassicControl('setClassicAutoAdvance'); };
+        vm.nextClassicQuestion = function () { return runClassicControl('nextClassicQuestion'); };
         vm.hostVideoFullscreen = false;
         vm.videoAnswerToast = null;
         var hostVideoQuestionKey = '', hostVideoQuestionFocus;
@@ -610,6 +628,14 @@
 
         vm.guessLevelOptions = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         vm.guessVoiceVolume = readGuessVoiceVolume();
+        vm.autoReadEnabled = true;
+        vm.toggleAutoRead = function () {
+            if (!isHost() || !vm.room || vm.room.status !== 'PLAYING') { return; }
+            vm.autoReadEnabled = !vm.autoReadEnabled;
+            if (!vm.autoReadEnabled && $window.EnglishSpeech) {
+                try { $window.EnglishSpeech.cancel(); } catch (ignoreSpeechCancel) { /* Speech must not interrupt the game. */ }
+            }
+        };
 
         vm.teamCountOptions = [
             {value: 0, label: 'KHÔNG CHIA ĐỘI'},
@@ -2765,6 +2791,8 @@
 
             var previousRoom =
                 vm.room;
+            if (previousRoom && previousRoom.code === incoming.code && previousRoom.classicAnswerRevealed &&
+                    previousRoom.serverTime && incoming.serverTime && incoming.serverTime < previousRoom.serverTime) { return; }
             if (previousRoom && previousRoom.code === incoming.code && (previousRoom.videoSynchronized || incoming.videoSynchronized) &&
                     Number(incoming.videoRevision || 0) < Number(previousRoom.videoRevision || 0)) { return; }
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
@@ -3257,7 +3285,7 @@
                 }
 
                 if (!isWrongAnswerPenaltyActive() && !isGuessWordMode()) {
-                    sayCurrentQuestion();
+                    sayCurrentQuestion(true);
                 }
             }
 
@@ -6765,7 +6793,7 @@
                 vm.room.currentQuestion &&
                 !isSpectator()
             ) {
-                sayCurrentQuestion();
+                sayCurrentQuestion(true);
             }
 
             wrongAnswerPenaltyWasActive =
@@ -6903,6 +6931,7 @@
             }
 
             lastSpokenGuessRevealKey = revealKey;
+            if (!vm.autoReadEnabled) { return; }
 
             try {
                 speakGuessText(word);
@@ -6911,7 +6940,8 @@
             }
         }
 
-        function sayCurrentQuestion() {
+        function sayCurrentQuestion(automatic) {
+            if (automatic === true && !vm.autoReadEnabled) { return; }
             if (vm.room && vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') { return; }
             if (
                 !vm.room ||

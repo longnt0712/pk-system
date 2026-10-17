@@ -12,6 +12,33 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class BattleOnlineVideoTest {
+    @Test public void manualClassicVideoHoldsTheCueUntilDeadlineAndHostNextWithoutLeakingAnswers() throws Exception {
+        setup("CLASSIC");service.setClassicAutoAdvance("VIDEO1","host",false);
+        BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
+        assertNull(opened.getClassicCorrectAnswer());
+        assertTrue(opened.getClassicStudentAnswers().isEmpty());
+        service.answer("VIDEO1","alice",answer());service.answer("VIDEO1","bob",answer());
+        assertEquals("ANSWERING",service.getRoom("VIDEO1","host").getVideoPhase());
+        assertFalse(service.getRoom("VIDEO1","host").isClassicAnswerRevealed());
+        assertTrue(service.getRoom("VIDEO1","host").getClassicStudentAnswers().isEmpty());
+        long deadline=System.currentTimeMillis()-1L;set(room,"questionEndsAt",deadline);
+        ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        BattleOnlineRoomDto review=service.getRoom("VIDEO1","alice");
+        assertTrue(review.isClassicAnswerRevealed());assertTrue(review.getClassicCorrectAnswer().contains("yes"));
+        assertEquals("ANSWERING",review.getVideoPhase());
+        assertEquals(2,review.getClassicStudentAnswers().size());
+        assertTrue(review.getClassicStudentAnswers().stream().allMatch(r->r.isAnswered() && r.isCorrect() && r.getAnswer().contains("yes")));
+        BattleOnlineTimerControlDto paused=new BattleOnlineTimerControlDto();paused.setPaused(true);
+        rejected(()->service.controlQuestionTimer("VIDEO1","host",paused));
+        BattleOnlineRoomDto next=service.nextClassicQuestion("VIDEO1","host",1L,deadline);
+        assertEquals("WATCHING",next.getVideoPhase());assertEquals(2,next.getCurrentQuestionIndex());assertNull(next.getClassicCorrectAnswer());
+        assertTrue(next.getClassicStudentAnswers().isEmpty());
+        rejected(()->service.nextClassicQuestion("VIDEO1","host",1L,deadline));
+        BattleOnlineVideoDto reopen=event("REOPEN",2,5);reopen.targetQuestionSequence=1;reopen.videoSourceId=next.getCurrentQuestion().getExercise().videoSourceId;
+        assertTrue(service.videoEvent("VIDEO1","host",reopen).getClassicStudentAnswers().isEmpty());
+        set(room,"questionEndsAt",System.currentTimeMillis()-1L);ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        assertTrue(service.getRoom("VIDEO1","host").getClassicStudentAnswers().stream().noneMatch(BattleOnlineClassicAnswerDto::isAnswered));
+    }
     private BattleOnlineServiceImpl service;
     private Object room, alice;
     private Object state(String name) throws Exception {

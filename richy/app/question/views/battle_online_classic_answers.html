@@ -1,0 +1,12 @@
+<section class="battle-online-classic-answers" aria-label="Đáp án học sinh">
+    <header><h3>Đáp án học sinh</h3><span>Câu {{vm.room.currentQuestionIndex}} / {{vm.room.totalQuestions}}</span></header>
+    <ul>
+        <li ng-repeat="answer in vm.room.classicStudentAnswers track by answer.username"
+            ng-class="{'is-correct': answer.answered && answer.correct, 'is-wrong': answer.answered && !answer.correct, 'is-unanswered': !answer.answered}">
+            <strong>{{answer.displayName || answer.username}}</strong>
+            <span class="battle-online-classic-answer-status">{{!answer.answered ? '— Chưa trả lời' : answer.correct ? '✓ Đúng' : '✕ Sai'}}</span>
+            <p ng-if="answer.answered">{{answer.answer || 'Không nhập đáp án'}}</p>
+        </li>
+    </ul>
+    <p class="text-muted" ng-if="!vm.room.classicStudentAnswers.length">Chưa có học sinh tham gia câu này.</p>
+</section>

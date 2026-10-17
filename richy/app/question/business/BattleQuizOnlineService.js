@@ -20,6 +20,14 @@
         settings
     ) {
         var self = this;
+        self.setClassicAutoAdvance = function (roomCode, enabled) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-auto', {autoAdvance: enabled === true})
+                .then(function (response) { return response.data; });
+        };
+        self.nextClassicQuestion = function (roomCode, sequence, deadline) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-next', {questionSequence: sequence, questionEndsAt: deadline})
+                .then(function (response) { return response.data; });
+        };
         self.videoEvent = function (roomCode, sequence, event, seconds) {
             return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/video', {
                 questionSequence: sequence, event: event, seconds: seconds
