@@ -3494,6 +3494,11 @@
                 }
                 $timeout.cancel(readingDraftAutosaveTimer);
 
+                if (data && data.resultStatus === 'FAILED') {
+                    toastr.warning((vm.assignmentTaskId ? 'Lượt làm này chưa được tính hoàn thành phần bài được giao. ' : '')
+                        + 'Vui lòng làm lại để đạt yêu cầu.', 'Đã lưu bài · Chưa đạt yêu cầu');
+                }
+
                 if (vm.isWritingRoute) {
                     // Saving is complete even if GPT is slow or unavailable. Show the
                     // saved response immediately so students never need to resubmit.

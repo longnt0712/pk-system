@@ -560,12 +560,17 @@
         </div>
         <div class="modal-body"
              data-ng-class="{'ielts-result-modal-body--writing': vm.testResult.testType === 7}">
+            <div class="alert test-result-status-feedback" role="status" data-ng-if="vm.testResult.id"
+                 data-ng-class="'alert-' + vm.getResultStatusFeedback(vm.testResult).tone">
+                <strong>{{vm.getResultStatusFeedback(vm.testResult).label}}</strong>
+                <span>{{vm.getResultStatusFeedback(vm.testResult).message}}</span>
+            </div>
             <section class="ielts-learning-state" data-ng-if="vm.testResult.ieltsSessionMode || (vm.ieltsLearningState.annotationNotes || []).length || (vm.ieltsLearningState.annotations || []).length">
                 <div class="ielts-learning-state-summary">
                     <span><strong>Chế độ:</strong> {{vm.testResult.ieltsSessionMode === 'STUDY' ? 'Học tập' : 'Test nghiêm túc'}}</span>
                     <span data-ng-if="vm.testResult.assignmentTaskId"><strong>Nguồn:</strong> Bài giáo viên giao #{{vm.testResult.assignmentTaskId}}</span>
                     <span data-ng-if="!vm.testResult.assignmentTaskId"><strong>Nguồn:</strong> Học sinh tự luyện</span>
-                    <span data-ng-if="vm.testResult.resultStatus"><strong>Kết quả:</strong> {{vm.testResult.resultStatus === 'SUCCESS' ? 'Đạt' : 'Chưa đạt'}}</span>
+                    <span data-ng-if="vm.testResult.resultStatus"><strong>Kết quả:</strong> {{vm.getResultStatusFeedback(vm.testResult).label}}</span>
                     <span><strong>Thời gian làm thực tế:</strong> {{vm.formatIeltsActiveDuration(vm.testResult.activeDurationSeconds)}}</span>
                     <span><strong>Highlight:</strong> {{(vm.ieltsLearningState.annotations || []).length}}</span>
                 </div>
@@ -738,6 +743,42 @@
 <!-- BEGIN MAIN JS -->
 
 <style>
+    .test-result-status-badge {
+        display: inline-block;
+        padding: 5px 8px;
+        border: 1px solid transparent;
+        font-size: 12px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+    .test-result-status-feedback {
+        border: 1px solid #cbd7e7;
+        border-radius: 10px;
+        line-height: 1.6;
+    }
+    .test-result-status-feedback strong {
+        display: block;
+        margin-bottom: 4px;
+    }
+    .test-result-status-badge.label-warning,
+    .test-result-status-feedback.alert-warning {
+        background: #fff3d6;
+        color: #734b00;
+        border-color: #ebcd8c;
+    }
+    .test-result-status-badge.label-success,
+    .test-result-status-feedback.alert-success {
+        background: #e8f5ed;
+        color: #215c3d;
+        border-color: #b7dfc6;
+    }
+    .test-result-status-badge.label-info,
+    .test-result-status-feedback.alert-info {
+        background: #edf3fb;
+        color: #365474;
+        border-color: #cbd7e7;
+    }
+
     .ielts-result-detail-modal,
     .ielts-result-detail-modal button,
     .ielts-result-detail-modal table,

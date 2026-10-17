@@ -26,7 +26,8 @@ function candidate(parts, format = 'READING') {
         getWritingTaskPackages: () => [],
         $scope: {counter: 3600},
         blockUI: {start() {}, stop() {}},
-        toastr: {error(message) { throw Error(message); }},
+        toastr: {error(message) { throw Error(message); },
+            warning(...args) { (c.warnings || (c.warnings = [])).push(args); }},
         document: {getElementById(id) { return {innerHTML: '<p>' + id + '<mark class="ielts-annotation has-note" data-note-id="n1">text</mark></p>'}; }},
         service: {saveTestResult(payload) { c.submitted = structuredClone(payload); c.saveCount = (c.saveCount || 0) + 1; return new Promise(() => {}); }},
         $timeout(callback) { callback(); }
@@ -191,6 +192,10 @@ test('failed assigned submission keeps its task draft for the next attempt', asy
     assert.equal(c.submitted.ieltsSessionMode, 'SERIOUS');
     assert.equal(c.marked || 0, 0);
     assert.equal(c.cleared || 0, 0);
+    assert.equal(c.warnings.length, 1, 'the saved unsuccessful assignment warns the learner once');
+    assert.match(c.warnings[0].join(' '), /chưa đạt/i);
+    c.vm.saveTestResult();
+    assert.equal(c.warnings.length, 1, 'repeated Finish cannot repeat the saved outcome warning');
 });
 
 test('real Angular navigation keeps all assigned tabs and Finish accessible on desktop and mobile', async () => {

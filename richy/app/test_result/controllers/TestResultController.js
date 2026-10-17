@@ -641,6 +641,10 @@
                 (testResult.user && (testResult.user.displayName || testResult.user.username)) || '';
         };
 
+        vm.getResultStatusFeedback = function (testResult) {
+            return service.getResultStatusFeedback(testResult);
+        };
+
         vm.testResult = {};
         vm.ieltsLearningState = {};
         vm.isRetryingWritingGrade = false;

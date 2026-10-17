@@ -25,6 +25,7 @@
         self.deleteObject = deleteObject;
         self.deleteObjects = deleteObjects;
         self.getTableDefinition = getTableDefinition;
+        self.getResultStatusFeedback = getResultStatusFeedback;
         self.getUsers = getUsers;
         self.getRanking = getRanking;
         self.getStudyCalendar = getStudyCalendar;
@@ -152,6 +153,27 @@
             });
         }
 
+        function getResultStatusFeedback(result) {
+            result = result || {};
+            var status = String(result.resultStatus || '').trim().toUpperCase();
+            if (Number(result.testType) === 5 || status === 'BATTLE') {
+                return {label: 'Battle', tone: 'info', message: 'Bài làm Battle đã được lưu.'};
+            }
+            if (status === 'SUCCESS') {
+                return {label: 'Đạt yêu cầu', tone: 'success', message: 'Bài làm đã được lưu và đạt yêu cầu.'};
+            }
+            if (status === 'FAILED') {
+                var message = 'Bài làm đã được lưu nhưng chưa đạt yêu cầu.';
+                if (result.assignmentTaskId != null) {
+                    message += ' Lượt làm này chưa được tính hoàn thành phần bài được giao; học sinh cần làm lại.';
+                } else {
+                    message += ' Học sinh cần luyện tập và làm lại.';
+                }
+                return {label: 'Chưa đạt', tone: 'warning', message: message};
+            }
+            return {label: 'Đã lưu', tone: 'info', message: 'Bài làm đã được lưu; chưa có thông tin đánh giá đạt yêu cầu.'};
+        }
+
         function getTableDefinition(group, allowDelete) {
             function escapeText(value) {
                 return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
@@ -238,14 +260,15 @@
                 }, {
                     field: 'resultStatus', title: 'Kết quả', switchable: true,
                     formatter: function (value, row) {
-                        if (Number(row.testType) === 5 || value === 'BATTLE') {
+                        var result = {testType: row.testType, resultStatus: value, assignmentTaskId: row.assignmentTaskId};
+                        var feedback = getResultStatusFeedback(result);
+                        if (feedback.label === 'Battle') {
                             return '<span class="label" style="background:linear-gradient(135deg,#6d5dfc,#168fc6);color:#fff">Battle</span>';
                         }
-                        if (Number(row.testType) !== 1 && Number(row.testType) !== 7) return '';
-                        return value === 'FAILED'
-                            ? '<span class="label label-danger">Thất bại</span>'
-                            : '<span class="label label-success">Thành công</span>';
-                    }
+                        return '<span class="label test-result-status-badge label-' + feedback.tone + '" title="' + escapeText(feedback.message)
+                            + '">' + escapeText(feedback.label) + '</span>';
+                    },
+                    cellStyle: _cellNowrap
                 }, {
                     field: 'user',
                     title: 'Test Taker',
@@ -335,10 +358,10 @@
             return columns.filter(function (column) {
                 if (column.field === 'writingIntegrityFlagged') { return group === 'WRITING'; }
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
-                if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
-                if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }
+                if (group === 'DAILY_LISTENING') { return column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
+                if (group === 'IELTS') { return column.field !== 'numberOfWords'; }
                 if (group === 'WRITING') { return column.field !== 'correctAnswer'; }
-                if (group === 'COMPREHENSIVE') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
+                if (group === 'COMPREHENSIVE') { return column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'BATTLE') { return column.field !== 'bandScore' && column.field !== 'correctAnswer' && column.field !== 'numberOfWords'; }
                 return true;
             });

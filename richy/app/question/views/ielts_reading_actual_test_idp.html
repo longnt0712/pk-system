@@ -1664,7 +1664,16 @@
                     <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
                     <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isFlexibleRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
-                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;{{vm.assignedPartsLabel()}} has been recorded</h1>
+                    <div class="idp-result-outcome idp-result-outcome--failed alert alert-warning"
+                         ng-if="vm.testResultAfterSubmitting.resultStatus === 'FAILED'" role="status" aria-live="polite">
+                        <strong><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Đã lưu bài · Chưa đạt yêu cầu</strong>
+                        <p><span ng-if="vm.assignmentTaskId">Lượt làm này chưa được tính hoàn thành phần bài được giao. </span>Vui lòng làm lại để đạt yêu cầu.</p>
+                    </div>
+                    <div class="idp-result-outcome idp-result-outcome--passed alert alert-success"
+                         ng-if="vm.testResultAfterSubmitting.resultStatus === 'SUCCESS'" role="status" aria-live="polite">
+                        <strong><i class="fa fa-check-circle" aria-hidden="true"></i> Đã lưu bài · Đạt yêu cầu</strong>
+                    </div>
+                    <h1 class="bold text-blue" ng-if="vm.isPartAssignment && vm.testResultAfterSubmitting.resultStatus !== 'FAILED' && vm.testResultAfterSubmitting.resultStatus !== 'SUCCESS'"><i class="fa fa-check-circle"></i> &nbsp;{{vm.assignedPartsLabel()}} has been recorded</h1>
                     <button type="button" class="btn btn-primary" ng-if="vm.assignmentTaskId && vm.nextAssignmentParts.length"
                             ng-click="vm.continueAssignedParts()">
                         Tiếp tục {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · Part {{vm.nextAssignmentParts.join(', ')}}
@@ -5460,6 +5469,36 @@
         width: 20px;
         color: #686b70;
         text-align: center;
+    }
+
+    .idp-result-outcome {
+        margin: 12px 0;
+        padding: 12px;
+        text-align: left;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .idp-result-outcome > strong {
+        display: block;
+        font-size: 13px;
+    }
+
+    .idp-result-outcome--failed {
+        border-color: #ebcd8c;
+        color: #734b00;
+        background: #fff3d6;
+    }
+
+    .idp-result-outcome--passed {
+        border-color: #b7dfc6;
+        color: #215c3d;
+        background: #e8f5ed;
+    }
+
+    .idp-result-outcome p {
+        margin: 6px 0 0;
+        font-size: 12px;
     }
 
     .idp-result-screen .right-result {
