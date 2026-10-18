@@ -84,13 +84,6 @@
         vm.candidatesLoading = false;
         vm.candidatesError = false;
         var candidatesRequest = 0;
-        var vietnameseFamilyNames = {
-            "nguyen": true, "tran": true, "le": true, "pham": true, "hoang": true,
-            "huynh": true, "phan": true, "vu": true, "vo": true, "dang": true,
-            "bui": true, "do": true, "ho": true, "ngo": true, "duong": true,
-            "ly": true, "dinh": true, "truong": true, "dao": true, "cao": true,
-            "mai": true, "doan": true, "luu": true, "trinh": true, "ta": true
-        };
         vm.expanded = {};
         vm.searchText = '';
         vm.enrolmentClass = {};
@@ -398,9 +391,10 @@
             }
 
             var person = user.person || {};
-            var lastName = cleanDisplayText(user.lastName || person.lastName || '');
-            var firstName = cleanDisplayText(user.firstName || person.firstName || '');
-            var fullName = cleanDisplayText(lastName + ' ' + removeNameNoteKeepCase(firstName));
+            // Match the student list: family name followed by given name, including compound names.
+            var lastName = cleanDisplayText(person.lastName || user.lastName || '');
+            var firstName = cleanDisplayText(person.firstName || user.firstName || '');
+            var fullName = cleanDisplayText(lastName + ' ' + firstName);
 
             if (fullName) {
                 return fullName;
@@ -408,35 +402,10 @@
 
             fullName = cleanDisplayText(user.originalDisplayName || user.displayName || '');
             if (fullName) {
-                return fixVietnameseDisplayNameOrder(fullName);
+                return fullName;
             }
 
             return user.username || '';
-        }
-
-        function fixVietnameseDisplayNameOrder(displayName) {
-            var parts = displayName.split(' ');
-            if (parts.length < 2) {
-                return displayName;
-            }
-
-            var firstKey = removeVietnameseTone(parts[0]).toLowerCase();
-            var lastKey = removeVietnameseTone(parts[parts.length - 1]).toLowerCase();
-            if (!vietnameseFamilyNames[firstKey] && vietnameseFamilyNames[lastKey]) {
-                return [parts[parts.length - 1]]
-                    .concat(parts.slice(0, parts.length - 1))
-                    .join(' ');
-            }
-
-            return displayName;
-        }
-
-        function removeVietnameseTone(value) {
-            return cleanDisplayText(value)
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/đ/g, 'd')
-                .replace(/Đ/g, 'D');
         }
 
         function cleanDisplayText(value) {
@@ -444,21 +413,6 @@
                 return '';
             }
             return String(value).replace(/\s+/g, ' ').trim();
-        }
-
-        function removeNameNoteKeepCase(value) {
-            var text = cleanDisplayText(value);
-            var oldText;
-
-            do {
-                oldText = text;
-                text = text
-                    .replace(/\s*\([^()]*\)\s*$/g, '')
-                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
-                    .trim();
-            } while (text !== oldText);
-
-            return text;
         }
 
         function sameTeamId(first, second) {
@@ -2416,16 +2370,20 @@
 			return count + '/' + vm.scheduleStudents.length + ' học sinh đã làm';
 		};
 
+        vm.classTypeLabel = function (item) {
+            return item && item.parentId ? 'đội' : 'lớp';
+        };
+
         vm.openEditor = function (item, parentId) {
             if (item && item.id) {
 				if (item.canEdit !== true) {
-					toastr.warning('Bạn không được sửa lớp này.', 'Thông báo');
+					toastr.warning('Bạn không được sửa ' + vm.classTypeLabel(item) + ' này.', 'Thông báo');
 					return;
 				}
                 service.getOne(item.id).then(function (data) {
 					var object = data || {};
 					if (object.canEdit !== true) {
-						toastr.warning('Bạn không được sửa lớp này.', 'Thông báo');
+						toastr.warning('Bạn không được sửa ' + vm.classTypeLabel(object) + ' này.', 'Thông báo');
 						return;
 					}
 					vm.loadTeachers(object.parentId, false, object.id).then(function () {
@@ -2436,11 +2394,15 @@
             }
 			var parent = parentId ? vm.findClass(parentId) : null;
 			if (parentId && (!parent || parent.canAddChild !== true)) {
-				toastr.warning('Bạn không được thêm lớp con vào lớp này.', 'Thông báo');
+				toastr.warning('Bạn không được thêm đội vào lớp này.', 'Thông báo');
+				return;
+			}
+			if (parent && vm.schoolId === 2 && parent.parentId) {
+				toastr.warning('Chỉ có thể tạo đội trực thuộc lớp.', 'Thông báo');
 				return;
 			}
 			if (!parentId && !vm.canCreateRootClass()) {
-				toastr.warning('Bạn không được tạo lớp gốc.', 'Thông báo');
+				toastr.warning('Bạn không được tạo lớp.', 'Thông báo');
 				return;
 			}
             var newObject = {
@@ -2473,35 +2435,45 @@
         };
 
         vm.availableParents = function () {
+			var hasTeams = vm.schoolId === 2 && vm.enrolmentClass.id && (Number(vm.enrolmentClass.childCount) > 0 || vm.allClasses.some(function (item) {
+				return sameTeamId(item.parentId, vm.enrolmentClass.id);
+			}));
 			var candidates = vm.allClasses.filter(function (item) {
-				return item.canAddChild === true || item.id === vm.originalParentId;
+				return item.canAddChild === true || sameTeamId(item.id, vm.originalParentId);
 			});
-            if (!vm.enrolmentClass.id) {
-				return candidates;
-            }
             var forbidden = {};
-            forbidden[vm.enrolmentClass.id] = true;
+            if (vm.enrolmentClass.id) { forbidden[vm.enrolmentClass.id] = true; }
             var changed = true;
             while (changed) {
                 changed = false;
-			angular.forEach(candidates, function (item) {
+			angular.forEach(vm.allClasses, function (item) {
                 if (item.parentId && forbidden[item.parentId] && !forbidden[item.id]) {
                         forbidden[item.id] = true;
                         changed = true;
                     }
                 });
             }
-			return candidates.filter(function (item) { return !forbidden[item.id]; });
+			return candidates.filter(function (item) {
+				if (forbidden[item.id]) { return false; }
+				// Keep existing relationships editable without creating another level in church classes.
+				return vm.schoolId !== 2 || sameTeamId(item.id, vm.originalParentId) || (!item.parentId && !hasTeams);
+			});
         };
 
         vm.saveObject = function () {
             if (!vm.canAccessList() || Number(vm.enrolmentClass.schoolId) !== vm.schoolId) {
-                toastr.warning('Lớp không thuộc danh sách hiện tại.', 'Thông báo');
+                toastr.warning('Lớp hoặc đội không thuộc danh sách hiện tại.', 'Thông báo');
                 return;
             }
             if (vm.saving || vm.candidatesLoading || vm.candidatesError) { return; }
             if (!vm.enrolmentClass.name || !vm.enrolmentClass.name.trim()) {
-                toastr.warning('Bạn chưa nhập tên lớp.', 'Thông báo');
+                toastr.warning('Bạn chưa nhập tên ' + vm.classTypeLabel(vm.enrolmentClass) + '.', 'Thông báo');
+                return;
+            }
+            if (vm.schoolId === 2 && vm.enrolmentClass.parentId && !vm.availableParents().some(function (item) {
+                return sameTeamId(item.id, vm.enrolmentClass.parentId);
+            })) {
+                toastr.warning('Đội chỉ được thuộc một lớp. Hãy kiểm tra lại lớp đã chọn.', 'Thông báo');
                 return;
             }
             vm.primaryChanged();
@@ -2520,23 +2492,23 @@
             service.saveObject(vm.enrolmentClass).then(function (saved) {
                 vm.saving = false;
                 if (saved !== true) {
-                    toastr.error('Không thể lưu. Hãy kiểm tra lớp cha và người phụ trách đã chọn.', 'Lỗi');
+                    toastr.error('Không thể lưu. Hãy kiểm tra lớp và người phụ trách đã chọn.', 'Lỗi');
                     return;
                 }
-                toastr.success('Đã lưu lớp học.', 'Thông báo');
+                toastr.success('Đã lưu ' + vm.classTypeLabel(vm.enrolmentClass) + '.', 'Thông báo');
                 if (vm.modalInstance) {
                     vm.modalInstance.close();
                 }
                 vm.load();
             }, function () {
                 vm.saving = false;
-                toastr.error('Có lỗi khi lưu lớp học.', 'Lỗi');
+                toastr.error('Có lỗi khi lưu ' + vm.classTypeLabel(vm.enrolmentClass) + '.', 'Lỗi');
             });
         };
 
         vm.confirmDelete = function (item) {
 			if (!item || item.canEdit !== true) {
-				toastr.warning('Bạn không được xóa lớp này.', 'Thông báo');
+				toastr.warning('Bạn không được xóa ' + vm.classTypeLabel(item) + ' này.', 'Thông báo');
 				return;
 			}
             vm.enrolmentClassToDelete = item;
@@ -2553,10 +2525,10 @@
                 }
                 service.deleteObject(item.id).then(function (deleted) {
                     if (deleted !== true) {
-                        toastr.warning('Không thể xóa lớp đang có tổ/lớp con hoặc có học sinh.', 'Thông báo');
+                        toastr.warning('Không thể xóa ' + vm.classTypeLabel(item) + ' đang có đội hoặc học sinh.', 'Thông báo');
                         return;
                     }
-                    toastr.success('Đã xóa lớp học.', 'Thông báo');
+                    toastr.success('Đã xóa ' + vm.classTypeLabel(item) + '.', 'Thông báo');
                     vm.load();
                 });
             });

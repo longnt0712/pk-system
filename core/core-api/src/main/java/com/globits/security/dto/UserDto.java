@@ -183,6 +183,8 @@ public class UserDto extends AuditableEntityDto {
 		this.username = entity.getUsername();
 
 		if (entity.getPerson() != null) {
+			this.lastName = entity.getPerson().getLastName();
+			this.firstName = entity.getPerson().getFirstName();
 			this.displayName = entity.getPerson().getFirstName() + " " + entity.getPerson().getLastName();
 			if (entity.getPerson().getEnrollmentClassId() != null) {
 				this.enrollmentClassIds.add(entity.getPerson().getEnrollmentClassId().longValue());

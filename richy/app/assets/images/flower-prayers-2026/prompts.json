@@ -1,7 +1,7 @@
 {
   "created": "2026-10-03",
   "updated": "2026-10-18",
-  "frontendCacheVersion": "20261018-4",
+  "frontendCacheVersion": "20261018-8",
   "productionImageSettings": {
     "format": "JPEG",
     "width": 960,
@@ -85,8 +85,8 @@
     },
     {
       "file": "11-pope.png",
-      "intention": "Đức Giáo hoàng",
-      "prayer": "Xin Chúa gìn giữ Đức Giáo hoàng, ban cho ngài sức khỏe và ơn khôn ngoan, để ngài dẫn dắt Hội Thánh trong hiệp nhất và yêu thương.",
+      "intention": "Đức Giáo Hoàng",
+      "prayer": "Xin Chúa gìn giữ Đức Giáo Hoàng, ban cho ngài sức khỏe và ơn khôn ngoan, để ngài dẫn dắt Hội Thánh trong hiệp nhất và yêu thương.",
       "created": "2026-10-18",
       "userApprovedPreview": true,
       "promptType": "summary",

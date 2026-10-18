@@ -753,17 +753,17 @@
                 <div class="class-tree-toolbar">
                     <button class="btn btn-primary" data-ng-if="vm.canCreateRootClass()"
                             data-ng-click="vm.openEditor(null, null)">
-                        <i class="fa fa-plus-circle"></i> Thêm lớp gốc
+                        <i class="fa fa-plus-circle"></i> Thêm lớp
                     </button>
                     <input class="form-control" data-ng-model="vm.searchText"
-                           data-ng-change="vm.rebuildTree()" placeholder="Tìm theo tên hoặc mã lớp..." />
+                           data-ng-change="vm.rebuildTree()" placeholder="Tìm theo tên hoặc mã lớp, đội..." />
                 </div>
 
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover class-tree-table">
                         <thead>
                         <tr>
-                            <th class="class-name-column">LỚP / TỔ / ĐỘI</th>
+                            <th class="class-name-column">LỚP / ĐỘI</th>
                             <th class="class-responsible-column">NGƯỜI PHỤ TRÁCH</th>
                             <th class="class-actions-column">THAO TÁC</th>
                         </tr>
@@ -824,7 +824,7 @@
                             </td>
                         </tr>
                         <tr data-ng-if="!vm.visibleClasses.length">
-                            <td colspan="3" class="text-center">Không có lớp phù hợp.</td>
+                            <td colspan="3" class="text-center">Không có lớp hoặc đội phù hợp.</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1615,24 +1615,24 @@
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title"><i class="fa fa-sitemap"></i>
-                {{vm.enrolmentClass.isNew ? 'Thêm lớp học / tổ' : 'Cập nhật lớp học / tổ'}}
+                {{vm.enrolmentClass.isNew ? 'Thêm' : 'Cập nhật'}} {{vm.enrolmentClass.parentId ? 'đội' : 'lớp'}}
             </h4>
         </div>
         <div class="modal-body">
             <div class="row">
                 <div class="col-md-8 form-group">
-                    <label class="bold">Tên lớp / tổ <span class="font-red">*</span></label>
+                    <label class="bold">Tên {{vm.enrolmentClass.parentId ? 'đội' : 'lớp'}} <span class="font-red">*</span></label>
                     <input data-ng-model="vm.enrolmentClass.name" type="text" class="form-control" autofocus />
                 </div>
                 <div class="col-md-4 form-group">
-                    <label class="bold">Mã</label>
+                    <label class="bold">Mã {{vm.enrolmentClass.parentId ? 'đội' : 'lớp'}}</label>
                     <input data-ng-model="vm.enrolmentClass.code" type="text" class="form-control" />
                 </div>
                 <div class="col-md-8 form-group">
-                    <label class="bold">Thuộc lớp / tổ cha</label>
+                    <label class="bold">Thuộc lớp</label>
                     <ui-select data-ng-model="vm.enrolmentClass.parentId" theme="bootstrap" allow-clear="true"
                                data-ng-change="vm.parentChanged()">
-						<ui-select-match placeholder="Không chọn = lớp gốc">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
+						<ui-select-match placeholder="Không chọn nếu đây là lớp">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
 						<ui-select-choices repeat="item.id as item in vm.availableParents() | propsFilter:{treeLabel:$select.search, name:$select.search, code:$select.search}">
 							<div ng-bind-html="(item.treeLabel || item.name) | highlight:$select.search"></div>
                             <small>{{item.code}}</small>
@@ -1680,14 +1680,14 @@
                         </ui-select-choices>
                     </ui-select>
                     <span class="help-block" data-ng-if="!vm.enrolmentClass.parentId">
-                        Lớp gốc chỉ cho phép giáo viên hoặc tài khoản quản lý phụ trách.
+                        Lớp chỉ cho phép giáo viên hoặc tài khoản quản lý phụ trách.
                     </span>
                     <span class="help-block" data-ng-if="vm.enrolmentClass.parentId">
-                        Chỉ học sinh đã được phân vào tổ này mới có thể chọn làm Đội trưởng / Đội phó.
+                        Chỉ học sinh đã được phân vào đội này mới có thể chọn làm Đội trưởng / Đội phó.
                         Học sinh được chọn không được cấp thêm quyền quản trị.
                     </span>
                     <span class="help-block" data-ng-if="vm.enrolmentClass.parentId && !vm.candidatesLoading && !vm.candidatesError && !vm.teacherCandidates.length">
-                        Chưa có thành viên để chọn. Hãy lưu tổ và phân học sinh vào tổ trước.
+                        Chưa có thành viên để chọn. Hãy lưu đội và phân học sinh vào đội trước.
                     </span>
                     <span class="help-block" data-ng-if="vm.candidatesLoading">Đang tải danh sách...</span>
                     <button type="button" class="btn btn-default" data-ng-if="vm.candidatesError"
@@ -1706,10 +1706,10 @@
 
 <script type="text/ng-template" id="confirm_delete_modal.html">
     <div class="class-management-modal" modal-movable>
-        <div class="modal-header"><h4 class="modal-title"><i class="fa fa-warning"></i> Xóa lớp học</h4></div>
+        <div class="modal-header"><h4 class="modal-title"><i class="fa fa-warning"></i> Xóa {{vm.enrolmentClassToDelete.parentId ? 'đội' : 'lớp'}}</h4></div>
         <div class="modal-body">
             <p>Bạn có chắc muốn xóa <strong>{{vm.enrolmentClassToDelete.name}}</strong>?</p>
-            <p class="text-muted">Không thể xóa nếu lớp còn đội hoặc còn học sinh.</p>
+            <p class="text-muted">Không thể xóa nếu {{vm.enrolmentClassToDelete.parentId ? 'đội' : 'lớp'}} còn đội hoặc học sinh.</p>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default">Không</button>
