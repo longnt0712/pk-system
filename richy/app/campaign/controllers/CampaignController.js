@@ -1,10 +1,13 @@
 (function () {
     'use strict';
     angular.module('Hrm.Campaign').controller('CampaignController', CampaignController);
-    CampaignController.$inject = ['$scope', '$state', '$stateParams', '$window', 'settings', 'CampaignService', 'toastr', '$location'];
-    function CampaignController($scope, $state, $stateParams, $window, settings, service, toastr, $location) {
+    CampaignController.$inject = ['$scope', '$state', '$stateParams', '$window', 'settings', 'CampaignService', 'toastr', '$location', 'AuthSession'];
+    function CampaignController($scope, $state, $stateParams, $window, settings, service, toastr, $location, auth) {
         var vm = this;
         vm.settings = settings;
+        vm.homeState = function () {
+            return auth.hasCredentials() ? 'application.dashboard' : 'login';
+        };
         if (settings.campaignsEnabled !== true) {
             $state.go('login', {showHome: true}, {location: 'replace'});
             return;

@@ -389,7 +389,7 @@
                     </div>
                 </div>
 
-                <div class="row attendance-statistics-section">
+                <div class="row attendance-statistics-section" ng-if="vm.isRoleEducationManagerment">
                     <h1 class="text-center bold">PHẦN THỐNG KÊ</h1>
 
                     <div class="col-md-12 sticky-search-bar attendance-statistics-filter-bar">
@@ -2342,6 +2342,14 @@
     .status-class-late {
         background: #ffedd5 !important;
         color: #9a3412;
+    }
+
+    .attendance-export-table td.status-class-late,
+    .export-preview-box table.table td.status-class-late,
+    html.global-dark-mode .attendance-export-table td.status-class-late,
+    html.global-dark-mode .export-preview-box table.table td.status-class-late {
+        background: #ffedd5 !important;
+        color: #9a3412 !important;
     }
 
     .status-class-info {

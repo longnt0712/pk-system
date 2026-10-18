@@ -731,6 +731,19 @@
             </a>
         </div>
 
+        <!-- LỚP NHÀ THỜ -->
+        <div class="learning-tile-wrap"
+             ng-if="vm.isTnttDomain && (!settings.isViewer || settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.isStaff)">
+            <a ui-sref="application.class" href="enrolment_classes" class="learning-tile learning-tile-classes">
+                <span class="learning-tile-icon"><i class="fa fa-university" aria-hidden="true"></i></span>
+                <span class="learning-tile-title">LỚP NHÀ THỜ</span>
+                <span class="learning-tile-desc">Danh sách lớp và phân đội</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
         <!-- HOA THIÊNG -->
         <div class="learning-tile-wrap" ng-if="settings.campaignsEnabled === true">
             <a ui-sref="campaigns" href="campaigns" class="learning-tile learning-tile-flower">

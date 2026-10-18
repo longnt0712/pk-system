@@ -2641,6 +2641,7 @@
         vm.getStatusMassClass = function (status) {
             if (status == 1) return 'status-class-green';
             if (status == 2) return 'status-class-red';
+            if (status == 3) return 'status-class-late';
             if (status == 5) return 'status-class-info';
             if (status == 6) return 'status-class-warning';
             return '';
@@ -2649,6 +2650,7 @@
         vm.getStatusClassClass = function (status) {
             if (status == 1) return 'status-class-green';
             if (status == 2) return 'status-class-red';
+            if (status == 3) return 'status-class-late';
             if (status == 5) return 'status-class-info';
             if (status == 6) return 'status-class-warning';
             return '';
@@ -2676,6 +2678,7 @@
         vm.getStatusExtraClassClass = function (status) {
             if (status == 1) return 'status-class-green';
             if (status == 2) return 'status-class-red';
+            if (status == 3) return 'status-class-late';
             if (status == 5) return 'status-class-info';
             if (status == 6) return 'status-class-warning';
             return '';

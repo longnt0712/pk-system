@@ -31,6 +31,8 @@
 
         var vm = this;
 
+        vm.isTnttDomain = /^(www\.)?tnttphungkhoang\.com$/i.test(($window.location || {}).hostname || '');
+
         vm.currentUser = {};
         vm.myUser = {
             id: null,
