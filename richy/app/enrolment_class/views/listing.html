@@ -167,11 +167,25 @@
         overflow:hidden !important;
         background:#f6f7fb;
     }
-    .team-board-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
-    .team-board-toolbar .form-control { width:320px; max-width:100%; }
+    .team-board-layout {
+        display:grid;
+        grid-template-columns:minmax(0, 1fr) minmax(0, 3fr);
+        flex:1 1 auto;
+        min-width:0;
+        min-height:0;
+        gap:14px;
+        overflow:hidden;
+    }
+    .team-board-sidebar,
+    .team-board-teams-pane { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
+    .team-board-sidebar > .team-board-column { flex:1 1 auto; }
+    .team-board-teams-pane > .alert { flex:0 0 auto; }
+    .team-board-toolbar { display:flex; flex:0 0 auto; flex-direction:column; align-items:stretch; gap:8px; margin-bottom:14px; }
+    .team-board-toolbar .form-control { width:100%; max-width:100%; }
+    .team-board-toolbar > div { min-width:0; overflow-wrap:anywhere; }
     .team-board-columns {
         display:grid;
-        grid-template-columns:repeat(4, minmax(0, 1fr));
+        grid-template-columns:repeat(3, minmax(0, 1fr));
         grid-auto-rows:max(190px, calc((100% - 14px) / 2));
         flex:1 1 auto;
         align-items:stretch;
@@ -194,9 +208,9 @@
         overflow:hidden;
     }
     .team-board-column.unassigned { border-color:#f0ad4e; }
-    .team-board-column-header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 13px; background:#eef1f8; border-bottom:1px solid #dce2ee; }
+    .team-board-column-header { display:flex; flex:0 0 auto; justify-content:space-between; align-items:center; gap:8px; padding:12px 13px; background:#eef1f8; border-bottom:1px solid #dce2ee; }
     .team-board-column.unassigned .team-board-column-header { background:#fff6e5; }
-    .team-board-column-title { min-width:0; font-weight:700; }
+    .team-board-column-title { min-width:0; font-weight:700; overflow-wrap:anywhere; }
     .team-board-column-code { display:block; overflow:hidden; text-overflow:ellipsis; color:#7b8494; font-size:11px; font-weight:400; }
     .team-student-list {
         flex:1 1 auto;
@@ -667,17 +681,19 @@
     .global-dark-mode .class-schedule-modal .modal-body::-webkit-scrollbar-thumb { border-color:#292f3f; background:#8d7cff; }
     .global-dark-mode .class-schedule-modal .modal-body::-webkit-scrollbar-thumb:hover { background:#a397ff; }
     @media (min-width: 992px) and (max-width: 1199px) {
-        .team-board-columns { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+        .team-board-columns { grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 991px) {
         .team-board-modal .modal-body {
             padding:10px;
         }
+        .team-board-layout { grid-template-columns:minmax(0, 1fr) minmax(0, 2fr); }
         .team-board-columns { grid-template-columns:repeat(2, minmax(0, 1fr)); }
         .team-mobile-picker { display:block; }
         .team-student-card { cursor:default; }
     }
     @media (max-width: 599px) {
+        .team-board-layout { grid-template-columns:minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) minmax(0, 1fr); }
         .team-board-columns { grid-template-columns:minmax(0, 1fr); }
     }
     @media (max-width: 767px) {
@@ -792,11 +808,11 @@
                                         title="Mở trang thiết lập giờ học và kế hoạch theo ngày trong tab mới">
                                     <i class="fa fa-calendar"></i> Thiết lập lớp
                                 </a>
-                                <button class="btn btn-xs btn-primary" data-ng-if="row.canManageTeams"
+                                <button class="btn btn-xs btn-primary" data-ng-if="row.canManageTeams && !row.parentId"
                                         data-ng-click="vm.openTeamBoard(row)" title="Mở bảng phân đội">
                                     <i class="fa fa-random"></i> Phân đội
                                 </button>
-                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild" title="Tạo đội"
+                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild && !row.parentId" title="Tạo đội"
                                         data-ng-click="vm.openEditor(null, row.id)"><i class="fa fa-plus"></i> Tạo đội</button>
                                 <button class="btn btn-xs btn-info" data-ng-if="row.canEdit"
                                         title="Sửa thông tin / thêm trưởng phó"
@@ -825,59 +841,35 @@
             <h4 class="modal-title"><i class="fa fa-random"></i> Phân đội — {{vm.teamBoard.className}}</h4>
         </div>
         <div class="modal-body">
-            <div class="team-board-toolbar">
-                <div>
-                    <strong>{{vm.teamBoard.totalStudents || 0}}</strong> học sinh
-                    <span class="text-muted">— kéo thả học sinh giữa các đội, thay đổi sẽ được lưu ngay.</span>
-                </div>
-                <div>
-                    <span data-ng-if="vm.teamBoardSaving" class="text-info"><i class="fa fa-spinner fa-spin"></i> Đang lưu...</span>
-                    <input type="text" class="form-control" data-ng-model="vm.teamSearchText"
-                           placeholder="Tìm tên hoặc tài khoản học sinh..." />
-                </div>
-            </div>
-
-            <div class="alert alert-warning" data-ng-if="!vm.teamBoard.teams.length">
-                Lớp này chưa có đội. Quản trị viên hoặc quản lý giáo dục hãy bấm <strong>Tạo đội</strong> dưới lớp này trước.
-            </div>
-
-            <div class="team-board-columns">
-                <section class="team-board-column" data-ng-class="{'unassigned': column.unassigned}"
-                         data-ng-repeat="column in vm.teamBoard.columns track by (column.id || 'unassigned')">
-                    <header class="team-board-column-header">
-                        <div class="team-board-column-title">
-                            <i class="fa" data-ng-class="column.unassigned ? 'fa-inbox' : 'fa-users'"></i>
-                            {{column.name}}
-                            <small class="team-board-column-code" data-ng-if="column.code">{{column.code}}</small>
+            <div class="team-board-layout">
+                <div class="team-board-sidebar">
+                    <div class="team-board-toolbar">
+                        <div>
+                            <input type="text" class="form-control" data-ng-model="vm.teamSearchText"
+                                   placeholder="Tìm tên hoặc tài khoản học sinh..." />
                         </div>
-                        <span class="badge">{{column.students.length}}</span>
-                    </header>
-
-                    <ul class="team-student-list" dnd-list="column.students"
-                        dnd-drop="vm.dropStudent(column, item)">
-                        <li class="team-student-card"
-                            data-ng-repeat="student in column.students | filter:vm.teamStudentFilter track by student.id"
-                            dnd-draggable="student"
-                            dnd-moved="vm.removeDraggedStudent(column, student)"
-                            dnd-effect-allowed="move"
-                            dnd-disable-if="vm.teamBoardSaving"
-                            data-ng-class="{'team-saving': vm.teamBoardSaving}">
-                            <div class="team-student-name"><i class="fa fa-user"></i> {{vm.studentName(student)}}</div>
-                            <div class="team-student-username">{{student.username}}</div>
-                            <select class="form-control input-sm team-mobile-picker"
-                                    data-ng-model="student._targetTeamId"
-                                    data-ng-change="vm.moveStudentFromSelect(student)"
-                                    data-ng-disabled="vm.teamBoardSaving">
-                                <option data-ng-value="null">Chưa phân đội</option>
-                                <option data-ng-repeat="team in vm.teamBoard.teams track by team.id"
-                                        data-ng-value="team.id">{{team.name}}</option>
-                            </select>
-                        </li>
-                        <li class="team-board-empty" data-ng-if="!(column.students | filter:vm.teamStudentFilter).length">
-                            {{vm.teamSearchText ? 'Không có học sinh phù hợp' : 'Kéo học sinh vào đây'}}
-                        </li>
-                    </ul>
-                </section>
+                        <div>
+                            <strong>{{vm.teamBoard.totalStudents || 0}}</strong> học sinh
+                            <span class="text-muted">— kéo thả học sinh giữa các đội, thay đổi sẽ được lưu ngay.</span>
+                            <span data-ng-if="vm.teamBoardSaving" class="text-info"><i class="fa fa-spinner fa-spin"></i> Đang lưu...</span>
+                        </div>
+                    </div>
+                    <section class="team-board-column unassigned"
+                             data-ng-repeat="column in vm.teamBoard.columns | filter:{unassigned:true} track by (column.id || 'unassigned')"
+                             data-ng-include="'team_board_column.html'">
+                    </section>
+                </div>
+                <div class="team-board-teams-pane">
+                    <div class="alert alert-warning" data-ng-if="!vm.teamBoard.teams.length">
+                        Lớp này chưa có đội. Quản trị viên hoặc quản lý giáo dục hãy bấm <strong>Tạo đội</strong> dưới lớp này trước.
+                    </div>
+                    <div class="team-board-columns">
+                        <section class="team-board-column"
+                                 data-ng-repeat="column in vm.teamBoard.teams track by column.id"
+                                 data-ng-include="'team_board_column.html'">
+                        </section>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -886,6 +878,42 @@
             </button>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="team_board_column.html">
+    <header class="team-board-column-header">
+        <div class="team-board-column-title">
+            <i class="fa" data-ng-class="column.unassigned ? 'fa-inbox' : 'fa-users'"></i>
+            {{column.name}}
+            <small class="team-board-column-code" data-ng-if="column.code">{{column.code}}</small>
+        </div>
+        <span class="badge">{{column.students.length}}</span>
+    </header>
+
+    <ul class="team-student-list" dnd-list="column.students"
+        dnd-drop="vm.dropStudent(column, item)">
+        <li class="team-student-card"
+            data-ng-repeat="student in column.students | filter:vm.teamStudentFilter track by student.id"
+            dnd-draggable="student"
+            dnd-moved="vm.removeDraggedStudent(column, student)"
+            dnd-effect-allowed="move"
+            dnd-disable-if="vm.teamBoardSaving"
+            data-ng-class="{'team-saving': vm.teamBoardSaving}">
+            <div class="team-student-name"><i class="fa fa-user"></i> {{vm.studentName(student)}}</div>
+            <div class="team-student-username">{{student.username}}</div>
+            <select class="form-control input-sm team-mobile-picker"
+                    data-ng-model="student._targetTeamId"
+                    data-ng-change="vm.moveStudentFromSelect(student)"
+                    data-ng-disabled="vm.teamBoardSaving">
+                <option data-ng-value="null">Chưa phân đội</option>
+                <option data-ng-repeat="team in vm.teamBoard.teams track by team.id"
+                        data-ng-value="team.id">{{team.name}}</option>
+            </select>
+        </li>
+        <li class="team-board-empty" data-ng-if="!(column.students | filter:vm.teamStudentFilter).length">
+            {{vm.teamSearchText ? 'Không có học sinh phù hợp' : 'Kéo học sinh vào đây'}}
+        </li>
+    </ul>
 </script>
 
 <script type="text/ng-template" id="class_schedule_modal.html">
