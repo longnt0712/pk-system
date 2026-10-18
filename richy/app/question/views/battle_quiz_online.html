@@ -1132,11 +1132,12 @@
                 src="'question/views/battle_online_egg_host.html?eggHost=20261014_1&lightning=20261016_1&autoRead=20261017_1&classicControl=20261017_2'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
-         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
+         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-host-layout': vm.isHost() && vm.isClassicMode() && !vm.room.videoSynchronized}">
 
         <main class="battle-online-card battle-online-question-card"
-              ng-if="!vm.isSpectator() || vm.isGuessWordMode()"
+              ng-if="!vm.isSpectator() || vm.isGuessWordMode() || vm.isClassicHostPreview()"
               ng-class="{
+                  'is-classic-host-preview': vm.isClassicHostPreview(),
                   'is-player-frozen': vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive(),
                   'is-player-inverted': vm.isMeInverted(),
                   'is-player-burning': vm.isMeBurning()
@@ -1445,8 +1446,8 @@
             <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise && !(vm.isHost() && vm.room.videoSynchronized)" ng-show="vm.videoQuestionOpen()">
                 <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
                 <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
-                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
-                <button type="button" class="btn btn-primary" ng-if="vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="!vm.isClassicHostPreview() && vm.exerciseInputDisabled()" on-answer="!vm.isClassicHostPreview() && vm.submitExercise(false)"></battle-exercise-form>
+                <button type="button" class="btn btn-primary" ng-if="!vm.isClassicHostPreview() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
                 <div class="battle-online-guess-host-actions"
                      ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' && vm.room.guessPhase === 'WAITING_HOST'">
                     <button type="button" class="is-reveal" ng-if="!vm.room.guessAnswerRevealed" ng-disabled="vm.revealingGuessAnswer" ng-click="vm.revealGuessAnswer()">💡 HIỆN ĐÁP ÁN ĐÚNG</button>
@@ -1472,8 +1473,10 @@
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
                         class="battle-online-answer-btn answer-{{$index}}"
-                        ng-disabled="vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername || vm.isDemonPlayerEliminated()"
-                        ng-click="vm.answer(option)">
+                        ng-class="{'is-selected': vm.isClassicHostPreview() && vm.classicPreviewAnswerKey === option.key}"
+                        ng-attr-aria-pressed="{{vm.isClassicHostPreview() ? vm.classicPreviewAnswerKey === option.key : undefined}}"
+                        ng-disabled="!vm.isClassicHostPreview() && (vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername || vm.isDemonPlayerEliminated())"
+                        ng-click="vm.isClassicHostPreview() ? vm.selectClassicPreview(option) : vm.answer(option)">
 
                     <span class="battle-online-answer-key">
                         {{option.key}}
@@ -1655,6 +1658,7 @@
             <div class="battle-online-feedback is-waiting"
                  ng-if="
                     vm.room.settings.mode === 'CLASSIC' &&
+                    !vm.isClassicHostPreview() &&
                     vm.answerLocked &&
                     vm.lastAnswerCorrect === null
                  ">
@@ -1663,7 +1667,7 @@
             </div>
 
             <div class="battle-online-key-help"
-                 ng-if="!vm.isGuessWordMode()">
+                 ng-if="!vm.isGuessWordMode() && !vm.isSpectator()">
                 Phím nhanh:
                 <kbd>1</kbd>
                 <kbd>2</kbd>
@@ -1679,7 +1683,7 @@
         </main>
 
         <main class="battle-online-card battle-online-spectator-panel"
-              ng-if="vm.isSpectator() && !vm.isGuessWordMode() && !vm.isDemonDefenseMode()">
+              ng-if="vm.isSpectator() && !vm.isGuessWordMode() && !vm.isDemonDefenseMode() && !vm.isClassicHostPreview()">
             <div class="battle-online-spectator-icon">👁️</div>
             <span class="battle-online-small-title">CHẾ ĐỘ KHÁN GIẢ</span>
             <h2>Bạn đang xem trận đấu</h2>
@@ -9557,6 +9561,20 @@
     .is-host-spectator-layout .battle-online-ranking-row { padding: 13px; gap: 14px; }
     .is-host-spectator-layout .battle-online-ranking-copy strong { font-size: 17px; }
     .is-host-spectator-layout .battle-online-score { font-size: 23px; }
+
+    .is-classic-host-preview .battle-online-answer-btn.is-selected {
+        outline: 3px solid #8463ff;
+        outline-offset: 3px;
+        box-shadow: 0 0 0 6px #8463ff22;
+    }
+    @media (min-width: 821px) {
+        .battle-online-game-layout.is-classic-host-layout {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: start;
+        }
+        .battle-online-game-layout.is-classic-host-layout > * { min-width: 0; }
+        .is-classic-host-layout .battle-online-game-topline { flex-wrap: wrap; }
+    }
 
     .battle-online-music-trigger {
         color: #5b42bd;

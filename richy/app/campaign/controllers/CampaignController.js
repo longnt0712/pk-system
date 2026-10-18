@@ -21,7 +21,11 @@
             {intention: 'những người đang buồn hoặc cô đơn', prayer: 'Xin Chúa an ủi và giúp họ gặp được những người biết quan tâm, chia sẻ.', image: 'assets/images/flower-prayers-2026/04-lonely.jpg'},
             {intention: 'gia đình của em', prayer: 'Xin Chúa giúp mọi người trong gia đình luôn biết yêu thương và tha thứ cho nhau.', image: 'assets/images/flower-prayers-2026/05-family.jpg'},
             {intention: 'giáo xứ và xứ đoàn', prayer: 'Xin Chúa giúp chúng con luôn hiệp nhất và cùng giúp nhau yêu mến Chúa.', image: 'assets/images/flower-prayers-2026/06-parish.jpg'},
-            {intention: 'chính em', prayer: 'Xin Chúa giúp em biết làm việc tốt với lòng yêu thương.', image: 'assets/images/flower-prayers-2026/07-self.jpg'}
+            {intention: 'chính em', prayer: 'Xin Chúa giúp em biết làm việc tốt với lòng yêu thương.', image: 'assets/images/flower-prayers-2026/07-self.jpg'},
+            {intention: 'việc truyền giáo', prayer: 'Xin Chúa giúp mỗi thiếu nhi chúng con trở nên một người truyền giáo nhỏ bé, biết giới thiệu Chúa bằng lời nói yêu thương, việc làm tốt và gương sáng mỗi ngày.', image: 'assets/images/flower-prayers-2026/08-evangelization.jpg'},
+            {intention: 'Đức Tổng Giám mục Giu-se', prayer: 'Xin Chúa ban cho Đức Tổng Giám mục Giu-se sức khỏe, sự khôn ngoan và niềm vui, để ngài luôn dẫn dắt đoàn chiên trong tình yêu Chúa.', image: 'assets/images/flower-prayers-2026/09-archbishop-joseph.jpg'},
+            {intention: 'các cha xứ', prayer: 'Xin Chúa ban cho các cha xứ sức khỏe, bình an và lòng nhiệt thành, để các ngài luôn yêu thương, chăm sóc và hướng dẫn chúng con đến gần Chúa hơn.', image: 'assets/images/flower-prayers-2026/10-parish-priests.jpg'},
+            {intention: 'Đức Giáo hoàng', prayer: 'Xin Chúa gìn giữ Đức Giáo hoàng, ban cho ngài sức khỏe và ơn khôn ngoan, để ngài dẫn dắt Hội Thánh trong hiệp nhất và yêu thương.', image: 'assets/images/flower-prayers-2026/11-pope.jpg'}
         ];
         var lastPrayerIndex = -1;
         vm.flowerPrayer = null;

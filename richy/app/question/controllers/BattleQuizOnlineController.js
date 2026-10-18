@@ -275,6 +275,7 @@
         };
         vm.submitExercise = function (automatic) {
             if (!vm.room || !vm.room.currentQuestion || !vm.room.currentQuestion.exercise ||
+                    (automatic && !isGuessWordMode()) ||
                     (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                     (!automatic && vm.exerciseInputDisabled()) || vm.answerLocked || isSpectator()) { return; }
             var exercise = vm.room.currentQuestion.exercise;
@@ -329,6 +330,16 @@
         vm.finishMatch = function () { return runHostMatchControl('finishMatch'); };
         vm.isClassicMode = function () { return !!(vm.room && vm.room.settings && vm.room.settings.mode === 'CLASSIC'); };
         vm.isClassicAuto = function () { return !vm.room || vm.room.classicAutoAdvance !== false; };
+        vm.classicPreviewAnswerKey = '';
+        vm.isClassicHostPreview = function () {
+            return vm.isClassicMode() && vm.room.status === 'PLAYING' && !vm.room.videoSynchronized && isHost() && isSpectator();
+        };
+        vm.selectClassicPreview = function (option) {
+            if (vm.isClassicHostPreview() && option && vm.room.currentQuestion &&
+                    (vm.room.currentQuestion.answers || []).some(function (answer) { return answer.key === option.key; })) {
+                vm.classicPreviewAnswerKey = option.key;
+            }
+        };
         function runClassicControl(action) {
             if (!vm.isClassicMode() || vm.room.status !== 'PLAYING' || !isHost() || vm.matchControlBusy) { return; }
             if (action === 'nextClassicQuestion' && (vm.isClassicAuto() || !vm.room.classicAnswerRevealed)) { return; }
@@ -3268,11 +3279,13 @@
                     newQuestionId !==
                         previousQuestionId ||
                     newQuestionSequence !==
-                        previousQuestionSequence || videoRoundChanged
+                        previousQuestionSequence || videoRoundChanged ||
+                    !previousRoom || previousRoom.code !== incoming.code || previousStatus !== 'PLAYING'
                 );
 
             if (questionChanged) {
                 vm.exerciseAnswers = {};
+                vm.classicPreviewAnswerKey = '';
                 vm.answerLocked = false;
                 vm.guessSubmitting = false;
                 vm.lastAnswerCorrect = null;
@@ -3309,6 +3322,10 @@
                 incoming.guessPhase !== 'QUESTION'
             ) {
                 vm.answerLocked = true;
+            } else if (!incoming.videoSynchronized && vm.isClassicMode() && incoming.currentQuestion) {
+                var currentClassicPlayer = getMe();
+                vm.answerLocked = vm.answerLocked || incoming.classicAnswerRevealed === true ||
+                    !!(currentClassicPlayer && currentClassicPlayer.answeredCurrentQuestion === true);
             } else if (!incoming.videoSynchronized && isGuessWordMode() && incoming.currentQuestion) {
                 var currentGuessPlayer = getMe();
                 vm.answerLocked = !questionChanged && !!(
@@ -4470,8 +4487,8 @@
             }
 
             if (
-                isCountdownMode() &&
-                vm.countdown <= 0
+                (vm.countdown <= 0 && !(option.autoSubmitted === true && isGuessWordMode())) ||
+                (vm.isClassicMode() && vm.room.classicAnswerRevealed)
             ) {
                 return;
             }
@@ -4774,7 +4791,8 @@
 
 
         function autoSubmitGuessWordAtTimeout() {
-            if (vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise &&
+            // Only Guess accepts timeout submissions in a server grace window.
+            if (isGuessWordMode() && vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise &&
                     vm.room.status === 'PLAYING' && vm.room.guessPhase === 'QUESTION') {
                 vm.submitExercise(true); return;
             }

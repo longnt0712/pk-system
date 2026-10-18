@@ -224,9 +224,9 @@ test('prayer choices never repeat consecutively and Amen or unchecking never iss
     }
     assert.equal(h.calls.filter(c=>c[0]==='check').length,50);
 });
-test('each of the seven confirmed prayer intentions uses its matching deployed illustration',async()=>{
+test('each of the eleven confirmed prayer intentions uses its matching deployed illustration',async()=>{
     const images=JSON.parse(fs.readFileSync(path.join(__dirname,'../assets/images/flower-prayers-2026/prompts.json'),'utf8')).images;
-    assert.equal(images.length,7);const seen=new Set();
+    assert.equal(images.length,11);const seen=new Set();
     for(let index=0;index<images.length;index++){
         const expected=images[index],h=setup({studentMode:true,campaign:studentCampaign,prayerRandom:()=>index/images.length});await tick();
         h.vm.checks['practice-1:2026-10-01']=true;await h.vm.toggleFlower(studentCampaign.flowerItems[0],{date:'2026-10-01'});
@@ -234,7 +234,7 @@ test('each of the seven confirmed prayer intentions uses its matching deployed i
         const image='assets/images/flower-prayers-2026/'+expected.file.replace(/\.png$/,'.jpg');assert.equal(h.vm.flowerPrayer.image,image);
         assert.ok(fs.statSync(path.join(__dirname,'..',image)).size>0);seen.add(image);
     }
-    assert.equal(seen.size,7);
+    assert.equal(seen.size,11);
 });
 test('overlapping saves keep a single prayer and preserve all confirmed checkboxes',async()=>{
     const campaign={...studentCampaign,flowerItems:[{itemKey:'a',name:'Cầu nguyện'},{itemKey:'b',name:'Thánh lễ'}]},h=setup({studentMode:true,campaign});await tick();const replies=[];

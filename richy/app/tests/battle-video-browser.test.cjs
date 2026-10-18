@@ -16,10 +16,10 @@ async function open(browser,username,width,extra=null){
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-sanitize.min.js')});
  await page.evaluate(({username,template,controlsTemplate,answersTemplate})=>{
-  window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];window.matchControlRequests=[];
+  window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];window.matchControlRequests=[];window.toastErrors=[];
   angular.module('Hrm.Question',['ngSanitize']).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}})
-   .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{}).value('QuestionService',{})
+   .value('toastr',{warning(){},error(...args){window.toastErrors.push(args);},success(){}}).value('blockUI',{}).value('QuestionService',{})
    .factory('BattleQuizOnlineService',function($q){return {answer(...args){window.answerCalls.push(args);const request=$q.defer();window.answerRequests.push(request);return request.promise;},
     setClassicAutoAdvance(...args){const request=$q.defer();window.matchControlRequests.push({action:'auto',args,request});return request.promise;},
     nextClassicQuestion(...args){const request=$q.defer();window.matchControlRequests.push({action:'next',args,request});return request.promise;},
@@ -40,7 +40,7 @@ async function open(browser,username,width,extra=null){
   controlsTemplate:fs.readFileSync(path.join(app,'question/views/battle_online_match_controls.html'),'utf8'),
   answersTemplate:fs.readFileSync(path.join(app,'question/views/battle_online_classic_answers.html'),'utf8')});
  const source=fs.readFileSync(path.join(app,'question/controllers/BattleQuizOnlineController.js'),'utf8')
-  .replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.battleHooks = {applyRoom: applyRoom};');
+  .replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.battleHooks = {applyRoom: applyRoom, updateCountdown: updateCountdown};');
  await page.addScriptTag({content:source});
  await page.addScriptTag({path:path.join(app,'question/controllers/BattleExerciseForm.js')});
  await page.evaluate(()=>{angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.qaScope=angular.element(document.getElementById('qa')).scope();});
@@ -55,6 +55,96 @@ function room(mode,phase,revision=1,sequence=1){return {code:'VIDEO1',hostUserna
  videoTimeSeconds:10,videoAnswerSeconds:20,instructionsHtml:'<p>Xem video và chọn đáp án.</p>',items:[{id:'201',number:1,
  promptHtml:'<b>What did you see?</b>',options:[{key:'A',text:'A cat'},{key:'B',text:'A dog'}]}]}}};}
 async function apply(page,snapshot){await page.evaluate(r=>{window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false));},snapshot);}
+
+const gameLayout=fragment('    <div class="battle-online-game-layout"','    <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode()');
+function classicRoom(sequence=1) {
+ const snapshot=room('CLASSIC','ANSWERING',1,sequence);snapshot.videoSynchronized=false;snapshot.classicAutoAdvance=false;
+ Object.assign(snapshot.currentQuestion.exercise,{title:'Questions 1–50',instructionsHtml:'<p>Choose the correct answer (A, B, C or D) for each question.</p>',
+  items:[{id:'201',number:37,promptHtml:'The road is going to _____ repaired.',options:[{key:'37: A',text:'being'},{key:'37: B',text:'be'},{key:'37: C',text:'been'},{key:'37: D',text:'was'}]}]});
+ return snapshot;
+}
+
+test('Classic hosts see equal desktop columns and can illustrate all choices without entering the player score',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ const captures=path.join(app,'../target');fs.mkdirSync(captures,{recursive:true});
+ try {
+  for(const width of [1280,390]) {
+   const page=await open(browser,'host',width,gameLayout),errors=[];page.on('pageerror',error=>errors.push(String(error)));
+   const snapshot=classicRoom();await apply(page,snapshot);
+   const question=page.locator('.battle-online-question-card'),ranking=page.locator('#battle-online-ranking-card');
+   await question.waitFor({state:'visible'});await ranking.waitFor({state:'visible'});
+   assert.equal(await page.locator('.battle-online-spectator-panel').count(),0);
+   const left=await question.boundingBox(),right=await ranking.boundingBox();
+   if(width>820) {assert.ok(Math.abs(left.width-right.width)<1,'desktop divides question and ranking equally');assert.ok(right.x>left.x);}
+   else {assert.ok(right.y>=left.y+left.height,'mobile stacks the columns');}
+   assert.equal(await page.locator('#qa').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'page fits its viewport');
+   const choices=question.locator('.battle-online-answer-btn');assert.equal(await choices.count(),4);
+   await choices.nth(1).click();assert.equal(await question.locator('.battle-online-answer-btn.is-selected').count(),1);
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),0);
+   await apply(page,snapshot);assert.match(await question.locator('.battle-online-answer-btn.is-selected').innerText(),/be/,'poll keeps host selection');
+   snapshot.classicAnswerRevealed=true;snapshot.classicCorrectAnswer='37: be';snapshot.questionEndsAt=Date.now()-5000;snapshot.serverTime=Date.now();
+   snapshot.classicStudentAnswers=[{username:'alice',displayName:'Nguyễn Minh Anh',answered:true,correct:true,answer:'37: be'}];await apply(page,snapshot);
+   await question.locator('.battle-online-classic-review').waitFor({state:'visible'});
+   await choices.nth(0).click();assert.match(await question.locator('.battle-online-answer-btn.is-selected').innerText(),/being/);
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),0,'host can illustrate while reviewing with no scored request');
+   await ranking.locator('.battle-online-classic-answers').waitFor({state:'visible'});
+   await page.screenshot({path:path.join(captures,'battle-classic-host-half-'+width+'.png'),fullPage:true});
+   await apply(page,classicRoom(2));assert.equal(await question.locator('.battle-online-answer-btn.is-selected').count(),0,'new question clears illustration');
+   const vocab=classicRoom(3);delete vocab.currentQuestion.exercise;vocab.settings.questionSource='VOCABULARY';
+   vocab.currentQuestion.question='A friendly animal';vocab.currentQuestion.answers=[{key:'A',text:'Cat'},{key:'B',text:'Dog'},{key:'C',text:'Bird'},{key:'D',text:'Fish'}];
+   await apply(page,vocab);await choices.nth(2).click();assert.equal(await choices.nth(2).getAttribute('aria-pressed'),'true');
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),0);
+   await apply(page,classicRoom(4));assert.equal(await question.locator('.battle-online-answer-btn.is-selected').count(),0);
+   const text=classicRoom(5);Object.assign(text.currentQuestion.exercise,{type:1,answerMode:'TEXT'});await apply(page,text);
+   await question.locator('input[type=text]').fill('be');assert.equal(await question.getByRole('button',{name:'NỘP ĐÁP ÁN',exact:true}).count(),0);
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),0);
+   const player=classicRoom(6);player.players[0].spectator=false;await apply(page,player);
+   await choices.nth(1).click();assert.equal(await page.evaluate(()=>window.answerCalls.length),1,'participating host still submits a scored answer');
+   assert.deepEqual(errors,[]);await page.close();
+  }
+ } finally {await browser.close();}
+});
+
+test('reloading an expired manual Classic question waits for host Next without repeated requests or timeout errors',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try {
+  for(const revealed of [false,true]) {
+   const page=await open(browser,'alice',390,gameLayout),snapshot=classicRoom();
+   snapshot.questionEndsAt=Date.now()-10000;snapshot.classicAnswerRevealed=revealed;snapshot.classicCorrectAnswer=revealed?'37: be':'';
+   await apply(page,snapshot);
+   for(let poll=0;poll<12;poll++) {
+    snapshot.serverTime=Date.now();await apply(page,snapshot);
+    await page.evaluate(()=>window.qaScope.$apply(()=>{window.qaScope.vm.submitExercise(true);window.battleHooks.updateCountdown();}));
+   }
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),0,'expired/review questions never auto submit');
+   assert.deepEqual(await page.evaluate(()=>window.toastErrors),[]);
+   const choices=page.locator('.battle-online-question-card .battle-online-answer-btn');assert.equal(await choices.nth(0).isDisabled(),true);
+   assert.equal(await page.locator('.battle-online-classic-review').count(),revealed?1:0);
+   const next=classicRoom(2);next.players[1].answeredCurrentQuestion=true;await apply(page,next);
+   assert.equal(await choices.nth(0).isDisabled(),true,'reload preserves an already submitted answer');
+   const fresh=classicRoom(3);await apply(page,fresh);assert.equal(await choices.nth(0).isEnabled(),true,'host Next opens the new question');
+   await choices.nth(1).click();assert.equal(await page.evaluate(()=>window.answerCalls.length),1);
+   fresh.questionEndsAt=Date.now()-1;
+   await page.evaluate(()=>window.qaScope.$apply(()=>window.answerRequests[0].reject({status:409,data:{message:'Câu hỏi đã hết giờ.'}})));
+   for(let poll=0;poll<12;poll++) {fresh.serverTime=Date.now();await apply(page,fresh);}
+   assert.equal(await page.evaluate(()=>window.answerCalls.length),1,'a request rejected at the deadline never starts an automatic retry loop');
+   assert.equal(await page.evaluate(()=>window.toastErrors.length),1);
+   await page.close();
+  }
+  const guess=await open(browser,'alice',390,gameLayout),snapshot=room('GUESS_WORD','ANSWERING');snapshot.videoSynchronized=false;
+  Object.assign(snapshot.currentQuestion.exercise,{type:1,answerMode:'TEXT'});await apply(guess,snapshot);
+  await guess.locator('.battle-online-question-card input[type=text]').fill('a cat');
+  snapshot.questionEndsAt=Date.now()-1;snapshot.serverTime=Date.now();await apply(guess,snapshot);
+  assert.equal(await guess.evaluate(()=>window.answerCalls.length),1,'Guess still submits typed answers at its deadline');
+  assert.equal(await guess.evaluate(()=>window.answerCalls[0][5]),true);
+  await guess.evaluate(()=>window.qaScope.$apply(()=>window.answerRequests[0].reject({status:409,data:{message:'Câu hỏi đã hết giờ.'}})));
+  for(let poll=0;poll<12;poll++) {snapshot.serverTime=Date.now();await apply(guess,snapshot);}
+  assert.equal(await guess.evaluate(()=>window.answerCalls.length),1,'Guess auto submission remains limited to one attempt');
+  await guess.close();
+ } finally {await browser.close();}
+});
 
 test('manual Classic shows submitted choices and correctness below ranking only after reveal on desktop and mobile BXH',async()=>{
  const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
