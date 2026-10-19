@@ -154,14 +154,17 @@
                     }]});
                 instance.result.finally(function () { vm.catalogMoveDialogOpen = false; }).catch(angular.noop);
             };
-            vm.newTest = function () {
-                if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+            function resetDraft(folderId) {
                 vm.draft = {questionType: {id: 11}, testFormat: 'DAILY_LISTENING', status: 7,
                     question: '', pronounce: '', motherTongue: '', userId: vm.currentUser.id,
                     questionTopics: [], questionAnswers: [], subQuestions: [], website: 1,
-                    testFolderId: Number(vm.catalogTestFolderId) > 0 ? Number(vm.catalogTestFolderId) : null};
+                    testFolderId: Number(folderId) > 0 ? Number(folderId) : null};
                 vm.transcript = ''; vm.originalTranscript = ''; vm.originalTranscriptText = '';
                 vm.error = ''; vm.savedMessage = '';
+            }
+            vm.newTest = function () {
+                if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                resetDraft(vm.catalogTestFolderId);
                 if (vm.initialized) { showEditor(); }
             };
             vm.edit = function (item) {
@@ -198,16 +201,21 @@
                 vm.saving = true;
                 return service.saveDailyListening(payload).then(function (saved) {
                     if (!saved || !saved.id || !isListening(saved)) { vm.error = (saved || {}).message || 'Chưa lưu được bài. Nội dung đang nhập vẫn được giữ.'; return; }
-                    vm.draft = angular.copy(saved);
-                    vm.draft.userId = payload.userId;
-                    vm.originalTranscript = saved.motherTongue || payload.motherTongue;
-                    vm.originalTranscriptText = vm.transcript;
                     var index = -1;
                     vm.items.some(function (item, position) { if (String(item.id) === String(saved.id)) { index = position; return true; } return false; });
                     if (index >= 0) { vm.items[index] = saved; vm.catalogTestMoved(saved); }
                     else if (!payload.id && matchesFolder(saved.testFolderId)) {
                         vm.items.unshift(saved); vm.totalItems++;
                         if (vm.items.length > vm.searchDto.pageSize) { vm.items.pop(); }
+                    }
+                    if (payload.id) {
+                        vm.draft = angular.copy(saved);
+                        vm.draft.userId = payload.userId;
+                        vm.originalTranscript = saved.motherTongue || payload.motherTongue;
+                        vm.originalTranscriptText = vm.transcript;
+                    } else {
+                        resetDraft(payload.testFolderId);
+                        showEditor();
                     }
                     vm.savedMessage = 'Đã lưu bài Daily Listening.';
                     toastr.success(vm.savedMessage);

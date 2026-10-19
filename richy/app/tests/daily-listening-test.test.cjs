@@ -11,9 +11,9 @@ function setup(overrides={}){
  nodeVm.runInNewContext(source,{angular});
  const old={id:21,question:'Old listening',title:'Old listening',pronounce:'https://school.test/old.mp3',motherTongue:'<p>We listen every day.</p>',
   questionType:{id:11},testFormat:'DAILY_LISTENING',status:7,user:{id:26},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
- const requests=[],saves=[],vm={},redirects=[];
+ let nextId=22;const requests=[],saves=[],vm={},redirects=[];
  const service={getDailyListeningTests(dto,index,size){requests.push({dto:plain(dto),index,size});return Promise.resolve({content:[structuredClone(old)],totalElements:1});},
-  getOne(){return Promise.resolve(structuredClone(old));},saveDailyListening(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,title:dto.question,id:dto.id||22});},...overrides.service};
+  getOne(){return Promise.resolve(structuredClone(old));},saveDailyListening(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,title:dto.question,id:dto.id||nextId++});},...overrides.service};
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
  const helpers={};nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/business/ComprehensiveListening.js'),'utf8'),{angular:{module(){return{factory(name,definition){helpers[name]=definition;return this;},directive(){return this;}};}}});
  const transcriptText=helpers.ComprehensiveListening.at(-1)({document},{}).transcriptText;
@@ -28,15 +28,31 @@ test('shared catalog has no source or teacher filter and edits imported content 
  assert.equal(saves[0].id,21);assert.equal(saves[0].motherTongue,old.motherTongue);assert.deepEqual(saves[0].questionTopics,old.questionTopics);
  assert.deepEqual(saves[0].questionAnswers,old.questionAnswers);assert.equal(saves[0].userId,26);assert.equal(vm.items[0].title,'New title');assert.equal(requests.length,1);
 });
-test('pasting text saves a shared test in the selected folder, with no manually configured gaps',async()=>{
- const {vm,saves}=setup();await tick();vm.catalogTestFolderId=5;vm.newTest();vm.transcript='We hear a new story every morning.';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();
- assert.equal(saves[0].questionType.id,11);assert.equal(saves[0].testFormat,'DAILY_LISTENING');assert.equal(saves[0].status,7);assert.equal(saves[0].testFolderId,5);
- assert.equal(saves[0].motherTongue,vm.transcript);assert.deepEqual(saves[0].questionAnswers,[]);assert.equal(vm.practiceUrl(vm.draft),'daily_listening/22');
+test('successful creation resets the editor and keeps its folder for a distinct next lesson',async()=>{
+ const {vm,saves}=setup();await tick();vm.catalogTestFolderId=5;await vm.applyCatalogFolderFilter();vm.newTest();
+ const transcript='We hear a new story every morning.';vm.transcript=transcript;vm.draft.question='First new lesson';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();
+ assert.equal(saves[0].id,undefined);assert.equal(saves[0].questionType.id,11);assert.equal(saves[0].testFormat,'DAILY_LISTENING');assert.equal(saves[0].status,7);assert.equal(saves[0].testFolderId,5);
+ assert.equal(saves[0].motherTongue,transcript);assert.deepEqual(saves[0].questionAnswers,[]);
+ assert.equal(vm.draft.id,undefined);assert.equal(vm.draft.question,'');assert.equal(vm.draft.pronounce,'');assert.equal(vm.draft.motherTongue,'');
+ assert.equal(vm.transcript,'');assert.equal(vm.originalTranscript,'');assert.equal(vm.originalTranscriptText,'');
+ assert.equal(vm.draft.testFolderId,5);assert.equal(vm.draft.status,7);assert.equal(vm.draft.questionType.id,11);assert.equal(vm.draft.testFormat,'DAILY_LISTENING');assert.equal(vm.draft.userId,7);
+ assert.deepEqual(plain(vm.draft.questionAnswers),[]);assert.deepEqual(plain(vm.draft.questionTopics),[]);assert.deepEqual(plain(vm.draft.subQuestions),[]);
+ assert.equal(vm.items[0].id,22);assert.equal(vm.items[0].question,'First new lesson');assert.equal(vm.practiceUrl(vm.items[0]),'daily_listening/22');assert.match(vm.savedMessage,/Đã lưu bài/);
+ vm.draft.question='Second new lesson';vm.draft.pronounce='https://school.test/second.mp3';vm.transcript='An entirely different transcript.';await vm.save();
+ assert.equal(saves[1].id,undefined);assert.equal(saves[1].testFolderId,5);assert.deepEqual(vm.items.slice(0,2).map(item=>item.id),[23,22]);
+ assert.equal(vm.items[1].motherTongue,transcript);assert.equal(vm.items[1].question,'First new lesson');assert.equal(vm.draft.id,undefined);assert.equal(vm.transcript,'');
 });
 test('save failure and duplicate submission retain pasted text',async()=>{
- let resolveSave;const {vm}=setup({service:{saveDailyListening(){return new Promise(resolve=>{resolveSave=resolve;});}}});await tick();
- vm.transcript='We keep the transcript.';vm.draft.pronounce='https://school.test/new.mp3';const pending=vm.save();assert.equal(vm.saving,true);assert.equal(vm.save(),undefined);
- resolveSave({message:'Save failed'});await pending;assert.equal(vm.saving,false);assert.equal(vm.transcript,'We keep the transcript.');assert.equal(vm.savedMessage,'');assert.match(vm.error,/Save failed/);
+ let resolveSave,calls=0;const {vm}=setup({service:{saveDailyListening(){calls++;return new Promise(resolve=>{resolveSave=resolve;});}}});await tick();
+ vm.transcript='We keep the transcript.';vm.draft.question='Keep this title';vm.draft.testFolderId=9;vm.draft.pronounce='https://school.test/new.mp3';const pending=vm.save();assert.equal(vm.saving,true);assert.equal(vm.save(),undefined);assert.equal(calls,1);
+ resolveSave({message:'Save failed'});await pending;assert.equal(vm.saving,false);assert.equal(vm.transcript,'We keep the transcript.');assert.equal(vm.draft.question,'Keep this title');assert.equal(vm.draft.testFolderId,9);assert.equal(vm.draft.pronounce,'https://school.test/new.mp3');assert.equal(vm.savedMessage,'');assert.match(vm.error,/Save failed/);
+});
+test('validation and HTTP failure retain a new lesson until retry succeeds and reset uses the submitted folder',async()=>{
+ let fail=true;const writes=[];const {vm}=setup({service:{saveDailyListening(dto){writes.push(structuredClone(dto));return fail?Promise.reject({data:{message:'Try saving again'}}):Promise.resolve({...dto,id:31});}}});await tick();
+ vm.draft.question='Keep new title';vm.draft.pronounce='not an audio URL';vm.transcript='Keep new text';vm.draft.testFolderId=9;await vm.save();
+ assert.equal(writes.length,0);assert.equal(vm.draft.question,'Keep new title');assert.equal(vm.transcript,'Keep new text');assert.match(vm.error,/hợp lệ/);
+ vm.draft.pronounce='https://school.test/retry.mp3';await vm.save();assert.equal(vm.draft.id,undefined);assert.equal(vm.draft.question,'Keep new title');assert.equal(vm.transcript,'Keep new text');assert.equal(vm.draft.testFolderId,9);assert.match(vm.error,/Try saving again/);
+ fail=false;await vm.save();assert.equal(writes.length,2);assert.equal(writes[0].id,undefined);assert.equal(writes[1].id,undefined);assert.equal(vm.draft.id,undefined);assert.equal(vm.transcript,'');assert.equal(vm.draft.testFolderId,9);assert.equal(vm.savedMessage,'Đã lưu bài Daily Listening.');
 });
 test('selected legacy records migrate by id, keep partial successes and retry only failures',async()=>{
  const records=[{id:1,question:'First',pronounce:'https://school.test/1.mp3',motherTongue:'First transcript'},{id:2,question:'Second',pronounce:'https://school.test/2.mp3',motherTongue:'Second transcript'}];

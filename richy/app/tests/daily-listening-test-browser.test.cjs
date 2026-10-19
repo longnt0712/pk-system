@@ -104,7 +104,7 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
  }
  await mount();return{page,errors,mount};
 }
-test('shared creator loads lessons across teachers, preserves imported data, saves pasted text and retries on desktop/mobile',async()=>{
+test('shared creator retains updates but resets new lessons for consecutive creates and retry on desktop/mobile',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
  try{for(const width of [1366,390]){
   const {page,errors}=await fixture(browser,width);
@@ -115,21 +115,39 @@ test('shared creator loads lessons across teachers, preserves imported data, sav
   await page.getByRole('textbox',{name:/Tên bài/}).fill('Listening cũ đã sửa');await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
   const saved=await page.evaluate(()=>window.saveCalls[0]);assert.equal(saved.id,21);assert.equal(saved.motherTongue,old.motherTongue);assert.deepEqual(saved.questionTopics,old.questionTopics);assert.deepEqual(saved.questionAnswers,old.questionAnswers);
-  assert.equal(await page.evaluate(()=>window.pageCalls.length),1);
+  assert.equal(await page.evaluate(()=>window.qaVm.draft.id),21);assert.equal(await page.getByRole('textbox',{name:/Tên bài/}).inputValue(),'Listening cũ đã sửa');
+  assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'one two three four five six seven eight nine ten.');
+  assert.match(await page.getByRole('link',{name:'Mở bài đã lưu',exact:true}).getAttribute('href'),/daily_listening\/21$/);assert.equal(await page.evaluate(()=>window.pageCalls.length),1);
+  const explorer=page.locator('.daily-listening-catalog test-folder-explorer');
+  await explorer.getByRole('button',{name:'Tạo folder',exact:true}).click();await explorer.getByRole('textbox',{name:'Tên folder',exact:true}).fill('Batch lessons');
+  await explorer.getByRole('button',{name:'Lưu folder',exact:true}).click();await explorer.locator('.test-explorer-folder').filter({hasText:'Batch lessons'}).click();
+  await page.waitForFunction(()=>qaVm.catalogTestFolderId===1&&!qaVm.loading);
   await page.getByRole('button',{name:'Tạo bài mới',exact:true}).click();
+  await page.getByRole('textbox',{name:/Tên bài/}).fill('First new lesson');
   await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).fill('http://daily-listening-creator.test/audio.wav');
   await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('one two three four five six seven eight nine ten.');
   await page.evaluate(()=>window.holdSave=true);await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Đang lưu...',exact:true}).isDisabled(),true);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.save()));assert.equal(await page.evaluate(()=>saveCalls.length),2);
   await page.evaluate(()=>{window.holdSave=false;window.releaseSave();});await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
   assert.equal(await page.getByRole('spinbutton').count(),0);
-  const created=await page.evaluate(()=>window.qaVm.draft);assert.equal(created.status,7);assert.equal(created.questionType.id,11);assert.equal(created.testFormat,'DAILY_LISTENING');assert.deepEqual(created.questionAnswers,[]);
-  assert.match(await page.getByRole('link',{name:'Mở bài đã lưu'}).getAttribute('href'),/daily_listening\/\d+/);
-  await page.evaluate(()=>window.failSave=true);await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('one two three four five six seven eight nine ten eleven.');
-  await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('alert').filter({hasText:'Lưu lỗi thử nghiệm'}).waitFor();
-  assert.match(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),/eleven/);
+  const fresh=await page.evaluate(()=>({draft:qaVm.draft,transcript:qaVm.transcript,original:qaVm.originalTranscript,plain:qaVm.originalTranscriptText}));
+  assert.equal(fresh.draft.id,undefined);assert.equal(fresh.draft.question,'');assert.equal(fresh.draft.pronounce,'');assert.equal(fresh.transcript,'');assert.equal(fresh.original,'');assert.equal(fresh.plain,'');
+  assert.equal(fresh.draft.status,7);assert.equal(fresh.draft.questionType.id,11);assert.equal(fresh.draft.testFormat,'DAILY_LISTENING');assert.equal(fresh.draft.testFolderId,1);assert.equal(await page.getByRole('combobox',{name:'Chọn folder',exact:true}).locator('option:checked').textContent(),'Batch lessons');assert.deepEqual(fresh.draft.questionAnswers,[]);assert.deepEqual(fresh.draft.questionTopics,[]);assert.deepEqual(fresh.draft.subQuestions,[]);
+  assert.equal(await page.getByRole('textbox',{name:/Tên bài/}).inputValue(),'');assert.equal(await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).inputValue(),'');assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'');
+  assert.equal(await page.getByRole('link',{name:'Mở bài đã lưu',exact:true}).count(),0);await page.getByRole('heading',{name:'First new lesson',exact:true}).waitFor();
+  const firstCreated=await page.evaluate(()=>structuredClone(records.find(item=>item.question==='First new lesson')));assert.equal(await page.evaluate(()=>saveCalls[1].id),undefined);
+  await page.getByRole('textbox',{name:/Tên bài/}).fill('Second new lesson');
+  await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).fill('http://daily-listening-creator.test/audio.wav');
+  await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('An entirely different listening transcript eleven.');
+  await page.evaluate(()=>window.failSave=true);await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('alert').filter({hasText:'Lưu lỗi thử nghiệm'}).waitFor();
+  assert.equal(await page.getByRole('textbox',{name:/Tên bài/}).inputValue(),'Second new lesson');assert.equal(await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).inputValue(),'http://daily-listening-creator.test/audio.wav');assert.match(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),/eleven/);
+  assert.equal(await page.evaluate(()=>qaVm.draft.id),undefined);assert.equal(await page.evaluate(()=>qaVm.draft.testFolderId),1);
   await page.evaluate(()=>window.failSave=false);await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  const creates=await page.evaluate(()=>({calls:saveCalls.slice(1),first:records.find(item=>item.question==='First new lesson'),second:records.find(item=>item.question==='Second new lesson'),ids:qaVm.items.map(item=>item.id)}));
+  assert.equal(creates.calls.length,3);assert.ok(creates.calls.every(item=>item.id===undefined&&item.testFolderId===1));assert.deepEqual(creates.first,firstCreated);assert.notEqual(creates.second.id,firstCreated.id);assert.ok(creates.ids.includes(firstCreated.id)&&creates.ids.includes(creates.second.id));
+  assert.equal(await page.evaluate(()=>qaVm.draft.id),undefined);assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'');assert.equal(await page.getByRole('link',{name:'Mở bài đã lưu',exact:true}).count(),0);
+  await page.getByRole('heading',{name:'Second new lesson',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   fs.mkdirSync(path.join(repo,'.tmp'),{recursive:true});await page.screenshot({path:path.join(repo,'.tmp/daily-listening-creator-'+width+'.png'),fullPage:true});
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
