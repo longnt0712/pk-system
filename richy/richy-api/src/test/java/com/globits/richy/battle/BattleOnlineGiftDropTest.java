@@ -261,6 +261,39 @@ public class BattleOnlineGiftDropTest {
         } finally { workers.shutdownNow(); }
     }
 
+    @Test public void aClaimedHatProtectsOnlyItsOwnerAcrossReloadsAndCannotBeRefreshedByReplayingTheClaim() {
+        final int[] ticket = {(Integer)get(new GiftDropGame(10,new Random(1)),"rottenWeight")};
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return ticket[0]; } });
+        set(room,"giftDrop",pool); set(alice,"giftCredits",3); set(bob,"giftCredits",3);
+        String hatId = service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id;
+        ticket[0] = 0;
+        long before = System.currentTimeMillis();
+        BattleOnlineGiftClaimResultDto hat = service.claimGift("GIFTS1","alice",request(hatId));
+        assertEquals(GiftDropGame.PERRY_HAT_LEVEL,hat.getRewardLevel());
+        long endsAt = hat.getRoom().getGiftDrop().perryHatProtectionEndsAt;
+        assertTrue(endsAt >= before + 10000L); assertTrue(endsAt <= System.currentTimeMillis() + 10000L);
+        assertEquals(endsAt,service.getRoom("GIFTS1","alice").getGiftDrop().perryHatProtectionEndsAt);
+        assertEquals(0L,service.getRoom("GIFTS1","bob").getGiftDrop().perryHatProtectionEndsAt);
+        assertEquals(0L,service.getRoom("GIFTS1","host").getGiftDrop().perryHatProtectionEndsAt);
+        rejected("alice",hatId); assertEquals(endsAt,service.getRoom("GIFTS1","alice").getGiftDrop().perryHatProtectionEndsAt);
+        String aliceEgg = pool.snapshot("alice").gifts.get(pool.snapshot("alice").gifts.size()-1).id;
+        assertNotEquals(GiftDropGame.ROTTEN_EGG_LEVEL,service.claimGift("GIFTS1","alice",request(aliceEgg)).getRewardLevel());
+        String bobEgg = service.getRoom("GIFTS1","bob").getGiftDrop().gifts.get(0).id;
+        assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,service.claimGift("GIFTS1","bob",request(bobEgg)).getRewardLevel());
+    }
+
+    @Test public void aHatReplacedByRoomLightningDoesNotGrantPersonalProtection() {
+        final int ticket = (Integer)get(new GiftDropGame(10,new Random(1)),"rottenWeight");
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return ticket; } });
+        set(room,"giftDrop",pool); set(room,"giftOpening",false); set(alice,"giftCredits",2);
+        long now = System.currentTimeMillis(); set(room,"matchEndsAt",now+300000L);
+        set(room,"giftLightning",new GiftLightningGame(now,now+300000L,new Random() { @Override public int nextInt(int bound) { return 0; } }));
+        String id = service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id;
+        BattleOnlineGiftClaimResultDto reward = service.claimGift("GIFTS1","alice",request(id));
+        assertEquals(GiftDropGame.LIGHTNING_LEVEL,reward.getRewardLevel());
+        assertEquals(0L,reward.getRoom().getGiftDrop().perryHatProtectionEndsAt);
+    }
+
     @Test @SuppressWarnings("unchecked") public void settingsStartFinishAndRestartResetPoolAndApplySkillChoices() throws Exception {
         set(room,"status","LOBBY"); set(room,"giftDrop",null);
         BattleOnlineRoomSettingsDto config=new BattleOnlineRoomSettingsDto(); config.setMode("LUM_NGAY"); config.setGiftSpawnSeconds(0); config.setGiftBasePoints(20000); config.setSkillsEnabled(false);

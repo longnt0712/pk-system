@@ -2809,7 +2809,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã dùng hết lượt bóc trứng.");
             }
             GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null,
-                    room.giftLightning != null && room.giftLightning.isActive(now));
+                    room.giftLightning != null && room.giftLightning.isActive(now), now);
             if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
             player.giftCredits--;
             player.giftCreditVersion++;

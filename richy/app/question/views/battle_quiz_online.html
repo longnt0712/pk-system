@@ -1104,11 +1104,7 @@
         </section>
     </div>
     <ng-include ng-if="vm.hostVideoAnswersOpen" src="'question/views/battle_online_video_answers.html?videoAnswers=20261019_1'"></ng-include>
-    </div>
-    <div class="battle-online-video-finished-review" ng-if="vm.room.status === 'FINISHED' && vm.isHost() && vm.hasHostVideoReview()">
-        <button id="battle-host-video-answers-finished-open" type="button" class="btn btn-default" ng-click="vm.openHostVideoAnswers()">Xem trả lời câu cuối</button>
-    </div>
-    <ng-include ng-if="vm.room.status === 'FINISHED' && vm.hostVideoAnswersOpen" src="'question/views/battle_online_video_answers.html?videoAnswers=20261019_1'"></ng-include>
+    <!-- Fullscreen only paints the stage and its descendants, including host dialogs. -->
     <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionListOpen" ng-click="vm.closeHostVideoQuestionList()">
         <section id="battle-host-video-question-list" class="battle-online-host-question-list" role="dialog" aria-modal="true"
                  aria-labelledby="battle-host-video-question-list-title" tabindex="-1" ng-click="$event.stopPropagation()">
@@ -1143,6 +1139,11 @@
             </div>
         </section>
     </div>
+    </div>
+    <div class="battle-online-video-finished-review" ng-if="vm.room.status === 'FINISHED' && vm.isHost() && vm.hasHostVideoReview()">
+        <button id="battle-host-video-answers-finished-open" type="button" class="btn btn-default" ng-click="vm.openHostVideoAnswers()">Xem trả lời câu cuối</button>
+    </div>
+    <ng-include ng-if="vm.room.status === 'FINISHED' && vm.hostVideoAnswersOpen" src="'question/views/battle_online_video_answers.html?videoAnswers=20261019_1'"></ng-include>
     <div class="battle-online-video-answer-toast" ng-if="vm.videoAnswerToast" role="status" aria-live="polite" aria-atomic="true"
          ng-class="vm.videoAnswerToast.correct ? 'is-correct' : 'is-incorrect'">
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
@@ -2087,6 +2088,9 @@
                 <button type="button" class="battle-online-gift-modal-close" aria-label="Đóng modal chọn trứng"
                         ng-if="!vm.room.giftOpening" ng-click="$event.stopPropagation(); vm.closeGiftModal()" ng-disabled="vm.claimingGift">×</button>
             </header>
+            <div class="battle-online-gift-perry-protection" ng-if="vm.giftPerryProtectionSeconds() > 0" role="status">
+                🎩 Không gặp trứng thối · {{vm.giftPerryProtectionSeconds()}}s
+            </div>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
@@ -2115,6 +2119,7 @@
                 <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType && vm.lastGiftReward.level !== -4">+{{vm.lastGiftReward.points}} ĐIỂM</b>
                 <b class="battle-online-gift-points" ng-if="vm.lastGiftReward.level === -4">CẢ PHÒNG ĐƯỢC HƯỞNG TRONG 30 GIÂY</b>
                 <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
+                <p ng-if="vm.lastGiftReward.level === -3">Mũ Perry bảo vệ bạn khỏi trứng thối trong 10 giây.</p>
                 <p ng-if="vm.lastGiftReward.level !== -4">Điểm đã được cộng cho bạn.</p>
                 <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftOpening ? (vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG') : 'TIẾP TỤC →'}}</button>
             </div>
@@ -2789,6 +2794,7 @@
     .battle-online-gift-grid button:enabled:hover { transform:translateY(-5px); box-shadow:0 12px 28px #7845c522; }
     .battle-online-gift-grid button:focus-visible { outline:3px solid #7858ec; outline-offset:2px; }
     .battle-online-gift-waiting { margin:15vh 0; font-size:18px; font-weight:800; color:#7952d6; }
+    .battle-online-gift-perry-protection { flex-shrink:0; padding:8px 12px; border:1px solid #91d5b6; border-radius:12px; background:#eafff3; color:#166748; font-size:13px; font-weight:800; text-align:center; }
     .battle-online-gift-reveal { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 0; overflow-y:auto; overscroll-behavior:contain; text-align:center; cursor:pointer; animation:gift-reveal .3s ease-out; }
     .battle-online-gift-reveal > * { flex-shrink:0; max-width:100%; }
     .battle-online-gift-art { position:relative; margin-top:auto; }

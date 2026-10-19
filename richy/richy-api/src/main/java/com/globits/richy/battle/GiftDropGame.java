@@ -10,6 +10,7 @@ public class GiftDropGame {
     public static final int PERRY_HAT_LEVEL = -3;
     public static final int LIGHTNING_LEVEL = -4;
     public static final double PERRY_HAT_POINTS = 1D;
+    public static final long PERRY_HAT_PROTECTION_MILLIS = 10000L;
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
@@ -61,6 +62,7 @@ public class GiftDropGame {
         public final String gameId;
         public final long version;
         public final Long poolVersion;
+        public final long perryHatProtectionEndsAt;
         public final int capacity;
         public final List<ClosedGift> gifts;
         public final List<ClaimRecord> claims;
@@ -68,6 +70,7 @@ public class GiftDropGame {
             PlayerPool pool = username == null ? null : game.poolFor(username);
             gameId = game.gameId; version = game.version; capacity = pool == null ? POOL_SIZE : pool.capacity;
             poolVersion = pool == null ? null : pool.version;
+            perryHatProtectionEndsAt = username == null ? 0L : game.protectionEndsAt(username);
             gifts = username == null ? null : new ArrayList<ClosedGift>();
             if (username != null) {
                 for (Gift gift : pool.gifts.values()) { gifts.add(new ClosedGift(gift.id)); }
@@ -82,6 +85,7 @@ public class GiftDropGame {
         long version;
     }
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
+    private final Map<String, Long> perryHatProtection = new HashMap<String, Long>();
     private final List<ClaimRecord> claims = new ArrayList<ClaimRecord>();
     private final List<String> skillTypes = new ArrayList<String>();
     private final int basePoints;
@@ -250,9 +254,19 @@ public class GiftDropGame {
         return giftForTicket(id, random.nextInt(DRAW_RESOLUTION), false);
     }
     private Gift giftForTicket(String id, int ticket, boolean lightning) {
+        return giftForTicket(id, ticket, lightning, false);
+    }
+    private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten) {
         int[] weights = lightning ? lightningDrawWeights : normalDrawWeights;
-        int index = 0, remaining = ticket;
-        while (index < weights.length - 1 && remaining >= weights[index]) { remaining -= weights[index++]; }
+        int rottenIndex = skillWeights.length;
+        int index = 0, remaining = protectedFromRotten
+                ? (int) ((long) ticket * (DRAW_RESOLUTION - weights[rottenIndex]) / DRAW_RESOLUTION) : ticket;
+        // Condition the same private ticket on non-rotten rewards, including eggs already in the pool.
+        while (index < weights.length - 1) {
+            int weight = protectedFromRotten && index == rottenIndex ? 0 : weights[index];
+            if (remaining < weight) { break; }
+            remaining -= weight; index++;
+        }
         Gift gift;
         if (index < skillWeights.length) { gift = new Gift(id, SKILL_EGG_LEVEL, 0D, skillTypes.get(index)); }
         else if (index == skillWeights.length) { gift = new Gift(id, ROTTEN_EGG_LEVEL, ROTTEN_EGG_POINTS); }
@@ -283,15 +297,25 @@ public class GiftDropGame {
         return claim(username, id, false);
     }
     public Gift claim(String username, String id, boolean lightning) {
+        return claim(username, id, lightning, System.currentTimeMillis());
+    }
+    public Gift claim(String username, String id, boolean lightning, long now) {
         PlayerPool pool = playerPools.get(username);
         Gift gift = pool == null ? null : pool.gifts.remove(id);
         if (gift != null) {
             if (!finalPools) { Gift replacement = drawGift(); pool.gifts.put(replacement.id, replacement); }
             pool.version++; version++;
         }
-        return gift != null && lightning && gift.drawTicket >= 0 ? giftForTicket(gift.id, gift.drawTicket, true) : gift;
+        boolean protectedFromRotten = protectionEndsAt(username) > now;
+        return gift != null && (lightning || protectedFromRotten) && gift.drawTicket >= 0
+                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten) : gift;
+    }
+    private long protectionEndsAt(String username) {
+        Long endsAt = perryHatProtection.get(username);
+        return endsAt == null ? 0L : endsAt;
     }
     public void recordClaim(Gift gift, String username, String displayName, double awardedPoints, long now) {
+        if (gift.rewardLevel == PERRY_HAT_LEVEL) { perryHatProtection.put(username, now + PERRY_HAT_PROTECTION_MILLIS); }
         claims.add(0, new ClaimRecord(gift, username, displayName, awardedPoints, now));
         if (claims.size() > 200) { claims.remove(claims.size() - 1); }
         version++;

@@ -279,6 +279,56 @@ public class GiftDropGameTest {
         }
     }
 
+    @Test public void perryHatProtectionCoversExistingEggsOnlyForItsOwnerAndExpiresAtTenSeconds() {
+        for (boolean lightning : new boolean[] {false,true}) for (boolean finalOpening : new boolean[] {false,true}) {
+            TicketRandom random = new TicketRandom();
+            GiftDropGame game = new GiftDropGame(10,random);
+            if (finalOpening) {
+                Map<String,Integer> credits = new HashMap<String,Integer>(); credits.put("alice",3); credits.put("bob",3);
+                game.prepareFinalPools(credits);
+            }
+            GiftDropGame.Snapshot alice = game.snapshot("alice"), bob = game.snapshot("bob");
+            game.recordClaim(new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D),"alice","Alice",1D,1000L);
+            assertEquals(11000L,game.snapshot("alice").perryHatProtectionEndsAt);
+            assertEquals(0L,game.snapshot("bob").perryHatProtectionEndsAt);
+            assertEquals(0L,game.snapshot().perryHatProtectionEndsAt);
+            assertEquals(alice.gifts.get(0).id,game.snapshot("alice").gifts.get(0).id);
+            assertNotEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(0).id,lightning,10999L).rewardLevel);
+            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("bob",bob.gifts.get(0).id,lightning,10999L).rewardLevel);
+            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(1).id,lightning,11000L).rewardLevel);
+        }
+    }
+
+    @Test public void aSecondHatRefreshesTheWindowAndFinalPoolsKeepItWithoutLeakingRewards() throws Exception {
+        GiftDropGame game = new GiftDropGame(10,new Random(1));
+        GiftDropGame.Gift hat = new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D);
+        game.recordClaim(hat,"alice","Alice",1D,1000L);
+        game.recordClaim(hat,"alice","Alice",1D,6000L);
+        assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
+        game.prepareFinalPools(Collections.singletonMap("alice",3));
+        assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(game.snapshot("bob").gifts);
+        assertFalse(json.contains("rewardLevel")); assertFalse(json.contains("points"));
+        assertEquals(0L,new GiftDropGame(10,new Random(1)).snapshot("alice").perryHatProtectionEndsAt);
+    }
+
+    @Test public void protectionRemovesRottenEggsAcrossTheDrawWithEverySkillCombinationAndLightning() {
+        for (int mask = 0; mask < 8; mask++) for (boolean lightning : new boolean[] {false,true}) {
+            List<String> skills = new ArrayList<String>();
+            for (int i = 0; i < GiftDropGame.SKILL_TYPES.size(); i++) {
+                if ((mask & (1 << i)) != 0) { skills.add(GiftDropGame.SKILL_TYPES.get(i)); }
+            }
+            TicketRandom random = new TicketRandom(); GiftDropGame game = new GiftDropGame(10,random,skills);
+            for (int ticket = 0; ticket < 1000000; ticket += 997) {
+                random.ticket = ticket; String username = "protected-" + ticket;
+                game.recordClaim(new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D),username,username,1D,1000L);
+                GiftDropGame.Gift gift = game.claim(username,game.snapshot(username).gifts.get(0).id,lightning,1001L);
+                assertNotEquals("Ticket " + ticket + " skills " + skills + " lightning " + lightning,GiftDropGame.ROTTEN_EGG_LEVEL,gift.rewardLevel);
+                assertTrue(gift.rewardLevel == GiftDropGame.PERRY_HAT_LEVEL || gift.skillType != null || gift.rewardLevel >= 0);
+            }
+        }
+    }
+
     @Test public void perryHatAlwaysGivesOnePointRegardlessOfConfiguredBasePoints() {
         for (int base : new int[] {1,10,10000}) {
             TicketRandom random = new TicketRandom();

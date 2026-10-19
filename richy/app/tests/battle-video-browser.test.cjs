@@ -57,6 +57,50 @@ function room(mode,phase,revision=1,sequence=1){return {code:'VIDEO1',hostUserna
  promptHtml:'<b>What did you see?</b>',options:[{key:'A',text:'A cat'},{key:'B',text:'A dog'}]}]}}};}
 async function apply(page,snapshot){await page.evaluate(r=>{window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false));},snapshot);}
 
+test('egg video fullscreen keeps the question list, replay confirmation and reopened question above the video and clickable',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ const captures=path.join(app,'../target');fs.mkdirSync(captures,{recursive:true});
+ try {
+  for(const width of [1280,390]) {
+   const host=await open(browser,'host',width),errors=[];host.on('pageerror',e=>errors.push(String(e)));
+   await apply(host,room('LUM_NGAY','WATCHING',1,2));
+   await host.getByRole('button',{name:'⛶ Toàn màn hình',exact:true}).click();
+   await host.waitForFunction(()=>document.fullscreenElement?.id==='battle-host-video-stage');
+   await host.getByRole('button',{name:'List câu hỏi',exact:true}).click();
+   const list=host.locator('#battle-host-video-question-list');await list.waitFor({state:'visible'});
+   async function aboveVideo(modal) {
+    assert.equal(await modal.evaluate(el=>document.fullscreenElement.contains(el)),true,'dialog belongs to the fullscreen stage');
+    const bounds=await modal.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width&&bounds.y>=0&&bounds.y+bounds.height<=900);
+    assert.equal(await modal.evaluate(el=>{
+     const box=el.getBoundingClientRect(),top=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);
+     return el.contains(top);
+    }),true,'dialog is painted above the video');
+   }
+   await aboveVideo(list);
+   await host.screenshot({path:path.join(captures,'battle-video-fullscreen-list-'+width+'.png'),animations:'disabled'});
+   await list.getByRole('button',{name:/0:05 1\. What is/}).click();
+   const confirm=host.locator('#battle-host-video-replay-confirm');await confirm.waitFor({state:'visible'});await aboveVideo(confirm);
+   assert.deepEqual(await host.evaluate(()=>window.videoActions.at(-1)),['seek',5]);
+   await confirm.getByRole('button',{name:'Chỉ xem lại',exact:true}).click();await confirm.waitFor({state:'hidden'});
+   assert.equal(await host.evaluate(()=>document.fullscreenElement.id),'battle-host-video-stage','review keeps fullscreen active');
+   await host.getByRole('button',{name:'Về câu hiện tại',exact:true}).click();
+   await host.getByRole('button',{name:'List câu hỏi',exact:true}).click();await list.waitFor({state:'visible'});
+   await list.getByRole('button',{name:/0:05 1\. What is/}).click();await confirm.waitFor({state:'visible'});
+   await confirm.getByRole('button',{name:'Cho lớp trả lời lại',exact:true}).click();
+   assert.deepEqual(await host.evaluate(()=>window.reopenRequests[0].args),['VIDEO1',2,1,'100:101']);
+   const reopened=room('LUM_NGAY','ANSWERING',2,1);reopened.videoQuestionRound=1;
+   await host.evaluate(snapshot=>window.qaScope.$apply(()=>window.reopenRequests[0].request.resolve(snapshot)),reopened);
+   const question=host.locator('#battle-host-video-question-modal');await question.waitFor({state:'visible'});await aboveVideo(question);
+   await question.getByRole('button',{name:'Đóng câu hỏi',exact:true}).click();
+   await host.getByRole('button',{name:'⛶ Thu nhỏ',exact:true}).click();await host.waitForFunction(()=>!document.fullscreenElement);
+   await host.getByRole('button',{name:'List câu hỏi',exact:true}).click();await list.waitFor({state:'visible'});
+   await list.getByRole('button',{name:'Đóng danh sách câu hỏi',exact:true}).click();await list.waitFor({state:'hidden'});
+   assert.deepEqual(errors,[]);await host.close();
+  }
+ } finally {await browser.close();}
+});
+
 const gameLayout=fragment('    <div class="battle-online-game-layout"','    <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode()');
 function classicRoom(sequence=1) {
  const snapshot=room('CLASSIC','ANSWERING',1,sequence);snapshot.videoSynchronized=false;snapshot.classicAutoAdvance=false;

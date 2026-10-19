@@ -27,6 +27,21 @@ test('Lụm ngay can be selected and its score settings are clamped',()=>{
  const dto=h.hooks.buildSettingsDto(); assert.equal(dto.mode,'LUM_NGAY');assert.equal(dto.giftSpawnSeconds,1);assert.equal(dto.giftBasePoints,10000);
  assert.equal(h.vm.isCountdownMode(),true);
 });
+
+test('Perry protection uses the server clock, survives public and old private updates, and resets for a new match',()=>{
+ const h=setup(),snapshot=h.room(3,4);snapshot.giftDrop.perryHatProtectionEndsAt=snapshot.serverTime+10000;
+ h.hooks.applyRoom(snapshot,false);assert.equal(h.vm.giftPerryProtectionSeconds(),10);
+ const publicRoom=h.room(3,5);delete publicRoom.giftDrop.gifts;delete publicRoom.giftDrop.poolVersion;
+ publicRoom.giftDrop.perryHatProtectionEndsAt=0;h.hooks.applyRoom(publicRoom,true);
+ assert.equal(h.vm.room.giftDrop.perryHatProtectionEndsAt,snapshot.giftDrop.perryHatProtectionEndsAt);
+ const old=h.room(3,2);old.giftDrop.perryHatProtectionEndsAt=0;h.hooks.applyRoom(old,false);
+ assert.equal(h.vm.room.giftDrop.perryHatProtectionEndsAt,snapshot.giftDrop.perryHatProtectionEndsAt);
+ const later=h.room(3,6);later.serverTime=snapshot.serverTime+7000;later.giftDrop.perryHatProtectionEndsAt=snapshot.giftDrop.perryHatProtectionEndsAt;
+ h.hooks.applyRoom(later,false);assert.equal(h.vm.giftPerryProtectionSeconds(),3);
+ later.serverTime=snapshot.serverTime+10000;h.hooks.applyRoom(later,false);assert.equal(h.vm.giftPerryProtectionSeconds(),0);
+ h.hooks.applyRoom(h.room(3,1,'new-match'),false);assert.equal(h.vm.giftPerryProtectionSeconds(),0);
+ const host=setup('host');host.hooks.applyRoom(snapshot,false);assert.equal(host.vm.giftPerryProtectionSeconds(),0,'spectator never inherits player protection');
+});
 test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{
  const h=setup(),seen=new Set();
  const names=['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];

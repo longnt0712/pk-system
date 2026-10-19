@@ -780,6 +780,11 @@
             return !!(vm.isLumNgayMode() && vm.room.status === 'PLAYING' && effect && effect.endsAt > serverNow() && effect.startsAt <= serverNow());
         };
         vm.giftLightningSeconds = function () { return vm.isGiftLightningActive() ? Math.max(0, Math.ceil((vm.room.giftLightning.endsAt - serverNow()) / 1000)) : 0; };
+        vm.giftPerryProtectionSeconds = function () {
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator()) { return 0; }
+            var endsAt = Number(vm.room.giftDrop && vm.room.giftDrop.perryHatProtectionEndsAt || 0);
+            return Math.max(0, Math.ceil((endsAt - serverNow()) / 1000));
+        };
         vm.giftClaimDisabled = function () {
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
@@ -2870,6 +2875,9 @@
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
                     previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && incoming.status === 'PLAYING') {
                 // Room history and a player's own pool advance independently.
+                incoming.giftDrop.perryHatProtectionEndsAt = Math.max(
+                    Number(previousRoom.giftDrop.perryHatProtectionEndsAt || 0),
+                    Number(incoming.giftDrop.perryHatProtectionEndsAt || 0));
                 if (incoming.giftDrop.version < previousRoom.giftDrop.version) {
                     incoming.giftDrop.claims = previousRoom.giftDrop.claims;
                     incoming.giftDrop.version = previousRoom.giftDrop.version;
