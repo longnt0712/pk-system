@@ -170,7 +170,7 @@
 
         /**
          * Upload Excel lên server để đọc và trả về dữ liệu preview.
-         * Topic ID được server đọc trực tiếp trong file Excel.
+         * Gửi Topic ID đã chọn cùng file; Excel không cần chứa Topic ID.
          */
         function previewExcelImport(file, topicId) {
             if (!file) {

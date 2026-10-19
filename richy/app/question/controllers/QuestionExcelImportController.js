@@ -23,6 +23,8 @@
             restrict: 'A',
             scope: {
                 topics: '=',
+                userId: '=',
+                onTopicCreated: '&',
                 onImported: '&'
             },
             link: function (scope, element) {
@@ -38,6 +40,14 @@
                         resolve: {
                             importTopics: function () {
                                 return angular.copy(scope.topics || []);
+                            },
+                            importUserId: function () {
+                                return scope.userId;
+                            },
+                            onImportTopicCreated: function () {
+                                return function (topic) {
+                                    scope.onTopicCreated({topic: topic});
+                                };
                             }
                         }
                     });
@@ -96,15 +106,21 @@
     QuestionExcelImportModalController.$inject = [
         '$uibModalInstance',
         'QuestionService',
+        'TopicService',
         'toastr',
-        'importTopics'
+        'importTopics',
+        'importUserId',
+        'onImportTopicCreated'
     ];
 
     function QuestionExcelImportModalController(
         $uibModalInstance,
         questionService,
+        topicService,
         toastr,
-        importTopics
+        importTopics,
+        importUserId,
+        onImportTopicCreated
     ) {
         var importVm = this;
 
@@ -112,6 +128,13 @@
         importVm.fileName = '';
         importVm.topics = importTopics || [];
         importVm.selectedTopic = null;
+        importVm.topicMode = importVm.topics.length ? 'existing' : 'new';
+        importVm.newTopic = {name: '', topicCategory: null};
+        importVm.topicCategories = [];
+        importVm.loadingCategories = false;
+        importVm.categoryLoadError = '';
+        importVm.savingTopic = false;
+        importVm.createdTopic = null;
         importVm.loadingPreview = false;
         importVm.loadingConfirm = false;
         importVm.preview = null;
@@ -132,6 +155,64 @@
         importVm.getStatusClass = getStatusClass;
         importVm.cancel = cancel;
         importVm.downloadStaticTemplate = downloadStaticTemplate;
+        importVm.onTopicModeChanged = onTopicModeChanged;
+        importVm.loadTopicCategories = loadTopicCategories;
+        importVm.canPreview = canPreview;
+
+        var categoriesLoaded = false;
+        if (importVm.topicMode === 'new') {
+            loadTopicCategories();
+        }
+
+        function onTopicModeChanged() {
+            if (importVm.topicMode === 'new' && !categoriesLoaded) {
+                return loadTopicCategories();
+            }
+        }
+
+        function loadTopicCategories() {
+            if (importVm.loadingCategories || categoriesLoaded) {
+                return;
+            }
+            importVm.loadingCategories = true;
+            importVm.categoryLoadError = '';
+            var categories = [];
+            var pageSize = 100;
+
+            function readPage(pageIndex) {
+                return questionService.getPageTopicCategory({}, pageIndex, pageSize).then(function (data) {
+                    var content = data && data.content || [];
+                    categories = categories.concat(content);
+                    var hasMore = data && angular.isDefined(data.totalPages)
+                        ? pageIndex < data.totalPages
+                        : content.length === pageSize;
+                    if (hasMore && content.length) {
+                        return readPage(pageIndex + 1);
+                    }
+                    importVm.topicCategories = categories;
+                    categoriesLoaded = true;
+                });
+            }
+
+            return readPage(1).catch(function (error) {
+                importVm.categoryLoadError = getErrorMessage(error, 'Không thể tải category. Vui lòng thử lại.');
+            }).finally(function () {
+                importVm.loadingCategories = false;
+            });
+        }
+
+        function canPreview() {
+            if (!importVm.file || importVm.loadingPreview || importVm.loadingConfirm) {
+                return false;
+            }
+            if (importVm.topicMode === 'existing') {
+                return !!(importVm.selectedTopic && importVm.selectedTopic.id);
+            }
+            var name = (importVm.newTopic.name || '').trim();
+            return !!(importUserId && name && name.length <= 100
+                && importVm.newTopic.topicCategory && importVm.newTopic.topicCategory.id
+                && !importVm.loadingCategories && !importVm.categoryLoadError);
+        }
 
         function onConflictCandidateChanged(row) {
             if (!row) {
@@ -180,6 +261,9 @@
         }
 
         function onFileSelected(file) {
+            if (importVm.loadingPreview || importVm.loadingConfirm) {
+                return;
+            }
             importVm.file = file;
             importVm.fileName = file ? file.name : '';
             importVm.preview = null;
@@ -203,28 +287,82 @@
         }
 
         function loadPreview() {
-            if (!importVm.selectedTopic || !importVm.selectedTopic.id) {
-                toastr.warning('Bạn chưa chọn topic', 'Excel import');
+            if (importVm.loadingPreview || importVm.loadingConfirm) {
                 return;
             }
-
             if (!importVm.file) {
                 toastr.warning('Bạn chưa chọn file Excel', 'Excel import');
                 return;
             }
 
-            importVm.loadingPreview = true;
+            var file = importVm.file;
+            if (importVm.topicMode === 'new') {
+                var name = (importVm.newTopic.name || '').trim();
+                if (!name || name.length > 100) {
+                    toastr.warning('Vui lòng nhập tên topic từ 1 đến 100 ký tự.', 'Excel import');
+                    return;
+                }
+                var category = importVm.newTopic.topicCategory;
+                if (importVm.loadingCategories || importVm.categoryLoadError || !category || !category.id) {
+                    toastr.warning('Vui lòng chọn category cho topic mới.', 'Excel import');
+                    return;
+                }
+                if (!importUserId) {
+                    toastr.error('Không xác định được người dùng. Vui lòng tải lại trang.', 'Excel import');
+                    return;
+                }
 
-            questionService.previewExcelImport(
-                importVm.file,
-                importVm.selectedTopic.id
+                importVm.loadingPreview = true;
+                importVm.savingTopic = true;
+                return topicService.saveObject({
+                    name: name,
+                    topicCategory: {id: category.id},
+                    userId: importUserId,
+                    isShow: true
+                }).then(function (topic) {
+                    importVm.savingTopic = false;
+                    if (!topic || !topic.id) {
+                        toastr.error(topic && topic.message || 'Máy chủ chưa xác nhận tạo topic.', 'Excel import');
+                        return;
+                    }
+                    importVm.topics.push(topic);
+                    importVm.selectedTopic = topic;
+                    importVm.createdTopic = topic;
+                    // Reuse this saved topic if preview fails or the file is changed.
+                    importVm.topicMode = 'existing';
+                    importVm.newTopic = {name: '', topicCategory: category};
+                    onImportTopicCreated(angular.copy(topic));
+                    return previewFile(file, topic);
+                }, function (error) {
+                    toastr.error(getErrorMessage(error, 'Không thể tạo topic mới.'), 'Excel import');
+                }).finally(function () {
+                    importVm.savingTopic = false;
+                    importVm.loadingPreview = false;
+                });
+            }
+
+            if (!importVm.selectedTopic || !importVm.selectedTopic.id) {
+                toastr.warning('Bạn chưa chọn topic', 'Excel import');
+                return;
+            }
+
+            importVm.loadingPreview = true;
+            return previewFile(file, angular.copy(importVm.selectedTopic)).finally(function () {
+                importVm.loadingPreview = false;
+            });
+        }
+
+        function previewFile(file, topic) {
+            return questionService.previewExcelImport(
+                file,
+                topic.id
             ).then(
                 function (data) {
                     importVm.preview = normalizePreview(data);
                     importVm.preview.topicId =
-                        importVm.preview.topicId || importVm.selectedTopic.id;
+                        importVm.preview.topicId || topic.id;
                     importVm.preview.topicName =
-                        importVm.preview.topicName || importVm.selectedTopic.name;
+                        importVm.preview.topicName || topic.name;
                     importVm.selectAll = getSelectedCount() > 0;
                 },
                 function (error) {
@@ -233,12 +371,13 @@
                         'Excel import'
                     );
                 }
-            ).finally(function () {
-                importVm.loadingPreview = false;
-            });
+            );
         }
 
         function confirmImport() {
+            if (importVm.loadingPreview || importVm.loadingConfirm) {
+                return;
+            }
             if (!importVm.preview) {
                 toastr.warning('Chưa có dữ liệu preview', 'Excel import');
                 return;
@@ -275,7 +414,7 @@
 
             if (!importVm.preview.topicId) {
                 toastr.error(
-                    'Server chưa trả về topicId. Hãy kiểm tra Topic ID trong file Excel.',
+                    'Chưa xác định được topic. Vui lòng quay lại chọn topic và xem trước.',
                     'Excel import'
                 );
                 return;
@@ -290,7 +429,7 @@
 
             importVm.loadingConfirm = true;
 
-            questionService.confirmExcelImport(request).then(
+            return questionService.confirmExcelImport(request).then(
                 function (data) {
                     toastr.success(
                         data && data.message ? data.message : 'Import thành công',
@@ -654,10 +793,16 @@
         }
 
         function backToFileSelection() {
+            if (importVm.loadingPreview || importVm.loadingConfirm) {
+                return;
+            }
             importVm.preview = null;
         }
 
         function cancel() {
+            if (importVm.loadingPreview || importVm.loadingConfirm) {
+                return;
+            }
             $uibModalInstance.dismiss('cancel');
         }
 

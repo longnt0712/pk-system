@@ -778,7 +778,8 @@
                             <div class="col-md-12" style="margin-top: 10px">
                                 <div class="row">
                                     <div class="col-xs-8 text-left">
-                                        <button type="button" class="btn btn-success" question-excel-import topics="vm.topics" on-imported="vm.onFlashCardImported()">
+                                        <button type="button" class="btn btn-success" question-excel-import topics="vm.topics"
+                                                user-id="vm.currentUser.id" on-topic-created="vm.getTopics()" on-imported="vm.onFlashCardImported()">
                                             <i class="fa fa-file-excel-o"></i> Import Excel
                                         </button>
 
@@ -866,19 +867,63 @@
                     </div>
                     <div>Data starts from row 2.</div>
                     <div>CEFR level accepts A1, A2, B1, B2, C1 or C2 and may be left blank.</div>
-                    <div>Topic is selected below; the Excel file does not need a Topic ID.</div>
+                    <div>Chọn topic có sẵn hoặc tạo topic mới bên dưới; file Excel không cần Topic ID.</div>
                 </div>
 
-                <div class="form-group">
-                    <label class="bold">Topic</label>
-
-                    <select class="form-control" ng-model="importVm.selectedTopic" ng-options="topic as topic.name for topic in importVm.topics track by topic.id">
-                        <option value="">-- Choose topic --</option>
-                    </select>
-
-                    <div class="text-danger" ng-if="!importVm.topics || importVm.topics.length === 0" style="margin-top: 5px;">
-                        No topic is available. Please load or create a topic first.
+                <fieldset ng-disabled="importVm.loadingPreview || importVm.loadingConfirm">
+                    <legend class="bold" style="font-size: 16px; margin-bottom: 10px;">Topic nhận dữ liệu</legend>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="existing"
+                                   ng-change="importVm.onTopicModeChanged()"> Topic có sẵn
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="new"
+                                   ng-change="importVm.onTopicModeChanged()"> Tạo topic mới
+                        </label>
                     </div>
+
+                    <div class="form-group" ng-if="importVm.topicMode === 'existing'">
+                        <label class="bold" for="excel-import-topic">Topic</label>
+                        <select id="excel-import-topic" class="form-control" ng-model="importVm.selectedTopic"
+                                ng-options="topic as topic.name for topic in importVm.topics track by topic.id">
+                            <option value="">-- Chọn topic --</option>
+                        </select>
+                        <div class="help-block" ng-if="!importVm.topics.length">
+                            Chưa có topic. Chọn “Tạo topic mới” để tạo ngay trong cửa sổ này.
+                        </div>
+                    </div>
+
+                    <div ng-if="importVm.topicMode === 'new'">
+                        <div class="form-group">
+                            <label class="bold" for="excel-import-topic-name">Tên topic mới <span class="text-danger">*</span></label>
+                            <input id="excel-import-topic-name" type="text" class="form-control" maxlength="100"
+                                   ng-model="importVm.newTopic.name" placeholder="Nhập tên topic" aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label class="bold" for="excel-import-topic-category">Category (loại topic) <span class="text-danger">*</span></label>
+                            <select id="excel-import-topic-category" class="form-control" ng-model="importVm.newTopic.topicCategory"
+                                    ng-options="category as category.name for category in importVm.topicCategories track by category.id"
+                                    ng-disabled="importVm.loadingCategories || importVm.categoryLoadError" aria-required="true">
+                                <option value="">-- Chọn category --</option>
+                            </select>
+                            <p class="help-block" ng-if="importVm.loadingCategories" role="status">
+                                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải category...
+                            </p>
+                            <div class="text-danger" ng-if="importVm.categoryLoadError" role="alert">
+                                {{importVm.categoryLoadError}}
+                                <button type="button" class="btn btn-link" ng-click="importVm.loadTopicCategories()">Thử lại</button>
+                            </div>
+                            <p class="help-block" ng-if="!importVm.loadingCategories && !importVm.categoryLoadError && !importVm.topicCategories.length">
+                                Chưa có category để chọn. Vui lòng thêm category trước khi tạo topic mới.
+                            </p>
+                        </div>
+                        <p class="help-block">Topic được lưu khi bấm “Tạo topic và xem trước” và có thể dùng lại nếu bạn đổi file hoặc đóng cửa sổ.</p>
+                    </div>
+                </fieldset>
+
+                <div class="alert alert-success" ng-if="importVm.createdTopic" role="status">
+                    Đã tạo topic <strong>{{importVm.createdTopic.name}}</strong>. Bạn có thể chọn lại topic này để tiếp tục import.
                 </div>
 
                 <div class="form-group">
@@ -897,7 +942,8 @@
                 <div class="form-group">
                     <label class="bold">Excel file (.xlsx or .xls)</label>
 
-                    <input type="file" class="form-control" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" question-file-select="importVm.onFileSelected(file)">
+                    <input type="file" class="form-control" ng-disabled="importVm.loadingPreview || importVm.loadingConfirm"
+                           accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" question-file-select="importVm.onFileSelected(file)">
                 </div>
 
                 <div class="alert alert-default" ng-if="importVm.fileName" style="border: 1px solid #ddd;">
@@ -1137,9 +1183,10 @@
                 <i class="fa fa-arrow-left"></i> Choose another file
             </button>
 
-            <button type="button" class="btn btn-primary" ng-if="!importVm.preview" ng-disabled="!importVm.selectedTopic || !importVm.file || importVm.loadingPreview" ng-click="importVm.loadPreview()">
-                <i class="fa fa-spinner fa-spin" ng-if="importVm.loadingPreview"></i>
-                <i class="fa fa-search" ng-if="!importVm.loadingPreview"></i> Read and preview
+            <button type="button" class="btn btn-primary" ng-if="!importVm.preview" ng-disabled="!importVm.canPreview()" ng-click="importVm.loadPreview()">
+                <i class="fa fa-spinner fa-spin" ng-if="importVm.loadingPreview" aria-hidden="true"></i>
+                <i class="fa fa-search" ng-if="!importVm.loadingPreview" aria-hidden="true"></i>
+                {{importVm.savingTopic ? 'Đang tạo topic...' : (importVm.loadingPreview ? 'Đang đọc file...' : (importVm.topicMode === 'new' ? 'Tạo topic và xem trước' : 'Read and preview'))}}
             </button>
 
             <button type="button" class="btn btn-success" ng-if="importVm.preview" ng-disabled="importVm.getSelectedCount() === 0 || importVm.loadingConfirm" ng-click="importVm.confirmImport()">
