@@ -86,10 +86,70 @@ test('unchecked assignments, personal practice, previews and legacy drafts keep 
         assert.deepEqual(data, original);
     }
 });
+function videoFixture() {
+    const data = fixture();
+    data.subQuestions[0].videoUrl = 'https://youtu.be/M7lc1UVf-VE';
+    questions(data).forEach((question, index) => { question.videoTimeSeconds = (index + 1) * 10; });
+    return data;
+}
+function answerIds(data) { return Object.fromEntries(questions(data).map(question => [question.id, ids(question.questionAnswers)])); }
+test('video assignments keep every package and question in author order and shuffle only answers with either checkbox setting', () => {
+    for (const enabled of [true, false]) {
+        const context = runtime(null, enabled), data = videoFixture(), original = structuredClone(data);
+        context.Math = Object.create(Math); context.Math.random = () => 0.12345;
+        context.applyComprehensiveAssignmentShuffle(data);
+        assert.deepEqual(ids(data.subQuestions[0].subQuestions), ids(original.subQuestions[0].subQuestions));
+        assert.deepEqual(ids(questions(data)), ids(questions(original)));
+        assert.deepEqual(questions(data).map(question => question.videoTimeSeconds), questions(original).map(question => question.videoTimeSeconds));
+        assert.equal(context.vm.comprehensiveShuffleState.enabled, true);
+        assert.equal(context.vm.comprehensiveShuffleState.questionsEnabled, false);
+        assert.equal(context.vm.comprehensiveShuffleState.answersEnabled, true);
+        assert.notDeepEqual(answerIds(data), answerIds(original));
+        for (const question of questions(data)) {
+            const previous = questions(original).find(item => item.id === question.id);
+            assert.deepEqual(ids(question.questionAnswers).sort(), ids(previous.questionAnswers).sort());
+            assert.equal(question.questionAnswers.find(answer => answer.correct).id, previous.questionAnswers.find(answer => answer.correct).id);
+        }
+    }
+});
+test('legacy shuffled video drafts repair question order while keeping answer order and seed stable', () => {
+    const initial = runtime(); initial.Math = Object.create(Math); initial.Math.random = () => 0.12345;
+    const previouslyShuffled = fixture(); initial.applyComprehensiveAssignmentShuffle(previouslyShuffled);
+    const layout = structuredClone(initial.vm.comprehensiveShuffleState);
+    assert.notDeepEqual(layout.questionOrder, ids(questions(videoFixture())));
+    const resumed = runtime({comprehensiveShuffle: layout}, false), data = videoFixture();
+    resumed.applyComprehensiveAssignmentShuffle(data);
+    assert.deepEqual(ids(questions(data)), ids(questions(videoFixture())));
+    assert.equal(resumed.vm.comprehensiveShuffleState.seed, layout.seed);
+    assert.deepEqual(answerIds(data), answerIds(previouslyShuffled), 'question salts keep answer order from the saved video attempt');
+    assert.deepEqual(Array.from(resumed.vm.comprehensiveShuffleState.questionOrder), ids(questions(data)));
+    const reloaded = runtime({comprehensiveShuffle: structuredClone(resumed.vm.comprehensiveShuffleState)}, true), second = videoFixture();
+    reloaded.applyComprehensiveAssignmentShuffle(second);
+    assert.deepEqual(second, data);
+});
+test('video drafts without a shuffle seed receive a persistent answer-only layout; personal practice follows the same policy', () => {
+    for (const draft of [null, {results: []}, {comprehensiveShuffle: {enabled: false}}]) {
+        const context = runtime(draft, false), data = videoFixture(); context.vm.assignmentTaskId = null;
+        context.applyComprehensiveAssignmentShuffle(data);
+        const layout = structuredClone(context.vm.comprehensiveShuffleState);
+        assert.ok(Number.isFinite(layout.seed));
+        assert.equal(layout.questionsEnabled, false);
+        assert.deepEqual(ids(questions(data)), ids(questions(videoFixture())));
+        const resumed = runtime({comprehensiveShuffle: layout}, false), second = videoFixture(); resumed.vm.assignmentTaskId = null;
+        resumed.applyComprehensiveAssignmentShuffle(second);
+        assert.deepEqual(answerIds(second), answerIds(data));
+    }
+});
+test('video preview never shuffles answers or questions and a whitespace URL does not force video policy', () => {
+    const preview = runtime(), data = videoFixture(), original = structuredClone(data); preview.vm.isPreviewMode = true;
+    preview.applyComprehensiveAssignmentShuffle(data); assert.deepEqual(data, original);
+    const text = runtime(null, false), textData = fixture(); textData.subQuestions[0].videoUrl = '   ';
+    const textOriginal = structuredClone(textData); text.applyComprehensiveAssignmentShuffle(textData); assert.deepEqual(textData, textOriginal);
+});
 test('new comprehensive assignments default on; editing and payload preserve an explicit opt-out', () => {
     const context = nodeVm.createContext({vm: {taskEditor: {activityType: 'COMPREHENSIVE'},
         initializeComprehensiveAssignment() {}, isIeltsTask: () => true, scheduleDay: {tasks: []},
-        taskDeadlineChanged() {}, loadTaskListeningItems() {}}, angular});
+        taskDeadlineChanged() {}, loadTaskListeningItems() {}, refreshTaskExerciseVideo() {}, taskHasComprehensiveVideo: () => false}, angular});
     nodeVm.runInContext(section(editorSource, 'vm.taskActivityTypeChanged =', 'vm.isIeltsTask ='), context);
     context.vm.taskActivityTypeChanged(); assert.equal(context.vm.taskEditor.shuffleQuestions, true);
     nodeVm.runInContext(section(editorSource, '\t\tvm.openScheduleTask =', '\t\tvm.cancelScheduleTask ='), context);

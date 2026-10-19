@@ -583,6 +583,9 @@
     .class-task-editor { margin-top:12px; padding:12px; border:1px solid #aa9af9; border-radius:9px; background:#f7f5ff; }
     .class-task-editor .form-group { margin-bottom:10px; }
     .class-task-editor .form-control { max-width:100%; }
+    .class-task-editor .class-task-shuffle-disabled { color:#9299a7; cursor:not-allowed; }
+    .class-task-shuffle-disabled input { cursor:not-allowed; opacity:.55; }
+    .class-task-video-retry { border:0; background:transparent; color:#6551c5; padding:0; text-decoration:underline; }
     .class-task-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .class-task-editor-grid > .form-group { min-width:0; }
     .class-task-parts-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
@@ -1529,8 +1532,11 @@
                     <small>Daily task chỉ hoàn thành khi học sinh nộp đúng bài đích này.</small>
                 </div>
                 <div class="form-group">
-                    <label><input type="checkbox" data-ng-model="vm.taskEditor.shuffleQuestions"> Đảo thứ tự câu hỏi và đáp án</label>
-                    <small class="help-block">Mỗi lượt làm có thứ tự riêng; tiếp tục bản nháp sẽ giữ thứ tự đang làm.</small>
+                    <label data-ng-class="{'class-task-shuffle-disabled': vm.taskExerciseVideo || vm.taskExerciseVideoLoading}"><input type="checkbox" data-ng-model="vm.taskEditor.shuffleQuestions" data-ng-disabled="vm.taskExerciseVideo || vm.taskExerciseVideoLoading"> Đảo thứ tự câu hỏi và đáp án</label>
+                    <small class="help-block" data-ng-if="vm.taskExerciseVideo">Bài có video giữ nguyên thứ tự câu hỏi, chỉ đảo đáp án.</small>
+                    <small class="help-block" data-ng-if="vm.taskExerciseVideoLoading"><i class="fa fa-spinner fa-spin"></i> Đang kiểm tra thông tin video...</small>
+                    <small class="help-block text-danger" data-ng-if="vm.taskExerciseVideoError">Không tải được thông tin video. <button type="button" class="class-task-video-retry" data-ng-click="vm.refreshTaskExerciseVideo()">Thử lại</button></small>
+                    <small class="help-block" data-ng-if="!vm.taskExerciseVideo && !vm.taskExerciseVideoLoading && !vm.taskExerciseVideoError">Mỗi lượt làm có thứ tự riêng; tiếp tục bản nháp sẽ giữ thứ tự đang làm.</small>
                 </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
@@ -1604,7 +1610,7 @@
             <p class="class-task-help">Nội dung task được tự động lưu ngay khi thêm hoặc cập nhật. Tiến độ Homework buổi trước sửa trực tiếp trong bảng học sinh bên dưới.</p>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleTask()">Hủy sửa</button>
-                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleListeningItemsLoading">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
             </div>
         </form>
     </div>

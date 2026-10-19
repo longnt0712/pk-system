@@ -92,6 +92,11 @@
         self.getAssignableIeltsTests = function () {
             return utils.resolve(baseUrl + '/schedule/ielts-tests', 'GET', angular.noop, angular.noop);
         };
+        self.getAssignmentExerciseDetails = function (id) {
+            if (!id) { return $q.when(null); }
+            return utils.resolve(settings.api.baseUrl + settings.api.apiV1Url + 'question/get_one/' + encodeURIComponent(id),
+                'GET', angular.noop, angular.noop);
+        };
         self.getAssignableDailyListeningTests = function () {
             return utils.resolve(baseUrl + '/schedule/daily-listening-tests', 'GET', angular.noop, angular.noop);
         };

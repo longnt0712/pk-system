@@ -2057,9 +2057,10 @@
 				vm.initializeComprehensiveAssignment(true);
 			}
 			vm.loadTaskListeningItems(true);
+            vm.refreshTaskExerciseVideo();
 		};
 
-		vm.cancelScheduleTask = function () { vm.taskEditor = null; vm.taskEditorIndex = -1; };
+		vm.cancelScheduleTask = function () { vm.taskEditor = null; vm.taskEditorIndex = -1; vm.refreshTaskExerciseVideo(); };
         vm.taskDeadlineChanged = function () {
             if (!vm.taskEditor) { return; }
             if (vm.taskEditor.deadlineAutomatic) {
@@ -2126,6 +2127,7 @@
 					vm.loadTaskListeningItems(false);
 				}
 			}
+            vm.refreshTaskExerciseVideo();
 			if (browse && (vm.isIeltsTask(vm.taskEditor) || vm.taskEditor.activityType === 'DAILY_LISTENING')) {
 				vm.openTaskExercisePicker();
 			}
@@ -2140,6 +2142,61 @@
             }
             var test = vm.assignableIeltsTests.filter(function (file) { return String(file.id) === String(task.ieltsTestId); })[0];
             return task.ieltsTestTitle || (test && test.title) || '';
+        };
+
+        var taskExerciseVideoCache = {}, taskExerciseVideoTask = null, taskExerciseShufflePreference = false;
+        function exerciseVideoMetadata(test) {
+            if (!test) { return null; }
+            var passage = (test.subQuestions || [])[0];
+            if (passage && String(passage.videoUrl || '').trim()) { return true; }
+            return angular.isArray(test.subQuestions) ? false : null;
+        }
+        vm.taskHasComprehensiveVideo = function (task) {
+            if (!task || task.activityType !== 'COMPREHENSIVE' || !task.ieltsTestId) { return false; }
+            var cached = taskExerciseVideoCache[String(task.ieltsTestId)];
+            if (cached && cached.hasVideo != null) { return cached.hasVideo; }
+            var test = vm.assignableIeltsTests.filter(function (item) { return String(item.id) === String(task.ieltsTestId); })[0];
+            return exerciseVideoMetadata(test) === true;
+        };
+        vm.refreshTaskExerciseVideo = function () {
+            var task = vm.taskEditor;
+            if (task !== taskExerciseVideoTask) {
+                taskExerciseVideoTask = task;
+                taskExerciseShufflePreference = !!task && task.shuffleQuestions === true;
+            } else if (task && !vm.taskExerciseVideo) {
+                taskExerciseShufflePreference = task.shuffleQuestions === true;
+            }
+            vm.taskExerciseVideo = false; vm.taskExerciseVideoLoading = false; vm.taskExerciseVideoError = false;
+            if (!task || task.activityType !== 'COMPREHENSIVE' || !task.ieltsTestId) { return; }
+            var id = String(task.ieltsTestId);
+            task.shuffleQuestions = taskExerciseShufflePreference;
+            function stillSelected() {
+                return vm.taskEditor === task && task.activityType === 'COMPREHENSIVE' && String(task.ieltsTestId) === id;
+            }
+            function applyVideo(hasVideo) {
+                if (!stillSelected()) { return; }
+                vm.taskExerciseVideo = hasVideo; vm.taskExerciseVideoLoading = false;
+                task.shuffleQuestions = hasVideo ? false : taskExerciseShufflePreference;
+            }
+            var entry = taskExerciseVideoCache[id];
+            if (entry && entry.hasVideo != null) { applyVideo(entry.hasVideo); return; }
+            var test = vm.assignableIeltsTests.filter(function (item) { return String(item.id) === id; })[0];
+            var metadata = exerciseVideoMetadata(test);
+            if (metadata != null) { taskExerciseVideoCache[id] = {hasVideo: metadata}; applyVideo(metadata); return; }
+            vm.taskExerciseVideoLoading = true;
+            if (!entry || !entry.promise) {
+                entry = taskExerciseVideoCache[id] = {};
+                entry.promise = service.getAssignmentExerciseDetails(id).then(function (details) {
+                    var hasVideo = exerciseVideoMetadata(details);
+                    if (!details || String(details.id) !== id || hasVideo == null) { throw new Error('Incomplete exercise metadata'); }
+                    entry.hasVideo = hasVideo;
+                    return hasVideo;
+                });
+            }
+            return entry.promise.then(applyVideo, function () {
+                if (taskExerciseVideoCache[id] === entry) { delete taskExerciseVideoCache[id]; }
+                if (stillSelected()) { vm.taskExerciseVideoLoading = false; vm.taskExerciseVideoError = true; }
+            });
         };
 
         vm.openTaskExercisePicker = function () {
@@ -2168,6 +2225,7 @@
                     vm.selectAllTaskParts();
                 }
                 if (!(task.title || '').trim()) { task.title = test.title || ''; }
+                vm.refreshTaskExerciseVideo();
             }, angular.noop).finally(function () { vm.taskExercisePickerOpen = false; });
         };
 		vm.isIeltsTask = function (task) {
@@ -2242,7 +2300,7 @@
 				ieltsTestId: task.ieltsTestId || null, ieltsPart: task.ieltsPart || null,
 				ieltsParts: angular.isArray(task.ieltsParts) ? task.ieltsParts.slice() : null,
 				activityType: task.activityType || 'DAILY_VOCAB',
-				shuffleQuestions: task.activityType === 'COMPREHENSIVE' ? task.shuffleQuestions === true : null,
+				shuffleQuestions: task.activityType === 'COMPREHENSIVE' ? task.shuffleQuestions === true && !vm.taskHasComprehensiveVideo(task) : null,
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
 				requiredAttempts: Math.max(1, Number(task.requiredAttempts) || 1),
 				studentProgress: progress};
@@ -2250,7 +2308,11 @@
 
 		vm.commitScheduleTask = function () {
 			if (!vm.taskEditor || vm.scheduleDaySaving || vm.homeworkCellSaving) { return; }
+            if (vm.taskExerciseVideoLoading || vm.taskExerciseVideoError) {
+                toastr.warning('Hãy tải xong thông tin bài tập trước khi lưu task.'); return;
+            }
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
+            if (vm.taskHasComprehensiveVideo(task)) { task.shuffleQuestions = false; }
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
 			if ((task.topicId || vm.isIeltsTask(task)) && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
 					|| Number(task.requiredAttempts) > 100)) {

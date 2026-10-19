@@ -59,7 +59,7 @@ for(const endingType of [14,15])for(const hasVideo of [true,false])test('assigne
   assert.ok(restored.elapsedSeconds>=150&&restored.elapsedSeconds<160,'resume keeps the elapsed 150 seconds');
   assert.equal(restored.results.length,13);assert.equal(restored.annotationNotes[0].specificNote,'Keep this note');
   assert.deepEqual(restored.annotations,await page.evaluate(()=>originalDraft.annotations));
-  await page.evaluate(()=>{const pack=qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0];qaVm.dropSentenceEnding(pack,0,pack.sentenceEndingBank[2]);});
+  await page.evaluate(()=>{const pack=qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0];qaVm.dropSentenceEnding(pack,0,pack.sentenceEndingBank.find(ending=>ending.answerIndex===2));});
   assert.equal(await page.evaluate(()=>qaVm.testResult.questionAnswerTestResult.length),13);
   assert.equal(await page.evaluate(()=>qaVm.testResult.questionAnswerTestResult.find(result=>result.ordinalNumber===1).clientAnswer),'Option 3');
   await page.evaluate(()=>{const pack=qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0];qaVm.clearSentenceEndingSlot(pack,0);});
