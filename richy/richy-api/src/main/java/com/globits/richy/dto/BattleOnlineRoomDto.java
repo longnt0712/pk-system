@@ -13,6 +13,9 @@ public class BattleOnlineRoomDto implements Serializable {
     private String code;
     private String status;
     private String hostUsername;
+    private BattleOnlineVideoReviewDto videoReview;
+    public BattleOnlineVideoReviewDto getVideoReview() { return videoReview; }
+    public void setVideoReview(BattleOnlineVideoReviewDto value) { videoReview = value; }
     private boolean classicAutoAdvance = true, classicAnswerRevealed;
     private String classicCorrectAnswer;
     private List<BattleOnlineClassicAnswerDto> classicStudentAnswers = new ArrayList<BattleOnlineClassicAnswerDto>();

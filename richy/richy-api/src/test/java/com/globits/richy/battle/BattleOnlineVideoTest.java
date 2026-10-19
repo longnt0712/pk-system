@@ -23,7 +23,7 @@ public class BattleOnlineVideoTest {
         assertTrue(service.getRoom("VIDEO1","host").getClassicStudentAnswers().isEmpty());
         long deadline=System.currentTimeMillis()-1L;set(room,"questionEndsAt",deadline);
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
-        BattleOnlineRoomDto review=service.getRoom("VIDEO1","alice");
+        BattleOnlineRoomDto review=service.getRoom("VIDEO1","host");
         assertTrue(review.isClassicAnswerRevealed());assertTrue(review.getClassicCorrectAnswer().contains("yes"));
         assertEquals("ANSWERING",review.getVideoPhase());
         assertEquals(2,review.getClassicStudentAnswers().size());

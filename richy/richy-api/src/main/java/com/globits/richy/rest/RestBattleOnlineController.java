@@ -231,13 +231,13 @@ public class RestBattleOnlineController {
     @RequestMapping(value = "/rooms/{roomCode}/classic-auto", method = RequestMethod.POST)
     public BattleOnlineRoomDto setClassicAutoAdvance(@PathVariable String roomCode,
             @RequestBody com.globits.richy.dto.BattleOnlineClassicControlDto dto) {
-        return battleOnlineService.setClassicAutoAdvance(roomCode, currentUsername(), dto.isAutoAdvance());
+        return battleOnlineService.setClassicAutoAdvance(roomCode, currentUsername(), dto);
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/classic-next", method = RequestMethod.POST)
     public BattleOnlineRoomDto nextClassicQuestion(@PathVariable String roomCode,
             @RequestBody com.globits.richy.dto.BattleOnlineClassicControlDto dto) {
-        return battleOnlineService.nextClassicQuestion(roomCode, currentUsername(), dto.getQuestionSequence(), dto.getQuestionEndsAt());
+        return battleOnlineService.nextClassicQuestion(roomCode, currentUsername(), dto);
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/video", method = RequestMethod.POST)

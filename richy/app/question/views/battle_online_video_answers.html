@@ -1,0 +1,37 @@
+<div class="battle-online-host-question-backdrop" ng-click="vm.closeHostVideoAnswers()">
+    <section id="battle-host-video-answers-modal" class="battle-online-host-question-modal battle-online-video-answers-modal"
+             role="dialog" aria-modal="true" aria-labelledby="battle-host-video-answers-title" tabindex="-1" ng-click="$event.stopPropagation()">
+        <header class="battle-online-host-question-header">
+            <div>
+                <small>ĐÁP ÁN HỌC SINH · DÀNH CHO GIÁO VIÊN</small>
+                <h2 id="battle-host-video-answers-title">{{vm.hostVideoAnswers ? 'Câu ' + vm.hostVideoAnswers.questionSequence : 'Câu hỏi đang mở'}}</h2>
+                <p ng-if="vm.hostVideoAnswers.questionPreview">{{vm.hostVideoAnswers.questionPreview}}</p>
+            </div>
+            <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoAnswers()" aria-label="Đóng đáp án học sinh">×</button>
+        </header>
+        <div class="battle-online-host-question-body">
+            <p ng-if="!vm.hostVideoAnswers" role="status">Kết quả sẽ hiện khi câu hỏi kết thúc. Học sinh vẫn đang trả lời.</p>
+            <div ng-if="vm.hostVideoAnswers">
+                <section class="battle-online-classic-review" role="status"><small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.hostVideoAnswers.correctAnswer}}</strong></section>
+                <section class="battle-online-classic-answers" aria-label="Đáp án học sinh">
+                    <header><h3>Đáp án học sinh</h3><span>{{vm.hostVideoAnswers.studentAnswers.length}} học sinh</span></header>
+                    <ul>
+                        <li ng-repeat="answer in vm.hostVideoAnswers.studentAnswers track by answer.username"
+                            ng-class="{'is-correct': answer.answered && answer.correct, 'is-wrong': answer.answered && !answer.correct, 'is-unanswered': !answer.answered}">
+                            <strong>{{answer.displayName || answer.username}}</strong>
+                            <span class="battle-online-classic-answer-status">{{!answer.answered ? '— Chưa trả lời' : answer.correct ? '✓ Đúng' : '✕ Sai'}}</span>
+                            <p ng-if="answer.answered">{{answer.answer || 'Không nhập đáp án'}}</p>
+                        </li>
+                    </ul>
+                    <p class="text-muted" ng-if="!vm.hostVideoAnswers.studentAnswers.length">Chưa có học sinh tham gia câu này.</p>
+                </section>
+            </div>
+        </div>
+        <footer class="battle-online-video-review-actions">
+            <span>Đang xem kết quả của câu đã kết thúc. Đóng và mở lại để xem câu vừa hoàn thành.</span>
+            <button type="button" class="btn btn-primary" ng-if="vm.room.status === 'PLAYING' && !vm.isClassicAuto() && vm.room.classicAnswerRevealed && vm.hostVideoAnswers.questionSequence === vm.room.currentQuestion.sequence && vm.hostVideoAnswers.videoQuestionRound === (vm.room.videoQuestionRound || 0)"
+                    ng-disabled="vm.matchControlBusy" ng-click="vm.closeHostVideoAnswers(); vm.nextClassicQuestion()">Next câu</button>
+            <button type="button" class="btn btn-default" ng-click="vm.closeHostVideoAnswers()">Đóng</button>
+        </footer>
+    </section>
+</div>

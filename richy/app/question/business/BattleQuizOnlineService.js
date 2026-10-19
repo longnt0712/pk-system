@@ -20,12 +20,16 @@
         settings
     ) {
         var self = this;
-        self.setClassicAutoAdvance = function (roomCode, enabled) {
-            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-auto', {autoAdvance: enabled === true})
+        self.setClassicAutoAdvance = function (roomCode, enabled, sequence, videoRound) {
+            var control = {autoAdvance: enabled === true};
+            if (sequence != null) { control.questionSequence = sequence; control.videoQuestionRound = videoRound || 0; }
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-auto', control)
                 .then(function (response) { return response.data; });
         };
-        self.nextClassicQuestion = function (roomCode, sequence, deadline) {
-            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-next', {questionSequence: sequence, questionEndsAt: deadline})
+        self.nextClassicQuestion = function (roomCode, sequence, deadline, videoRound) {
+            var control = {questionSequence: sequence, questionEndsAt: deadline};
+            if (videoRound != null) { control.videoQuestionRound = videoRound; }
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/classic-next', control)
                 .then(function (response) { return response.data; });
         };
         self.videoEvent = function (roomCode, sequence, event, seconds) {

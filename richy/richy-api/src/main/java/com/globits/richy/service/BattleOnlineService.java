@@ -16,6 +16,8 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
+    BattleOnlineRoomDto setClassicAutoAdvance(String roomCode, String username, com.globits.richy.dto.BattleOnlineClassicControlDto control);
+    BattleOnlineRoomDto nextClassicQuestion(String roomCode, String username, com.globits.richy.dto.BattleOnlineClassicControlDto control);
     BattleOnlineRoomDto setClassicAutoAdvance(String roomCode, String username, boolean enabled);
     BattleOnlineRoomDto nextClassicQuestion(String roomCode, String username, long sequence, long questionEndsAt);
     java.util.List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> getVideoQuestions(String roomCode, String username);

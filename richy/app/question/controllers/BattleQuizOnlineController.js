@@ -306,6 +306,8 @@
         vm.videoSyncError = '';
         vm.hostVideoQuestionModalOpen = false;
         vm.hostVideoQuestionListOpen = false;
+        vm.hostVideoAnswersOpen = false; vm.hostVideoAnswers = null;
+        var hostVideoAnswersFocus, hostVideoReviewRefreshPending = false;
         vm.hostVideoQuestionList = [];
         vm.hostVideoQuestionListLoading = false;
         vm.hostVideoQuestionListError = '';
@@ -337,6 +339,7 @@
         };
         vm.finishMatch = function () { return runHostMatchControl('finishMatch'); };
         vm.isClassicMode = function () { return !!(vm.room && vm.room.settings && vm.room.settings.mode === 'CLASSIC'); };
+        vm.canControlQuestionAdvance = function () { return !!(vm.room && (vm.isClassicMode() || vm.room.videoSynchronized)); };
         vm.isClassicAuto = function () { return !vm.room || vm.room.classicAutoAdvance !== false; };
         vm.classicPreviewAnswerKey = '';
         vm.isClassicHostPreview = function () {
@@ -349,16 +352,18 @@
             }
         };
         function runClassicControl(action) {
-            if (!vm.isClassicMode() || vm.room.status !== 'PLAYING' || !isHost() || vm.matchControlBusy) { return; }
+            if (!vm.canControlQuestionAdvance() || vm.room.status !== 'PLAYING' || !isHost() || vm.matchControlBusy || vm.hostVideoReplay) { return; }
             if (action === 'nextClassicQuestion' && (vm.isClassicAuto() || !vm.room.classicAnswerRevealed)) { return; }
             var code = vm.room.code, sequence = vm.room.currentQuestion && vm.room.currentQuestion.sequence;
-            var deadline = vm.room.questionEndsAt;
+            var deadline = vm.room.questionEndsAt, video = vm.room.videoSynchronized === true;
+            var round = Number(vm.room.videoQuestionRound || 0), generation = videoMatchGeneration;
             vm.matchControlBusy = true;
             var request = action === 'setClassicAutoAdvance'
-                ? battleService.setClassicAutoAdvance(code, !vm.isClassicAuto())
-                : battleService.nextClassicQuestion(code, sequence, deadline);
+                ? (video ? battleService.setClassicAutoAdvance(code, !vm.isClassicAuto(), sequence, round) : battleService.setClassicAutoAdvance(code, !vm.isClassicAuto()))
+                : (video ? battleService.nextClassicQuestion(code, sequence, deadline, round) : battleService.nextClassicQuestion(code, sequence, deadline));
             return request.then(function (room) {
-                if (vm.room && vm.room.code === code && vm.room.questionEndsAt === deadline &&
+                if (!destroyed && vm.room && vm.room.code === code && vm.room.status === 'PLAYING' && vm.room.questionEndsAt === deadline &&
+                        (!video || (Number(vm.room.videoQuestionRound || 0) === round && generation === videoMatchGeneration)) &&
                         (vm.room.currentQuestion && vm.room.currentQuestion.sequence) === sequence) { applyRoom(room, false); }
             }, showRequestError).finally(function () { vm.matchControlBusy = false; });
         }
@@ -402,7 +407,7 @@
         }
         vm.openHostVideoQuestionModal = function () {
             if (!canShowHostVideoQuestion()) { return; }
-            vm.closeHostVideoQuestionList();
+            vm.closeHostVideoQuestionList(); vm.closeHostVideoAnswers();
             if (!vm.hostVideoQuestionModalOpen) { hostVideoQuestionFocus = $window.document.activeElement; }
             vm.hostVideoQuestionModalOpen = true;
             if ($window.document.body && $window.document.body.classList) { $window.document.body.classList.add('battle-host-question-modal-open'); }
@@ -426,9 +431,54 @@
             }
             var key = vm.room.code + ':' + vm.room.currentQuestion.sequence + ':' + (vm.room.videoQuestionRound || 0);
             if (hostVideoQuestionKey !== key) {
-                hostVideoQuestionKey = key; vm.openHostVideoQuestionModal();
+                hostVideoQuestionKey = key; if (!vm.hostVideoAnswersOpen) { vm.openHostVideoQuestionModal(); }
             }
         }
+        function refreshHostVideoReview() {
+            if (!isHost() || !vm.room || !vm.room.videoSynchronized || destroyed || typeof battleService.getRoom !== 'function') { return; }
+            if (vm.refreshingPrivateState) { hostVideoReviewRefreshPending = true; return; }
+            refreshPrivateRoomState();
+        }
+        function latestHostVideoReview() {
+            if (!isHost() || !vm.room) { return null; }
+            if (vm.room.videoReview) { return vm.room.videoReview; }
+            // Compatibility with a server that already supports manual Classic review.
+            if (vm.room.videoSynchronized && vm.room.classicAnswerRevealed && vm.room.currentQuestion &&
+                    (vm.room.classicStudentAnswers || []).length) {
+                return {questionSequence: vm.room.currentQuestion.sequence, videoQuestionRound: vm.room.videoQuestionRound || 0,
+                    questionPreview: vm.room.currentQuestion.exercise && vm.room.currentQuestion.exercise.title,
+                    correctAnswer: vm.room.classicCorrectAnswer, studentAnswers: vm.room.classicStudentAnswers || []};
+            }
+            return null;
+        }
+        function focusHostVideoAnswers() {
+            $timeout(function () {
+                var modal = $window.document.getElementById('battle-host-video-answers-modal');
+                if (vm.hostVideoAnswersOpen && modal && modal.focus) { modal.focus(); }
+            });
+        }
+        vm.hasHostVideoReview = function () { return !!latestHostVideoReview(); };
+        vm.openHostVideoAnswers = function () {
+            if (!isHost() || !vm.room || ['PLAYING', 'FINISHED'].indexOf(vm.room.status) < 0 ||
+                    (!vm.room.videoSynchronized && !latestHostVideoReview())) { return; }
+            var origin = $window.document.activeElement;
+            vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList();
+            hostVideoAnswersFocus = origin;
+            vm.hostVideoAnswers = angular.copy(latestHostVideoReview());
+            vm.hostVideoAnswersOpen = true;
+            if ($window.document.body && $window.document.body.classList) { $window.document.body.classList.add('battle-host-video-answers-open'); }
+            focusHostVideoAnswers();
+            if (!vm.hostVideoAnswers) { refreshHostVideoReview(); }
+        };
+        vm.closeHostVideoAnswers = function () {
+            var wasOpen = vm.hostVideoAnswersOpen;
+            vm.hostVideoAnswersOpen = false; vm.hostVideoAnswers = null;
+            if ($window.document.body && $window.document.body.classList) { $window.document.body.classList.remove('battle-host-video-answers-open'); }
+            var origin = hostVideoAnswersFocus && hostVideoAnswersFocus.isConnected !== false ? hostVideoAnswersFocus :
+                $window.document.getElementById('battle-host-video-answers-open');
+            if (wasOpen && origin && origin.focus) { origin.focus(); }
+            hostVideoAnswersFocus = null;
+        };
         vm.closeHostVideoQuestionList = function () {
             var wasOpen = vm.hostVideoQuestionListOpen;
             vm.hostVideoQuestionListOpen = false; hostVideoListRequest++;
@@ -470,7 +520,7 @@
         vm.seekHostVideoQuestion = function (question) {
             if (!isHost() || !vm.room || vm.room.status !== 'PLAYING' || !vm.hostVideoApi.ready ||
                     vm.hostVideoReopening || !currentVideo() || !question || !vm.hostVideoQuestionList.some(function (item) { return item.sequence === question.sequence; })) { return; }
-            vm.closeHostVideoQuestionList(); vm.closeHostVideoQuestionModal(); $timeout.cancel(videoRetryTimer);
+            vm.closeHostVideoQuestionList(); vm.closeHostVideoQuestionModal(); vm.closeHostVideoAnswers(); $timeout.cancel(videoRetryTimer);
             vm.hostVideoReplay = {sequence: question.sequence, seconds: question.seconds, preview: question.preview,
                 sourceId: currentVideo().videoSourceId, roomCode: vm.room.code};
             vm.hostVideoApi.pause(); vm.hostVideoApi.seek(question.seconds);
@@ -506,7 +556,7 @@
         };
         vm.openHostVideoQuestionList = function () {
             if (!isHost() || !vm.room || vm.room.status !== 'PLAYING' || !currentVideo() || !currentVideo().videoUrl) { return; }
-            vm.closeHostVideoQuestionModal();
+            vm.closeHostVideoQuestionModal(); vm.closeHostVideoAnswers();
             if (!vm.hostVideoQuestionListOpen) { hostVideoListFocus = $window.document.activeElement; }
             vm.hostVideoQuestionListOpen = true; vm.hostVideoQuestionListLoading = true;
             hostVideoListScrollKey = '';
@@ -2679,6 +2729,7 @@
                 return;
             }
 
+            var privateRoomCode = vm.room.code;
             vm.refreshingPrivateState =
                 true;
 
@@ -2688,19 +2739,21 @@
                 )
                 .then(
                     function (room) {
-                        applyRoom(
-                            room,
-                            false
-                        );
+                        if (!destroyed && vm.room && vm.room.code === privateRoomCode) {
+                            applyRoom(room, false);
+                        }
                     },
                     function (error) {
-                        handleRoomAccessError(error);
+                        if (!destroyed && vm.room && vm.room.code === privateRoomCode) { handleRoomAccessError(error); }
                     }
                 )
                 .finally(
                     function () {
                         vm.refreshingPrivateState =
                             false;
+                        if (hostVideoReviewRefreshPending) {
+                            hostVideoReviewRefreshPending = false; refreshHostVideoReview();
+                        }
                     }
                 );
         }
@@ -3019,6 +3072,13 @@
                 vm.answerLocked = false;
                 clearSkillHitEffect();
             }
+            var sameVideoReviewRound = previousRoom && previousRoom.code === incoming.code &&
+                Number(previousRoom.videoQuestionRound || 0) === Number(incoming.videoQuestionRound || 0);
+            if (fromGenericSocket === true && sameVideoReviewRound && incoming.status !== 'LOBBY' &&
+                    !(previousStatus !== 'PLAYING' && incoming.status === 'PLAYING') &&
+                    incoming.hostUsername === vm.currentUser.username && !incoming.videoReview) {
+                incoming.videoReview = previousRoom.videoReview;
+            }
             vm.room = incoming;
             if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
                     (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }
@@ -3312,7 +3372,7 @@
 
             if (incoming.videoSynchronized && incoming.status === 'PLAYING') {
                 var videoPlayer = getMe();
-                vm.answerLocked = incoming.videoPhase !== 'ANSWERING' || !!(videoPlayer && videoPlayer.answeredCurrentQuestion);
+                vm.answerLocked = incoming.videoPhase !== 'ANSWERING' || incoming.classicAnswerRevealed === true || !!(videoPlayer && videoPlayer.answeredCurrentQuestion);
                 syncHostVideo(false);
                 if (incoming.videoPhase === 'CONTINUING' && vm.hostVideoDuration > 0 && vm.hostVideoSeconds >= vm.hostVideoDuration) { vm.hostVideoEnded(); }
             }
@@ -3390,11 +3450,24 @@
                 requestFinishCelebrationSound();
             }
 
+            if (vm.hostVideoAnswersOpen && (!isHost() || !previousRoom || previousRoom.code !== incoming.code ||
+                    incoming.status === 'LOBBY' || videoRoundChanged || (previousStatus !== 'PLAYING' && incoming.status === 'PLAYING'))) { vm.closeHostVideoAnswers(); }
+            if (vm.hostVideoAnswersOpen && !vm.hostVideoAnswers && latestHostVideoReview()) {
+                vm.hostVideoAnswers = angular.copy(latestHostVideoReview());
+            }
+            if (vm.hostVideoAnswersOpen && previousStatus !== incoming.status) { focusHostVideoAnswers(); }
             updateCountdown();
             if (vm.hostVideoQuestionListOpen && (!isHost() || incoming.status !== 'PLAYING' ||
                     !currentVideo() || currentVideo().videoSourceId !== hostVideoListSource)) { vm.closeHostVideoQuestionList(); }
             syncHostVideoQuestionModal();
             scrollHostVideoQuestionList(false);
+            if (fromGenericSocket === true && isHost() && incoming.videoSynchronized &&
+                    (incoming.status === 'PLAYING' || incoming.status === 'FINISHED') &&
+                    (questionChanged || !previousRoom || previousRoom.videoPhase !== incoming.videoPhase ||
+                     (incoming.classicAnswerRevealed && !previousRoom.classicAnswerRevealed) ||
+                     (incoming.status === 'FINISHED' && previousStatus !== 'FINISHED'))) {
+                refreshHostVideoReview();
+            }
         }
 
 
@@ -4496,7 +4569,7 @@
 
             if (
                 (vm.countdown <= 0 && !(option.autoSubmitted === true && isGuessWordMode())) ||
-                (vm.isClassicMode() && vm.room.classicAnswerRevealed)
+                (vm.canControlQuestionAdvance() && vm.room.classicAnswerRevealed)
             ) {
                 return;
             }
@@ -7855,12 +7928,12 @@
                 }
                 return;
             }
-            if ((vm.hostVideoQuestionModalOpen || vm.hostVideoQuestionListOpen || vm.hostVideoReplayConfirmOpen) && !vm.giftModalOpen) {
+            if ((vm.hostVideoQuestionModalOpen || vm.hostVideoQuestionListOpen || vm.hostVideoReplayConfirmOpen || vm.hostVideoAnswersOpen) && !vm.giftModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
-                    event.preventDefault(); $scope.$evalAsync(vm.hostVideoReplayConfirmOpen ? function () { vm.confirmHostVideoReplay(false); } : vm.hostVideoQuestionModalOpen ? vm.closeHostVideoQuestionModal : vm.closeHostVideoQuestionList); return;
+                    event.preventDefault(); $scope.$evalAsync(vm.hostVideoAnswersOpen ? vm.closeHostVideoAnswers : vm.hostVideoReplayConfirmOpen ? function () { vm.confirmHostVideoReplay(false); } : vm.hostVideoQuestionModalOpen ? vm.closeHostVideoQuestionModal : vm.closeHostVideoQuestionList); return;
                 }
                 if (event.key === 'Tab' || event.keyCode === 9) {
-                    var questionModal = $window.document.getElementById(vm.hostVideoReplayConfirmOpen ? 'battle-host-video-replay-confirm' : vm.hostVideoQuestionModalOpen ? 'battle-host-video-question-modal' : 'battle-host-video-question-list');
+                    var questionModal = $window.document.getElementById(vm.hostVideoAnswersOpen ? 'battle-host-video-answers-modal' : vm.hostVideoReplayConfirmOpen ? 'battle-host-video-replay-confirm' : vm.hostVideoQuestionModalOpen ? 'battle-host-video-question-modal' : 'battle-host-video-question-list');
                     var questionControls = questionModal && questionModal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary');
                     if (questionControls && questionControls.length) {
                         var firstQuestionControl = questionControls[0], lastQuestionControl = questionControls[questionControls.length - 1];
@@ -7873,7 +7946,7 @@
                     }
                     return;
                 }
-                if (vm.hostVideoQuestionListOpen || vm.hostVideoReplayConfirmOpen) { return; }
+                if (vm.hostVideoQuestionListOpen || vm.hostVideoReplayConfirmOpen || vm.hostVideoAnswersOpen) { return; }
             }
             if (vm.giftModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
@@ -8061,7 +8134,7 @@
                 destroyed = true;
                 if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
                 $timeout.cancel(videoRetryTimer);
-                vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); clearHostVideoReplay(); clearVideoAnswerToast();
+                vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); vm.closeHostVideoAnswers(); clearHostVideoReplay(); clearVideoAnswerToast();
                 angular.element($window).off('resize', hostVideoListResize);
                 angular.element($window.document).off('fullscreenchange', hostVideoFullscreenChanged);
                 vm.closeGiftModal(true);
