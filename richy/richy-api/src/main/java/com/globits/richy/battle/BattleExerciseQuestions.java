@@ -2,6 +2,8 @@ package com.globits.richy.battle;
 
 import com.globits.richy.dto.*;
 import com.globits.richy.service.BattleOnlineException;
+import com.globits.richy.question.ComprehensiveListeningScore;
+import com.globits.richy.question.ComprehensiveListeningValidation;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.util.HtmlUtils;
@@ -30,10 +32,14 @@ public final class BattleExerciseQuestions {
 
         public boolean grade(Map<String, List<String>> submitted) {
             if (submitted == null || submitted.size() != content.items.size()) { return false; }
+            int listeningCorrect = 0;
             for (BattleOnlineExerciseDto.Item item : content.items) {
                 List<String> values = submitted.get(item.id);
                 if (values == null || values.isEmpty() || values.size() > 100) { return false; }
-                if ("WRITING".equals(content.answerMode)) {
+                if ("LISTENING".equals(content.answerMode)) {
+                    if (values.size() != 1 || values.get(0) == null || values.get(0).length() > 2000) { return false; }
+                    if (ComprehensiveListeningScore.matches(correctTexts.get(item.id).get(0), values.get(0))) { listeningCorrect++; }
+                } else if ("WRITING".equals(content.answerMode)) {
                     if (values.size() != 1 || plain(values.get(0)).split("\\s+").length <= content.minimumWords) { return false; }
                 } else if ("TEXT".equals(content.answerMode)) {
                     if (values.size() != 1 || !correct.get(item.id).contains(normalize(values.get(0)))) { return false; }
@@ -42,7 +48,8 @@ public final class BattleExerciseQuestions {
                     if (selected.size() != values.size() || !selected.equals(correct.get(item.id))) { return false; }
                 }
             }
-            return true;
+            return !"LISTENING".equals(content.answerMode) ||
+                    !content.items.isEmpty() && listeningCorrect * 100L >= content.items.size() * 90L;
         }
     }
 
@@ -98,11 +105,12 @@ public final class BattleExerciseQuestions {
         turn.id = source.getId();
         if (turn.id == null) { throw invalid("Có câu hỏi chưa được lưu."); }
         int type = group.getType();
+        if (type == 18 && isRuntimeListening(group)) { return buildListening(turn, group, source, passage, random); }
         String mode;
         switch (type) {
-            case 2: case 3: case 8: case 11: mode = "TEXT"; break;
+            case 2: case 3: case 11: case 18: mode = "TEXT"; break;
             case 5: case 7: mode = "MULTIPLE"; break;
-            case 4: case 10: case 13: case 14: case 15: mode = "MATCH"; break;
+            case 4: case 8: case 10: case 13: case 14: case 15: mode = "MATCH"; break;
             case 16: case 17: mode = "WRITING"; break;
             case 1: case 6: case 9: case 12: mode = "SINGLE"; break;
             default: throw invalid("Dạng câu hỏi " + type + " chưa được hỗ trợ trong Battle.");
@@ -112,10 +120,11 @@ public final class BattleExerciseQuestions {
         content.type = type; content.answerMode = mode; content.title = group.getTitle();
         content.passageHtml = passage; content.instructionsHtml = group.getQuestion();
         content.minimumWords = type == 16 ? 150 : type == 17 ? 250 : 0;
-        if (type == 11 || type == 13) { content.contentHtml = sharedContent; }
+        if (type == 11 || type == 13 || type == 18) { content.contentHtml = sharedContent; }
+        if (type == 18) { content.audioUrl = listeningAudio(group); }
         BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
         item.id = String.valueOf(source.getId()); item.number = source.getOrdinalNumber(); item.promptHtml = source.getQuestion();
-        if (type == 4 || type == 11 || type == 13) { item.gapIndex = questionIndex; }
+        if (type == 4 || type == 11 || type == 13 || type == 18) { item.gapIndex = questionIndex; }
         Set<String> expected = new LinkedHashSet<String>();
         List<String> texts = new ArrayList<String>();
         List<QuestionAnswerDto> answers = new ArrayList<QuestionAnswerDto>(source.getQuestionAnswers() == null
@@ -135,7 +144,12 @@ public final class BattleExerciseQuestions {
                 item.options.add(new BattleOnlineExerciseDto.Option(key, text, answer.getAnswer() == null ? "" : answer.getAnswer().getAnswer()));
             }
             if (answer.isCorrect() && !text.isEmpty()) {
-                expected.add("TEXT".equals(mode) ? normalize(text) : key); texts.add(text);
+                if ("TEXT".equals(mode)) {
+                    for (String accepted : text.split("/")) {
+                        if (!normalize(accepted).isEmpty()) { expected.add(normalize(accepted)); }
+                    }
+                } else { expected.add(key); }
+                texts.add(text);
             }
         }
         if (!"WRITING".equals(mode) && expected.isEmpty()) { throw invalid("Câu " + item.number + " chưa có đáp án đúng."); }
@@ -144,10 +158,54 @@ public final class BattleExerciseQuestions {
         }
         content.items.add(item); turn.correct.put(item.id, expected); turn.correctTexts.put(item.id, texts);
         turn.prompt = plain(source.getQuestion());
-        if (turn.prompt.isEmpty() || type == 11 || type == 13) {
+        if (turn.prompt.isEmpty() || type == 11 || type == 13 || type == 18) {
             turn.prompt = "Câu hỏi " + (item.number == null ? "" : item.number);
         }
         return turn;
+    }
+
+    private static Turn buildListening(Turn turn, QuestionDto group, QuestionDto source, String passage, Random random) {
+        String audio = listeningAudio(group);
+        String transcript = group.getMotherTongue();
+        Map<Integer, String> gaps = ComprehensiveListeningScore.selectGaps(transcript, random);
+        if (gaps.isEmpty()) { throw invalid("Transcript Daily Listening chưa có từ phù hợp để tạo ô trống."); }
+        BattleOnlineExerciseDto content = new BattleOnlineExerciseDto();
+        turn.content = content; content.type = 18; content.answerMode = "LISTENING";
+        content.title = group.getTitle(); content.passageHtml = passage;
+        content.instructionsHtml = group.getQuestion(); content.audioUrl = audio;
+        List<String> tokens = ComprehensiveListeningScore.tokenize(transcript);
+        for (int index = 0; index < tokens.size(); index++) {
+            BattleOnlineExerciseDto.ListeningToken token = new BattleOnlineExerciseDto.ListeningToken();
+            String answer = gaps.get(index), literal = tokens.get(index);
+            if (answer == null) { token.text = literal; }
+            else {
+                token.gapId = source.getId() + ":" + index;
+                int start = literal.indexOf(answer);
+                token.before = literal.substring(0, start); token.after = literal.substring(start + answer.length());
+                BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
+                item.id = token.gapId; item.number = content.items.size() + 1; item.gapIndex = index; item.promptHtml = "";
+                content.items.add(item);
+                turn.correctTexts.put(item.id, Collections.singletonList(answer));
+            }
+            content.listeningTokens.add(token);
+        }
+        turn.prompt = "Nghe và điền từ" + (source.getOrdinalNumber() == null ? "" : " · Câu " + source.getOrdinalNumber());
+        return turn;
+    }
+
+    private static boolean isRuntimeListening(QuestionDto group) {
+        List<QuestionDto> questions = children(group);
+        if (questions.isEmpty() || questions.get(0).getQuestionAnswers() == null || questions.get(0).getQuestionAnswers().isEmpty()) { return false; }
+        QuestionAnswerDto answer = questions.get(0).getQuestionAnswers().get(0);
+        return answer != null && answer.getAnswer() != null && ComprehensiveListeningScore.RESPONSE.equals(answer.getAnswer().getAnswer());
+    }
+
+    private static String listeningAudio(QuestionDto group) {
+        String audio = group.getPronounce() == null ? "" : group.getPronounce().trim();
+        if (!ComprehensiveListeningValidation.isSupportedUrl(audio)) {
+            throw invalid("Daily Listening cần link audio hoặc YouTube hợp lệ (http/https).");
+        }
+        return audio;
     }
 
     private static List<QuestionDto> children(QuestionDto node) {

@@ -1,0 +1,52 @@
+    .touch-dnd-ghost {
+        position: fixed !important;
+        z-index: 100000 !important;
+        width: auto !important;
+        max-width: 72vw;
+        margin: 0 !important;
+        padding: 9px 12px !important;
+        border: 2px solid #4f46e5 !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        color: #1f2937 !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .28) !important;
+        opacity: .94;
+        pointer-events: none !important;
+    }
+
+    .touch-dnd-over {
+        border-color: #4f46e5 !important;
+        background: #eef2ff !important;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, .2) !important;
+    }
+
+    .touch-dnd-active,
+    .touch-dnd-active * {
+        cursor: grabbing !important;
+    }
+
+
+/* Keep a selected choice visible when placing by touch or keyboard. */
+.idp-reading-page .sentence-ending-choice.is-selected,
+.idp-reading-page .drag-matching-heading.is-selected {
+    border-color: #4f46e5;
+    background: #eef2ff;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .2);
+}
+.idp-reading-page .sentence-ending-choice:focus-visible,
+.idp-reading-page .sentence-ending-slot:focus-visible,
+.idp-reading-page .complete-list-word:focus-visible,
+.idp-reading-page .complete-list-slot:focus-visible,
+.idp-reading-page .drag-matching-heading:focus-visible,
+.idp-reading-page [touch-dnd-drop][role="button"]:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 3px;
+}
+
+.idp-reading-page .drag-matching-heading-root {
+    min-height: 48px;
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+}

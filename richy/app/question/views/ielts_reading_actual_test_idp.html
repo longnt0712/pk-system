@@ -582,6 +582,7 @@
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
                                                   ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,item,'words',word)"
                                                   role="button"
                                                   tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
@@ -599,9 +600,15 @@
                                                 <span class="sentence-ending-slot"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="vm.handleSentenceEndingSlotTap(endingPackage,$index,$event)"
+                                                      ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',null,$index)"
+                                                      role="button" tabindex="0" aria-label="Answer question {{endingQuestion.ordinalNumber}}">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          dnd-draggable="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          touch-dnd-source="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          dnd-effect-allowed="copy"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
                                                           title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
@@ -610,13 +617,20 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                        <div class="sentence-ending-bank" aria-label="List of Endings"
+                                             dnd-list="endingPackage.sentenceEndingReturnList"
+                                             dnd-drop="vm.returnSentenceEnding(endingPackage,item)"
+                                             touch-dnd-drop="vm.returnSentenceEnding(endingPackage,item)">
                                             <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending"
                                                   touch-dnd-source="ending"
+                                                  ng-class="{'is-selected': endingPackage.sentenceEndingSelected.answerIndex === ending.answerIndex}"
+                                                  ng-click="vm.selectSentenceEnding(endingPackage,ending,$event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',ending)"
+                                                  role="button" tabindex="0"
                                                   dnd-effect-allowed="copy">
                                                 <b>{{ending.label}}</b>
                                                 <span>{{ending.clientAnswer}}</span>
@@ -625,11 +639,15 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" touch-dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" touch-dnd-drop="onDropB(listB, item, index)" ng-if="item.type == 4" role="group" aria-label="List of headings; drop here to return an answer">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB, itemB)"
-                                                dnd-draggable="itemB"
                                                 touch-dnd-source="itemB"
+                                                ng-repeat="itemB in listB.items"
+                                                ng-click="vm.selectHeadingAnswer(listB,itemB,$event)"
+                                                ng-class="{'is-selected': vm.selectedHeadingAnswer.bank === listB && (vm.selectedHeadingAnswer.item === itemB || vm.selectedHeadingAnswer.item.objectFromListB === itemB)}"
+                                                ng-keydown="vm.headingAnswerKeydown($event,listB,itemB)"
+                                                role="button" tabindex="0"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -658,20 +676,6 @@
 
                                     <!--</div>-->
 
-                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
-                                        <strong>Question {{q.ordinalNumber}}</strong>
-                                        <ui-select
-                                                ng-change="vm.selectHeadingMedia1(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
-                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
-                                                <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
-                                                <div class="bold ui-select-pre-wrap"
-                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
-                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
-                                                </div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
 
                                     <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5 && $index == 0">
                                         <div class="row" style="" >
@@ -1007,6 +1011,7 @@
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
                                                   ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,item,'words',word)"
                                                   role="button"
                                                   tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
@@ -1023,9 +1028,15 @@
                                                 <span class="sentence-ending-slot"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="vm.handleSentenceEndingSlotTap(endingPackage,$index,$event)"
+                                                      ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',null,$index)"
+                                                      role="button" tabindex="0" aria-label="Answer question {{endingQuestion.ordinalNumber}}">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          dnd-draggable="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          touch-dnd-source="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          dnd-effect-allowed="copy"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
                                                           title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
@@ -1034,24 +1045,35 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                        <div class="sentence-ending-bank" aria-label="List of Endings"
+                                             dnd-list="endingPackage.sentenceEndingReturnList"
+                                             dnd-drop="vm.returnSentenceEnding(endingPackage,item)"
+                                             touch-dnd-drop="vm.returnSentenceEnding(endingPackage,item)">
                                             <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
-                                                  touch-dnd-source="ending">
+                                                  touch-dnd-source="ending"
+                                                  ng-class="{'is-selected': endingPackage.sentenceEndingSelected.answerIndex === ending.answerIndex}"
+                                                  ng-click="vm.selectSentenceEnding(endingPackage,ending,$event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',ending)"
+                                                  role="button" tabindex="0">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
                                         </div>
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" touch-dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" touch-dnd-drop="onDropB2(listB2, item, index)" ng-if="item.type == 4" role="group" aria-label="List of headings; drop here to return an answer">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB2, itemB)"
-                                                dnd-draggable="itemB"
                                                 touch-dnd-source="itemB"
+                                                ng-repeat="itemB in listB2.items"
+                                                ng-click="vm.selectHeadingAnswer(listB2,itemB,$event)"
+                                                ng-class="{'is-selected': vm.selectedHeadingAnswer.bank === listB2 && (vm.selectedHeadingAnswer.item === itemB || vm.selectedHeadingAnswer.item.objectFromListB === itemB)}"
+                                                ng-keydown="vm.headingAnswerKeydown($event,listB2,itemB)"
+                                                role="button" tabindex="0"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -1063,20 +1085,6 @@
                                     </div>
 
 
-                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
-                                        <strong>Question {{q.ordinalNumber}}</strong>
-                                        <ui-select
-                                                   ng-change="vm.selectHeadingMedia2(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
-                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
-                                            <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
-                                                <div class="bold ui-select-pre-wrap"
-                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
-                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
-                                                </div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
 
 
                                     <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5 && $index == 0">
@@ -1411,6 +1419,7 @@
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
                                                   ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,item,'words',word)"
                                                   role="button"
                                                   tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
@@ -1427,9 +1436,15 @@
                                                 <span class="sentence-ending-slot"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="vm.handleSentenceEndingSlotTap(endingPackage,$index,$event)"
+                                                      ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',null,$index)"
+                                                      role="button" tabindex="0" aria-label="Answer question {{endingQuestion.ordinalNumber}}">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          dnd-draggable="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          touch-dnd-source="endingPackage.sentenceEndingSlots[$index].items[0]"
+                                                          dnd-effect-allowed="copy"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
                                                           title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
@@ -1438,24 +1453,35 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                        <div class="sentence-ending-bank" aria-label="List of Endings"
+                                             dnd-list="endingPackage.sentenceEndingReturnList"
+                                             dnd-drop="vm.returnSentenceEnding(endingPackage,item)"
+                                             touch-dnd-drop="vm.returnSentenceEnding(endingPackage,item)">
                                             <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
-                                                  touch-dnd-source="ending">
+                                                  touch-dnd-source="ending"
+                                                  ng-class="{'is-selected': endingPackage.sentenceEndingSelected.answerIndex === ending.answerIndex}"
+                                                  ng-click="vm.selectSentenceEnding(endingPackage,ending,$event)"
+                                                  ng-keydown="vm.handleAnswerBankKeydown($event,endingPackage,'endings',ending)"
+                                                  role="button" tabindex="0">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
                                         </div>
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" touch-dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" touch-dnd-drop="onDropB3(listB3, item, index)" ng-if="item.type == 4" role="group" aria-label="List of headings; drop here to return an answer">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB3, itemB)"
-                                                dnd-draggable="itemB"
                                                 touch-dnd-source="itemB"
+                                                ng-repeat="itemB in listB3.items"
+                                                ng-click="vm.selectHeadingAnswer(listB3,itemB,$event)"
+                                                ng-class="{'is-selected': vm.selectedHeadingAnswer.bank === listB3 && (vm.selectedHeadingAnswer.item === itemB || vm.selectedHeadingAnswer.item.objectFromListB === itemB)}"
+                                                ng-keydown="vm.headingAnswerKeydown($event,listB3,itemB)"
+                                                role="button" tabindex="0"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -1466,20 +1492,6 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
-                                        <strong>Question {{q.ordinalNumber}}</strong>
-                                        <ui-select
-                                                ng-change="vm.selectHeadingMedia3(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
-                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
-                                                <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
-                                                <div class="bold ui-select-pre-wrap"
-                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
-                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
-                                                </div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
 
                                     <!--<div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-show="q.parent.type == 5">-->
                                         <!--<div class="row" style="margin-bottom: 20px" ng-show="$index == 0">-->
@@ -2958,33 +2970,6 @@
         /*line-height: 5%;*/
         padding-top: 5px;
         resize: none;
-    }
-
-    .touch-dnd-ghost {
-        position: fixed !important;
-        z-index: 100000 !important;
-        width: auto !important;
-        max-width: 72vw;
-        margin: 0 !important;
-        padding: 9px 12px !important;
-        border: 2px solid #4f46e5 !important;
-        border-radius: 8px !important;
-        background: #fff !important;
-        color: #1f2937 !important;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, .28) !important;
-        opacity: .94;
-        pointer-events: none !important;
-    }
-
-    .touch-dnd-over {
-        border-color: #4f46e5 !important;
-        background: #eef2ff !important;
-        box-shadow: 0 0 0 4px rgba(79, 70, 229, .2) !important;
-    }
-
-    .touch-dnd-active,
-    .touch-dnd-active * {
-        cursor: grabbing !important;
     }
 
     .page-header{

@@ -4,10 +4,12 @@ const fs=require('node:fs'),path=require('node:path'),nodeVm=require('node:vm');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function exerciseForm(scope) {
  const directives={};
- const angular={module(){return {directive(name,factory){directives[name]=factory;return this;}};}};
+ const angular={module(){return {directive(name,factory){directives[name]=factory;return this;}};},noop(){}};
  nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname,'../question/controllers/BattleExerciseForm.js'),'utf8'),{angular,window:{APP_VERSION:'test'}});
- scope.$watch=()=>{};
- directives.battleExerciseForm().link(scope);
+ scope.$watch=()=>{};scope.$on=()=>{};scope.$evalAsync=()=>{};
+ const registration=directives.battleExerciseForm;
+ const factory=Array.isArray(registration)?registration[registration.length-1]:registration;
+ factory(value=>value,{}).link(scope,[{ownerDocument:{},addEventListener(){},removeEventListener(){}}]);
  return scope;
 }
 function setup(username='alice') {
@@ -263,8 +265,9 @@ test('one flashcard choice submits only the current child once in all seven mode
 
 test('multiple choices wait for submit and choice labels include E, F and later letters',()=>{
  let submissions=0;
- const scope=exerciseForm({exercise:{answerMode:'MULTIPLE'},answers:{},disabled:false,onAnswer(){submissions++;}});
- const item={id:'103'};scope.choose(item,{key:'1'},true);scope.choose(item,{key:'3'},true);
+ const item={id:'103',options:[{key:'1'},{key:'3'}]};
+ const scope=exerciseForm({exercise:{type:5,answerMode:'MULTIPLE',items:[item]},answers:{},disabled:false,onAnswer(){submissions++;}});
+ scope.choose(item,{key:'1'},true);scope.choose(item,{key:'3'},true);
  assert.equal(submissions,0);assert.deepEqual(plain(scope.answers),{'103':['1','3']});
  assert.deepEqual([0,3,4,5,25,26].map(scope.optionLabel),['A','D','E','F','Z','AA']);
 });
@@ -329,4 +332,22 @@ test('closed or superseded folder requests cannot replace the current list, and 
  await h.vm.openExercisePicker();await h.vm.openExercisePicker();
  h.folderCalls[2].resolve([{id:3,name:'Current folder'}]);h.folderCalls[1].reject(new Error('old error'));
  await new Promise(setImmediate);assert.equal(h.vm.exerciseFolderError,'');assert.equal(h.vm.exerciseFolders[0].id,3);
+});
+
+test('Listening submits every opaque gap ID and preserves blanks for server grading',()=>{
+ const h=setup(),room=h.room();
+ room.currentQuestion.exercise={answerMode:'LISTENING',type:18,items:Array.from({length:20},(_,i)=>({id:'103:'+i}))};
+ h.hooks.applyRoom(room,false);
+ h.vm.exerciseAnswers=Object.fromEntries(Array.from({length:18},(_,i)=>['103:'+i,['word'+i]]));
+ h.vm.submitExercise(false);
+ assert.equal(h.calls.length,1);assert.equal(h.warnings.length,0);
+ assert.equal(Object.keys(h.calls[0][4]).length,20);assert.deepEqual(plain(h.calls[0][4]['103:18']),['']);
+ assert.deepEqual(plain(h.calls[0][4]['103:19']),['']);assert.equal(h.vm.exerciseAnswers['103:18'],undefined,'submission padding must not mutate answers');
+});
+
+test('Listening blanks do not bypass video cue or disabled submission guards',()=>{
+ const h=setup(),room=videoRoom(h,'CLASSIC','WATCHING');
+ room.currentQuestion.exercise={...room.currentQuestion.exercise,answerMode:'LISTENING',type:18,items:[{id:'103:0'}]};
+ h.hooks.applyRoom(room,false);h.vm.exerciseAnswers={};h.vm.submitExercise(false);
+ assert.equal(h.calls.length,0);
 });

@@ -1,0 +1,33 @@
+.battle-exercise-form .battle-exercise-choice-token { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid #839cb6; border-radius:7px; color:#23344c; background:#fff; text-align:left; font:inherit; cursor:grab; min-height:40px; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.battle-exercise-form .battle-exercise-choice-token.is-selected { border-color:#6758d8; box-shadow:0 0 0 3px #6758d833; background:#f1efff; }
+.battle-exercise-form .battle-exercise-slot { display:inline-flex; vertical-align:middle; align-items:center; flex-wrap:wrap; gap:6px; min-width:175px; min-height:43px; max-width:100%; border:1px dashed #829bb7; border-radius:7px; background:#f4f7fb; padding:5px; margin:4px; }
+.battle-exercise-form .battle-exercise-slot:focus-visible,.battle-exercise-form .battle-exercise-choice-token:focus-visible,.battle-exercise-form .battle-exercise-clear:focus-visible { outline:3px solid #6f60db; outline-offset:2px; }
+.battle-exercise-form .battle-exercise-slot-hint { color:#61718b; padding:3px 6px; font-size:14px; }
+.battle-exercise-form .battle-exercise-clear { border:0; border-radius:50%; background:#e7eaf2; color:#3a4a61; min-width:28px; height:28px; padding:0; font-size:22px; line-height:1; }
+.battle-exercise-form .battle-exercise-slot .battle-exercise-choice-token { flex:1; }
+.battle-exercise-form .battle-exercise-bank { display:flex; flex-wrap:wrap; gap:8px; padding:12px; border:1px solid #dce4ed; border-radius:10px; background:#f8faff; }
+.battle-exercise-form .battle-exercise-bank-title,.battle-exercise-form .battle-exercise-bank small { width:100%; }
+.battle-exercise-form .battle-exercise-bank span { padding:0; border:0; border-radius:0; cursor:inherit; }
+.battle-exercise-form .battle-exercise-match-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,.75fr); align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #e3e9f1; }
+.battle-exercise-form .battle-exercise-drag-layout.is-two-column { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:16px; align-items:start; }
+.battle-exercise-form .battle-exercise-drag-layout.is-two-column .battle-exercise-bank { display:flex; margin:0; }
+.battle-exercise-form .battle-exercise-drag-layout.is-two-column .battle-exercise-choice-token { width:100%; }
+.battle-exercise-form .battle-exercise-matrix-wrap { overflow:auto; max-width:100%; margin:12px 0; }
+.battle-exercise-form table.battle-exercise-matrix { display:table; width:100%; border-collapse:collapse; min-width:400px; }
+.battle-exercise-form .battle-exercise-matrix th,.battle-exercise-form .battle-exercise-matrix td { border:1px solid #dce4ed; padding:9px; text-align:center; vertical-align:middle; }
+.battle-exercise-form .battle-exercise-matrix th:first-child { min-width:150px; text-align:left; }
+.battle-exercise-form .battle-exercise-matrix label { margin:0; padding:6px; cursor:pointer; }
+.battle-exercise-form .battle-exercise-matrix input,.battle-exercise-form .battle-exercise-choice input { width:18px; height:18px; accent-color:#6656d9; flex-shrink:0; }
+.battle-exercise-form .battle-exercise-shared-choices { display:grid; gap:8px; border:1px solid #dce4ed; padding:12px; margin-top:12px; border-radius:8px; }
+.battle-exercise-form .battle-exercise-two-column { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; }
+.battle-exercise-form .battle-exercise-choice { display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #dce4ed; border-radius:7px; cursor:pointer; }
+.battle-exercise-form .battle-exercise-choice.is-selected { border-color:#8071db; background:#f4f1ff; }
+.battle-exercise-form .battle-exercise-item-prompt { margin-bottom:10px; }
+.battle-exercise-form .battle-exercise-gap { min-height:38px; }
+.battle-exercise-form .battle-exercise-interaction-status { min-height:20px; margin:6px 0; font-size:13px; color:#586b83; }
+.battle-exercise-form .battle-listening-transcript { white-space:pre-wrap; line-height:2.4; margin:16px 0; }
+.battle-exercise-form .battle-listening-transcript .battle-exercise-gap { width:140px; }
+.battle-exercise-form .battle-listening-target { margin:12px 0; color:#586b83; }
+.battle-exercise-form.is-disabled .battle-exercise-choice-token,.battle-exercise-form.is-disabled .battle-exercise-slot { cursor:default; opacity:.7; }
+.global-dark-mode .battle-exercise-form .battle-exercise-choice-token,.global-dark-mode .battle-exercise-form .battle-exercise-slot,.global-dark-mode .battle-exercise-form .battle-exercise-bank { color:#edf2ff; background:#263447; border-color:#657a94; }
+@media(max-width:600px) { .battle-exercise-form .battle-exercise-drag-layout.is-two-column,.battle-exercise-form .battle-exercise-match-row,.battle-exercise-form .battle-exercise-two-column { grid-template-columns:1fr; } .battle-exercise-form .battle-exercise-slot { min-width:140px; } }

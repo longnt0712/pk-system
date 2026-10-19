@@ -42,6 +42,7 @@ async function open(browser,username,width,extra=null){
  const source=fs.readFileSync(path.join(app,'question/controllers/BattleQuizOnlineController.js'),'utf8')
   .replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.battleHooks = {applyRoom: applyRoom, updateCountdown: updateCountdown};');
  await page.addScriptTag({content:source});
+ await page.addScriptTag({path:path.join(app,'question/business/QuestionDragDrop.js')});
  await page.addScriptTag({path:path.join(app,'question/controllers/BattleExerciseForm.js')});
  await page.evaluate(()=>{angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.qaScope=angular.element(document.getElementById('qa')).scope();});
  return page;
@@ -96,7 +97,7 @@ test('Classic hosts see equal desktop columns and can illustrate all choices wit
    await apply(page,vocab);await choices.nth(2).click();assert.equal(await choices.nth(2).getAttribute('aria-pressed'),'true');
    assert.equal(await page.evaluate(()=>window.answerCalls.length),0);
    await apply(page,classicRoom(4));assert.equal(await question.locator('.battle-online-answer-btn.is-selected').count(),0);
-   const text=classicRoom(5);Object.assign(text.currentQuestion.exercise,{type:1,answerMode:'TEXT'});await apply(page,text);
+   const text=classicRoom(5);Object.assign(text.currentQuestion.exercise,{type:2,answerMode:'TEXT'});await apply(page,text);
    await question.locator('input[type=text]').fill('be');assert.equal(await question.getByRole('button',{name:'NỘP ĐÁP ÁN',exact:true}).count(),0);
    assert.equal(await page.evaluate(()=>window.answerCalls.length),0);
    const player=classicRoom(6);player.players[0].spectator=false;await apply(page,player);
@@ -134,7 +135,7 @@ test('reloading an expired manual Classic question waits for host Next without r
    await page.close();
   }
   const guess=await open(browser,'alice',390,gameLayout),snapshot=room('GUESS_WORD','ANSWERING');snapshot.videoSynchronized=false;
-  Object.assign(snapshot.currentQuestion.exercise,{type:1,answerMode:'TEXT'});await apply(guess,snapshot);
+  Object.assign(snapshot.currentQuestion.exercise,{type:2,answerMode:'TEXT'});await apply(guess,snapshot);
   await guess.locator('.battle-online-question-card input[type=text]').fill('a cat');
   snapshot.questionEndsAt=Date.now()-1;snapshot.serverTime=Date.now();await apply(guess,snapshot);
   assert.equal(await guess.evaluate(()=>window.answerCalls.length),1,'Guess still submits typed answers at its deadline');

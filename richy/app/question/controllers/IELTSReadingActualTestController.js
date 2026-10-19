@@ -417,23 +417,6 @@
         };
     }]);
 
-    angular.module('Hrm.Question').directive('touchDndDrop', function () {
-        return {
-            restrict: 'A',
-            link: function (scope, element, attrs) {
-                element[0].__ieltsTouchDrop = function (item) {
-                    scope.$evalAsync(function () {
-                        scope.$eval(attrs.touchDndDrop, {item: item, index: 0});
-                    });
-                };
-
-                scope.$on('$destroy', function () {
-                    delete element[0].__ieltsTouchDrop;
-                });
-            }
-        };
-    });
-
     angular.module('Hrm.Question').directive('doubleTap', ['$timeout', function ($timeout) {
         return {
             restrict: 'A',
@@ -587,261 +570,6 @@
                         node.removeEventListener('pointerup', onPointerUp, false);
                     }
                     $document[0].removeEventListener('selectionchange', dispatchSelection, false);
-                });
-            }
-        };
-    }]);
-
-    angular.module('Hrm.Question').directive('touchDndSource', ['$document', '$window', function ($document, $window) {
-        return {
-            restrict: 'A',
-            link: function (scope, element, attrs) {
-                var documentNode = $document[0];
-                var active = false;
-                var dragging = false;
-                var startX = 0;
-                var startY = 0;
-                var draggedItem = null;
-                var ghost = null;
-                var activeDrop = null;
-                var suppressClick = false;
-                var usingPointer = !!$window.PointerEvent;
-                var activePointerId = null;
-                var moveFrame = null;
-                var pendingPoint = null;
-
-                element.css({
-                    'touch-action': 'none',
-                    '-webkit-user-select': 'none',
-                    'user-select': 'none'
-                });
-
-                function eventPoint(event) {
-                    var source = event.touches && event.touches.length
-                        ? event.touches[0]
-                        : (event.changedTouches && event.changedTouches.length
-                            ? event.changedTouches[0]
-                            : event);
-                    return {x: source.clientX, y: source.clientY};
-                }
-
-                function closestDropTarget(node) {
-                    while (node && node !== documentNode.body) {
-                        if (node.__ieltsTouchDrop) {
-                            return node;
-                        }
-                        node = node.parentNode;
-                    }
-                    return null;
-                }
-
-                function setActiveDrop(target) {
-                    if (activeDrop === target) {
-                        return;
-                    }
-                    if (activeDrop) {
-                        angular.element(activeDrop).removeClass('touch-dnd-over');
-                    }
-                    activeDrop = target;
-                    if (activeDrop) {
-                        angular.element(activeDrop).addClass('touch-dnd-over');
-                    }
-                }
-
-                function createGhost() {
-                    ghost = element[0].cloneNode(true);
-                    ghost.removeAttribute('id');
-                    ghost.className += ' touch-dnd-ghost';
-                    ghost.style.left = '0';
-                    ghost.style.top = '0';
-                    ghost.style.willChange = 'transform';
-                    angular.element(documentNode.body).append(ghost);
-                    angular.element(documentNode.body).addClass('touch-dnd-active');
-                }
-
-                function moveGhost(point) {
-                    if (!ghost) {
-                        return;
-                    }
-                    ghost.style.transform = 'translate3d(' + (point.x + 14) + 'px,' + (point.y + 14) + 'px,0)';
-                }
-
-                function closestScrollable(node) {
-                    while (node && node !== documentNode.body) {
-                        var style = $window.getComputedStyle(node);
-                        if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 2) {
-                            return node;
-                        }
-                        node = node.parentNode;
-                    }
-                    return null;
-                }
-
-                function processMove(point) {
-                    if (!active || !dragging || !point) {
-                        return;
-                    }
-                    var pointNode = documentNode.elementFromPoint(point.x, point.y);
-                    moveGhost(point);
-                    setActiveDrop(closestDropTarget(pointNode));
-
-                    var scrollHost = closestScrollable(pointNode);
-                    if (scrollHost) {
-                        var bounds = scrollHost.getBoundingClientRect();
-                        var edge = Math.min(70, Math.max(42, bounds.height * 0.12));
-                        if (point.y < bounds.top + edge) {
-                            scrollHost.scrollTop -= 14;
-                        } else if (point.y > bounds.bottom - edge) {
-                            scrollHost.scrollTop += 14;
-                        }
-                    } else if (point.y < 55) {
-                        $window.scrollBy(0, -12);
-                    } else if (point.y > $window.innerHeight - 55) {
-                        $window.scrollBy(0, 12);
-                    }
-                }
-
-                function flushMove() {
-                    moveFrame = null;
-                    var point = pendingPoint;
-                    pendingPoint = null;
-                    processMove(point);
-                }
-
-                function onMove(event) {
-                    if (!active) {
-                        return;
-                    }
-                    if (usingPointer && activePointerId !== null && event.pointerId !== activePointerId) {
-                        return;
-                    }
-                    var point = eventPoint(event);
-                    if (!dragging && Math.max(Math.abs(point.x - startX), Math.abs(point.y - startY)) >= 7) {
-                        dragging = true;
-                        createGhost();
-                    }
-                    if (!dragging) {
-                        return;
-                    }
-                    event.preventDefault();
-                    pendingPoint = point;
-                    if (moveFrame === null) {
-                        moveFrame = $window.requestAnimationFrame(flushMove);
-                    }
-                }
-
-                function unbindDocumentEvents() {
-                    if (usingPointer) {
-                        documentNode.removeEventListener('pointermove', onMove, false);
-                        documentNode.removeEventListener('pointerup', onEnd, false);
-                        documentNode.removeEventListener('pointercancel', onEnd, false);
-                    } else {
-                        documentNode.removeEventListener('touchmove', onMove, false);
-                        documentNode.removeEventListener('touchend', onEnd, false);
-                        documentNode.removeEventListener('touchcancel', onEnd, false);
-                    }
-                }
-
-                function cleanup() {
-                    unbindDocumentEvents();
-                    if (moveFrame !== null) {
-                        $window.cancelAnimationFrame(moveFrame);
-                        moveFrame = null;
-                    }
-                    pendingPoint = null;
-                    setActiveDrop(null);
-                    if (ghost && ghost.parentNode) {
-                        ghost.parentNode.removeChild(ghost);
-                    }
-                    ghost = null;
-                    angular.element(documentNode.body).removeClass('touch-dnd-active');
-                    active = false;
-                    dragging = false;
-                    draggedItem = null;
-                    activePointerId = null;
-                }
-
-                function onEnd(event) {
-                    if (!active) {
-                        return;
-                    }
-                    if (usingPointer && activePointerId !== null && event.pointerId !== activePointerId) {
-                        return;
-                    }
-                    if (dragging) {
-                        event.preventDefault();
-                        if (pendingPoint) {
-                            processMove(pendingPoint);
-                            pendingPoint = null;
-                        }
-                        suppressClick = true;
-                        if (activeDrop && activeDrop.__ieltsTouchDrop) {
-                            activeDrop.__ieltsTouchDrop(draggedItem);
-                        }
-                    }
-                    cleanup();
-                }
-
-                function onStart(event) {
-                    if (usingPointer && event.pointerType === 'mouse') {
-                        return;
-                    }
-                    if (usingPointer && event.isPrimary === false) {
-                        return;
-                    }
-                    if (active) {
-                        cleanup();
-                    }
-                    draggedItem = scope.$eval(attrs.touchDndSource);
-                    if (!draggedItem) {
-                        return;
-                    }
-                    var point = eventPoint(event);
-                    startX = point.x;
-                    startY = point.y;
-                    active = true;
-                    if (usingPointer) {
-                        activePointerId = event.pointerId;
-                        if (element[0].setPointerCapture) {
-                            try {
-                                element[0].setPointerCapture(activePointerId);
-                            } catch (ignorePointerCaptureError) {
-                                // Document listeners remain as the fallback.
-                            }
-                        }
-                        documentNode.addEventListener('pointermove', onMove, {passive: false});
-                        documentNode.addEventListener('pointerup', onEnd, false);
-                        documentNode.addEventListener('pointercancel', onEnd, false);
-                    } else {
-                        documentNode.addEventListener('touchmove', onMove, {passive: false});
-                        documentNode.addEventListener('touchend', onEnd, false);
-                        documentNode.addEventListener('touchcancel', onEnd, false);
-                    }
-                }
-
-                function onClick(event) {
-                    if (suppressClick) {
-                        suppressClick = false;
-                        event.preventDefault();
-                        event.stopImmediatePropagation();
-                    }
-                }
-
-                if (usingPointer) {
-                    element[0].addEventListener('pointerdown', onStart, false);
-                } else {
-                    element[0].addEventListener('touchstart', onStart, {passive: true});
-                }
-                element[0].addEventListener('click', onClick, true);
-
-                scope.$on('$destroy', function () {
-                    cleanup();
-                    if (usingPointer) {
-                        element[0].removeEventListener('pointerdown', onStart, false);
-                    } else {
-                        element[0].removeEventListener('touchstart', onStart, false);
-                    }
-                    element[0].removeEventListener('click', onClick, true);
                 });
             }
         };
@@ -4551,6 +4279,7 @@
                     'dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'touch-dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'ng-click="vm.handleCompleteListSlotTap(completeListPackage,' + questionIndex + ',$event)" ' +
+                    'role="button" tabindex="0" ng-keydown="vm.handleAnswerBankKeydown($event,completeListPackage,\'words\',null,' + questionIndex + ')" ' +
                     'ng-class="{\'is-tap-target\': completeListPackage.completeListSelectedWord, ' +
                     '\'is-filled\': completeListPackage.completeListSlots[' + questionIndex + '].items.length}">' +
                     '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
@@ -4629,6 +4358,8 @@
                 questionPackage.completeListSelectedWord = null;
                 return;
             }
+            var slot = questionPackage.completeListSlots && questionPackage.completeListSlots[slotIndex];
+            if (slot && slot.items.length) { vm.selectCompleteListWord(questionPackage, slot.items[0]); }
         };
 
         function setCompleteListAnswer(question, questionAnswer, selected) {
@@ -4654,6 +4385,7 @@
         }
 
         vm.clearCompleteListSlot = function (questionPackage, slotIndex, skipDraftSave) {
+            if (questionPackage) { questionPackage.completeListSelectedWord = null; }
             var slot = questionPackage && questionPackage.completeListSlots ? questionPackage.completeListSlots[slotIndex] : null;
             var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
             if (!slot || !slot.items || !slot.items.length || !question) {
@@ -4677,6 +4409,13 @@
                 return false;
             }
 
+            var canonicalWord = (questionPackage.completeListWordBank || []).filter(function (word) {
+                return word.answerId != null && droppedWord.answerId != null
+                    ? String(word.answerId) === String(droppedWord.answerId)
+                    : word.answerIndex === droppedWord.answerIndex && word.clientAnswer === droppedWord.clientAnswer;
+            })[0];
+            if (!canonicalWord) { return false; }
+            droppedWord = canonicalWord;
             angular.forEach(questionPackage.completeListSlots, function (slot, existingIndex) {
                 var existingWord = slot.items && slot.items.length ? slot.items[0] : null;
                 var sameWord = existingWord && (
@@ -4739,6 +4478,8 @@
 
             var sourceAnswers = questions.length ? questions[0].questionAnswers : [];
             questionPackage.sentenceEndingSlots = [];
+            questionPackage.sentenceEndingReturnList = [];
+            questionPackage.sentenceEndingSelected = null;
             questionPackage.sentenceEndingBank = sourceAnswers.map(function (questionAnswer, answerIndex) {
                 return {
                     answerIndex: answerIndex,
@@ -4755,6 +4496,56 @@
             });
         }
 
+        vm.selectSentenceEnding = function (pack, ending, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!pack || !ending) { return; }
+            pack.sentenceEndingSelected = pack.sentenceEndingSelected &&
+                pack.sentenceEndingSelected.answerIndex === ending.answerIndex ? null : angular.copy(ending);
+        };
+
+        vm.handleSentenceEndingSlotTap = function (pack, slotIndex, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!pack) { return; }
+            if (pack.sentenceEndingSelected) {
+                vm.dropSentenceEnding(pack, slotIndex, pack.sentenceEndingSelected);
+                pack.sentenceEndingSelected = null;
+            } else {
+                var slot = pack.sentenceEndingSlots && pack.sentenceEndingSlots[slotIndex];
+                if (slot && slot.items.length) { vm.selectSentenceEnding(pack, slot.items[0]); }
+            }
+        };
+
+        vm.handleAnswerBankKeydown = function (event, pack, kind, word, slotIndex) {
+            var key = event.key;
+            if (key === 'Escape') {
+                pack.completeListSelectedWord = pack.sentenceEndingSelected = null;
+                event.preventDefault(); return;
+            }
+            if (slotIndex != null && (key === 'Delete' || key === 'Backspace')) {
+                event.preventDefault(); event.stopPropagation();
+                if (kind === 'words') { vm.clearCompleteListSlot(pack, slotIndex); }
+                else { vm.clearSentenceEndingSlot(pack, slotIndex); }
+            } else if (key === 'Enter' || key === ' ') {
+                if (kind === 'words') {
+                    if (word) { vm.selectCompleteListWord(pack, word, event); }
+                    else { vm.handleCompleteListSlotTap(pack, slotIndex, event); }
+                } else if (word) { vm.selectSentenceEnding(pack, word, event); }
+                else { vm.handleSentenceEndingSlotTap(pack, slotIndex, event); }
+            }
+        };
+
+        vm.returnSentenceEnding = function (pack, ending) {
+            if (!pack || !ending) { return true; }
+            angular.forEach(pack.sentenceEndingSlots || [], function (slot, index) {
+                if (slot.items.length && slot.items[0].answerIndex === ending.answerIndex &&
+                        slot.items[0].clientAnswer === ending.clientAnswer) {
+                    vm.clearSentenceEndingSlot(pack, index);
+                }
+            });
+            pack.sentenceEndingSelected = null;
+            return true;
+        };
+
         vm.isSentenceEndingUsed = function (questionPackage, ending) {
             var used = false;
             angular.forEach((questionPackage && questionPackage.sentenceEndingSlots) || [], function (slot) {
@@ -4765,7 +4556,8 @@
             return used;
         };
 
-        vm.clearSentenceEndingSlot = function (questionPackage, slotIndex) {
+        vm.clearSentenceEndingSlot = function (questionPackage, slotIndex, skipDraftSave) {
+            if (questionPackage) { questionPackage.sentenceEndingSelected = null; }
             var slot = questionPackage && questionPackage.sentenceEndingSlots ? questionPackage.sentenceEndingSlots[slotIndex] : null;
             var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
             if (!slot || !slot.items || !slot.items.length || !question) {
@@ -4775,19 +4567,26 @@
             if (questionAnswer) {
                 vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, false);
             }
-            slot.items = [];
+            slot.items.splice(0, slot.items.length);
+            if (!skipDraftSave) { saveReadingDraft(); }
         };
 
         vm.dropSentenceEnding = function (questionPackage, slotIndex, droppedEnding) {
             if (!questionPackage || !droppedEnding || !questionPackage.subQuestions || !questionPackage.sentenceEndingSlots) {
                 return false;
             }
+            var canonicalEnding = (questionPackage.sentenceEndingBank || []).filter(function (ending) {
+                return ending.answerIndex === droppedEnding.answerIndex && ending.clientAnswer === droppedEnding.clientAnswer;
+            })[0];
+            if (!canonicalEnding) { return false; }
+            droppedEnding = canonicalEnding;
+            questionPackage.sentenceEndingSelected = null;
             angular.forEach(questionPackage.sentenceEndingSlots, function (slot, existingIndex) {
                 if (existingIndex !== slotIndex && slot.items && slot.items.length && slot.items[0].answerIndex === droppedEnding.answerIndex) {
-                    vm.clearSentenceEndingSlot(questionPackage, existingIndex);
+                    vm.clearSentenceEndingSlot(questionPackage, existingIndex, true);
                 }
             });
-            vm.clearSentenceEndingSlot(questionPackage, slotIndex);
+            vm.clearSentenceEndingSlot(questionPackage, slotIndex, true);
 
             var question = questionPackage.subQuestions[slotIndex];
             var questionAnswer = question && question.questionAnswers ? question.questionAnswers[droppedEnding.answerIndex] : null;
@@ -4986,6 +4785,8 @@
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
+                                        'role="button" tabindex="0" ng-click="vm.activateHeadingSlot(listA['+z+'],listB,onDropA,$event)" ' +
+                                        'ng-keydown="vm.headingSlotKeydown($event,listA['+z+'],listB,onDropA,onDropB)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA['+z+'], listA['+z+'].items[0])" ' +
                                         'touch-dnd-source="listA['+z+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
@@ -5006,6 +4807,8 @@
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
+                                        'role="button" tabindex="0" ng-click="vm.activateHeadingSlot(listA2['+z2+'],listB2,onDropA2,$event)" ' +
+                                        'ng-keydown="vm.headingSlotKeydown($event,listA2['+z2+'],listB2,onDropA2,onDropB2)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA2['+z2+'], listA2['+z2+'].items[0])" ' +
                                         'touch-dnd-source="listA2['+z2+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
@@ -5027,6 +4830,8 @@
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
+                                        'role="button" tabindex="0" ng-click="vm.activateHeadingSlot(listA3['+z3+'],listB3,onDropA3,$event)" ' +
+                                        'ng-keydown="vm.headingSlotKeydown($event,listA3['+z3+'],listB3,onDropA3,onDropB3)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA3['+z3+'], listA3['+z3+'].items[0])" ' +
                                         'touch-dnd-source="listA3['+z3+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
@@ -6315,8 +6120,11 @@
                                     vm.ieltsReadingActualTest.subQuestions[i].subQuestions[j].subQuestions[k].questionAnswers[l].selected = selected;
                                     if(selected){
                                         for (var m = 0; m < vm.testResult.questionAnswerTestResult.length; m++){
-                                            if(vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == question.id){
+                                            if(vm.testResult.questionAnswerTestResult[m] && vm.testResult.questionAnswerTestResult[m].questionAnswer &&
+                                                    vm.testResult.questionAnswerTestResult[m].questionAnswer.question &&
+                                                    vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == question.id){
                                                 vm.testResult.questionAnswerTestResult.splice(m,1);
+                                                m--;
                                             }
                                         }
 
@@ -6329,8 +6137,11 @@
                                         vm.testResult.questionAnswerTestResult.push(qat);
                                     } else if (!selected){
                                         for (var m = 0; m < vm.testResult.questionAnswerTestResult.length; m++){
-                                            if(vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == question.id){
+                                            if(vm.testResult.questionAnswerTestResult[m] && vm.testResult.questionAnswerTestResult[m].questionAnswer &&
+                                                    vm.testResult.questionAnswerTestResult[m].questionAnswer.question &&
+                                                    vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == question.id){
                                                 vm.testResult.questionAnswerTestResult.splice(m,1);
+                                                m--;
                                             }
                                         }
                                     }
@@ -6709,335 +6520,93 @@
          * sent above. We handle the insertion into the list ourselves. By returning
          * true, the dnd-list directive won't do the insertion itself.
          */
-        $scope.onDropA = function(list, items, index) {
-
-            if(items.typeDnD === 1){
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    // list.items[0].clientAnswer = items.clientAnswer;
-                    // list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    // list.items[0].objectFromListB = items;
-                    //
-                    // //xóa dữ liệu item
-                    // for(var x = 0; x < $scope.listA.length; x++){
-                    //     if($scope.listA[x].items[0].id === items.id){
-                    //         $scope.listA[x].items[0].clientAnswer = $scope.listA[x].items[0].question.ordinalNumber;
-                    //         $scope.listA[x].items[0].ordinalFromListB = null;
-                    //         $scope.listA[x].items[0].objectFromListB = {};
-                    //     }
-                    // }
-                } else {
-                    //gán list = item
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.objectFromListB.ordinalNumberQuestionAnswer;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB.items[x].id){
-                            $scope.listB.items[x].isHide = false;
-                        }
+        function putHeadingAnswer(list, incoming, slots, bank) {
+            var option = incoming && incoming.typeDnD === 1 ? incoming.objectFromListB : incoming;
+            var canonical = option && bank && (bank.items || []).filter(function (entry) {
+                return String(entry.id) === String(option.id);
+            })[0];
+            if (!canonical || !list || !list.items || !list.items[0] || slots.indexOf(list) < 0) { return false; }
+            angular.forEach(slots, function (slot) {
+                var current = slot.items[0], chosen = current.objectFromListB;
+                if (slot === list || (chosen && String(chosen.id) === String(canonical.id))) {
+                    if (chosen) {
+                        angular.forEach(bank.items, function (entry) {
+                            if (String(entry.id) === String(chosen.id)) { entry.isHide = false; }
+                        });
                     }
-
-                    list.items[0].objectFromListB = items.objectFromListB;
-
-                    //xóa dữ liệu item
-                    for(var x = 0; x < $scope.listA.length; x++){
-                        if($scope.listA[x].items[0].id === items.id){
-                            $scope.listA[x].items[0].clientAnswer = $scope.listA[x].items[0].question.ordinalNumber;
-                            $scope.listA[x].items[0].ordinalFromListB = null;
-                            $scope.listA[x].items[0].objectFromListB = {};
-                        }
-                    }
+                    current.clientAnswer = current.question.ordinalNumber;
+                    current.ordinalFromListB = null; current.objectFromListB = null;
                 }
-
-            } else {
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB.items.length; x++){
-                        if(items.id === $scope.listB.items[x].id){
-                            $scope.listB.items[x].isHide = true;
-                        }
-                    }
-                } else {
-                    list.items[0].clientAnswer = '';
-                    list.items[0].ordinalFromListB = null;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB.items[x].id){
-                            $scope.listB.items[x].isHide = false;
-                        }
-                    }
-
-                    list.items[0].objectFromListB = null;
-
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB.items.length; x++){
-                        if(items.id === $scope.listB.items[x].id){
-                            $scope.listB.items[x].isHide = true;
-                        }
-                    }
-                }
-            }
-
-
-            // console.log(list.items[0]);
-
-            syncMatchingHeadingAnswered($scope.listA);
+            });
+            list.items[0].clientAnswer = canonical.clientAnswer;
+            list.items[0].ordinalFromListB = canonical.ordinalNumberQuestionAnswer;
+            list.items[0].objectFromListB = canonical;
+            canonical.isHide = true;
+            syncMatchingHeadingAnswered(slots);
+            saveReadingDraft();
             return true;
+        }
+
+        function returnHeadingAnswer(incoming, slots, bank) {
+            var option = incoming && incoming.objectFromListB;
+            if (!option) { return true; }
+            angular.forEach(slots, function (slot) {
+                var current = slot.items[0];
+                if (current.objectFromListB && String(current.objectFromListB.id) === String(option.id)) {
+                    current.clientAnswer = current.question.ordinalNumber;
+                    current.ordinalFromListB = null; current.objectFromListB = null;
+                }
+            });
+            angular.forEach(bank.items, function (entry) { if (String(entry.id) === String(option.id)) { entry.isHide = false; } });
+            syncMatchingHeadingAnswered(slots); saveReadingDraft();
+            return true;
+        }
+
+        vm.selectHeadingAnswer = function (bank, item, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            vm.selectedHeadingAnswer = vm.selectedHeadingAnswer && vm.selectedHeadingAnswer.item === item
+                ? null : {bank: bank, item: item};
+        };
+        vm.activateHeadingSlot = function (list, bank, onDrop, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            var selected = vm.selectedHeadingAnswer;
+            if (selected && selected.bank === bank) { onDrop(list, selected.item, 0); vm.selectedHeadingAnswer = null; }
+            else if (list.items[0].objectFromListB) { vm.selectHeadingAnswer(bank, list.items[0]); }
+        };
+        vm.headingAnswerKeydown = function (event, bank, item) {
+            if (event.key === 'Enter' || event.key === ' ') { vm.selectHeadingAnswer(bank, item, event); }
+            if (event.key === 'Escape') { vm.selectedHeadingAnswer = null; }
+        };
+        vm.headingSlotKeydown = function (event, list, bank, onDrop, onReturn) {
+            if (event.key === 'Delete' || event.key === 'Backspace') {
+                event.preventDefault(); event.stopPropagation(); onReturn(bank, list.items[0], 0); vm.selectedHeadingAnswer = null;
+            } else if (event.key === 'Enter' || event.key === ' ') { vm.activateHeadingSlot(list, bank, onDrop, event); }
+            else if (event.key === 'Escape') { vm.selectedHeadingAnswer = null; }
+        };
+
+        $scope.onDropA = function(list, items, index) {
+            return putHeadingAnswer(list, items, $scope.listA, $scope.listB);
         };
 
         $scope.onDropB = function(list, items, index) {
-
-            if(items.typeDnD !== 2 && typeof items.ordinalFromListB !== "undefined"){
-                var ordinalNumber = items.ordinalFromListB;
-
-                // list.items.splice(ordinalNumber-1, 0, items.objectFromListB);
-                for(var x = 0; x < $scope.listB.items.length; x++){
-                    if(items.objectFromListB.id === $scope.listB.items[x].id){
-                        $scope.listB.items[x].isHide = false;
-                    }
-                }
-
-                for(var x = 0; x < $scope.listA.length; x++){
-                    if($scope.listA[x].items[0].id === items.id){
-                        $scope.listA[x].items[0].clientAnswer = $scope.listA[x].items[0].question.ordinalNumber;
-                        $scope.listA[x].items[0].ordinalFromListB = null;
-                        $scope.listA[x].items[0].objectFromListB = null;
-                    }
-                }
-            }
-
-
-            // console.log('B');
-            // console.log($scope.listB);
-            // console.log('A');
-            // console.log($scope.listA);
-
-            syncMatchingHeadingAnswered($scope.listA);
-            return true;
+            return returnHeadingAnswer(items, $scope.listA, $scope.listB);
         };
 
 
         $scope.onDropA2 = function(list, items, index) {
-
-            if(items.typeDnD === 1){
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    // list.items[0].clientAnswer = items.clientAnswer;
-                    // list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    // list.items[0].objectFromListB = items;
-                    //
-                    // //xóa dữ liệu item
-                    // for(var x = 0; x < $scope.listA.length; x++){
-                    //     if($scope.listA[x].items[0].id === items.id){
-                    //         $scope.listA[x].items[0].clientAnswer = $scope.listA[x].items[0].question.ordinalNumber;
-                    //         $scope.listA[x].items[0].ordinalFromListB = null;
-                    //         $scope.listA[x].items[0].objectFromListB = {};
-                    //     }
-                    // }
-                } else {
-                    //gán list = item
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.objectFromListB.ordinalNumberQuestionAnswer;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB2.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB2.items[x].id){
-                            $scope.listB2.items[x].isHide = false;
-                        }
-                    }
-
-                    list.items[0].objectFromListB = items.objectFromListB;
-
-                    //xóa dữ liệu item
-                    for(var x = 0; x < $scope.listA2.length; x++){
-                        if($scope.listA2[x].items[0].id === items.id){
-                            $scope.listA2[x].items[0].clientAnswer = $scope.listA2[x].items[0].question.ordinalNumber;
-                            $scope.listA2[x].items[0].ordinalFromListB = null;
-                            $scope.listA2[x].items[0].objectFromListB = {};
-                        }
-                    }
-                }
-
-            } else {
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB2.items.length; x++){
-                        if(items.id === $scope.listB2.items[x].id){
-                            $scope.listB2.items[x].isHide = true;
-                        }
-                    }
-                } else {
-                    list.items[0].clientAnswer = '';
-                    list.items[0].ordinalFromListB = null;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB2.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB2.items[x].id){
-                            $scope.listB2.items[x].isHide = false;
-                        }
-                    }
-
-                    list.items[0].objectFromListB = null;
-
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB2.items.length; x++){
-                        if(items.id === $scope.listB2.items[x].id){
-                            $scope.listB2.items[x].isHide = true;
-                        }
-                    }
-                }
-            }
-
-
-            // console.log(list.items[0]);
-
-            syncMatchingHeadingAnswered($scope.listA2);
-            return true;
+            return putHeadingAnswer(list, items, $scope.listA2, $scope.listB2);
         };
 
         $scope.onDropB2 = function(list, items, index) {
-
-            if(items.typeDnD !== 2 && typeof items.ordinalFromListB !== "undefined"){
-                var ordinalNumber = items.ordinalFromListB;
-
-                // list.items.splice(ordinalNumber-1, 0, items.objectFromListB);
-                for(var x = 0; x < $scope.listB2.items.length; x++){
-                    if(items.objectFromListB.id === $scope.listB2.items[x].id){
-                        $scope.listB2.items[x].isHide = false;
-                    }
-                }
-
-                for(var x = 0; x < $scope.listA2.length; x++){
-                    if($scope.listA2[x].items[0].id === items.id){
-                        $scope.listA2[x].items[0].clientAnswer = $scope.listA2[x].items[0].question.ordinalNumber;
-                        $scope.listA2[x].items[0].ordinalFromListB = null;
-                        $scope.listA2[x].items[0].objectFromListB = null;
-                    }
-                }
-            }
-
-            syncMatchingHeadingAnswered($scope.listA2);
-            return true;
+            return returnHeadingAnswer(items, $scope.listA2, $scope.listB2);
         };
 
         $scope.onDropA3 = function(list, items, index) {
-
-            if(items.typeDnD === 1){
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    // list.items[0].clientAnswer = items.clientAnswer;
-                    // list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    // list.items[0].objectFromListB = items;
-                    //
-                    // //xóa dữ liệu item
-                    // for(var x = 0; x < $scope.listA.length; x++){
-                    //     if($scope.listA[x].items[0].id === items.id){
-                    //         $scope.listA[x].items[0].clientAnswer = $scope.listA[x].items[0].question.ordinalNumber;
-                    //         $scope.listA[x].items[0].ordinalFromListB = null;
-                    //         $scope.listA[x].items[0].objectFromListB = {};
-                    //     }
-                    // }
-                } else {
-                    //gán list = item
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.objectFromListB.ordinalNumberQuestionAnswer;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB3.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB3.items[x].id){
-                            $scope.listB3.items[x].isHide = false;
-                        }
-                    }
-
-                    list.items[0].objectFromListB = items.objectFromListB;
-
-                    //xóa dữ liệu item
-                    for(var x = 0; x < $scope.listA3.length; x++){
-                        if($scope.listA3[x].items[0].id === items.id){
-                            $scope.listA3[x].items[0].clientAnswer = $scope.listA3[x].items[0].question.ordinalNumber;
-                            $scope.listA3[x].items[0].ordinalFromListB = null;
-                            $scope.listA3[x].items[0].objectFromListB = {};
-                        }
-                    }
-                }
-
-            } else {
-                if(typeof list.items[0].objectFromListB === "undefined" || list.items[0].objectFromListB == null || Object.getOwnPropertyNames(list.items[0].objectFromListB).length === 0){
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB3.items.length; x++){
-                        if(items.id === $scope.listB3.items[x].id){
-                            $scope.listB3.items[x].isHide = true;
-                        }
-                    }
-                } else {
-                    list.items[0].clientAnswer = '';
-                    list.items[0].ordinalFromListB = null;
-
-                    // trước khi gán thì phải hiển thị thằng list B của thằng A bị thay thế.
-                    for(var x = 0; x < $scope.listB3.items.length; x++){
-                        if(list.items[0].objectFromListB.id === $scope.listB3.items[x].id){
-                            $scope.listB3.items[x].isHide = false;
-                        }
-                    }
-
-                    list.items[0].objectFromListB = null;
-
-                    list.items[0].clientAnswer = items.clientAnswer;
-                    list.items[0].ordinalFromListB = items.ordinalNumberQuestionAnswer;
-                    list.items[0].objectFromListB = items;
-
-                    for(var x = 0; x < $scope.listB3.items.length; x++){
-                        if(items.id === $scope.listB3.items[x].id){
-                            $scope.listB3.items[x].isHide = true;
-                        }
-                    }
-                }
-            }
-
-
-            // console.log(list.items[0]);
-
-            syncMatchingHeadingAnswered($scope.listA3);
-            return true;
+            return putHeadingAnswer(list, items, $scope.listA3, $scope.listB3);
         };
 
         $scope.onDropB3 = function(list, items, index) {
-
-            if(items.typeDnD !== 2 && typeof items.ordinalFromListB !== "undefined"){
-                var ordinalNumber = items.ordinalFromListB;
-
-                // list.items.splice(ordinalNumber-1, 0, items.objectFromListB);
-                for(var x = 0; x < $scope.listB3.items.length; x++){
-                    if(items.objectFromListB.id === $scope.listB3.items[x].id){
-                        $scope.listB3.items[x].isHide = false;
-                    }
-                }
-
-                for(var x = 0; x < $scope.listA3.length; x++){
-                    if($scope.listA3[x].items[0].id === items.id){
-                        $scope.listA3[x].items[0].clientAnswer = $scope.listA3[x].items[0].question.ordinalNumber;
-                        $scope.listA3[x].items[0].ordinalFromListB = null;
-                        $scope.listA3[x].items[0].objectFromListB = null;
-                    }
-                }
-            }
-
-            syncMatchingHeadingAnswered($scope.listA3);
-            return true;
+            return returnHeadingAnswer(items, $scope.listA3, $scope.listB3);
         };
         
 

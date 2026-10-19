@@ -279,7 +279,7 @@
                     (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                     (!automatic && vm.exerciseInputDisabled()) || vm.answerLocked || isSpectator()) { return; }
             var exercise = vm.room.currentQuestion.exercise;
-            if (!automatic && exercise.items.some(function (item) {
+            if (!automatic && exercise.answerMode !== 'LISTENING' && exercise.items.some(function (item) {
                 var values = vm.exerciseAnswers[item.id] || [];
                 return !values.length || values.some(function (value) { return !String(value || '').trim(); });
             })) { toastr.warning('Điền đủ các đáp án trước khi nộp.'); return; }
@@ -288,7 +288,15 @@
                 if (autoSubmittedGuessQuestionKey === key) { return; }
                 autoSubmittedGuessQuestionKey = key;
             }
-            answer({key: 'EXERCISE', exerciseAnswers: angular.copy(vm.exerciseAnswers), autoSubmitted: automatic === true});
+            var submittedAnswers = angular.copy(vm.exerciseAnswers);
+            if (exercise.answerMode === 'LISTENING') {
+                // Blank gaps count as incorrect on the server; 90% is sufficient.
+                angular.forEach(exercise.items, function (item) {
+                    var values = submittedAnswers[item.id];
+                    if (!values || !values.length) { submittedAnswers[item.id] = ['']; }
+                });
+            }
+            answer({key: 'EXERCISE', exerciseAnswers: submittedAnswers, autoSubmitted: automatic === true});
         };
 
         vm.searchTopicDto = {};

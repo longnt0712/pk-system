@@ -8,6 +8,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Random;
+import java.util.TreeMap;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,6 +58,32 @@ public final class ComprehensiveListeningScore {
     }
 
     public static boolean hasCandidates(String transcript) { return new ComprehensiveListeningScore(transcript).total > 0; }
+
+    /** Server-selected gaps use the same candidates and denominator as test mode. */
+    public static Map<Integer, String> selectGaps(String transcript, Random random) {
+        ComprehensiveListeningScore score = new ComprehensiveListeningScore(transcript);
+        List<Integer> ordinary = new ArrayList<Integer>(score.eligible.keySet());
+        ordinary.removeAll(score.required);
+        Collections.sort(ordinary);
+        Collections.shuffle(ordinary, random);
+        Map<Integer, String> chosen = new TreeMap<Integer, String>();
+        for (Integer index : score.required) { chosen.put(index, score.eligible.get(index)); }
+        for (int i = 0; chosen.size() < score.total; i++) {
+            Integer index = ordinary.get(i); chosen.put(index, score.eligible.get(index));
+        }
+        return Collections.unmodifiableMap(chosen);
+    }
+
+    public static List<String> tokenize(String transcript) {
+        Matcher matcher = TOKENS.matcher(transcript == null ? "" : transcript.replaceAll("\\r\\n?", "\n"));
+        List<String> tokens = new ArrayList<String>();
+        while (matcher.find()) { tokens.add(matcher.group()); }
+        return tokens;
+    }
+
+    public static boolean matches(String expected, String submitted) {
+        return submitted != null && !normalize(submitted).isEmpty() && normalize(expected).equals(normalize(submitted));
+    }
 
     public static ComprehensiveListeningScore evaluate(String transcript, String submitted) {
         ComprehensiveListeningScore score = new ComprehensiveListeningScore(transcript);

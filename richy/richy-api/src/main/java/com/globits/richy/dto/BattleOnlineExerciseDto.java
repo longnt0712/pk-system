@@ -13,12 +13,23 @@ public class BattleOnlineExerciseDto implements Serializable {
     public String passageHtml;
     public String instructionsHtml;
     public String contentHtml;
+    public String audioUrl;
+    public List<ListeningToken> listeningTokens = new ArrayList<ListeningToken>();
     public int minimumWords;
     public String videoUrl;
     public String videoSourceId;
     public Integer videoTimeSeconds;
     public int videoAnswerSeconds = 20;
     public List<Item> items = new ArrayList<Item>();
+
+    /** Literal public text or an empty gap. No correct word is sent for a gap. */
+    public static class ListeningToken implements Serializable {
+        private static final long serialVersionUID = 1L;
+        public String text;
+        public String before;
+        public String gapId;
+        public String after;
+    }
 
     public static class Item implements Serializable {
         private static final long serialVersionUID = 1L;
