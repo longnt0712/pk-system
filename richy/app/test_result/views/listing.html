@@ -532,6 +532,10 @@
                                 </div>
                             </div>
 
+                            <div class="test-result-count-explanation" role="note">
+                                Mỗi dòng là một lượt nộp đã lưu, gồm cả lượt chưa đạt. Tiến độ bài được giao chỉ tính lượt đạt đúng bài, topic/phần và thời hạn; số dòng kết quả không phải số task đã hoàn thành.
+                                <small>Reading, Listening, Writing, Tổng hợp, Daily Vocab và Daily Listening: thử lưu lại cùng mã lượt không tạo thêm kết quả.</small>
+                            </div>
                             <div class="test-result-listing-wrap">
                                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                             </div>
@@ -2720,6 +2724,10 @@
         letter-spacing: .35px;
     }
 
+    .test-result-count-explanation { padding:11px 16px; border-bottom:1px solid #e6ecf7; background:#f7faff; color:#536681; font-size:12px; line-height:1.6; }
+    .test-result-count-explanation small { display:block; color:#718096; font-size:11px; }
+    html.global-dark-mode .test-result-count-explanation { background:#172338; border-color:#2f3c53; color:#c0cede; }
+    html.global-dark-mode .test-result-count-explanation small { color:#99abc3; }
     .test-result-listing-subtitle {
         margin-top: 3px;
         color: #8791a2;

@@ -110,10 +110,12 @@
 
         var activeDailyResumeDraft = null;
         var activeDailyLastPersistAt = 0;
+        var activeDailyRunId = null;
+        var dailyCloudDrafts = {};
 
         function saveDailyLearningDraft(key, type, title, draft) {
             if (!key || !draft) { return; }
-            service.saveLearningDraft({
+            return service.saveLearningDraft({
                 draftKey: key,
                 draftType: type,
                 title: title || 'Daily Vocab',
@@ -124,6 +126,107 @@
 
         function deleteDailyLearningDraft(key) {
             if (key) { service.deleteLearningDraft(key).catch(angular.noop); }
+        }
+
+        function dailyAssignmentIdentity(draft) {
+            var result = (draft || {}).payload || (draft || {}).testResult || {};
+            return {
+                taskId: (draft || {}).assignmentTaskId || result.assignmentTaskId || null,
+                topicId: (draft || {}).assignmentTopicId || result.assignmentTopicId
+                    || ((draft || {}).topicIds && draft.topicIds.length === 1 ? draft.topicIds[0] : null)
+            };
+        }
+
+        function dailyAssignmentSuffix(assignment) {
+            if (!assignment || !assignment.taskId || !assignment.topicId) { return ''; }
+            return ':task:' + assignment.taskId + ':topic:' + assignment.topicId;
+        }
+
+        function dailyDraftMatchesLaunch(draft) {
+            var identity = dailyAssignmentIdentity(draft);
+            if (!vm.assignmentSelectionLocked) { return !identity.taskId; }
+            return String(identity.taskId) === String(vm.assignmentLaunch.taskId)
+                && String(identity.topicId) === String(vm.assignmentLaunch.topicId);
+        }
+
+        function dailyDraftValue(key) {
+            var local = null;
+            try { local = JSON.parse(window.localStorage.getItem(key)); } catch (ignoreLocalDraft) {}
+            var cloud = dailyCloudDrafts[key];
+            return cloud && (!local || dailyDraftTimestamp(cloud) > dailyDraftTimestamp(local)
+                || (dailyDraftTimestamp(cloud) === dailyDraftTimestamp(local) && local.localFallback === true && cloud.localFallback !== true)) ? cloud : local;
+        }
+
+        function validDailyPendingDraft(draft, userId) {
+            var result = draft && draft.payload;
+            return !!draft && draft.version === 1 && String(draft.ownerId) === String(userId)
+                && !!result && result.testType === 1 && !!result.user && String(result.user.id) === String(userId)
+                && /^[a-f0-9]{32}$/.test(result.clientAttemptKey || '') && result.totalWord > 0 && draft.createdAt > 0;
+        }
+
+        function readDailyScopedDraft(userId, pending) {
+            var prefix = pending ? 'daily-vocab-pending:v1:' : 'daily-vocab-active:v1:';
+            var legacyKey = prefix + userId;
+            var key = pending ? dailyDraftKey(userId) : activeDailyDraftKey(userId);
+            var keys = [key, legacyKey];
+            var requested = null;
+            if (pending) {
+                try {
+                    requested = window.sessionStorage.getItem('daily-vocab-pending-resume:v1:' + userId);
+                    window.sessionStorage.removeItem('daily-vocab-pending-resume:v1:' + userId);
+                } catch (ignorePendingChoice) {}
+                try {
+                    for (var index = 0; index < window.localStorage.length; index++) {
+                        var storedKey = window.localStorage.key(index);
+                        if (storedKey && storedKey.indexOf(key + ':attempt:') === 0) { keys.push(storedKey); }
+                    }
+                } catch (ignorePendingKeys) {}
+                Object.keys(dailyCloudDrafts).forEach(function (cloudKey) {
+                    if (cloudKey.indexOf(key + ':attempt:') === 0) { keys.push(cloudKey); }
+                });
+            }
+            if (!pending) {
+                try {
+                    for (var activeIndex = 0; activeIndex < window.localStorage.length; activeIndex++) {
+                        var activeKey = window.localStorage.key(activeIndex);
+                        if (activeKey && activeKey.indexOf(key + ':run:') === 0) { keys.push(activeKey); }
+                    }
+                } catch (ignoreActiveKeys) {}
+                Object.keys(dailyCloudDrafts).forEach(function (cloudKey) {
+                    if (cloudKey.indexOf(key + ':run:') === 0) { keys.push(cloudKey); }
+                });
+            }
+            var candidates = [];
+            keys.forEach(function (candidateKey, index) {
+                if (keys.indexOf(candidateKey) !== index) { return; }
+                var draft = dailyDraftValue(candidateKey);
+                if (!draft || !dailyDraftMatchesLaunch(draft) || (pending && !validDailyPendingDraft(draft, userId))) { return; }
+                candidates.push({key: candidateKey, draft: draft});
+            });
+            candidates.sort(function (first, second) {
+                if (requested && first.key === requested) { return -1; }
+                if (requested && second.key === requested) { return 1; }
+                return dailyDraftTimestamp(second.draft) - dailyDraftTimestamp(first.draft)
+                    || (first.draft.localFallback === true ? 1 : 0) - (second.draft.localFallback === true ? 1 : 0);
+            });
+            if (!candidates.length) { return null; }
+            var selected = candidates[0];
+            var draft = selected.draft;
+            if (!pending && selected.key.indexOf(key + ':run:') === 0) { draft.cloudDraftKey = selected.key; }
+            if (pending) {
+                draft.storageKey = selected.key;
+            } else if (selected.key === legacyKey && key !== legacyKey) {
+                var movedLocally = false;
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(draft));
+                    window.localStorage.removeItem(legacyKey);
+                    movedLocally = true;
+                } catch (ignoreLegacyMigration) {}
+                dailyCloudDrafts[key] = draft;
+                saveDailyLearningDraft(key, 'DAILY_VOCAB', draft.title, draft);
+                if (movedLocally) { deleteDailyLearningDraft(legacyKey); delete dailyCloudDrafts[legacyKey]; }
+            }
+            return draft;
         }
 
         function dailyDraftTimestamp(draft) {
@@ -138,9 +241,17 @@
                             || !item.draftKey || !item.payload) { return; }
                     var expectedActive = activeDailyDraftKey(vm.currentUser.id);
                     var expectedPending = dailyDraftKey(vm.currentUser.id);
-                    if (item.draftKey !== expectedActive && item.draftKey !== expectedPending) { return; }
+                    var legacyActive = 'daily-vocab-active:v1:' + vm.currentUser.id;
+                    var legacyPending = 'daily-vocab-pending:v1:' + vm.currentUser.id;
+                    if (item.draftKey !== expectedActive && item.draftKey !== expectedPending
+                            && item.draftKey.indexOf(expectedPending + ':attempt:') !== 0
+                            && item.draftKey.indexOf(expectedActive + ':run:') !== 0
+                            && item.draftKey !== legacyActive && item.draftKey !== legacyPending) { return; }
                     try {
                         var serverDraft = JSON.parse(item.payload);
+                        if (!dailyDraftMatchesLaunch(serverDraft)) { return; }
+                        if (item.draftType === 'DAILY_VOCAB') { serverDraft.cloudDraftKey = item.draftKey; }
+                        dailyCloudDrafts[item.draftKey] = serverDraft;
                         var localDraft = null;
                         try { localDraft = JSON.parse(window.localStorage.getItem(item.draftKey)); } catch (ignoreLocalRead) {}
                         if (!localDraft || Number(item.savedAt) >= dailyDraftTimestamp(localDraft)) {
@@ -152,22 +263,32 @@
         }
 
         function activeDailyDraftKey(userId) {
-            return 'daily-vocab-active:v1:' + userId;
+            return 'daily-vocab-active:v1:' + userId + dailyAssignmentSuffix(vm.assignmentLaunch);
         }
 
         function removeActiveDailyDraft(ownerId) {
             if (!ownerId) { return; }
             var key = activeDailyDraftKey(ownerId);
-            try { window.localStorage.removeItem(key); } catch (ignore) {}
-            deleteDailyLearningDraft(key);
+            var draft = dailyDraftValue(key);
+            if (activeDailyRunId && draft && draft.runId && draft.runId !== activeDailyRunId) { return; }
+            var cloudKey = (draft || {}).cloudDraftKey || (activeDailyRunId ? key + ':run:' + activeDailyRunId : key);
+            try { window.localStorage.removeItem(key); window.localStorage.removeItem(cloudKey); } catch (ignore) {}
+            delete dailyCloudDrafts[key];
+            delete dailyCloudDrafts[cloudKey];
+            deleteDailyLearningDraft(cloudKey);
         }
 
         function readActiveDailyDraft() {
             if (!vm.currentUser || !vm.currentUser.id) { return null; }
             try {
-                var raw = window.localStorage.getItem(activeDailyDraftKey(vm.currentUser.id));
-                if (!raw) { return null; }
-                var draft = JSON.parse(raw);
+                var draft = readDailyScopedDraft(vm.currentUser.id, false);
+                if (!draft) { return null; }
+                if (draft.localFallback === true) {
+                    vm.dailyDraftRecoveryBlocked = true;
+                    toastr.warning('Bản lưu trên trình duyệt chưa đầy đủ. Hãy kết nối mạng và tải lại trang để khôi phục đầy đủ tiến độ trước khi làm tiếp.');
+                    return null;
+                }
+                vm.dailyDraftRecoveryBlocked = false;
                 if (!draft || draft.version !== 1 || draft.ownerId !== vm.currentUser.id ||
                     !draft.savedAt ||
                     !angular.isArray(draft.topicIds) || draft.topicIds.length === 0 ||
@@ -204,7 +325,36 @@
             activeDailyResumeDraft = draft;
         }
 
-        var dailyLearningDraftsReady = loadDailyLearningDrafts();
+        function loadDailyAssignment() {
+            if (!vm.assignmentSelectionLocked) { return null; }
+            return service.getAssignedTask(vm.assignmentLaunch.taskId).then(function (task) {
+                var topicIds = task && angular.isArray(task.topicIds) && task.topicIds.length
+                    ? task.topicIds : (task && task.topicId ? [task.topicId] : []);
+                var requested = vm.assignmentLaunch.topicId || topicIds[0];
+                var allowed = topicIds.some(function (id) { return String(id) === String(requested); });
+                if (!task || task.activityType !== 'DAILY_VOCAB' || !allowed) {
+                    vm.assignmentLaunch.invalid = true;
+                    toastr.error('Topic này không thuộc bài được giao hoặc bài đã hết hạn. Hãy mở lại bài từ trang chủ.');
+                    return;
+                }
+                vm.assignmentLaunch.topicId = requested;
+                vm.assignmentLaunch.verified = true;
+                vm.assignmentLaunch.topicIds = topicIds.slice(0);
+                var assignedTopic = null;
+                angular.forEach(task.topics || [], function (topic) {
+                    if (String(topic.topicId) === String(requested)) { assignedTopic = topic; }
+                });
+                vm.assignmentLaunch.categoryId = (assignedTopic || {}).categoryId
+                    || (String(task.topicId) === String(requested) ? task.categoryId : null) || vm.assignmentLaunch.categoryId;
+            }, function () {
+                vm.assignmentLaunch.invalid = true;
+                toastr.error('Chưa kiểm tra được bài được giao. Vui lòng tải lại trang để thử lại.');
+            });
+        }
+
+        var assignmentReady = loadDailyAssignment();
+        var dailyLearningDraftsReady = assignmentReady
+            ? assignmentReady.then(loadDailyLearningDrafts) : loadDailyLearningDrafts();
 
         vm.myUser = {
             id: vm.currentUser.id,
@@ -358,7 +508,7 @@
         }
 
         function applyAssignedTopic() {
-            if (!vm.assignmentLaunch.topicId || vm.assignmentLaunch.applied) { return; }
+            if (vm.assignmentLaunch.invalid || !vm.assignmentLaunch.topicId || vm.assignmentLaunch.applied) { return; }
             var assignedTopic = findById(vm.topics, vm.assignmentLaunch.topicId);
             if (!assignedTopic) {
                 toastr.warning('Topic của bài được giao không còn trong danh sách.');
@@ -371,6 +521,7 @@
 
         function enforceAssignedTopicSelection() {
             if (!vm.assignmentSelectionLocked) { return true; }
+            if (vm.assignmentLaunch.invalid) { return false; }
             var assignedTopic = findById(vm.topics, vm.assignmentLaunch.topicId);
             if (!assignedTopic) {
                 toastr.warning('Topic của bài được giao không còn trong danh sách.');
@@ -1717,7 +1868,6 @@
                 vm.saveTestResult();
             }
 
-            removeActiveDailyDraft(vm.currentUser.id);
             vm.stopDailyVocabTimer();
         }
 
@@ -1783,7 +1933,11 @@
                 version: 1,
                 ownerId: vm.currentUser.id,
                 savedAt: now,
+                runId: activeDailyRunId,
                 categoryId: category && category.id,
+                assignmentTaskId: vm.assignmentLaunch.taskId || null,
+                assignmentTopicId: vm.assignmentLaunch.topicId || null,
+                assignmentCategoryId: vm.assignmentLaunch.categoryId || null,
                 topicIds: topicIds,
                 title: vm.title,
                 rawQuestions: angular.copy(vm.rawQuestions || []),
@@ -1807,24 +1961,28 @@
                 runningManDifficulty: vm.runningManDifficulty,
                 runningManGap: vm.runningManGap
             };
+            draft.cloudDraftKey = activeDailyDraftKey(vm.currentUser.id) + ':run:' + activeDailyRunId;
+            dailyCloudDrafts[activeDailyDraftKey(vm.currentUser.id)] = draft;
+            dailyCloudDrafts[draft.cloudDraftKey] = draft;
             try {
                 window.localStorage.setItem(activeDailyDraftKey(vm.currentUser.id), JSON.stringify(draft));
                 activeDailyLastPersistAt = now;
             } catch (ignore) {
                 /* Nếu topic quá lớn, giữ bản nhẹ nhưng vẫn đủ để tiếp tục từ câu hiện tại. */
                 try {
-                    draft.rawQuestions = [];
-                    draft.questions = [angular.copy(vm.currentCard)];
-                    draft.currentPosition = 0;
-                    draft.totalCard = 1;
-                    draft.loadedCardCount = 1;
-                    draft.allQuestionsLoaded = true;
-                    window.localStorage.setItem(activeDailyDraftKey(vm.currentUser.id), JSON.stringify(draft));
+                    var compactDraft = angular.copy(draft);
+                    compactDraft.rawQuestions = [];
+                    compactDraft.questions = [angular.copy(vm.currentCard)];
+                    compactDraft.currentPosition = 0;
+                    compactDraft.loadedCardCount = 1;
+                    compactDraft.allQuestionsLoaded = false;
+                    compactDraft.localFallback = true;
+                    window.localStorage.setItem(activeDailyDraftKey(vm.currentUser.id), JSON.stringify(compactDraft));
                     activeDailyLastPersistAt = now;
                 } catch (ignoredAgain) {}
             }
             saveDailyLearningDraft(
-                activeDailyDraftKey(vm.currentUser.id),
+                draft.cloudDraftKey,
                 'DAILY_VOCAB',
                 draft.title || 'Daily Vocab',
                 draft
@@ -1835,6 +1993,7 @@
             var draft = activeDailyResumeDraft;
             if (!draft || !angular.isArray(draft.questions) || !draft.questions.length) { return; }
             activeDailyResumeDraft = null;
+            activeDailyRunId = draft.runId || ('legacy:' + draft.savedAt);
 
             vm.rawQuestions = angular.copy(draft.rawQuestions || []);
             vm.questions = angular.copy(draft.questions);
@@ -2607,6 +2766,7 @@
             buildDailyQuestions(true);
 
             vm.resetDailyVocabSaveState();
+            activeDailyRunId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
             vm.attemptedDailyQuestionIds = {};
             vm.completedDailyQuestionIds = {};
 
@@ -3329,39 +3489,118 @@
         vm.dailySaveStorageNotice = '';
         var dailySaveDestroyed = false;
 
-        function dailyDraftKey(userId) { return 'daily-vocab-pending:v1:' + userId; }
-        function removeDailyDraft(ownerId) {
-            var key = dailyDraftKey(ownerId);
-            try { window.localStorage.removeItem(key); } catch (ignore) {}
-            deleteDailyLearningDraft(key);
+        function dailyDraftKey(userId, draft) {
+            var assignment = draft ? dailyAssignmentIdentity(draft) : vm.assignmentLaunch;
+            var attemptKey = draft && draft.payload && draft.payload.clientAttemptKey;
+            return 'daily-vocab-pending:v1:' + userId + dailyAssignmentSuffix(assignment)
+                + (/^[a-f0-9]{32}$/.test(attemptKey || '') ? ':attempt:' + attemptKey : '');
+        }
+        function removeDailyDraft(ownerId, draft) {
+            draft = draft || vm.dailyVocabPendingResult;
+            var key = dailyDraftKey(ownerId, draft);
+            var keys = [key];
+            if (draft && draft.storageKey && draft.storageKey !== key) { keys.push(draft.storageKey); }
+            if (draft && draft.legacyStorageKey && keys.indexOf(draft.legacyStorageKey) < 0) { keys.push(draft.legacyStorageKey); }
+            keys.forEach(function (storedKey) {
+                var prefix = 'daily-vocab-pending:v1:' + ownerId;
+                if (storedKey !== prefix && storedKey.indexOf(prefix + ':') !== 0) { return; }
+                try { window.localStorage.removeItem(storedKey); } catch (ignore) {}
+                delete dailyCloudDrafts[storedKey];
+                deleteDailyLearningDraft(storedKey);
+            });
+        }
+        function removeActiveDailyDraftForPending(pending) {
+            if (!pending || !pending.ownerId) { return; }
+            var base = 'daily-vocab-active:v1:' + pending.ownerId + dailyAssignmentSuffix(dailyAssignmentIdentity(pending));
+            var keys = [base];
+            try {
+                for (var index = 0; index < window.localStorage.length; index++) {
+                    var storedKey = window.localStorage.key(index);
+                    if (storedKey && storedKey.indexOf(base + ':run:') === 0) { keys.push(storedKey); }
+                }
+            } catch (ignoreActiveKeys) {}
+            Object.keys(dailyCloudDrafts).forEach(function (key) {
+                if (key.indexOf(base + ':run:') === 0) { keys.push(key); }
+            });
+            var deletedCloudKeys = [];
+            keys.forEach(function (key) {
+                var active = dailyDraftValue(key);
+                if (!active) { return; }
+                if (pending.activeRunId || active.runId) {
+                    if (!pending.activeRunId || pending.activeRunId !== active.runId) { return; }
+                } else if (!(Number(active.savedAt) > 0) || Number(active.savedAt) > Number(pending.createdAt)) { return; }
+                var cloudKey = active.cloudDraftKey || (active.runId ? base + ':run:' + active.runId : key);
+                if (cloudKey !== base && cloudKey.indexOf(base + ':run:') !== 0) { return; }
+                try { window.localStorage.removeItem(key); window.localStorage.removeItem(cloudKey); } catch (ignoreActiveRemoval) {}
+                delete dailyCloudDrafts[key];
+                delete dailyCloudDrafts[cloudKey];
+                if (deletedCloudKeys.indexOf(cloudKey) < 0) {
+                    deletedCloudKeys.push(cloudKey);
+                    deleteDailyLearningDraft(cloudKey);
+                }
+            });
+        }
+        function dailyAssignmentContextMatches(result, pending) {
+            var expected = dailyAssignmentIdentity(pending);
+            if (result.user && result.user.id != null && String(result.user.id) !== String(pending.ownerId)) { return false; }
+            if (String(result.assignmentTaskId || '') !== String(expected.taskId || '')) { return false; }
+            if (String(result.assignmentTopicId || '') === String(expected.topicId || '')) { return true; }
+            if (result.assignmentTopicId != null || !expected.taskId || !expected.topicId
+                    || !vm.assignmentLaunch.verified
+                    || String(vm.assignmentLaunch.taskId) !== String(expected.taskId)) { return false; }
+            var assignedIds = vm.assignmentLaunch.topicIds || [];
+            if (assignedIds.length !== 1 || String(assignedIds[0]) !== String(expected.topicId)) { return false; }
+            // Older backends return saved topic evidence without assignmentTopicId.
+            var savedIds = (result.topicIds || []).concat((result.topics || []).map(function (topic) { return topic.id; }));
+            return savedIds.some(function (id) { return String(id) === String(expected.topicId); });
         }
         function persistDailyDraft() {
-            if (!vm.dailyVocabPendingResult || !vm.dailyVocabPendingResult.ownerId) return;
+            var pending = vm.dailyVocabPendingResult;
+            if (!pending || !pending.ownerId) { return false; }
+            var key = dailyDraftKey(pending.ownerId, pending);
+            if (pending.storageKey && pending.storageKey !== key) { pending.legacyStorageKey = pending.storageKey; }
+            pending.storageKey = key;
+            var localSaved = false;
             try {
-                window.localStorage.setItem(dailyDraftKey(vm.dailyVocabPendingResult.ownerId), JSON.stringify(vm.dailyVocabPendingResult));
+                window.localStorage.setItem(key, JSON.stringify(pending));
+                localSaved = true;
                 vm.dailySaveStorageNotice = '';
+                removeActiveDailyDraftForPending(pending);
             } catch (ignore) {
                 vm.dailySaveStorageNotice = 'Trình duyệt không giữ được bản tạm. Hãy giữ trang này mở và không tải lại trang trước khi lưu thành công.';
             }
-            saveDailyLearningDraft(
-                dailyDraftKey(vm.dailyVocabPendingResult.ownerId),
-                'DAILY_VOCAB_PENDING',
-                'Kết quả Daily Vocab chưa xác nhận',
-                vm.dailyVocabPendingResult
-            );
+            var request = saveDailyLearningDraft(key, 'DAILY_VOCAB_PENDING',
+                pending.title || 'Kết quả Daily Vocab chưa xác nhận', pending);
+            if (request && angular.isFunction(request.then)) {
+                request.then(function (acknowledgement) {
+                    if (dailySaveDestroyed || vm.dailyVocabPendingResult !== pending || vm.isSaveTestResult === true) { return; }
+                    if (!acknowledgement || !(Number(acknowledgement.id) > 0)
+                            || acknowledgement.draftKey !== key || !acknowledgement.payload) { return; }
+                    var saved;
+                    try { saved = JSON.parse(acknowledgement.payload); } catch (ignoreCloudPayload) { return; }
+                    if (Number(saved.ownerId) !== Number(pending.ownerId) || !saved.payload
+                            || saved.payload.clientAttemptKey !== pending.payload.clientAttemptKey
+                            || !dailyAssignmentContextMatches(saved.payload, pending)) { return; }
+                    dailyCloudDrafts[key] = saved;
+                    removeActiveDailyDraftForPending(pending);
+                    vm.dailySaveStorageNotice = '';
+                });
+            }
+            return localSaved;
         }
         function restoreDailyDraft() {
             if (!vm.currentUser.id) return;
             try {
-                var raw = window.localStorage.getItem(dailyDraftKey(vm.currentUser.id));
-                if (!raw) return;
-                var draft = JSON.parse(raw), result = draft && draft.payload;
+                var draft = readDailyScopedDraft(vm.currentUser.id, true);
+                if (!draft) return;
+                var result = draft.payload;
                 if (draft.version !== 1 || draft.ownerId !== vm.currentUser.id || !result || result.testType !== 1 ||
                     !/^[a-f0-9]{32}$/.test(result.clientAttemptKey || '') || !result.user || result.user.id !== draft.ownerId ||
                     !(result.totalWord > 0) || !(draft.createdAt > 0)) {
                     removeDailyDraft(vm.currentUser.id); return;
                 }
                 vm.dailyVocabPendingResult = draft;
+                removeActiveDailyDraftForPending(draft);
                 vm.dailySaveReady = true;
                 vm.dailySaveStatus = 'pending';
                 vm.dailySaveMessage = 'Có kết quả của lượt trước chưa nhận được xác nhận lưu. Kết nối mạng rồi bấm Lưu kết quả.';
@@ -3370,6 +3609,10 @@
             }
         }
         vm.canBeginDailyVocabRun = function () {
+            if (vm.dailyDraftRecoveryBlocked) {
+                toastr.warning('Hãy kết nối mạng và tải lại trang để khôi phục đầy đủ tiến độ đã lưu trước khi làm tiếp.');
+                return false;
+            }
             if (vm.savingTestResult || vm.dailySaveStatus === 'pending') {
                 toastr.warning('Lượt trước chưa lưu xong. Hãy Lưu kết quả hoặc chọn Bỏ kết quả trước khi làm lượt mới.');
                 return false;
@@ -3389,7 +3632,8 @@
                 user: vm.currentUser,
                 testTakerPerformance: '',
                 totalWord: vm.totalCard,
-                assignmentTaskId: vm.assignmentLaunch.taskId || null
+                assignmentTaskId: vm.assignmentLaunch.taskId || null,
+                assignmentTopicId: vm.assignmentLaunch.topicId || null
             };
 
             vm.isSaveTestResult = false;
@@ -3411,6 +3655,7 @@
         function appendAssignmentTopicEvidence(result, assignmentTopicId) {
             if (!result || !result.assignmentTaskId || !/^\d+$/.test(String(assignmentTopicId || ''))) return;
             var topicId = Number(assignmentTopicId);
+            result.assignmentTopicId = topicId;
             result.topicIds = result.topicIds || [];
             var alreadyIncluded = result.topicIds.some(function (id) {
                 return Number(id) === topicId;
@@ -3419,6 +3664,9 @@
         }
 
         function dailySaveFailureMessage(error) {
+            if (error && error.assignmentContextMismatch) {
+                return 'Server chưa xác nhận đúng bài và topic của lượt này. Bản tạm vẫn được giữ. Vui lòng báo giáo viên kiểm tra hệ thống, rồi bấm Lưu kết quả để thử lại.';
+            }
             var status = error && Number(error.status);
             if (status === 401 || status === 403) {
                 return 'Phiên đăng nhập đã hết hạn hoặc không có quyền lưu (HTTP ' + status + '). Đăng nhập lại đúng tài khoản rồi bấm Lưu kết quả.';
@@ -3430,6 +3678,15 @@
                 ? error.data.message.replace(/\s+/g, ' ').trim().substring(0, 180) : '';
             return 'Server chưa nhận kết quả (HTTP ' + status + '). ' +
                 (detail ? detail + ' ' : '') + 'Bấm Lưu kết quả để thử lại; không cần làm lại bài.';
+        }
+
+        function handleDailySaveFailure(error) {
+            if (dailySaveDestroyed) { return; }
+            vm.isSaveTestResult = false;
+            vm.dailySaveStatus = 'pending';
+            vm.dailySaveMessage = dailySaveFailureMessage(error);
+            persistDailyDraft();
+            toastr.error(vm.dailySaveMessage, 'Thông báo');
         }
 
         vm.prepareResultTopicEvidence = function () {
@@ -3504,13 +3761,15 @@
                 delete payload.id; delete payload.testDate; delete payload.startDate; delete payload.endDate;
                 payload.clientAttemptKey = key;
                 vm.dailyVocabPendingResult = {version:1, ownerId:vm.currentUser.id, createdAt:Date.now(),
+                    title:vm.title || payload.testName || 'Daily Vocab',
+                    activeRunId:activeDailyRunId,
+                    assignmentTaskId:vm.assignmentLaunch.taskId || null,
                     assignmentTopicId:vm.assignmentLaunch.topicId || null, payload:payload};
             }
             var pending = vm.dailyVocabPendingResult;
-            // Repair drafts created before assignment topics were included in the
-            // payload. The current assignment URL still contains the authoritative ID.
+            // Retries retain the topic of the original attempt, even after navigation.
             appendAssignmentTopicEvidence(pending.payload,
-                pending.assignmentTopicId || vm.assignmentLaunch.topicId);
+                pending.assignmentTopicId || pending.payload.assignmentTopicId);
             var signedIn = getCurrentUser();
             if (!pending.ownerId || signedIn.id !== pending.ownerId) {
                 vm.dailySaveStatus = 'pending'; vm.dailySaveMessage = 'Hãy đăng nhập lại đúng tài khoản đã làm lượt này rồi bấm Lưu kết quả.';
@@ -3527,7 +3786,15 @@
             ).then(
                 function (data) {
                     if (dailySaveDestroyed) return;
-                    if (!data || !(Number(data.id) > 0)) throw new Error('Chưa nhận được xác nhận lưu hợp lệ.');
+                    if (!data || !(Number(data.id) > 0)) {
+                        handleDailySaveFailure({assignmentContextMismatch: true});
+                        return;
+                    }
+                    if (!dailyAssignmentContextMatches(data, pending)) {
+                        handleDailySaveFailure({assignmentContextMismatch: true});
+                        return;
+                    }
+                    removeActiveDailyDraftForPending(pending);
                     if (
                         data &&
                         (data.resultStatus === 'FAILED' || data.messageCode == 1)
@@ -3537,7 +3804,7 @@
                         if (Number(data.vocabularyExperienceAwardedWords) > 0) {
                             vm.dailySaveMessage += ' Đã ghi nhận ' + Number(data.vocabularyExperienceAwardedWords) + ' từ đúng vào kinh nghiệm.';
                         }
-                        removeDailyDraft(pending.ownerId);
+                        removeDailyDraft(pending.ownerId, pending);
                         toastr.warning(
                             vm.dailySaveMessage,
                             'Thông báo'
@@ -3548,7 +3815,7 @@
                     } else if (data && Number(data.id) > 0) {
                         vm.dailySaveStatus = 'saved';
                         vm.dailySaveMessage = 'Đã lưu kết quả thành công.';
-                        removeDailyDraft(pending.ownerId);
+                        removeDailyDraft(pending.ownerId, pending);
                         toastr.info(
                             'Lưu thành công',
                             'Thông báo'
@@ -3574,16 +3841,7 @@
                     vm.isSaveTestResult = true;
                     vm.dailySaveStorageNotice = '';
                 }
-            ).catch(function (error) {
-                    if (dailySaveDestroyed) return;
-                    vm.isSaveTestResult = false; vm.dailySaveStatus = 'pending';
-                    vm.dailySaveMessage = dailySaveFailureMessage(error);
-                    persistDailyDraft();
-                    toastr.error(
-                        vm.dailySaveMessage,
-                        'Thông báo'
-                    );
-            }).finally(function () {
+            ).catch(handleDailySaveFailure).finally(function () {
                 if (dailySaveDestroyed) return;
                 vm.savingTestResult = false;
             });
@@ -3649,8 +3907,21 @@
          * Load Grade 6 + danh sách bài ngay khi vào trang.
          */
         function initializeDailyVocabFromDrafts() {
-            chooseActiveDailyResume();
-            restoreDailyDraft();
+            var explicitActive = false;
+            try {
+                var resumeKey = 'daily-vocab-dashboard-resume:v1:' + vm.currentUser.id;
+                explicitActive = window.sessionStorage.getItem(resumeKey) === activeDailyDraftKey(vm.currentUser.id);
+                if (explicitActive) { window.sessionStorage.removeItem(resumeKey); }
+            } catch (ignoreActiveChoice) {}
+            if (explicitActive && !vm.assignmentLaunch.invalid) {
+                activeDailyResumeDraft = readActiveDailyDraft();
+            }
+            if (!activeDailyResumeDraft) { restoreDailyDraft(); }
+            if (vm.assignmentLaunch.invalid || vm.dailyVocabPendingResult) { return; }
+            if (vm.assignmentSelectionLocked && !activeDailyResumeDraft) {
+                activeDailyResumeDraft = readActiveDailyDraft();
+            }
+            if (!activeDailyResumeDraft) { chooseActiveDailyResume(); }
             vm.getPageTopicCategory();
         }
         if (dailyLearningDraftsReady && angular.isFunction(dailyLearningDraftsReady.finally)) {

@@ -15,11 +15,12 @@ function candidate(parts, format = 'READING') {
     const c = nodeVm.createContext({
         vm: {currentUser: {id: 7}, isWritingRoute: format === 'WRITING', isListeningRoute: format === 'LISTENING',
             isComprehensiveRoute: false, isFlexibleRoute: format === 'WRITING', passageNumber: 1,
-            testResult: {questionAnswerTestResult: []}, annotationNotes: [{id: 'n1', specificNote: 'Student note'}]},
+            testResult: {user:{id:7},questionAnswerTestResult: []}, annotationNotes: [{id: 'n1', specificNote: 'Student note'}]},
         $stateParams: {ieltsReadingTestId: 42, assignmentTaskId: 10, assignmentParts: parts, assignmentPart: 1},
         angular: {isArray: Array.isArray, copy: structuredClone, isDefined: value => value !== undefined,
             forEach(items, callback) { Object.keys(items || {}).forEach(key => callback(items[key], Array.isArray(items) ? Number(key) : key)); }},
-        readingDraftSubmitted: false,
+        readingDraftSubmitted:false, readingAttemptKey:null, readingSubmissionState:null, restoredExpiredReadingDraft:false, readingDraftDestroyed:false,
+        $window:{}, persistReadingSubmissionState(){return null;},
         readingDraftAutosaveTimer: null,
         saveReadingDraft() {}, syncTimerForPersistence() {}, getActiveDurationSeconds: () => 60,
         formatTimerClock: () => '01:00', buildIeltsLearningState: () => ({annotationNotes: [{id: 'n1', specificNote: 'Student note'}]}),
@@ -42,6 +43,8 @@ function candidate(parts, format = 'READING') {
     run('        function listeningPartNumberForOrdinal(', '        vm.ieltsNavigationAnsweredCount =');
     run('        function getReadingDraftPartNumbers()', '        function saveReadingDraft()');
     run('        function synchronizeReadingResultsBeforeSubmit()', '        function getCurrentReadingQuestionIndex(');
+    run('        function readingSubmissionType()', '        function persistReadingSubmissionState()');
+    run('        function submitReadingAttemptSnapshot()', '        vm.saveTestResult =');
     run('        vm.saveTestResult = function', '        vm.isShowDetail =');
     run('        vm.changePassage = function', '        function listeningPartNumberForOrdinal(');
     run('        function normalizeListeningCandidateParts(', '        vm.startTest = function');
@@ -181,7 +184,7 @@ test('failed assigned submission keeps its task draft for the next attempt', asy
     const c = candidate('1');
     c.service.saveTestResult = payload => {
         c.submitted = structuredClone(payload);
-        return Promise.resolve({id: 501, resultStatus: 'FAILED'});
+        return Promise.resolve({...structuredClone(payload),id:501,resultStatus:'FAILED'});
     };
     c.clearReadingDraft = () => { c.cleared = (c.cleared || 0) + 1; };
     c.markStudyDraftCompleted = () => { c.marked = (c.marked || 0) + 1; };

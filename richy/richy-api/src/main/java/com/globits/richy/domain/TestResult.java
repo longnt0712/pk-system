@@ -47,6 +47,10 @@ public class TestResult extends BaseObject{
     private String completedPartsValue;
     @Column(name="assignment_task_id")
     private Long assignmentTaskId;
+    @Column(name="assignment_topic_id")
+    private Long assignmentTopicId;
+    public Long getAssignmentTopicId(){return assignmentTopicId;}
+    public void setAssignmentTopicId(Long value){assignmentTopicId=value;}
     @Column(name="ielts_session_mode", length=20)
     private String ieltsSessionMode;
     @Column(name="active_duration_seconds")

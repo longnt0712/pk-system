@@ -15,7 +15,8 @@ function setup(blocked = false) {
         legacyModeDraftStorageKey: 'legacy-mode', legacyReadingDraftStorageKey: 'legacy',
         $stateParams: {ieltsReadingTestId: 42},
         readingDraftBaseKey: 'ieltsReadingInProgress:7', readingDraftTaskSuffix: '',
-        readingDraftSubmitted: false,
+        readingDraftSubmitted: false, readingAttemptKey:null, readingSubmissionState:null, requestedReadingDraftKey:null, readingAttemptMayReplaceLocalDraft:false,
+        newReadingAttemptKey:()=> 'b'.repeat(32), restoreReadingSubmissionIdentity() {},
         angular: {copy: structuredClone, isArray: Array.isArray, isDefined: value => value !== undefined, forEach: (items, callback) => (items || []).forEach(callback), noop() {}},
         $timeout: timeout,
         $window: {localStorage: {
@@ -24,7 +25,7 @@ function setup(blocked = false) {
             removeItem(key) { if (blocked) throw Error('blocked'); stored.delete(key); }
         }},
         service: {
-            saveLearningDraft(payload) { calls.push(payload); return new Promise(resolve => pending.push(resolve)); },
+            saveLearningDraft(payload) { calls.push(payload); return new Promise(resolve => pending.push(saved => resolve(saved === undefined ? {id:1,draftKey:payload.draftKey,payload:payload.payload} : saved))); },
             deleteLearningDraft(key) { calls.push({deleted: key}); return Promise.resolve(); }
         }
     });

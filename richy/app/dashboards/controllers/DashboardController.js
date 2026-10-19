@@ -162,6 +162,20 @@
             });
         };
 
+        vm.assignmentKey = function (task) {
+            return String(task.taskId) + ':topic:' + (task.topicId || 'none');
+        };
+
+        vm.assignmentTopicComplete = function (task) {
+            return !!task && task.activityType === 'DAILY_VOCAB' && Number(task.taskTotalTopics) > 1
+                && Number(task.completedAttempts) >= Number(task.requiredAttempts) && Number(task.requiredAttempts) > 0;
+        };
+
+        vm.assignmentProgressPercent = function (task) {
+            var required = Number((task || {}).requiredAttempts);
+            return required > 0 ? Math.max(0, Math.min(100, Math.round(Number(task.completedAttempts || 0) * 100 / required))) : 0;
+        };
+
         vm.assignmentTypeLabel = function (task) {
             var labels = {
                 DAILY_VOCAB: 'Daily Vocab',
@@ -208,7 +222,7 @@
 		};
 
         vm.openAssignedTask = function (task) {
-            if (!task) { return; }
+            if (!task || vm.assignmentTopicComplete(task)) { return; }
             var params = {
                 listFlashCard: 0,
                 assignmentTopicId: task.topicId,
@@ -234,6 +248,46 @@
             }
         };
 
+        function ieltsReminderParts(parts) {
+            return (angular.isArray(parts) ? parts : []).map(Number).sort(function (a, b) { return a - b; }).join(',');
+        }
+        function ieltsReminderInfo(key, draft) {
+            var base = String(key || '').replace(/:attempt:[a-f0-9]{32}$/, '');
+            var taskMatch = /:task:(\d+)(?::parts:[\d-]+)?$/.exec(base);
+            var taskId = draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null);
+            var parts = angular.isArray(draft.assignmentParts) && draft.assignmentParts.length ? draft.assignmentParts
+                : (draft.isPartAssignment !== false && draft.assignmentPart ? [draft.assignmentPart] : []);
+            var mode = draft.testMode || (/comprehensive/i.test(base) ? 'COMPREHENSIVE'
+                : (/writing/i.test(base) ? 'WRITING' : (draft.isListening || /listening/i.test(base) ? 'LISTENING' : 'READING')));
+            var type = mode === 'COMPREHENSIVE' ? 6 : (mode === 'WRITING' ? 7 : (mode === 'LISTENING' ? 2 : 4));
+            var state = draft.submissionState || {}, payload = state.payload || {}, result = state.result || {};
+            var attempt = /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '') ? draft.clientAttemptKey
+                : (/^[a-f0-9]{32}$/.test(state.key || '') ? state.key : null);
+            var validState = !!attempt && state.key === attempt && payload.clientAttemptKey === attempt
+                && payload.user && String(payload.user.id) === String(draft.userId)
+                && (Number(payload.testType) === type || ((mode === 'READING' || mode === 'LISTENING')
+                    && (Number(payload.testType) === 2 || Number(payload.testType) === 4))) && String(payload.sourceQuestionId) === String(draft.testId)
+                && String(payload.assignmentTaskId || '') === String(taskId || '')
+                && ieltsReminderParts(payload.completedParts) === ieltsReminderParts(parts);
+            var confirmed = validState && state.status === 'SAVED' && isFinite(Number(result.id)) && Number(result.id) > 0
+                && (result.clientAttemptKey == null || result.clientAttemptKey === attempt)
+                && result.user && String(result.user.id) === String(draft.userId) && Number(result.testType) === Number(payload.testType)
+                && String(result.sourceQuestionId) === String(draft.testId)
+                && Object.prototype.hasOwnProperty.call(result, 'assignmentTaskId')
+                && String(result.assignmentTaskId || '') === String(taskId || '') && angular.isArray(result.completedParts)
+                && ieltsReminderParts(result.completedParts) === ieltsReminderParts(parts);
+            var sessionMode = taskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS');
+            return {baseKey: base, attemptKey: attempt, taskId: taskId, parts: parts, sessionMode: sessionMode,
+                confirmed: !!confirmed, pending: !!(validState && state.status === 'PENDING'),
+                context: 'IELTS:' + draft.userId + ':' + mode + ':' + draft.testId + ':' + sessionMode
+                    + ':task:' + (taskId || '') + ':parts:' + ieltsReminderParts(parts)};
+        }
+        function sameIeltsReminderRun(first, second) {
+            return first.ieltsContext && first.ieltsContext === second.ieltsContext
+                && !!first.pendingSave !== !!second.pendingSave && first.ieltsAttemptKey
+                && first.ieltsAttemptKey === second.ieltsAttemptKey;
+        }
+
         vm.loadResumeDrafts = function () {
             vm.resumeDrafts = [];
             if (!vm.myUser.id) { return; }
@@ -241,6 +295,7 @@
             var userId = String(vm.myUser.id);
             var ieltsPrefix = 'ieltsReadingInProgress:' + userId;
             var dailyVocabKey = 'daily-vocab-active:v1:' + userId;
+            var dailyPendingKey = 'daily-vocab-pending:v1:' + userId;
             var dailyListeningPrefix = 'daily-listening-progress:v1:' + userId + ':';
 
             function readDraft(key) {
@@ -248,13 +303,28 @@
                 catch (ignoreDraftReadError) { return null; }
             }
 
+            function sameVocabRun(first, second) {
+                if (!first.vocabContext || first.vocabContext !== second.vocabContext || !!first.pendingSave === !!second.pendingSave) { return false; }
+                var pending = first.pendingSave ? first : second;
+                var active = first.pendingSave ? second : first;
+                if (pending.vocabRunId || active.vocabRunId) { return !!pending.vocabRunId && pending.vocabRunId === active.vocabRunId; }
+                return Number(active.savedAt) <= Number(pending.savedAt);
+            }
+
             function pushResumeDraft(item) {
                 if (!item || !item.storageKey) { return; }
                 for (var i = 0; i < vm.resumeDrafts.length; i++) {
-                    if (vm.resumeDrafts[i].storageKey === item.storageKey) {
-                        if (Number(item.savedAt) >= Number(vm.resumeDrafts[i].savedAt)) {
-                            vm.resumeDrafts[i] = item;
-                        }
+                    var existing = vm.resumeDrafts[i];
+                    if (sameIeltsReminderRun(existing, item)) {
+                        if (item.pendingSave) { vm.resumeDrafts[i] = item; }
+                        return;
+                    }
+                    if (sameVocabRun(existing, item)) {
+                        if (item.pendingSave) { vm.resumeDrafts[i] = item; }
+                        return;
+                    }
+                    if ((existing.resumeIdentity || existing.storageKey) === (item.resumeIdentity || item.storageKey)) {
+                        if (Number(item.savedAt) >= Number(existing.savedAt)) { vm.resumeDrafts[i] = item; }
                         return;
                     }
                 }
@@ -271,7 +341,7 @@
                 var storedPart = Number(draft.assignmentPart) || null;
                 var isPartAssignment = draft.isPartAssignment === true
                     || /:(?:part|writing-task):\d+$/.test(draftKey)
-                    || (!!storedPart && (!!draft.assignmentTaskId || /:task:\d+$/.test(draftKey)));
+                    || (!!storedPart && (!!draft.assignmentTaskId || /:task:\d+(?::parts:[\d-]+)?$/.test(draftKey)));
                 if (!isPartAssignment) { return null; }
                 return storedPart || Number(draft.passageNumber) || null;
             }
@@ -279,6 +349,8 @@
             function addIeltsDraft(key, draft) {
                 if (!draft || !draft.testId || String(draft.userId) !== userId
                         || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
+                var info = ieltsReminderInfo(key, draft);
+                if (info.confirmed) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
                 var taskMatch = /:task:(\d+)(?::parts:[\d-]+)?$/.exec(key);
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
@@ -290,33 +362,60 @@
                 pushResumeDraft({
                     kind: comprehensive ? 'COMPREHENSIVE' : (writing ? 'IELTS_WRITING' : (listening ? 'IELTS_LISTENING' : 'IELTS_READING')),
                     storageKey: key,
+                    resumeIdentity: info.context + (info.pending ? ':pending:' + info.attemptKey : ':active'),
+                    ieltsContext: info.context, ieltsAttemptKey: info.attemptKey, pendingSave: info.pending,
                     title: draft.title || (comprehensive ? 'Bài tập tổng hợp' : (writing ? 'IELTS Writing Test' : (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'))),
                     savedAt: isFinite(savedAt) ? savedAt : 0,
                     remainingSeconds: Number(draft.remainingSeconds) || 0,
                     elapsedSeconds: Number(draft.elapsedSeconds) || 0,
-                    sessionMode: draft.sessionMode || 'SERIOUS',
-                    progressLabel: 'Đã trả lời',
-                    progressValue: (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
+                    sessionMode: info.sessionMode,
+                    progressLabel: info.pending ? 'Trạng thái' : 'Đã trả lời',
+                    progressValue: info.pending ? 'Chưa nhận xác nhận lưu' : (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
                     testId: draft.testId,
-                    assignmentTaskId: draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null),
-                    assignmentPart: ieltsDraftAssignmentPart(key, draft),
-                    assignmentParts: draft.assignmentParts || []
+                    assignmentTaskId: info.taskId,
+                    assignmentPart: ieltsDraftAssignmentPart(info.baseKey, draft),
+                    assignmentParts: angular.copy(info.parts)
                 });
             }
 
-            function addDailyVocabDraft(draft) {
+            function addDailyVocabDraft(key, draft) {
                 if (!draft || draft.version !== 1 || String(draft.ownerId) !== userId
                         || !draft.savedAt
                         || !angular.isArray(draft.questions) || !draft.questions.length) { return; }
                 var completed = Math.max(0, Math.min(Number(draft.currentPosition) || 0, Number(draft.totalCard) || draft.questions.length));
+                var context = dailyVocabKey + (draft.assignmentTaskId && draft.assignmentTopicId ? ':task:' + draft.assignmentTaskId + ':topic:' + draft.assignmentTopicId : '');
                 pushResumeDraft({
                     kind: 'DAILY_VOCAB',
-                    storageKey: dailyVocabKey,
+                    storageKey: key,
+                    resumeIdentity: context + ':active', vocabContext: context, vocabRunId: draft.runId || null,
                     title: draft.title || 'Daily Vocab',
                     savedAt: Number(draft.savedAt) || 0,
                     remainingSeconds: Number(draft.counter) || 0,
                     progressLabel: 'Đã làm',
-                    progressValue: completed + '/' + (Number(draft.totalCard) || draft.questions.length) + ' từ'
+                    progressValue: completed + '/' + (Number(draft.totalCard) || draft.questions.length) + ' từ',
+                    assignmentTaskId: draft.assignmentTaskId || null,
+                    assignmentTopicId: draft.assignmentTopicId || null,
+                    assignmentCategoryId: draft.assignmentCategoryId || draft.categoryId || null
+                });
+            }
+
+            function addDailyVocabPending(key, draft) {
+                var result = draft && draft.payload;
+                if (!draft || draft.version !== 1 || String(draft.ownerId) !== userId || !result
+                        || result.testType !== 1 || !result.user || String(result.user.id) !== userId
+                        || !/^[a-f0-9]{32}$/.test(result.clientAttemptKey || '') || !(result.totalWord > 0)) { return; }
+                var taskId = draft.assignmentTaskId || result.assignmentTaskId || null;
+                var topicId = draft.assignmentTopicId || result.assignmentTopicId || null;
+                pushResumeDraft({
+                    kind: 'DAILY_VOCAB_PENDING', pendingSave: true, storageKey: key,
+                    resumeIdentity: dailyPendingKey + ':attempt:' + result.clientAttemptKey,
+                    vocabContext: dailyVocabKey + (taskId && topicId ? ':task:' + taskId + ':topic:' + topicId : ''),
+                    vocabRunId: draft.activeRunId || null,
+                    title: draft.title || result.testName || 'Daily Vocab',
+                    savedAt: Number(draft.savedAt || draft.createdAt) || 0,
+                    progressLabel: 'Trạng thái', progressValue: 'Chưa nhận xác nhận lưu',
+                    assignmentTaskId: taskId, assignmentTopicId: topicId,
+                    assignmentCategoryId: draft.assignmentCategoryId || null
                 });
             }
 
@@ -339,7 +438,7 @@
             }
 
             try {
-                addDailyVocabDraft(readDraft(dailyVocabKey));
+                addDailyVocabDraft(dailyVocabKey, readDraft(dailyVocabKey));
                 for (var index = 0; index < $window.localStorage.length; index++) {
                     var key = $window.localStorage.key(index);
                     if (!key) { continue; }
@@ -350,6 +449,8 @@
                             || key.indexOf(ieltsPrefix + ':comprehensive') === 0) {
                         addIeltsDraft(key, readDraft(key));
                     }
+                    if (key === dailyPendingKey || key.indexOf(dailyPendingKey + ':task:') === 0 || key.indexOf(dailyPendingKey + ':attempt:') === 0) { addDailyVocabPending(key, readDraft(key)); }
+                    if (key.indexOf(dailyVocabKey + ':task:') === 0 || key.indexOf(dailyVocabKey + ':run:') === 0) { addDailyVocabDraft(key, readDraft(key)); }
                     if (key.indexOf(dailyListeningPrefix) === 0) { addDailyListeningDraft(key, readDraft(key)); }
                 }
             } catch (ignoreDraftStorageError) {
@@ -374,7 +475,8 @@
                         }
                     } catch (ignoreServerCacheError) {}
                     if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload); }
-                    if (item.draftType === 'DAILY_VOCAB') { addDailyVocabDraft(displayPayload); }
+                    if (item.draftType === 'DAILY_VOCAB') { addDailyVocabDraft(item.draftKey, displayPayload); }
+                    if (item.draftType === 'DAILY_VOCAB_PENDING') { addDailyVocabPending(item.draftKey, displayPayload); }
                     if (item.draftType === 'DAILY_LISTENING') { addDailyListeningDraft(item.draftKey, displayPayload); }
                 });
                 sortResumeDrafts();
@@ -390,9 +492,22 @@
 
         vm.resumeDraft = function (draft) {
             if (!draft) { return; }
-            if (draft.kind === 'DAILY_VOCAB') {
-                try { $window.sessionStorage.setItem('daily-vocab-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreResumeFlagError) {}
-                $state.go('application.daily_vocab', {listFlashCard: 0});
+            if (draft.kind === 'DAILY_VOCAB' || draft.kind === 'DAILY_VOCAB_PENDING') {
+                try {
+                    if (draft.pendingSave) {
+                        $window.sessionStorage.setItem('daily-vocab-pending-resume:v1:' + vm.myUser.id, draft.storageKey);
+                        $window.sessionStorage.removeItem('daily-vocab-dashboard-resume:v1:' + vm.myUser.id);
+                    } else {
+                        $window.sessionStorage.setItem('daily-vocab-dashboard-resume:v1:' + vm.myUser.id, draft.vocabContext || draft.storageKey);
+                        $window.sessionStorage.removeItem('daily-vocab-pending-resume:v1:' + vm.myUser.id);
+                    }
+                } catch (ignoreResumeFlagError) {}
+                $state.go('application.daily_vocab', {
+                    listFlashCard: 0,
+                    assignmentTaskId: draft.assignmentTaskId || null,
+                    assignmentTopicId: draft.assignmentTopicId || null,
+                    assignmentCategoryId: draft.assignmentCategoryId || null
+                });
                 return;
             }
             if (draft.kind === 'DAILY_LISTENING') {
@@ -412,6 +527,13 @@
                 return;
             }
             if (!draft.testId) { return; }
+            try {
+                $window.sessionStorage.setItem('ielts-draft-resume:v1:' + vm.myUser.id, JSON.stringify({
+                    draftKey: draft.storageKey, clientAttemptKey: draft.ieltsAttemptKey || null, testId: draft.testId,
+                    assignmentTaskId: draft.assignmentTaskId || null, assignmentParts: draft.assignmentParts || [],
+                    sessionMode: draft.assignmentTaskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS')
+                }));
+            } catch (ignoreIeltsResumeChoice) {}
             $state.go(draft.kind === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
                 : (draft.kind === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (draft.kind === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), {
                 ieltsReadingTestId: draft.testId,
@@ -422,20 +544,50 @@
             });
         };
 
+        function matchingIeltsLocalKeys(draft) {
+            if (!draft.ieltsContext) { return [draft.storageKey]; }
+            var base = draft.storageKey.replace(/:attempt:[a-f0-9]{32}$/, '');
+            var candidates = [draft.storageKey, base];
+            if (draft.ieltsAttemptKey) { candidates.push(base + ':attempt:' + draft.ieltsAttemptKey); }
+            return candidates.filter(function (key, index) {
+                if (candidates.indexOf(key) !== index) { return false; }
+                try {
+                    var payload = JSON.parse($window.localStorage.getItem(key) || 'null');
+                    if (!payload) { return key === draft.storageKey; }
+                    var info = ieltsReminderInfo(key, payload);
+                    return info.context === draft.ieltsContext && info.attemptKey === draft.ieltsAttemptKey;
+                } catch (ignoreMatchingDraft) { return key === draft.storageKey; }
+            });
+        }
+        function ieltsReminderCloudKey(draft) {
+            var base = draft.storageKey.replace(/:attempt:[a-f0-9]{32}$/, '');
+            return draft.ieltsAttemptKey ? base + ':attempt:' + draft.ieltsAttemptKey : draft.storageKey;
+        }
+
         vm.cancelDraft = function (draft) {
             if (!draft || !draft.storageKey) { return; }
             if (!$window.confirm('Bạn có chắc muốn hủy bài đang làm dở? Toàn bộ tiến độ đã tự lưu của bài này sẽ bị xóa.')) { return; }
-            try { $window.localStorage.removeItem(draft.storageKey); }
+            var localKeys = matchingIeltsLocalKeys(draft);
+            try { localKeys.forEach(function (key) { $window.localStorage.removeItem(key); }); }
             catch (ignoreDraftCancelError) { return; }
             var deleteUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/delete';
             var userId = vm.myUser.id;
-            return $http.post(deleteUrl, {draftKey: draft.storageKey}).then(function (response) {
-                if (response.data === true) {
-                    $rootScope.$broadcast('learningDraftDismissed', {draftKey: draft.storageKey, userId: userId});
+            var cloudKeys = [draft.ieltsContext ? ieltsReminderCloudKey(draft) : draft.storageKey];
+            if (draft.ieltsContext) {
+                var base = draft.storageKey.replace(/:attempt:[a-f0-9]{32}$/, '');
+                if (localKeys.indexOf(base) >= 0 && cloudKeys.indexOf(base) < 0) { cloudKeys.push(base); }
+            }
+            var request = null;
+            cloudKeys.forEach(function (key) {
+                function remove() {
+                    return $http.post(deleteUrl, {draftKey: key}).then(function (response) {
+                        if (response.data === true) { $rootScope.$broadcast('learningDraftDismissed', {draftKey: key, userId: userId}); }
+                        return response;
+                    });
                 }
-            }, angular.noop).finally(function () {
-                vm.loadResumeDrafts();
+                request = request ? request.then(remove) : remove();
             });
+            return request.catch(angular.noop).finally(function () { vm.loadResumeDrafts(); });
         };
 
         vm.isReadingOrListeningDraft = function (draft) {
@@ -445,34 +597,38 @@
         vm.hideDraft = function (draft) {
             if (!vm.isReadingOrListeningDraft(draft) || !draft.storageKey) { return; }
 
-            var storedDraft;
-            try {
-                storedDraft = JSON.parse($window.localStorage.getItem(draft.storageKey));
-            } catch (ignoreHiddenDraftReadError) {
-                storedDraft = null;
+            var localKeys = matchingIeltsLocalKeys(draft);
+            var storedDraft = null;
+            for (var keyIndex = 0; keyIndex < localKeys.length; keyIndex++) {
+                try {
+                    var candidate = JSON.parse($window.localStorage.getItem(localKeys[keyIndex]) || 'null');
+                    if (!candidate) { continue; }
+                    if (draft.ieltsContext) {
+                        var info = ieltsReminderInfo(localKeys[keyIndex], candidate);
+                        if (info.context !== draft.ieltsContext || info.attemptKey !== draft.ieltsAttemptKey) { continue; }
+                    }
+                    storedDraft = candidate; break;
+                } catch (ignoreHiddenDraftReadError) {}
             }
             if (!storedDraft) { return; }
 
             storedDraft.hiddenFromDashboard = true;
             storedDraft.savedAt = new Date().toISOString();
             try {
-                $window.localStorage.setItem(draft.storageKey, JSON.stringify(storedDraft));
-            } catch (ignoreHiddenDraftWriteError) {
-                return;
-            }
+                localKeys.forEach(function (key) { $window.localStorage.setItem(key, JSON.stringify(storedDraft)); });
+            } catch (ignoreHiddenDraftWriteError) { return; }
 
             vm.resumeDrafts = vm.resumeDrafts.filter(function (item) {
-                return item.storageKey !== draft.storageKey;
+                return !(item.ieltsContext && item.ieltsContext === draft.ieltsContext && item.ieltsAttemptKey === draft.ieltsAttemptKey)
+                    && item.storageKey !== draft.storageKey;
             });
-            $rootScope.$broadcast('learningDraftDismissed', {draftKey: draft.storageKey, userId: vm.myUser.id});
+            localKeys.forEach(function (key) { $rootScope.$broadcast('learningDraftDismissed', {draftKey: key, userId: vm.myUser.id}); });
 
             var saveUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/save';
             $http.post(saveUrl, {
-                draftKey: draft.storageKey,
-                draftType: 'IELTS',
-                title: draft.title,
-                payload: JSON.stringify(storedDraft),
-                savedAt: new Date(storedDraft.savedAt).getTime()
+                draftKey: draft.ieltsContext ? ieltsReminderCloudKey(draft) : draft.storageKey,
+                draftType: 'IELTS', title: draft.title,
+                payload: JSON.stringify(storedDraft), savedAt: new Date(storedDraft.savedAt).getTime()
             }).catch(angular.noop);
         };
 

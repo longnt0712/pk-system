@@ -15,7 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Matchers.*;
 
 public class TestTitleUpdateTest {
     private QuestionServiceImpl service;
@@ -50,6 +49,22 @@ public class TestTitleUpdateTest {
             assertSame(folder, test.getTestFolder()); assertSame(children, test.getSubQuestions());
             assertEquals("teacher", test.getModifiedBy()); assertNotNull(test.getModifyDate());
         }
+    }
+    @Test public void dailyListeningRenameSynchronizesLearnerTitleWithoutChangingTranscriptOrAudio() {
+        test.setTestFormat("DAILY_LISTENING"); test.setMotherTongue("Keep this transcript");
+        Object children = test.getSubQuestions(), folder = test.getTestFolder();
+        QuestionForTestsDto saved = service.updateTestTitle(20L, "  New listening title  ");
+        assertEquals("New listening title", saved.getTitle()); assertEquals(saved.getTitle(), test.getQuestion());
+        assertEquals("Keep this transcript", test.getMotherTongue()); assertEquals("audio.mp3", test.getPronounce());
+        assertSame(children, test.getSubQuestions()); assertSame(folder, test.getTestFolder());
+        assertSame(owner, test.getUser()); assertEquals(7, test.getStatus());
+    }
+    @Test public void dailyListeningRejectsTitlesTooLongForItsEditorWithoutMutatingContent() {
+        test.setTestFormat("DAILY_LISTENING");
+        try { service.updateTestTitle(20L, String.join("", Collections.nCopies(201, "x"))); fail(); }
+        catch (IllegalArgumentException expected) { }
+        assertEquals("Original title", test.getTitle()); assertEquals("Existing passage", test.getQuestion());
+        verify(repository, never()).save(any(Question.class));
     }
     @Test public void adminCanRenameLegacyTestsWithOtherOrMissingOwners() {
         User admin = new User(); admin.setId(8L); admin.setUsername("admin"); login(admin, "ROLE_ADMIN");

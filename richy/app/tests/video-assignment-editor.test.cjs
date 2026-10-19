@@ -24,6 +24,7 @@ function editor(catalog = [summary(1), summary(2)]) {
         toastr: {warning(message) { vm.warning = message; }}, scheduleListeningItemsRequest: 0,
         service: {getAssignmentExerciseDetails(id) { return new Promise((resolve, reject) => requests.push({id, resolve, reject})); }},
         assignmentPicker: {open() { return new Promise(resolve => picks.push(resolve)); }}});
+    nodeVm.runInContext(section('        vm.taskTopicIds =', '\t\tvm.tasksForSection ='), context);
     nodeVm.runInContext(section('        vm.taskSelectedExerciseTitle =', '\t\tvm.isIeltsTask ='), context);
     nodeVm.runInContext(section('\t\tvm.openScheduleTask =', '        vm.taskDeadlineChanged ='), context);
     nodeVm.runInContext(section('\t\tfunction scheduleTaskPayload(', '\t\tvm.removeScheduleTask ='), context);

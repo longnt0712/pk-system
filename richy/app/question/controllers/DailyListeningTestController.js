@@ -12,6 +12,14 @@
             vm.items = [];
             vm.totalItems = 0;
             vm.searchDto = {status: 9, textSearch: '', pageIndex: 1, pageSize: 10};
+            vm.catalogTitleUpdating = {};
+            vm.isCatalogTitleSaving = function () { return Object.keys(vm.catalogTitleUpdating).some(function (id) { return vm.catalogTitleUpdating[id]; }); };
+            vm.catalogTestRenamed = function (test, previousTitle) {
+                if (vm.draft && String(vm.draft.id) === String(test.id)) {
+                    if (vm.draft.question === previousTitle) { vm.draft.question = test.title; }
+                    vm.draft.title = test.title;
+                }
+            };
             vm.catalogStatusUpdating = {};
             vm.isCatalogStatusSaving = function () { return Object.keys(vm.catalogStatusUpdating).some(function (id) { return vm.catalogStatusUpdating[id]; }); };
             vm.catalogTestStatusChanged = function (test, previousStatus) {
@@ -30,7 +38,7 @@
                 if (editor && editor.scrollIntoView) { editor.scrollIntoView({behavior: 'smooth', block: 'start'}); }
             }
             vm.exportTestWord = function (item) {
-                if (vm.exportingWord || vm.saving || vm.editing || vm.catalogMovePending || vm.importDialogOpen ||
+                if (vm.exportingWord || vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.catalogMovePending || vm.importDialogOpen ||
                     (item && vm.catalogStatusUpdating[item.id])) { return; }
                 vm.exportingWord = true;
                 vm.exportingWordId = item ? item.id : null;
@@ -107,7 +115,7 @@
                 if (!deferFill) { fillSlot(); }
             };
             vm.openCatalogMoveDialog = function (test) {
-                if (vm.isCatalogStatusSaving() || vm.catalogMoveDialogOpen || vm.catalogMovePending || vm.saving || vm.editing || vm.loading || vm.importDialogOpen) { return; }
+                if (vm.isCatalogStatusSaving() || vm.catalogMoveDialogOpen || vm.catalogMovePending || vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.loading || vm.importDialogOpen) { return; }
                 vm.catalogMoveDialogOpen = true;
                 var instance = modal.open({templateUrl: 'question/views/comprehensive_move_test_folder_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
                     controllerAs: 'move', controller: ['$scope', '$uibModalInstance', function (scope, dialogInstance) {
@@ -163,12 +171,12 @@
                 vm.error = ''; vm.savedMessage = '';
             }
             vm.newTest = function () {
-                if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 resetDraft(vm.catalogTestFolderId);
                 if (vm.initialized) { showEditor(); }
             };
             vm.edit = function (item) {
-                if (vm.catalogStatusUpdating[item.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.catalogStatusUpdating[item.id] || vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.editing = true; vm.error = ''; vm.savedMessage = '';
                 return service.getOne(item.id).then(function (data) {
                     if (!isListening(data)) {
@@ -185,7 +193,7 @@
                     .finally(function () { vm.editing = false; });
             };
             vm.save = function () {
-                if (vm.catalogStatusUpdating[vm.draft.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.catalogStatusUpdating[vm.draft.id] || vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.error = ''; vm.savedMessage = '';
                 if (!String(vm.transcript || '').trim()) { vm.error = 'Hãy dán transcript của bài nghe.'; return; }
                 if (!listening.parseUrl(vm.draft.pronounce)) { vm.error = 'Hãy nhập link audio hoặc YouTube hợp lệ.'; return; }
@@ -224,7 +232,7 @@
                 }).finally(function () { vm.saving = false; });
             };
             vm.importOldListening = function () {
-                if (vm.saving || vm.editing || vm.importDialogOpen || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.importDialogOpen || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.importDialogOpen = true;
                 var importCount = 0;
                 var instance = modal.open({

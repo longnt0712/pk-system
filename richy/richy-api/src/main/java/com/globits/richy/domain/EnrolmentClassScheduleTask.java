@@ -52,6 +52,22 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private int displayOrder;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "topic_id")
     private Topic topic;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "tbl_enrolment_class_schedule_task_topic",
+            joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "topic_id"))
+    @OrderColumn(name = "display_order")
+    private List<Topic> topics = new ArrayList<Topic>();
+    /** Ordered selections; legacy single-topic tasks retain their original topic. */
+    public List<Topic> getTopics() {
+        if (topics != null && !topics.isEmpty()) { return topics; }
+        List<Topic> legacy = new ArrayList<Topic>();
+        if (topic != null) { legacy.add(topic); }
+        return legacy;
+    }
+    public void setTopics(List<Topic> value) {
+        topics = value == null ? new ArrayList<Topic>() : value;
+        topic = topics.isEmpty() ? null : topics.get(0);
+    }
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "source_question_id")
     private Question sourceQuestion;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "ielts_test_id")

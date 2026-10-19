@@ -15,6 +15,21 @@ public class StudentAssignedTaskDto implements Serializable {
     public Boolean getShuffleQuestions() { return shuffleQuestions; }
     public void setShuffleQuestions(Boolean value) { shuffleQuestions = value; }
     private Long topicId;
+    private java.util.List<Long> topicIds;
+    private java.util.List<AssignmentTopicDto> topics;
+    private int taskCompletedTopics;
+    private int taskTotalTopics;
+    private int taskProgressPercent;
+    public java.util.List<Long> getTopicIds() { return topicIds; }
+    public void setTopicIds(java.util.List<Long> value) { topicIds = value; }
+    public java.util.List<AssignmentTopicDto> getTopics() { return topics; }
+    public void setTopics(java.util.List<AssignmentTopicDto> value) { topics = value; }
+    public int getTaskCompletedTopics() { return taskCompletedTopics; }
+    public void setTaskCompletedTopics(int value) { taskCompletedTopics = value; }
+    public int getTaskTotalTopics() { return taskTotalTopics; }
+    public void setTaskTotalTopics(int value) { taskTotalTopics = value; }
+    public int getTaskProgressPercent() { return taskProgressPercent; }
+    public void setTaskProgressPercent(int value) { taskProgressPercent = value; }
     private String topicName;
     private Long categoryId;
     private String categoryName;
@@ -32,6 +47,12 @@ public class StudentAssignedTaskDto implements Serializable {
     private int completedAttempts;
     private int remainingAttempts;
     private boolean overdue;
+    private Boolean canStartNewAttempt;
+    private String newAttemptUnavailableReason;
+    public Boolean getCanStartNewAttempt() { return canStartNewAttempt; }
+    public void setCanStartNewAttempt(Boolean value) { canStartNewAttempt = value; }
+    public String getNewAttemptUnavailableReason() { return newAttemptUnavailableReason; }
+    public void setNewAttemptUnavailableReason(String value) { newAttemptUnavailableReason = value; }
 
     public Long getTaskId() { return taskId; }
     public void setTaskId(Long value) { taskId = value; }

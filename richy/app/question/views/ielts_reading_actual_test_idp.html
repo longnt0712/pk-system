@@ -259,8 +259,10 @@
                                          title="Kéo lên xuống để đổi chiều cao · nhấp đúp để đặt lại"
                                          aria-label="Điều chỉnh chiều cao phần đề và bài viết"></div>
                                     <article class="idp-writing-answer-pane">
+                                        <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. Bấm Finish để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
                                         <textarea class="writing-task-runtime__textarea"
                                                   ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
+                                                  ng-readonly="vm.hasPendingReadingSubmission()"
                                                   ng-change="vm.updateWritingTaskResponse(item)"
                                                   writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
                                                   writing-task-audit="vm.recordWritingTaskAudit($audit)"
@@ -358,8 +360,10 @@
                                                 </div>
                                                 <span class="writing-task-runtime__requirement">Yêu cầu: trên {{vm.writingTaskWordTarget(item)}} từ</span>
                                             </div>
-                                            <textarea class="writing-task-runtime__textarea"
+                                            <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. Bấm Finish để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
+                                        <textarea class="writing-task-runtime__textarea"
                                                       ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
+                                                  ng-readonly="vm.hasPendingReadingSubmission()"
                                                       ng-change="vm.updateWritingTaskResponse(item)"
                                                       writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
                                                       writing-task-audit="vm.recordWritingTaskAudit($audit)"
@@ -1665,10 +1669,21 @@
         <div ng-show="vm.passageNumber == 4" class="col-md-12 idp-result-screen">
             <div class="row">
                 <div class="col-md-3 left-result">
-                    <div class="row text-center">
+                    <div class="row text-center" ng-if="!vm.isWritingRoute">
                         <div class="col-md-12">
                             <div id="circlechart" class="circlechart" data-percentage="2.5"></div>
                         </div>
+                    </div>
+                    <div class="idp-writing-result-status" ng-if="vm.isWritingRoute"
+                         ng-class="{'idp-writing-result-status--passed': vm.testResultAfterSubmitting.resultStatus === 'SUCCESS', 'idp-writing-result-status--failed': vm.testResultAfterSubmitting.resultStatus === 'FAILED'}"
+                         role="status" aria-live="polite">
+                        <i class="fa" ng-class="vm.testResultAfterSubmitting.resultStatus === 'SUCCESS' ? 'fa-check-circle' : (vm.testResultAfterSubmitting.resultStatus === 'FAILED' ? 'fa-exclamation-circle' : 'fa-file-text-o')" aria-hidden="true"></i>
+                        <strong ng-switch="vm.testResultAfterSubmitting.resultStatus">
+                            <span ng-switch-when="SUCCESS">Đạt</span>
+                            <span ng-switch-when="FAILED">Chưa đạt</span>
+                            <span ng-switch-default>Đã lưu</span>
+                        </strong>
+                        <small>Trạng thái bài nộp Writing</small>
                     </div>
                     <h1><i class="fa fa-book"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testName}}</h1>
                     <h1><i class="fa fa-user"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTakerName}}</h1>
@@ -1690,6 +1705,12 @@
                             ng-click="vm.continueAssignedParts()">
                         Tiếp tục {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · Part {{vm.nextAssignmentParts.join(', ')}}
                     </button>
+                    <button type="button" class="btn btn-primary idp-new-writing-attempt"
+                            ng-if="vm.hasFailedWritingReceipt()" ng-disabled="!vm.canStartNewWritingAttempt()" ng-click="vm.startNewWritingAttempt()">
+                        <i class="fa" ng-class="vm.isStartingNewWritingAttempt ? 'fa-spinner fa-spin' : 'fa-pencil'" aria-hidden="true"></i> {{vm.isStartingNewWritingAttempt ? 'Đang kiểm tra thời hạn...' : 'Làm lượt mới'}}
+                    </button>
+                    <p class="text-muted" ng-if="vm.hasFailedWritingReceipt() && vm.assignmentTaskId">Giữ bài viết để sửa và bắt đầu thời gian của lượt mới. Hạn bài được giao không thay đổi.</p>
+                    <p class="text-warning" role="status" ng-if="vm.hasFailedWritingReceipt() && vm.writingNewAttemptError">{{vm.writingNewAttemptError}}</p>
                     <p ng-if="vm.isWritingRoute && vm.isWritingGrading" role="status" aria-live="polite">
                         <i class="fa fa-spinner fa-spin"></i> Bài đã được lưu. Đang chấm Writing bằng GPT...
                     </p>
@@ -3347,6 +3368,26 @@
         box-shadow: rgba(50, 50, 93, 0.25) 0 50px 100px -20px, rgba(0, 0, 0, 0.3) 0 30px 60px -30px;
         margin-bottom: 25px;
     }
+
+    .idp-writing-result-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        max-width: 260px;
+        margin: 0 auto 18px;
+        padding: 24px 16px;
+        border: 1px solid #d6e0ee;
+        border-radius: 20px;
+        background: #f4f7fb;
+        color: #42546b;
+        text-align: center;
+    }
+    .idp-writing-result-status > .fa { font-size: 42px; }
+    .idp-writing-result-status strong { font-size: 28px; line-height: 1.25; }
+    .idp-writing-result-status small { font-size: 13px; }
+    .idp-writing-result-status--passed { background: #edf9f1; border-color: #b9e5c9; color: #19733c; }
+    .idp-writing-result-status--failed { background: #fff8e8; border-color: #f0d18e; color: #8a5700; }
 
     .circlechart {
         font-weight: 700;

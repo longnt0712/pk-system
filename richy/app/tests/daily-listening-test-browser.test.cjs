@@ -65,6 +65,10 @@ async function fixture(browser,width,learner=false,record=shared,options={}){
     .value('toastr',{success(){},error(){},warning(){},info(){}})
     .run(['$rootScope',root=>{root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){return{
+     updateTestTitle(id,title){window.renameCalls=window.renameCalls||[];window.renameCalls.push({id,title});const d=q.defer();function finish(){
+      if(window.failRename){d.reject({data:{message:'Không lưu được tên bài thử nghiệm'}});return;}
+      const row=window.records.find(item=>item.id===id);row.title=title;row.question=title;d.resolve({id,title});
+     }if(window.holdRename)window.releaseRename=finish;else finish();return d.promise;},
      updateTestStatus(id,status){window.statusCalls.push({id,status});const d=q.defer();function finish(){if(window.failStatus){d.reject({data:{message:'Xuất bản lỗi thử nghiệm'}});return;}const row=window.records.find(item=>item.id===id);row.status=status;d.resolve({id,status});}if(window.holdStatus)window.releaseStatus=finish;else finish();return d.promise;},
      getDailyListeningTests(dto,index,size){window.pageCalls.push(structuredClone(dto));
       const data=window.records.filter(item=>item.questionType.id===11&&item.testFormat==='DAILY_LISTENING'&&(item.status===7 || dto.status===9&&item.status===6)&&
@@ -373,7 +377,8 @@ test('pasted Daily Listening layout survives save and reopen and is identical in
   const creator=await fixture(browser,width);let page=creator.page;
   await page.getByRole('textbox',{name:/Tên bài/}).fill('Dialogue layout');await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).fill('http://daily-listening-creator.test/audio.wav');
   await page.getByRole('textbox',{name:'Transcript',exact:true}).fill(transcript);await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
-  const saved=await page.evaluate(()=>records.find(row=>row.id===qaVm.draft.id));assert.equal(saved.motherTongue,transcript);
+  const saved=await page.evaluate(()=>records.find(row=>row.title==='Dialogue layout'));assert.equal(saved.motherTongue,transcript);
+  assert.equal(await page.evaluate(()=>qaVm.draft.id==null),true,'creating a lesson resets the form for the next lesson');
   await page.locator('article').filter({has:page.getByRole('heading',{name:'Dialogue layout',exact:true})}).getByRole('button',{name:'Sửa bài',exact:true}).click();
   await page.waitForFunction(()=>qaVm.editing===false);assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),transcript);
   assert.deepEqual(creator.errors,[]);await page.close();
@@ -622,5 +627,45 @@ test('iOS YouTube layout adapts to narrow screens and dark mode with synchronize
   }
   if(width===1366 || width===390)await page.screenshot({path:path.join(repo,'.tmp/daily-ios-youtube-'+width+(dark?'-dark':'')+'.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+
+test('Daily Listening double click renames lessons and folders in place on desktop and mobile',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const width of [1366,390]){
+  const {page,errors}=await fixture(browser,width);
+  const card=page.locator('.daily-listening-catalog-item').filter({has:page.getByRole('heading',{name:'Listening cũ',exact:true})});
+  await card.getByRole('button',{name:'Sửa bài',exact:true}).click();await page.waitForFunction(()=>qaVm.draft.id===21);
+  await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('Transcript chưa lưu');
+  await card.locator('.test-title-display').dblclick();const input=page.getByRole('textbox',{name:'Tên bài test',exact:true});
+  await input.waitFor();await input.fill('Listening đổi tên');await input.press('Enter');
+  await page.getByRole('heading',{name:'Listening đổi tên',exact:true}).waitFor();
+  assert.equal(await page.getByRole('textbox',{name:/Tên bài/}).inputValue(),'Listening đổi tên');
+  assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'Transcript chưa lưu');
+  assert.equal(await page.evaluate(()=>window.saveCalls.length),0);assert.equal(await page.evaluate(()=>window.records[0].pronounce),'http://daily-listening-creator.test/audio.wav');
+  const renamedCard=page.locator('.daily-listening-catalog-item').first();
+  await renamedCard.locator('.test-title-display').dblclick();await input.fill('Tên hủy');await input.press('Escape');
+  await page.getByRole('heading',{name:'Listening đổi tên',exact:true}).waitFor();
+  await renamedCard.locator('.test-title-display').dblclick();await input.fill(' ');await input.press('Enter');
+  await renamedCard.getByRole('alert').filter({hasText:'không được để trống'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.renameCalls.length),1);
+  await page.evaluate(()=>window.failRename=true);await input.fill('Thử lại');await input.press('Enter');
+  await renamedCard.getByRole('alert').filter({hasText:'Không lưu được tên bài thử nghiệm'}).waitFor();assert.equal(await input.inputValue(),'Thử lại');
+  await page.evaluate(()=>{window.failRename=false;window.holdRename=true;});await input.press('Enter');await page.waitForFunction(()=>!!window.releaseRename);
+  assert.equal(await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).isDisabled(),true);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>window.releaseRename()));
+  await page.getByRole('heading',{name:'Thử lại',exact:true}).waitFor();
+  const explorer=page.locator('.daily-listening-catalog test-folder-explorer');
+  await explorer.getByRole('button',{name:'Tạo folder',exact:true}).click();await explorer.getByRole('textbox',{name:'Tên folder',exact:true}).fill('Folder nghe');
+  await explorer.getByRole('button',{name:'Lưu folder',exact:true}).click();
+  await explorer.locator('.test-explorer-folder .test-explorer-name').filter({hasText:'Folder nghe'}).dblclick();
+  const folderInput=explorer.getByRole('textbox',{name:'Tên folder mới',exact:true});await folderInput.waitFor();await page.waitForTimeout(550);
+  assert.equal(await page.evaluate(()=>qaVm.catalogTestFolderId),null);
+  await folderInput.fill('Folder đổi tên');await folderInput.press('Enter');await explorer.locator('.test-explorer-folder').filter({hasText:'Folder đổi tên'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.folderSaveCalls.at(-1).testMode),'DAILY_LISTENING');
+  await explorer.locator('.test-explorer-folder .test-explorer-name').filter({hasText:'Folder đổi tên'}).dblclick();await folderInput.fill('Bỏ đổi');await folderInput.press('Escape');
+  await explorer.locator('.test-explorer-folder').filter({hasText:'Folder đổi tên'}).waitFor();assert.deepEqual(errors,[]);
+  await page.close();
  }}finally{await browser.close();}
 });

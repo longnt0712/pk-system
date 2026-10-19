@@ -205,3 +205,18 @@ test('Daily Listening save and reopen preserve leading spacing, blank lines and 
  await vm.edit({id:21});assert.equal(vm.transcript,transcript);vm.draft.question='New title';await vm.save();assert.equal(saves[0].motherTongue,transcript);
  vm.transcript='Next line\n\n  keeps indentation\n';await vm.save();assert.equal(saves[1].motherTongue,vm.transcript);
 });
+
+
+test('inline rename synchronizes the open builder while preserving unsaved title and transcript edits',async()=>{
+ const {vm,old}=setup();await tick();await vm.edit(old);
+ vm.transcript='Unsaved transcript';vm.catalogTestRenamed({...old,title:'Renamed'},old.title);
+ assert.equal(vm.draft.question,'Renamed');assert.equal(vm.draft.title,'Renamed');assert.equal(vm.transcript,'Unsaved transcript');
+ vm.draft.question='My unsaved title';vm.catalogTestRenamed({...old,title:'Renamed again'},'Renamed');
+ assert.equal(vm.draft.question,'My unsaved title');assert.equal(vm.draft.title,'Renamed again');
+});
+
+test('pending inline rename blocks saving, opening, moving, or replacing its editor',async()=>{
+ const {vm,old,saves}=setup();await tick();await vm.edit(old);vm.catalogTitleUpdating[old.id]=true;
+ const draft=vm.draft;await vm.save();await vm.edit(old);vm.newTest();vm.importOldListening();vm.openCatalogMoveDialog(old);
+ assert.equal(vm.draft,draft);assert.equal(saves.length,0);assert.equal(vm.importDialogOpen,undefined);assert.equal(vm.catalogMoveDialogOpen,undefined);
+});

@@ -19,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.LockModeType;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -667,6 +668,11 @@ public class TestResultServiceImpl implements TestResultService {
 		TestResult domain = null;
 		boolean newResult = false;
 		EnrolmentClassScheduleTask dailyVocabAssignedTask = null;
+        Topic assignedVocabularyTopic = null;
+        // Only the validated selected topic is allowed to become assignment evidence.
+        if (!Integer.valueOf(1).equals(dto.getTestType()) || dto.getAssignmentTaskId() == null) {
+            dto.setAssignmentTopicId(null);
+        }
         boolean passedDailyVocab=true;
         boolean passedDailyListening=false;
         boolean passedComprehensive=true;
@@ -762,7 +768,14 @@ public class TestResultServiceImpl implements TestResultService {
 				// as self-practice, without trusting the stale assignment reference.
 				dto.setAssignmentTaskId(null);
 				dailyVocabAssignedTask = null;
-			}
+                dto.setAssignmentTopicId(null);
+			} else {
+                assignedVocabularyTopic = resolveAssignedVocabularyTopic(dailyVocabAssignedTask, dto.getAssignmentTopicId());
+                if (dailyVocabAssignedTask.getTopics().size() > 1 && !belongsToAssignedClass(modifiedUser, dailyVocabAssignedTask)) {
+                    throw new AccessDeniedException("Bạn không được nộp bài được giao của lớp này.");
+                }
+                dto.setAssignmentTopicId(assignedVocabularyTopic == null ? null : assignedVocabularyTopic.getId());
+            }
 		} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
 			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
 			if (assignedTask == null || !"DAILY_LISTENING".equals(assignedTask.getActivityType())
@@ -813,15 +826,15 @@ public class TestResultServiceImpl implements TestResultService {
 		// The exercise may emit the topics of the played questions while a homework task
 		// points at its containing topic. Persist the server-owned assignment topic as
 		// evidence as well, so valid completions and pending retries are not rejected.
-		if (dailyVocabAssignedTask != null && dailyVocabAssignedTask.getTopic() != null) {
-			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
-			resultTopics.add(dailyVocabAssignedTask.getTopic());
-		}
+        if (assignedVocabularyTopic != null) {
+            if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
+            resultTopics.add(assignedVocabularyTopic);
+        }
 		if (dto.getSourceQuestionId() != null && !Integer.valueOf(1).equals(dto.getTestType())) {
 			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
 			addQuestionTopics(questionRepository.findOne(dto.getSourceQuestionId()), resultTopics);
 		}
-		Set<Topic> completedVocabTopics = passedDailyVocab ? completedTopics(dto, resultTopics) : new LinkedHashSet<Topic>();
+        Set<Topic> completedVocabTopics = passedDailyVocab ? completedTopics(dto, resultTopics) : new LinkedHashSet<Topic>();
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
@@ -829,7 +842,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if(domain == null) {
 			domain = new TestResult();
 			newResult = true;
-			if(Integer.valueOf(1).equals(dto.getTestType()) || Integer.valueOf(3).equals(dto.getTestType())) {
+			if (supportsAttemptKey(dto.getTestType())) {
 				domain.setClientAttemptKey(dto.getClientAttemptKey());
 			}
 			domain.setCreateDate(currentDate);
@@ -870,6 +883,7 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setCompletedParts(dto.getCompletedParts());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
+        domain.setAssignmentTopicId(dto.getAssignmentTopicId());
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			String sessionMode = dto.getAssignmentTaskId() != null ? "SERIOUS"
 					: ("STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS");
@@ -964,6 +978,41 @@ public class TestResultServiceImpl implements TestResultService {
 		return new TestResultDto(domain);
 	}
 
+    private Topic resolveAssignedVocabularyTopic(EnrolmentClassScheduleTask task, Long selectedTopicId) {
+        List<Topic> topics = task.getTopics();
+        if (selectedTopicId == null && topics.size() > 1) {
+            throw new IllegalArgumentException("Hãy xác định Topic đã làm trong task Daily Vocab.");
+        }
+        if (selectedTopicId == null) { return topics.isEmpty() ? null : topics.get(0); }
+        for (Topic topic : topics) { if (selectedTopicId.equals(topic.getId())) { return topic; } }
+        throw new IllegalArgumentException("Topic đã làm không thuộc task Daily Vocab được giao.");
+    }
+
+    private boolean belongsToAssignedClass(User student, EnrolmentClassScheduleTask task) {
+        if (student == null || student.getId() == null || task.getScheduleDay() == null
+                || task.getScheduleDay().getEnrolmentClass() == null) { return false; }
+        User currentMembership = userRepository.findById(student.getId());
+        if (currentMembership == null) { return false; }
+        // Authentication may retain an older class list; resolve current membership from storage.
+        manager.refresh(currentMembership);
+        student = currentMembership;
+        Long assignedClassId = task.getScheduleDay().getEnrolmentClass().getId();
+        Set<Long> direct = new LinkedHashSet<Long>();
+        if (student.getEnrollmentClassIds() != null) { direct.addAll(student.getEnrollmentClassIds()); }
+        if (student.getPerson() != null && student.getPerson().getEnrollmentClassId() != null) {
+            direct.add(student.getPerson().getEnrollmentClassId().longValue());
+        }
+        for (Long classId : direct) {
+            EnrolmentClass current = classId == null ? null : enrolmentClassRepository.findOne(classId);
+            Set<Long> visited = new HashSet<Long>();
+            while (current != null && current.getId() != null && visited.add(current.getId())) {
+                if (current.getId().equals(assignedClassId)) { return true; }
+                current = current.getParent();
+            }
+        }
+        return false;
+    }
+
 	private boolean passedIeltsObjectiveThreshold(Set<QuestionAnswerTestResult> answers) {
 		if (answers == null || answers.isEmpty()) { return false; }
 		int total = 0;
@@ -1016,16 +1065,55 @@ public class TestResultServiceImpl implements TestResultService {
 		return true;
 	}
 
+    private boolean supportsAttemptKey(Integer testType) {
+        return Arrays.asList(1, 2, 3, 4, 6, 7).contains(testType);
+    }
+
     private TestResult findRetryAttempt(TestResultDto dto,User actor) {
         if(dto.getClientAttemptKey()==null)return null; // Older clients remain compatible.
-        if((!Integer.valueOf(1).equals(dto.getTestType()) && !Integer.valueOf(3).equals(dto.getTestType()))
+        if (!supportsAttemptKey(dto.getTestType())
                 || !dto.getClientAttemptKey().matches("[a-f0-9]{32}"))
             throw new IllegalArgumentException("Mã lượt làm không hợp lệ.");
         if(actor==null||actor.getId()==null)throw new AccessDeniedException("Cần đăng nhập để lưu kết quả.");
         if(dto.getUser()!=null&&dto.getUser().getId()!=null&&!actor.getId().equals(dto.getUser().getId()))
             throw new AccessDeniedException("Lượt làm này thuộc tài khoản khác.");
-        return testResultRepository.findAttempt(actor.getId(),dto.getClientAttemptKey(),dto.getTestType());
+        // Serialize keyed submissions for one student across all application instances.
+        // The transaction holds this row lock through both result persistence and XP updates.
+        User lockedUser = manager.find(User.class, actor.getId(), LockModeType.PESSIMISTIC_WRITE);
+        if (lockedUser == null) { throw new AccessDeniedException("Không tìm thấy tài khoản lưu kết quả."); }
+        // An authentication/OpenEntityManagerInView load may have cached an older XP balance.
+        manager.refresh(lockedUser, LockModeType.PESSIMISTIC_WRITE);
+        List<TestResult> previous = testResultRepository.findAttemptsForRetry(actor.getId(), dto.getClientAttemptKey(), dto.getTestType());
+        if (previous == null || previous.isEmpty()) { return null; }
+        TestResult first = previous.get(0);
+        for (int index = 1; index < previous.size(); index++) {
+            if (!sameRetryEvidence(first, previous.get(index))) {
+                throw new IllegalStateException("Mã lượt làm có các kết quả cũ không đồng nhất. Cần kiểm tra lịch sử trước khi xác nhận lưu.");
+            }
+        }
+        // Existing duplicate history is left intact; an identical retry acknowledges its first saved row.
+        return first;
     }
+    private String retryOutcome(TestResult result) {
+        return Integer.valueOf(1).equals(result.getTestType()) && result.getResultStatus() == null
+                ? "SUCCESS" : result.getResultStatus();
+    }
+    private Set<Long> retryTopicIds(TestResult result) {
+        Set<Long> ids = new HashSet<Long>();
+        if (result.getTopics() != null) { for (Topic topic : result.getTopics()) { ids.add(topic.getId()); } }
+        return ids;
+    }
+    private boolean sameRetryEvidence(TestResult first, TestResult copy) {
+        return java.util.Objects.equals(first.getSourceQuestionId(), copy.getSourceQuestionId())
+                && java.util.Objects.equals(first.getAssignmentTaskId(), copy.getAssignmentTaskId())
+                && java.util.Objects.equals(first.getAssignmentTopicId(), copy.getAssignmentTopicId())
+                && new java.util.HashSet<Integer>(first.getCompletedParts()).equals(new java.util.HashSet<Integer>(copy.getCompletedParts()))
+                && retryTopicIds(first).equals(retryTopicIds(copy))
+                && java.util.Objects.equals(retryOutcome(first), retryOutcome(copy))
+                && java.util.Objects.equals(first.getNumberOfWords(), copy.getNumberOfWords())
+                && first.getVocabularyExperienceAwardedWords() == copy.getVocabularyExperienceAwardedWords();
+    }
+
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean deleteObject(Long id) {

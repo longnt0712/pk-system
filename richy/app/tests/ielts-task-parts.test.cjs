@@ -16,12 +16,13 @@ function editor() {
                 {id: 22, title: 'Writing Task 1', hasWritingTask1: true, hasWritingTask2: false}],
             scheduleDay: {tasks: [], scheduleDate: '2026-10-06'}, scheduleTopics: [], scheduleListeningItems: [],
             taskDeadlineChanged() {}, loadTaskListeningItems() {}, initializeComprehensiveAssignment() {},
-            saveScheduleDay() { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); }
+            saveScheduleDay(options) { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); if (options.onSuccess) { options.onSuccess(); } }
         },
         angular: {isArray: Array.isArray, copy: value => JSON.parse(JSON.stringify(value)), forEach: (items, callback) => (items || []).forEach(callback)},
         toastr: {warning(message) { context.warning = message; }}
     });
     const run = (start, end) => nodeVm.runInContext(source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))), context);
+    run('        vm.taskTopicIds =', '\t\tvm.tasksForSection =');
     run('vm.taskActivityTypeChanged = function', 'vm.ieltsTestsForTask = function');
     run('vm.openScheduleTask = function', 'vm.cancelScheduleTask = function');
     run('function scheduleTaskPayload(task)', 'vm.removeScheduleTask = function');

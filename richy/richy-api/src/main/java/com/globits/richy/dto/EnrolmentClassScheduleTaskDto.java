@@ -46,6 +46,18 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public void setRequiredAttempts(Integer value) { requiredAttempts = value; }
     private String status;
     private Long topicId;
+    private List<Long> topicIds;
+    private List<AssignmentTopicDto> topics = new ArrayList<AssignmentTopicDto>();
+    public List<Long> getTopicIds() {
+        if (topicIds != null) { return topicIds; }
+        return topicId == null ? new ArrayList<Long>() : new ArrayList<Long>(java.util.Collections.singletonList(topicId));
+    }
+    public void setTopicIds(List<Long> value) { topicIds = value; }
+    /** Distinguishes old clients omitting the new field from an explicit empty selection. */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean hasTopicIdsSelection() { return topicIds != null; }
+    public List<AssignmentTopicDto> getTopics() { return topics; }
+    public void setTopics(List<AssignmentTopicDto> value) { topics = value; }
     private String topicName;
     private Long categoryId;
     private String categoryName;
@@ -65,6 +77,10 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
         activityType = task.getActivityType();
         shuffleQuestions = task.getShuffleQuestions();
         requiredAttempts = task.getRequiredAttempts();
+        topicIds = new ArrayList<Long>();
+        for (com.globits.richy.domain.Topic selected : task.getTopics()) {
+            topicIds.add(selected.getId()); topics.add(new AssignmentTopicDto(selected));
+        }
         if (task.getTopic() != null) {
             topicId = task.getTopic().getId(); topicName = task.getTopic().getName();
             if (task.getTopic().getTopicCategory() != null) {

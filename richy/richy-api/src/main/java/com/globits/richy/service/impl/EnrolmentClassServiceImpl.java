@@ -729,6 +729,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					LocalDateTime completionEnd = HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, deadline, now);
 					if (completionEnd == null) { continue; }
 
+                    if ("DAILY_VOCAB".equals(task.getActivityType()) && task.getTopicIds().size() > 1) {
+                        appendVocabularyTopicAssignments(result, task, student.getId(), classId, selectedClass.getName(),
+                                day.getScheduleDate(), start, completionEnd);
+                        continue;
+                    }
 					int required = task.getRequiredAttempts();
 					int completed = 0;
 					Integer nextIeltsPart = task.getIeltsPart();
@@ -768,6 +773,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setTaskId(task.getId()); item.setClassId(classId); item.setClassName(selectedClass.getName());
 					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
 					item.setShuffleQuestions(task.getShuffleQuestions());
+                    item.setTopicIds(task.getTopicIds()); item.setTopics(task.getTopics());
 					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
 					item.setSourceQuestionId(task.getSourceQuestionId()); item.setSourceQuestionTitle(task.getSourceQuestionTitle());
@@ -789,8 +795,44 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				return due != 0 ? due : String.valueOf(a.getTitle()).compareToIgnoreCase(String.valueOf(b.getTitle()));
 			}
 		});
-		return result.size() > 20 ? new ArrayList<StudentAssignedTaskDto>(result.subList(0, 20)) : result;
+        // A grouped assignment must never lose its final topics at the card limit.
+        int limit = Math.min(20, result.size());
+        while (limit < result.size() && result.get(limit - 1).getTaskId().equals(result.get(limit).getTaskId())) { limit++; }
+        return new ArrayList<StudentAssignedTaskDto>(result.subList(0, limit));
 	}
+
+    private void appendVocabularyTopicAssignments(List<StudentAssignedTaskDto> result,
+            EnrolmentClassScheduleTaskDto task, Long studentId, Long classId, String className,
+            String assignedDate, LocalDateTime start, LocalDateTime end) {
+        for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
+            if (studentId.equals(progress.getStudentUserId()) && !progress.isAutomatic()
+                    && "DONE".equals(progress.getStatus())) { return; }
+        }
+        Map<Long, Integer> counts = new LinkedHashMap<Long, Integer>();
+        int completed = 0, completedTopics = 0, required = task.getRequiredAttempts();
+        for (Long topicId : task.getTopicIds()) {
+            int count = (int) Math.min(required, testResultRepository.countSuccessfulVocabularyTopicAttempts(
+                    studentId, task.getId(), topicId, start, end));
+            counts.put(topicId, count); completed += count;
+            if (count == required) { completedTopics++; }
+        }
+        if (completedTopics == task.getTopicIds().size()) { return; }
+        int percent = (int) Math.round(completed * 100.0 / (required * task.getTopicIds().size()));
+        for (com.globits.richy.dto.AssignmentTopicDto topic : task.getTopics()) {
+            StudentAssignedTaskDto item = new StudentAssignedTaskDto();
+            item.setTaskId(task.getId()); item.setClassId(classId); item.setClassName(className);
+            item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
+            item.setTopicIds(task.getTopicIds()); item.setTopics(task.getTopics());
+            item.setTopicId(topic.getTopicId()); item.setTopicName(topic.getTopicName());
+            item.setCategoryId(topic.getCategoryId()); item.setCategoryName(topic.getCategoryName());
+            item.setAssignedDate(assignedDate); item.setDueDate(task.getResolvedDueDate()); item.setDueTime(task.getResolvedDueTime());
+            int count = counts.get(topic.getTopicId());
+            item.setRequiredAttempts(required); item.setCompletedAttempts(count); item.setRemainingAttempts(required - count);
+            item.setTaskCompletedTopics(completedTopics); item.setTaskTotalTopics(task.getTopicIds().size());
+            item.setTaskProgressPercent(percent);
+            result.add(item);
+        }
+    }
 
 	@Override
 	public StudentAssignedTaskDto getAssignedTask(Long taskId) {
@@ -808,9 +850,57 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		StudentAssignedTaskDto dto = new StudentAssignedTaskDto();
 		dto.setTaskId(task.getId()); dto.setClassId(selectedClass.getId());
 		dto.setActivityType(task.getActivityType()); dto.setShuffleQuestions(task.getShuffleQuestions());
+        List<Long> selectedTopicIds = new ArrayList<Long>();
+        List<com.globits.richy.dto.AssignmentTopicDto> selectedTopics = new ArrayList<com.globits.richy.dto.AssignmentTopicDto>();
+        for (Topic topic : task.getTopics()) {
+            selectedTopicIds.add(topic.getId()); selectedTopics.add(new com.globits.richy.dto.AssignmentTopicDto(topic));
+        }
+        dto.setTopicIds(selectedTopicIds); dto.setTopics(selectedTopics);
+        if (task.getTopic() != null) { dto.setTopicId(task.getTopic().getId()); dto.setTopicName(task.getTopic().getName()); }
 		if (task.getIeltsTest() != null) { dto.setIeltsTestId(task.getIeltsTest().getId()); }
+        dto.setIeltsPart(task.getIeltsPart()); dto.setIeltsParts(task.getIeltsParts());
+        populateAssignedTaskAvailability(dto, task, LocalDateTime.now());
 		return dto;
 	}
+
+    /** Availability gates a fresh attempt only; metadata and old save receipts remain readable. */
+    private void populateAssignedTaskAvailability(StudentAssignedTaskDto dto, EnrolmentClassScheduleTask task, LocalDateTime now) {
+        dto.setCanStartNewAttempt(Boolean.FALSE);
+        EnrolmentClassScheduleDay day = task.getScheduleDay();
+        if (day == null || day.getEnrolmentClass() == null || !isValidDate(day.getScheduleDate())) {
+            dto.setNewAttemptUnavailableReason("Chưa xác định được thời gian giao bài. Hãy mở lại bài từ trang chủ.");
+            return;
+        }
+        EffectiveClassSchedule timeline = effectiveSchedule(day.getEnrolmentClass().getId());
+        // Resolve only this task; other students' progress is never exposed by this endpoint.
+        EnrolmentClassScheduleDayDto dayDto = new EnrolmentClassScheduleDayDto();
+        dayDto.setScheduleDate(day.getScheduleDate()); dayDto.setMovedToDate(day.getMovedToDate());
+        EnrolmentClassScheduleTaskDto selected = new EnrolmentClassScheduleTaskDto(task);
+        dayDto.setTasks(Collections.singletonList(selected));
+        enrichScheduleDeadline(dayDto, timeline);
+        dto.setDueDate(selected.getResolvedDueDate()); dto.setDueTime(selected.getResolvedDueTime());
+        dto.setAssignedDate(day.getScheduleDate());
+        if (!"HOMEWORK".equals(task.getSection()) || day.getMovedToDate() != null) {
+            dto.setNewAttemptUnavailableReason("Bài tập này không còn trong danh sách bài về nhà đang được giao.");
+            return;
+        }
+        EffectiveClassSchedule.Slot session = timeline.on(day.getScheduleDate());
+        LocalDateTime start = session == null
+                ? HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()))
+                : HomeworkTopicCompletion.at(session.date, session.endTime);
+        if (start == null) { start = HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate())); }
+        LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(selected.getResolvedDueDate(), selected.getResolvedDueTime());
+        if (now == null || now.isBefore(start)) {
+            dto.setNewAttemptUnavailableReason("Chưa đến thời gian bắt đầu bài được giao.");
+        } else if (deadline == null || !deadline.isAfter(start)) {
+            dto.setNewAttemptUnavailableReason("Bài tập chưa có hạn hoàn thành hợp lệ. Hãy kiểm tra lại với giáo viên.");
+        } else if (HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, deadline, now) == null) {
+            dto.setNewAttemptUnavailableReason("Bài được giao đã hết hạn; bạn vẫn có thể xác nhận lại kết quả của lượt đã làm.");
+        } else {
+            dto.setCanStartNewAttempt(Boolean.TRUE);
+            dto.setNewAttemptUnavailableReason(null);
+        }
+    }
 
 	private Set<Long> studentClassAndAncestorIds(User student) {
 		Set<Long> direct = new LinkedHashSet<Long>();
@@ -865,7 +955,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         List<Long> topicIds = new ArrayList<Long>();
         List<Long> ieltsTestIds = new ArrayList<Long>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
-            if (HomeworkTopicCompletion.enabled(task) && !topicIds.contains(task.getTopicId())) { topicIds.add(task.getTopicId()); }
+            if (HomeworkTopicCompletion.enabled(task)) {
+                for (Long topicId : task.getTopicIds()) { if (!topicIds.contains(topicId)) { topicIds.add(topicId); } }
+            }
             if (HomeworkTopicCompletion.ieltsEnabled(task) && !ieltsTestIds.contains(task.getIeltsTestId())) { ieltsTestIds.add(task.getIeltsTestId()); }
         }
         if (topicIds.isEmpty() && ieltsTestIds.isEmpty()) { return dto; }
@@ -1153,7 +1245,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				task.setScheduleDay(domain); task.setSection(prepared.getSection()); task.setTitle(prepared.getTitle());
 				task.setNotes(prepared.getNotes()); task.setDueDate(prepared.getDueDate()); task.setStatus(prepared.getStatus());
                 task.setDueTime(prepared.getDueTime()); task.setDeadlineAutomatic(prepared.getDeadlineAutomatic());
-				task.setTopic(prepared.getTopic()); task.setDisplayOrder(prepared.getDisplayOrder());
+                task.setTopics(new ArrayList<Topic>(prepared.getTopics())); task.setDisplayOrder(prepared.getDisplayOrder());
 				task.setAutoCompleteFromTopic(prepared.getAutoCompleteFromTopic());
 				task.setActivityType(prepared.getActivityType()); task.setRequiredAttempts(prepared.getRequiredAttempts());
 				task.setShuffleQuestions(prepared.getShuffleQuestions());
@@ -1477,26 +1569,42 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				task.setIeltsTest(test); task.setIeltsPart(selectedParts.get(0)); task.setIeltsParts(selectedParts); task.setSourceQuestion(null);
 				task.setTopic(null);
 				task.setAutoCompleteFromTopic(false);
-			} else if (value.getTopicId() != null) {
-				Topic topic = topicRepository.findOne(value.getTopicId());
-				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
-				task.setTopic(topic);
-				if ("DAILY_LISTENING".equals(activityType) && value.getSourceQuestionId() != null) {
-					Question sourceQuestion = questionRepository.findOne(value.getSourceQuestionId());
-					Long linkCount = sourceQuestion == null ? Long.valueOf(0L)
-							: questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
-					if (sourceQuestion == null || sourceQuestion.getQuestionType() == null
-							|| (!Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId()) && !DailyListeningServiceImpl.isDailyTest(sourceQuestion))
-							|| linkCount == null || linkCount.longValue() < 1L) {
-						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
-					}
-					task.setSourceQuestion(sourceQuestion);
-				} else {
-					task.setSourceQuestion(null);
-				}
-			} else if (value.getSourceQuestionId() != null) {
-				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn Topic trước khi chọn bài nghe/Track.");
-			}
+            } else {
+                List<Long> selectedTopicIds = new ArrayList<Long>(value.getTopicIds());
+                if (!value.hasTopicIdsSelection() && oldTask != null && activityType.equals(oldTask.getActivityType())
+                        && oldTask.getTopic() != null && oldTask.getTopic().getId().equals(value.getTopicId())) {
+                    selectedTopicIds.clear();
+                    for (Topic selected : oldTask.getTopics()) { selectedTopicIds.add(selected.getId()); }
+                }
+                if (selectedTopicIds.size() > 100 || selectedTopicIds.contains(null)
+                        || (!"DAILY_VOCAB".equals(activityType) && selectedTopicIds.size() > 1)) {
+                    throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Danh sách Topic không hợp lệ (tối đa 100 Topic cho Daily Vocab).");
+                }
+                List<Topic> selectedTopics = new ArrayList<Topic>();
+                for (Long topicId : new LinkedHashSet<Long>(selectedTopicIds)) {
+                    Topic selected = topicRepository.findOne(topicId);
+                    if (selected == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
+                    selectedTopics.add(selected);
+                }
+                task.setTopics(selectedTopics);
+                if ("DAILY_LISTENING".equals(activityType) && value.getSourceQuestionId() != null) {
+                    Topic topic = task.getTopic();
+                    if (topic == null) {
+                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn Topic trước khi chọn bài nghe/Track.");
+                    }
+                    Question sourceQuestion = questionRepository.findOne(value.getSourceQuestionId());
+                    Long linkCount = sourceQuestion == null ? Long.valueOf(0L)
+                            : questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
+                    if (sourceQuestion == null || sourceQuestion.getQuestionType() == null
+                            || (!Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId()) && !DailyListeningServiceImpl.isDailyTest(sourceQuestion))
+                            || linkCount == null || linkCount.longValue() < 1L) {
+                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
+                    }
+                    task.setSourceQuestion(sourceQuestion);
+                } else {
+                    task.setSourceQuestion(null);
+                }
+            }
 			task.setDisplayOrder(result.size());
 			Set<Long> allowedStudentIds = new HashSet<Long>(studentIds);
 			/* Preserve historical progress when a student later leaves this class. */

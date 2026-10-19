@@ -7,6 +7,9 @@ public class EnrolmentClassTaskProgressDto implements Serializable {
     private Long studentUserId;
     private String status;
     private String notes;
+    private Integer progressPercent;
+    public Integer getProgressPercent() { return progressPercent; }
+    public void setProgressPercent(Integer value) { progressPercent = value; }
     private boolean automatic;
     private String manualStatus;
     public String getManualStatus() { return manualStatus; }

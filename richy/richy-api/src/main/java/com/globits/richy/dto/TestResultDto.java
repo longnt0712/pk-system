@@ -39,6 +39,9 @@ public class TestResultDto implements Serializable{
 	private Integer completedPart;
 	private List<Integer> completedParts;
 	private Long assignmentTaskId;
+    private Long assignmentTopicId;
+    public Long getAssignmentTopicId() { return assignmentTopicId; }
+    public void setAssignmentTopicId(Long value) { assignmentTopicId = value; }
 	private String ieltsSessionMode;
 	private Integer activeDurationSeconds;
 	private String ieltsLearningState;
@@ -176,6 +179,7 @@ public class TestResultDto implements Serializable{
         completedPart=domain.getCompletedPart();
         completedParts=domain.getCompletedParts();
         assignmentTaskId=domain.getAssignmentTaskId();
+        assignmentTopicId=domain.getAssignmentTopicId();
         ieltsSessionMode=domain.getIeltsSessionMode();
         activeDurationSeconds=domain.getActiveDurationSeconds();
         aiGradingProvider=domain.getAiGradingProvider();

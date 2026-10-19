@@ -68,7 +68,7 @@
              ng-if="settings.ieltsRoom == true && vm.permissionsLoaded && vm.resumeDrafts.length">
         <div class="student-resume-heading">
             <div>
-                <span class="student-assignment-kicker"><i class="fa fa-history"></i> BÀI ĐANG LÀM DỞ</span>
+                <span class="student-assignment-kicker"><i class="fa fa-history"></i> BÀI ĐANG LÀM DỞ / KẾT QUẢ CHỜ LƯU</span>
                 <h2>Bạn có muốn làm tiếp không?</h2>
                 <p>Tiến độ được tự động lưu và vẫn được giữ lại khi bạn ẩn lời nhắc.</p>
             </div>
@@ -77,28 +77,28 @@
 
         <article class="reading-resume-card" ng-repeat="draft in vm.resumeDrafts track by draft.storageKey">
             <div class="reading-resume-icon">
-                <i class="fa" ng-class="draft.kind === 'DAILY_VOCAB' ? 'fa-language' : draft.kind === 'DAILY_LISTENING' || draft.kind === 'IELTS_LISTENING' ? 'fa-headphones' : draft.kind === 'COMPREHENSIVE' || draft.kind === 'IELTS_WRITING' ? 'fa-pencil-square-o' : 'fa-file-text-o'"></i>
+                <i class="fa" ng-class="(draft.kind === 'DAILY_VOCAB' || draft.kind === 'DAILY_VOCAB_PENDING') ? 'fa-language' : draft.kind === 'DAILY_LISTENING' || draft.kind === 'IELTS_LISTENING' ? 'fa-headphones' : draft.kind === 'COMPREHENSIVE' || draft.kind === 'IELTS_WRITING' ? 'fa-pencil-square-o' : 'fa-file-text-o'"></i>
             </div>
             <div class="reading-resume-copy">
-                <span class="reading-resume-kicker">{{draft.kind === 'DAILY_VOCAB' ? 'DAILY VOCAB' : draft.kind === 'DAILY_LISTENING' ? 'DAILY LISTENING' : draft.kind === 'IELTS_LISTENING' ? 'IELTS LISTENING' : draft.kind === 'IELTS_WRITING' ? 'IELTS WRITING' : draft.kind === 'COMPREHENSIVE' ? 'BÀI TẬP TỔNG HỢP' : 'IELTS READING'}}</span>
-                <h3>Bạn còn một bài đang làm dở</h3>
+                <span class="reading-resume-kicker">{{(draft.kind === 'DAILY_VOCAB' || draft.kind === 'DAILY_VOCAB_PENDING') ? 'DAILY VOCAB' : draft.kind === 'DAILY_LISTENING' ? 'DAILY LISTENING' : draft.kind === 'IELTS_LISTENING' ? 'IELTS LISTENING' : draft.kind === 'IELTS_WRITING' ? 'IELTS WRITING' : draft.kind === 'COMPREHENSIVE' ? 'BÀI TẬP TỔNG HỢP' : 'IELTS READING'}}</span>
+                <h3>{{draft.pendingSave ? 'Kết quả đang chờ xác nhận lưu' : 'Bạn còn một bài đang làm dở'}}</h3>
                 <p class="reading-resume-title">{{draft.title}}</p>
                 <div class="reading-resume-meta">
                     <span><i class="fa fa-check-circle-o"></i> {{draft.progressLabel}} {{draft.progressValue}}</span>
-                    <span ng-if="draft.sessionMode === 'STUDY'"><i class="fa fa-clock-o"></i> Đã học {{vm.formatReadingDraftTime(draft.elapsedSeconds)}}</span>
-                    <span ng-if="draft.sessionMode !== 'STUDY' && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
+                    <span ng-if="!draft.pendingSave && draft.sessionMode === 'STUDY'"><i class="fa fa-clock-o"></i> Đã học {{vm.formatReadingDraftTime(draft.elapsedSeconds)}}</span>
+                    <span ng-if="!draft.pendingSave && draft.sessionMode !== 'STUDY' && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
                     <span ng-if="draft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{draft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
                 </div>
             </div>
             <div class="reading-resume-actions">
                 <button type="button" class="is-continue" ng-click="vm.resumeDraft(draft)">
-                    <i class="fa fa-play"></i> Có, làm tiếp
+                    <i class="fa" ng-class="draft.pendingSave ? 'fa-refresh' : 'fa-play'"></i> {{draft.pendingSave ? 'Lưu kết quả đang chờ' : 'Có, làm tiếp'}}
                 </button>
                 <button type="button" class="is-cancel" ng-if="vm.isReadingOrListeningDraft(draft)" ng-click="vm.hideDraft(draft)" title="Chỉ ẩn khỏi trang chủ, không xóa tiến trình">
                     <i class="fa fa-eye-slash"></i> Ẩn bài
                 </button>
                 <button type="button" class="is-cancel" ng-if="!vm.isReadingOrListeningDraft(draft)" ng-click="vm.cancelDraft(draft)">
-                    Không, hủy bài
+                    {{draft.pendingSave ? 'Bỏ kết quả' : 'Không, hủy bài'}}
                 </button>
             </div>
         </article>
@@ -127,8 +127,8 @@
 
         <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
             <article class="student-assignment-card"
-                     ng-repeat="task in vm.assignedTasks track by task.taskId"
-                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !task.topicId && !task.ieltsTestId}">
+                     ng-repeat="task in vm.assignedTasks track by vm.assignmentKey(task)"
+                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !task.topicId && !task.ieltsTestId, 'is-complete': vm.assignmentTopicComplete(task)}">
                 <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
                 <div class="student-assignment-copy">
                     <div class="student-assignment-badges">
@@ -136,7 +136,8 @@
                         <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
                         <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
                     </div>
-                    <h3>{{task.title}}</h3>
+                    <h3>{{task.taskTotalTopics > 1 ? task.topicName : task.title}}</h3>
+                    <p class="student-assignment-class" ng-if="task.taskTotalTopics > 1"><i class="fa fa-tasks"></i> {{task.title}} · {{task.taskCompletedTopics}}/{{task.taskTotalTopics}} topic · {{task.taskProgressPercent}}%</p>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
                     <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
                     <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
@@ -145,12 +146,13 @@
                     <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
                     <div class="student-assignment-progress">
 						<span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</span>
-                        <b>Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
+                        <b ng-if="!vm.assignmentTopicComplete(task)">Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
+                        <b ng-if="vm.assignmentTopicComplete(task)"><i class="fa fa-check-circle"></i> Đã hoàn thành topic</b>
                     </div>
-                    <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
+                    <div class="student-assignment-bar"><span ng-style="{'width': vm.assignmentProgressPercent(task) + '%'}"></span></div>
                     <div class="student-assignment-footer">
                         <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
-                        <button type="button" ng-if="task.topicId || task.ieltsTestId" ng-click="vm.openAssignedTask(task)">
+                        <button type="button" ng-if="(task.topicId || task.ieltsTestId) && !vm.assignmentTopicComplete(task)" ng-click="vm.openAssignedTask(task)">
                             {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
                         </button>
                         <span class="student-assignment-read-note" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
@@ -1006,6 +1008,9 @@
     .student-assignment-card.is-free-task:before { background:linear-gradient(90deg,#14b8a6,#38bdf8); }
     .student-assignment-card.is-free-task .student-assignment-icon { background:linear-gradient(135deg,#13b8a6,#38a9ed); }
     .student-assignment-card.is-overdue { border-color:#ffc9cf; background:linear-gradient(145deg,#fff,#fff7f8); }
+    .student-assignment-card.is-complete { border-color:#bcebdc; background:linear-gradient(155deg,#fff,#f2fcf7); }
+    .student-assignment-card.is-complete:before { background:linear-gradient(90deg,#18b889,#54cbb1); }
+    .student-assignment-card.is-complete .student-assignment-progress b { color:#07877d; }
     .student-assignment-icon { position:relative; z-index:1; flex:0 0 46px; width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:15px; color:#fff; background:linear-gradient(135deg,#637bff,#8c5bea); box-shadow:0 8px 16px rgba(104,91,226,.22); font-size:20px; }
     .student-assignment-copy { position:relative; z-index:1; min-width:0; flex:1; display:flex; flex-direction:column; }
     .student-assignment-badges { display:flex; gap:5px; flex-wrap:wrap; }

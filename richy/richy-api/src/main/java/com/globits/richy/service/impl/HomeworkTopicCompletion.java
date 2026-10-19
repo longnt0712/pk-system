@@ -13,7 +13,7 @@ import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
 public final class HomeworkTopicCompletion {
     private HomeworkTopicCompletion() { }
     public static boolean enabled(EnrolmentClassScheduleTaskDto task) {
-        return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection())) && task.getTopicId() != null
+        return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection())) && !task.getTopicIds().isEmpty()
                 && !Boolean.FALSE.equals(task.getAutoCompleteFromTopic())
                 && ("DAILY_VOCAB".equals(task.getActivityType()) || "DAILY_LISTENING".equals(task.getActivityType()));
     }
@@ -100,19 +100,35 @@ public final class HomeworkTopicCompletion {
         if (!enabled(task)) { return; }
         removeAutomaticProgress(task);
         int required = task.getRequiredAttempts();
-        Map<Long, Integer> counts = new LinkedHashMap<Long, Integer>();
+        List<Long> selectedTopics = task.getTopicIds();
+        boolean multipleTopics = "DAILY_VOCAB".equals(task.getActivityType()) && selectedTopics.size() > 1;
+        Map<Long, Map<Long, Integer>> counts = new LinkedHashMap<Long, Map<Long, Integer>>();
+        Map<Long, java.util.Set<Long>> seenResults = new LinkedHashMap<Long, java.util.Set<Long>>();
         for (Object[] row : completions) {
-            Long studentId = (Long) row[0], topicId = (Long) row[1];
+            Long studentId = (Long) row[0], topicId = (Long) row[1], resultId = (Long) row[3];
             LocalDateTime completed = (LocalDateTime) row[2];
             Integer resultTestType = row.length > 4 ? (Integer) row[4] : Integer.valueOf(1);
             Long sourceQuestionId = row.length > 5 ? (Long) row[5] : null;
             Long assignmentTaskId = row.length > 6 ? (Long) row[6] : null;
-            if (!task.getTopicId().equals(topicId) || resultTestType.intValue() != testType(task)
+            Long assignmentTopicId = row.length > 7 ? (Long) row[7] : null;
+            // Legacy results can prove one legacy topic, never every topic of a new grouped task.
+            if (!selectedTopics.contains(topicId) || resultTestType == null || resultTestType.intValue() != testType(task)
                     || task.getId() == null || !task.getId().equals(assignmentTaskId)
+                    || (multipleTopics && !topicId.equals(assignmentTopicId))
+                    || (assignmentTopicId != null && !topicId.equals(assignmentTopicId))
                     || (task.getSourceQuestionId() != null && !task.getSourceQuestionId().equals(sourceQuestionId))
+                    || studentId == null || resultId == null || completed == null
                     || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
-            int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
-            counts.put(studentId, count);
+            java.util.Set<Long> seen = seenResults.get(studentId);
+            if (seen == null) { seen = new java.util.HashSet<Long>(); seenResults.put(studentId, seen); }
+            if (!seen.add(resultId)) { continue; }
+            Map<Long, Integer> topicCounts = counts.get(studentId);
+            if (topicCounts == null) { topicCounts = new LinkedHashMap<Long, Integer>(); counts.put(studentId, topicCounts); }
+            int previous = topicCounts.containsKey(topicId) ? topicCounts.get(topicId) : 0;
+            topicCounts.put(topicId, Math.min(required, previous + 1));
+            int count = 0;
+            for (Integer topicCount : topicCounts.values()) { count += topicCount; }
+            int total = required * selectedTopics.size();
             EnrolmentClassTaskProgressDto existing = null;
             for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
                 if (studentId.equals(progress.getStudentUserId())) { existing = progress; break; }
@@ -127,14 +143,16 @@ public final class HomeworkTopicCompletion {
                 task.getStudentProgress().add(existing);
             }
             if (!existing.isAutomatic()) { existing.setManualStatus(existing.getStatus()); }
-            if (count >= required) {
-                existing.setStatus("DONE");
-            } else {
-                int roundedPercent = (int) Math.ceil((count * 100.0 / required) / 10.0) * 10;
+            int percent = (int) Math.round(count * 100.0 / total);
+            existing.setProgressPercent(percent);
+            if (count >= total) { existing.setStatus("DONE"); }
+            else if (multipleTopics) { existing.setStatus("PROGRESS_" + Math.max(1, Math.min(99, percent))); }
+            else {
+                int roundedPercent = (int) Math.ceil((count * 100.0 / total) / 10.0) * 10;
                 existing.setStatus("PROGRESS_" + Math.max(10, Math.min(90, roundedPercent)));
             }
             existing.setAutomatic(true);
-            existing.setTestResultId((Long) row[3]); existing.setCompletedAt(completed.toDate());
+            existing.setTestResultId(resultId); existing.setCompletedAt(completed.toDate());
         }
     }
 

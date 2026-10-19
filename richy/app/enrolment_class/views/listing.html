@@ -741,6 +741,39 @@
         .class-schedule-topic-count { padding:2px 3px; font-size:9px; }
         .class-day-plan-grid { grid-template-columns:1fr; }
     }
+    .class-task-editor-modal-window .modal-dialog { width:70vw; max-width:70vw; margin:4vh auto; }
+    .class-task-editor-modal-window .modal-content { max-height:92vh; overflow:hidden; border:0; border-radius:18px; box-shadow:0 24px 70px rgba(39,30,82,.23); }
+    .class-task-editor-modal { max-height:92vh; }
+    .class-task-editor-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px; background:linear-gradient(110deg,#f1edff,#edf6ff); border-bottom:1px solid #e5e5f4; }
+    .class-task-editor-header:before,.class-task-editor-header:after { display:none; }
+    .class-task-editor-header > div { flex:1 1 auto; min-width:0; text-align:left; }
+    .class-task-editor-header > .close { flex:0 0 auto; align-self:flex-start; margin:0; }
+    .class-task-editor-header small { display:block; font-size:10px; letter-spacing:1px; color:#7862b5; font-weight:800; margin-bottom:5px; }
+    .class-task-editor-header h4 { margin:0; color:#30244e; font-weight:800; }
+    .class-task-editor-modal > .class-task-editor { margin:0; padding:22px 24px; border:0; border-radius:0; overflow:auto; overscroll-behavior:contain; background:#fcfbff; }
+    .class-task-editor-modal .class-task-editor-grid { gap:20px; }
+    .class-task-editor-modal label { color:#45536a; font-size:12px; font-weight:700; }
+    .class-task-editor-modal small { line-height:1.5; }
+    .class-task-editor-modal .ui-select-choices { max-height:230px; }
+    .class-task-editor-footer { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:14px 24px; background:#fff; }
+    .class-task-editor-footer:before,.class-task-editor-footer:after { display:none; }
+    .class-task-topic-count { border-radius:20px; background:#eee9ff; padding:4px 9px; color:#6d50b5; font-size:11px; font-weight:700; }
+    .class-task-vocab-select .ui-select-match-item { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:left; }
+    .class-task-topic-summary { margin:10px 0 0; border-left:3px solid #9b7ef5; padding:9px 12px; border-radius:5px; background:#f0ebff; color:#604394; font-size:12px; }
+    .global-dark-mode .class-task-editor-header { background:#2b293d; border-color:#454258; }
+    .global-dark-mode .class-task-editor-header h4,.global-dark-mode .class-task-editor-header small { color:#ded6fc; }
+    .global-dark-mode .class-task-editor-modal > .class-task-editor,.global-dark-mode .class-task-editor-footer { background:#202330; color:#e2e6f1; }
+    .global-dark-mode .class-task-editor-modal label { color:#d9deed; }
+    .global-dark-mode .class-task-topic-count,.global-dark-mode .class-task-topic-summary { background:#37304e; color:#ded1ff; }
+    @media (max-width:991px) and (min-width:768px) { .class-task-editor-modal-window .modal-dialog { width:86vw; max-width:86vw; } }
+    @media (max-width:767px) {
+        .class-task-editor-modal-window .modal-dialog { width:calc(100vw - 16px); max-width:calc(100vw - 16px); margin:8px; }
+        .class-task-editor-modal-window .modal-content,.class-task-editor-modal { max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); }
+        .class-task-editor-header { padding:16px; }
+        .class-task-editor-modal > .class-task-editor { padding:16px; }
+        .class-task-editor-modal .class-task-editor-grid { grid-template-columns:1fr; gap:0; }
+        .class-task-editor-footer { padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
+    }
 </style>
 
 <div class="alert alert-warning margin-top-10" data-ng-if="settings.permissionsLoaded !== false && !vm.canAccessList()">
@@ -1348,6 +1381,7 @@
                                                     data-ng-change="vm.markHomeworkCellDirty(cell); vm.saveHomeworkCell(row, cell)"
                                                     data-ng-attr-aria-label="Trạng thái của {{row.name}}, {{vm.previousHomeworkTasks[$index].title}}">
                                                 <option value="TODO">Chưa làm</option>
+                                                <option data-ng-if="vm.homeworkHasExactProgress(cell)" value="{{cell.status}}">Đã làm {{cell.status.substring(9)}}% — tự động</option>
                                                 <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">Đã làm {{percent}}%</option>
                                                 <option value="DONE">{{cell.automatic && cell.editStatus === 'DONE' ? 'Đã làm — tự động' : 'Đã làm (100%)'}}</option>
                                                 <option value="NEEDS_REVIEW">Cần bổ sung</option>
@@ -1454,12 +1488,12 @@
                 <span>{{vm.taskStatusLabel(task)}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'IELTS_WRITING' ? 'IELTS Writing' : task.activityType === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
-                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần{{task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt'}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần{{vm.taskTopicIds(task).length > 1 ? ' mỗi topic' : (task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt')}}</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
             </div>
-            <p class="class-task-help" data-ng-if="task.topicName">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+            <p class="class-task-help" data-ng-repeat="topic in vm.taskSelectedTopics(task) track by topic.id">{{topic.categoryName || 'Không phân loại'}} → {{topic.name}}</p>
             <p class="class-task-help" data-ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
             <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span data-ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.taskIeltsPartsLabel(task)}}</span></p>
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
@@ -1471,8 +1505,18 @@
                 <button type="button" class="btn btn-default btn-xs" data-ng-if="task._confirmDelete" data-ng-click="task._confirmDelete = false">Giữ lại</button>
             </div>
         </article>
-        <form name="taskForm" class="class-task-editor" novalidate data-ng-submit="taskForm.$valid && vm.commitScheduleTask()"
-              data-ng-if="vm.taskEditor && vm.taskEditor.section === taskSection">
+
+    </div>
+</script>
+
+<script type="text/ng-template" id="class_schedule_task_editor_modal.html">
+    <form name="taskForm" class="class-management-modal class-task-editor-modal" novalidate data-ng-submit="taskForm.$valid && vm.commitScheduleTask()">
+        <div class="modal-header class-task-editor-header">
+            <div><small>{{vm.taskEditor.section === 'HOMEWORK' ? 'BÀI TẬP VỀ NHÀ' : 'NHIỆM VỤ TRÊN LỚP'}}</small><h4 class="modal-title">{{vm.taskEditorIndex < 0 ? 'Tạo task mới' : 'Chỉnh sửa task'}}</h4></div>
+            <button type="button" class="close" data-ng-click="vm.cancelScheduleTask()" data-ng-disabled="vm.scheduleDaySaving || vm.taskExercisePickerOpen" aria-label="Đóng form task"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body class-task-editor" data-ng-if="vm.taskEditor">
+            <div class="alert alert-danger" data-ng-if="vm.taskEditorError" role="alert">{{vm.taskEditorError}}</div>
             <div class="form-group">
                 <label>Việc học sinh cần làm <span class="font-red">*</span></label>
                 <input type="text" name="title" class="form-control" data-ng-model="vm.taskEditor.title" required maxlength="200"
@@ -1492,10 +1536,10 @@
                     </select>
                     <small>Chọn Reading, Listening, Writing hoặc Bài tập tổng hợp để giao đúng đề.</small>
                 </div>
-                <div class="form-group" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
+                <div class="form-group" data-ng-if="vm.taskHasTopics(vm.taskEditor) || vm.isIeltsTask(vm.taskEditor)">
                     <label>Số lần học sinh phải hoàn thành</label>
                     <input type="number" min="1" max="100" step="1" required class="form-control" data-ng-model="vm.taskEditor.requiredAttempts" />
-                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.' : (vm.isIeltsTask(vm.taskEditor) ? 'Mỗi phần đã chọn cần được nộp đủ số lần này để hoàn thành task.' : 'Mỗi lần đạt yêu cầu được tính là một lượt hoàn thành.')}}</small>
+                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.' : (vm.isIeltsTask(vm.taskEditor) ? 'Mỗi phần đã chọn cần được nộp đủ số lần này để hoàn thành task.' : (vm.taskEditor.topicIds.length > 1 ? 'Mỗi topic đã chọn cần hoàn thành đủ số lần này. Task chỉ hoàn thành khi xong tất cả topic.' : 'Mỗi lần đạt yêu cầu được tính là một lượt hoàn thành.'))}}</small>
                 </div>
             </div>
             <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'COMPREHENSIVE'">
@@ -1542,7 +1586,7 @@
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
             <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING'">
                 <div class="form-group">
-                    <label>Category (không bắt buộc)</label>
+                    <label>{{vm.taskEditor.activityType === 'DAILY_VOCAB' ? 'Lọc theo category' : 'Category (không bắt buộc)'}}</label>
                     <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
                                data-ng-disabled="vm.scheduleTopicsLoading" allow-clear="true">
                         <ui-select-match placeholder="Chọn category..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
@@ -1551,7 +1595,7 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" data-ng-if="vm.taskEditor.activityType !== 'DAILY_VOCAB'">
                     <label>Topic / Bài học (không bắt buộc)</label>
                     <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true" data-ng-change="vm.taskTopicChanged()"
                                data-ng-disabled="vm.scheduleTopicsLoading || !vm.taskEditor.categoryKey">
@@ -1561,6 +1605,18 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
+            </div>
+            <div class="form-group class-task-vocab-topics" data-ng-if="vm.taskEditor.activityType === 'DAILY_VOCAB'">
+                <div class="class-task-parts-heading"><label>Topic / Bài học</label><span class="class-task-topic-count">{{vm.taskEditor.topicIds.length || 0}} topic đã chọn</span></div>
+                <ui-select multiple class="class-task-parts-select class-task-vocab-select" theme="bootstrap" name="vocabTopics" data-ng-model="vm.taskEditor.topicIds" close-on-select="false" data-ng-change="vm.taskVocabTopicsChanged()" data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving">
+                    <ui-select-match placeholder="Tìm và chọn một hoặc nhiều topic..." title="{{$item.name}}">{{$item.name}}</ui-select-match>
+                    <ui-select-choices repeat="topic.id as topic in vm.taskTopicChoices() | propsFilter:{name:$select.search}">
+                        <div data-ng-bind-html="topic.name | highlight:$select.search"></div><small>{{topic.categoryName || 'Không phân loại'}}</small>
+                    </ui-select-choices>
+                </ui-select>
+                <small>Có thể chọn nhiều topic từ các category khác nhau. Đổi bộ lọc vẫn giữ các topic đã chọn; bấm × để bỏ một topic.</small>
+                <p class="class-task-topic-summary" data-ng-if="vm.taskEditor.topicIds.length > 1">Học sinh thấy {{vm.taskEditor.topicIds.length}} bài riêng. Hoàn thành tất cả topic để đạt 100% task.</p>
+                <p class="text-warning class-task-help" data-ng-if="vm.taskEditor.topicIds.length > 1 && !vm.multiTopicVocabEnabled()">Cần cập nhật backend để lưu nhiều topic trong một task.</p>
             </div>
             <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.activityType === 'DAILY_LISTENING'">
                 <div class="form-group">
@@ -1577,7 +1633,7 @@
                 <div></div>
             </div>
             <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
-            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
+            <div class="class-task-editor-grid" data-ng-if="vm.taskHasTopics(vm.taskEditor) || vm.isIeltsTask(vm.taskEditor)">
                 <div class="form-group">
                     <label>Thời gian bắt đầu</label>
                     <input type="text" class="form-control" readonly value="{{vm.taskStartLabel(vm.taskEditor)}}" />
@@ -1585,9 +1641,9 @@
                 </div>
                 <div></div>
             </div>
-            <div class="form-group" data-ng-if="vm.taskEditor.topicId && !vm.isIeltsTask(vm.taskEditor)">
+            <div class="form-group" data-ng-if="vm.taskHasTopics(vm.taskEditor) && !vm.isIeltsTask(vm.taskEditor)">
                 <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic"
-                              data-ng-disabled="vm.taskEditor.activityType !== 'DAILY_VOCAB' && vm.taskEditor.activityType !== 'DAILY_LISTENING'" /> Tự đánh dấu khi hoàn thành Daily Vocab / Daily Listening của topic này</label>
+                              data-ng-disabled="vm.taskEditor.activityType !== 'DAILY_VOCAB' && vm.taskEditor.activityType !== 'DAILY_LISTENING'" /> Tự cập nhật tiến độ khi hoàn thành các bài Daily Vocab / Daily Listening đã giao</label>
                 <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với IELTS, hệ thống chỉ tính kết quả của đúng đề và đúng Part đã giao.</p>
             </div>
             <div class="form-group">
@@ -1608,12 +1664,13 @@
             </div>
             <p class="class-task-help" data-ng-if="vm.taskEditor.section === 'HOMEWORK'">Trạng thái Homework được tổng hợp từ tiến độ từng học sinh, không chọn trạng thái chung ở đây.</p>
             <p class="class-task-help">Nội dung task được tự động lưu ngay khi thêm hoặc cập nhật. Tiến độ Homework buổi trước sửa trực tiếp trong bảng học sinh bên dưới.</p>
-            <div class="class-task-buttons">
-                <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleTask()">Hủy sửa</button>
-                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
-            </div>
-        </form>
-    </div>
+        </div>
+        <div class="modal-footer class-task-editor-footer">
+            <span class="class-task-help" data-ng-if="vm.scheduleDaySaving" role="status"><i class="fa fa-spinner fa-spin"></i> Đang lưu task...</span>
+            <button type="button" class="btn btn-default" data-ng-click="vm.cancelScheduleTask()" data-ng-disabled="vm.scheduleDaySaving || vm.taskExercisePickerOpen">Hủy sửa</button>
+            <button type="submit" class="btn btn-primary" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExercisePickerOpen || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+        </div>
+    </form>
 </script>
 
 <script type="text/ng-template" id="edit_object_modal.html">

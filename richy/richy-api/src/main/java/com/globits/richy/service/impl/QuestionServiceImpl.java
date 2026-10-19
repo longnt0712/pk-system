@@ -1403,6 +1403,10 @@ public class QuestionServiceImpl implements QuestionService {
 		if (!isAdmin && (currentUser.getId() == null || domain.getUser() == null || !currentUser.getId().equals(domain.getUser().getId()))) {
 			throw new SecurityException("Bạn không có quyền đổi tên bài test này.");
 		}
+		if ("DAILY_LISTENING".equals(domain.getTestFormat())) {
+			if (normalizedTitle.length() > 200) { throw new IllegalArgumentException("Tên bài cần từ 1 đến 200 ký tự."); }
+			domain.setQuestion(normalizedTitle);
+		}
 		domain.setTitle(normalizedTitle);
 		domain.setModifiedBy(currentUser.getUsername());
 		domain.setModifyDate(LocalDateTime.now());

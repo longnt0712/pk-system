@@ -160,7 +160,11 @@
                 return {label: 'Battle', tone: 'info', message: 'Bài làm Battle đã được lưu.'};
             }
             if (status === 'SUCCESS') {
-                return {label: 'Đạt yêu cầu', tone: 'success', message: 'Bài làm đã được lưu và đạt yêu cầu.'};
+                var successMessage = 'Bài làm đã được lưu và đạt yêu cầu.';
+                successMessage += result.assignmentTaskId != null
+                    ? ' Lượt này chỉ được tính vào tiến độ khi đúng bài được giao, đúng topic/phần và trong thời hạn; chưa xác nhận đủ mọi bài trong task.'
+                    : ' Kết quả này không gắn với task, nên không tự cộng tiến độ bài được giao.';
+                return {label: 'Đạt yêu cầu', tone: 'success', message: successMessage};
             }
             if (status === 'FAILED') {
                 var message = 'Bài làm đã được lưu nhưng chưa đạt yêu cầu.';
@@ -181,13 +185,28 @@
                 });
             }
             function topicFormatter(value, row) {
-                if (row.topics && row.topics.length) {
-                    return row.topics.map(function (topic) {
+                var topics = row.topics || [], assignedId = row.assignmentTaskId != null && Number(row.testType) === 1
+                    ? row.assignmentTopicId : null;
+                var assigned = null, related = topics;
+                if (assignedId != null) {
+                    topics.forEach(function (topic) { if (String(topic.id) === String(assignedId)) { assigned = topic; } });
+                    related = topics.filter(function (topic) { return String(topic.id) !== String(assignedId); });
+                }
+                var html = assignedId == null ? ''
+                    : '<div class="test-result-assigned-topic" style="white-space:normal;padding:6px 8px;margin:3px 0 5px;border:1px solid #c7d6f8;border-radius:6px;background:#edf3ff;color:#234b94"'
+                        + ' title="Chỉ topic được giao này được đối chiếu để tính tiến độ task; cần đạt yêu cầu và trong thời hạn.">'
+                        + '<strong>Topic được giao:</strong> ' + escapeText(assigned && assigned.name ? assigned.name : 'Topic #' + assignedId) + '</div>';
+                if (related.length) {
+                    if (assignedId != null) {
+                        html += '<div class="test-result-related-topics" style="font-size:11px;color:#718096"'
+                            + ' title="Các topic liên quan đến nội dung câu hỏi; không tự cộng thêm bài hoàn thành.">Topic liên quan đến nội dung:</div>';
+                    }
+                    html += related.map(function (topic) {
                         return '<div class="test-result-topic-line" style="white-space:normal;padding:4px 0">'
                             + escapeText(topic.name || ('Topic #' + topic.id)) + '</div>';
                     }).join('');
                 }
-                return escapeText(value); // Historical title-only results remain readable.
+                return html || escapeText(value); // Historical title-only results remain readable.
             }
             function typeFormatter(value) {
                 return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading', 5: 'Battle Online', 6: 'Bài tập tổng hợp', 7: 'IELTS Writing'}[value] || 'Khác';
@@ -245,14 +264,11 @@
                     title: 'Nguồn làm bài',
                     formatter: function (value, row) {
                         if (value != null) {
-                            return '<span class="label label-primary" title="Task #' + escapeText(value)
-                                + '"><i class="fa fa-tasks"></i> Bài tập</span>';
+                            return '<span class="label label-primary" title="Nguồn: Task #' + escapeText(value)
+                                + '. Nhãn nguồn không xác nhận hoàn thành; chỉ lượt đạt đúng bài và trong thời hạn mới được tính tiến độ."><i class="fa fa-tasks"></i> Bài tập</span>';
                         }
-                        if (Number(row.testType) === 1 || Number(row.testType) === 3) {
-                            return '<span class="label label-info" title="Dữ liệu cũ không lưu Task ID; homework vẫn đối chiếu theo topic và thời hạn">'
-                                + '<i class="fa fa-link"></i> Theo topic</span>';
-                        }
-                        return '<span class="label label-default"><i class="fa fa-pencil"></i> Tự luyện</span>';
+                        return '<span class="label label-default" title="Không gắn với task; kết quả này không tự động tính hoàn thành bài được giao.">'
+                            + '<i class="fa fa-unlink"></i> Không gắn task</span>';
                     },
                     sortable: false,
                     switchable: true,

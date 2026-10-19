@@ -10,6 +10,9 @@ import com.globits.richy.domain.EnrolmentClassScheduleTask;
 
 public class EnrolmentClassScheduleDayDto implements Serializable {
     private static final long serialVersionUID = 1L;
+    /** Lets the editor avoid silently dropping selections against an older API. */
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    public boolean isMultiTopicVocabEnabled() { return true; }
     private Long id;
     private Long enrolmentClassId;
     private String scheduleDate;

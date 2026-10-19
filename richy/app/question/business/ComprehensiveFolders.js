@@ -187,8 +187,8 @@
         return {
             restrict: 'E', scope: {test: '=', disabled: '=?', saving: '=?', onRenamed: '&?'},
             template: '<div class="test-title-editor" ng-class="{\'is-editing\': editing}">' +
-                '<button type="button" class="test-title-display" ng-if="!editing" ng-dblclick="begin()" ng-keydown="beginKey($event)" ng-disabled="disabled" title="{{test.title}} — Nhấp đúp hoặc nhấn F2 để đổi tên"><span class="test-explorer-name">{{test.title}}</span></button>' +
-                '<div ng-if="editing"><textarea class="form-control" ng-model="draft.title" maxlength="255" ng-keydown="editKey($event)" ng-disabled="saving" aria-label="Tên bài test"></textarea>' +
+                '<button type="button" class="test-title-display" ng-if="!editing" ng-dblclick="begin()" ng-keydown="beginKey($event)" ng-disabled="disabled" title="{{test.title || test.question}} — Nhấp đúp hoặc nhấn F2 để đổi tên"><span class="test-explorer-name">{{test.title || test.question}}</span></button>' +
+                '<div ng-if="editing"><textarea class="form-control" ng-model="draft.title" maxlength="{{maxTitleLength}}" ng-keydown="editKey($event)" ng-disabled="saving" aria-label="Tên bài test"></textarea>' +
                 '<div class="test-title-editor-actions"><button type="button" class="btn btn-primary btn-sm" ng-click="save()" ng-disabled="saving">{{saving ? "Đang lưu..." : "Lưu tên"}}</button>' +
                 '<button type="button" class="btn btn-default btn-sm" ng-click="cancel()" ng-disabled="saving">Hủy</button></div>' +
                 '<small class="test-title-editor-hint">Enter để lưu · Esc để hủy</small><p class="test-folder-error" role="alert" ng-if="error">{{error}}</p></div></div>',
@@ -196,7 +196,8 @@
                 var focusTimer;
                 scope.begin = function () {
                     if (scope.disabled || scope.saving || scope.editing) { return; }
-                    scope.draft = {title: scope.test.title || ''}; scope.error = ''; scope.editing = true;
+                    scope.maxTitleLength = scope.test.testFormat === 'DAILY_LISTENING' ? 200 : 255;
+                    scope.draft = {title: scope.test.title || scope.test.question || ''}; scope.error = ''; scope.editing = true;
                     focusTimer = $timeout(function () { var input = element[0].querySelector('textarea'); if (input) { input.focus(); input.select(); } });
                 };
                 scope.beginKey = function (event) { if (event.key === 'F2' || event.key === 'Enter') { event.preventDefault(); scope.begin(); } };
@@ -207,13 +208,15 @@
                 };
                 scope.save = function () {
                     if (scope.saving || scope.disabled) { return; }
-                    var title = String(scope.draft.title || '').trim(), previousTitle = scope.test.title;
+                    var title = String(scope.draft.title || '').trim(), previousTitle = scope.test.title || scope.test.question;
                     if (!title) { scope.error = 'Tên bài test không được để trống.'; return; }
-                    if (title.length > 255) { scope.error = 'Tên bài test không được quá 255 ký tự.'; return; }
+                    if (title.length > scope.maxTitleLength) { scope.error = 'Tên bài test không được quá ' + scope.maxTitleLength + ' ký tự.'; return; }
                     if (title === previousTitle) { scope.cancel(); return; }
                     scope.saving = true; scope.error = '';
                     return service.updateTestTitle(scope.test.id, title).then(function (saved) {
-                        scope.test.title = saved.title; scope.editing = false;
+                        scope.test.title = saved.title;
+                        if (scope.test.testFormat === 'DAILY_LISTENING') { scope.test.question = saved.title; }
+                        scope.editing = false;
                         if (scope.onRenamed) { scope.onRenamed({test: scope.test, previousTitle: previousTitle}); }
                     }, function (response) { scope.error = (response.data || {}).message || 'Không lưu được tên bài. Bạn có thể thử lại.'; })
                         .finally(function () { scope.saving = false; });

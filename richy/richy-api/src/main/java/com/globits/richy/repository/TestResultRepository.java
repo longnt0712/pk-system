@@ -22,7 +22,12 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
     @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey and r.testType = :testType")
     TestResult findAttempt(@Param("userId") Long userId, @Param("attemptKey") String attemptKey,
             @Param("testType") Integer testType);
-    @Query("select distinct r.user.id, t.id, r.createDate, r.id, r.testType, r.sourceQuestionId, r.assignmentTaskId from TestResult r join r.topics t "
+    @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey "
+            + "and r.testType = :testType order by r.id asc")
+    List<TestResult> findAttemptsForRetry(@Param("userId") Long userId, @Param("attemptKey") String attemptKey,
+            @Param("testType") Integer testType);
+
+    @Query("select distinct r.user.id, t.id, r.createDate, r.id, r.testType, r.sourceQuestionId, r.assignmentTaskId, r.assignmentTopicId from TestResult r join r.topics t "
             + "where r.user.id in :students and t.id in :topics and r.testType in (1, 3) "
             + "and ((r.testType = 1 and (r.resultStatus is null or r.resultStatus = 'SUCCESS')) "
             + "or (r.testType = 3 and r.resultStatus = 'SUCCESS')) "
@@ -30,6 +35,13 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             + "order by r.createDate asc, r.id asc")
     List<Object[]> findVocabularyCompletions(@Param("students") List<Long> students, @Param("topics") List<Long> topics,
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
+    @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
+            + "and r.assignmentTaskId = :taskId and r.assignmentTopicId = :topicId and r.testType = 1 "
+            + "and (r.resultStatus is null or r.resultStatus = 'SUCCESS') and r.createDate >= :fromDate and r.createDate < :toDate")
+    long countSuccessfulVocabularyTopicAttempts(@Param("studentId") Long studentId, @Param("taskId") Long taskId,
+            @Param("topicId") Long topicId, @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
 
     @Query("select count(distinct r.id) from TestResult r join r.topics t "
             + "where r.user.id = :studentId and t.id = :topicId and r.testType = :testType "

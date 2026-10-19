@@ -18,6 +18,7 @@ function section(text, start, end, offset = 0) {
 }
 const initialization = section(source, '        var vm = this;', '        vm.videoApi = {};', source.indexOf('    function IELTSReadingActualTestController('));
 const persistence = section(source, '        var readingDraftBaseKey =', '        var currentPerson =');
+const submissionIdentity = section(source, '        function readingSubmissionType()', '        function persistReadingSubmissionState()');
 const annotations = section(source, '        var savedAnnotationRange =', '        vm.setReviewQuestion =');
 const preview = section(builder, '        function clearOldReadingPreviews()', '        vm.publishReadingTest =');
 const libraryUrl = section(library, '        vm.testCatalogUrl = function', '        vm.seriousTestCatalogUrl =');
@@ -47,7 +48,7 @@ const code = initialization + `
     function syncTimerForPersistence() {} function getActiveDurationSeconds() { return 30; }
     function setStudyElapsedSeconds() {} function setCountdownSeconds() {}
     const toastr = {success() {}};
-` + persistence + annotations + `
+` + submissionIdentity + persistence + annotations + `
     vm.persist = saveReadingDraft;
     vm.answerChanged = function () {
         vm.testResult.questionAnswerTestResult = [{ordinalNumber: 1, questionAnswer: question.questionAnswers[0], clientAnswer: vm.answer || ''}];
@@ -105,7 +106,7 @@ test('Study annotations survive builder Preview and return to Study; the catalog
             if (url.pathname === '/api/drafts') {
                 requests.push({method: request.method(), url: request.url()});
                 if (request.method() === 'POST') {
-                    const dto = request.postDataJSON(); drafts.set(dto.draftKey, {...dto, savedAt: Date.now()});
+                    const dto = request.postDataJSON(); drafts.set(dto.draftKey, {id:1,...dto, savedAt: Date.now()});
                     return route.fulfill({json: drafts.get(dto.draftKey)});
                 }
                 return route.fulfill({json: [...drafts.values()]});

@@ -36,8 +36,8 @@ test('assigned Daily Vocab accepts optional topics and stale pending assignment 
     assert.doesNotMatch(validation, /throw new IllegalArgumentException/);
     assert.doesNotMatch(validation, /dto\.getTopicIds\(\)\.contains/);
 
-    const optionalTopicGuard = service.indexOf('dailyVocabAssignedTask != null && dailyVocabAssignedTask.getTopic() != null');
-    const attachTopic = service.indexOf('resultTopics.add(dailyVocabAssignedTask.getTopic())', optionalTopicGuard);
+    const optionalTopicGuard = service.indexOf('assignedVocabularyTopic != null');
+    const attachTopic = service.indexOf('resultTopics.add(assignedVocabularyTopic)', optionalTopicGuard);
     const calculateCompletion = service.indexOf('completedTopics(dto, resultTopics)');
     assert.ok(optionalTopicGuard >= 0 && attachTopic > optionalTopicGuard && attachTopic < calculateCompletion,
         'an available assignment topic must be attached before completion is calculated');

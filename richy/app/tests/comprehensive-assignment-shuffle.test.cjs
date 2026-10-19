@@ -150,6 +150,7 @@ test('new comprehensive assignments default on; editing and payload preserve an 
     const context = nodeVm.createContext({vm: {taskEditor: {activityType: 'COMPREHENSIVE'},
         initializeComprehensiveAssignment() {}, isIeltsTask: () => true, scheduleDay: {tasks: []},
         taskDeadlineChanged() {}, loadTaskListeningItems() {}, refreshTaskExerciseVideo() {}, taskHasComprehensiveVideo: () => false}, angular});
+    nodeVm.runInContext(section(editorSource, '        vm.taskTopicIds =', '\t\tvm.tasksForSection ='), context);
     nodeVm.runInContext(section(editorSource, 'vm.taskActivityTypeChanged =', 'vm.isIeltsTask ='), context);
     context.vm.taskActivityTypeChanged(); assert.equal(context.vm.taskEditor.shuffleQuestions, true);
     nodeVm.runInContext(section(editorSource, '\t\tvm.openScheduleTask =', '\t\tvm.cancelScheduleTask ='), context);

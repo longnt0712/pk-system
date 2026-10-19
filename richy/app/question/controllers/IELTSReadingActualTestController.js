@@ -1509,6 +1509,10 @@
             + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isWritingRoute ? ':writing' : (vm.isListeningRoute ? ':listening' : ':reading'))) + legacyReadingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
+        var readingAttemptKey = null, readingSubmissionState = null;
+        var restoredExpiredReadingDraft = false;
+        var readingAttemptMayReplaceLocalDraft = false;
+        var requestedReadingDraftKey = null;
         var readingLearningDraftsReady = null;
 
         function readingDraftStorageKey(testId, sessionMode) {
@@ -1520,6 +1524,27 @@
                 + String(testId || 'unknown') + sessionSuffix + (normalizedMode === 'STUDY' ? '' :
                     (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-') : readingDraftTaskSuffix));
         }
+
+        try {
+            var resumeMarkerKey = 'ielts-draft-resume:v1:' + vm.currentUser.id;
+            var resumeMarker = JSON.parse($window.sessionStorage.getItem(resumeMarkerKey) || 'null');
+            if (resumeMarker) {
+                $window.sessionStorage.removeItem(resumeMarkerKey);
+                var resumeMode = vm.assignmentTaskId ? 'SERIOUS'
+                    : (String($location.search().sessionMode || '').toUpperCase() === 'SERIOUS' ? 'SERIOUS' : 'STUDY');
+                var resumeBase = readingDraftStorageKey($stateParams.ieltsReadingTestId, resumeMode);
+                var resumeAttempt = /^[a-f0-9]{32}$/.test(resumeMarker.clientAttemptKey || '') ? resumeMarker.clientAttemptKey : null;
+                if (String(resumeMarker.testId) === String($stateParams.ieltsReadingTestId)
+                        && String(resumeMarker.assignmentTaskId || '') === String(vm.assignmentTaskId || '')
+                        && readingSubmissionParts(resumeMarker.assignmentParts) === readingSubmissionParts(vm.isPartAssignment ? vm.assignedParts : [])
+                        && resumeMarker.sessionMode === resumeMode
+                        && [resumeBase, legacyModeDraftStorageKey, legacyReadingDraftStorageKey].indexOf(readingLocalDraftKey(resumeMarker.draftKey || '')) >= 0
+                        && (resumeMarker.draftKey === readingLocalDraftKey(resumeMarker.draftKey || '')
+                            || resumeMarker.draftKey === readingLocalDraftKey(resumeMarker.draftKey || '') + ':attempt:' + resumeAttempt)) {
+                    requestedReadingDraftKey = resumeAttempt ? readingLocalDraftKey(resumeMarker.draftKey) + ':attempt:' + resumeAttempt : resumeMarker.draftKey;
+                }
+            }
+        } catch (ignoreResumeMarker) {}
 
         function assignmentStudyDraftKey(testId) {
             return readingDraftStorageKey(testId, 'STUDY') + ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-');
@@ -1567,13 +1592,56 @@
         var readingDraftWaitTimer = null;
         var readingDraftDestroyed = false;
 
-        function storeReadingDraft(key, draft) {
-            readingDraftMemory[key] = angular.copy(draft);
+        function readingCloudDraftKey(key, draft) {
+            var attemptKey = (draft || {}).clientAttemptKey;
+            return /^[a-f0-9]{32}$/.test(attemptKey || '') && !/:attempt:[a-f0-9]{32}$/.test(key)
+                ? key + ':attempt:' + attemptKey : key;
+        }
+
+        function readingLocalDraftKey(key) {
+            return key.replace(/:attempt:[a-f0-9]{32}$/, '');
+        }
+
+        function protectReadingSubmissionSnapshot(key, draft) {
+            if (!/^[a-f0-9]{32}$/.test((draft || {}).clientAttemptKey || '')) { return draft; }
+            var snapshotKey = readingCloudDraftKey(readingLocalDraftKey(key), draft), existing = readingDraftMemory[snapshotKey];
             try {
-                $window.localStorage.setItem(key, JSON.stringify(draft));
-            } catch (ignoreLocalDraftWrite) {
-                // Cloud persistence must still run when local storage is full or blocked.
+                var persisted = JSON.parse($window.localStorage.getItem(snapshotKey) || 'null');
+                if (persisted && (!existing || new Date(persisted.savedAt || 0) >= new Date(existing.savedAt || 0))) { existing = persisted; }
+            } catch (ignoreSnapshotRead) {}
+            if (!existing || existing.clientAttemptKey !== draft.clientAttemptKey) { return draft; }
+            var previous = existing.submissionState, incoming = draft.submissionState;
+            if (previous && previous.status === 'SAVED' && (!incoming || incoming.status !== 'SAVED')) { return angular.copy(existing); }
+            if (previous && previous.status === 'PENDING' && (!incoming || (incoming.status === 'PENDING'
+                    && JSON.stringify(incoming.payload) !== JSON.stringify(previous.payload)))) { return angular.copy(existing); }
+            return draft;
+        }
+
+        function storeReadingDraft(key, draft, replaceAttempt) {
+            draft = protectReadingSubmissionSnapshot(key, draft);
+            var baseKey = readingLocalDraftKey(key), attemptKey = readingCloudDraftKey(baseKey, draft);
+            var attemptSaved = false;
+            readingDraftMemory[attemptKey] = angular.copy(draft);
+            if (attemptKey !== baseKey) {
+                try { $window.localStorage.setItem(attemptKey, JSON.stringify(draft)); attemptSaved = true; } catch (ignoreAttemptWrite) {}
             }
+            // Explicit per-attempt writes keep a durable backup without changing
+            // the base slot used by another active tab.
+            if (key !== baseKey) { return attemptSaved; }
+            readingDraftMemory[baseKey] = angular.copy(draft);
+            try {
+                var raw = $window.localStorage.getItem(baseKey), current = raw ? JSON.parse(raw) : null;
+                if (!replaceAttempt && current && current.clientAttemptKey && draft.clientAttemptKey
+                        && current.clientAttemptKey !== draft.clientAttemptKey) { return attemptSaved; }
+                $window.localStorage.setItem(baseKey, JSON.stringify(draft)); return true;
+            } catch (ignoreLocalDraftWrite) { return attemptSaved; }
+        }
+
+        function readActiveReadingDraft(key) {
+            var stored = readStoredDraft(key), memory = readingDraftMemory[key];
+            if (readingAttemptKey && stored && stored.clientAttemptKey !== readingAttemptKey
+                    && memory && memory.clientAttemptKey === readingAttemptKey) { return memory; }
+            return stored;
         }
 
         function readStoredDraft(key) {
@@ -1588,6 +1656,8 @@
         }
 
         function saveReadingLearningDraft(key, draft) {
+            draft = protectReadingSubmissionSnapshot(key, draft);
+            key = readingCloudDraftKey(key, draft);
             var payload = {
                 draftKey: key,
                 draftType: 'IELTS',
@@ -1603,23 +1673,38 @@
             vm.readingDraftSyncStatus = 'saving';
             function persist() {
                 vm.readingDraftSyncStatus = 'saving';
-                return service.saveLearningDraft(payload).then(function () {
+                return service.saveLearningDraft(payload).then(function (saved) {
                     readingDraftPendingSaves[key] -= 1;
-                    vm.readingDraftSyncStatus = readingDraftPendingSaves[key] ? 'saving' : 'saved';
+                    var confirmed = !!saved && Number(saved.id) > 0 && saved.draftKey === payload.draftKey
+                        && saved.payload === payload.payload;
+                    vm.readingDraftSyncStatus = confirmed ? (readingDraftPendingSaves[key] ? 'saving' : 'saved') : 'error';
+                    return confirmed;
                 }, function () {
                     readingDraftPendingSaves[key] -= 1;
                     vm.readingDraftSyncStatus = 'error';
+                    return false;
                 });
             }
             readingDraftSaveQueues[key] = previous ? previous.then(persist, persist) : persist();
+            return readingDraftSaveQueues[key];
         }
 
         function deleteReadingLearningDraft(key) {
             if (!key) { return; }
-            delete readingDraftMemory[key];
-            function remove() { return service.deleteLearningDraft(key).catch(angular.noop); }
-            var previous = readingDraftSaveQueues[key];
-            readingDraftSaveQueues[key] = previous ? previous.then(remove, remove) : remove();
+            var memory = readingDraftMemory[key];
+            if (!memory || !memory.clientAttemptKey || memory.clientAttemptKey === readingAttemptKey) { delete readingDraftMemory[key]; }
+            var cloudKey = readingCloudDraftKey(key, {clientAttemptKey: readingAttemptKey});
+            if (cloudKey !== key) {
+                delete readingDraftMemory[cloudKey];
+                try { $window.localStorage.removeItem(cloudKey); } catch (ignoreAttemptDelete) {}
+            }
+            function remove(target) {
+                function request() { return service.deleteLearningDraft(target).catch(angular.noop); }
+                var previous = readingDraftSaveQueues[target];
+                readingDraftSaveQueues[target] = previous ? previous.then(request, request) : request();
+            }
+            remove(cloudKey);
+            if (cloudKey !== key) { remove(key); } // Migrate historical unscoped server drafts safely.
         }
 
         function loadReadingLearningDrafts() {
@@ -1637,10 +1722,23 @@
                             invalidDraft = true;
                             return;
                         }
-                        var localDraft = readStoredDraft(item.draftKey);
+                        var localKey = readingLocalDraftKey(item.draftKey);
+                        var cloudAttempt = /:attempt:([a-f0-9]{32})$/.exec(item.draftKey);
+                        if (cloudAttempt && serverDraft.clientAttemptKey !== cloudAttempt[1]) { invalidDraft = true; return; }
+                        var snapshotKey = readingCloudDraftKey(localKey, serverDraft);
+                        var localSnapshot = readStoredDraft(snapshotKey);
+                        if (snapshotKey !== localKey && (!localSnapshot
+                                || Number(item.savedAt) >= (new Date(localSnapshot.savedAt || 0).getTime() || 0))) {
+                            storeReadingDraft(snapshotKey, serverDraft);
+                        }
+                        var localDraft = readStoredDraft(localKey);
+                        try { localDraft = JSON.parse($window.localStorage.getItem(localKey) || 'null') || localDraft; } catch (ignoreLocalLoadRead) {}
+                        if (localDraft && localDraft.clientAttemptKey && serverDraft.clientAttemptKey
+                                && localDraft.clientAttemptKey !== serverDraft.clientAttemptKey
+                                && (!localDraft.submissionState || localDraft.submissionState.status !== 'SAVED')) { return; }
                         var localSavedAt = new Date((localDraft || {}).savedAt || 0).getTime() || 0;
                         if (!localDraft || Number(item.savedAt) >= localSavedAt) {
-                            storeReadingDraft(item.draftKey, serverDraft);
+                            storeReadingDraft(localKey, serverDraft, true);
                         }
                     } catch (invalidServerDraft) { invalidDraft = true; }
                 });
@@ -1701,6 +1799,10 @@
                         }
                     } catch (ignoreStudyKeyListing) {}
                     candidateKeys = candidateKeys.filter(function (key, index, all) { return all.indexOf(key) === index; });
+                }
+                if (requestedReadingDraftKey && [readingDraftStorageKey(expectedTestId, expectedMode || vm.testSessionMode),
+                        legacyModeDraftStorageKey, legacyReadingDraftStorageKey].indexOf(readingLocalDraftKey(requestedReadingDraftKey)) >= 0) {
+                    candidateKeys = [requestedReadingDraftKey];
                 }
                 for (var keyIndex = 0; keyIndex < candidateKeys.length; keyIndex++) {
                     var draft = readStoredDraft(candidateKeys[keyIndex]);
@@ -1765,12 +1867,18 @@
                 var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var currentMode = vm.testSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 var currentKey = readingDraftStorageKey(currentTestId, currentMode);
-                try { $window.localStorage.removeItem(currentKey); } catch (ignoreLocalClear) {}
+                try {
+                    var activeLocalDraft = JSON.parse($window.localStorage.getItem(currentKey) || 'null');
+                    if (!activeLocalDraft || !activeLocalDraft.clientAttemptKey || activeLocalDraft.clientAttemptKey === readingAttemptKey) {
+                        $window.localStorage.removeItem(currentKey);
+                    }
+                } catch (ignoreLocalClear) {}
                 deleteReadingLearningDraft(currentKey);
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
                     var legacyMode = String((legacyDraft || {}).sessionMode || 'STUDY').toUpperCase();
-                    if (!legacyDraft || (String(legacyDraft.testId) === String(currentTestId) && legacyMode === currentMode)) {
+                    if (!legacyDraft || (String(legacyDraft.testId) === String(currentTestId) && legacyMode === currentMode
+                            && (!legacyDraft.clientAttemptKey || legacyDraft.clientAttemptKey === readingAttemptKey))) {
                         try { $window.localStorage.removeItem(key); } catch (ignoreLegacyClear) {}
                         deleteReadingLearningDraft(key);
                     }
@@ -1881,10 +1989,13 @@
                     }
                 });
                 var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
-                var previousDraft = readStoredDraft(activeDraftKey) || {};
+                var previousDraft = readActiveReadingDraft(activeDraftKey) || {};
+                if (!readingAttemptKey) { readingAttemptKey = newReadingAttemptKey(); }
                 var partNumbers = getReadingDraftPartNumbers();
                 var readingDraft = {
                     version: 5,
+                    clientAttemptKey: readingAttemptKey,
+                    submissionState: angular.copy(readingSubmissionState),
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
@@ -1937,7 +2048,7 @@
                     });
                     readingDraft.answeredCount = Object.keys(sharedAnswered).length;
                 }
-                storeReadingDraft(activeDraftKey, readingDraft);
+                if (storeReadingDraft(activeDraftKey, readingDraft, readingAttemptMayReplaceLocalDraft)) { readingAttemptMayReplaceLocalDraft = false; }
                 saveReadingLearningDraft(activeDraftKey, readingDraft);
                 if (vm.assignmentTaskId && vm.testSessionMode === 'STUDY') {
                     var assignmentDraft = angular.copy(readingDraft);
@@ -1968,7 +2079,7 @@
             try {
                 var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var key = readingDraftStorageKey(testId, 'STUDY');
-                var draft = readStoredDraft(key);
+                var draft = readActiveReadingDraft(key);
                 if (!draft) { return; }
                 var studiedParts = draft.studiedParts || [];
                 angular.forEach(getReadingDraftPartNumbers(), function (part) {
@@ -2111,6 +2222,7 @@
                     if (Number(pack.type) === 18 && isFinite(position)) { pack._listeningAudioTime = Math.max(0, Number(position)); }
                 });
             });
+            restoreReadingSubmissionIdentity(draft);
             if (vm.isWritingRoute) { restoreWritingInputAudit(draft); }
             vm.testResult.questionAnswerTestResult = [];
             angular.forEach(getReadingQuestionEntries(), function (entry) {
@@ -2916,7 +3028,8 @@
                         angular.forEach(getWritingTaskPackages(), function (writingPackage) {
                             writingMinutes += Number(writingPackage.type) === 17 ? 40 : 20;
                         });
-                        seriousTotalSeconds = Math.max(20, writingMinutes || 60) * 60;
+                        configuredWritingSeconds = Math.max(20, writingMinutes || 60) * 60;
+                        seriousTotalSeconds = configuredWritingSeconds;
                         if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
                     }
                     vm.getOrdinalNumber(data);
@@ -2995,6 +3108,13 @@
                                                     assignedEntries[0].packageQuestions, assignedEntries[0].passageQuestions);
                                             }
                                         }, 0);
+                                    }
+                                    if (startFreshSeriousTest) { readingAttemptMayReplaceLocalDraft = true; }
+                                    if (readingSubmissionState && readingSubmissionState.status === 'SAVED') {
+                                        readingDraftSubmitted = true;
+                                        vm.isStartTest = true; vm.isStartingTest = false; vm.showTestModeDialog = false;
+                                        restoreSubmittedReadingReceipt();
+                                        return;
                                     }
                                     startReadingDraftAutosave();
                                     vm.isStartTest = true;
@@ -3111,6 +3231,8 @@
             return result.testTime;
         };
 
+        var writingGradingGeneration = 0, writingRetakeGeneration = 0;
+        vm.isStartingNewWritingAttempt = false; vm.writingNewAttemptBlocked = false; vm.writingNewAttemptError = '';
         vm.isWritingGrading = false;
         vm.isRetryingWritingGrade = false;
         vm.writingGradingError = '';
@@ -3121,10 +3243,12 @@
         };
 
         function gradeSubmittedWritingResult(result, isRetry) {
+            var generation = ++writingGradingGeneration;
             vm.isWritingGrading = true;
             vm.isRetryingWritingGrade = isRetry === true;
             vm.writingGradingError = '';
             service.gradeWritingTestResult(result.id).then(function (gradedResult) {
+                if (generation !== writingGradingGeneration || readingDraftDestroyed) { return; }
                 vm.isWritingGrading = false;
                 vm.isRetryingWritingGrade = false;
                 // Grading returns only AI fields on a DTO with empty/default
@@ -3135,6 +3259,10 @@
                         'aiOverallBand', 'aiGradingFeedback', 'aiGradingError'], function (field) {
                         updatedResult[field] = gradedResult[field];
                     });
+                    if (readingSubmissionState && readingSubmissionState.status === 'SAVED'
+                            && String(readingSubmissionState.result.id) === String(updatedResult.id)) {
+                        readingSubmissionState.result = angular.copy(updatedResult); persistReadingSubmissionState();
+                    }
                     displaySubmittedTestResult(updatedResult);
                 }
                 if (gradedResult && gradedResult.aiGradingStatus === 'COMPLETED') {
@@ -3144,6 +3272,7 @@
                         || 'Bài Writing đã được lưu. Chưa thể chấm bằng GPT, bạn có thể thử chấm lại.';
                 }
             }, function () {
+                if (generation !== writingGradingGeneration || readingDraftDestroyed) { return; }
                 vm.isWritingGrading = false;
                 vm.isRetryingWritingGrade = false;
                 vm.writingGradingError = 'Bài Writing đã được lưu. Chưa nhận được kết quả chấm GPT, bạn có thể thử chấm lại.';
@@ -3156,8 +3285,234 @@
             gradeSubmittedWritingResult(result, true);
         };
 
-        vm.saveTestResult = function () {
+        vm.hasPendingReadingSubmission = function () {
+            return !!readingSubmissionState && readingSubmissionState.status === 'PENDING';
+        };
+        vm.hasFailedWritingReceipt = function () {
+            return vm.isWritingRoute && !vm.isSubmittingTest && readingDraftSubmitted
+                && readingSubmissionState && readingSubmissionState.status === 'SAVED'
+                && readingSubmissionState.result && readingSubmissionState.result.resultStatus === 'FAILED';
+        };
+        vm.canStartNewWritingAttempt = function () {
+            return vm.hasFailedWritingReceipt() && !vm.isStartingNewWritingAttempt && !vm.writingNewAttemptBlocked;
+        };
+        vm.startNewWritingAttempt = function () {
+            if (!vm.canStartNewWritingAttempt()) { return; }
+            vm.writingNewAttemptError = '';
+            if (!vm.assignmentTaskId) { beginNewWritingAttempt(); return; }
+            var state = readingSubmissionState, generation = ++writingRetakeGeneration;
+            vm.isStartingNewWritingAttempt = true;
+            function unavailable(message, blocked) {
+                vm.isStartingNewWritingAttempt = false; vm.writingNewAttemptBlocked = blocked === true;
+                vm.writingNewAttemptError = message;
+            }
+            if (!angular.isFunction(service.getAssignedTask)) {
+                unavailable('Cần cập nhật backend để xác nhận thời hạn trước khi mở lượt mới.', true); return;
+            }
+            service.getAssignedTask(vm.assignmentTaskId).then(function (task) {
+                if (readingDraftDestroyed || generation !== writingRetakeGeneration || readingSubmissionState !== state) { return; }
+                if (!task || typeof task.canStartNewAttempt !== 'boolean') {
+                    unavailable('Cần cập nhật backend để xác nhận thời hạn trước khi mở lượt mới.', true); return;
+                }
+                var taskParts = angular.isArray(task.ieltsParts) ? task.ieltsParts : [task.ieltsPart];
+                if (String(task.taskId) !== String(state.payload.assignmentTaskId) || task.activityType !== 'IELTS_WRITING'
+                        || String(task.ieltsTestId) !== String(state.payload.sourceQuestionId)
+                        || (state.payload.completedParts || []).some(function (part) { return taskParts.map(Number).indexOf(Number(part)) < 0; })) {
+                    unavailable('Bài được giao đã thay đổi. Hãy mở lại bài từ danh sách bài được giao.', true); return;
+                }
+                if (!task.canStartNewAttempt) {
+                    unavailable(task.newAttemptUnavailableReason || 'Bài được giao hiện chưa đến giờ hoặc đã quá hạn; không thể mở lượt mới.', true); return;
+                }
+                vm.isStartingNewWritingAttempt = false;
+                beginNewWritingAttempt();
+            }, function () {
+                if (readingDraftDestroyed || generation !== writingRetakeGeneration || readingSubmissionState !== state) { return; }
+                unavailable('Chưa kiểm tra được thời hạn bài được giao. Bài viết vẫn được giữ; hãy thử lại.', false);
+            });
+        };
+        function beginNewWritingAttempt() {
+            var previousPayload = readingSubmissionState.payload;
+            // A new logical attempt is an explicit student action. Keep the same
+            // exercise, assigned task/parts and essay; only its identity and clock reset.
+            requestedReadingDraftKey = null;
+            writingGradingGeneration++; vm.isWritingGrading = false; vm.isRetryingWritingGrade = false;
+            vm.writingGradingError = '';
+            readingDraftSubmitted = false; readingSubmissionState = null;
+            readingAttemptKey = newReadingAttemptKey(); restoredExpiredReadingDraft = false;
+            vm.testResult = {user: angular.copy(vm.currentUser), testTakerName: previousPayload.testTakerName,
+                questionAnswerTestResult: angular.copy(previousPayload.questionAnswerTestResult || [])};
+            vm.testResultAfterSubmitting = {};
+            vm.isLearningReview = false; vm.isShowDetail = false;
+            vm.passageNumber = vm.isPartAssignment ? displayPassageForAssignedPart() : 1;
+            $timeout.cancel(mytimeout); countdownEndsAt = null;
+            seriousTotalSeconds = configuredWritingSeconds; timerRestoredFromDraft = false; timerStarted = false;
+            setCountdownSeconds(seriousTotalSeconds);
+            var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode);
+            var newDraft = angular.copy(readStoredDraft(key) || {});
+            newDraft.version = 5; newDraft.userId = vm.currentUser.id; newDraft.testId = vm.ieltsReadingActualTest.id;
+            newDraft.title = vm.ieltsReadingActualTest.title; newDraft.testMode = 'WRITING'; newDraft.sessionMode = vm.testSessionMode;
+            newDraft.assignmentTaskId = vm.assignmentTaskId || null; newDraft.isPartAssignment = vm.isPartAssignment === true;
+            newDraft.assignmentParts = vm.isPartAssignment ? angular.copy(vm.assignedParts) : []; newDraft.assignmentPart = vm.assignedPart || null;
+            newDraft.passageNumber = vm.passageNumber; newDraft.hiddenFromDashboard = false;
+            newDraft.annotationNotes = angular.copy(vm.annotationNotes || []);
+            newDraft.clientAttemptKey = readingAttemptKey; newDraft.submissionState = null;
+            newDraft.completed = false; newDraft.resultId = null;
+            newDraft.remainingSeconds = seriousTotalSeconds; newDraft.elapsedSeconds = 0;
+            newDraft.results = serializeReadingDraftResults(); newDraft.questionStates = serializeReadingQuestionStates();
+            newDraft.savedAt = new Date().toISOString();
+            storeReadingDraft(key, newDraft, true); saveReadingLearningDraft(key, newDraft);
+            $scope.startCount(); startReadingDraftAutosave(); saveReadingDraft();
+            toastr.info('Đã mở lượt mới và giữ bài viết để bạn sửa.' + (vm.assignmentTaskId
+                ? ' Hạn bài được giao không thay đổi; nộp ngoài hạn có thể không được tính tiến độ.' : ''), 'Làm lượt mới');
+        }
+
+        function restoreSubmittedReadingReceipt() {
+            var state = readingSubmissionState;
+            vm.testResult = angular.copy(state.payload);
+            displaySubmittedTestResult(angular.copy(state.result));
+            // Read the saved result to refresh existing GPT feedback. Reloading a
+            // receipt never creates another TestResult or starts GPT grading again.
+            service.getOneTestResult(state.result.id).then(function (result) {
+                if (readingDraftDestroyed || readingSubmissionState !== state || !readingDraftSubmitted
+                        || String((result || {}).id) !== String(state.result.id)
+                        || !readingSubmissionAcknowledged(result, state.payload)) { return; }
+                state.result = angular.copy(result); persistReadingSubmissionState();
+                displaySubmittedTestResult(result);
+            }, angular.noop);
+        }
+
+        function readingSubmissionType() {
+            if (vm.isComprehensiveRoute) { return 6; }
+            if (vm.isWritingRoute) { return 7; }
+            var test = vm.ieltsReadingActualTest || {};
+            return !vm.isFlexibleRoute && test.pronounce != null && String(test.pronounce).length > 0 ? 2 : 4;
+        }
+
+        function readingSubmissionParts(parts) {
+            return (angular.isArray(parts) ? parts : []).map(Number).sort(function (a, b) { return a - b; }).join(',');
+        }
+
+        function readingSubmissionContextMatches(payload) {
+            return payload && payload.user && String(payload.user.id) === String(vm.currentUser.id)
+                && String(payload.sourceQuestionId) === String((vm.ieltsReadingActualTest || {}).id || $stateParams.ieltsReadingTestId)
+                && Number(payload.testType) === readingSubmissionType()
+                && String(payload.assignmentTaskId || '') === String(vm.assignmentTaskId || '')
+                && readingSubmissionParts(payload.completedParts) === readingSubmissionParts(vm.isPartAssignment ? vm.assignedParts : []);
+        }
+
+        function newReadingAttemptKey() {
+            var bytes = new Uint8Array(16);
+            if ($window.crypto && $window.crypto.getRandomValues) { $window.crypto.getRandomValues(bytes); }
+            else { for (var index = 0; index < bytes.length; index++) { bytes[index] = Math.floor(Math.random() * 256); } }
+            return Array.prototype.map.call(bytes, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
+        }
+
+        function readingSubmissionAcknowledged(result, payload) {
+            if (!result || !isFinite(Number(result.id)) || Number(result.id) <= 0) { return false; }
+            if (result.clientAttemptKey != null && result.clientAttemptKey !== payload.clientAttemptKey) { return false; }
+            if (result.testType != null && Number(result.testType) !== Number(payload.testType)) { return false; }
+            if (result.user && result.user.id != null && String(result.user.id) !== String(payload.user.id)) { return false; }
+            if (Object.prototype.hasOwnProperty.call(result, 'sourceQuestionId')
+                    && String(result.sourceQuestionId || '') !== String(payload.sourceQuestionId || '')) { return false; }
+            if (Object.prototype.hasOwnProperty.call(result, 'assignmentTaskId')
+                    && String(result.assignmentTaskId || '') !== String(payload.assignmentTaskId || '')) { return false; }
+            if (angular.isArray(result.completedParts)
+                    && readingSubmissionParts(result.completedParts) !== readingSubmissionParts(payload.completedParts)) { return false; }
+            // Older servers may omit the new key, but the persisted result must
+            // still echo its full context before any draft can be marked submitted.
+            if (!result.user || result.user.id == null || result.testType == null
+                    || result.sourceQuestionId == null || !angular.isArray(result.completedParts)
+                    || !Object.prototype.hasOwnProperty.call(result, 'assignmentTaskId')) { return false; }
+            return true;
+        }
+
+        function restoreReadingSubmissionIdentity(draft) {
+            var state = draft.submissionState;
+            if (state && /^[a-f0-9]{32}$/.test(state.key || '') && state.payload
+                    && state.payload.clientAttemptKey === state.key && readingSubmissionContextMatches(state.payload)) {
+                if (state.status === 'PENDING' || (state.status === 'SAVED'
+                        && readingSubmissionAcknowledged(state.result, state.payload))) {
+                    readingSubmissionState = angular.copy(state); readingAttemptKey = state.key;
+                    return;
+                }
+            }
+            readingSubmissionState = null;
+            readingAttemptKey = !state && /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '') ? draft.clientAttemptKey : null;
+            restoredExpiredReadingDraft = vm.testSessionMode !== 'STUDY' && Number(draft.remainingSeconds) === 0;
+        }
+
+        function persistReadingSubmissionState() {
+            var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode);
+            var draft = angular.copy(readActiveReadingDraft(key) || {});
+            draft.version = draft.version || 5;
+            draft.userId = vm.currentUser.id; draft.testId = vm.ieltsReadingActualTest.id;
+            draft.clientAttemptKey = readingAttemptKey;
+            draft.submissionState = angular.copy(readingSubmissionState);
+            draft.savedAt = new Date().toISOString();
+            var locallySaved = storeReadingDraft(key, draft);
+            var cloudSave = saveReadingLearningDraft(key, draft);
+            // The key and frozen essay must survive a reload before sending a result.
+            // When local storage is blocked, wait for the server draft confirmation.
+            return locallySaved ? null : cloudSave;
+        }
+
+        function submitReadingAttemptSnapshot() {
+            var state = readingSubmissionState, payload = angular.copy(state.payload);
+            vm.isSubmittingTest = true; blockUI.start();
+            function failSubmission(message) {
+                vm.isSubmittingTest = false; blockUI.stop();
+                toastr.error(message || 'Chưa xác nhận được lưu bài. Bài làm vẫn được giữ; bấm Finish để kiểm tra lại đúng lượt đã gửi.', 'Chưa xác nhận lưu bài');
+            }
+            function send() {
+                if (readingDraftDestroyed || state !== readingSubmissionState) { return; }
+                service.saveTestResult(angular.copy(payload)).then(function (data) {
+                    if (readingDraftDestroyed || state !== readingSubmissionState) { return; }
+                    if (!readingSubmissionAcknowledged(data, payload)) {
+                        failSubmission('Server chưa xác nhận đúng lượt nộp. Bài làm vẫn được giữ; hãy thử xác nhận lại.'); return;
+                    }
+                    vm.isSubmittingTest = false;
+                    vm.testResult = angular.copy(payload);
+                    state.status = 'SAVED'; state.result = angular.copy(data);
+                    persistReadingSubmissionState();
+                    readingDraftSubmitted = true;
+                    var keepFailedAssignmentDraft = vm.assignmentTaskId && data.resultStatus === 'FAILED';
+                    if ((!vm.isFlexibleRoute || data.resultStatus !== 'FAILED') && !keepFailedAssignmentDraft) { markStudyDraftCompleted(data.id); }
+                    if (vm.testSessionMode !== 'STUDY' && !keepFailedAssignmentDraft) { clearReadingDraft(); }
+                    $timeout.cancel(readingDraftAutosaveTimer);
+                    if (data.resultStatus === 'FAILED') {
+                        toastr.warning((vm.assignmentTaskId ? 'Lượt làm này chưa được tính hoàn thành phần bài được giao. ' : '')
+                            + 'Vui lòng làm lại để đạt yêu cầu.', 'Đã lưu bài · Chưa đạt yêu cầu');
+                    }
+                    if (vm.isWritingRoute) { displaySubmittedTestResult(data); gradeSubmittedWritingResult(data, false); }
+                    else { showSubmittedTestResult(data.id); }
+                }, function () { if (!readingDraftDestroyed && state === readingSubmissionState) { failSubmission(); } });
+            }
+            var persisted = persistReadingSubmissionState();
+            if (persisted && angular.isFunction(persisted.then)) {
+                persisted.then(function (saved) {
+                    if (saved) { send(); }
+                    else { failSubmission('Chưa lưu được bản nháp an toàn. Bài làm vẫn còn trên trang; hãy kiểm tra mạng và thử lại.'); }
+                }, function () { failSubmission(); });
+            } else { send(); }
+        }
+
+        vm.saveTestResult = function (options) {
             if (vm.isSubmittingTest || readingDraftSubmitted || vm.isPreviewMode || vm.isLearningReview) { return; }
+            if (!readingSubmissionState && readingAttemptKey) {
+                var sharedAttempt = readStoredDraft(readingCloudDraftKey(readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode),
+                    {clientAttemptKey: readingAttemptKey}));
+                if (sharedAttempt && sharedAttempt.submissionState) {
+                    restoreReadingSubmissionIdentity(sharedAttempt);
+                    if (readingSubmissionState && readingSubmissionState.status === 'SAVED') {
+                        readingDraftSubmitted = true; restoreSubmittedReadingReceipt(); return;
+                    }
+                }
+            }
+            if (options && options.automatic && restoredExpiredReadingDraft && !readingSubmissionState) {
+                toastr.warning('Bản nháp được khôi phục đã hết giờ. Bài làm vẫn được giữ; hệ thống không tự nộp lại. Hãy kiểm tra rồi bấm Finish để xác nhận.', 'Bản nháp hết giờ');
+                return;
+            }
+            if (readingSubmissionState && readingSubmissionState.status === 'PENDING') { submitReadingAttemptSnapshot(); return; }
             synchronizeReadingResultsBeforeSubmit();
             // Capture the last keystrokes before submission as well. This is
             // especially important for a Writing task that does not yet meet
@@ -3225,38 +3580,12 @@
                 vm.testResult.testType = 4; // ielts read
             }
 
-            blockUI.start();
-            vm.isSubmittingTest = true;
-            service.saveTestResult(vm.testResult).then(function (data) {
-                vm.isSubmittingTest = false;
-                readingDraftSubmitted = true;
-                var keepFailedAssignmentDraft = vm.assignmentTaskId && data && data.resultStatus === 'FAILED';
-                if ((!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') && !keepFailedAssignmentDraft) {
-                    markStudyDraftCompleted(data && data.id);
-                }
-                if (vm.testSessionMode !== 'STUDY' && !keepFailedAssignmentDraft) {
-                    clearReadingDraft();
-                }
-                $timeout.cancel(readingDraftAutosaveTimer);
-
-                if (data && data.resultStatus === 'FAILED') {
-                    toastr.warning((vm.assignmentTaskId ? 'Lượt làm này chưa được tính hoàn thành phần bài được giao. ' : '')
-                        + 'Vui lòng làm lại để đạt yêu cầu.', 'Đã lưu bài · Chưa đạt yêu cầu');
-                }
-
-                if (vm.isWritingRoute) {
-                    // Saving is complete even if GPT is slow or unavailable. Show the
-                    // saved response immediately so students never need to resubmit.
-                    displaySubmittedTestResult(data);
-                    gradeSubmittedWritingResult(data, false);
-                } else {
-                    showSubmittedTestResult(data.id);
-                }
-            }, function failure() {
-                vm.isSubmittingTest = false;
-                blockUI.stop();
-                toastr.error('An error occurred while saving the test result.', 'Notification');
-            });
+            readingAttemptKey = readingAttemptKey || newReadingAttemptKey();
+            vm.testResult.clientAttemptKey = readingAttemptKey;
+            vm.testResult.completedParts = angular.copy(vm.testResult.completedParts || []);
+            vm.testResult.assignmentTaskId = vm.assignmentTaskId || null;
+            readingSubmissionState = {version: 1, key: readingAttemptKey, status: 'PENDING', payload: angular.copy(vm.testResult)};
+            submitReadingAttemptSnapshot();
         };
 
         vm.isShowDetail = false;
@@ -3363,6 +3692,7 @@
         var mytimeout = null; // the current timeoutID
         var countdownEndsAt = null;
         var seriousTotalSeconds = 3600;
+        var configuredWritingSeconds = 3600;
         var studyElapsedSeconds = 0;
         var studyActiveSince = null;
         var timerRestoredFromDraft = false;
@@ -3469,7 +3799,7 @@
             syncCountdownFromDeadline();
             if($scope.counter <= 0) {
                 countdownEndsAt = null;
-                vm.saveTestResult();
+                vm.saveTestResult({automatic: true});
                 var finishedAudio = getMainAudio();
                 if (finishedAudio) { finishedAudio.load(); }
                 $scope.$broadcast('timer-stopped', 0);
