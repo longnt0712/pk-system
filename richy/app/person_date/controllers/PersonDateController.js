@@ -320,12 +320,15 @@
 
 
         vm.searchDto.groupId = null;
-        vm.groupChange = function () {
+        vm.groupChange = function (refreshList) {
             if(vm.searchDto.group != null){
                 vm.searchDto.groupId = vm.searchDto.group.id;
-                // vm.getPage();
             }else {
                 vm.searchDto.groupId = null;
+            }
+            if (refreshList === true) {
+                vm.pageIndex = 1;
+                return vm.getPage();
             }
         };
         service.getAllGroups().then(function (data) {
@@ -921,11 +924,14 @@
             );
         };
 
+        var attendanceListRequest = 0;
         vm.getPage = function () {
+            var request = ++attendanceListRequest;
             var selectedDate = parseDateOnly(vm.attendanceDate);
             var selectedClassId = vm.searchDto.user && vm.searchDto.user.person
                 ? normalizeId(vm.searchDto.user.person.enrollmentClassId)
                 : null;
+            var selectedGroupId = normalizeId(vm.searchDto.groupId);
             var searchKeyword = String(vm.searchTextClient || '')
                 .replace(/\s+/g, ' ')
                 .trim();
@@ -936,11 +942,12 @@
             }
 
             /*
-             * Không chọn lớp và không nhập tên thì giữ bảng trống. Danh sách chỉ
-             * được tải theo một lớp cụ thể hoặc theo từ khóa trong phạm vi schoolId.
+             * Chỉ tải khi có lớp, Ban/Hội hoặc từ khóa trong phạm vi schoolId.
+             * Không có bộ lọc thì giữ bảng trống, tránh tải toàn bộ điểm danh.
              */
-            if (selectedClassId === null && searchKeyword === '') {
+            if (selectedClassId === null && selectedGroupId === null && searchKeyword === '') {
                 vm.personDates = [];
+                vm.totalStudent = 0;
                 vm.searchDto.textSearch = null;
                 vm.searchDto.attendanceClassId = null;
                 refreshAttendanceSummary();
@@ -954,13 +961,15 @@
             vm.searchDto.endDate = selectedDate.getTime();
             vm.searchDto.user.person.enrollmentClassId = selectedClassId;
             vm.searchDto.attendanceClassId = selectedClassId;
+            vm.searchDto.groupId = selectedGroupId;
             vm.searchDto.textSearch = searchKeyword || null;
 
             vm.resetSum();
             blockUI.start();
 
-            service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize)
+            return service.getPage(angular.copy(vm.searchDto), vm.pageIndex, vm.pageSize)
                 .then(function (data) {
+                    if (request !== attendanceListRequest) { return; }
                     /*
                      * Mỗi lần tải hoặc tải lại danh sách đều sắp xếp
                      * bằng đúng AngularJS orderBy giống bảng User.
@@ -979,6 +988,7 @@
                     refreshAttendanceSummary();
                 })
                 .catch(function (err) {
+                    if (request !== attendanceListRequest) { return; }
                     console.error(err);
                     toastr.error('Tải danh sách điểm danh thất bại.', 'Lỗi');
                 })
