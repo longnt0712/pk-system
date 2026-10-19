@@ -271,7 +271,7 @@ public class BattleOnlineGiftDropTest {
         BattleOnlineGiftClaimResultDto hat = service.claimGift("GIFTS1","alice",request(hatId));
         assertEquals(GiftDropGame.PERRY_HAT_LEVEL,hat.getRewardLevel());
         long endsAt = hat.getRoom().getGiftDrop().perryHatProtectionEndsAt;
-        assertTrue(endsAt >= before + 10000L); assertTrue(endsAt <= System.currentTimeMillis() + 10000L);
+        assertTrue(endsAt >= before + 15000L); assertTrue(endsAt <= System.currentTimeMillis() + 15000L);
         assertEquals(endsAt,service.getRoom("GIFTS1","alice").getGiftDrop().perryHatProtectionEndsAt);
         assertEquals(0L,service.getRoom("GIFTS1","bob").getGiftDrop().perryHatProtectionEndsAt);
         assertEquals(0L,service.getRoom("GIFTS1","host").getGiftDrop().perryHatProtectionEndsAt);

@@ -279,7 +279,7 @@ public class GiftDropGameTest {
         }
     }
 
-    @Test public void perryHatProtectionCoversExistingEggsOnlyForItsOwnerAndExpiresAtTenSeconds() {
+    @Test public void perryHatProtectionCoversExistingEggsOnlyForItsOwnerAndExpiresAtFifteenSeconds() {
         for (boolean lightning : new boolean[] {false,true}) for (boolean finalOpening : new boolean[] {false,true}) {
             TicketRandom random = new TicketRandom();
             GiftDropGame game = new GiftDropGame(10,random);
@@ -289,24 +289,25 @@ public class GiftDropGameTest {
             }
             GiftDropGame.Snapshot alice = game.snapshot("alice"), bob = game.snapshot("bob");
             game.recordClaim(new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D),"alice","Alice",1D,1000L);
-            assertEquals(11000L,game.snapshot("alice").perryHatProtectionEndsAt);
+            assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
             assertEquals(0L,game.snapshot("bob").perryHatProtectionEndsAt);
             assertEquals(0L,game.snapshot().perryHatProtectionEndsAt);
             assertEquals(alice.gifts.get(0).id,game.snapshot("alice").gifts.get(0).id);
-            assertNotEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(0).id,lightning,10999L).rewardLevel);
-            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("bob",bob.gifts.get(0).id,lightning,10999L).rewardLevel);
-            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(1).id,lightning,11000L).rewardLevel);
+            assertNotEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(0).id,lightning,15999L).rewardLevel);
+            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("bob",bob.gifts.get(0).id,lightning,15999L).rewardLevel);
+            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,game.claim("alice",alice.gifts.get(1).id,lightning,16000L).rewardLevel);
         }
     }
 
-    @Test public void aSecondHatRefreshesTheWindowAndFinalPoolsKeepItWithoutLeakingRewards() throws Exception {
+    @Test public void aSecondHatResetsToFifteenSecondsWithoutStackingAndFinalPoolsKeepItWithoutLeakingRewards() throws Exception {
         GiftDropGame game = new GiftDropGame(10,new Random(1));
         GiftDropGame.Gift hat = new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D);
         game.recordClaim(hat,"alice","Alice",1D,1000L);
+        assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
         game.recordClaim(hat,"alice","Alice",1D,6000L);
-        assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
+        assertEquals("Second hat resets to 15 seconds from pickup, not another 15 on the old expiry",21000L,game.snapshot("alice").perryHatProtectionEndsAt);
         game.prepareFinalPools(Collections.singletonMap("alice",3));
-        assertEquals(16000L,game.snapshot("alice").perryHatProtectionEndsAt);
+        assertEquals(21000L,game.snapshot("alice").perryHatProtectionEndsAt);
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(game.snapshot("bob").gifts);
         assertFalse(json.contains("rewardLevel")); assertFalse(json.contains("points"));
         assertEquals(0L,new GiftDropGame(10,new Random(1)).snapshot("alice").perryHatProtectionEndsAt);

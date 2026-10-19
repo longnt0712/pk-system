@@ -10,7 +10,7 @@ public class GiftDropGame {
     public static final int PERRY_HAT_LEVEL = -3;
     public static final int LIGHTNING_LEVEL = -4;
     public static final double PERRY_HAT_POINTS = 1D;
-    public static final long PERRY_HAT_PROTECTION_MILLIS = 10000L;
+    public static final long PERRY_HAT_PROTECTION_MILLIS = 15000L;
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
