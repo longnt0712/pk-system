@@ -9,6 +9,7 @@ const source = fs.readFileSync(path.join(__dirname, '../enrolment_class/controll
 function editor() {
     const context = nodeVm.createContext({
         vm: {
+            isVideoHomeworkPractice: () => false,
             taskEditor: {activityType: 'IELTS_READING', title: 'Practice', section: 'HOMEWORK', requiredAttempts: 1},
             taskEditorIndex: -1,
             assignableIeltsTests: [{id: 20, title: 'Reading'},

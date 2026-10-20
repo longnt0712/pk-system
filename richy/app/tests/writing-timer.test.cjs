@@ -23,7 +23,7 @@ function timer({mode = 'SERIOUS', writingTypes = [], audio = null} = {}) {
     const scheduled = new Map();
     const context = nodeVm.createContext({
         Date: class extends Date { static now() { return now; } },
-        vm: {testSessionMode: mode, isStartTest: false, isWritingRoute: writingTypes.length > 0,
+        vm: {isVideoHomeworkPractice: () => false, testSessionMode: mode, isStartTest: false, isWritingRoute: writingTypes.length > 0,
             isListeningRoute: !!audio, saveTestResult() { context.submissions += 1; }},
         $scope: {$broadcast() {}, $evalAsync(callback) { if (callback) { callback(); } }},
         $window: {document: {hidden: false}}, document: {getElementById() { return audio; }},

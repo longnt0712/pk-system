@@ -13,7 +13,7 @@ test('question hover styles target the whole question instead of darkening child
 
 function candidate(parts, format = 'READING') {
     const c = nodeVm.createContext({
-        vm: {currentUser: {id: 7}, isWritingRoute: format === 'WRITING', isListeningRoute: format === 'LISTENING',
+        vm: {isVideoHomeworkPractice: () => false, currentUser: {id: 7}, isWritingRoute: format === 'WRITING', isListeningRoute: format === 'LISTENING',
             isComprehensiveRoute: false, isFlexibleRoute: format === 'WRITING', passageNumber: 1,
             testResult: {user:{id:7},questionAnswerTestResult: []}, annotationNotes: [{id: 'n1', specificNote: 'Student note'}]},
         $stateParams: {ieltsReadingTestId: 42, assignmentTaskId: 10, assignmentParts: parts, assignmentPart: 1},

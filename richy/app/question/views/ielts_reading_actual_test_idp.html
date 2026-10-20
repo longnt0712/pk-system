@@ -305,6 +305,13 @@
                                     <comprehensive-video-player video-link="vm.ieltsReadingActualTest.subQuestions[0].videoUrl" video-api="vm.videoApi"
                                         on-video-progress="vm.onVideoProgress(seconds, duration)" on-video-state="vm.onVideoState(playing)"></comprehensive-video-player>
                                     <div class="comprehensive-video-clock">{{vm.formatVideoTime(vm.videoTimeline.currentSeconds)}} <span ng-if="vm.videoDuration">/ {{vm.formatVideoTime(vm.videoDuration)}}</span></div>
+                                    <p class="comprehensive-video-help" ng-if="vm.isVideoHomeworkPractice()">Bạn có thể tua lùi trên video để nghe lại trước khi trả lời.</p>
+                                    <button type="button" class="btn btn-default btn-sm" ng-if="vm.isVideoHomeworkPractice()"
+                                            ng-click="vm.replayVideoSegment()" ng-disabled="!vm.videoApi.ready"><i class="fa fa-repeat" aria-hidden="true"></i> Nghe lại 10 giây</button>
+                                    <div class="alert alert-info" role="status" aria-live="polite" ng-if="vm.isVideoHomeworkOvertime()">
+                                        <strong>Đã làm {{vm.getRemainingMinutes()}} phút</strong>
+                                        <p>Đã hết thời gian dự kiến. Bạn vẫn có thể nghe lại, sửa câu trả lời và nộp bài. Hạn nộp giáo viên giao không thay đổi.</p>
+                                    </div>
                                     <div class="comprehensive-video-pause-card" ng-if="vm.videoTimeline.active.length">
                                         <strong><i class="fa fa-pause-circle"></i> Câu hỏi tại {{vm.formatVideoTime(vm.videoTimeline.active[0].seconds)}}</strong>
                                         <p>Trả lời câu hỏi rồi tiếp tục xem video.</p>

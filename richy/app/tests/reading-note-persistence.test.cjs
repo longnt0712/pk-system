@@ -11,7 +11,7 @@ function setup(blocked = false) {
     timeout.cancel = timer => { if (timer) timer.cancelled = true; };
     const context = vmModule.createContext({
         Date, JSON, String,
-        vm: {currentUser: {id: 7}, testSessionMode: 'STUDY', isComprehensiveRoute: false, isWritingRoute: false, isListeningRoute: false},
+        vm: {isVideoHomeworkPractice: () => false, currentUser: {id: 7}, testSessionMode: 'STUDY', isComprehensiveRoute: false, isWritingRoute: false, isListeningRoute: false},
         legacyModeDraftStorageKey: 'legacy-mode', legacyReadingDraftStorageKey: 'legacy',
         $stateParams: {ieltsReadingTestId: 42},
         readingDraftBaseKey: 'ieltsReadingInProgress:7', readingDraftTaskSuffix: '',
