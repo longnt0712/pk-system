@@ -1709,7 +1709,7 @@
                             ng-if="vm.hasFailedWritingReceipt()" ng-disabled="!vm.canStartNewWritingAttempt()" ng-click="vm.startNewWritingAttempt()">
                         <i class="fa" ng-class="vm.isStartingNewWritingAttempt ? 'fa-spinner fa-spin' : 'fa-pencil'" aria-hidden="true"></i> {{vm.isStartingNewWritingAttempt ? 'Đang kiểm tra thời hạn...' : 'Làm lượt mới'}}
                     </button>
-                    <p class="text-muted" ng-if="vm.hasFailedWritingReceipt() && vm.assignmentTaskId">Giữ bài viết để sửa và bắt đầu thời gian của lượt mới. Hạn bài được giao không thay đổi.</p>
+                    <p class="text-muted" ng-if="vm.hasFailedWritingReceipt() && vm.assignmentTaskId">Giữ {{vm.isWritingRoute ? 'bài viết' : 'câu trả lời'}} để sửa và bắt đầu thời gian của lượt mới. Hạn bài được giao không thay đổi.</p>
                     <p class="text-warning" role="status" ng-if="vm.hasFailedWritingReceipt() && vm.writingNewAttemptError">{{vm.writingNewAttemptError}}</p>
                     <p ng-if="vm.isWritingRoute && vm.isWritingGrading" role="status" aria-live="polite">
                         <i class="fa fa-spinner fa-spin"></i> Bài đã được lưu. Đang chấm Writing bằng GPT...

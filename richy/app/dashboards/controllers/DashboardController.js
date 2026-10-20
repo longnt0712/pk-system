@@ -425,6 +425,7 @@
                 pushResumeDraft({
                     kind: 'DAILY_LISTENING',
                     storageKey: key,
+                    resumeIdentity: dailyListeningPrefix + draft.card.id + (draft.assignmentTaskId ? ':task:' + draft.assignmentTaskId : ''),
                     title: draft.card.question || 'Daily Listening',
                     dailyListeningId: draft.dailyListeningId || draft.card.id,
                     savedAt: Number(draft.updatedAt) || 0,

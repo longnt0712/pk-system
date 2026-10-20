@@ -71,7 +71,9 @@
                             return match ? match.label : 'Chưa vào folder';
                         };
                         vm.canSelect = function () {
-                            return !vm.loading && !vm.error && !!vm.selected && (!vm.dailyListening || vm.topicsFor(vm.selected).some(function (topic) {
+                            return !vm.loading && !vm.error && !!vm.selected && (!vm.dailyListening
+                                || (vm.selected.testFormat === 'DAILY_LISTENING' && !vm.topicsFor(vm.selected).length)
+                                || vm.topicsFor(vm.selected).some(function (topic) {
                                 return String(topic.id) === String(vm.selectedTopicId);
                             }));
                         };

@@ -64,6 +64,21 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             @Param("sourceQuestionId") Long sourceQuestionId, @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
 
+    // Direct Daily Listening evidence is scoped to the assigned source, without joining optional Topic tags.
+    @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
+            + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :sourceQuestionId and r.testType = 3 "
+            + "and r.resultStatus = 'SUCCESS' and r.createDate >= :fromDate and r.createDate < :toDate")
+    long countSuccessfulDirectListeningAttempts(@Param("studentId") Long studentId, @Param("taskId") Long taskId,
+            @Param("sourceQuestionId") Long sourceQuestionId, @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
+
+    @Query("select r.user.id, r.sourceQuestionId, r.createDate, r.id, r.testType, r.assignmentTaskId "
+            + "from TestResult r where r.user.id in :students and r.sourceQuestionId in :sources and r.testType = 3 "
+            + "and r.assignmentTaskId is not null and r.resultStatus = 'SUCCESS' "
+            + "and r.createDate >= :fromDate and r.createDate < :toDate order by r.createDate asc, r.id asc")
+    List<Object[]> findDirectListeningCompletions(@Param("students") List<Long> students, @Param("sources") List<Long> sources,
+            @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
     @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
             + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :testId and r.testType = :testType "
             + "and (r.completedPart = :part or r.completedPartsValue like :partToken) "

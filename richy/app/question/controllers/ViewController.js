@@ -173,9 +173,11 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
-        vm.isStandaloneDailyListening = $stateParams.dailyListeningId != null;
-        vm.standaloneDailyListeningId = /^\d+$/.test(String($stateParams.dailyListeningId || '')) && Number($stateParams.dailyListeningId) > 0
-            ? Number($stateParams.dailyListeningId) : null;
+        vm.isDirectAssignedDailyListening = !!$stateParams.assignmentTaskId && !$stateParams.assignmentTopicId && $stateParams.assignmentSourceQuestionId != null;
+        vm.isStandaloneDailyListening = $stateParams.dailyListeningId != null || vm.isDirectAssignedDailyListening;
+        var requestedDailyListeningId = $stateParams.dailyListeningId != null ? $stateParams.dailyListeningId : $stateParams.assignmentSourceQuestionId;
+        vm.standaloneDailyListeningId = /^\d+$/.test(String(requestedDailyListeningId || '')) && Number(requestedDailyListeningId) > 0
+            ? Number(requestedDailyListeningId) : null;
         vm.standaloneListeningLoading = false;
         vm.standaloneListeningError = '';
         vm.showVoiceOption = true;
@@ -546,6 +548,7 @@
         vm.allMcqShowUnderFourAnswers = true;
 
         vm.getPageFlashCard = function () {
+            if (vm.isDirectAssignedDailyListening && vm.assignmentLaunch.verified !== true) { return; }
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.userId = vm.selectedUser.id;
             vm.searchDto.pageSize = 5000;
@@ -913,7 +916,7 @@
             }
             vm.currentPosition = index;
             vm.currentCard = vm.questions[index];
-            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
             vm.dailyListeningDraftRestored = false;
             vm.dailyListeningDraftStarted = false;
 
@@ -1333,7 +1336,25 @@
             );
         };
 
-        if (vm.isStandaloneDailyListening) { $timeout(function () { vm.getPageFlashCard(); }, 0); }
+        function initializeAssignedDailyListening() {
+            vm.standaloneListeningLoading = true;
+            if (!vm.standaloneDailyListeningId || !/^\d+$/.test(String(vm.assignmentLaunch.taskId || ''))) {
+                vm.standaloneListeningLoading = false; vm.standaloneListeningError = 'Thông tin bài nghe được giao không hợp lệ.'; return;
+            }
+            service.getAssignedTask(vm.assignmentLaunch.taskId).then(function (task) {
+                if (!task || String(task.taskId) !== String(vm.assignmentLaunch.taskId) || task.activityType !== 'DAILY_LISTENING'
+                        || String(task.sourceQuestionId) !== String(vm.standaloneDailyListeningId)) {
+                    vm.standaloneListeningLoading = false; vm.standaloneListeningError = 'Bài nghe không khớp với task được giao. Hãy mở lại từ trang chủ.'; return;
+                }
+                vm.assignmentLaunch.sourceQuestionId = task.sourceQuestionId;
+                vm.assignmentLaunch.topicId = task.topicId || null; vm.assignmentLaunch.categoryId = task.categoryId || null;
+                vm.assignmentLaunch.verified = true; vm.getPageFlashCard();
+            }, function () {
+                vm.standaloneListeningLoading = false; vm.standaloneListeningError = 'Không tải được bài nghe được giao. Bạn có thể tải lại trang để thử lại.';
+            });
+        }
+        if (vm.isDirectAssignedDailyListening) { $timeout(initializeAssignedDailyListening, 0); }
+        else if (vm.isStandaloneDailyListening) { $timeout(function () { vm.getPageFlashCard(); }, 0); }
         else { vm.getPageTopicCategory(); }
 
         vm.changePageSize = function () {
@@ -1363,7 +1384,7 @@
                     if (vm.mode && vm.mode.id == 8) { persistDailyListeningDraft(false, false); }
                     vm.currentPosition = vm.currentPosition + 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    vm.dailyListeningAttemptKey = null;
+                    vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
                     vm.dailyListeningDraftRestored = false;
                     vm.dailyListeningDraftStarted = false;
                     vm.answerRewriteWord = '';
@@ -1402,7 +1423,7 @@
                     if (vm.mode && vm.mode.id == 8) { persistDailyListeningDraft(false, false); }
                     vm.currentPosition = vm.currentPosition - 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    vm.dailyListeningAttemptKey = null;
+                    vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
                     vm.dailyListeningDraftRestored = false;
                     vm.dailyListeningDraftStarted = false;
                     vm.answerRewriteWord = '';
@@ -3520,6 +3541,9 @@
                 return;
             }
 
+            if (vm.isDirectAssignedDailyListening && vm.assignmentLaunch.verified !== true) {
+                toastr.error('Chưa xác nhận được bài nghe được giao. Vui lòng tải lại trang.'); return;
+            }
             vm.savingTestResult = true;
 
             vm.tempWrong = vm.testResult.testTakerPerformance;
@@ -3555,10 +3579,29 @@
                 vm.testResult.totalWord = vm.totalCard;
             }
 
+            var assignedListeningPayload = vm.mode.id == 8 && vm.assignmentLaunch.taskId ?
+                (vm.dailyListeningPendingResult || angular.copy(vm.testResult)) : null;
+            if (assignedListeningPayload && !isCurrentAssignedListeningAttempt(assignedListeningPayload)) {
+                vm.savingTestResult = false; vm.isSaveTestResult = false;
+                vm.dailyListeningDraftStatus = 'error';
+                vm.dailyListeningDraftMessage = 'Bản lưu đang chờ không khớp với bài được giao. Bản nháp vẫn được giữ; hãy mở lại đúng bài từ trang chủ.';
+                toastr.error(vm.dailyListeningDraftMessage, 'Thông báo'); return;
+            }
+            if (assignedListeningPayload) {
+                vm.dailyListeningPendingResult = angular.copy(assignedListeningPayload);
+                persistDailyListeningDraft(false, true);
+            }
             blockUI.start();
 
-            service.saveTestResult(vm.testResult).then(function (data1) {
+            service.saveTestResult(assignedListeningPayload || vm.testResult).then(function (data1) {
                 blockUI.stop();
+                if (assignedListeningPayload && !isCurrentAssignedListeningAttempt(assignedListeningPayload)) { return; }
+                if (assignedListeningPayload && !assignedListeningAcknowledged(data1, assignedListeningPayload)) {
+                    vm.isSaveTestResult = false; persistDailyListeningDraft(false, true);
+                    vm.dailyListeningDraftStatus = 'error';
+                    vm.dailyListeningDraftMessage = 'Chưa nhận được xác nhận lưu đúng bài được giao. Bản nháp vẫn được giữ để bạn thử lại.';
+                    toastr.error(vm.dailyListeningDraftMessage, 'Thông báo'); return;
+                }
 
                 if (data1.messageCode == 1) {
                     toastr.error('Sai quá nhiều => chưa đạt', 'Thông báo');
@@ -3589,6 +3632,7 @@
 
             }, function () {
                 blockUI.stop();
+                if (assignedListeningPayload && !isCurrentAssignedListeningAttempt(assignedListeningPayload)) { return; }
                 if (vm.mode.id == 8) {
                     vm.isSaveTestResult = false;
                     persistDailyListeningDraft(false, true);
@@ -3690,8 +3734,22 @@
         vm.dailyListeningDraftRestored = false;
         vm.dailyListeningDraftStatus = 'idle';
         vm.dailyListeningDraftMessage = '';
-        vm.dailyListeningAttemptKey = null;
+        vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
         vm.dailyListeningDraftStarted = false;
+
+        function isCurrentAssignedListeningAttempt(payload) {
+            return !$scope.$$destroyed && vm.mode && vm.mode.id == 8
+                && String(vm.assignmentLaunch.taskId || '') === String(payload.assignmentTaskId || '')
+                && String((vm.currentCard || {}).id || '') === String(payload.sourceQuestionId || '')
+                && vm.dailyListeningAttemptKey === payload.clientAttemptKey;
+        }
+        function assignedListeningAcknowledged(result, payload) {
+            return !!(result && Number(result.id) > 0 && result.user
+                && String(result.user.id) === String((payload.user || {}).id) && Number(result.testType) === 3
+                && String(result.assignmentTaskId || '') === String(payload.assignmentTaskId || '')
+                && String(result.sourceQuestionId || '') === String(payload.sourceQuestionId || '')
+                && result.clientAttemptKey === payload.clientAttemptKey);
+        }
 
         function isDailyListeningMode() {
             return vm.mode && vm.mode.id == 8;
@@ -3701,8 +3759,14 @@
             return 'daily-listening-progress:v1:' + String(vm.currentUser && vm.currentUser.id || '') + ':';
         }
 
-        function dailyListeningDraftKey(questionId) {
-            return dailyListeningDraftPrefix() + String(questionId);
+        function dailyListeningDraftKey(questionId, taskId) {
+            var assignmentTaskId = arguments.length > 1 ? taskId : vm.assignmentLaunch.taskId;
+            return dailyListeningDraftPrefix() + String(questionId) + (assignmentTaskId ? ':task:' + assignmentTaskId : '');
+        }
+        function dailyListeningDraftMatchesContext(draft) {
+            if (String(draft.assignmentTaskId || '') !== String(vm.assignmentLaunch.taskId || '')) { return false; }
+            var sourceId = vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId : vm.assignmentLaunch.sourceQuestionId;
+            return sourceId == null || String(draft.card.id) === String(sourceId);
         }
 
         function saveDailyListeningLearningDraft(key, draft, manual) {
@@ -3762,14 +3826,14 @@
             }).join('');
         }
 
-        function isValidDailyListeningDraft(draft) {
+        function isValidDailyListeningDraft(draft, ignoreContext) {
             return !!(draft && draft.version === 1 && draft.modeId === 8
                 && String(draft.ownerId) === String(vm.currentUser && vm.currentUser.id)
                 && draft.card && draft.card.id != null && draft.card.motherTongue
                 && typeof draft.fillingGapQuestion === 'string'
                 && draft.gapAnswers && typeof draft.gapAnswers === 'object'
                 && /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '')
-                && Number(draft.updatedAt) > 0);
+                && Number(draft.updatedAt) > 0 && (ignoreContext === true || dailyListeningDraftMatchesContext(draft)));
         }
 
         function findLatestDailyListeningDraft(questionId) {
@@ -3782,13 +3846,15 @@
                 for (var i = 0; i < window.localStorage.length; i++) {
                     var key = window.localStorage.key(i);
                     if (!key || key.indexOf(prefix) !== 0) { continue; }
-                    if (targetId != null && key !== dailyListeningDraftKey(targetId)) { continue; }
+                    if (targetId != null && key !== dailyListeningDraftKey(targetId)
+                            && key !== dailyListeningDraftPrefix() + String(targetId)) { continue; }
 
                     var draft = null;
                     try { draft = JSON.parse(window.localStorage.getItem(key)); } catch (ignore) {}
-                    if (!isValidDailyListeningDraft(draft)) {
+                    if (!isValidDailyListeningDraft(draft, true)) {
                         staleKeys.push(key);
-                    } else if (!latest || Number(draft.updatedAt) > Number(latest.updatedAt)) {
+                    } else if (!dailyListeningDraftMatchesContext(draft)) { continue; }
+                    else if (!latest || Number(draft.updatedAt) > Number(latest.updatedAt)) {
                         latest = draft;
                     }
                 }
@@ -3850,6 +3916,8 @@
         }
 
         function persistDailyListeningDraft(manual, force) {
+            if (vm.assignmentLaunch.taskId && vm.isSaveTestResult === true && Number((vm.testResult || {}).id) > 0
+                    && !vm.dailyListeningPendingResult) { return false; }
             if (!isDailyListeningMode() || !vm.currentCard || vm.currentCard.id == null
                     || !vm.fillingGapQuestion || !Object.keys(vm.gapAnswers || {}).length) {
                 if (manual) { toastr.warning('Chưa có bài Daily Listening để lưu.'); }
@@ -3866,6 +3934,7 @@
                 ownerId: vm.currentUser.id,
                 updatedAt: Date.now(),
                 clientAttemptKey: vm.dailyListeningAttemptKey,
+                pendingResult: vm.assignmentLaunch.taskId ? angular.copy(vm.dailyListeningPendingResult || null) : null,
                 dailyListeningId: vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId : null,
                 assignmentTaskId: vm.assignmentLaunch.taskId || null,
                 assignmentTopicId: vm.assignmentLaunch.topicId || null,
@@ -3926,21 +3995,33 @@
 
         function removeDailyListeningDraft(draft) {
             if (!draft || !draft.card || draft.card.id == null) { return; }
-            var key = dailyListeningDraftKey(draft.card.id);
-            try { window.localStorage.removeItem(key); } catch (ignore) {}
-            deleteDailyListeningLearningDraft(key);
+            var keys = [dailyListeningDraftKey(draft.card.id, draft.assignmentTaskId || null)];
+            if (draft.assignmentTaskId) { keys.push(dailyListeningDraftPrefix() + String(draft.card.id)); }
+            angular.forEach(keys, function (key, index) {
+                if (draft.assignmentTaskId) {
+                    var stored = null;
+                    try { stored = JSON.parse(window.localStorage.getItem(key)); } catch (ignoreRead) {}
+                    if (stored && (String(stored.ownerId) !== String(vm.currentUser.id)
+                            || String(stored.assignmentTaskId || '') !== String(draft.assignmentTaskId)
+                            || String((stored.card || {}).id) !== String(draft.card.id)
+                            || stored.clientAttemptKey !== draft.clientAttemptKey)) { return; }
+                    // An unscoped key belongs to this old draft only when its stored identity proves it.
+                    if (index > 0 && !stored) { return; }
+                }
+                try { window.localStorage.removeItem(key); } catch (ignore) {}
+                deleteDailyListeningLearningDraft(key);
+            });
         }
 
         function clearCurrentDailyListeningDraft() {
             var questionId = vm.currentCard && vm.currentCard.id;
             if (questionId != null) {
-                var key = dailyListeningDraftKey(questionId);
-                try { window.localStorage.removeItem(key); } catch (ignore) {}
-                deleteDailyListeningLearningDraft(key);
+                removeDailyListeningDraft({card: {id: questionId}, assignmentTaskId: vm.assignmentLaunch.taskId || null,
+                    clientAttemptKey: vm.dailyListeningAttemptKey});
             }
             vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
             vm.dailyListeningDraftRestored = false;
-            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
             vm.dailyListeningDraftStarted = false;
         }
 
@@ -3953,7 +4034,7 @@
             removeDailyListeningDraft(draft);
             vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
             vm.dailyListeningDraftRestored = false;
-            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningAttemptKey = null; vm.dailyListeningPendingResult = null;
             vm.dailyListeningDraftStarted = false;
             vm.dailyListeningDraftStatus = 'idle';
             vm.dailyListeningDraftMessage = '';
@@ -4046,6 +4127,7 @@
             vm.volumeValue = isFinite(Number(draft.volumeValue)) ? Number(draft.volumeValue) : 1;
             vm.showGapTitleTable = !vm.isStandaloneDailyListening && draft.showGapTitleTable !== false;
             vm.dailyListeningAttemptKey = draft.clientAttemptKey;
+            vm.dailyListeningPendingResult = draft.assignmentTaskId && draft.pendingResult ? angular.copy(draft.pendingResult) : null;
             vm.dailyListeningDraftRestored = true;
             vm.dailyListeningDraftStarted = true;
             vm.dailyListeningDraftAvailable = null;

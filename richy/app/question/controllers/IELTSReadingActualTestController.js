@@ -3289,7 +3289,7 @@
             return !!readingSubmissionState && readingSubmissionState.status === 'PENDING';
         };
         vm.hasFailedWritingReceipt = function () {
-            return vm.isWritingRoute && !vm.isSubmittingTest && readingDraftSubmitted
+            return (vm.isWritingRoute || vm.isComprehensiveRoute) && !vm.isSubmittingTest && readingDraftSubmitted
                 && readingSubmissionState && readingSubmissionState.status === 'SAVED'
                 && readingSubmissionState.result && readingSubmissionState.result.resultStatus === 'FAILED';
         };
@@ -3315,7 +3315,7 @@
                     unavailable('Cần cập nhật backend để xác nhận thời hạn trước khi mở lượt mới.', true); return;
                 }
                 var taskParts = angular.isArray(task.ieltsParts) ? task.ieltsParts : [task.ieltsPart];
-                if (String(task.taskId) !== String(state.payload.assignmentTaskId) || task.activityType !== 'IELTS_WRITING'
+                if (String(task.taskId) !== String(state.payload.assignmentTaskId) || task.activityType !== (vm.isComprehensiveRoute ? 'COMPREHENSIVE' : 'IELTS_WRITING')
                         || String(task.ieltsTestId) !== String(state.payload.sourceQuestionId)
                         || (state.payload.completedParts || []).some(function (part) { return taskParts.map(Number).indexOf(Number(part)) < 0; })) {
                     unavailable('Bài được giao đã thay đổi. Hãy mở lại bài từ danh sách bài được giao.', true); return;
@@ -3327,13 +3327,19 @@
                 beginNewWritingAttempt();
             }, function () {
                 if (readingDraftDestroyed || generation !== writingRetakeGeneration || readingSubmissionState !== state) { return; }
-                unavailable('Chưa kiểm tra được thời hạn bài được giao. Bài viết vẫn được giữ; hãy thử lại.', false);
+                unavailable('Chưa kiểm tra được thời hạn bài được giao. Bài làm vẫn được giữ; hãy thử lại.', false);
             });
         };
         function beginNewWritingAttempt() {
             var previousPayload = readingSubmissionState.payload;
+            var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode);
+            // The base slot may now belong to another tab. Read the selected receipt's
+            // attempt before changing its identity, then serialize current UI state below.
+            var previousDraft = readStoredDraft(readingCloudDraftKey(key, {clientAttemptKey: readingAttemptKey}))
+                || readActiveReadingDraft(key) || {};
+            if (previousDraft.clientAttemptKey !== readingAttemptKey) { previousDraft = {}; }
             // A new logical attempt is an explicit student action. Keep the same
-            // exercise, assigned task/parts and essay; only its identity and clock reset.
+            // exercise, assigned task/parts and answers; only its identity and clock reset.
             requestedReadingDraftKey = null;
             writingGradingGeneration++; vm.isWritingGrading = false; vm.isRetryingWritingGrade = false;
             vm.writingGradingError = '';
@@ -3346,23 +3352,28 @@
             vm.passageNumber = vm.isPartAssignment ? displayPassageForAssignedPart() : 1;
             $timeout.cancel(mytimeout); countdownEndsAt = null;
             seriousTotalSeconds = configuredWritingSeconds; timerRestoredFromDraft = false; timerStarted = false;
-            setCountdownSeconds(seriousTotalSeconds);
-            var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode);
-            var newDraft = angular.copy(readStoredDraft(key) || {});
+            if (vm.testSessionMode === 'STUDY') { setStudyElapsedSeconds(0); }
+            else { setCountdownSeconds(seriousTotalSeconds); }
+            var newDraft = angular.copy(previousDraft);
             newDraft.version = 5; newDraft.userId = vm.currentUser.id; newDraft.testId = vm.ieltsReadingActualTest.id;
-            newDraft.title = vm.ieltsReadingActualTest.title; newDraft.testMode = 'WRITING'; newDraft.sessionMode = vm.testSessionMode;
+            newDraft.title = vm.ieltsReadingActualTest.title;
+            newDraft.testMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : 'WRITING'; newDraft.sessionMode = vm.testSessionMode;
             newDraft.assignmentTaskId = vm.assignmentTaskId || null; newDraft.isPartAssignment = vm.isPartAssignment === true;
             newDraft.assignmentParts = vm.isPartAssignment ? angular.copy(vm.assignedParts) : []; newDraft.assignmentPart = vm.assignedPart || null;
             newDraft.passageNumber = vm.passageNumber; newDraft.hiddenFromDashboard = false;
             newDraft.annotationNotes = angular.copy(vm.annotationNotes || []);
             newDraft.clientAttemptKey = readingAttemptKey; newDraft.submissionState = null;
             newDraft.completed = false; newDraft.resultId = null;
-            newDraft.remainingSeconds = seriousTotalSeconds; newDraft.elapsedSeconds = 0;
+            newDraft.remainingSeconds = vm.testSessionMode === 'STUDY' ? 0 : seriousTotalSeconds; newDraft.elapsedSeconds = 0;
+            newDraft.comprehensiveShuffle = angular.copy(vm.comprehensiveShuffleState || previousDraft.comprehensiveShuffle || null);
+            newDraft.annotations = readingAnnotationsRestoring ? angular.copy(previousDraft.annotations || []) : serializeReadingAnnotations();
+            newDraft.completeListStates = serializeCompleteListStates();
+            newDraft.listeningAudioPositions = serializeListeningAudioPositions();
             newDraft.results = serializeReadingDraftResults(); newDraft.questionStates = serializeReadingQuestionStates();
             newDraft.savedAt = new Date().toISOString();
             storeReadingDraft(key, newDraft, true); saveReadingLearningDraft(key, newDraft);
             $scope.startCount(); startReadingDraftAutosave(); saveReadingDraft();
-            toastr.info('Đã mở lượt mới và giữ bài viết để bạn sửa.' + (vm.assignmentTaskId
+            toastr.info('Đã mở lượt mới và giữ ' + (vm.isWritingRoute ? 'bài viết' : 'câu trả lời') + ' để bạn sửa.' + (vm.assignmentTaskId
                 ? ' Hạn bài được giao không thay đổi; nộp ngoài hạn có thể không được tính tiến độ.' : ''), 'Làm lượt mới');
         }
 

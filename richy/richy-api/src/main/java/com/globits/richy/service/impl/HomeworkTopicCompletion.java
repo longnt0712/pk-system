@@ -17,6 +17,51 @@ public final class HomeworkTopicCompletion {
                 && !Boolean.FALSE.equals(task.getAutoCompleteFromTopic())
                 && ("DAILY_VOCAB".equals(task.getActivityType()) || "DAILY_LISTENING".equals(task.getActivityType()));
     }
+    /** Topicless Daily Listening uses the source ID; legacy Topic/Track tasks retain their existing evidence rules. */
+    public static boolean directListeningEnabled(EnrolmentClassScheduleTaskDto task) {
+        return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection()))
+                && directListeningAssignment(task) && !Boolean.FALSE.equals(task.getAutoCompleteFromTopic());
+    }
+    public static boolean directListeningAssignment(EnrolmentClassScheduleTaskDto task) {
+        return "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
+                && task.getTopicIds().isEmpty();
+    }
+    public static void applyDirectListening(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
+            LocalDateTime start, LocalDateTime end) {
+        if (!directListeningEnabled(task)) { return; }
+        removeAutomaticProgress(task);
+        int required = task.getRequiredAttempts();
+        Map<Long, java.util.Set<Long>> seen = new LinkedHashMap<Long, java.util.Set<Long>>();
+        for (Object[] row : completions) {
+            Long studentId = (Long) row[0], sourceId = (Long) row[1], resultId = (Long) row[3];
+            LocalDateTime completed = (LocalDateTime) row[2];
+            if (studentId == null || resultId == null || completed == null || !Integer.valueOf(3).equals(row[4])
+                    || task.getId() == null || !task.getId().equals(row[5]) || !task.getSourceQuestionId().equals(sourceId)
+                    || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
+            java.util.Set<Long> results = seen.get(studentId);
+            if (results == null) { results = new java.util.HashSet<Long>(); seen.put(studentId, results); }
+            if (!results.add(resultId)) { continue; }
+            EnrolmentClassTaskProgressDto existing = null;
+            for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
+                if (studentId.equals(progress.getStudentUserId())) { existing = progress; break; }
+            }
+            if (existing != null && !existing.isAutomatic()
+                    && ("NEEDS_REVIEW".equals(existing.getStatus()) || "DONE".equals(existing.getStatus())
+                    || "UNRECORDED".equals(existing.getStatus())
+                    || (existing.getStatus() != null && existing.getStatus().startsWith("PROGRESS_")))) { continue; }
+            if (existing == null) {
+                existing = new EnrolmentClassTaskProgressDto(); existing.setStudentUserId(studentId);
+                task.getStudentProgress().add(existing);
+            }
+            if (!existing.isAutomatic()) { existing.setManualStatus(existing.getStatus()); }
+            int count = Math.min(required, results.size());
+            int percent = (int) Math.round(count * 100.0 / required);
+            existing.setProgressPercent(percent);
+            if (count >= required) { existing.setStatus("DONE"); }
+            else { existing.setStatus("PROGRESS_" + Math.max(1, Math.min(99, percent))); }
+            existing.setAutomatic(true); existing.setTestResultId(resultId); existing.setCompletedAt(completed.toDate());
+        }
+    }
     public static int testType(EnrolmentClassScheduleTaskDto task) {
         return "DAILY_LISTENING".equals(task.getActivityType()) ? 3 : 1;
     }

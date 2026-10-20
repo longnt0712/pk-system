@@ -778,12 +778,16 @@ public class TestResultServiceImpl implements TestResultService {
             }
 		} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
 			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
-			if (assignedTask == null || !"DAILY_LISTENING".equals(assignedTask.getActivityType())
-					|| assignedTask.getTopic() == null || dto.getSourceQuestionId() == null
-					|| (assignedTask.getSourceQuestion() != null
-							&& !assignedTask.getSourceQuestion().getId().equals(dto.getSourceQuestionId()))) {
-				throw new IllegalArgumentException("Kết quả không khớp với bài nghe/Track được giao.");
-			}
+            if (assignedTask == null || !"DAILY_LISTENING".equals(assignedTask.getActivityType())
+                    || dto.getSourceQuestionId() == null
+                    || (assignedTask.getSourceQuestion() != null
+                            && !assignedTask.getSourceQuestion().getId().equals(dto.getSourceQuestionId()))
+                    || (assignedTask.getTopic() == null && !DailyListeningServiceImpl.isDailyTest(assignedTask.getSourceQuestion()))) {
+                throw new IllegalArgumentException("Kết quả không khớp với bài nghe/Track được giao.");
+            }
+            if (!belongsToAssignedClass(modifiedUser, assignedTask)) {
+                throw new AccessDeniedException("Bạn không được nộp bài được giao của lớp này.");
+            }
 		} else if (Integer.valueOf(7).equals(dto.getTestType()) && !dto.getCompletedParts().isEmpty()
 				&& dto.getAssignmentTaskId() == null) {
 			if (dto.getCompletedParts().contains(null) || !Arrays.asList(1, 2).containsAll(dto.getCompletedParts())

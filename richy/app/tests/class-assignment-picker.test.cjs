@@ -55,13 +55,15 @@ test('browsing shows direct contents and search finds descendants without losing
     dialog.openFolder(2); assert.equal(dialog.search, ''); assert.equal(dialog.selected.id, 10);
     dialog.cancel(); assert.equal(dialog.dismissed, 'cancel'); assert.equal(dialog.confirmed, undefined);
 });
-test('Daily Listening links the selected topic, includes legacy tracks, and blocks unlinked exercises', async () => {
+test('Daily Listening preserves linked topics and legacy tracks while allowing standalone modern lessons', async () => {
     const {dialog} = await setup('DAILY_LISTENING');
     assert.equal(dialog.catalog.length, 4);
     dialog.select(dialog.catalog.find(file => file.id === 21)); assert.equal(dialog.selectedTopicId, 50);
     dialog.selectedTopicId = 51; dialog.confirm();
     assert.equal(dialog.confirmed.test.id, 21); assert.equal(dialog.confirmed.topic.name, 'Food');
-    dialog.select(dialog.catalog.find(file => file.id === 22)); assert.equal(dialog.canSelect(), false);
+    dialog.select(dialog.catalog.find(file => file.id === 22)); assert.equal(dialog.canSelect(), true);
+    dialog.confirm(); assert.equal(dialog.confirmed.test.id, 22); assert.equal(dialog.confirmed.topic, null);
+    dialog.select({id: 24, title: 'Unlinked legacy Track', testFormat: null, topics: []}); assert.equal(dialog.canSelect(), false);
     dialog.select(dialog.catalog.find(file => file.id === 23)); assert.equal(dialog.selectedTopicId, 51); assert.equal(dialog.canSelect(), true);
 });
 test('catalog failures can be retried and confirming waits for a loaded catalog', async () => {

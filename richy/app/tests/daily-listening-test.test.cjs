@@ -138,7 +138,7 @@ test('a standalone lesson finds its own saved draft and leaves other listening d
  const values=new Map([['daily-listening-progress:v1:7:21',JSON.stringify({card:{id:21},updatedAt:1})],
   ['daily-listening-progress:v1:7:22',JSON.stringify({card:{id:22},updatedAt:2})]]);
  const context={vm:{isStandaloneDailyListening:true,standaloneDailyListeningId:21},window:{localStorage:{get length(){return values.size;},key:index=>Array.from(values.keys())[index],getItem:key=>values.get(key),removeItem:key=>values.delete(key)}},
-  dailyListeningDraftPrefix:()=> 'daily-listening-progress:v1:7:',dailyListeningDraftKey:id=>'daily-listening-progress:v1:7:'+id,isValidDailyListeningDraft:()=>true,
+  dailyListeningDraftMatchesContext:()=>true, dailyListeningDraftPrefix:()=> 'daily-listening-progress:v1:7:',dailyListeningDraftKey:id=>'daily-listening-progress:v1:7:'+id,isValidDailyListeningDraft:()=>true,
   angular:{forEach(items,fn){items.forEach(fn);}},deleteDailyListeningLearningDraft(){throw Error('Deleted another draft');}};
  nodeVm.runInNewContext(section(legacy,'        function findLatestDailyListeningDraft(','        vm.refreshDailyListeningDraft ='),context);
  assert.equal(context.findLatestDailyListeningDraft().card.id,21);assert.equal(values.size,2);

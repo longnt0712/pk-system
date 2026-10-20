@@ -1788,8 +1788,9 @@
                     var status = progress && progress.status !== 'UNRECORDED' ? progress.status : 'TODO';
                     if (progress && progress.status !== 'UNRECORDED') { recorded++; }
                     var percent = vm.homeworkProgressPercent({status: status});
-                    if (percent) { partial++; progressTotal += percent; }
-                    if (status === 'DONE') { done++; progressTotal += 100; }
+                    progressTotal += percent;
+                    if (percent > 0 && percent < 100) { partial++; }
+                    if (status === 'DONE') { done++; }
                     if (status === 'NEEDS_REVIEW') { needsReview++; }
                     var taskId = vm.previousHomeworkTasks[index].id, key = taskId + ':' + student.id;
                     return homeworkCellDrafts[key] || {status: status, notes: progress ? progress.notes || '' : '',
@@ -1807,7 +1808,7 @@
                     progressPercent: total ? Math.round(progressTotal / total) : 0,
                     label: !total ? 'Chưa có Tasks để đối chiếu' : status === 'DONE' ? 'Đã hoàn thành'
                         : status === 'NEEDS_REVIEW' ? 'Cần bổ sung'
-                        : partial ? 'Đang làm — ' + Math.round(progressTotal / total) + '%'
+                        : (partial || done) ? 'Đang làm — ' + Math.round(progressTotal / total) + '%'
                         : done ? done + '/' + total + ' đã làm' : 'Chưa làm'};
             });
             vm.homeworkReviewDoneCount = vm.homeworkReviewRows.filter(function (row) { return row.status === 'DONE'; }).length;
@@ -2061,6 +2062,10 @@
             });
         };
         vm.taskHasTopics = function (task) { return vm.taskTopicIds(task).length > 0; };
+        vm.directListeningAssignmentsEnabled = function () {
+            return !!((vm.scheduleClass && vm.scheduleClass.directListeningAssignmentsEnabled === true)
+                || (vm.scheduleDay && vm.scheduleDay.directListeningAssignmentsEnabled === true));
+        };
         vm.multiTopicVocabEnabled = function () {
             return !!((vm.scheduleClass && vm.scheduleClass.multiTopicVocabEnabled === true)
                 || (vm.scheduleDay && vm.scheduleDay.multiTopicVocabEnabled === true));
@@ -2174,7 +2179,10 @@
 			vm.scheduleListeningItems = [];
 			if (!vm.taskEditor || vm.taskEditor.activityType !== 'DAILY_LISTENING' || !vm.taskEditor.topicId) {
 				vm.scheduleListeningItemsLoading = false;
-				if (!keepSelection && vm.taskEditor) { vm.taskEditor.sourceQuestionId = null; }
+				if (keepSelection && vm.taskEditor && vm.taskEditor.activityType === 'DAILY_LISTENING'
+                        && vm.taskEditor.sourceQuestionId && !vm.taskEditor.topicId) {
+                    vm.scheduleListeningItems = [{id: vm.taskEditor.sourceQuestionId, question: vm.taskEditor.sourceQuestionTitle || '', direct: true}];
+                } else if (!keepSelection && vm.taskEditor) { vm.taskEditor.sourceQuestionId = null; }
 				return;
 			}
 			vm.scheduleListeningItemsLoading = true;
@@ -2305,11 +2313,12 @@
                     scheduleListeningItemsRequest++;
                     vm.scheduleListeningItemsLoading = false;
                     var topic = selection.topic;
-                    task.topicId = topic.id; task.topicName = topic.name; task.categoryId = topic.categoryId;
-                    task.categoryName = topic.categoryName; task.categoryKey = topic.categoryId == null ? 'uncategorized' : String(topic.categoryId);
+                    task.topicId = topic ? topic.id : null; task.topicName = topic ? topic.name : '';
+                    task.categoryId = topic ? topic.categoryId : null; task.categoryName = topic ? topic.categoryName : '';
+                    task.categoryKey = topic ? (topic.categoryId == null ? 'uncategorized' : String(topic.categoryId)) : null;
                     task.sourceQuestionId = test.id; task.sourceQuestionTitle = test.title;
-                    if (!vm.scheduleTopics.some(function (item) { return String(item.id) === String(topic.id); })) { vm.scheduleTopics.push(topic); }
-                    vm.scheduleListeningItems = [{id: test.id, question: test.title}];
+                    if (topic && !vm.scheduleTopics.some(function (item) { return String(item.id) === String(topic.id); })) { vm.scheduleTopics.push(topic); }
+                    vm.scheduleListeningItems = [{id: test.id, question: test.title, direct: !topic && test.testFormat === 'DAILY_LISTENING'}];
                 } else {
                     task.ieltsTestId = test.id; task.ieltsTestTitle = test.title;
                     var index = vm.assignableIeltsTests.findIndex(function (item) { return String(item.id) === String(test.id); });
@@ -2412,6 +2421,11 @@
                 vm.taskEditorError = 'Backend hiện tại chưa hỗ trợ nhiều topic trong một task. Cần cập nhật backend trước khi lưu.';
                 toastr.warning(vm.taskEditorError, 'Cần cập nhật backend'); return;
             }
+            var directListening = task.activityType === 'DAILY_LISTENING' && !!task.sourceQuestionId && !task.topicId;
+            if (directListening && !vm.directListeningAssignmentsEnabled()) {
+                vm.taskEditorError = 'Backend hiện tại chưa hỗ trợ giao trực tiếp bài Daily Listening. Cần cập nhật backend trước khi lưu.';
+                toastr.warning(vm.taskEditorError, 'Cần cập nhật backend'); return;
+            }
             var selectedTopics = [];
             angular.forEach(task.topicIds, function (id) {
                 var found = vm.scheduleTopics.filter(function (topic) { return String(topic.id) === String(id); })[0];
@@ -2422,7 +2436,7 @@
                 categoryId: topic.categoryId, categoryName: topic.categoryName}; });
             if (vm.taskHasComprehensiveVideo(task)) { task.shuffleQuestions = false; }
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
-			if ((task.topicId || vm.isIeltsTask(task)) && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
+			if ((task.topicId || directListening || vm.isIeltsTask(task)) && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
 					|| Number(task.requiredAttempts) > 100)) {
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
@@ -2441,7 +2455,7 @@
 			if (task.activityType === 'DAILY_LISTENING' && task.topicId && !task.sourceQuestionId) {
 				toastr.warning('Hãy chọn bài nghe/Track cụ thể trong Topic.'); return;
 			}
-			task.requiredAttempts = (task.topicId || vm.isIeltsTask(task)) ? Number(task.requiredAttempts) : 1;
+			task.requiredAttempts = (task.topicId || directListening || vm.isIeltsTask(task)) ? Number(task.requiredAttempts) : 1;
 			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
             if (task.deadlineAutomatic && !vm.scheduleDay.defaultHomeworkDeadline) {
                 toastr.warning('Chưa có giờ tan buổi kế tiếp. Hãy thiết lập lịch hoặc bỏ hạn tự động và nhập ngày giờ.'); return;
@@ -2468,8 +2482,8 @@
 			angular.forEach(vm.scheduleListeningItems, function (item) {
 				if (String(item.id) === String(task.sourceQuestionId)) { listeningItem = item; }
 			});
-			if (task.sourceQuestionId != null && !listeningItem) {
-				toastr.warning('Bài nghe/Track không còn thuộc Topic. Hãy chọn lại.'); return;
+			if (task.sourceQuestionId != null && (!listeningItem || (directListening && listeningItem.direct !== true))) {
+				toastr.warning('Bài nghe/Track không còn hợp lệ. Hãy chọn lại.'); return;
 			}
 			task.sourceQuestionTitle = listeningItem ? listeningItem.question : '';
 			var ieltsTest = null;
@@ -2490,6 +2504,14 @@
             vm.saveScheduleDay({allowTaskEditor: true,
                 successMessage: addingTask ? 'Đã thêm và tự động lưu task.' : 'Đã cập nhật và tự động lưu task.',
                 validateSaved: function (saved) {
+                    if (directListening) {
+                        var directSaved = task.id ? saved.tasks.filter(function (item) { return String(item.id) === String(task.id); })[0] : saved.tasks[taskIndex];
+                        if (!directSaved || directSaved.activityType !== 'DAILY_LISTENING' || directSaved.topicId != null
+                                || String(directSaved.sourceQuestionId) !== String(task.sourceQuestionId)
+                                || Number(directSaved.requiredAttempts) !== Number(task.requiredAttempts)) {
+                            return 'Backend chưa xác nhận đúng bài Daily Listening đã chọn. Hãy tải lại kế hoạch trước khi lưu lại.';
+                        }
+                    }
                     if (task.topicIds.length < 2) { return ''; }
                     var savedTask = task.id ? saved.tasks.filter(function (item) { return String(item.id) === String(task.id); })[0]
                         : saved.tasks[taskIndex];

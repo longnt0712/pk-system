@@ -742,15 +742,35 @@
         .class-day-plan-grid { grid-template-columns:1fr; }
     }
     .class-task-editor-modal-window .modal-dialog { width:70vw; max-width:70vw; margin:4vh auto; }
-    .class-task-editor-modal-window .modal-content { max-height:92vh; overflow:hidden; border:0; border-radius:18px; box-shadow:0 24px 70px rgba(39,30,82,.23); }
-    .class-task-editor-modal { max-height:92vh; }
+    /* custom.css keeps generic modal overflow visible for ui-select. This task
+       dialog owns its viewport and body scrollbar, like the day planner. */
+    .class-task-editor-modal-window .modal-content {
+        display:flex; flex-direction:column; height:92vh; height:92dvh;
+        max-height:92vh; max-height:92dvh; min-height:0; overflow:hidden !important;
+        border:0; border-radius:18px; box-shadow:0 24px 70px rgba(39,30,82,.23);
+    }
+    .class-task-editor-modal-window .class-task-editor-modal {
+        display:flex !important; flex-direction:column; flex:1 1 auto;
+        height:100%; max-height:none !important; min-height:0 !important;
+        margin:0; overflow:hidden !important;
+    }
+    .class-task-editor-modal-window .class-task-editor-modal > .modal-header,
+    .class-task-editor-modal-window .class-task-editor-modal > .modal-footer {
+        flex:0 0 auto !important; position:relative; z-index:2;
+    }
     .class-task-editor-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px; background:linear-gradient(110deg,#f1edff,#edf6ff); border-bottom:1px solid #e5e5f4; }
     .class-task-editor-header:before,.class-task-editor-header:after { display:none; }
     .class-task-editor-header > div { flex:1 1 auto; min-width:0; text-align:left; }
     .class-task-editor-header > .close { flex:0 0 auto; align-self:flex-start; margin:0; }
     .class-task-editor-header small { display:block; font-size:10px; letter-spacing:1px; color:#7862b5; font-weight:800; margin-bottom:5px; }
     .class-task-editor-header h4 { margin:0; color:#30244e; font-weight:800; }
-    .class-task-editor-modal > .class-task-editor { margin:0; padding:22px 24px; border:0; border-radius:0; overflow:auto; overscroll-behavior:contain; background:#fcfbff; }
+    .class-task-editor-modal-window .class-task-editor-modal > .class-task-editor {
+        flex:1 1 0 !important; min-height:0 !important; height:auto !important; max-height:none !important;
+        margin:0; padding:22px 24px; border:0; border-radius:0; position:relative;
+        overflow-x:hidden !important; overflow-y:auto !important;
+        overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scrollbar-gutter:stable;
+        background:#fcfbff;
+    }
     .class-task-editor-modal .class-task-editor-grid { gap:20px; }
     .class-task-editor-modal label { color:#45536a; font-size:12px; font-weight:700; }
     .class-task-editor-modal small { line-height:1.5; }
@@ -768,9 +788,9 @@
     @media (max-width:991px) and (min-width:768px) { .class-task-editor-modal-window .modal-dialog { width:86vw; max-width:86vw; } }
     @media (max-width:767px) {
         .class-task-editor-modal-window .modal-dialog { width:calc(100vw - 16px); max-width:calc(100vw - 16px); margin:8px; }
-        .class-task-editor-modal-window .modal-content,.class-task-editor-modal { max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); }
+        .class-task-editor-modal-window .modal-content { height:calc(100vh - 16px); height:calc(100dvh - 16px); max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); }
         .class-task-editor-header { padding:16px; }
-        .class-task-editor-modal > .class-task-editor { padding:16px; }
+        .class-task-editor-modal-window .class-task-editor-modal > .class-task-editor { padding:16px; }
         .class-task-editor-modal .class-task-editor-grid { grid-template-columns:1fr; gap:0; }
         .class-task-editor-footer { padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
     }
@@ -1486,9 +1506,9 @@
             <strong class="class-task-title">{{$index + 1}}. {{task.title}}</strong>
             <div class="class-task-meta">
                 <span>{{vm.taskStatusLabel(task)}}</span>
-                <span data-ng-if="task.topicId || task.ieltsTestId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'IELTS_WRITING' ? 'IELTS Writing' : task.activityType === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId || (task.activityType === 'DAILY_LISTENING' && task.sourceQuestionId)">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'IELTS_WRITING' ? 'IELTS Writing' : task.activityType === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
-                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần{{vm.taskTopicIds(task).length > 1 ? ' mỗi topic' : (task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt')}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId || (task.activityType === 'DAILY_LISTENING' && task.sourceQuestionId)">Yêu cầu: {{task.requiredAttempts || 1}} lần{{vm.taskTopicIds(task).length > 1 ? ' mỗi topic' : (task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt')}}</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>

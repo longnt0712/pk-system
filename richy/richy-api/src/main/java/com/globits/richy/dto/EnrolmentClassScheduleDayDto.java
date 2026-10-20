@@ -13,6 +13,9 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     /** Lets the editor avoid silently dropping selections against an older API. */
     @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
     public boolean isMultiTopicVocabEnabled() { return true; }
+    /** Direct Daily Listening assignments no longer require a vocabulary Topic. */
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    public boolean isDirectListeningAssignmentsEnabled() { return true; }
     private Long id;
     private Long enrolmentClassId;
     private String scheduleDate;

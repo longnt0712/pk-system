@@ -1061,6 +1061,8 @@
                     draft.progressValue = (Number(payload.currentPosition) || 0) + '/' + (Number(payload.totalCard) || (payload.questions || []).length || 0) + ' từ';
                 } else if (kind === 'DAILY_LISTENING') {
                     draft.typeLabel = 'Daily Listening';
+                    draft.resumeIdentity = 'daily-listening-progress:v1:' + currentUser.id + ':' + (payload.card || {}).id
+                        + (payload.assignmentTaskId ? ':task:' + payload.assignmentTaskId : '');
                     draft.dailyListeningId = payload.dailyListeningId || (payload.card || {}).id || null;
                     draft.title = item.title || (payload.card || {}).question || 'Daily Listening';
                     draft.progressLabel = 'Tiến độ';

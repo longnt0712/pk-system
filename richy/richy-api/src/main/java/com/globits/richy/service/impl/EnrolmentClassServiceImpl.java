@@ -738,6 +738,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					int completed = 0;
 					Integer nextIeltsPart = task.getIeltsPart();
 					List<Integer> remainingIeltsParts = new ArrayList<Integer>();
+                    if (HomeworkTopicCompletion.directListeningAssignment(task)) {
+                        completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countSuccessfulDirectListeningAttempts(
+                                student.getId(), task.getId(), task.getSourceQuestionId(), start, completionEnd));
+                    }
 					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
@@ -856,7 +860,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             selectedTopicIds.add(topic.getId()); selectedTopics.add(new com.globits.richy.dto.AssignmentTopicDto(topic));
         }
         dto.setTopicIds(selectedTopicIds); dto.setTopics(selectedTopics);
-        if (task.getTopic() != null) { dto.setTopicId(task.getTopic().getId()); dto.setTopicName(task.getTopic().getName()); }
+        if (task.getTopic() != null) {
+            dto.setTopicId(task.getTopic().getId()); dto.setTopicName(task.getTopic().getName());
+            if (task.getTopic().getTopicCategory() != null) {
+                dto.setCategoryId(task.getTopic().getTopicCategory().getId()); dto.setCategoryName(task.getTopic().getTopicCategory().getName());
+            }
+        }
+        if (task.getSourceQuestion() != null) {
+            dto.setSourceQuestionId(task.getSourceQuestion().getId()); dto.setSourceQuestionTitle(task.getSourceQuestion().getQuestion());
+        }
 		if (task.getIeltsTest() != null) { dto.setIeltsTestId(task.getIeltsTest().getId()); }
         dto.setIeltsPart(task.getIeltsPart()); dto.setIeltsParts(task.getIeltsParts());
         populateAssignedTaskAvailability(dto, task, LocalDateTime.now());
@@ -954,13 +966,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         if (day.getMovedToDate() != null) { return dto; }
         List<Long> topicIds = new ArrayList<Long>();
         List<Long> ieltsTestIds = new ArrayList<Long>();
+        List<Long> directListeningIds = new ArrayList<Long>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
             if (HomeworkTopicCompletion.enabled(task)) {
                 for (Long topicId : task.getTopicIds()) { if (!topicIds.contains(topicId)) { topicIds.add(topicId); } }
             }
             if (HomeworkTopicCompletion.ieltsEnabled(task) && !ieltsTestIds.contains(task.getIeltsTestId())) { ieltsTestIds.add(task.getIeltsTestId()); }
+            if (HomeworkTopicCompletion.directListeningEnabled(task) && !directListeningIds.contains(task.getSourceQuestionId())) {
+                directListeningIds.add(task.getSourceQuestionId());
+            }
         }
-        if (topicIds.isEmpty() && ieltsTestIds.isEmpty()) { return dto; }
+        if (topicIds.isEmpty() && ieltsTestIds.isEmpty() && directListeningIds.isEmpty()) { return dto; }
         Long classId = day.getEnrolmentClass().getId();
         List<Long> studentIds = new ArrayList<Long>();
         for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
@@ -975,7 +991,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         LocalDateTime maximumEnd = start;
         Map<EnrolmentClassScheduleTaskDto, LocalDateTime> ends = new LinkedHashMap<EnrolmentClassScheduleTaskDto, LocalDateTime>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
-            if (!HomeworkTopicCompletion.enabled(task) && !HomeworkTopicCompletion.ieltsEnabled(task)) { continue; }
+            if (!HomeworkTopicCompletion.enabled(task) && !HomeworkTopicCompletion.ieltsEnabled(task)
+                    && !HomeworkTopicCompletion.directListeningEnabled(task)) { continue; }
             LocalDateTime end = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
             if (end == null && "CLASS".equals(task.getSection()) && assignedSession != null) {
                 end = HomeworkTopicCompletion.at(assignedSession.date, assignedSession.endTime);
@@ -989,7 +1006,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                 : testResultRepository.findVocabularyCompletions(studentIds, topicIds, start, maximumEnd);
         List<Object[]> ieltsCompletions = ieltsTestIds.isEmpty() ? new ArrayList<Object[]>()
                 : testResultRepository.findIeltsPartCompletions(studentIds, ieltsTestIds, start, maximumEnd);
+        List<Object[]> directListeningCompletions = directListeningIds.isEmpty() ? new ArrayList<Object[]>()
+                : testResultRepository.findDirectListeningCompletions(studentIds, directListeningIds, start, maximumEnd);
         for (Map.Entry<EnrolmentClassScheduleTaskDto, LocalDateTime> entry : ends.entrySet()) {
+            HomeworkTopicCompletion.applyDirectListening(entry.getKey(), directListeningCompletions, start, entry.getValue());
             HomeworkTopicCompletion.apply(entry.getKey(), completions, start, entry.getValue());
             HomeworkTopicCompletion.applyIelts(entry.getKey(), ieltsCompletions, start, entry.getValue());
         }
@@ -1589,16 +1609,25 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                 task.setTopics(selectedTopics);
                 if ("DAILY_LISTENING".equals(activityType) && value.getSourceQuestionId() != null) {
                     Topic topic = task.getTopic();
-                    if (topic == null) {
-                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn Topic trước khi chọn bài nghe/Track.");
-                    }
                     Question sourceQuestion = questionRepository.findOne(value.getSourceQuestionId());
-                    Long linkCount = sourceQuestion == null ? Long.valueOf(0L)
-                            : questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
+                    boolean modernListening = DailyListeningServiceImpl.isDailyTest(sourceQuestion);
+                    boolean existingSource = oldTask != null && activityType.equals(oldTask.getActivityType())
+                            && oldTask.getSourceQuestion() != null && value.getSourceQuestionId().equals(oldTask.getSourceQuestion().getId());
                     if (sourceQuestion == null || sourceQuestion.getQuestionType() == null
-                            || (!Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId()) && !DailyListeningServiceImpl.isDailyTest(sourceQuestion))
-                            || linkCount == null || linkCount.longValue() < 1L) {
-                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
+                            || (!Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId()) && !modernListening)) {
+                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không còn hợp lệ.");
+                    }
+                    if (modernListening && sourceQuestion.getStatus() != 7 && !existingSource) {
+                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn bài Daily Listening đã xuất bản.");
+                    }
+                    if (topic == null && !modernListening) {
+                        throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn Topic trước khi chọn bài nghe/Track cũ.");
+                    }
+                    if (topic != null) {
+                        Long linkCount = questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
+                        if (linkCount == null || linkCount.longValue() < 1L) {
+                            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
+                        }
                     }
                     task.setSourceQuestion(sourceQuestion);
                 } else {
