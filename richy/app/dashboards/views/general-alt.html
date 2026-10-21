@@ -128,12 +128,12 @@
         <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
             <article class="student-assignment-card"
                      ng-repeat="task in vm.assignedTasks track by vm.assignmentKey(task)"
-                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !task.topicId && !task.ieltsTestId, 'is-complete': vm.assignmentTopicComplete(task)}">
+                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !vm.hasAssignmentExercise(task), 'is-complete': vm.assignmentTopicComplete(task)}">
                 <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
                 <div class="student-assignment-copy">
                     <div class="student-assignment-badges">
                         <span>{{vm.assignmentTypeLabel(task)}}</span>
-                        <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
+                        <span class="is-free" ng-if="!vm.hasAssignmentExercise(task)">Nhiệm vụ lớp</span>
                         <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
                     </div>
                     <h3>{{task.taskTotalTopics > 1 ? task.topicName : task.title}}</h3>
@@ -141,7 +141,7 @@
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
                     <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
                     <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
-                    <p class="student-assignment-topic is-free" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
+                    <p class="student-assignment-topic is-free" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
                     <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
                     <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
                     <div class="student-assignment-progress">
@@ -152,10 +152,10 @@
                     <div class="student-assignment-bar"><span ng-style="{'width': vm.assignmentProgressPercent(task) + '%'}"></span></div>
                     <div class="student-assignment-footer">
                         <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
-                        <button type="button" ng-if="(task.topicId || task.ieltsTestId) && !vm.assignmentTopicComplete(task)" ng-click="vm.openAssignedTask(task)">
+                        <button type="button" ng-if="vm.hasAssignmentExercise(task) && !vm.assignmentTopicComplete(task)" ng-click="vm.openAssignedTask(task)">
                             {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
                         </button>
-                        <span class="student-assignment-read-note" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
+                        <span class="student-assignment-read-note" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
                     </div>
                 </div>
             </article>

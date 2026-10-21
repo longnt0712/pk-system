@@ -176,6 +176,11 @@
             return required > 0 ? Math.max(0, Math.min(100, Math.round(Number(task.completedAttempts || 0) * 100 / required))) : 0;
         };
 
+        vm.hasAssignmentExercise = function (task) {
+            return !!task && (!!task.topicId || !!task.ieltsTestId
+                || (task.activityType === 'DAILY_LISTENING' && !!task.sourceQuestionId));
+        };
+
         vm.assignmentTypeLabel = function (task) {
             var labels = {
                 DAILY_VOCAB: 'Daily Vocab',
