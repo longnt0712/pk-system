@@ -12,6 +12,55 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class BattleOnlineMatchControlsTest {
+    @Test @SuppressWarnings("unchecked") public void creatingARoomDefaultsHostToSpectatorWhileExplicitParticipationSurvivesRejoining() throws Exception {
+        setup("CLASSIC",false);
+        java.util.concurrent.ScheduledExecutorService scheduler = mock(java.util.concurrent.ScheduledExecutorService.class);
+        doReturn(mock(java.util.concurrent.ScheduledFuture.class)).when(scheduler).schedule(
+                any(Runnable.class),anyLong(),any(java.util.concurrent.TimeUnit.class));
+        set(service,"scheduler",scheduler);
+        javax.persistence.EntityManager em = mock(javax.persistence.EntityManager.class);
+        javax.persistence.Query identity = mock(javax.persistence.Query.class), roles = mock(javax.persistence.Query.class);
+        when(em.createQuery(anyString())).thenAnswer(call -> ((String)call.getArguments()[0]).contains("join u.roles") ? roles : identity);
+        when(identity.getResultList()).thenReturn(Collections.singletonList(new Object[]{42L,"Host","Teacher","Host Teacher",0L,"MAM_HOC"}));
+        when(roles.getResultList()).thenReturn(Collections.emptyList()); set(service,"entityManager",em);
+        BattleOnlineCreateRoomDto request = new BattleOnlineCreateRoomDto();
+        request.setTopicIds(Collections.singletonList(1L)); request.setTopicNames(Collections.singletonList("Vocabulary"));
+        BattleOnlineRoomDto created = service.createRoom("teacher",request);
+        BattleOnlinePlayerDto host = created.getPlayers().stream().filter(p -> "teacher".equals(p.getUsername())).findFirst().get();
+        assertTrue(host.isHost()); assertTrue(host.isSpectator()); assertTrue(host.isReady()); assertEquals(0,host.getTeamNumber());
+        Object createdRoom = ((Map<String,Object>)get(service,"rooms")).get(created.getCode());
+        Object settings = get(createdRoom,"settings"); set(settings,"teamCount",2);
+        BattleOnlinePlayerDto student = service.joinRoom(created.getCode(),"student").getPlayers().stream()
+                .filter(p -> "student".equals(p.getUsername())).findFirst().get();
+        assertFalse(student.isSpectator()); assertTrue(student.isReady());
+        for (String mode : MODES) {
+            set(settings,"mode",mode);
+            BattleOnlineRoomDto rejoined = service.joinRoom(created.getCode(),"teacher");
+            assertTrue(mode,rejoined.getPlayers().stream().filter(p -> "teacher".equals(p.getUsername())).findFirst().get().isSpectator());
+            if ("DEMON_DEFENSE".equals(mode)) {
+                rejected(() -> service.setSpectator(created.getCode(),"teacher",false));
+            } else {
+                service.setSpectator(created.getCode(),"teacher",false);
+                BattleOnlinePlayerDto participating = service.joinRoom(created.getCode(),"teacher").getPlayers().stream()
+                        .filter(p -> "teacher".equals(p.getUsername())).findFirst().get();
+                assertFalse(mode,participating.isSpectator()); assertTrue(participating.getTeamNumber() >= 1);
+                service.setSpectator(created.getCode(),"teacher",true);
+            }
+        }
+    }
+
+    @Test public void aNewHostInTheLobbyDefaultsToSpectatorWithoutChangingTheOtherPlayers() throws Exception {
+        for (String mode : MODES) {
+            setup(mode,false); set(room,"status","LOBBY");
+            service.leaveRoom("CONTROL1","host");
+            assertEquals(mode,"alice",get(room,"hostUsername"));
+            assertTrue(mode,(Boolean)get(alice,"host")); assertTrue(mode,(Boolean)get(alice,"spectator"));
+            assertTrue(mode,(Boolean)get(alice,"ready")); assertEquals(mode,0,get(alice,"teamNumber"));
+            assertFalse(mode,(Boolean)get(bob,"host")); assertFalse(mode,(Boolean)get(bob,"spectator"));
+            assertEquals(mode,2,get(bob,"teamNumber"));
+        }
+    }
+
     @Test @SuppressWarnings("unchecked") public void manualClassicPublishesEachChosenAnswerOnlyDuringReviewAndClearsItForTheNextQuestion() throws Exception {
         setup("CLASSIC",false);
         Object aOption=state("OptionState"),bOption=state("OptionState");

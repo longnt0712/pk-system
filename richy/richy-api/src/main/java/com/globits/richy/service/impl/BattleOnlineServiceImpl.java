@@ -523,6 +523,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         host.allPetsUnlocked = identity.allPetsUnlocked;
         host.selectedPetKey = identity.selectedPetKey;
         host.host = true;
+        host.spectator = true;
         host.ready = true;
         host.connected = true;
 
@@ -8075,7 +8076,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.hostUsername =
                 next.username;
         room.hostUserId = next.userId;
-        if (LOBBY.equals(room.status)) { ensureDemonHostSpectatorLocked(room); }
+        if (LOBBY.equals(room.status)) {
+            next.spectator = true;
+            next.teamNumber = 0;
+        }
     }
 
 
