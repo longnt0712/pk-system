@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-6",
+  "name": "Ngọc rồng 6 sao",
+  "selectionKey": "DRAGON_BALL_6",
+  "unlockVocabularyExperienceLevel": 11,
+  "dragonBallStars": 6,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 11,
+      "battleRewardLevel": 1006,
+      "battleRewardReferenceLevel": 5,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

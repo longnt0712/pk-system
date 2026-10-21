@@ -345,6 +345,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
+        int dragonBallUnlockLevel = dragonBallUnlockLevel(selectedPet);
+        if (!allPetsUnlocked && level < dragonBallUnlockLevel) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
+                    "Ngọc rồng được mở khóa khi đạt level " + dragonBallUnlockLevel + ".");
+        }
         user.setSelectedLearningPet(selectedPet);
         userRepository.save(user);
 
@@ -405,6 +410,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || level >= CUTE_PIKACHU_UNLOCK_LEVEL) {
             unlocked.add(PET_CUTE_PIKACHU);
         }
+        for (int stars = 1; stars <= 7; stars++) {
+            if (allPetsUnlocked || level >= 5 + stars) { unlocked.add("DRAGON_BALL_" + stars); }
+        }
         result.setUnlockedPetKeys(unlocked);
         return result;
     }
@@ -419,8 +427,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private int dragonBallUnlockLevel(String petKey) {
+        return petKey != null && petKey.matches("DRAGON_BALL_[1-7]")
+                ? 5 + Character.digit(petKey.charAt(petKey.length() - 1), 10) : 0;
+    }
+
     private String normalizePetKey(String petKey) {
         String normalized = clean(petKey).toUpperCase(Locale.ROOT);
+        if (dragonBallUnlockLevel(normalized) > 0) { return normalized; }
         if (PET_CAPYBARA_EGG.equals(normalized)) {
             return PET_CAPYBARA_EGG;
         }
@@ -8473,6 +8487,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             identity.selectedPetKey = PET_MAM_HOC;
         }
 
+        if (!identity.allPetsUnlocked && identity.vocabularyExperienceLevel < dragonBallUnlockLevel(identity.selectedPetKey)) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
         return identity;
     }
 

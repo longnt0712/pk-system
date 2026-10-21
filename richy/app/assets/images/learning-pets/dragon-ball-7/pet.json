@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-7",
+  "name": "Ngọc rồng 7 sao",
+  "selectionKey": "DRAGON_BALL_7",
+  "unlockVocabularyExperienceLevel": 12,
+  "dragonBallStars": 7,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 12,
+      "battleRewardLevel": 1007,
+      "battleRewardReferenceLevel": 6,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

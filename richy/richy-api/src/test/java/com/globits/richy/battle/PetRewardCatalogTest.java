@@ -131,4 +131,21 @@ public class PetRewardCatalogTest {
         rejected(json("null"));
         rejected();
     }
+    @Test public void packagedDragonBallsHaveSevenDistinctRewardsAndExperienceUnlockLevels() {
+        int count = 0;
+        for (PetRewardCatalog.Reward reward : PetRewardCatalog.rewards()) {
+            if (reward.dragonBallStars == 0) { continue; }
+            count++;
+            assertEquals(1000 + reward.dragonBallStars,reward.level);
+            assertEquals("Ngọc rồng " + reward.dragonBallStars + " sao",reward.label);
+            assertEquals("hatched",reward.form);
+            assertTrue(reward.image.contains("dragon-ball-" + reward.dragonBallStars + "/pet.png"));
+        }
+        assertEquals(7,count);
+        for (String invalid : Arrays.asList("0","8","1.5","\"1\"","null","4294967296")) {
+            rejected(json("{\"id\":\"ball\",\"name\":\"Ball\",\"dragonBallStars\":" + invalid
+                    + ",\"evolution\":[" + stage("6","hatched","pet.png") + "]}"));
+        }
+    }
+
 }

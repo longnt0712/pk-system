@@ -158,7 +158,8 @@ img[src*="assets/images/learning-pets/cute-tom-cat/"],
 img[src*="assets/images/learning-pets/jerry-mouse/"],
 img[src*="assets/images/learning-pets/tuffy-mouse/"],
 img[src*="assets/images/learning-pets/pikachu/"],
-img[src*="assets/images/learning-pets/perry/"] {
+img[src*="assets/images/learning-pets/perry/"],
+img[src*="assets/images/learning-pets/dragon-ball-"] {
     image-rendering: auto !important;
 }
 

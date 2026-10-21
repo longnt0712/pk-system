@@ -102,7 +102,9 @@ public class BattleOnlineGiftDropTest {
     @Test public void aClaimConsumesOneCreditAndAddsOnlyServerSelectedPoints() {
         String id=pool.snapshot("alice").gifts.get(0).id; set(alice,"giftCredits",2); set(alice,"score",5D);
         BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(id));
-        assertEquals(10D*(result.getRewardLevel()+1),result.getPoints(),0D);
+        double expected = result.getRewardLevel() >= 1001 && result.getRewardLevel() <= 1007
+                ? 10D * (result.getRewardLevel() - 1000) : 10D * (result.getRewardLevel() + 1);
+        assertEquals(expected,result.getPoints(),0D);
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D); assertEquals(Integer.valueOf(1),result.getRoom().getGiftCredits());
         assertEquals(1,result.getRoom().getGiftDrop().claims.size());
         assertEquals(result.getPoints(),result.getRoom().getGiftDrop().claims.get(0).points,0D);
@@ -147,7 +149,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void claimingPerryUsesMamHocPointsAndPublishesPerrysOwnImageAndLabel() throws Exception {
-        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return bound - 1; } });
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return 299999; } });
         set(room,"giftDrop",pool);
         BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());
@@ -204,7 +206,9 @@ public class BattleOnlineGiftDropTest {
     @Test public void selectedTeamCarrierAlsoReceivesDoubleGiftPoints() {
         set(get(room,"settings"),"teamCount",2); set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1); set(alice,"giftCredits",1);
         BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(pool.snapshot("alice").gifts.get(0).id));
-        assertEquals(20D*(result.getRewardLevel()+1),result.getPoints(),0D); assertEquals(result.getPoints(),(Double)get(alice,"score"),0D);
+        double expected = result.getRewardLevel() >= 1001 && result.getRewardLevel() <= 1007
+                ? 20D * (result.getRewardLevel() - 1000) : 20D * (result.getRewardLevel() + 1);
+        assertEquals(expected,result.getPoints(),0D); assertEquals(result.getPoints(),(Double)get(alice,"score"),0D);
     }
 
     @Test public void rottenEggScoresExactlyHalfAPointEvenForTheDoubleCarrierAndCannotBeReused() {
@@ -347,5 +351,23 @@ public class BattleOnlineGiftDropTest {
         assertEquals("PLAYING",service.getRoom("GIFTS1","host").getStatus());
         try { service.extendGiftOpening("GIFTS1","alice"); fail("Only host may extend"); } catch(BattleOnlineException expected) {}
         assertEquals("FINISHED",service.finishGiftOpening("GIFTS1","host").getStatus());
+    }
+    @Test public void claimedDragonBallAwardsPointsOnceAndRestoresOnlyItsOwnersEffectOnReload() {
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return bound - 1; } });
+        set(room,"giftDrop",pool); set(alice,"giftCredits",2); set(alice,"score",0D);
+        String id = service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id;
+        BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1","alice",request(id));
+        assertEquals(1007,result.getRewardLevel()); assertEquals(70D,result.getPoints(),0D);
+        assertEquals(70D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
+        GiftDropGame.Snapshot effect = result.getRoom().getGiftDrop();
+        assertEquals(7,effect.dragonBallBoostStars); assertEquals("Pikachu",effect.dragonBallBoostPetLabel);
+        long duration = effect.dragonBallBoostEndsAt - result.getRoom().getServerTime();
+        assertTrue(duration >= 19000L && duration <= 20000L);
+        assertEquals(effect.dragonBallBoostEndsAt,service.getRoom("GIFTS1","alice").getGiftDrop().dragonBallBoostEndsAt);
+        assertEquals(0L,service.getRoom("GIFTS1","bob").getGiftDrop().dragonBallBoostEndsAt);
+        assertEquals(0L,service.getRoom("GIFTS1","host").getGiftDrop().dragonBallBoostEndsAt);
+        rejected("alice",id);
+        assertEquals(70D,(Double)get(alice,"score"),0D);
+        assertEquals(effect.dragonBallBoostEndsAt,service.getRoom("GIFTS1","alice").getGiftDrop().dragonBallBoostEndsAt);
     }
 }

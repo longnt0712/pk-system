@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-3",
+  "name": "Ngọc rồng 3 sao",
+  "selectionKey": "DRAGON_BALL_3",
+  "unlockVocabularyExperienceLevel": 8,
+  "dragonBallStars": 3,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 8,
+      "battleRewardLevel": 1003,
+      "battleRewardReferenceLevel": 2,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

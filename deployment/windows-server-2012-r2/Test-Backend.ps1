@@ -81,8 +81,9 @@ try {
             Add-Type -AssemblyName System.IO.Compression.FileSystem
             $archive = [IO.Compression.ZipFile]::OpenRead($jarFile.FullName)
             try {
+                $foundLibraries = @{}
                 foreach ($library in @($archive.Entries | Where-Object {
-                    $_.FullName -match '^BOOT-INF/lib/(?:logback-classic-[^/]+|richy-api-[^/]+)\.jar$'
+                    $_.FullName -match '^BOOT-INF/lib/(?:logback-classic-[^/]+|spring-web-[^/]+|hibernate-core-[^/]+|richy-api-[^/]+)\.jar$'
                 })) {
                     $buffer = New-Object IO.MemoryStream
                     $libraryStream = $library.Open()
@@ -91,7 +92,15 @@ try {
                     $nested = New-Object IO.Compression.ZipArchive($buffer, [IO.Compression.ZipArchiveMode]::Read)
                     try {
                         if ($library.FullName -match 'logback-classic') {
+                            $foundLibraries['logback-classic'] = $true
                             Add-Report ('ThrowableProxy present: ' + [bool]$nested.GetEntry('ch/qos/logback/classic/spi/ThrowableProxy.class'))
+                        } elseif ($library.FullName -match '/spring-web-') {
+                            $foundLibraries['spring-web'] = $true
+                            Add-Report ('StandardMultipartHttpServletRequest present: ' + [bool]$nested.GetEntry('org/springframework/web/multipart/support/StandardMultipartHttpServletRequest.class'))
+                        } elseif ($library.FullName -match '/hibernate-core-') {
+                            $foundLibraries['hibernate-core'] = $true
+                            Add-Report ('Hibernate ClearEvent present: ' + [bool]$nested.GetEntry('org/hibernate/event/spi/ClearEvent.class'))
+                            Add-Report ('Hibernate NClobTypeDescriptor$1 present: ' + [bool]$nested.GetEntry('org/hibernate/type/descriptor/sql/NClobTypeDescriptor$1.class'))
                         } else {
                             foreach ($className in @('domain/Question.class', 'dto/QuestionDto.class')) {
                                 $entry = $nested.GetEntry('com/globits/richy/' + $className)
@@ -106,6 +115,11 @@ try {
                             }
                         }
                     } finally { $nested.Dispose(); $buffer.Dispose() }
+                }
+                foreach ($requiredLibrary in @('spring-web', 'hibernate-core', 'logback-classic')) {
+                    if (-not $foundLibraries.ContainsKey($requiredLibrary)) {
+                        Add-Report ('Required library NOT FOUND: ' + $requiredLibrary)
+                    }
                 }
             } finally { $archive.Dispose() }
         } catch { Add-Report ('JAR inspection failed: ' + $_.Exception.Message) }

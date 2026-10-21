@@ -142,6 +142,11 @@
                 if (selectedPet === 'CUTE_PIKACHU' && level < 18) {
                     selectedPet = 'MAM_HOC';
                 }
+                var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(selectedPet);
+                if (dragonBall && level < 5 + Number(dragonBall[1])) {
+                    selectedPet = 'MAM_HOC';
+                    dragonBall = null;
+                }
                 vm.selectedPetKey = selectedPet;
                 vm.availablePets = [{
                     key: 'MAM_HOC',
@@ -272,6 +277,21 @@
                     vm.hasNewPikachuEgg = false;
                 }
 
+                for (var stars = 1; stars <= 7; stars++) {
+                    if (level >= 5 + stars) {
+                        vm.availablePets.push({
+                            key: 'DRAGON_BALL_' + stars,
+                            name: 'Ngọc rồng ' + stars + ' sao',
+                            description: 'Mở khóa ở level ' + (5 + stars),
+                            image: 'assets/images/learning-pets/dragon-ball-' + stars + '/pet.png?v=' + version
+                        });
+                    }
+                }
+                if (dragonBall) {
+                    vm.petForm = 'dragon-ball';
+                    vm.petImage = 'assets/images/learning-pets/dragon-ball-' + dragonBall[1] + '/pet.png?v=' + version;
+                    return;
+                }
                 if (selectedPet === 'CUTE_PERRY') {
                     vm.petForm = 'perry-hatched';
                     vm.petImage = perryPetUrl;

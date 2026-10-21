@@ -275,3 +275,24 @@ test('a rotten egg uses the generated asset and preserves a fractional reward',a
  assert.ok(fs.existsSync(path.join(__dirname,'..',h.vm.getGiftRewardImage(-1).split('?')[0])));
  h.vm.dismissGiftReward();assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.lastGiftReward,null);
 });
+
+test('personal ball effects survive public and stale updates, replace strength and expire without leaking to spectators',()=>{
+ const h=setup(),first=h.room(3,4);
+ first.giftDrop.dragonBallBoostStars=7;first.giftDrop.dragonBallBoostEndsAt=first.serverTime+20000;
+ first.giftDrop.dragonBallBoostPetLabel='Pikachu';h.hooks.applyRoom(first,false);
+ assert.equal(h.vm.giftDragonBallBoostSeconds(),20);
+ assert.match(h.vm.giftDragonBallBoostImage(),/dragon-ball-7\/pet.png/);
+ const publicRoom=h.room(3,5);delete publicRoom.giftDrop.gifts;delete publicRoom.giftDrop.poolVersion;
+ publicRoom.giftDrop.dragonBallBoostEndsAt=0;h.hooks.applyRoom(publicRoom,true);
+ assert.equal(h.vm.room.giftDrop.dragonBallBoostStars,7);
+ const second=h.room(3,6);second.serverTime=first.serverTime+5000;
+ second.giftDrop.dragonBallBoostStars=1;second.giftDrop.dragonBallBoostEndsAt=second.serverTime+20000;
+ second.giftDrop.dragonBallBoostPetLabel='Future pet';h.hooks.applyRoom(second,false);
+ assert.equal(h.vm.room.giftDrop.dragonBallBoostStars,1);assert.equal(h.vm.giftDragonBallBoostSeconds(),20);
+ h.hooks.applyRoom(first,false);assert.equal(h.vm.room.giftDrop.dragonBallBoostStars,1);
+ const expiry=h.room(3,7);expiry.serverTime=second.giftDrop.dragonBallBoostEndsAt;
+ expiry.giftDrop={...second.giftDrop,version:7,poolVersion:7};h.hooks.applyRoom(expiry,false);
+ assert.equal(h.vm.giftDragonBallBoostSeconds(),0);
+ h.hooks.applyRoom(h.room(3,1,'new-match'),false);assert.equal(h.vm.giftDragonBallBoostSeconds(),0);
+ const host=setup('host');host.hooks.applyRoom(second,false);assert.equal(host.vm.giftDragonBallBoostSeconds(),0);
+});

@@ -16,7 +16,7 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
     const state = {current: {name: 'application.dashboard'}};
     const angular = {
         module() { return {directive(name, fn) { factory = fn; }}; },
-        noop() {}, fromJson: JSON.parse, isArray: Array.isArray,
+        noop() {}, fromJson: JSON.parse, isArray: Array.isArray, copy: value => JSON.parse(JSON.stringify(value)),
         forEach(items, fn) { items.forEach(fn); }
     };
     const source = fs.readFileSync(path.join(__dirname, '../common/utils/learning-pet.directive.js'), 'utf8');
@@ -89,7 +89,7 @@ test('both pet displays use the same Jerry stage at levels 12, 13, 14 and later'
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options, 'option reference stays stable between digests');
-        assert.equal(options.length, level >= 18 ? 8 : (level >= 15 ? 7 : 6), 'earlier pets stay available');
+        assert.equal(options.length, level >= 18 ? 15 : (level >= 15 ? 14 : 13), 'earlier pets stay available');
     }
 });
 
@@ -148,7 +148,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 8);
+        assert.equal(h.pet.availablePets.length, 15);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -164,7 +164,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 8);
+    assert.equal(options.length, 15);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
@@ -217,7 +217,7 @@ test('Tuffy evolves at levels 15, 16 and 17 consistently in the assistant and ba
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, level >= 18 ? 8 : 7);
+        assert.equal(options.length, level >= 18 ? 15 : 14);
         if (level <= 17) {
             assert.equal(battle.getGiftRewardImage(level), expected);
             assert.match(battle.getGiftRewardLabel(level), /Chuột Tuffy/);
@@ -270,7 +270,7 @@ test('Pikachu evolves consistently in the assistant, battle and reward preview',
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, 8);
+        assert.equal(options.length, 15);
         assert.ok(options.some(item => item.key === 'CUTE_TUFFY_MOUSE'));
         if (level <= 20) {
             assert.equal(battle.getGiftRewardImage(level), expected);
@@ -412,4 +412,42 @@ test('pet omits overdue assignments so active work is not hidden behind them', (
         {taskId: 3, title: 'No deadline'}
     ]);
     assert.deepEqual(Array.from(active, item => item.taskId), [2]);
+});
+
+test('Dragon Balls unlock cumulatively at levels 6 through 12 in both pet pickers', () => {
+    for (let level = 0; level <= 20; level++) {
+        const {pet} = setupLearningPet(level, 'MAM_HOC');
+        const battle = setupBattle(level);
+        const balls = pet.availablePets.filter(item => item.key.startsWith('DRAGON_BALL_'));
+        assert.equal(balls.length, Math.max(0, Math.min(7, level - 5)));
+        const options = battle.getBattlePetOptions();
+        assert.strictEqual(battle.getBattlePetOptions(), options, 'stable options avoid digest loops');
+        assert.deepEqual(Array.from(options.filter(item => item.key.startsWith('DRAGON_BALL_')), item => item.key),
+            Array.from(balls, item => item.key));
+        assert.equal(pet.selectedPetKey, 'MAM_HOC', 'unlocking does not replace the chosen pet');
+    }
+});
+
+test('each ball has matching artwork and level guards in the assistant and battle', async () => {
+    for (let stars = 1; stars <= 7; stars++) {
+        const key = 'DRAGON_BALL_' + stars, level = stars + 5;
+        const locked = setupLearningPet(level - 1, key).pet;
+        assert.equal(locked.selectedPetKey, 'MAM_HOC');
+        const h = setupLearningPet(level, key), battle = setupBattle(level);
+        const expected = 'assets/images/learning-pets/dragon-ball-' + stars + '/pet.png?v=pet-test';
+        assert.equal(h.pet.petForm, 'dragon-ball');
+        assert.equal(h.pet.petImage, expected);
+        assert.equal(h.pet.selectedPet().image, expected);
+        assert.equal(battle.getBattlePetOptionImage(key), expected);
+        assert.equal(battle.getPlayerPetImage({selectedPetKey:key,vocabularyExperienceLevel:level}), expected);
+        assert.equal(setupLearningPet(30,key).pet.petImage, expected, 'earlier balls remain selectable');
+        assert.equal(setupLearningPet(0,key,new Map(),[{name:'ROLE_ADMIN'}]).pet.petImage,expected);
+        const png=fs.readFileSync(path.join(assets,'dragon-ball-'+stars,'pet.png'));
+        assert.equal(png.subarray(1,4).toString(),'PNG');assert.equal(png[25],6);
+        assert.ok(png.readUInt32BE(16)>=512);
+        const fresh=setupLearningPet(level,'MAM_HOC');fresh.pet.selectPet(key);
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(fresh.user().selectedLearningPet,key);assert.equal(fresh.pet.petImage,expected);
+        assert.equal(fresh.requests[0].body.petKey,key);
+    }
 });

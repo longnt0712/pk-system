@@ -14,6 +14,10 @@
             </p>
         </div>
     </div>
+    <div class="battle-personal-gift-effects" ng-if="vm.giftPerryProtectionSeconds() > 0 || vm.giftDragonBallBoostSeconds() > 0" aria-hidden="true">
+        <img ng-if="vm.giftPerryProtectionSeconds() > 0" src="assets/images/learning-pets/perry/perry-hat.png" alt="">
+        <img ng-if="vm.giftDragonBallBoostSeconds() > 0" ng-src="{{vm.giftDragonBallBoostImage()}}" alt="">
+    </div>
     <div ng-if="vm.exercisePickerOpen" onload="vm.focusExercisePicker()" ng-include="'question/views/battle_online_exercise_folder_modal.html?v=' + vm.exercisePickerVersion"></div>
     <!-- =====================================================
          HERO
@@ -2095,6 +2099,9 @@
             <div class="battle-online-gift-perry-protection" ng-if="vm.giftPerryProtectionSeconds() > 0" role="status">
                 🎩 Không gặp trứng thối · {{vm.giftPerryProtectionSeconds()}}s
             </div>
+            <div class="battle-online-gift-dragon-boost" ng-if="vm.giftDragonBallBoostSeconds() > 0" role="status">
+                🔮 +{{vm.room.giftDrop.dragonBallBoostStars}} điểm % tỉ lệ ra {{vm.room.giftDrop.dragonBallBoostPetLabel || 'pet điểm cao nhất'}} · {{vm.giftDragonBallBoostSeconds()}}s
+            </div>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
@@ -3042,6 +3049,11 @@
     .battle-online-classic-answers .is-correct .battle-online-classic-answer-status { background:#ddf7e8; color:#166640; }
     .battle-online-classic-answers .is-wrong .battle-online-classic-answer-status { background:#ffe5e9; color:#ad284b; }
     .battle-online-classic-answers li > p { grid-column:1 / -1; margin:0; color:var(--bo-text); font-size:13px; line-height:1.35; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .battle-personal-gift-effects { position:fixed; inset:0; z-index:1301; display:flex; justify-content:center; align-items:center; gap:12px; pointer-events:none; user-select:none; }
+    .battle-personal-gift-effects img { width:min(36vw,300px); max-height:55vh; object-fit:contain; opacity:.08; pointer-events:none; animation:battle-personal-gift-glow 1.8s ease-in-out infinite; }
+    @keyframes battle-personal-gift-glow { 0%,100% {opacity:.06;transform:scale(1)} 50% {opacity:.10;transform:scale(1.025)} }
+    @media (prefers-reduced-motion:reduce) { .battle-personal-gift-effects img {animation:none;opacity:.08} }
+    .battle-online-gift-dragon-boost { flex-shrink:0; margin-top:6px; padding:8px 12px; border:1px solid #f1ca7b; border-radius:12px; background:#fff6df; color:#875211; font-size:13px; font-weight:800; text-align:center; }
     .battle-lightning-effect { --lightning-opacity:.08; --lightning-low:.06; --lightning-high:.10; position:fixed; inset:0; z-index:1301; display:grid; place-items:center; pointer-events:none; user-select:none; }
     .battle-lightning-effect.is-host { --lightning-opacity:.28; --lightning-low:.26; --lightning-high:.30; }
     .battle-lightning-visual { display:flex; flex-direction:column; align-items:center; gap:8px; width:min(780px,92vw); }

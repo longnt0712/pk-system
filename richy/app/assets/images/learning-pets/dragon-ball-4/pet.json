@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-4",
+  "name": "Ngọc rồng 4 sao",
+  "selectionKey": "DRAGON_BALL_4",
+  "unlockVocabularyExperienceLevel": 9,
+  "dragonBallStars": 4,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 9,
+      "battleRewardLevel": 1004,
+      "battleRewardReferenceLevel": 3,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

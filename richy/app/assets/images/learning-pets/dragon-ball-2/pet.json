@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-2",
+  "name": "Ngọc rồng 2 sao",
+  "selectionKey": "DRAGON_BALL_2",
+  "unlockVocabularyExperienceLevel": 7,
+  "dragonBallStars": 2,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 7,
+      "battleRewardLevel": 1002,
+      "battleRewardReferenceLevel": 1,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

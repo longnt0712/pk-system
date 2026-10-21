@@ -11,6 +11,8 @@ public class GiftDropGame {
     public static final int LIGHTNING_LEVEL = -4;
     public static final double PERRY_HAT_POINTS = 1D;
     public static final long PERRY_HAT_PROTECTION_MILLIS = 15000L;
+    public static final long DRAGON_BALL_BOOST_MILLIS = 20000L;
+    private static final int DRAGON_BALL_TICKETS = 100000; // 10% per ball out of one million tickets.
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
@@ -63,6 +65,9 @@ public class GiftDropGame {
         public final long version;
         public final Long poolVersion;
         public final long perryHatProtectionEndsAt;
+        public final int dragonBallBoostStars;
+        public final long dragonBallBoostEndsAt;
+        public final String dragonBallBoostPetLabel;
         public final int capacity;
         public final List<ClosedGift> gifts;
         public final List<ClaimRecord> claims;
@@ -71,6 +76,10 @@ public class GiftDropGame {
             gameId = game.gameId; version = game.version; capacity = pool == null ? POOL_SIZE : pool.capacity;
             poolVersion = pool == null ? null : pool.version;
             perryHatProtectionEndsAt = username == null ? 0L : game.protectionEndsAt(username);
+            DragonBallBoost boost = username == null ? null : game.dragonBallBoosts.get(username);
+            dragonBallBoostStars = boost == null ? 0 : boost.stars;
+            dragonBallBoostEndsAt = boost == null ? 0L : boost.endsAt;
+            dragonBallBoostPetLabel = boost == null || game.highestPetIndex < 0 ? null : game.rewards.get(game.highestPetIndex).label;
             gifts = username == null ? null : new ArrayList<ClosedGift>();
             if (username != null) {
                 for (Gift gift : pool.gifts.values()) { gifts.add(new ClosedGift(gift.id)); }
@@ -86,6 +95,12 @@ public class GiftDropGame {
     }
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
     private final Map<String, Long> perryHatProtection = new HashMap<String, Long>();
+    private static final class DragonBallBoost {
+        final int stars;
+        final long endsAt;
+        DragonBallBoost(int stars, long endsAt) { this.stars = stars; this.endsAt = endsAt; }
+    }
+    private final Map<String, DragonBallBoost> dragonBallBoosts = new HashMap<String, DragonBallBoost>();
     private final List<ClaimRecord> claims = new ArrayList<ClaimRecord>();
     private final List<String> skillTypes = new ArrayList<String>();
     private final int basePoints;
@@ -94,6 +109,8 @@ public class GiftDropGame {
     private final int[] skillWeights;
     private final int rottenWeight, perryHatWeight;
     private final int[] normalDrawWeights, lightningDrawWeights;
+    private final int highestPetIndex;
+    private final Map<String, int[]> effectDrawWeights = new HashMap<String, int[]>();
     private final Random random;
     private long version, nextId;
     private boolean finalPools;
@@ -114,6 +131,15 @@ public class GiftDropGame {
                 return Integer.compare(left.level, right.level);
             }
         });
+        List<PetRewardCatalog.Reward> dragonBalls = new ArrayList<PetRewardCatalog.Reward>();
+        Set<Integer> dragonBallStars = new HashSet<Integer>();
+        for (Iterator<PetRewardCatalog.Reward> it = sorted.iterator(); it.hasNext();) {
+            PetRewardCatalog.Reward reward = it.next();
+            if (reward.dragonBallStars == 0) { continue; }
+            if (!dragonBallStars.add(reward.dragonBallStars)) { throw new IllegalArgumentException("Duplicate Dragon Ball stars"); }
+            dragonBalls.add(reward); it.remove();
+        }
+        if (sorted.isEmpty()) { throw new IllegalArgumentException("At least one ordinary pet reward is required"); }
         Map<Integer, PetRewardCatalog.Reward> byLevel = new HashMap<Integer, PetRewardCatalog.Reward>();
         for (PetRewardCatalog.Reward reward : sorted) {
             if (byLevel.put(reward.level, reward) != null) { throw new IllegalArgumentException("Duplicate pet reward level"); }
@@ -206,38 +232,106 @@ public class GiftDropGame {
             originalWeights[roundingIndex] += roundingDelta;
         }
         for (int i = 0; i < skillWeights.length; i++) { skillWeights[i] = originalWeights[i]; }
-        rottenWeight = originalWeights[rottenIndex]; perryHatWeight = originalWeights[perryHatIndex];
+        int originalRottenWeight = originalWeights[rottenIndex], originalPerryHatWeight = originalWeights[perryHatIndex];
         Map<Integer, Integer> ticketsByLevel = new HashMap<Integer, Integer>();
         for (PetRewardCatalog.Reward reward : commonRewards) { ticketsByLevel.put(reward.level, originalWeights[commonIndexes.get(reward.level)]); }
         for (int i = 0; i < newRewards.size(); i++) { ticketsByLevel.put(newRewards.get(i).level, newWeights[i]); }
+        sorted.addAll(dragonBalls);
+        Collections.sort(sorted, new Comparator<PetRewardCatalog.Reward>() {
+            @Override public int compare(PetRewardCatalog.Reward left, PetRewardCatalog.Reward right) {
+                return Integer.compare(left.level, right.level);
+            }
+        });
         rewards = sorted; rewardWeights = new int[rewards.size()];
-        for (int i = 0; i < rewards.size(); i++) { rewardWeights[i] = ticketsByLevel.get(rewards.get(i).level); }
+        double ordinaryShare = (DRAW_RESOLUTION - dragonBalls.size() * DRAGON_BALL_TICKETS) / (double) DRAW_RESOLUTION;
+        int highest = -1;
+        double highestPoints = -1D;
+        for (int i = 0; i < rewards.size(); i++) {
+            PetRewardCatalog.Reward reward = rewards.get(i);
+            rewardWeights[i] = reward.dragonBallStars > 0 ? DRAGON_BALL_TICKETS
+                    : (int) Math.round(ticketsByLevel.get(reward.level) * ordinaryShare);
+            if (reward.dragonBallStars == 0 && pointsForReward(reward) > highestPoints) {
+                highest = i; highestPoints = pointsForReward(reward);
+            }
+        }
+        highestPetIndex = highest;
         normalDrawWeights = new int[skillWeights.length + 2 + rewardWeights.length];
-        System.arraycopy(skillWeights, 0, normalDrawWeights, 0, skillWeights.length);
+        for (int i = 0; i < skillWeights.length; i++) { normalDrawWeights[i] = (int) Math.round(skillWeights[i] * ordinaryShare); }
+        rottenWeight = (int) Math.round(originalRottenWeight * ordinaryShare);
+        perryHatWeight = (int) Math.round(originalPerryHatWeight * ordinaryShare);
         normalDrawWeights[skillWeights.length] = rottenWeight;
         normalDrawWeights[skillWeights.length + 1] = perryHatWeight;
         System.arraycopy(rewardWeights, 0, normalDrawWeights, skillWeights.length + 2, rewardWeights.length);
+        int total = 0;
+        for (int weight : normalDrawWeights) { total += weight; }
+        // Put at most a few rounding tickets into the first ordinary reward; ball chances stay exactly 10%.
+        for (int i = 0; i < rewards.size(); i++) {
+            if (rewards.get(i).dragonBallStars == 0) {
+                normalDrawWeights[skillWeights.length + 2 + i] += DRAW_RESOLUTION - total; break;
+            }
+        }
         lightningDrawWeights = boostedWeights();
+    }
+    private boolean isDragonBallIndex(int index) {
+        int rewardIndex = index - skillWeights.length - 2;
+        return rewardIndex >= 0 && rewards.get(rewardIndex).dragonBallStars > 0;
+    }
+    /** Preserve each ball's fixed chance and share the remaining probability among other outcomes. */
+    private int[] rebalance(int[] before, int[] after, boolean[] changed) {
+        int availableBefore = 0, availableAfter = DRAW_RESOLUTION;
+        for (int i = 0; i < before.length; i++) {
+            if (changed[i] || isDragonBallIndex(i)) { availableAfter -= after[i]; }
+            else { availableBefore += before[i]; }
+        }
+        if (availableAfter < 0 || availableBefore <= 0) { throw new IllegalArgumentException("Reward probabilities exceed 100%"); }
+        long cumulative = 0L, assigned = 0L;
+        for (int i = 0; i < before.length; i++) {
+            if (changed[i] || isDragonBallIndex(i)) { continue; }
+            cumulative += before[i];
+            long tickets = cumulative * availableAfter / availableBefore;
+            after[i] = (int) (tickets - assigned); assigned = tickets;
+        }
+        return after;
     }
     private int[] boostedWeights() {
         int[] boosted = normalDrawWeights.clone();
         boolean[] target = new boolean[boosted.length];
-        int targetBefore = 0, targetAfter = 0;
         for (int i = 0; i < rewards.size(); i++) {
-            if (rewards.get(i).referenceLevel < 9 || rewards.get(i).referenceLevel > 20) { continue; }
+            if (rewards.get(i).dragonBallStars > 0 || rewards.get(i).referenceLevel < 9 || rewards.get(i).referenceLevel > 20) { continue; }
             int index = skillWeights.length + 2 + i;
-            target[index] = true; targetBefore += normalDrawWeights[index];
-            boosted[index] = (int) Math.round(normalDrawWeights[index] * 1.10D); targetAfter += boosted[index];
+            target[index] = true;
+            boosted[index] = (int) Math.round(normalDrawWeights[index] * 1.10D);
         }
-        if (targetBefore == 0 || targetAfter >= DRAW_RESOLUTION) { return normalDrawWeights.clone(); }
-        long cumulative = 0L, assigned = 0L;
-        for (int i = 0; i < boosted.length; i++) {
-            if (target[i]) { continue; }
-            cumulative += normalDrawWeights[i];
-            long tickets = cumulative * (DRAW_RESOLUTION - targetAfter) / (DRAW_RESOLUTION - targetBefore);
-            boosted[i] = (int) (tickets - assigned); assigned = tickets;
+        return rebalance(normalDrawWeights, boosted, target);
+    }
+    private int[] weightsForEffects(boolean lightning, boolean protectedFromRotten, int stars) {
+        if (!protectedFromRotten && stars == 0) { return lightning ? lightningDrawWeights : normalDrawWeights; }
+        String key = lightning + ":" + protectedFromRotten + ":" + stars;
+        int[] cached = effectDrawWeights.get(key);
+        if (cached != null) { return cached; }
+        int[] weights = lightning ? lightningDrawWeights : normalDrawWeights;
+        if (protectedFromRotten) {
+            int[] protectedWeights = weights.clone();
+            boolean[] changed = new boolean[weights.length];
+            protectedWeights[skillWeights.length] = 0;
+            changed[skillWeights.length] = true;
+            weights = rebalance(weights, protectedWeights, changed);
         }
-        return boosted;
+        if (stars > 0 && highestPetIndex >= 0) {
+            int index = skillWeights.length + 2 + highestPetIndex;
+            int[] boosted = weights.clone();
+            boolean[] changed = new boolean[weights.length];
+            int fixedBalls = 0;
+            for (int i = 0; i < weights.length; i++) { if (isDragonBallIndex(i)) { fixedBalls += weights[i]; } }
+            boosted[index] = Math.min(DRAW_RESOLUTION - fixedBalls, weights[index] + stars * 10000);
+            changed[index] = true;
+            weights = rebalance(weights, boosted, changed);
+        }
+        effectDrawWeights.put(key, weights);
+        return weights;
+    }
+    private double pointsForReward(PetRewardCatalog.Reward reward) {
+        return reward.dragonBallStars > 0 ? reward.dragonBallStars * 10D : basePoints * (reward.referenceLevel + 1D);
     }
     private static int rewardWeight(int index) { return Math.max(1, (int) Math.round(10000D * Math.pow(0.75D, index))); }
     private PlayerPool poolFor(String username) {
@@ -257,13 +351,14 @@ public class GiftDropGame {
         return giftForTicket(id, ticket, lightning, false);
     }
     private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten) {
-        int[] weights = lightning ? lightningDrawWeights : normalDrawWeights;
-        int rottenIndex = skillWeights.length;
-        int index = 0, remaining = protectedFromRotten
-                ? (int) ((long) ticket * (DRAW_RESOLUTION - weights[rottenIndex]) / DRAW_RESOLUTION) : ticket;
-        // Condition the same private ticket on non-rotten rewards, including eggs already in the pool.
+        return giftForTicket(id, ticket, lightning, protectedFromRotten, 0);
+    }
+    private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars) {
+        int[] weights = weightsForEffects(lightning, protectedFromRotten, stars);
+        int index = 0, remaining = ticket;
+        // Reuse each egg's private ticket for the active effects; refreshing never rerolls it.
         while (index < weights.length - 1) {
-            int weight = protectedFromRotten && index == rottenIndex ? 0 : weights[index];
+            int weight = weights[index];
             if (remaining < weight) { break; }
             remaining -= weight; index++;
         }
@@ -279,7 +374,7 @@ public class GiftDropGame {
         return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-lightning.svg", "Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
     }
     private Gift petGift(String id, PetRewardCatalog.Reward reward) {
-        return new Gift(id, reward.level, basePoints * (reward.referenceLevel + 1D), null, reward.image, reward.label);
+        return new Gift(id, reward.level, pointsForReward(reward), null, reward.image, reward.label);
     }
     public void prepareFinalPools(Map<String, Integer> credits) {
         playerPools.clear(); finalPools = true;
@@ -307,8 +402,10 @@ public class GiftDropGame {
             pool.version++; version++;
         }
         boolean protectedFromRotten = protectionEndsAt(username) > now;
-        return gift != null && (lightning || protectedFromRotten) && gift.drawTicket >= 0
-                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten) : gift;
+        DragonBallBoost boost = dragonBallBoosts.get(username);
+        int stars = boost != null && boost.endsAt > now ? boost.stars : 0;
+        return gift != null && (lightning || protectedFromRotten || stars > 0) && gift.drawTicket >= 0
+                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars) : gift;
     }
     private long protectionEndsAt(String username) {
         Long endsAt = perryHatProtection.get(username);
@@ -316,6 +413,12 @@ public class GiftDropGame {
     }
     public void recordClaim(Gift gift, String username, String displayName, double awardedPoints, long now) {
         if (gift.rewardLevel == PERRY_HAT_LEVEL) { perryHatProtection.put(username, now + PERRY_HAT_PROTECTION_MILLIS); }
+        for (PetRewardCatalog.Reward reward : rewards) {
+            if (reward.level == gift.rewardLevel && reward.dragonBallStars > 0) {
+                dragonBallBoosts.put(username, new DragonBallBoost(reward.dragonBallStars, now + DRAGON_BALL_BOOST_MILLIS));
+                break;
+            }
+        }
         claims.add(0, new ClaimRecord(gift, username, displayName, awardedPoints, now));
         if (claims.size() > 200) { claims.remove(claims.size() - 1); }
         version++;

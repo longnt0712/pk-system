@@ -1,0 +1,16 @@
+{
+  "id": "dragon-ball-5",
+  "name": "Ngọc rồng 5 sao",
+  "selectionKey": "DRAGON_BALL_5",
+  "unlockVocabularyExperienceLevel": 10,
+  "dragonBallStars": 5,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 10,
+      "battleRewardLevel": 1005,
+      "battleRewardReferenceLevel": 4,
+      "form": "hatched",
+      "file": "pet.png"
+    }
+  ]
+}

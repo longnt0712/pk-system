@@ -229,7 +229,8 @@ public class GiftDropGameTest {
 
     @Test public void perryHatHasExactlyTheRottenEggProbabilityForAllSkillChoicesAndFuturePets() {
         for (boolean includeFuturePet : new boolean[] {false,true}) {
-            List<PetRewardCatalog.Reward> catalog = new ArrayList<PetRewardCatalog.Reward>(PetRewardCatalog.rewards());
+            List<PetRewardCatalog.Reward> catalog = new ArrayList<PetRewardCatalog.Reward>(knownCatalog());
+            catalog.add(new PetRewardCatalog.Reward(21,"perry.png","Perry","perry","hatched",2));
             if (includeFuturePet) {
                 catalog.add(new PetRewardCatalog.Reward(22,"future-egg.png","Future egg","future","egg-intact"));
                 catalog.add(new PetRewardCatalog.Reward(23,"future-cracked.png","Future cracked","future","egg-cracked"));
@@ -343,4 +344,87 @@ public class GiftDropGameTest {
             assertEquals(hat.rewardImage,record.rewardImage); assertEquals(hat.rewardLabel,record.rewardLabel);
         }
     }
+    private List<PetRewardCatalog.Reward> ballsCatalog() {
+        return new ArrayList<PetRewardCatalog.Reward>(PetRewardCatalog.rewards());
+    }
+    private GiftDropGame.Gift effectGiftAt(GiftDropGame game, TicketRandom random, int ticket,
+            int stars, boolean lightning, boolean protectedFromRotten, long now) {
+        random.ticket = ticket;
+        String username = "effect-" + ticket + ":" + stars + ":" + lightning + ":" + protectedFromRotten + ":" + now;
+        if (stars > 0) { game.recordClaim(new GiftDropGame.Gift("ball",1000 + stars,10D * stars),username,username,10D * stars,1000L); }
+        if (protectedFromRotten) { game.recordClaim(new GiftDropGame.Gift("hat",GiftDropGame.PERRY_HAT_LEVEL,1D),username,username,1D,now - 1L); }
+        return game.claim(username,game.snapshot(username).gifts.get(0).id,lightning,now);
+    }
+    private int firstEffectTicket(GiftDropGame game, TicketRandom random, int level,
+            int stars, boolean lightning, boolean protectedFromRotten, long now) {
+        int low = 0, high = 1000000;
+        while (low < high) {
+            int middle = low + (high - low) / 2;
+            if (effectGiftAt(game,random,middle,stars,lightning,protectedFromRotten,now).rewardLevel < level) { low = middle + 1; }
+            else { high = middle; }
+        }
+        return low;
+    }
+    private int effectTickets(GiftDropGame game, TicketRandom random, int level,
+            int stars, boolean lightning, boolean protectedFromRotten, long now) {
+        return firstEffectTicket(game,random,level + 1,stars,lightning,protectedFromRotten,now)
+                - firstEffectTicket(game,random,level,stars,lightning,protectedFromRotten,now);
+    }
+
+    @Test public void eachBallHasTenPercentChanceAndFixedTenToSeventyPointsWithAllSkillsAndEffects() {
+        for (int mask = 0; mask < 8; mask++) for (boolean lightning : new boolean[] {false,true})
+            for (boolean protectedFromRotten : new boolean[] {false,true}) {
+            List<String> skills = new ArrayList<String>();
+            for (int i = 0; i < 3; i++) { if ((mask & (1 << i)) != 0) { skills.add(GiftDropGame.SKILL_TYPES.get(i)); } }
+            TicketRandom random = new TicketRandom();
+            GiftDropGame game = new GiftDropGame(mask == 0 ? 1 : 10000,random,skills,ballsCatalog());
+            for (int stars = 1; stars <= 7; stars++) {
+                assertEquals(100000,effectTickets(game,random,1000 + stars,7,lightning,protectedFromRotten,1001L));
+                int ticket = firstEffectTicket(game,random,1000 + stars,7,lightning,protectedFromRotten,1001L);
+                GiftDropGame.Gift gift = effectGiftAt(game,random,ticket,7,lightning,protectedFromRotten,1001L);
+                assertEquals(10D * stars,gift.points,0D);
+                assertEquals("Ngọc rồng " + stars + " sao",gift.rewardLabel);
+                assertTrue(gift.rewardImage.contains("dragon-ball-" + stars + "/pet.png"));
+            }
+            assertEquals(300000,firstEffectTicket(game,random,1001,7,lightning,protectedFromRotten,1001L));
+        }
+    }
+
+    @Test public void ballsAddExactPercentagePointsToTheHighestPetForTwentySecondsWithLightningAndPerry() {
+        for (boolean lightning : new boolean[] {false,true}) for (boolean protectedFromRotten : new boolean[] {false,true}) {
+            TicketRandom random = new TicketRandom();
+            GiftDropGame game = new GiftDropGame(10,random,GiftDropGame.SKILL_TYPES,ballsCatalog());
+            int base = effectTickets(game,random,20,0,lightning,protectedFromRotten,1001L);
+            for (int stars = 1; stars <= 7; stars++) {
+                assertEquals(base + stars * 10000,effectTickets(game,random,20,stars,lightning,protectedFromRotten,20999L));
+                assertEquals(base,effectTickets(game,random,20,stars,lightning,protectedFromRotten,21000L));
+            }
+        }
+        List<PetRewardCatalog.Reward> future = ballsCatalog();
+        future.add(new PetRewardCatalog.Reward(22,"future.png","Future winner","future","hatched"));
+        TicketRandom random = new TicketRandom(); GiftDropGame game = new GiftDropGame(10,random,Collections.<String>emptyList(),future);
+        int base = effectTickets(game,random,22,0,false,false,1001L);
+        assertEquals(base + 70000,effectTickets(game,random,22,7,false,false,1001L));
+        assertTrue(effectTickets(game,random,20,7,false,false,1001L) < effectTickets(game,random,20,0,false,false,1001L));
+    }
+
+    @Test public void aNewBallReplacesStrengthAndResetsTheTimerOnlyForItsOwnerIncludingFinalPools() throws Exception {
+        GiftDropGame game = new GiftDropGame(10,new Random(1));
+        game.recordClaim(new GiftDropGame.Gift("seven",1007,70D),"alice","Alice",70D,1000L);
+        assertEquals(7,game.snapshot("alice").dragonBallBoostStars);
+        assertEquals(21000L,game.snapshot("alice").dragonBallBoostEndsAt);
+        game.recordClaim(new GiftDropGame.Gift("one",1001,10D),"alice","Alice",10D,6000L);
+        assertEquals(1,game.snapshot("alice").dragonBallBoostStars);
+        assertEquals(26000L,game.snapshot("alice").dragonBallBoostEndsAt);
+        assertEquals("Pikachu",game.snapshot("alice").dragonBallBoostPetLabel);
+        assertEquals(0,game.snapshot("bob").dragonBallBoostStars);
+        assertEquals(0L,game.snapshot().dragonBallBoostEndsAt);
+        assertNull(game.snapshot().dragonBallBoostPetLabel);
+        game.prepareFinalPools(Collections.singletonMap("alice",3));
+        assertEquals(26000L,game.snapshot("alice").dragonBallBoostEndsAt);
+        assertEquals(0L,new GiftDropGame(10,new Random(1)).snapshot("alice").dragonBallBoostEndsAt);
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(game.snapshot("alice").gifts);
+        assertFalse(json.contains("rewardLevel"));assertFalse(json.contains("points"));
+    }
+
 }

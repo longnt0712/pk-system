@@ -21,6 +21,7 @@ public final class PetRewardCatalog {
         public final String image, label;
         public final String petId, form;
         public final int stageIndex;
+        public final int dragonBallStars;
 
         public Reward(int level, String image, String label) {
             this(level, image, label, "level-family-" + (level / 3),
@@ -32,6 +33,12 @@ public final class PetRewardCatalog {
         }
 
         public Reward(int level, String image, String label, String petId, String form, int referenceLevel) {
+            this(level, image, label, petId, form, referenceLevel, 0);
+        }
+
+        public Reward(int level, String image, String label, String petId, String form, int referenceLevel, int dragonBallStars) {
+            if (dragonBallStars < 0 || dragonBallStars > 7) { throw new IllegalArgumentException("Invalid Dragon Ball stars"); }
+            this.dragonBallStars = dragonBallStars;
             if (level < 0 || referenceLevel < 0 || image == null || label == null || petId == null || petId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Pet reward requires a level, image and label");
             }
@@ -76,6 +83,14 @@ public final class PetRewardCatalog {
                     || !pet.path("evolution").isArray() || pet.path("evolution").size() == 0) {
                 throw new IOException("Invalid pet reward manifest: " + manifest.getDescription());
             }
+            int dragonBallStars = 0;
+            if (pet.has("dragonBallStars")) {
+                JsonNode stars = pet.path("dragonBallStars");
+                if (!stars.isIntegralNumber() || !stars.canConvertToInt() || stars.asInt() < 1 || stars.asInt() > 7) {
+                    throw new IOException("Invalid Dragon Ball stars: " + manifest.getDescription());
+                }
+                dragonBallStars = stars.asInt();
+            }
             for (JsonNode stage : pet.path("evolution")) {
                 JsonNode minimum = stage.path("minimumVocabularyExperienceLevel");
                 JsonNode rewardLevel = stage.has("battleRewardLevel") ? stage.path("battleRewardLevel") : minimum;
@@ -98,7 +113,7 @@ public final class PetRewardCatalog {
                         || !file.matches("[a-zA-Z0-9_-]+\\.(png|webp|svg|avif|jpg|jpeg)")) {
                     throw new IOException("Invalid or duplicate pet reward level/image: " + manifest.getDescription());
                 }
-                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form, referenceLevel));
+                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form, referenceLevel, dragonBallStars));
             }
         }
         if (rewards.isEmpty()) { throw new IOException("No pet reward manifests were packaged"); }

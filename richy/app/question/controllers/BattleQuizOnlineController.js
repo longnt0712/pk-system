@@ -785,6 +785,17 @@
             var endsAt = Number(vm.room.giftDrop && vm.room.giftDrop.perryHatProtectionEndsAt || 0);
             return Math.max(0, Math.ceil((endsAt - serverNow()) / 1000));
         };
+        vm.giftDragonBallBoostSeconds = function () {
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator()) { return 0; }
+            var effect = vm.room.giftDrop || {};
+            if (!(effect.dragonBallBoostStars >= 1 && effect.dragonBallBoostStars <= 7)) { return 0; }
+            return Math.max(0, Math.ceil((Number(effect.dragonBallBoostEndsAt || 0) - serverNow()) / 1000));
+        };
+        vm.giftDragonBallBoostImage = function () {
+            var stars = Number(vm.room && vm.room.giftDrop && vm.room.giftDrop.dragonBallBoostStars || 0);
+            return stars >= 1 && stars <= 7
+                ? getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png') : '';
+        };
         vm.giftClaimDisabled = function () {
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
@@ -1316,6 +1327,10 @@
                 level = Math.max(level, 20);
             }
 
+            var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(petKey);
+            if (dragonBall && level >= 5 + Number(dragonBall[1])) {
+                return 'assets/images/learning-pets/dragon-ball-' + dragonBall[1] + '/pet.png' + suffix;
+            }
             if (petKey === 'CUTE_PERRY' && level >= 4) {
                 return 'assets/images/learning-pets/perry/pet-level-4.png' + suffix;
             }
@@ -1469,6 +1484,11 @@
                         ? 'Pikachu'
                         : (level === 19 ? 'Trứng Pikachu đang nứt' : 'Trứng Pikachu')
                 });
+            }
+            for (var stars = 1; stars <= 7; stars++) {
+                if (level >= 5 + stars) {
+                    battlePetOptions.push({key: 'DRAGON_BALL_' + stars, label: 'Ngọc rồng ' + stars + ' sao'});
+                }
             }
             return battlePetOptions;
         }
@@ -2878,6 +2898,12 @@
                 incoming.giftDrop.perryHatProtectionEndsAt = Math.max(
                     Number(previousRoom.giftDrop.perryHatProtectionEndsAt || 0),
                     Number(incoming.giftDrop.perryHatProtectionEndsAt || 0));
+                // Public updates omit personal effects. Use the latest pickup time, even when a new ball is weaker.
+                if (Number(incoming.giftDrop.dragonBallBoostEndsAt || 0) < Number(previousRoom.giftDrop.dragonBallBoostEndsAt || 0)) {
+                    incoming.giftDrop.dragonBallBoostStars = previousRoom.giftDrop.dragonBallBoostStars;
+                    incoming.giftDrop.dragonBallBoostEndsAt = previousRoom.giftDrop.dragonBallBoostEndsAt;
+                    incoming.giftDrop.dragonBallBoostPetLabel = previousRoom.giftDrop.dragonBallBoostPetLabel;
+                }
                 if (incoming.giftDrop.version < previousRoom.giftDrop.version) {
                     incoming.giftDrop.claims = previousRoom.giftDrop.claims;
                     incoming.giftDrop.version = previousRoom.giftDrop.version;
