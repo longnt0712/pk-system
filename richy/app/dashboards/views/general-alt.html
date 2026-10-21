@@ -110,7 +110,7 @@
             <div>
                 <span class="student-assignment-kicker"><i class="fa fa-paper-plane"></i> NHIỆM VỤ CỦA MÌNH</span>
                 <h2>Bài cần hoàn thành</h2>
-                <p>Tất cả nhiệm vụ của lớp đều ở đây, kể cả bài không gắn topic.</p>
+                <p>Bài tập được chia theo từng lớp để bạn dễ theo dõi.</p>
             </div>
             <span class="student-assignment-count" ng-if="!vm.assignedTasksLoading">{{vm.assignedTasks.length}} bài</span>
         </div>
@@ -125,40 +125,51 @@
             <span>☁️</span><strong>Chưa tải được bài. Bạn có thể tải lại trang để thử lại.</strong>
         </div>
 
-        <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
-            <article class="student-assignment-card"
-                     ng-repeat="task in vm.assignedTasks track by vm.assignmentKey(task)"
-                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !vm.hasAssignmentExercise(task), 'is-complete': vm.assignmentTopicComplete(task)}">
-                <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
-                <div class="student-assignment-copy">
-                    <div class="student-assignment-badges">
-                        <span>{{vm.assignmentTypeLabel(task)}}</span>
-                        <span class="is-free" ng-if="!vm.hasAssignmentExercise(task)">Nhiệm vụ lớp</span>
-                        <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
+        <div class="student-assignment-classes" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
+            <div class="student-assignment-class-section" ng-repeat="assignmentClass in vm.assignmentClassGroups track by assignmentClass.key"
+                 role="region" ng-attr-aria-label="{{assignmentClass.className}}">
+                <div class="student-assignment-class-heading">
+                    <div class="student-assignment-class-heading-copy">
+                        <span class="student-assignment-class-icon" aria-hidden="true"><i class="fa fa-graduation-cap"></i></span>
+                        <h3>{{assignmentClass.className}}</h3>
                     </div>
-                    <h3>{{task.taskTotalTopics > 1 ? task.topicName : task.title}}</h3>
-                    <p class="student-assignment-class" ng-if="task.taskTotalTopics > 1"><i class="fa fa-tasks"></i> {{task.title}} · {{task.taskCompletedTopics}}/{{task.taskTotalTopics}} topic · {{task.taskProgressPercent}}%</p>
-                    <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
-                    <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
-                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
-                    <p class="student-assignment-topic is-free" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
-                    <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
-                    <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
-                    <div class="student-assignment-progress">
-						<span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</span>
-                        <b ng-if="!vm.assignmentTopicComplete(task)">Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
-                        <b ng-if="vm.assignmentTopicComplete(task)"><i class="fa fa-check-circle"></i> Đã hoàn thành topic</b>
-                    </div>
-                    <div class="student-assignment-bar"><span ng-style="{'width': vm.assignmentProgressPercent(task) + '%'}"></span></div>
-                    <div class="student-assignment-footer">
-                        <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
-                        <button type="button" ng-if="vm.hasAssignmentExercise(task) && !vm.assignmentTopicComplete(task)" ng-click="vm.openAssignedTask(task)">
-                            {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
-                        </button>
-                        <span class="student-assignment-read-note" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
-                    </div>
+                    <span class="student-assignment-class-count">{{assignmentClass.tasks.length}} bài</span>
                 </div>
-            </article>
+                <div class="student-assignment-grid">
+                    <article class="student-assignment-card"
+                             ng-repeat="task in assignmentClass.tasks track by vm.assignmentKey(task)"
+                             ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !vm.hasAssignmentExercise(task), 'is-complete': vm.assignmentTopicComplete(task)}">
+                        <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
+                        <div class="student-assignment-copy">
+                            <div class="student-assignment-badges">
+                                <span>{{vm.assignmentTypeLabel(task)}}</span>
+                                <span class="is-free" ng-if="!vm.hasAssignmentExercise(task)">Nhiệm vụ lớp</span>
+                                <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
+                            </div>
+                            <h3>{{task.taskTotalTopics > 1 ? task.topicName : task.title}}</h3>
+                            <p class="student-assignment-class" ng-if="task.taskTotalTopics > 1"><i class="fa fa-tasks"></i> {{task.title}} · {{task.taskCompletedTopics}}/{{task.taskTotalTopics}} topic · {{task.taskProgressPercent}}%</p>
+                            <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+                            <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
+                            <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
+                            <p class="student-assignment-topic is-free" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
+                            <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
+                            <div class="student-assignment-progress">
+                                <span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</span>
+                                <b ng-if="!vm.assignmentTopicComplete(task)">Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
+                                <b ng-if="vm.assignmentTopicComplete(task)"><i class="fa fa-check-circle"></i> Đã hoàn thành topic</b>
+                            </div>
+                            <div class="student-assignment-bar"><span ng-style="{'width': vm.assignmentProgressPercent(task) + '%'}"></span></div>
+                            <div class="student-assignment-footer">
+                                <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
+                                <button type="button" ng-if="vm.hasAssignmentExercise(task) && !vm.assignmentTopicComplete(task)" ng-click="vm.openAssignedTask(task)">
+                                    {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
+                                </button>
+                                <span class="student-assignment-read-note" ng-if="!vm.hasAssignmentExercise(task)"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -998,6 +1009,13 @@
     .reading-resume-actions button:hover { transform:translateY(-1px); }
     .reading-resume-actions .is-continue { color:#fff; background:linear-gradient(135deg,#7059ef,#4f8df4); box-shadow:0 6px 14px rgba(99,82,222,.22); }
     .reading-resume-actions .is-cancel { color:#7b718d; background:#fff; border:1px solid #ded9ef; }
+    .student-assignment-classes { margin-top:18px; }
+    .student-assignment-class-section + .student-assignment-class-section { margin-top:24px; padding-top:20px; border-top:1px solid #e4e1f5; }
+    .student-assignment-class-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #e6e2fa; border-radius:15px; background:linear-gradient(110deg,#f2efff,#f1fbff); }
+    .student-assignment-class-heading-copy { display:flex; align-items:center; gap:10px; min-width:0; }
+    .student-assignment-class-icon { flex:none; display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:12px; color:#7057ee; background:#fff; font-size:18px; }
+    .student-assignment-class-heading h3 { margin:0; color:#302d64; font-size:18px; font-weight:900; line-height:1.35; overflow-wrap:anywhere; }
+    .student-assignment-class-count { flex:none; padding:6px 10px; border:1px solid #dfd9fb; border-radius:999px; background:#fff; color:#6d54df; font-size:12px; font-weight:900; white-space:nowrap; }
     .student-assignment-grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:13px; }
     .student-assignment-card { position:relative; display:flex; flex-direction:column; gap:9px; min-height:210px; padding:14px; overflow:hidden; border:1px solid #e6e2ff; border-radius:18px; background:linear-gradient(155deg,#fff 0%,#fbfaff 100%); box-shadow:0 9px 20px rgba(76,69,140,.10); transition:transform .2s ease,box-shadow .2s ease; }
     .student-assignment-card:hover { transform:translateY(-3px); box-shadow:0 13px 25px rgba(76,69,140,.16); }
@@ -1603,6 +1621,8 @@
         .student-assignment-board,
         .student-resume-board { padding:12px; border-radius:19px; }
         .student-assignment-heading p { max-width:235px; }
+        .student-assignment-class-heading { gap:8px; padding:10px; }
+        .student-assignment-class-heading h3 { font-size:16px; }
         .reading-resume-card { grid-template-columns:auto minmax(0,1fr); gap:11px; padding:14px 12px; }
         .reading-resume-icon { width:43px; height:43px; border-radius:14px; }
         .reading-resume-actions { grid-column:1 / -1; min-width:0; padding-top:3px; text-align:left; }

@@ -42,6 +42,7 @@
 
         vm.permissionsLoaded = false;
         vm.assignedTasks = [];
+        vm.assignmentClassGroups = [];
         vm.assignedTasksLoading = false;
         vm.assignedTasksError = false;
         vm.resumeDrafts = [];
@@ -142,9 +143,31 @@
             vm.loadResumeDrafts();
         };
 
+        vm.groupAssignmentsByClass = function (tasks) {
+            var groups = [], byClass = Object.create(null);
+            (angular.isArray(tasks) ? tasks : []).forEach(function (task) {
+                if (!task) { return; }
+                var className = String(task.className || '').trim();
+                var classId = task.classId == null ? '' : String(task.classId).trim();
+                var key = classId ? 'class:' + classId : (className ? 'name:' + className : 'unknown');
+                var group = byClass[key];
+                if (!group) {
+                    group = {key: key, classId: classId ? task.classId : null,
+                        className: className || 'Chưa xác định lớp', tasks: []};
+                    byClass[key] = group;
+                    groups.push(group);
+                } else if (className && group.className === 'Chưa xác định lớp') {
+                    group.className = className;
+                }
+                group.tasks.push(task);
+            });
+            return groups;
+        };
+
         vm.loadAssignedTasks = function () {
             if (!settings.ieltsRoom || !vm.myUser.id || !(vm.isRoleView || vm.isRoleUser || vm.hasRole('ROLE_STUDENT'))) {
                 vm.assignedTasks = [];
+                vm.assignmentClassGroups = [];
                 return;
             }
             vm.assignedTasksLoading = true;
@@ -154,8 +177,10 @@
                 vm.assignedTasks = (angular.isArray(response.data) ? response.data : []).filter(function (task) {
                     return task && !!task.dueDate && task.overdue !== true;
                 });
+                vm.assignmentClassGroups = vm.groupAssignmentsByClass(vm.assignedTasks);
             }, function () {
                 vm.assignedTasks = [];
+                vm.assignmentClassGroups = [];
                 vm.assignedTasksError = true;
             }).finally(function () {
                 vm.assignedTasksLoading = false;
