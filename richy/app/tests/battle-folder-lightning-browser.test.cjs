@@ -30,7 +30,7 @@ async function open(browser,width,username='host') {
  await page.evaluate(()=>{angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.qaScope=angular.element(document.getElementById('qa')).scope();});
  return {page,errors};
 }
-test('folder modal browses, searches folder/file names, preserves selected tests and fits desktop/mobile; lightning stays faint and host-only',async()=>{
+test('folder picker fits desktop/mobile and lightning overlays show host text, a fainter player bolt and allow clicks through',async()=>{
  const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
  const browser=await playwright.chromium.launch({headless:true,executablePath});
  const captures=path.join(app,'../target');fs.mkdirSync(captures,{recursive:true});
@@ -62,11 +62,32 @@ test('folder modal browses, searches folder/file names, preserves selected tests
    await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
    const effect=page.locator('.battle-lightning-effect');assert.equal(await effect.count(),1);
    const style=await effect.locator('img').evaluate(el=>({opacity:+getComputedStyle(el).opacity,animation:getComputedStyle(el).animationName}));
-   assert.ok(style.opacity>=.06&&style.opacity<=.16);assert.equal(style.animation,'battle-lightning-glow');
+   assert.ok(style.opacity>=.25&&style.opacity<=.31);assert.equal(style.animation,'battle-lightning-glow');
    assert.equal(await effect.evaluate(el=>getComputedStyle(el).pointerEvents),'none');
+   assert.match(await effect.locator('.battle-lightning-caption').innerText(),/Alice nhặt được Sét may mắn![\s\S]*\+10%[\s\S]*30s/);
+   assert.equal(await effect.locator('.battle-lightning-caption').evaluate(el=>+getComputedStyle(el).opacity),.45);
+   assert.equal(await effect.evaluate(el=>getComputedStyle(el).position),'fixed','effect never pushes the game layout down');
+   assert.equal(await page.locator('.battle-lightning-notice').count(),0,'there is no opaque top banner');
+   await page.evaluate(()=>{
+    const button=document.createElement('button');button.id='lightning-click-through';button.textContent='Nút bên dưới hiệu ứng';
+    button.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1250;padding:20px';
+    button.onclick=()=>{window.lightningClicks=(window.lightningClicks||0)+1;};document.getElementById('qa').appendChild(button);
+   });
+   await page.locator('#lightning-click-through').click();assert.equal(await page.evaluate(()=>window.lightningClicks),1,'host controls remain clickable through the bolt');
    await page.screenshot({path:path.join(captures,'battle-lightning-'+width+'.png')});
    snapshot.hostUsername='someone-else';await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
-   assert.equal(await effect.count(),0);assert.equal(await page.locator('.battle-lightning-notice').count(),1);
+   assert.equal(await effect.count(),1);assert.equal(await effect.locator('.battle-lightning-caption').count(),0,'players see only the bolt');
+   await page.locator('#lightning-click-through').click();assert.equal(await page.evaluate(()=>window.lightningClicks),2,'player egg controls remain clickable');
+   const playerOpacity=await effect.locator('img').evaluate(el=>+getComputedStyle(el).opacity);assert.ok(playerOpacity>=.05&&playerOpacity<=.11);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   const playerStill=await effect.locator('img').evaluate(el=>+getComputedStyle(el).opacity);
+   snapshot.hostUsername='host';await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
+   const hostStill=await effect.locator('img').evaluate(el=>+getComputedStyle(el).opacity);
+   assert.ok(Math.abs(hostStill-playerStill-.2)<.0001,'player opacity is exactly 0.2 lower than host opacity');
+   snapshot.hostUsername='someone-else';await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
+   await page.screenshot({path:path.join(captures,'battle-lightning-player-'+width+'.png')});
+   snapshot.giftLightning.endsAt=Date.now()-1;snapshot.serverTime=Date.now();await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
+   assert.equal(await effect.count(),0,'both overlays disappear after the lightning expires');
    assert.deepEqual(errors,[]);await page.close();
   }
   assert.equal((view.match(/battle_online_exercise_picker\.html\?[^']*folderPicker=/g)||[]).length,2,'both create and lobby use the new picker');

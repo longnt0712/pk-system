@@ -6,11 +6,15 @@
         <div id="battle-online-lightning-music-player"></div>
     </div>
 
-    <div class="battle-lightning-effect" ng-if="vm.isHost() && vm.isGiftLightningActive()" aria-hidden="true"><img src="assets/images/battle-lightning.svg" alt=""></div>
-    <div ng-if="vm.exercisePickerOpen" onload="vm.focusExercisePicker()" ng-include="'question/views/battle_online_exercise_folder_modal.html?v=' + vm.exercisePickerVersion"></div>
-    <div class="battle-lightning-notice" ng-if="vm.isGiftLightningActive()" role="status">
-        ⚡ {{vm.room.giftLightning.displayName}} nhặt được Sét may mắn! Cả phòng +10% tỉ lệ Tom đến Pikachu · {{vm.giftLightningSeconds()}}s
+    <div class="battle-lightning-effect" ng-if="vm.isGiftLightningActive()" ng-class="{'is-host': vm.isHost()}" aria-hidden="true">
+        <div class="battle-lightning-visual">
+            <img src="assets/images/battle-lightning.svg" alt="">
+            <p class="battle-lightning-caption" ng-if="vm.isHost()">
+                ⚡ {{vm.room.giftLightning.displayName}} nhặt được Sét may mắn! Cả phòng +10% tỉ lệ Tom đến Pikachu · {{vm.giftLightningSeconds()}}s
+            </p>
+        </div>
     </div>
+    <div ng-if="vm.exercisePickerOpen" onload="vm.focusExercisePicker()" ng-include="'question/views/battle_online_exercise_folder_modal.html?v=' + vm.exercisePickerVersion"></div>
     <!-- =====================================================
          HERO
          ===================================================== -->
@@ -3038,7 +3042,10 @@
     .battle-online-classic-answers .is-correct .battle-online-classic-answer-status { background:#ddf7e8; color:#166640; }
     .battle-online-classic-answers .is-wrong .battle-online-classic-answer-status { background:#ffe5e9; color:#ad284b; }
     .battle-online-classic-answers li > p { grid-column:1 / -1; margin:0; color:var(--bo-text); font-size:13px; line-height:1.35; white-space:pre-wrap; overflow-wrap:anywhere; }
-    .battle-lightning-effect { position:fixed; inset:0; z-index:6; display:grid; place-items:center; pointer-events:none; }
+    .battle-lightning-effect { --lightning-opacity:.08; --lightning-low:.06; --lightning-high:.10; position:fixed; inset:0; z-index:1301; display:grid; place-items:center; pointer-events:none; user-select:none; }
+    .battle-lightning-effect.is-host { --lightning-opacity:.28; --lightning-low:.26; --lightning-high:.30; }
+    .battle-lightning-visual { display:flex; flex-direction:column; align-items:center; gap:8px; width:min(780px,92vw); }
+    .battle-lightning-caption { max-width:100%; margin:0; padding:0 8px; color:#9b650c; opacity:.45; text-shadow:0 1px 3px #fff; font-size:clamp(13px,1.6vw,20px); font-weight:800; line-height:1.35; text-align:center; overflow-wrap:anywhere; }
     body.battle-exercise-picker-open { overflow:hidden; }
     /* Keep the folder picker above the lobby dialog (20000) and its detached dropdowns (30001). */
     .battle-exercise-folder-backdrop { position:fixed; inset:0; z-index:31000; background:rgba(22,30,54,.55); display:flex; align-items:center; justify-content:center; padding:18px; }
@@ -3053,10 +3060,9 @@
     .battle-exercise-folder-selection { display:flex; flex-wrap:wrap; gap:7px; max-height:100px; overflow:auto; }
     .battle-exercise-folder-selection > span { padding:7px; border-radius:9px; background:#eae5ff; } .battle-exercise-folder-selection button { border:0; background:none; color:#a52d56; }
     @media(max-width:600px) { .battle-exercise-folder-backdrop {padding:8px} .battle-exercise-folder-modal {max-height:96vh} .battle-exercise-folder-modal header,.battle-exercise-folder-modal footer,.battle-exercise-folder-body {padding:12px} .battle-exercise-folder-modal footer {align-items:stretch;flex-direction:column} }
-    .battle-lightning-effect img { width:min(48vw,440px); max-height:65vh; opacity:.10; animation:battle-lightning-glow 1.8s ease-in-out infinite; }
-    .battle-lightning-notice { position:relative; z-index:7; margin:10px 0; padding:12px 16px; border:1px solid #f6d86c; border-radius:14px; background:#fff8d9; color:#76510c; font-weight:700; }
-    @keyframes battle-lightning-glow { 0%,100% {opacity:.07;transform:scale(1)} 50% {opacity:.15;transform:scale(1.025)} }
-    @media (prefers-reduced-motion:reduce) { .battle-lightning-effect img {animation:none;opacity:.10} }
+    .battle-lightning-effect img { width:min(48vw,440px); max-height:65vh; object-fit:contain; opacity:var(--lightning-opacity); animation:battle-lightning-glow 1.8s ease-in-out infinite; }
+    @keyframes battle-lightning-glow { 0%,100% {opacity:var(--lightning-low);transform:scale(1)} 50% {opacity:var(--lightning-high);transform:scale(1.025)} }
+    @media (prefers-reduced-motion:reduce) { .battle-lightning-effect img {animation:none;opacity:var(--lightning-opacity)} }
     .battle-online-match-controls .btn { min-height:44px; font-weight:700; }
     .battle-online-auto-read { display:inline-flex; align-items:center; gap:8px; }
     .battle-online-auto-read-track { position:relative; width:36px; height:20px; border-radius:12px; background:#8d96a5; }
