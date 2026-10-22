@@ -9,6 +9,10 @@
 .comprehensive-video-mount:empty::before { content: 'Dán link để xem video tại đây'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b8cadd; font-size: 15px; }
 .comprehensive-video-mount iframe, .comprehensive-video-mount video { display: block; width: 100%; height: 100%; position: absolute; inset: 0; border: 0; object-fit: contain; }
 .comprehensive-video-clock { display: flex; align-items: center; gap: 7px; margin: 12px 0; font-variant-numeric: tabular-nums; font-weight: 700; color: #1c7085; }
+.comprehensive-video-notice { display: flex; align-items: flex-start; gap: 7px; margin: 8px 0; padding: 9px 11px; border-left: 3px solid #e5bd59; border-radius: 6px !important; background: #fff8e8; color: #73551f; font-size: 12px; line-height: 1.6; text-align: left; }
+.comprehensive-video-notice i { flex: none; margin-top: 3px; }
+.comprehensive-video-notice span { min-width: 0; overflow-wrap: anywhere; }
+.comprehensive-video-notice.is-loading { border-color: #b4cce0; background: #f0f5fa; color: #52677a; }
 .comprehensive-video-help { color: #627588; line-height: 1.7; margin: 12px 0; }
 .comprehensive-video-error { display: block; padding: 9px 0; color: #b9433c; font-size: 13px; line-height: 1.5; }
 .comprehensive-video-player .comprehensive-video-error { padding: 12px; background: #fff1ee; margin: 0; }

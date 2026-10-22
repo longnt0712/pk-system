@@ -305,6 +305,11 @@
                                     <comprehensive-video-player video-link="vm.ieltsReadingActualTest.subQuestions[0].videoUrl" video-api="vm.videoApi"
                                         on-video-progress="vm.onVideoProgress(seconds, duration)" on-video-state="vm.onVideoState(playing)"></comprehensive-video-player>
                                     <div class="comprehensive-video-clock">{{vm.formatVideoTime(vm.videoTimeline.currentSeconds)}} <span ng-if="vm.videoDuration">/ {{vm.formatVideoTime(vm.videoDuration)}}</span></div>
+                                    <div class="comprehensive-video-notice" ng-if="vm.videoPlaybackNotice || !vm.videoApi.ready"
+                                         ng-class="{'is-loading': !vm.videoPlaybackNotice}" role="status" aria-live="polite" aria-atomic="true">
+                                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                        <span>{{vm.videoPlaybackNotice || 'Video chưa sẵn sàng. Vui lòng chờ tải xong để tua hoặc nghe lại.'}}</span>
+                                    </div>
                                     <p class="comprehensive-video-help" ng-if="vm.isVideoHomeworkPractice()">Bạn có thể tua lùi trên video để nghe lại trước khi trả lời.</p>
                                     <button type="button" class="btn btn-default btn-sm" ng-if="vm.isVideoHomeworkPractice()"
                                             ng-click="vm.replayVideoSegment()" ng-disabled="!vm.videoApi.ready"><i class="fa fa-repeat" aria-hidden="true"></i> Nghe lại 10 giây</button>

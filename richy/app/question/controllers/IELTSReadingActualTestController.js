@@ -773,6 +773,8 @@
             return !!vm.assignmentTaskId && !vm.isPreviewMode && vm.hasComprehensiveVideo();
         };
         var pendingVideoReplay = null;
+        var videoPlaybackRequested = false, videoPlaybackNoticeReason = null;
+        vm.videoPlaybackNotice = '';
         $scope.$watchGroup([
             function () { return vm.ieltsReadingActualTest; },
             function () { return (((vm.ieltsReadingActualTest || {}).subQuestions || [])[0] || {}).videoUrl; }
@@ -782,6 +784,8 @@
             vm.videoFallbackMode = false;
             vm.videoDuration = 0;
             pendingVideoReplay = null;
+            videoPlaybackRequested = false;
+            clearVideoPlaybackNotice();
             vm.videoTimeline.cues.forEach(function (cue) {
                 cue.revealed = cue.questions.length > 0 && cue.questions.every(function (q) { return q.answered === true; });
             });
@@ -808,6 +812,18 @@
                 });
             });
         };
+        function clearVideoPlaybackNotice() {
+            vm.videoPlaybackNotice = '';
+            videoPlaybackNoticeReason = null;
+        }
+        function showVideoCueNotice(cue) {
+            if (!cue) { return; }
+            videoPlaybackNoticeReason = 'cue';
+            vm.videoPlaybackNotice = vm.videoCanContinue()
+                ? 'Video đang dừng ở mốc ' + video.formatTime(cue.seconds) + '. Bấm “Tiếp tục video” để xem tiếp.'
+                : 'Bạn cần trả lời các câu ở mốc ' + video.formatTime(cue.seconds) + ' rồi bấm “Tiếp tục video”.'
+                + (vm.isVideoHomeworkPractice() && Number(cue.seconds) > 0 ? ' Bạn vẫn có thể tua lùi để nghe lại.' : '');
+        }
         vm.onVideoProgress = function (seconds, duration) {
             if (!vm.hasComprehensiveVideo() || !vm.videoTimeline) { return; }
             vm.videoDuration = duration;
@@ -821,8 +837,11 @@
                     pendingVideoReplay = null;
                 } else { return; }
             }
+            var playbackRequested = videoPlaybackRequested;
+            videoPlaybackRequested = false;
             if (vm.videoFallbackMode) {
                 if (vm.isVideoHomeworkPractice()) { vm.videoTimeline.currentSeconds = seconds; }
+                clearVideoPlaybackNotice();
                 return;
             }
             // Play/time events can arrive in either order after a seek. Judge the
@@ -830,18 +849,32 @@
             if (vm.isVideoHomeworkPractice() && vm.videoTimeline.active.length) {
                 vm.videoTimeline.currentSeconds = seconds;
                 var pendingSeconds = vm.videoTimeline.active[0].seconds;
-                if (seconds < pendingSeconds) { return; }
-                if (vm.videoCanContinue()) { vm.videoTimeline.active = []; }
+                if (seconds < pendingSeconds) {
+                    // A player can report a sample just before its paused cue.
+                    // Keep the play request until that boundary is actually reached.
+                    if (playbackRequested && seconds >= pendingSeconds - 1) { videoPlaybackRequested = true; }
+                    if (videoPlaybackNoticeReason === 'cue') { clearVideoPlaybackNotice(); }
+                    return;
+                }
+                if (vm.videoCanContinue()) { vm.videoTimeline.active = []; clearVideoPlaybackNotice(); }
                 else {
+                    if (playbackRequested || seconds > pendingSeconds + 1) { showVideoCueNotice(vm.videoTimeline.active[0]); }
                     if (vm.videoApi.pause) { vm.videoApi.pause(); }
                     if (seconds > pendingSeconds + 1 && vm.videoApi.seek) { vm.videoApi.seek(pendingSeconds); }
                     return;
                 }
             }
             var active = vm.videoTimeline.advance(seconds);
-            if (!active.length) { return; }
+            if (!active.length) {
+                if (!vm.videoTimeline.active.length) { clearVideoPlaybackNotice(); }
+                return;
+            }
+            clearVideoPlaybackNotice();
             if (vm.videoApi.pause) { vm.videoApi.pause(); }
-            if (seconds > active[0].seconds + 1 && vm.videoApi.seek) { vm.videoApi.seek(active[0].seconds); }
+            if (seconds > active[0].seconds + 1) {
+                showVideoCueNotice(active[0]);
+                if (vm.videoApi.seek) { vm.videoApi.seek(active[0].seconds); }
+            }
             $timeout(function () {
                 var question = active[0].questions[0];
                 var target = question && $window.document.getElementById('question-number-' + question.ordinalNumber);
@@ -849,15 +882,29 @@
             });
         };
         vm.onVideoState = function (playing) {
+            videoPlaybackRequested = playing === true;
             if (playing && vm.videoTimeline && vm.videoTimeline.active.length) {
-                if (vm.videoCanContinue()) { vm.videoTimeline.active = []; }
-                else if (!vm.isVideoHomeworkPractice() && vm.videoApi.pause) { vm.videoApi.pause(); }
+                if (vm.videoCanContinue()) { vm.videoTimeline.active = []; clearVideoPlaybackNotice(); }
+                else if (!vm.isVideoHomeworkPractice() && vm.videoApi.pause) {
+                    videoPlaybackRequested = false;
+                    showVideoCueNotice(vm.videoTimeline.active[0]);
+                    vm.videoApi.pause();
+                }
             }
         };
         vm.replayVideoSegment = function () {
             if (!vm.isVideoHomeworkPractice() || !vm.videoTimeline || !vm.videoApi.ready || !vm.videoApi.seek) { return; }
             var anchor = vm.videoTimeline.active.length ? vm.videoTimeline.active[0].seconds : vm.videoTimeline.currentSeconds;
             var target = Math.max(0, (Number(anchor) || 0) - 10);
+            var currentSeconds = Number(vm.videoTimeline.currentSeconds) || 0;
+            clearVideoPlaybackNotice();
+            if (vm.videoTimeline.active.length && target >= currentSeconds) {
+                if (target >= vm.videoTimeline.active[0].seconds) { showVideoCueNotice(vm.videoTimeline.active[0]); }
+                else {
+                    videoPlaybackNoticeReason = 'replay';
+                    vm.videoPlaybackNotice = 'Nút này nghe lại từ mốc ' + video.formatTime(target) + ' trước câu hỏi đang chờ.';
+                }
+            }
             pendingVideoReplay = {target: target, requestedAt: Date.now()};
             vm.videoTimeline.currentSeconds = target;
             vm.videoApi.seek(target);
@@ -865,11 +912,14 @@
         };
         vm.continueVideo = function () {
             if (!vm.videoCanContinue() || !vm.videoApi.ready) { return; }
+            clearVideoPlaybackNotice();
             vm.videoTimeline.active = [];
             vm.videoApi.play();
         };
         vm.revealVideoQuestions = function () {
             if (vm.videoApi.pause) { vm.videoApi.pause(); }
+            videoPlaybackRequested = false;
+            clearVideoPlaybackNotice();
             vm.videoFallbackMode = true;
             vm.videoTimeline.revealAll();
         };
