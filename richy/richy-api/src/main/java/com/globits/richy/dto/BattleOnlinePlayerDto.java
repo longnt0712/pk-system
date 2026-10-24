@@ -48,6 +48,7 @@ public class BattleOnlinePlayerDto implements Serializable {
      */
     private long frozenUntil;
     private long skillImmunityEndsAt;
+    private int collectedDragonBallCount;
 
     /*
      * ESCAPE_DUMB_DEMON skill INVERT.
@@ -60,6 +61,9 @@ public class BattleOnlinePlayerDto implements Serializable {
      * Trong thời gian này, điểm vừa nhận của mỗi câu đúng được nhân 1.2.
      */
     private long burningUntil;
+
+    public int getCollectedDragonBallCount() { return collectedDragonBallCount; }
+    public void setCollectedDragonBallCount(int value) { collectedDragonBallCount = value; }
 
     public long getSkillImmunityEndsAt() { return skillImmunityEndsAt; }
     public void setSkillImmunityEndsAt(long value) { skillImmunityEndsAt = value; }

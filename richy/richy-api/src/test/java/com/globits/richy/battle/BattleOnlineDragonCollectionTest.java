@@ -78,6 +78,7 @@ public class BattleOnlineDragonCollectionTest {
         BattleOnlineRoomDto publicRoom=ReflectionTestUtils.invokeMethod(service,"snapshotLocked",room,(String)null);
         assertNull(publicRoom.getGiftDrop().collectedDragonBalls);assertEquals(0L,publicRoom.getGiftDrop().dragonBallCollectionCompletedAt);
         for(BattleOnlinePlayerDto player:publicRoom.getPlayers()) {
+            assertEquals("alice".equals(player.getUsername())?7:0,player.getCollectedDragonBallCount());
             assertEquals("alice".equals(player.getUsername())?first.dragonBallImmunityEndsAt:0L,player.getSkillImmunityEndsAt());
         }
     }
@@ -131,4 +132,18 @@ public class BattleOnlineDragonCollectionTest {
         assertEquals(before.dragonBallCollectionCompletedAt,game.snapshot("alice").dragonBallCollectionCompletedAt);
         assertEquals(before.dragonBallScoreAfter,game.snapshot("alice").dragonBallScoreAfter,0D);
     }
+    @Test public void publicRankingCountsOnlyDistinctCollectedBallsForEachPlayerAndDoesNotCreatePools() {
+        int poolsBefore=((Map<?,?>)get(game,"playerPools")).size();
+        assertEquals(0,game.collectedDragonBallCount("unseen"));
+        assertEquals(poolsBefore,((Map<?,?>)get(game,"playerPools")).size());
+        pick(1);pick(1);pick(5);
+        BattleOnlineRoomDto live=ReflectionTestUtils.invokeMethod(service,"snapshotLocked",room,(String)null);
+        for(BattleOnlinePlayerDto player:live.getPlayers()) {
+            assertEquals("alice".equals(player.getUsername())?2:0,player.getCollectedDragonBallCount());
+        }
+        assertNull(live.getGiftDrop().collectedDragonBalls);
+        assertEquals(2,game.snapshot("alice").collectedDragonBalls.size());
+        assertEquals(2,game.collectedDragonBallCount("alice"));assertEquals(0,game.collectedDragonBallCount("bob"));
+    }
+
 }

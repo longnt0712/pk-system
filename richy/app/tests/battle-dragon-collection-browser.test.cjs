@@ -83,3 +83,50 @@ test('the real celebration ignores backdrop clicks and Escape, blocks answers, a
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+
+test('all ranking views show each players unique ball count and update live on mobile and desktop',async()=>{
+ const badges=html.match(/<small class="battle-dragon-ranking-progress"[\s\S]*?<\/small>/g)||[];
+ assert.equal(badges.length,3);
+ const hostBadge=read('question/views/battle_online_egg_host.html').match(/<small class="battle-dragon-ranking-progress"[\s\S]*?<\/small>/)[0];
+ for(const width of [320,1280]){
+  const{page,errors}=await open(width);
+  try{
+   await page.evaluate(badges=>{
+    const scope=window.collectionQaScope,injector=angular.element(document.getElementById('qa')).injector();
+    let fragment='<section id="ranking-qa" style="width:calc(100% - 24px);max-width:650px;margin:12px auto">';
+    badges.forEach((badge,index)=>{
+     const body=index===3?'<div class="egg-host-player"><strong>{{player.username}}</strong>'+badge+'</div>':
+      '<div class="battle-online-ranking-player"><div class="battle-online-ranking-copy"><strong>{{player.username}}</strong>'+badge+'</div></div>';
+     fragment+='<div class="ranking-context"><div ng-repeat="player in vm.room.players track by player.username" class="'+
+      (index===3?'egg-host-rank-row':'battle-online-ranking-row')+'">'+body+'<b>{{player.score}}</b></div></div>';
+    });
+    fragment+='</section>';document.getElementById('qa').appendChild(injector.get('$compile')(fragment)(scope)[0]);
+    scope.$apply(()=>{
+     const room=window.collectionQaRoom(false);room.players=[{username:'alice',score:100,spectator:false,connected:true,collectedDragonBallCount:0},
+      {username:'bob',score:50,spectator:false,connected:true,collectedDragonBallCount:0}];window.collectionQaHooks.applyRoom(room,false);
+    });
+   },badges.concat(hostBadge));
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress').count(),8);
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress').filter({hasText:'0/7 ngọc'}).count(),8);
+   await page.evaluate(()=>window.collectionQaScope.$apply(()=>{
+    const room=angular.copy(window.collectionQaScope.vm.room);room.giftDrop.version++;room.serverTime=Date.now();
+    room.players[0].collectedDragonBallCount=3;room.players[1].collectedDragonBallCount=6;window.collectionQaHooks.applyRoom(room,true);
+   }));
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress').filter({hasText:'3/7 ngọc'}).count(),4);
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress').filter({hasText:'6/7 ngọc'}).count(),4);
+   await page.evaluate(()=>window.collectionQaScope.$apply(()=>{
+    const room=angular.copy(window.collectionQaScope.vm.room);room.giftDrop.version++;room.serverTime=Date.now();
+    room.players[0].collectedDragonBallCount=7;window.collectionQaHooks.applyRoom(room,true);
+   }));
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress.is-complete').count(),4);
+   const bounds=await page.locator('#ranking-qa .battle-dragon-ranking-progress').evaluateAll(items=>items.map(item=>{
+    const rect=item.getBoundingClientRect();return{left:rect.left,right:rect.right,height:rect.height,viewport:innerWidth};
+   }));
+   for(const rect of bounds){assert.ok(rect.height>0);assert.ok(rect.left>=0&&rect.right<=rect.viewport);}
+   await page.evaluate(()=>window.collectionQaScope.$apply(()=>{
+    const room=angular.copy(window.collectionQaScope.vm.room);room.settings.mode='COUNTDOWN';window.collectionQaHooks.applyRoom(room,false);
+   }));
+   assert.equal(await page.locator('#ranking-qa .battle-dragon-ranking-progress').count(),0);assert.deepEqual(errors,[]);
+  }finally{await page.close();}
+ }
+});

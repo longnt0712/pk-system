@@ -14,7 +14,7 @@ public class GiftDropGame {
     public static final long DRAGON_BALL_BOOST_MILLIS = 20000L;
     public static final long DRAGON_BALL_IMMUNITY_MILLIS = 180000L;
     public static final long DRAGON_BALL_CELEBRATION_MILLIS = 5000L;
-    private static final int DRAGON_BALL_TICKETS = 100000; // 10% per ball out of one million tickets.
+    private static final int DRAGON_BALL_TICKETS = 50000; // 5% per ball out of one million tickets.
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
@@ -290,7 +290,7 @@ public class GiftDropGame {
         System.arraycopy(rewardWeights, 0, normalDrawWeights, skillWeights.length + 2, rewardWeights.length);
         int total = 0;
         for (int weight : normalDrawWeights) { total += weight; }
-        // Put at most a few rounding tickets into the first ordinary reward; ball chances stay exactly 10%.
+        // Put at most a few rounding tickets into the first ordinary reward; ball chances stay exactly 5%.
         for (int i = 0; i < rewards.size(); i++) {
             if (rewards.get(i).dragonBallStars == 0) {
                 normalDrawWeights[skillWeights.length + 2 + i] += DRAW_RESOLUTION - total; break;
@@ -460,6 +460,10 @@ public class GiftDropGame {
     public boolean hasCompletedDragonBallCollection(String username) {
         DragonBallCollection collection = dragonBallCollections.get(username);
         return collection != null && collection.completedAt > 0L;
+    }
+    public int collectedDragonBallCount(String username) {
+        DragonBallCollection collection = dragonBallCollections.get(username);
+        return collection == null ? 0 : collection.stars.size();
     }
     public long skillImmunityEndsAt(String username) {
         DragonBallCollection collection = dragonBallCollections.get(username);

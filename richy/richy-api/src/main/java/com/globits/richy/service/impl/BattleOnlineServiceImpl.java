@@ -7500,6 +7500,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     displayTotal(room)
             );
 
+            player.setCollectedDragonBallCount(room.giftDrop != null ? room.giftDrop.collectedDragonBallCount(state.username) : 0);
             player.setSkillImmunityEndsAt(room.giftDrop != null ? room.giftDrop.skillImmunityEndsAt(state.username) : 0L);
             player.setFrozenUntil(
                     state.frozenUntil

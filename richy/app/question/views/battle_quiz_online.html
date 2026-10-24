@@ -1816,6 +1816,7 @@
                         <strong>
                             {{vm.getPlayerDisplayName(player)}}
                         </strong>
+                        <small class="battle-dragon-ranking-progress" ng-if="vm.isLumNgayMode()" ng-class="{'is-complete': player.collectedDragonBallCount >= 7}" title="Số viên ngọc rồng khác nhau đã lụm">🔮 {{player.collectedDragonBallCount || 0}}/7 ngọc</small>
 
                         <small class="battle-online-rank-praise"
                                ng-if="player.rank <= 3">
@@ -1984,6 +1985,7 @@
                         <strong>
                             {{vm.getFinalPlayerDisplayName(player)}}
                         </strong>
+                        <small class="battle-dragon-ranking-progress" ng-if="vm.isLumNgayMode()" ng-class="{'is-complete': player.collectedDragonBallCount >= 7}" title="Số viên ngọc rồng khác nhau đã lụm">🔮 {{player.collectedDragonBallCount || 0}}/7 ngọc</small>
 
                         <small class="battle-online-rank-praise"
                                ng-if="player.rank <= 3">
@@ -2450,6 +2452,7 @@
 
                         <div class="battle-online-ranking-copy">
                             <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+                            <small class="battle-dragon-ranking-progress" ng-if="vm.isLumNgayMode()" ng-class="{'is-complete': player.collectedDragonBallCount >= 7}" title="Số viên ngọc rồng khác nhau đã lụm">🔮 {{player.collectedDragonBallCount || 0}}/7 ngọc</small>
 
                             <small class="battle-online-rank-praise"
                                    ng-if="player.rank <= 3">
@@ -3088,6 +3091,8 @@
     .battle-dragon-gift-collection .battle-dragon-collection-copy strong { font-size:11px; }
     .battle-dragon-gift-collection .battle-dragon-collection-copy p { display:none; }
     .battle-dragon-gift-collection .battle-dragon-collection-copy .battle-dragon-collection-immunity { display:block; font-size:11px; margin:2px 0; }
+    .battle-online-ranking-copy .battle-dragon-ranking-progress,.egg-host-player .battle-dragon-ranking-progress { display:inline-flex; align-items:center; margin-top:4px; padding:3px 7px; border:1px solid #edcd83; border-radius:999px; background:#fff4d5; color:#87500d; font-size:11px; font-weight:800; line-height:1.25; white-space:nowrap; }
+    .battle-online-ranking-copy .battle-dragon-ranking-progress.is-complete,.egg-host-player .battle-dragon-ranking-progress.is-complete { border-color:#9edcbe; background:#e5f9ef; color:#14734c; }
     .battle-online-ranking-row.is-player-shielded { outline:2px solid #2ebc87; outline-offset:-2px; }
     .battle-dragon-celebration-backdrop { position:fixed; inset:0; z-index:35000; display:flex; justify-content:center; align-items:center; padding:12px; background:#16102bd4; backdrop-filter:blur(5px); }
     .battle-dragon-celebration { position:relative; box-sizing:border-box; isolation:isolate; overflow:auto; max-height:94vh; max-height:94dvh; width:min(560px,100%); padding:26px 20px; border:2px solid #ffd369; border-radius:26px; background:radial-gradient(ellipse at top,#fff2a8,#fffaf0 60%,#ecfff6); box-shadow:0 0 75px #ffc93466; color:#62401b; text-align:center; outline:none; }
