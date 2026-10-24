@@ -96,17 +96,21 @@ test('each section saves one complete response and Study feedback uses the 90% t
     pack._listeningSession.gaps.slice(0, 9).forEach(gap => { gap.value = gap.answer; }); listening.update(pack._listeningSession);
     pack.subQuestions[0].questionAnswers[0].clientAnswer = listening.serialize(pack._listeningSession);
     const entry = {question: pack.subQuestions[0], questionPackage: pack, packageType: 18};
-    const state = {testResult: {questionAnswerTestResult: [{ordinalNumber: 1, clientAnswer: 'other'}]}};
+    const state = {testSessionMode: 'STUDY', isStartTest: true, testResult: {questionAnswerTestResult: [{ordinalNumber: 1, clientAnswer: 'other'}]}};
     const context = {vm: state, listening, angular, getReadingQuestionEntries: () => [entry], saveReadingDraft() {}};
     nodeVm.runInNewContext(section(runtime, '        vm.isRuntimeDailyListening =', '        vm.changeTextQuestionAnswer =') +
         section(runtime, '        function synchronizeReadingResultsBeforeSubmit()', '        function getCurrentReadingQuestionIndex('), context);
     state.changeDailyListeningAnswer(pack); state.changeDailyListeningAnswer(pack);
     assert.equal(state.testResult.questionAnswerTestResult.length, 2); assert.equal(pack.subQuestions[0].answered, true);
     context.synchronizeReadingResultsBeforeSubmit();
-    assert.equal(context.isStudyAnswerCorrect(entry, state.testResult.questionAnswerTestResult[1], 'summary', []), true);
+    state.openStudyAnswerCheck();
+    assert.equal(state.studyAnswerCheck.correct, 1);
+    assert.equal(state.studyAnswerCheck.unanswered, 0);
     pack._listeningSession.gaps[0].value = ''; listening.update(pack._listeningSession);
     pack.subQuestions[0].questionAnswers[0].clientAnswer = listening.serialize(pack._listeningSession);
     state.changeDailyListeningAnswer(pack);
     assert.equal(pack.subQuestions[0].answered, false);
-    assert.equal(context.isStudyAnswerCorrect(entry, state.testResult.questionAnswerTestResult[1], 'summary', []), false);
+    state.openStudyAnswerCheck();
+    assert.equal(state.studyAnswerCheck.correct, 0);
+    assert.equal(state.studyAnswerCheck.incorrect, 1);
 });

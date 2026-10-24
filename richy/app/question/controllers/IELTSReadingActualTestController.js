@@ -1237,6 +1237,7 @@
         /* Adjustable exam panels for mouse, pen and touch. */
         vm.readingPanePercent = 50;
         vm.writingPromptPercent = 42;
+        vm.showListeningToolbar = true;
         vm.showListeningContent = false;
         vm.isListeningContentVisible = function () {
             return vm.isListeningRoute && (vm.isPreviewMode || (vm.isStudyMode() && vm.showListeningContent));
@@ -2343,6 +2344,13 @@
 
                 var savedResults = findDraftResults(draft, question);
                 var savedResult = savedResults.length ? savedResults[0] : null;
+                if (vm.testSessionMode === 'STUDY' && Number(entry.packageType) === 8) {
+                    var matchingModel = vm.getStudyMatchingModel(question);
+                    var matchingText = savedResult && savedResult.clientAnswer != null ? String(savedResult.clientAnswer) : '';
+                    matchingModel.answer.answer = matchingText ? (question.questionAnswers || []).filter(function (option) {
+                        return studyAnswerRaw(option) === matchingText;
+                    })[0] || null : null;
+                }
                 if (Number(entry.packageType) === 13 && entry.questionPackage.completeListWordBank) {
                     var completeState = findCompleteListDraftState(draft, question);
                     var completeWord = findCompleteListWord(entry.questionPackage, completeState, savedResult);
@@ -4455,190 +4463,219 @@
             vm.testResult.questionAnswerTestResult = results;
         }
 
-        function cleanStudyAnswerText(value) {
-            return String(value == null ? '' : value)
-                .replace(/<br\s*\/?\s*>/gi, ' / ')
-                .replace(/<[^>]*>/g, ' ')
-                .replace(/&nbsp;/gi, ' ')
-                .replace(/&amp;/gi, '&')
-                .replace(/&lt;/gi, '<')
-                .replace(/&gt;/gi, '>')
-                .replace(/\s+/g, ' ')
-                .trim();
+        function decodeStudyTextEntities(value) {
+            var entities = {nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", pound: '£',
+                euro: '€', yen: '¥', cent: '¢', copy: '©', reg: '®', ndash: '–', mdash: '—',
+                lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', hellip: '…', times: '×', divide: '÷'};
+            // Decode as text only, after removing markup; never parse imported answers as live HTML.
+            return String(value == null ? '' : value).replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, function (entity, name) {
+                if (name.charAt(0) !== '#') { return Object.prototype.hasOwnProperty.call(entities, name.toLowerCase()) ? entities[name.toLowerCase()] : entity; }
+                var code = /^#x/i.test(name) ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+                if (!isFinite(code) || code < 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) { return '\ufffd'; }
+                if (code <= 0xffff) { return String.fromCharCode(code); }
+                code -= 0x10000;
+                return String.fromCharCode(0xd800 + (code >> 10), 0xdc00 + (code & 0x3ff));
+            });
         }
 
-        function formatStudyQuestionPrompt(value) {
-            return String(value == null ? '' : value)
+        function cleanStudyAnswerText(value) {
+            return decodeStudyTextEntities(String(value == null ? '' : value)
+                .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+                .replace(/<br\s*\/?\s*>/gi, ' / ')
+                .replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+        }
+
+        function studyQuestionIndex(entry) {
+            var question = entry.question || {}, questions = (entry.questionPackage || {}).subQuestions || entry.packageQuestions || [];
+            for (var i = 0; i < questions.length; i++) {
+                if (questions[i] === question || (question.id != null && String(questions[i].id) === String(question.id)) ||
+                    (question.ordinalNumber != null && String(questions[i].ordinalNumber) === String(question.ordinalNumber))) { return i; }
+            }
+            return 0;
+        }
+
+        function formatStudyQuestionPrompt(value, entry) {
+            var type = Number(entry && entry.packageType), pack = (entry && entry.questionPackage) || {};
+            var shared = (type === 11 || type === 13 || type === 18) && (pack.subQuestions || []).length > 1;
+            var source = shared && pack.subQuestions[0].question ? pack.subQuestions[0].question : value;
+            var marker = '\ue000', index = 0, target = entry ? studyQuestionIndex(entry) : 0;
+            var text = String(source == null ? '' : source)
+                .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
                 .replace(/(?:\{\{|\}\{|\{)ENTER(?:\}\}|\}\{|\})/gi, '\n')
-                .replace(/(?:\{\{|\}\{|\{)(?:SPACE|HEADING)(?:\}\}|\}\{|\})/gi, ' _____ ')
+                .replace(/(?:\{\{|\}\{|\{)(SPACE|HEADING)(?:\}\}|\}\{|\})/gi, function (whole, kind) {
+                    return shared && kind.toUpperCase() === 'SPACE' && index++ === target ? ' ' + marker + ' ' : ' _____ ';
+                })
+                .replace(/<(?:input|textarea)\b[^>]*>/gi, ' _____ ')
                 .replace(/<br\s*\/?\s*>/gi, '\n')
                 .replace(/<li[^>]*>/gi, '• ')
-                .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
-                .replace(/<[^>]*>/g, ' ')
-                .replace(/&nbsp;/gi, ' ')
-                .replace(/&amp;/gi, '&')
-                .replace(/&lt;/gi, '<')
-                .replace(/&gt;/gi, '>')
-                .replace(/[ \t]+/g, ' ')
-                .replace(/ *\n */g, '\n')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
+                .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, '\n')
+                .replace(/<[^>]*>/g, ' ');
+            text = decodeStudyTextEntities(text).replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+            var position = text.indexOf(marker);
+            if (shared && position >= 0) {
+                var lineStart = text.lastIndexOf('\n', position) + 1, lineEnd = text.indexOf('\n', position);
+                text = text.slice(lineStart, lineEnd < 0 ? text.length : lineEnd);
+                position = text.indexOf(marker);
+            }
+            if (text.length > 296) {
+                var start = position >= 0 ? Math.max(0, position - 130) : 0;
+                var end = Math.min(text.length, start + 292);
+                text = (start ? '… ' : '') + text.slice(start, end).trim() + (end < text.length ? ' …' : '');
+            }
+            return text.replace(marker, '_____');
         }
 
-        function studyAnswerValue(questionAnswer) {
-            return cleanStudyAnswerText(questionAnswer && questionAnswer.answer &&
-                questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '');
+        function studyAnswerRaw(questionAnswer) {
+            return questionAnswer && questionAnswer.answer && questionAnswer.answer.answer != null ? String(questionAnswer.answer.answer) : '';
         }
+
+        function studyAnswerValue(questionAnswer) { return cleanStudyAnswerText(studyAnswerRaw(questionAnswer)); }
 
         function uniqueStudyAnswers(values) {
             var unique = [];
             angular.forEach(values || [], function (value) {
                 var cleaned = cleanStudyAnswerText(value);
-                if (cleaned && unique.indexOf(cleaned) < 0) {
-                    unique.push(cleaned);
-                }
+                if (cleaned && unique.indexOf(cleaned) < 0) { unique.push(cleaned); }
             });
             return unique;
         }
 
-        function studyCorrectAnswers(entry, result) {
-            var type = Number(entry.packageType);
-            var sourceQuestion = entry.question;
-            if ((type == 5 || type == 7) && entry.questionPackage &&
-                entry.questionPackage.subQuestions && entry.questionPackage.subQuestions.length) {
-                sourceQuestion = entry.questionPackage.subQuestions[0];
-            }
-            var questionAnswers = (sourceQuestion && sourceQuestion.questionAnswers) || [];
-            var correctAnswers = [];
-
-            angular.forEach(questionAnswers, function (questionAnswer) {
-                if (questionAnswer && questionAnswer.correct === true) {
-                    correctAnswers.push(studyAnswerValue(questionAnswer));
-                }
-            });
-
-            if (!correctAnswers.length) {
-                angular.forEach(questionAnswers, function (questionAnswer) {
-                    if (questionAnswer && questionAnswer.correctAnswer) {
-                        correctAnswers.push(questionAnswer.correctAnswer);
-                    }
-                });
-            }
-
-            if (!correctAnswers.length && result && result.questionAnswer) {
-                if (result.questionAnswer.correctAnswer) {
-                    correctAnswers.push(result.questionAnswer.correctAnswer);
-                } else if (result.correctAnswerForMultipleAnswer) {
-                    correctAnswers.push(result.correctAnswerForMultipleAnswer);
-                }
-            }
-
-            return uniqueStudyAnswers(correctAnswers);
+        function studyCanonicalMatchingAnswer(question) {
+            var answers = (question && question.questionAnswers) || [];
+            return answers.filter(function (answer) { return answer && answer.correct === true; })[0] || answers[0] || null;
         }
 
-        function isStudyAnswerCorrect(entry, result, submittedAnswer, correctAnswers) {
-            var type = Number(entry.packageType);
-            var selectedAnswer = result && result.questionAnswer;
-            var normalizedSubmitted = cleanStudyAnswerText(submittedAnswer);
+        vm.getStudyMatchingModel = function (question) {
+            if (vm.testSessionMode !== 'STUDY' || !question) { return {}; }
+            if (!question.studyMatchingModel) { question.studyMatchingModel = {answer: {answer: null}}; }
+            return question.studyMatchingModel;
+        };
 
-            if (type === 18 && listening.isRuntime(entry.questionPackage)) {
-                return listening.start(entry.questionPackage.motherTongue, result && result.clientAnswer).passed;
-            }
-
-            if (!normalizedSubmitted) { return false; }
-
-            if (type == 2 || type == 3 || type == 11 || type == 18) {
-                var acceptedAnswers = [];
-                angular.forEach(correctAnswers || [], function (answer) {
-                    angular.forEach(String(answer || '').split('/'), function (alternative) {
-                        var normalizedAlternative = cleanStudyAnswerText(alternative).toLowerCase();
-                        if (normalizedAlternative) { acceptedAnswers.push(normalizedAlternative); }
-                    });
-                });
-                return acceptedAnswers.indexOf(normalizedSubmitted.toLowerCase()) >= 0;
-            }
-
-            // Matching Headings and Matching Features are persisted as the
-            // selected answer text. Mirror the server's exact comparison.
-            if (type == 4 || type == 8) {
-                return !!selectedAnswer && normalizedSubmitted === studyAnswerValue(selectedAnswer);
-            }
-
-            if (selectedAnswer && selectedAnswer.correct === true) {
-                return true;
-            }
-
-            return (correctAnswers || []).some(function (answer) {
-                return cleanStudyAnswerText(answer).toLowerCase() === normalizedSubmitted.toLowerCase();
-            });
-        }
-
-        function studyResultForEntry(entry, results) {
-            var question = entry.question || {};
-            var matched = null;
-            angular.forEach(results || [], function (result) {
-                if (matched) { return; }
-                var resultQuestion = result && result.questionAnswer && result.questionAnswer.question;
-                if ((question.id != null && resultQuestion && String(resultQuestion.id) === String(question.id)) ||
-                    (question.ordinalNumber != null && result &&
-                        String(result.ordinalNumber) === String(question.ordinalNumber))) {
-                    matched = result;
-                }
+        function studyHeadingSlot(entry) {
+            var scope = typeof $scope !== 'undefined' ? $scope : {};
+            var lists = Number(entry.passageNumber) === 2 ? scope.listA2 : (Number(entry.passageNumber) === 3 ? scope.listA3 : scope.listA);
+            var question = entry.question || {}, matched = null;
+            angular.forEach(lists || [], function (list) {
+                var slot = list && list.items && list.items[0], slotQuestion = slot && slot.question;
+                if (slotQuestion && ((question.id != null && String(slotQuestion.id) === String(question.id)) ||
+                    (question.ordinalNumber != null && String(slotQuestion.ordinalNumber) === String(question.ordinalNumber)))) { matched = slot; }
             });
             return matched;
         }
 
-        vm.openStudyAnswerCheck = function () {
-            if (vm.testSessionMode !== 'STUDY' || vm.isWritingRoute || vm.isPreviewMode || vm.isStartTest !== true) {
-                return;
+        function studyCurrentAnswer(entry) {
+            var question = entry.question || {}, answers = question.questionAnswers || [], pack = entry.questionPackage || {};
+            var type = Number(entry.packageType), selected = null, raw = '', slot, item;
+            if (type === 2 || type === 3 || type === 11 || type === 18) {
+                raw = answers[0] && answers[0].clientAnswer;
+            } else if (type === 5 || type === 7) {
+                var source = ((pack.subQuestions || entry.packageQuestions || [])[0] || {}).questionAnswers || [];
+                var choices = [], identities = [];
+                angular.forEach(source, function (answer) {
+                    var identity = answer && answer.id != null ? 'id:' + answer.id : answer;
+                    if (answer && answer.selected === true && identities.indexOf(identity) < 0) { identities.push(identity); choices.push(answer); }
+                });
+                selected = choices[studyQuestionIndex(entry)] || null;
+                raw = studyAnswerRaw(selected);
+            } else if (type === 4) {
+                slot = studyHeadingSlot(entry);
+                selected = slot || studyCanonicalMatchingAnswer(question);
+                if (slot && slot.objectFromListB && Object.keys(slot.objectFromListB).length) { raw = slot.clientAnswer; }
+            } else if (type === 8) {
+                selected = studyCanonicalMatchingAnswer(question);
+                var matchingChoice = ((question.studyMatchingModel || {}).answer || {}).answer;
+                raw = studyAnswerRaw(matchingChoice);
+            } else if ((type === 13 && pack.completeListSlots) || ((type === 14 || type === 15) && pack.sentenceEndingSlots)) {
+                slot = (type === 13 ? pack.completeListSlots : pack.sentenceEndingSlots)[studyQuestionIndex(entry)];
+                item = slot && slot.items && slot.items[0];
+                selected = item && answers[Number(item.answerIndex)];
+                raw = selected ? studyAnswerRaw(selected) : '';
+            } else {
+                selected = answers.filter(function (answer) { return answer && answer.selected === true; })[0] || null;
+                raw = studyAnswerRaw(selected);
             }
+            return {questionAnswer: selected, raw: String(raw == null ? '' : raw), text: cleanStudyAnswerText(raw)};
+        }
 
-            synchronizeReadingResultsBeforeSubmit();
-            var results = vm.testResult.questionAnswerTestResult || [];
-            var summary = {
-                rows: [],
-                total: 0,
-                answered: 0,
-                correct: 0,
-                incorrect: 0,
-                unanswered: 0
-            };
+        function studyCorrectAnswers(entry, current) {
+            var type = Number(entry.packageType), sourceQuestion = entry.question;
+            if (type === 4 || type === 8) { return uniqueStudyAnswers([studyAnswerRaw(current.questionAnswer)]); }
+            if ((type === 5 || type === 7) && entry.questionPackage && (entry.questionPackage.subQuestions || []).length) {
+                sourceQuestion = entry.questionPackage.subQuestions[0];
+            }
+            var answers = (sourceQuestion && sourceQuestion.questionAnswers) || [], correctAnswers = [];
+            angular.forEach(answers, function (answer) { if (answer && answer.correct === true) { correctAnswers.push(studyAnswerValue(answer)); } });
+            if (!correctAnswers.length) {
+                angular.forEach(answers, function (answer) { if (answer && answer.correctAnswer) { correctAnswers.push(answer.correctAnswer); } });
+            }
+            return uniqueStudyAnswers(correctAnswers);
+        }
 
+        function studyListeningSession(entry, raw) {
+            var snapshot;
+            try { snapshot = JSON.parse(raw); } catch (invalid) { return null; }
+            if (!snapshot || snapshot.version !== 1 || !Array.isArray(snapshot.gaps) || !snapshot.gaps.length ||
+                !snapshot.gaps.some(function (gap) { return gap && typeof gap.value === 'string' && gap.value.trim(); })) { return null; }
+            try {
+                var session = listening.start(entry.questionPackage.motherTongue, raw, function () { return 0; });
+                // start() can generate a new exercise for invalid data. That is not a current answer.
+                if (String(session.source) !== String(snapshot.source) || session.gaps.length !== snapshot.gaps.length ||
+                    !session.gaps.every(function (gap) {
+                        return snapshot.gaps.some(function (saved) { return saved && saved.index === gap.index && saved.value === gap.value; });
+                    })) { return null; }
+                return session;
+            } catch (invalidSession) { return null; }
+        }
+
+        function trimStudyGradingText(value) {
+            // Match Java String.trim(), without treating literal NBSP as an ordinary space.
+            return String(value == null ? '' : value).replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '');
+        }
+
+        function isStudyAnswerCorrect(entry, current, correctAnswers) {
+            var type = Number(entry.packageType);
+            if (!current.text) { return false; }
+            if (type === 4 || type === 8) {
+                // The server compares matching slots exactly after trim, including case and inner spaces.
+                return !!current.questionAnswer && trimStudyGradingText(current.raw) === trimStudyGradingText(studyAnswerRaw(current.questionAnswer));
+            }
+            if (type === 2 || type === 3 || type === 11 || type === 18) {
+                return (((entry.question || {}).questionAnswers) || []).some(function (answer) {
+                    return answer && answer.correct === true && studyAnswerRaw(answer).split('/').some(function (alternative) {
+                        return trimStudyGradingText(alternative).toLowerCase() === trimStudyGradingText(current.raw).toLowerCase();
+                    });
+                });
+            }
+            return !!current.questionAnswer && current.questionAnswer.correct === true;
+        }
+
+        vm.openStudyAnswerCheck = function () {
+            if (vm.testSessionMode !== 'STUDY' || vm.isWritingRoute || vm.isPreviewMode || vm.isStartTest !== true) { return; }
+            // Review the visible answer models only. Submission synchronization can retain older results.
+            var summary = {rows: [], total: 0, answered: 0, correct: 0, incorrect: 0, unanswered: 0};
             angular.forEach(getReadingQuestionEntries(), function (entry) {
-                var result = studyResultForEntry(entry, results);
-                var submittedAnswer = cleanStudyAnswerText(result && result.clientAnswer);
-                var correctAnswers = studyCorrectAnswers(entry, result);
-                if (Number(entry.packageType) === 18 && listening.isRuntime(entry.questionPackage)) {
-                    var listeningSession = listening.start(entry.questionPackage.motherTongue, result && result.clientAnswer);
-                    submittedAnswer = listeningSession.correct + '/' + listeningSession.total + ' ô đúng (' + listeningSession.percent + '%)';
+                var current = studyCurrentAnswer(entry), correctAnswers = studyCorrectAnswers(entry, current);
+                var submittedAnswer = current.text, correct = isStudyAnswerCorrect(entry, current, correctAnswers);
+                if (Number(entry.packageType) === 18 && typeof listening !== 'undefined' && listening.isRuntime(entry.questionPackage)) {
+                    var session = studyListeningSession(entry, current.raw);
+                    submittedAnswer = session ? session.correct + '/' + session.total + ' ô đúng (' + session.percent + '%)' : '';
+                    correct = !!session && session.passed;
                     correctAnswers = ['Đúng từ 90% tổng số ô trống'];
                 }
-                var status = 'unanswered';
-
-                if (submittedAnswer) {
-                    status = isStudyAnswerCorrect(entry, result, submittedAnswer, correctAnswers) ? 'correct' : 'incorrect';
-                    summary.answered++;
-                    summary[status]++;
-                } else {
-                    summary.unanswered++;
-                }
-
-                summary.rows.push({
-                    ordinalNumber: entry.question && entry.question.ordinalNumber,
-                    prompt: formatStudyQuestionPrompt(entry.question && entry.question.question),
+                var status = submittedAnswer ? (correct ? 'correct' : 'incorrect') : 'unanswered';
+                if (submittedAnswer) { summary.answered++; }
+                summary[status]++;
+                summary.rows.push({ordinalNumber: entry.question && entry.question.ordinalNumber,
+                    prompt: formatStudyQuestionPrompt(entry.question && entry.question.question, entry),
                     studentAnswer: submittedAnswer || 'Chưa chọn đáp án',
                     correctAnswer: correctAnswers.length ? correctAnswers.join(' / ') : 'Chưa có dữ liệu đáp án',
-                    status: status,
-                    question: entry.question,
-                    packageQuestions: entry.packageQuestions,
-                    passageQuestions: entry.passageQuestions
-                });
+                    status: status, question: entry.question, packageQuestions: entry.packageQuestions, passageQuestions: entry.passageQuestions});
                 summary.total++;
             });
-
             vm.studyAnswerCheck = summary;
             vm.showStudyAnswerCheck = true;
         };
+
 
         vm.closeStudyAnswerCheck = function () {
             vm.showStudyAnswerCheck = false;
@@ -7394,7 +7431,7 @@
 
             for(var i = 0; i < vm.testResult.questionAnswerTestResult.length ; i++){
                 if(vm.testResult.questionAnswerTestResult[i].ordinalNumber == q.ordinalNumber){
-                    if(angular.isDefined(x) && x != null && angular.isDefined(x.answer)){
+                    if(x && x.answer && x.answer.answer && x.answer.answer.answer != null){
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = x.answer.answer.answer;
                     } else{
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = '';
@@ -7442,7 +7479,7 @@
                 }
             }
 
-            if(angular.isDefined(x.answer) && x.answer != null){
+            if(x && x.answer != null){
                 q.answered = true;
             }else{
                 q.answered = false;
@@ -7486,7 +7523,7 @@
 
             for(var i = 0; i < vm.testResult.questionAnswerTestResult.length ; i++){
                 if(vm.testResult.questionAnswerTestResult[i].ordinalNumber == q.ordinalNumber){
-                    if(angular.isDefined(x) && x != null && angular.isDefined(x.answer)){
+                    if(x && x.answer && x.answer.answer && x.answer.answer.answer != null){
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = x.answer.answer.answer;
                     } else{
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = '';
@@ -7535,7 +7572,7 @@
                 }
             }
 
-            if(angular.isDefined(x.answer) && x.answer != null){
+            if(x && x.answer != null){
                 q.answered = true;
             }else{
                 q.answered = false;
@@ -7582,7 +7619,7 @@
 
             for(var i = 0; i < vm.testResult.questionAnswerTestResult.length ; i++){
                 if(vm.testResult.questionAnswerTestResult[i].ordinalNumber == q.ordinalNumber){
-                    if(angular.isDefined(x) && x != null && angular.isDefined(x.answer)){
+                    if(x && x.answer && x.answer.answer && x.answer.answer.answer != null){
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = x.answer.answer.answer;
                     } else{
                         vm.testResult.questionAnswerTestResult[i].clientAnswer = '';
@@ -7627,7 +7664,7 @@
                 }
             }
 
-            if(angular.isDefined(x.answer) && x.answer != null){
+            if(x && x.answer != null){
                 q.answered = true;
             }else{
                 q.answered = false;

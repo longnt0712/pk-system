@@ -116,11 +116,11 @@ public class QuestionAnswerTestResultDto implements Serializable{
 			return;
 		}
 
-		// Single-option modes. Matching Information (12) and Complete List of
-		// Words (13) and Sentence Endings (14) use the same persisted
-		// QuestionAnswer contract as Matching
+		// Single-option modes. Matching Information (12), Complete List of
+		// Words (13), Sentence Endings (14), and Listening Two-Column Drag &
+		// Drop (15) use the same persisted QuestionAnswer contract as Matching
 		// Names (10), Maps (9), and normal single-choice questions.
-		if(type == 1 || type == 6 || type == 9 || type == 10 || type == 12 || type == 13 || type == 14) {
+		if(type == 1 || type == 6 || type == 9 || type == 10 || type == 12 || type == 13 || type == 14 || type == 15) {
 			this.isCorrectTestResultDetail = hasSubmittedAnswer && selectedAnswer.isCorrect();
 			return;
 		}
