@@ -126,8 +126,13 @@
                 <i class="fa fa-check-square-o" aria-hidden="true"></i>
                 <span>Check đáp án</span>
             </button>
-            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
+            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" ng-show="!vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
                 {{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}
+            </button>
+            <button ng-if="vm.isStudyMode() && vm.hasPendingReadingSubmission() && !vm.isPreviewMode"
+                    type="button" class="idp-top-check" ng-disabled="vm.isSubmittingTest"
+                    ng-click="vm.retryPendingStudySubmission()" title="Lưu kết quả đang chờ" aria-label="Lưu kết quả đang chờ">
+                <i class="fa fa-refresh" aria-hidden="true"></i><span>Lưu kết quả đang chờ</span>
             </button>
         </div>
     </div>
@@ -150,7 +155,7 @@
                                 <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
-                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
+                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isStudyMode()" data-ng-click="vm.saveTestResult()">
                                     <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}</span>
                                 </button>
                             </div>
@@ -159,7 +164,7 @@
 
                         <div class="row for-media text-center idp-candidate-mobile" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
                         <div class="col-md-6 margin-top-10">
-                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isWritingRoute || !vm.isStudyMode()" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish'}}</span></button>
+                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" ng-show="!vm.isStudyMode()" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish'}}</span></button>
                         </div>
                         <div class="col-md-6">
                             <p class="idp-timer" ng-click="vm.toggleTimerDetails()">
@@ -259,7 +264,7 @@
                                          title="Kéo lên xuống để đổi chiều cao · nhấp đúp để đặt lại"
                                          aria-label="Điều chỉnh chiều cao phần đề và bài viết"></div>
                                     <article class="idp-writing-answer-pane">
-                                        <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. Bấm Finish để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
+                                        <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. {{vm.isStudyMode() ? 'Bấm “Lưu kết quả đang chờ”' : 'Bấm Finish'}} để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
                                         <textarea class="writing-task-runtime__textarea"
                                                   ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
                                                   ng-readonly="vm.hasPendingReadingSubmission()"
@@ -372,7 +377,7 @@
                                                 </div>
                                                 <span class="writing-task-runtime__requirement">Yêu cầu: trên {{vm.writingTaskWordTarget(item)}} từ</span>
                                             </div>
-                                            <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. Bấm Finish để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
+                                            <p class="text-muted" role="status" ng-if="vm.hasPendingReadingSubmission()">Bài viết đang chờ xác nhận lưu. {{vm.isStudyMode() ? 'Bấm “Lưu kết quả đang chờ”' : 'Bấm Finish'}} để kiểm tra lại đúng lượt đã gửi trước khi sửa tiếp.</p>
                                         <textarea class="writing-task-runtime__textarea"
                                                       ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
                                                   ng-readonly="vm.hasPendingReadingSubmission()"

@@ -2425,6 +2425,7 @@
             vm.isStartTest = true;
             vm.isStartingTest = false;
             vm.showTestModeDialog = false;
+            reopenSubmittedStudyDraft(draft);
             toastr.success('Your in-progress test has been restored.', 'Continue test');
         }
 
@@ -3480,6 +3481,61 @@
                 ? ' Hạn bài được giao không thay đổi; nộp ngoài hạn có thể không được tính tiến độ.' : ''), 'Làm lượt mới');
         }
 
+        function reopenSubmittedStudyDraft(draft) {
+            if (vm.testSessionMode !== 'STUDY' || vm.assignmentTaskId || vm.isPreviewMode || !draft) { return false; }
+            vm.isLearningReview = false;
+            var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, 'STUDY');
+            if (readingSubmissionState && readingSubmissionState.status === 'PENDING') {
+                // A selected older pending run must remain this tab's source even
+                // while annotations are restoring and another run owns the base slot.
+                var pendingDraft = angular.copy(draft);
+                pendingDraft.clientAttemptKey = readingAttemptKey;
+                pendingDraft.submissionState = angular.copy(readingSubmissionState);
+                storeReadingDraft(key, pendingDraft);
+                return false;
+            }
+            if (!(readingSubmissionState && readingSubmissionState.status === 'SAVED') && !draft.completed && !draft.resultId) { return false; }
+            var baseDraft = readStoredDraft(key);
+            try {
+                var persistedBase = JSON.parse($window.localStorage.getItem(key) || 'null');
+                if (persistedBase) { baseDraft = persistedBase; }
+            } catch (ignoreStudyBaseRead) {}
+            var previousKey = readingAttemptKey || draft.clientAttemptKey || null;
+            // Keep the immutable receipt under its original identity before opening
+            // a learning draft. Reusing that identity would restore SAVED on autosave.
+            if (/^[a-f0-9]{32}$/.test(previousKey || '')) {
+                var receipt = angular.copy(draft);
+                receipt.clientAttemptKey = previousKey;
+                var receiptKey = readingCloudDraftKey(key, receipt);
+                var existingReceipt = readStoredDraft(receiptKey);
+                if (!existingReceipt || !existingReceipt.submissionState || existingReceipt.submissionState.status !== 'SAVED') {
+                    storeReadingDraft(receiptKey, receipt);
+                    saveReadingLearningDraft(key, receipt);
+                }
+            }
+            var learningDraft = angular.copy(draft);
+            readingAttemptKey = newReadingAttemptKey();
+            readingSubmissionState = null; readingDraftSubmitted = false; restoredExpiredReadingDraft = false;
+            requestedReadingDraftKey = null; readingAttemptMayReplaceLocalDraft = false;
+            learningDraft.clientAttemptKey = readingAttemptKey;
+            learningDraft.submissionState = null; learningDraft.completed = false; learningDraft.resultId = null;
+            learningDraft.sessionMode = 'STUDY'; learningDraft.savedAt = new Date().toISOString();
+            vm.passageNumber = vm.isComprehensiveRoute ? 1 : Math.max(1, Math.min(vm.isWritingRoute ? 2 : 3, Number(vm.passageNumber) || 1));
+            learningDraft.passageNumber = vm.passageNumber;
+            var replaceBase = !baseDraft || !baseDraft.clientAttemptKey || baseDraft.clientAttemptKey === previousKey;
+            storeReadingDraft(key, learningDraft, replaceBase);
+            saveReadingLearningDraft(key, learningDraft);
+            vm.testResultAfterSubmitting = {}; vm.isShowDetail = false;
+            return true;
+        }
+
+        vm.retryPendingStudySubmission = function () {
+            if (vm.testSessionMode !== 'STUDY' || vm.assignmentTaskId || vm.isPreviewMode
+                    || vm.isSubmittingTest || !vm.hasPendingReadingSubmission()) { return; }
+            saveReadingDraft();
+            submitReadingAttemptSnapshot();
+        };
+
         function restoreSubmittedReadingReceipt() {
             var state = readingSubmissionState;
             vm.testResult = angular.copy(state.payload);
@@ -3575,7 +3631,9 @@
             vm.isSubmittingTest = true; blockUI.start();
             function failSubmission(message) {
                 vm.isSubmittingTest = false; blockUI.stop();
-                toastr.error(message || 'Chưa xác nhận được lưu bài. Bài làm vẫn được giữ; bấm Finish để kiểm tra lại đúng lượt đã gửi.', 'Chưa xác nhận lưu bài');
+                toastr.error(message || ('Chưa xác nhận được lưu bài. Bài làm vẫn được giữ; '
+                    + (vm.testSessionMode === 'STUDY' ? 'bấm “Lưu kết quả đang chờ”' : 'bấm Finish')
+                    + ' để kiểm tra lại đúng lượt đã gửi.'), 'Chưa xác nhận lưu bài');
             }
             function send() {
                 if (readingDraftDestroyed || state !== readingSubmissionState) { return; }
@@ -3585,9 +3643,16 @@
                         failSubmission('Server chưa xác nhận đúng lượt nộp. Bài làm vẫn được giữ; hãy thử xác nhận lại.'); return;
                     }
                     vm.isSubmittingTest = false;
-                    vm.testResult = angular.copy(payload);
                     state.status = 'SAVED'; state.result = angular.copy(data);
                     persistReadingSubmissionState();
+                    if (vm.testSessionMode === 'STUDY' && !vm.assignmentTaskId) {
+                        var studyKey = readingDraftStorageKey(vm.ieltsReadingActualTest.id, 'STUDY');
+                        reopenSubmittedStudyDraft(readActiveReadingDraft(studyKey));
+                        startReadingDraftAutosave(); saveReadingDraft();
+                        toastr.success('Đã lưu kết quả cũ. Bạn có thể tiếp tục tự học.', 'Đã xác nhận lưu');
+                        return;
+                    }
+                    vm.testResult = angular.copy(payload);
                     readingDraftSubmitted = true;
                     var keepFailedAssignmentDraft = vm.assignmentTaskId && data.resultStatus === 'FAILED';
                     if ((!vm.isFlexibleRoute || data.resultStatus !== 'FAILED') && !keepFailedAssignmentDraft) { markStudyDraftCompleted(data.id); }
@@ -7691,7 +7756,7 @@
                 if (String(pendingReadingDraft.testId) !== String($stateParams.ieltsReadingTestId)) { return; }
                 vm.testSessionMode = pendingReadingDraft.sessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 vm.selectedTestSessionMode = vm.testSessionMode;
-                vm.isLearningReview = !vm.assignmentTaskId && pendingReadingDraft.completed === true;
+                vm.isLearningReview = vm.testSessionMode !== 'STUDY' && !vm.assignmentTaskId && pendingReadingDraft.completed === true;
                 $timeout(function () {
                     vm.startTest();
                 }, 0);
