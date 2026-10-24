@@ -12,6 +12,8 @@ public class GiftDropGame {
     public static final double PERRY_HAT_POINTS = 1D;
     public static final long PERRY_HAT_PROTECTION_MILLIS = 15000L;
     public static final long DRAGON_BALL_BOOST_MILLIS = 20000L;
+    public static final long DRAGON_BALL_IMMUNITY_MILLIS = 180000L;
+    public static final long DRAGON_BALL_CELEBRATION_MILLIS = 5000L;
     private static final int DRAGON_BALL_TICKETS = 100000; // 10% per ball out of one million tickets.
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
@@ -68,6 +70,9 @@ public class GiftDropGame {
         public final int dragonBallBoostStars;
         public final long dragonBallBoostEndsAt;
         public final String dragonBallBoostPetLabel;
+        public final List<Integer> collectedDragonBalls;
+        public final long dragonBallCollectionCompletedAt, dragonBallImmunityEndsAt, dragonBallCelebrationEndsAt;
+        public final double dragonBallScoreBefore, dragonBallScoreAfter;
         public final int capacity;
         public final List<ClosedGift> gifts;
         public final List<ClaimRecord> claims;
@@ -80,6 +85,14 @@ public class GiftDropGame {
             dragonBallBoostStars = boost == null ? 0 : boost.stars;
             dragonBallBoostEndsAt = boost == null ? 0L : boost.endsAt;
             dragonBallBoostPetLabel = boost == null || game.highestPetIndex < 0 ? null : game.rewards.get(game.highestPetIndex).label;
+            DragonBallCollection collection = username == null ? null : game.dragonBallCollections.get(username);
+            collectedDragonBalls = username == null ? null : new ArrayList<Integer>();
+            if (collection != null) { collectedDragonBalls.addAll(collection.stars); }
+            dragonBallCollectionCompletedAt = collection == null ? 0L : collection.completedAt;
+            dragonBallImmunityEndsAt = collection == null ? 0L : collection.immunityEndsAt;
+            dragonBallCelebrationEndsAt = collection == null ? 0L : collection.celebrationEndsAt;
+            dragonBallScoreBefore = collection == null ? 0D : collection.scoreBefore;
+            dragonBallScoreAfter = collection == null ? 0D : collection.scoreAfter;
             gifts = username == null ? null : new ArrayList<ClosedGift>();
             if (username != null) {
                 for (Gift gift : pool.gifts.values()) { gifts.add(new ClosedGift(gift.id)); }
@@ -101,6 +114,19 @@ public class GiftDropGame {
         DragonBallBoost(int stars, long endsAt) { this.stars = stars; this.endsAt = endsAt; }
     }
     private final Map<String, DragonBallBoost> dragonBallBoosts = new HashMap<String, DragonBallBoost>();
+    private static final class DragonBallCollection {
+        final Set<Integer> stars = new TreeSet<Integer>();
+        long completedAt, immunityEndsAt, celebrationEndsAt;
+        double scoreBefore, scoreAfter;
+        boolean scoreRecorded;
+        DragonBallCollection() { }
+        DragonBallCollection(DragonBallCollection previous) {
+            stars.addAll(previous.stars); completedAt = previous.completedAt;
+            immunityEndsAt = previous.immunityEndsAt; celebrationEndsAt = previous.celebrationEndsAt;
+            scoreBefore = previous.scoreBefore; scoreAfter = previous.scoreAfter; scoreRecorded = previous.scoreRecorded;
+        }
+    }
+    private final Map<String, DragonBallCollection> dragonBallCollections = new HashMap<String, DragonBallCollection>();
     private final List<ClaimRecord> claims = new ArrayList<ClaimRecord>();
     private final List<String> skillTypes = new ArrayList<String>();
     private final int basePoints;
@@ -416,12 +442,41 @@ public class GiftDropGame {
         for (PetRewardCatalog.Reward reward : rewards) {
             if (reward.level == gift.rewardLevel && reward.dragonBallStars > 0) {
                 dragonBallBoosts.put(username, new DragonBallBoost(reward.dragonBallStars, now + DRAGON_BALL_BOOST_MILLIS));
+                DragonBallCollection collection = dragonBallCollections.get(username);
+                if (collection == null) { collection = new DragonBallCollection(); dragonBallCollections.put(username, collection); }
+                collection.stars.add(reward.dragonBallStars);
+                if (collection.stars.size() == 7 && collection.completedAt == 0L) {
+                    collection.completedAt = now;
+                    collection.immunityEndsAt = now + DRAGON_BALL_IMMUNITY_MILLIS;
+                    collection.celebrationEndsAt = now + DRAGON_BALL_CELEBRATION_MILLIS;
+                }
                 break;
             }
         }
         claims.add(0, new ClaimRecord(gift, username, displayName, awardedPoints, now));
         if (claims.size() > 200) { claims.remove(claims.size() - 1); }
         version++;
+    }
+    public boolean hasCompletedDragonBallCollection(String username) {
+        DragonBallCollection collection = dragonBallCollections.get(username);
+        return collection != null && collection.completedAt > 0L;
+    }
+    public long skillImmunityEndsAt(String username) {
+        DragonBallCollection collection = dragonBallCollections.get(username);
+        return collection == null ? 0L : collection.immunityEndsAt;
+    }
+    public void recordDragonBallCollectionScore(String username, double before, double after) {
+        DragonBallCollection collection = dragonBallCollections.get(username);
+        if (collection != null && collection.completedAt > 0L && !collection.scoreRecorded) {
+            collection.scoreBefore = before; collection.scoreAfter = after; collection.scoreRecorded = true;
+        }
+    }
+    /** Final egg pools are a new draw session in the same match; keep the one-time collection reward. */
+    public void inheritDragonBallCollections(GiftDropGame previous) {
+        if (previous == null) { return; }
+        for (Map.Entry<String, DragonBallCollection> entry : previous.dragonBallCollections.entrySet()) {
+            dragonBallCollections.put(entry.getKey(), new DragonBallCollection(entry.getValue()));
+        }
     }
     public void creditChanged() { version++; }
     public Snapshot snapshot() { return new Snapshot(this, null); }

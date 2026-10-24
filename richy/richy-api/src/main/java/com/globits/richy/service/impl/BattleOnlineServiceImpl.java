@@ -141,6 +141,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             TimeUnit.MINUTES.toMillis(5L);
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
     private static final double MONEY_BEG_STEAL_RATE = 0.40D;
+    private static final long PASSWORD_GUESS_DURATION_MS = 10000L;
     private static final double MONEY_BEG_SKILL_RATE = 0.17D;
     private static final double COUNTDOWN_SKILL_RATE_FACTOR = 0.75D;
     private static final double ESCAPE_INVERT_SKILL_RATE = 0.08D;
@@ -2732,7 +2733,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             );
                         }
 
-                        preparePasswordGuessLocked(actor, target);
+                        preparePasswordGuessLocked(room, actor, target);
                         actor.pendingSkillTargetUsernames.clear();
                     } else if (SKILL_FREEZE.equals(skillType)) {
                         target.frozenUntil = now + FREEZE_DURATION_MS;
@@ -2840,7 +2841,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             double awardedPoints = gift.rewardLevel == GiftDropGame.ROTTEN_EGG_LEVEL
                     || gift.rewardLevel == GiftDropGame.PERRY_HAT_LEVEL
                     ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
+            boolean collectionWasComplete = room.giftDrop.hasCompletedDragonBallCollection(player.username);
             room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
+            if (!collectionWasComplete && room.giftDrop.hasCompletedDragonBallCollection(player.username)) {
+                double scoreBefore = player.score;
+                player.score = roundScoreToOneDecimal(scoreBefore * 3D);
+                room.giftDrop.recordDragonBallCollectionScore(player.username, scoreBefore, player.score);
+                player.frozenUntil = 0L;
+                player.invertedUntil = 0L;
+            }
             result.setSkillType(gift.skillType);
             result.setRewardImage(gift.rewardImage); result.setRewardLabel(gift.rewardLabel);
             result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints);
@@ -3023,6 +3032,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             PlayerState actor = requirePlayer(room, username);
             requireActivePlayer(actor);
+            if (expirePasswordGuessLocked(room, actor, System.currentTimeMillis())) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hết 10 giây chọn mật khẩu. Bạn đã mất lượt hack.");
+            }
+            if (passwordDto != null && passwordDto.getPasswordGuessEndsAt() > 0L &&
+                    passwordDto.getPasswordGuessEndsAt() != actor.passwordGuessEndsAt) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Lượt hack này không còn hiệu lực.");
+            }
 
             if (
                 !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
@@ -3084,6 +3100,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             actor.pendingPasswordGuessTargetUsername = null;
             actor.pendingPasswordGuessCorrectKey = null;
             actor.passwordGuessOptions.clear();
+            actor.passwordGuessEndsAt = 0L;
 
             assignNextCountdownQuestionLocked(room, actor);
             result.setCorrect(correct);
@@ -3127,6 +3144,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private void preparePasswordGuessLocked(
+            RoomState room,
             PlayerState actor,
             PlayerState target) {
 
@@ -3162,6 +3180,42 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         actor.pendingPasswordGuessTargetUsername = target.username;
         actor.currentQuestion = null;
         actor.currentSkillType = null;
+        actor.passwordGuessEndsAt = System.currentTimeMillis() + PASSWORD_GUESS_DURATION_MS;
+        schedulePasswordGuessTimeout(room, actor, actor.passwordGuessEndsAt);
+    }
+
+    private void schedulePasswordGuessTimeout(final RoomState room, final PlayerState actor, final long expectedEndsAt) {
+        scheduler.schedule(new Runnable() {
+            @Override public void run() { expirePasswordGuess(room, actor, expectedEndsAt); }
+        }, Math.max(0L, expectedEndsAt - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
+    }
+
+    private void expirePasswordGuess(RoomState room, PlayerState actor, long expectedEndsAt) {
+        boolean changed;
+        synchronized (room) {
+            // A timer from a completed attempt or a removed room must never consume another hack.
+            if (rooms.get(room.code) != room || room.players.get(actor.username) != actor ||
+                    actor.passwordGuessEndsAt != expectedEndsAt || !PLAYING.equals(room.status)) { return; }
+            if (System.currentTimeMillis() < expectedEndsAt) {
+                schedulePasswordGuessTimeout(room, actor, expectedEndsAt); return;
+            }
+            changed = expirePasswordGuessLocked(room, actor, System.currentTimeMillis());
+        }
+        if (changed) { broadcastGeneric(room); }
+    }
+
+    private boolean expirePasswordGuessLocked(RoomState room, PlayerState actor, long now) {
+        if (!PLAYING.equals(room.status) || !MODE_MONEY_BEG.equals(room.settings.mode) ||
+                !SKILL_MONEY_BEG.equals(actor.pendingSkillType) || actor.pendingPasswordGuessTargetUsername == null ||
+                actor.passwordGuessEndsAt <= 0L || now < actor.passwordGuessEndsAt) { return false; }
+        actor.pendingSkillType = null;
+        actor.pendingSkillTargetUsernames.clear();
+        actor.pendingPasswordGuessTargetUsername = null;
+        actor.pendingPasswordGuessCorrectKey = null;
+        actor.passwordGuessOptions.clear();
+        actor.passwordGuessEndsAt = 0L;
+        assignNextCountdownQuestionLocked(room, actor);
+        return true;
     }
 
 
@@ -5010,6 +5064,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return false;
         }
 
+        if (MODE_LUM_NGAY.equals(room.settings.mode) && room.giftDrop != null &&
+                room.giftDrop.skillImmunityEndsAt(candidate.username) > System.currentTimeMillis()) { return false; }
+
         if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
             if (room.demonDefense == null || room.demonDefense.isEliminated(candidate.teamNumber) ||
                     actor == null || room.demonDefense.isEliminated(actor.teamNumber)) { return false; }
@@ -6218,7 +6275,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.wrongAnswerPenaltyUntil = 0L;
             if (!player.spectator) { credits.put(player.username, player.giftCredits); }
         }
+        GiftDropGame previousGiftDrop = room.giftDrop;
         room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random);
+        room.giftDrop.inheritDragonBallCollections(previousGiftDrop);
         room.giftLightning = new GiftLightningGame(System.currentTimeMillis(), room.giftOpeningEndsAt, random);
         room.giftDrop.prepareFinalPools(credits);
         if (hasOutstandingGiftCreditsLocked(room)) { scheduleMatchFinish(room.code, room.giftOpeningEndsAt); }
@@ -6275,6 +6334,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.pendingPasswordGuessTargetUsername = null;
             player.pendingPasswordGuessCorrectKey = null;
             player.passwordGuessOptions.clear();
+            player.passwordGuessEndsAt = 0L;
             player.frozenUntil = 0L;
             player.invertedUntil = 0L;
             player.burningUntil = 0L;
@@ -7087,6 +7147,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             String viewerUsername) {
 
+        long snapshotTime = System.currentTimeMillis();
+        for (PlayerState player : room.players.values()) { expirePasswordGuessLocked(room, player, snapshotTime); }
         BattleOnlineRoomDto dto =
                 new BattleOnlineRoomDto();
 
@@ -7303,6 +7365,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 toPasswordOptions(viewer.passwordOptions)
                         );
 
+                        dto.setPasswordGuessEndsAt(viewer.passwordGuessEndsAt);
                         dto.setPendingPasswordGuessTargetUsername(
                                 viewer.pendingPasswordGuessTargetUsername
                         );
@@ -7437,6 +7500,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     displayTotal(room)
             );
 
+            player.setSkillImmunityEndsAt(room.giftDrop != null ? room.giftDrop.skillImmunityEndsAt(state.username) : 0L);
             player.setFrozenUntil(
                     state.frozenUntil
             );
@@ -7909,6 +7973,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.pendingPasswordGuessTargetUsername = null;
         player.pendingPasswordGuessCorrectKey = null;
         player.passwordGuessOptions.clear();
+        player.passwordGuessEndsAt = 0L;
         player.frozenUntil = 0L;
         player.invertedUntil = 0L;
         player.burningUntil = 0L;
@@ -9198,6 +9263,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Map<String, String> passwordOptions =
                 new LinkedHashMap<String, String>();
 
+        long passwordGuessEndsAt;
         String pendingPasswordGuessTargetUsername;
         String pendingPasswordGuessCorrectKey;
 

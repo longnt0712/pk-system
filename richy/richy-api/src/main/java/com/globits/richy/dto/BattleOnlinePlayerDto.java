@@ -47,6 +47,7 @@ public class BattleOnlinePlayerDto implements Serializable {
      * Epoch milliseconds; client tự tính số giây còn lại theo serverTime.
      */
     private long frozenUntil;
+    private long skillImmunityEndsAt;
 
     /*
      * ESCAPE_DUMB_DEMON skill INVERT.
@@ -59,6 +60,9 @@ public class BattleOnlinePlayerDto implements Serializable {
      * Trong thời gian này, điểm vừa nhận của mỗi câu đúng được nhân 1.2.
      */
     private long burningUntil;
+
+    public long getSkillImmunityEndsAt() { return skillImmunityEndsAt; }
+    public void setSkillImmunityEndsAt(long value) { skillImmunityEndsAt = value; }
 
     public BattleOnlinePlayerDto() {
     }

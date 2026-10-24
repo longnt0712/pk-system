@@ -796,8 +796,72 @@
             return stars >= 1 && stars <= 7
                 ? getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png') : '';
         };
+        vm.dragonBallCollectionTemplate = 'question/views/battle_online_dragon_collection.html?v=' + encodeURIComponent($window.APP_VERSION || '');
+        vm.dragonBallCollection = [1,2,3,4,5,6,7].map(function (stars, index) {
+            return {stars: stars, column: [2,4,1,3,5,2,4][index] + ' / span 2',
+                image: getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png')};
+        });
+        vm.hasCollectedDragonBall = function (stars) {
+            var collection = vm.room && vm.room.giftDrop && vm.room.giftDrop.collectedDragonBalls || [];
+            return collection.indexOf(stars) >= 0;
+        };
+        vm.dragonBallCollectionCount = function () {
+            var count = 0;
+            for (var stars = 1; stars <= 7; stars++) { if (vm.hasCollectedDragonBall(stars)) { count++; } }
+            return count;
+        };
+        vm.giftSkillImmunitySeconds = function (player) {
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING') { return 0; }
+            var endsAt = player ? player.skillImmunityEndsAt : vm.room.giftDrop && vm.room.giftDrop.dragonBallImmunityEndsAt;
+            return Math.max(0, Math.ceil((Number(endsAt || 0) - serverNow()) / 1000));
+        };
+        vm.dragonBallCelebrationSeconds = function () {
+            if (!vm.isLumNgayMode() || isSpectator() || ['PLAYING','FINISHED'].indexOf(vm.room.status) < 0) { return 0; }
+            var effect = vm.room.giftDrop || {};
+            if (expiredDragonBallCelebrations[vm.room.code + ':' + effect.dragonBallCollectionCompletedAt]) { return 0; }
+            var end = Number(effect.dragonBallCelebrationEndsAt || 0);
+            return Math.max(0, Math.ceil((end - serverNow()) / 1000));
+        };
+        vm.isDragonBallCelebrationActive = function () { return vm.dragonBallCelebrationSeconds() > 0; };
+        var expiredDragonBallCelebrations = {};
+        var dragonBallCelebrationWasActive = false, dragonBallCelebrationReturnFocus = null;
+        var dragonBallCollectionRefreshKey = '';
+        function syncDragonBallCollection() {
+            var player = getMe(), effect = vm.room && vm.room.giftDrop;
+            if (!vm.isLumNgayMode() || !effect || isSpectator() || !player ||
+                    !(player.skillImmunityEndsAt > 0) || effect.dragonBallCollectionCompletedAt > 0 || vm.refreshingPrivateState) { return; }
+            var key = vm.room.code + ':' + player.skillImmunityEndsAt;
+            if (key !== dragonBallCollectionRefreshKey) {
+                dragonBallCollectionRefreshKey = key;
+                refreshPrivateRoomState();
+            }
+        }
+        function syncDragonBallCelebration() {
+            var effect = vm.room && vm.room.giftDrop || {};
+            if (effect.dragonBallCollectionCompletedAt > 0 && effect.dragonBallCelebrationEndsAt <= serverNow()) {
+                expiredDragonBallCelebrations[vm.room.code + ':' + effect.dragonBallCollectionCompletedAt] = true;
+            }
+            var active = vm.isDragonBallCelebrationActive();
+            if (active === dragonBallCelebrationWasActive) { return; }
+            dragonBallCelebrationWasActive = active;
+            if (active) {
+                dragonBallCelebrationReturnFocus = $window.document.activeElement;
+                $window.document.body.classList.add('battle-dragon-celebrating');
+                $timeout(function () {
+                    var modal = $window.document.getElementById('battle-dragon-celebration');
+                    if (vm.isDragonBallCelebrationActive() && modal && modal.focus) { modal.focus(); }
+                }, 0);
+            } else {
+                $window.document.body.classList.remove('battle-dragon-celebrating');
+                var previousFocus = dragonBallCelebrationReturnFocus;
+                dragonBallCelebrationReturnFocus = null;
+                $timeout(function () {
+                    if (!destroyed && previousFocus && previousFocus.focus && previousFocus.isConnected !== false) { previousFocus.focus(); }
+                }, 0);
+            }
+        }
         vm.giftClaimDisabled = function () {
-            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
             if (vm.room.videoSynchronized) { return vm.room.giftOpening !== true; }
             return vm.answerLocked || vm.usingSkill || isMeFrozen() || isWrongAnswerPenaltyActive();
@@ -853,7 +917,7 @@
         }
         vm.openGiftModal = function () {
             var finalOpening = vm.room && vm.room.giftOpening === true;
-            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
                     vm.giftModalOpen || (vm.room.videoSynchronized && !finalOpening) ||
                     (!finalOpening && !(vm.room.giftCredits > 0)) || vm.room.pendingSkillType) { return; }
             giftModalReturnFocus = $window.document.activeElement;
@@ -2776,7 +2840,10 @@
                     function () {
                         vm.refreshingPrivateState =
                             false;
-                        if (hostVideoReviewRefreshPending) {
+                        if (passwordGuessExpiryRefreshPending) {
+                            passwordGuessExpiryRefreshPending = false;
+                            refreshPrivateRoomState();
+                        } else if (hostVideoReviewRefreshPending) {
                             hostVideoReviewRefreshPending = false; refreshHostVideoReview();
                         }
                     }
@@ -2890,10 +2957,27 @@
                 vm.room;
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.classicAnswerRevealed &&
                     previousRoom.serverTime && incoming.serverTime && incoming.serverTime < previousRoom.serverTime) { return; }
+            if (fromGenericSocket !== true && previousRoom && previousRoom.code === incoming.code &&
+                    incoming.passwordGuessEndsAt > 0 &&
+                    incoming.passwordGuessEndsAt <= Number(expiredPasswordGuessDeadlines[incoming.code] || 0)) { return; }
             if (previousRoom && previousRoom.code === incoming.code && (previousRoom.videoSynchronized || incoming.videoSynchronized) &&
                     Number(incoming.videoRevision || 0) < Number(previousRoom.videoRevision || 0)) { return; }
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
-                    previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && incoming.status === 'PLAYING') {
+                    previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && (incoming.status === 'PLAYING' || incoming.status === 'FINISHED')) {
+                // The collection is monotonic within a draw session, including a final-credit completion.
+                var previousBalls = previousRoom.giftDrop.collectedDragonBalls || [];
+                if (incoming.giftDrop.collectedDragonBalls == null) { incoming.giftDrop.collectedDragonBalls = previousBalls.slice(0); }
+                else {
+                    angular.forEach(previousBalls, function (stars) {
+                        if (incoming.giftDrop.collectedDragonBalls.indexOf(stars) < 0) { incoming.giftDrop.collectedDragonBalls.push(stars); }
+                    });
+                    incoming.giftDrop.collectedDragonBalls.sort(function (a,b) { return a-b; });
+                }
+                if (Number(previousRoom.giftDrop.dragonBallCollectionCompletedAt || 0) > Number(incoming.giftDrop.dragonBallCollectionCompletedAt || 0)) {
+                    angular.forEach(['dragonBallCollectionCompletedAt','dragonBallImmunityEndsAt','dragonBallCelebrationEndsAt','dragonBallScoreBefore','dragonBallScoreAfter'], function (field) {
+                        incoming.giftDrop[field] = previousRoom.giftDrop[field];
+                    });
+                }
                 // Room history and a player's own pool advance independently.
                 incoming.giftDrop.perryHatProtectionEndsAt = Math.max(
                     Number(previousRoom.giftDrop.perryHatProtectionEndsAt || 0),
@@ -3066,6 +3150,7 @@
                     previousRoom.pendingPasswordGuessTargetDisplayName;
                 incoming.passwordGuessOptions =
                     (previousRoom.passwordGuessOptions || []).slice(0);
+                incoming.passwordGuessEndsAt = previousRoom.passwordGuessEndsAt;
             }
 
             if (
@@ -3073,7 +3158,8 @@
                 (
                     !previousRoom ||
                     previousRoom.pendingPasswordGuessTargetUsername !==
-                        incoming.pendingPasswordGuessTargetUsername
+                        incoming.pendingPasswordGuessTargetUsername ||
+                    Number(previousRoom.passwordGuessEndsAt || 0) !== Number(incoming.passwordGuessEndsAt || 0)
                 )
             ) {
                 resetPasswordGuessDisplay();
@@ -3202,7 +3288,7 @@
                         target &&
                         target.connected === true &&
                         target.spectator !== true &&
-                        target.username !== vm.currentUser.username
+                        target.username !== vm.currentUser.username && Number(target.skillImmunityEndsAt || 0) <= serverNow()
                     ) {
                         vm.availableSkillTargets.push(target);
                     }
@@ -5107,6 +5193,38 @@
         }
 
 
+        var expiredPasswordGuessRefreshKey = '';
+        var expiredPasswordGuessDeadlines = {};
+        var passwordGuessExpiryRefreshPending = false;
+        vm.passwordGuessSeconds = function () {
+            var endsAt = Number(vm.room && vm.room.passwordGuessEndsAt || 0);
+            return endsAt ? Math.max(0, Math.ceil((endsAt - serverNow()) / 1000)) : 0;
+        };
+        vm.passwordGuessExpired = function () {
+            return !!(vm.room && vm.room.passwordGuessEndsAt > 0 &&
+                (vm.room.passwordGuessEndsAt <= Number(expiredPasswordGuessDeadlines[vm.room.code] || 0) || vm.passwordGuessSeconds() <= 0));
+        };
+        function expirePasswordGuessView() {
+            if (!vm.room || vm.room.status !== 'PLAYING' || !isMoneyBegMode() ||
+                    !vm.room.pendingPasswordGuessTargetUsername || !vm.passwordGuessExpired() ||
+                    vm.guessingPassword || vm.passwordGuessStage === 'loading' || vm.passwordGuessStage === 'result') { return; }
+            var key = vm.room.code + ':' + vm.room.passwordGuessEndsAt;
+            expiredPasswordGuessDeadlines[vm.room.code] = Math.max(
+                Number(expiredPasswordGuessDeadlines[vm.room.code] || 0), Number(vm.room.passwordGuessEndsAt));
+            vm.room.pendingSkillType = null;
+            vm.room.pendingSkillTargetUsernames = [];
+            vm.room.pendingPasswordGuessTargetUsername = null;
+            vm.room.pendingPasswordGuessTargetDisplayName = null;
+            vm.room.passwordGuessOptions = [];
+            vm.room.passwordGuessEndsAt = 0;
+            resetPasswordGuessDisplay();
+            if (key !== expiredPasswordGuessRefreshKey) {
+                expiredPasswordGuessRefreshKey = key;
+                if (vm.refreshingPrivateState) { passwordGuessExpiryRefreshPending = true; }
+                else { refreshPrivateRoomState(); }
+            }
+        }
+
         function getPasswordGuessGroups() {
             var options = vm.room && vm.room.passwordGuessOptions || [];
             var groups = [];
@@ -5120,6 +5238,7 @@
 
 
         function guessPassword(option) {
+            if (vm.passwordGuessExpired()) { expirePasswordGuessView(); return; }
             if (
                 !vm.room ||
                 !vm.room.pendingPasswordGuessTargetUsername ||
@@ -5171,7 +5290,7 @@
             );
 
             battleService
-                .guessPassword(vm.room.code, option.key)
+                .guessPassword(vm.room.code, option.key, vm.room.passwordGuessEndsAt)
                 .then(
                     function (result) {
                         if (
@@ -6841,6 +6960,9 @@
         }
 
         function updateCountdown() {
+            syncDragonBallCollection();
+            syncDragonBallCelebration();
+            expirePasswordGuessView();
             if (lightningMusicActive !== hasGiftLightningMusic()) { syncBattleViewMusic(); }
             updateDemonDefenseView();
             vm.finishedRoomRemainingLabel = '';
@@ -7920,6 +8042,7 @@
                 'is-rank-2': player.rank === 2,
                 'is-rank-3': player.rank === 3,
                 'is-player-burning': isPlayerBurning(player),
+                'is-player-shielded': vm.giftSkillImmunitySeconds(player) > 0,
                 'is-player-frozen':
                     Number(player.frozenUntil || 0) > serverNow(),
                 'is-double-action-player': isDoubleActionPlayer(player),
@@ -7949,6 +8072,11 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.isDragonBallCelebrationActive()) {
+                event.preventDefault();
+                if (event.stopPropagation) { event.stopPropagation(); }
+                return;
+            }
             if (vm.exercisePickerOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) { event.preventDefault(); $scope.$evalAsync(vm.closeExercisePicker); }
                 if (event.key === 'Tab' || event.keyCode === 9) {
@@ -8166,6 +8294,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                $window.document.body.classList.remove('battle-dragon-celebrating');
                 if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
                 $timeout.cancel(videoRetryTimer);
                 vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); vm.closeHostVideoAnswers(); clearHostVideoReplay(); clearVideoAnswerToast();

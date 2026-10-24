@@ -278,10 +278,10 @@
             ).then(function (response) { return response.data; });
         };
 
-        self.guessPassword = function (roomCode, optionKey) {
+        self.guessPassword = function (roomCode, optionKey, passwordGuessEndsAt) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/password-guess',
-                {optionKey: optionKey}
+                {optionKey: optionKey, passwordGuessEndsAt: Number(passwordGuessEndsAt || 0)}
             ).then(function (response) { return response.data; });
         };
 

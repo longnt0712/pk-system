@@ -1,0 +1,14 @@
+<section class="battle-dragon-collection" aria-label="Bộ sưu tập 7 ngọc rồng">
+    <ul class="battle-dragon-collection-grid">
+        <li ng-repeat="ball in vm.dragonBallCollection track by ball.stars"
+            ng-style="{'grid-column': ball.column}" ng-class="{'is-collected': vm.hasCollectedDragonBall(ball.stars)}">
+            <img ng-src="{{ball.image}}" ng-attr-alt="Ngọc rồng {{ball.stars}} sao: {{vm.hasCollectedDragonBall(ball.stars) ? 'đã lụm' : 'chưa lụm'}}" draggable="false">
+        </li>
+    </ul>
+    <div class="battle-dragon-collection-copy">
+        <strong>NGỌC RỒNG · {{vm.dragonBallCollectionCount()}} / 7</strong>
+        <p ng-if="vm.dragonBallCollectionCount() < 7">Lụm đủ 7 viên khác nhau để nhân 3 tổng điểm và miễn nhiễm mọi skill trong 3 phút.</p>
+        <p ng-if="vm.dragonBallCollectionCount() === 7">Đã hoàn thành và nhận thưởng bộ ngọc trong trận này.</p>
+        <p class="battle-dragon-collection-immunity" ng-if="vm.giftSkillImmunitySeconds() > 0">🛡 Miễn nhiễm skill · {{vm.formatTime(vm.giftSkillImmunitySeconds())}}</p>
+    </div>
+</section>

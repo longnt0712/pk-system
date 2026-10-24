@@ -149,6 +149,7 @@ public class BattleOnlineRoomDto implements Serializable {
     private List<BattleOnlinePasswordOptionDto> passwordOptions =
             new ArrayList<BattleOnlinePasswordOptionDto>();
 
+    private long passwordGuessEndsAt;
     private String pendingPasswordGuessTargetUsername;
     private String pendingPasswordGuessTargetDisplayName;
 
@@ -407,6 +408,10 @@ public class BattleOnlineRoomDto implements Serializable {
             List<BattleOnlinePasswordOptionDto> passwordOptions) {
         this.passwordOptions = passwordOptions;
     }
+
+    public long getPasswordGuessEndsAt() { return passwordGuessEndsAt; }
+
+    public void setPasswordGuessEndsAt(long passwordGuessEndsAt) { this.passwordGuessEndsAt = passwordGuessEndsAt; }
 
     public String getPendingPasswordGuessTargetUsername() {
         return pendingPasswordGuessTargetUsername;
