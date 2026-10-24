@@ -36,10 +36,13 @@
                     </div>
 
                 </div>
-                <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                <h3 id="topic-list-title">Danh sách topic</h3>
+                <p class="text-muted">Tìm topic theo tên, nội dung hoặc loại. Chọn thao tác trên từng dòng để quản lý topic.</p>
+                <table id="bsTableControl" aria-labelledby="topic-list-title" bs-table-control="vm.bsTableControl"></table>
 
                 <div class="row margin-top-10">
                     <table class="table table-hover table-bordered product-table">
+                        <caption>Phân loại topic trong trang này — chọn Loại để cập nhật từng topic.</caption>
                         <thead>
                         <tr>
                             <th>STT</th>
@@ -49,6 +52,9 @@
                         </tr>
                         </thead>
                         <tbody>
+                        <tr ng-if="!vm.topics.length">
+                            <td colspan="4" class="text-center text-muted">Chưa có topic phù hợp. Thêm topic mới hoặc thay đổi bộ lọc tìm kiếm.</td>
+                        </tr>
                         <tr ng-repeat="topic in vm.topics">
                             <th>{{$index + 1}}</th>
                             <td>

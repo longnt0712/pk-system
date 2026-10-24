@@ -145,7 +145,7 @@
                     });
                 },
                 onUncheck: function (row, $element) {
-                    var index = utils.indexOf(row, vm.selectedpositiontitles);
+                    var index = utils.indexOf(row, vm.selectedTopicCategorys);
                     if (index >= 0) {
                         $scope.$apply(function () {
                             vm.selectedTopicCategorys.splice(index, 1);
@@ -183,10 +183,10 @@
                 if (confirm == 'yes') {
                     service.saveObject(vm.topicCategory, function success() {
                         vm.getPage();
-                        toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
+                        toastr.info('Bạn đã tạo mới thành công một danh mục chủ đề.', 'Thông báo');
                         vm.topicCategory = {};
                     }, function failure() {
-                        toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                        toastr.error('Có lỗi xảy ra khi thêm mới một danh mục chủ đề.', 'Thông báo');
                     });
                 }
             }, function () {
@@ -215,7 +215,7 @@
                             toastr.info('Bạn đã lưu thành công một bản ghi.', 'Thông báo');
                             vm.topicCategory = {};
                         }, function failure() {
-                            toastr.error('Có lỗi xảy ra khi lưu thông tin tài khoản.', 'Lỗi');
+                            toastr.error('Có lỗi xảy ra khi lưu danh mục chủ đề.', 'Lỗi');
                         });
                     }
                 }, function () {

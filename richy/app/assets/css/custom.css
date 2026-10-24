@@ -4006,3 +4006,92 @@ textarea,
     opacity: .58;
     cursor: wait;
 }
+
+/* The authenticated header can wrap to several rows. Keep its real height in
+   normal flow: the theme's table cells and 45px header assumed a single row and
+   allowed Safari to paint the page underneath the navigation on tablets. */
+.page-wrapper.application-shell {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+}
+
+.page-wrapper.application-shell > .page-wrapper-row,
+.page-wrapper.application-shell .page-wrapper-top,
+.page-wrapper.application-shell .page-wrapper-middle,
+.page-wrapper.application-shell .page-wrapper-bottom {
+    display: block;
+    height: auto;
+}
+
+.page-wrapper.application-shell > .page-wrapper-row {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.page-wrapper.application-shell > .page-wrapper-row.full-height {
+    flex: 1 0 auto;
+    display: flex;
+}
+
+.application-shell .page-wrapper-top > .page-header {
+    position: relative;
+    height: auto;
+    min-height: 0;
+    /* Above page tools; below Bootstrap's modal backdrop (1040). */
+    z-index: 1000;
+}
+
+@media (min-width: 768px) {
+    .application-shell .learning-login-nav .navbar-nav > li > .dropdown-menu {
+        max-width: calc(100vw - 24px);
+        transform: translateX(var(--header-dropdown-shift, 0px));
+    }
+
+    .application-shell .learning-login-nav > .container-fluid {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .application-shell .learning-login-nav > .container-fluid:before,
+    .application-shell .learning-login-nav > .container-fluid:after,
+    .application-shell .learning-login-nav .navbar-collapse:before,
+    .application-shell .learning-login-nav .navbar-collapse:after {
+        display: none;
+    }
+
+    .application-shell .learning-login-nav .navbar-header {
+        flex: 0 0 auto;
+        float: none;
+    }
+
+    .application-shell .learning-login-nav .navbar-collapse {
+        display: flex !important;
+        flex: 1 1 640px;
+        flex-wrap: wrap;
+        align-items: center;
+        min-width: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .application-shell .learning-login-nav .navbar-nav {
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        float: none;
+        min-width: 0;
+    }
+
+    .application-shell .learning-login-nav .navbar-nav > li {
+        float: none;
+    }
+
+    .application-shell .learning-login-nav .navbar-nav.navbar-right {
+        flex: 0 1 auto;
+        margin-left: auto !important;
+        margin-right: 0;
+    }
+}

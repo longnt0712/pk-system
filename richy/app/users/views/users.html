@@ -301,7 +301,8 @@
                                     </td>
                                     <td>
                                         <img class="img-circle avatar-user"
-                                             alt="User"
+                                             alt="Ảnh đại diện {{user.username}}"
+                                             image-fallback="assets/images/avatar-placeholder.svg"
                                              ng-src="{{settings.api.baseUrl}}public/users/photo/{{user.username}}?v={{user.photoVersion || 0}}"
                                              ng-click="vm.openPhotoPreview(user)"
                                              style="cursor:pointer;">
@@ -396,6 +397,7 @@
                 <img ng-if="vm.photoPreviewUrl"
                      ng-src="{{vm.photoPreviewUrl}}"
                      alt="Ảnh đại diện"
+                     image-fallback="assets/images/avatar-placeholder.svg"
                      class="photo-preview-large-img">
             </div>
         </div>

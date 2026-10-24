@@ -40,7 +40,9 @@
         line-height:1;
         margin:0;
     }
-    .class-tree-table .tree-spacer { display:inline-block; width:34px; }
+    .class-tree-table .tree-spacer { display:inline-block; flex:0 0 34px; width:34px; }
+    .class-tree-table .tree-name > .fa { flex:0 0 auto; }
+    .class-tree-table .tree-name > [data-ng-if] { min-width:0; overflow-wrap:anywhere; }
     .class-tree-table .root-class { font-weight:700; }
     .class-tree-table .child-badge { margin-left:8px; }
     .class-tree-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:15px; }
@@ -48,20 +50,23 @@
     .class-tree-table {
         table-layout:fixed;
         width:100%;
+        min-width:760px;
     }
-    .class-tree-table .class-name-column { width:31%; }
-    .class-tree-table .class-responsible-column { width:auto; }
-    .class-tree-table .class-actions-column { width:625px; }
+    .class-tree-scroll { max-width:100%; overflow-x:auto; }
+    .class-tree-table th, .class-tree-table td { vertical-align:middle; white-space:normal; word-break:normal; }
+    .class-tree-table .class-name-column { width:30%; }
+    .class-tree-table .class-responsible-column { width:30%; }
+    .class-tree-table .class-actions-column { width:40%; }
     .class-tree-responsible {
         overflow-wrap:anywhere;
         word-break:normal;
     }
     .class-tree-responsible strong { white-space:nowrap; }
     .class-tree-actions {
-        white-space:nowrap;
-        width:625px;
+        white-space:normal;
     }
     .class-tree-actions .btn {
+        white-space:nowrap;
         margin:3px 2px 3px 0;
         padding-left:9px;
         padding-right:9px;
@@ -815,7 +820,7 @@
                            data-ng-change="vm.rebuildTree()" placeholder="Tìm theo tên hoặc mã lớp, đội..." />
                 </div>
 
-                <div class="table-responsive">
+                <div class="table-responsive class-tree-scroll" tabindex="0" role="region" aria-label="Danh sách lớp và đội">
                     <table class="table table-bordered table-hover class-tree-table">
                         <thead>
                         <tr>

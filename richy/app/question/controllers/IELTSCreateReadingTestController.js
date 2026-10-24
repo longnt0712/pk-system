@@ -1740,6 +1740,8 @@
             if (!element) {
                 return;
             }
+            if (!element.hasAttribute('tabindex')) { element.setAttribute('tabindex', '-1'); }
+            try { element.focus({preventScroll: true}); } catch (ignoreFocusOptions) { element.focus(); }
             element.scrollIntoView({behavior: 'smooth', block: 'start'});
             angular.element(element).addClass('reading-builder-focus');
             $timeout(function () {
@@ -2018,8 +2020,15 @@
             vm.createPackage = true;
             passage.subQuestions = passage.subQuestions || [];
             var insertIndex = Math.max(0, Math.min(passage.subQuestions.length, Number(packageIndex) + 1));
-            passage.subQuestions.splice(insertIndex, 0, createReadingQuestionPackage());
+            var questionPackage = createReadingQuestionPackage();
+            if (vm.isWritingMode) {
+                var hasTaskOne = passage.subQuestions.some(function (pack) { return Number(pack.type) === 16; });
+                var hasTaskTwo = passage.subQuestions.some(function (pack) { return Number(pack.type) === 17; });
+                questionPackage.type = hasTaskOne && !hasTaskTwo ? 17 : 16;
+            }
+            passage.subQuestions.splice(insertIndex, 0, questionPackage);
             renumberReadingPackages(partIndex);
+            if (vm.isWritingMode) { vm.onReadingPackageTypeChange(questionPackage, partIndex, insertIndex); }
             vm.preparePart(partIndex);
             vm.refreshBuilderValidation();
         };

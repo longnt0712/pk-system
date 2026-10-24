@@ -1,0 +1,118 @@
+/* Background controls stay below Bootstrap's backdrop (1040) and dialogs (1050). */
+.reading-builder-actionbar {
+    z-index: 1030;
+    bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.reading-builder-actionbar > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.reading-builder-actionbar .btn {
+    margin-left: 0;
+}
+
+.ielts-reading-builder-page {
+    padding-bottom: calc(var(--builder-actionbar-height, 62px) + 32px);
+}
+
+.learning-pet-shell {
+    z-index: 1025;
+    bottom: calc(18px + var(--builder-actionbar-height, 0px));
+    transform: translate(var(--pet-clearance-x, 0px), var(--pet-clearance-y, 0px));
+}
+
+body .student-scroll-top {
+    z-index: 1020 !important;
+    bottom: calc(26px + var(--builder-actionbar-height, 0px)) !important;
+}
+
+body.modal-open,
+body.ui-dialog-open {
+    overflow: hidden !important;
+}
+
+body.modal-open .learning-pet-shell,
+body.modal-open .student-scroll-top,
+body.ui-dialog-open .learning-pet-shell,
+body.ui-dialog-open .student-scroll-top,
+.learning-pet-shell.is-ui-obstructed {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* The shared move dialog keeps its actions visible while a long folder tree scrolls. */
+.test-move-modal-window .modal-dialog {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
+    margin: 20px auto;
+}
+
+.test-move-modal-window .modal-content,
+.test-move-dialog {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: inherit;
+}
+
+.test-move-modal-window .modal-content {
+    overflow: hidden !important;
+}
+
+.test-move-dialog > .modal-body {
+    min-height: 0;
+    overflow: auto !important;
+    overscroll-behavior: contain;
+}
+
+.test-move-dialog > .modal-header,
+.test-move-dialog > .modal-footer {
+    flex-shrink: 0;
+}
+
+.reading-builder-review-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.reading-builder-review-modal .reading-builder-review__header,
+.reading-builder-review-modal .reading-builder-review-modal__footer {
+    flex-shrink: 0;
+}
+
+.reading-builder-review-modal .reading-builder-review-modal__body .reading-builder-checklist {
+    max-height: none;
+    overflow: visible;
+}
+
+@media (max-width: 767px) {
+    /* The mobile panel is viewport-fixed; a transformed shell would become its containing block. */
+    .learning-pet-shell.is-open {
+        transform: none;
+    }
+
+    .reading-builder-actionbar {
+        padding: 8px;
+    }
+
+    .reading-builder-actionbar > div:last-child {
+        width: 100%;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .reading-builder-actionbar .btn {
+        flex: 1 1 100px;
+        min-width: 0;
+        white-space: normal;
+    }
+}

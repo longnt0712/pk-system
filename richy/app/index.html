@@ -142,7 +142,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261024-2';
+        window.APP_VERSION = '20261024-3';
 
                 function versionedUrl(url) {
                     var separator = url.indexOf('?') >= 0 ? '&' : '?';
@@ -258,6 +258,7 @@
         <script>writeVersionedStylesheet('assets/css/daily-listening-player.css');</script>
         <script>writeVersionedStylesheet('assets/css/learning-pet.css');</script>
         <script>writeVersionedStylesheet('assets/css/learning-pet-evolution.css');</script>
+        <script>writeVersionedStylesheet('assets/css/ui-layer-safety.css');</script>
 
         <style>
             /* =====================================================
@@ -991,7 +992,7 @@
 </style>
 
 </head>
-    <body ng-controller="AppController"  class="page-container-bg-solid">
+    <body ng-controller="AppController" floating-ui-layout class="page-container-bg-solid">
 
 
         <!--<svg ng-spinner-bar width="300px" height="200px" viewBox="0 0 187.3 93.7" preserveAspectRatio="xMidYMid meet" style="left: 50%; top: 50%; position: absolute; transform: translate(-50%, -50%) matrix(1, 0, 0, 1, 0, 0);">-->
@@ -1131,6 +1132,9 @@
         <!--<script src="article/article.module.js" type="text/javascript"></script>-->
 
         <script>writeVersionedScript('common/utils/directives.js');</script>
+        <script>writeVersionedScript('common/utils/image-fallback.js');</script>
+        <script>writeVersionedScript('common/utils/modalFocus.js');</script>
+        <script>writeVersionedScript('common/utils/floating-ui-layout.js');</script>
         <script>writeVersionedScript('common/utils/english-speech.js');</script>
         <script>writeVersionedScript('common/utils/learning-pet.directive.js');</script>
         <script>writeVersionedScript('common/utils/utilities.js');</script>

@@ -135,7 +135,7 @@
                                    'has-issues': $index > 0 && $index < vm.visibleBuilderSteps.length - 1 && vm.builderValidation.parts[$index - 1].issueCount > 0}">
                     <span>{{$index + 1}}</span>
                     <b>{{step.title}}</b>
-                    <small ng-if="$index > 0 && $index < vm.visibleBuilderSteps.length - 1">{{vm.builderValidation.parts[$index - 1].count}}{{vm.isComprehensiveMode ? '' : '/' + vm.builderValidation.parts[$index - 1].expected}} câu</small>
+                    <small ng-if="$index > 0 && $index < vm.visibleBuilderSteps.length - 1">{{vm.builderValidation.parts[$index - 1].count}}{{vm.isFlexibleMode ? '' : '/' + vm.builderValidation.parts[$index - 1].expected}} {{vm.isWritingMode ? 'Task' : 'câu'}}</small>
                     <small ng-if="$index === 0">Tên và trạng thái</small>
                     <small ng-if="$index === vm.visibleBuilderSteps.length - 1">{{vm.builderValidation.issues.length}} mục cần kiểm tra</small>
                 </button>
@@ -202,7 +202,7 @@
                             <div><span class="reading-builder-part-number">2</span><strong>{{vm.isWritingMode ? 'Writing Tasks' : (vm.isComprehensiveMode ? 'Danh sách câu hỏi' : 'Part 1')}}</strong><small>{{vm.isWritingMode ? 'Chọn Task 1, Task 2 hoặc cả hai' : (vm.isComprehensiveMode ? vm.builderValidation.totalQuestions + ' câu' : (vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13'))}}</small></div>
                             <div class="reading-builder-part-heading__actions">
                                 <span ng-class="{'is-complete': vm.builderValidation.parts[0].issueCount === 0}">{{vm.builderValidation.parts[0].count}}{{vm.isFlexibleMode ? '' : '/' + (vm.isListeningMode ? 10 : 13)}} {{vm.isWritingMode ? 'Task' : 'câu'}} · {{vm.builderValidation.parts[0].issueCount}} lỗi</span>
-                                <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(1)"><i class="fa fa-eye"></i> {{vm.isComprehensiveMode ? 'Xem trước' : 'Preview Part 1'}}</button>
+                                <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(1)"><i class="fa fa-eye"></i> {{vm.isWritingMode ? 'Xem trước Writing' : (vm.isComprehensiveMode ? 'Xem trước' : 'Preview Part 1')}}</button>
                             </div>
                         </div>
                     </div>
@@ -290,22 +290,22 @@
                         </div>
 
                         <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[0].subQuestions.length">
-                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(0, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
+                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(0, -1)"><i class="fa fa-plus"></i> {{vm.isWritingMode ? 'Thêm Task đầu tiên' : 'Thêm package đầu tiên'}}</button>
                         </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[0].subQuestions">
                             <div class="reading-package-insert is-above">
-                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index - 1)"><i class="fa fa-plus"></i> Thêm package phía trên</button>
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index - 1)"><i class="fa fa-plus"></i> {{vm.isWritingMode ? 'Thêm Task phía trên' : 'Thêm package phía trên'}}</button>
                             </div>
                             <div class="row margin-bottom-5">
                                 <div class="col-md-6">
-                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
-                                    <button type="button" class="btn btn-danger" ng-click="vm.removeReadingPackage(0, $index, item)"><i class="fa fa-trash"></i> Xóa nhóm</button>
+                                    <p style="font-size: 18px" class="bold">{{vm.isWritingMode ? (item.type == 17 ? 'Writing Task 2' : 'Writing Task 1') : 'Question for package ' + item.ordinalNumber}}</p>
+                                    <button type="button" class="btn btn-danger" ng-click="vm.removeReadingPackage(0, $index, item)"><i class="fa fa-trash"></i> {{vm.isWritingMode ? 'Xóa Task' : 'Xóa nhóm'}}</button>
                                 </div>
                                 <div class="col-md-6">
                                     <p class="form-control-static" ng-if="item.type == 18">Daily Listening (bài đã tạo trước đây)</p>
                                     <ui-select ng-if="item.type != 18" ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-match allow-clear="{{!vm.isWritingMode}}" placeholder="{{vm.isWritingMode ? 'Chọn Writing Task' : ''}}">{{$select.selected.name}}</ui-select-match>
                                         <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                             <small>{{type.notice}}</small>
@@ -406,7 +406,7 @@
 
 
 
-                            <div class="col-md-12" ng-show="item.isHaveChildren == false && item.type != 18">
+                            <div class="col-md-12" ng-show="!vm.isWritingMode && item.isHaveChildren == false && item.type != 18">
                                 <div class="col-md-12">
                                     <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
                                 </div>
@@ -566,7 +566,7 @@
                                 </div>
                             </div>
                             <div class="reading-package-insert">
-                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index)"><i class="fa fa-plus"></i> Thêm package bên dưới</button>
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index)"><i class="fa fa-plus"></i> {{vm.isWritingMode ? 'Thêm Task bên dưới' : 'Thêm package bên dưới'}}</button>
                             </div>
 
                         </div>
@@ -1399,30 +1399,32 @@
 
 
     <div class="reading-builder-review-modal-backdrop" ng-if="settings.isAdmin == true && vm.showBuilderReview" ng-click="vm.closeBuilderReviewModal()">
-        <section id="reading-builder-review" class="reading-builder-review-modal" role="dialog" aria-modal="true" aria-labelledby="reading-builder-review-title" ng-click="$event.stopPropagation()">
+        <section id="reading-builder-review" class="reading-builder-review-modal" role="dialog" aria-modal="true" aria-labelledby="reading-builder-review-title" modal-focus modal-focus-close="vm.closeBuilderReviewModal()" ng-click="$event.stopPropagation()">
             <div class="reading-builder-review__header">
                 <div>
-                    <h3 id="reading-builder-review-title"><span>{{vm.isListeningMode ? 6 : 5}}</span> Kiểm tra trước khi xuất bản</h3>
+                    <h3 id="reading-builder-review-title"><span>{{vm.isFlexibleMode ? 3 : (vm.isListeningMode ? 6 : 5)}}</span> Kiểm tra trước khi xuất bản</h3>
                     <p ng-if="!vm.builderValidation.valid">Còn {{vm.builderValidation.issues.length}} mục cần hoàn thiện. Nhấn vào từng mục để đi thẳng tới vị trí cần sửa.</p>
-                    <p class="is-ready" ng-if="vm.builderValidation.valid"><i class="fa fa-check-circle"></i> Đề đã đủ 40 câu và sẵn sàng xuất bản.</p>
+                    <p class="is-ready" ng-if="vm.builderValidation.valid"><i class="fa fa-check-circle"></i> {{vm.isFlexibleMode ? 'Bài đã hoàn tất kiểm tra và sẵn sàng xuất bản.' : 'Đề đã đủ 40 câu và sẵn sàng xuất bản.'}}</p>
                 </div>
                 <button type="button" class="reading-builder-review-modal__close" ng-click="vm.closeBuilderReviewModal()" aria-label="Đóng"><i class="fa fa-times"></i></button>
             </div>
-            <div class="reading-builder-part-summary">
-                <div ng-repeat="part in vm.builderValidation.parts" ng-class="{'is-complete': part.issueCount === 0}">
-                    <strong>{{part.name}}</strong>
-                    <span>{{part.count}}/{{part.expected}} câu</span>
-                    <small>{{part.issueCount === 0 ? 'Đã hoàn tất' : part.issueCount + ' mục cần sửa'}}</small>
+            <div class="reading-builder-review-modal__body">
+                <div class="reading-builder-part-summary">
+                    <div ng-repeat="part in vm.builderValidation.parts" ng-class="{'is-complete': part.issueCount === 0}">
+                        <strong>{{part.name}}</strong>
+                        <span>{{part.count}}{{vm.isFlexibleMode ? '' : '/' + part.expected}} {{vm.isWritingMode ? 'Task' : 'câu'}}</span>
+                        <small>{{part.issueCount === 0 ? 'Đã hoàn tất' : part.issueCount + ' mục cần sửa'}}</small>
+                    </div>
                 </div>
-            </div>
-            <div class="reading-builder-checklist">
-                <button type="button" ng-repeat="issue in vm.builderValidation.issues | limitTo:30" ng-click="vm.openBuilderIssue(issue)">
-                    <i class="fa fa-exclamation-circle"></i> {{issue.message}} <i class="fa fa-chevron-right"></i>
-                </button>
-                <div class="reading-builder-checklist__ok" ng-if="vm.builderValidation.issues.length === 0">
-                    <i class="fa fa-check"></i> Không còn lỗi nào được phát hiện.
+                <div class="reading-builder-checklist">
+                    <button type="button" ng-repeat="issue in vm.builderValidation.issues | limitTo:30" ng-click="vm.openBuilderIssue(issue)">
+                        <i class="fa fa-exclamation-circle"></i> {{issue.message}} <i class="fa fa-chevron-right"></i>
+                    </button>
+                    <div class="reading-builder-checklist__ok" ng-if="vm.builderValidation.issues.length === 0">
+                        <i class="fa fa-check"></i> Không còn lỗi nào được phát hiện.
+                    </div>
+                    <p class="text-center" ng-if="vm.builderValidation.issues.length > 30">Và {{vm.builderValidation.issues.length - 30}} mục khác.</p>
                 </div>
-                <p class="text-center" ng-if="vm.builderValidation.issues.length > 30">Và {{vm.builderValidation.issues.length - 30}} mục khác.</p>
             </div>
             <div class="reading-builder-review-modal__footer">
                 <button type="button" class="btn btn-default" ng-click="vm.closeBuilderReviewModal()">Đóng</button>

@@ -335,10 +335,41 @@
      ***/
 
     /* Setup Layout Part - Header */
-    Hrm.controller('HeaderController', ['$scope', '$state', function ($scope, $state) {
+    Hrm.controller('HeaderController', ['$scope', '$state', '$element', '$window', function ($scope, $state, $element, $window) {
+        // Bootstrap 3 anchors desktop menus to their button, but does not keep
+        // them inside the viewport when a navigation row wraps on a tablet.
+        function positionOpenMenus() {
+            var viewportWidth = $window.document.documentElement.clientWidth;
+            var desktop = $window.matchMedia('(min-width: 768px)').matches;
+            var menus = $element[0].querySelectorAll('.learning-login-nav .navbar-nav > li > .dropdown-menu');
+            angular.forEach(menus, function (menu) {
+                menu.style.removeProperty('--header-dropdown-shift');
+                if (!desktop || !menu.parentNode.classList.contains('open')) {
+                    return;
+                }
+                var bounds = menu.getBoundingClientRect();
+                var shift = bounds.left < 12 ? 12 - bounds.left :
+                    (bounds.right > viewportWidth - 12 ? viewportWidth - 12 - bounds.right : 0);
+                menu.style.setProperty('--header-dropdown-shift', shift + 'px');
+            });
+        }
+
+        $element.on('shown.bs.dropdown', positionOpenMenus);
+        $window.addEventListener('resize', positionOpenMenus);
+        $window.addEventListener('orientationchange', positionOpenMenus);
+
         $scope.$on('$includeContentLoaded', function () {
             // Layout.initHeader($state);
             Layout.initContent();
+        });
+
+        $scope.$on('$destroy', function () {
+            $element.off('shown.bs.dropdown', positionOpenMenus);
+            $window.removeEventListener('resize', positionOpenMenus);
+            $window.removeEventListener('orientationchange', positionOpenMenus);
+            angular.forEach($element[0].querySelectorAll('.learning-login-nav .dropdown-menu'), function (menu) {
+                menu.style.removeProperty('--header-dropdown-shift');
+            });
         });
     }]);
 
