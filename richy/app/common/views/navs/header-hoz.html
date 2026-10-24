@@ -24,7 +24,7 @@
             </button>
 
             <a ng-if="settings.ieltsRoom == true"
-               class="navbar-brand learning-nav-brand"
+               class="navbar-brand learning-nav-brand learning-nav-brand--ielts"
                id="church-title"
                href="dashboard">
                 <span class="learning-brand-icon">
@@ -84,7 +84,7 @@
                        role="button"
                        aria-haspopup="true"
                        aria-expanded="false">
-                        BATTLE MODES
+                        BATTLE
                         <span class="caret"></span>
                     </a>
 
@@ -117,7 +117,7 @@
                     ng-class="{'is-route-active': $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_listening_tests') || $state.includes('application.ielts_writing_tests') || $state.includes('application.comprehensive_tests') || $state.includes('application.create_ielts_reading_test') || $state.includes('application.create_ielts_listening_test') || $state.includes('application.create_ielts_writing_test') || $state.includes('application.create_comprehensive_test') || $state.includes('application.daily_listening_tests') || $state.includes('application.create_daily_listening_test') || $state.includes('application.daily_listening_actual_test') || $state.includes('application.ielts_reading_actual_test') || $state.includes('application.ielts_listening_actual_test') || $state.includes('application.ielts_writing_actual_test') || $state.includes('application.comprehensive_actual_test') || $state.includes('application.test_results')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        TEST ROOM <span class="caret"></span>
+                        TEST <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
                         <li ng-class="{'active': $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_reading_actual_test')}">
@@ -219,9 +219,9 @@
                     </ul>
                 </li>
 
-                <li ng-show="settings.isAdmin == true || settings.isStaff == true" class="menu-dropdown">
+                <li ng-if="settings.salesEnabled === true && (settings.isAdmin == true || settings.isStaff == true)" class="menu-dropdown">
                     <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        BÁN HÀNG</span>
+                        BÁN HÀNG
                     </a>
                 </li>
 
@@ -272,7 +272,6 @@
                        title="Bật / tắt Dark mode"
                        aria-label="Bật / tắt Dark mode">
                         <i class="fa fa-adjust global-theme-toggle-icon"></i>
-                        <span class="global-theme-toggle-label">SETUP</span>
                         <span class="global-theme-switch" aria-hidden="true">
                             <span class="global-theme-switch-dot"></span>
                         </span>

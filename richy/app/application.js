@@ -372,6 +372,7 @@
             settings.campaignsEnabled = /^(www\.)?tnttphungkhoang\.com$/i.test(window.location.hostname || '');
             settings.chapter = isChapterDomain;
             settings.ieltsRoom = !isChapterDomain;
+            settings.salesEnabled = hostname !== 'ieltsroom.com';
             settings.englishClassesDomain = window.location.hostname.toLowerCase() === 'ieltsroom.com';
 
             // =========================

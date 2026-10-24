@@ -40,7 +40,7 @@ for (const viewport of [
             window.Hrm = angular.module('HeaderLayoutTest', []).value('$state', {});
             window.Layout = {initContent() {}};
             Hrm.run(['$rootScope', root => {
-                root.settings = {permissionsLoaded: true, ieltsRoom: true, isAdmin: true, isViewer: true, campaignsEnabled: true, assetsPath: 'assets', api: {baseUrl: '/'}};
+                root.settings = {permissionsLoaded: true, ieltsRoom: true, salesEnabled: false, isAdmin: true, isViewer: true, campaignsEnabled: true, assetsPath: 'assets', api: {baseUrl: '/'}};
                 root.currentUser = {person: {lastName: 'NGUYỄN', firstName: 'NGƯỜI DÙNG THỬ NGHIỆM'}, username: 'long.tablet.account', hasPhoto: false};
                 root.canManageOwnProfile = () => true;
                 root.$state = {current: {name: 'application.dashboard'}, includes: () => false};
@@ -48,6 +48,13 @@ for (const viewport of [
         });
         await page.addScriptTag({path: path.join(app, 'application.controllers.js')});
         await page.evaluate(() => angular.bootstrap(document.body, ['HeaderLayoutTest']));
+        assert.equal(await page.locator('.learning-nav-brand--ielts .learning-brand-text').isVisible(),
+            viewport.width < 768 || viewport.width > 1366, 'tablet keeps the logo without the brand text');
+        assert.equal(await page.locator('.learning-nav-brand--ielts .learning-brand-icon').isVisible(), true);
+        assert.equal((await page.locator('.battle-modes-nav > a').textContent()).trim(), 'BATTLE');
+        assert.equal((await page.locator('.test-room-nav > a').textContent()).trim(), 'TEST');
+        assert.equal(await page.locator('.global-theme-toggle-label').count(), 0, 'Setup label is removed');
+        assert.equal(await page.locator('.learning-login-nav a[href="product"]').count(), 0, 'IELTS sales entry is absent');
         const collapse = page.locator('#bs-example-navbar-collapse-1');
         if (viewport.width < 768) {
             assert.equal(await collapse.isVisible(), false, 'mobile menu starts collapsed');
@@ -57,6 +64,10 @@ for (const viewport of [
             await page.locator('.navbar-toggle').click();
             await page.waitForFunction(() => document.querySelector('#bs-example-navbar-collapse-1').classList.contains('in') && !document.querySelector('#bs-example-navbar-collapse-1').classList.contains('collapsing'));
         }
+        await page.locator('.global-theme-toggle').click();
+        assert.equal(await page.evaluate(() => document.documentElement.classList.contains('global-dark-mode')), true, 'unlabelled theme control still enables dark mode');
+        await page.locator('.global-theme-toggle').click();
+        assert.equal(await page.evaluate(() => document.documentElement.classList.contains('global-dark-mode')), false, 'theme control can return to light mode');
         const inspectGeometry = () => page.evaluate(() => {
             const rect = element => { const r = element.getBoundingClientRect(); return {left: r.left, right: r.right, top: r.top, bottom: r.bottom}; };
             return {
@@ -132,6 +143,32 @@ for (const viewport of [
             assert.equal(await collapse.isVisible(), false, 'mobile menu can close again');
             const geometry = await inspectGeometry();
             assert.ok(geometry.content.top >= geometry.navbar.bottom - 1, 'collapsed header still reserves its height');
+        }
+        if (viewport.width === 1920) {
+            const dashboard = fs.readFileSync(path.join(app, 'dashboards/views/general-alt.html'), 'utf8');
+            const salesTile = dashboard.match(/<!-- BÁN HÀNG -->([\s\S]*?)<!-- LỚP NHÀ THỜ -->/)[1];
+            await page.evaluate(template => {
+                const host = document.createElement('div');
+                document.body.appendChild(host);
+                const injector = angular.element(document.body).injector();
+                window.salesTileScope = angular.element(document.body).scope().$new();
+                salesTileScope.vm = {};
+                angular.element(host).append(injector.get('$compile')(template)(salesTileScope));
+            }, salesTile);
+            for (const variant of [
+                {enabled: false, admin: true, staff: true, manager: true, menu: false, tile: false},
+                {enabled: true, admin: true, menu: true, tile: true},
+                {enabled: true, staff: true, menu: true, tile: true},
+                {enabled: true, manager: true, menu: false, tile: true},
+                {enabled: true, menu: false, tile: false}
+            ]) {
+                await page.evaluate(variant => salesTileScope.$apply(() => {
+                    Object.assign(salesTileScope.settings, {salesEnabled: variant.enabled, isAdmin: !!variant.admin, isStaff: !!variant.staff});
+                    Object.assign(salesTileScope.vm, {isRoleAdmin: !!variant.admin, isRoleStaff: !!variant.staff, isRoleStaffManagement: !!variant.manager});
+                }), variant);
+                assert.equal(await page.locator('.learning-login-nav a[href="product"]').count(), variant.menu ? 1 : 0, JSON.stringify(variant));
+                assert.equal(await page.locator('.learning-tile-shop').count(), variant.tile ? 1 : 0, JSON.stringify(variant));
+            }
         }
         await page.evaluate(() => {
             const header = document.querySelector('.page-header');

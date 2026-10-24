@@ -674,3 +674,13 @@ test('public and signed-in navigation use the current release version when loadi
         if (header === 'header-hoz.html') { assert.match(menu, /<li ng-if="settings\.campaignsEnabled === true"/); }
     }
 });
+
+test('Sales navigation is disabled only on IELTS Room and its www alias, preserving other domains', () => {
+    for (const hostname of ['ieltsroom.com', 'www.ieltsroom.com', 'IELTSROOM.COM', 'www.IELTSROOM.COM',
+        'tnttphungkhoang.com', 'www.tnttphungkhoang.com', 'richywine.com', 'localhost', 'other.example',
+        'stage.ieltsroom.com', 'ieltsroom.com.other.example']) {
+        const h = setup(() => ({data: {id: 7, roles: []}}));
+        const app = startApp(h, hostname);
+        assert.equal(app.settings.salesEnabled, !/^(www\.)?ieltsroom\.com$/i.test(hostname), hostname);
+    }
+});

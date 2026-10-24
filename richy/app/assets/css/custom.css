@@ -4043,6 +4043,12 @@ textarea,
     z-index: 1000;
 }
 
+@media (min-width: 768px) and (max-width: 1366px) {
+    .learning-login-nav .learning-nav-brand--ielts .learning-brand-text {
+        display: none;
+    }
+}
+
 @media (min-width: 768px) {
     .application-shell .learning-login-nav .navbar-nav > li > .dropdown-menu {
         max-width: calc(100vw - 24px);

@@ -717,7 +717,7 @@
         <!-- BÁN HÀNG -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
+                ng-if="settings.salesEnabled === true && (vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin)">
 
             <a
                     href="product"
