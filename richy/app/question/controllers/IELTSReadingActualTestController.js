@@ -1237,13 +1237,24 @@
         /* Adjustable exam panels for mouse, pen and touch. */
         vm.readingPanePercent = 50;
         vm.writingPromptPercent = 42;
+        vm.showListeningContent = false;
+        vm.isListeningContentVisible = function () {
+            return vm.isListeningRoute && (vm.isPreviewMode || (vm.isStudyMode() && vm.showListeningContent));
+        };
+        vm.toggleListeningContent = function () {
+            if (!vm.isListeningRoute || !vm.isStudyMode()) { vm.showListeningContent = false; return; }
+            stopReadingResize();
+        };
+        function readingPanePreferenceKey() {
+            return vm.isListeningRoute ? 'ieltsListeningPanePercent' : 'ieltsReadingPanePercent';
+        }
         var readingResizeState = null;
         var readingResizeFrame = null;
         var pendingReadingResizePoint = null;
 
         try {
             var savedReadingPanePercent = parseFloat(
-                $window.localStorage.getItem('ieltsReadingPanePercent')
+                $window.localStorage.getItem(readingPanePreferenceKey())
             );
             if (!isNaN(savedReadingPanePercent)) {
                 vm.readingPanePercent = Math.max(5, Math.min(95, savedReadingPanePercent));
@@ -1298,7 +1309,7 @@
 
             try {
                 $window.localStorage.setItem(
-                    readingResizeState.writing ? 'ieltsWritingPromptPercent' : 'ieltsReadingPanePercent',
+                    readingResizeState.writing ? 'ieltsWritingPromptPercent' : readingPanePreferenceKey(),
                     String(readingResizeState.writing ? vm.writingPromptPercent : vm.readingPanePercent)
                 );
             } catch (ignoreReadingPaneStorageError) {
@@ -1457,7 +1468,7 @@
         vm.resetReadingResize = function () {
             vm.readingPanePercent = 50;
             try {
-                $window.localStorage.setItem('ieltsReadingPanePercent', '50');
+                $window.localStorage.setItem(readingPanePreferenceKey(), '50');
             } catch (ignoreReadingPaneStorageError) {
                 // The reset still works when localStorage is unavailable.
             }
@@ -3828,6 +3839,7 @@
                 audioElement.loop = false;
                 trackAudioDuration(audioElement);
                 audioElement.load();
+                applyPlaybackSpeed(vm.playbackValue);
                 var playPromise = audioElement.play();
                 if (playPromise && angular.isFunction(playPromise.catch)) {
                     playPromise.catch(angular.noop);
@@ -3836,31 +3848,28 @@
         };
 
         vm.playbackValue = 1.0;
-
-        vm.increaseSpeed = function () {
-            if(vm.playbackValue >= 4){
-                return;
-            }
-
-            vm.playbackValue = vm.playbackValue + 0.1;
-
+        vm.minimumPlaybackSpeed = function () {
+            return vm.isStudyMode() ? 0.6 : 1;
+        };
+        function normalizedPlaybackSpeed(value) {
+            var speed = Number(value);
+            if (!isFinite(speed)) { speed = 1; }
+            return Math.round(Math.max(vm.minimumPlaybackSpeed(), Math.min(4, speed)) * 10) / 10;
+        }
+        function applyPlaybackSpeed(value) {
+            vm.playbackValue = normalizedPlaybackSpeed(value);
             var audioElement = getMainAudio();
-            if (audioElement) { audioElement.playbackRate = vm.playbackValue; }
-            // loadVideoYouTube.playbackRate  = vm.playbackValue;
-            // loadVideo.playbackRate  = vm.playbackValue;
+            if (audioElement) {
+                audioElement.defaultPlaybackRate = vm.playbackValue;
+                audioElement.playbackRate = vm.playbackValue;
+            }
+        }
+        vm.increaseSpeed = function () {
+            applyPlaybackSpeed(normalizedPlaybackSpeed(vm.playbackValue) + 0.1);
         };
 
         vm.decreaseSpeed = function () {
-            if(vm.playbackValue <= 0.6){
-                return;
-            }
-
-            vm.playbackValue = vm.playbackValue - 0.1;
-
-            var audioElement = getMainAudio();
-            if (audioElement) { audioElement.playbackRate = vm.playbackValue; }
-            // loadVideoYouTube.playbackRate  = vm.playbackValue;
-            // loadVideo.playbackRate  = vm.playbackValue;
+            applyPlaybackSpeed(normalizedPlaybackSpeed(vm.playbackValue) - 0.1);
         };
 
         $scope.counter = 3600;

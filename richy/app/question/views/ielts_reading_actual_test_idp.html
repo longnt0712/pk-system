@@ -182,20 +182,38 @@
 
             <div class="col-md-12 main-test idp-main-test" style="padding-left: 40px;padding-right: 40px;">
 
-                <div class="portlet bg-white bordered idp-instruction-bar" ng-hide="vm.passageNumber == 4">
+                <div class="portlet bg-white bordered idp-instruction-bar" ng-class="{'is-listening-controls': vm.isListeningRoute}" ng-hide="vm.passageNumber == 4">
                     <div class="portlet-body">
                         <div class="row">
-                            <div ng-show="vm.isListeningRoute" class="col-md-12 text-center" style="margin-left: 20px;margin-bottom: 0 !important" >
-                                <audio ng-show="vm.showAudio" id="main-audio" controls controlsList="nodownload" style="width: 70%" preload="metadata">
-                                    Your browser does not support the audio element.
-                                </audio>
-                            </div>
-                            <div ng-show="vm.isListeningRoute" class="col-md-12 text-center">
-                                Speed: <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4"  ng-value="vm.playbackValue | number : 1"/>
-
-                                <button ng-click="vm.increaseSpeed()"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
-                                <button ng-click="vm.decreaseSpeed()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
-                                <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
+                            <div ng-show="vm.isListeningRoute" class="col-md-12 idp-listening-toolbar" ng-class="{'is-serious': !vm.isStudyMode()}">
+                                <div class="idp-listening-player" ng-show="vm.isStudyMode() && vm.showAudio">
+                                    <span class="idp-listening-player-icon" aria-hidden="true"><i class="fa fa-headphones"></i></span>
+                                    <audio ng-show="vm.isStudyMode() && vm.showAudio" id="main-audio" controls controlsList="nodownload" preload="metadata" aria-label="Trình phát bài nghe">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                                <div class="idp-listening-control-row">
+                                    <div class="idp-listening-speed">
+                                        <span class="idp-listening-speed-label">Tốc độ <small>{{vm.isStudyMode() ? '0.6× – 4×' : 'Từ 1×'}}</small></span>
+                                        <div class="idp-listening-stepper">
+                                            <button type="button" ng-click="vm.decreaseSpeed()" ng-disabled="vm.playbackValue <= vm.minimumPlaybackSpeed()" aria-label="Giảm tốc độ" title="Giảm tốc độ"><i class="fa fa-minus" aria-hidden="true"></i></button>
+                                            <output id="play-back-input" aria-live="polite" aria-label="Tốc độ hiện tại">{{vm.playbackValue | number : 1}}<small>×</small></output>
+                                            <button type="button" ng-click="vm.increaseSpeed()" ng-disabled="vm.playbackValue >= 4" aria-label="Tăng tốc độ" title="Tăng tốc độ"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="idp-listening-toggles" ng-if="vm.isStudyMode()">
+                                        <label class="idp-listening-switch" for="listening-audio-switch" title="Hiện hoặc ẩn thanh phát audio">
+                                            <span class="idp-listening-switch-label"><i class="fa fa-volume-up" aria-hidden="true"></i> Show audio</span>
+                                            <input id="listening-audio-switch" type="checkbox" role="switch" ng-model="vm.showAudio" aria-label="Hiện thanh audio" ng-attr-aria-checked="{{!!vm.showAudio}}">
+                                            <span class="idp-listening-switch-track" aria-hidden="true"></span>
+                                        </label>
+                                        <label class="idp-listening-switch" for="listening-content-switch" title="Hiện nội dung bên trái và kéo để chia cột">
+                                            <span class="idp-listening-switch-label"><i class="fa fa-align-left" aria-hidden="true"></i> Nội dung</span>
+                                            <input id="listening-content-switch" type="checkbox" role="switch" ng-model="vm.showListeningContent" ng-change="vm.toggleListeningContent()" aria-label="Hiện nội dung Listening" ng-attr-aria-checked="{{!!vm.showListeningContent}}">
+                                            <span class="idp-listening-switch-track" aria-hidden="true"></span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                             <div ng-show="!vm.isListeningRoute" class="col-md-12 idp-text-part-instruction" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
@@ -303,7 +321,7 @@
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
                             <div class="col-md-6 idp-reading-pane"
                                  ng-style="vm.readingPaneStyle()"
-                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <section class="comprehensive-video-runtime" ng-if="vm.hasComprehensiveVideo() && vm.isStartTest && vm.passageNumber !== 4">
                                     <h3><i class="fa fa-play-circle"></i> Xem video và trả lời</h3>
@@ -349,13 +367,13 @@
 
                             <div class="idp-split-divider"
                                  ng-style="vm.readingDividerStyle()"
-                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
                                  reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-hide="vm.isWritingRoute" ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-hide="vm.isWritingRoute" ng-style="vm.questionPaneStyle((vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <div class="comprehensive-video-next" ng-if="vm.hasComprehensiveVideo() && vm.videoTimeline.next()">
                                     <i class="fa fa-clock-o"></i> Câu hỏi tiếp theo tại <strong>{{vm.formatVideoTime(vm.videoTimeline.next().seconds)}}</strong>
                                     <span>Xem video để mở câu hỏi.</span>
@@ -815,7 +833,7 @@
                         <div ng-show="vm.passageNumber == 2" class="row idp-split-row" >
                             <div class="col-md-6 idp-reading-pane"
                                  ng-style="vm.readingPaneStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6)">
+                                 ng-hide="(vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6)">
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
                                         <div  class="close-highlight text-right">
@@ -834,13 +852,13 @@
 
                             <div class="idp-split-divider"
                                  ng-style="vm.readingDividerStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6)"
+                                 ng-hide="(vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6)"
                                  reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-2">
+                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-2">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
@@ -1225,7 +1243,7 @@
 
                             <div class="col-md-6 idp-reading-pane"
                                  ng-style="vm.readingPaneStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6)">
+                                 ng-hide="(vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6)">
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
                                         <div  class="close-highlight text-right">
@@ -1244,13 +1262,13 @@
 
                             <div class="idp-split-divider"
                                  ng-style="vm.readingDividerStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6)"
+                                 ng-hide="(vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6)"
                                  reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-3">
+                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-3">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
@@ -4122,6 +4140,68 @@
 
     .idp-timer small {
         margin-left: 1px;
+    }
+
+    .idp-reading-page .idp-instruction-bar.is-listening-controls {
+        border:1px solid #dce5f1 !important; border-radius:16px !important;
+        background:#fff !important; box-shadow:0 5px 18px rgba(40,75,120,.06);
+    }
+    .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding:10px 14px !important; }
+    .idp-listening-toolbar { min-width:0; }
+    .idp-listening-player { display:flex; align-items:center; gap:12px; padding:6px 10px; margin-bottom:10px; border:1px solid #e0eafb; border-radius:14px; background:linear-gradient(110deg,#f5f8ff,#edf7ff); }
+    .idp-listening-player-icon { display:flex; align-items:center; justify-content:center; flex:0 0 36px; width:36px; height:36px; border-radius:11px; color:#fff; background:linear-gradient(135deg,#268fe0,#6375ee); box-shadow:0 4px 10px rgba(50,115,215,.18); font-size:17px; }
+    .idp-listening-player audio { display:block; flex:1 1 auto; min-width:0; width:100%; height:42px; border-radius:24px; accent-color:#327bd8; }
+    .idp-listening-player audio::-webkit-media-controls-panel { background:#f1f6ff; }
+    .idp-listening-control-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .idp-listening-toolbar.is-serious .idp-listening-control-row { justify-content:flex-end; }
+    .idp-listening-speed { display:flex; align-items:center; gap:12px; padding:5px 8px 5px 12px; min-height:46px; border:1px solid #e0e7f2; border-radius:13px; background:#f7f9fd; }
+    .idp-listening-speed-label { color:#52647d; font-size:12px; font-weight:700; line-height:1.35; }
+    .idp-listening-speed-label > small { display:block; margin-top:2px; color:#7b8ba3; font-size:10px; font-weight:500; }
+    .idp-listening-stepper { display:flex; align-items:center; gap:4px; }
+    .idp-listening-stepper button { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:0; border:1px solid #dbe4f1; border-radius:10px; background:#fff; color:#3176d0; font-size:13px; transition:background .15s ease,border-color .15s ease; }
+    .idp-listening-stepper button:hover:not(:disabled) { border-color:#91b7ed; background:#eaf3ff; }
+    .idp-listening-stepper button:disabled { opacity:.35; cursor:not-allowed; }
+    .idp-listening-stepper button:focus-visible { outline:2px solid #4389e3; outline-offset:2px; }
+    .idp-listening-stepper output { display:block; min-width:58px; padding:0 4px; color:#1e3e6b; font-size:17px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; }
+    .idp-listening-stepper output > small { margin-left:2px; color:#7792b6; font-size:12px; }
+    .idp-listening-toggles { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+    .idp-listening-switch { position:relative; display:inline-flex; align-items:center; justify-content:space-between; gap:10px; min-height:42px; margin:0; padding:8px 11px; border:1px solid #e1e8f1; border-radius:12px; background:#fff; cursor:pointer; user-select:none; }
+    .idp-listening-switch-label { display:inline-flex; align-items:center; gap:6px; color:#53657e; font-size:12px; font-weight:700; line-height:1.4; }
+    .idp-listening-switch-label > i { color:#7b98c0; font-size:12px; }
+    .idp-listening-switch input[type=checkbox] { position:absolute !important; width:1px !important; height:1px !important; min-width:0 !important; margin:0 !important; opacity:0 !important; }
+    .idp-listening-switch-track { position:relative; display:block; flex:0 0 34px; width:34px; height:20px; border-radius:20px; background:#cbd5e4; transition:background .18s ease; }
+    .idp-listening-switch-track:after { content:""; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(22,45,80,.2); transition:transform .18s ease; }
+    .idp-listening-switch input:checked + .idp-listening-switch-track { background:linear-gradient(120deg,#278ee0,#5f76e9); }
+    .idp-listening-switch input:checked + .idp-listening-switch-track:after { transform:translateX(14px); }
+    .idp-listening-switch input:focus + .idp-listening-switch-track { outline:2px solid #4389e3; outline-offset:3px; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-player,
+    .idp-reading-page.idp-contrast-white-black .idp-listening-speed,
+    .idp-reading-page.idp-contrast-white-black .idp-listening-switch,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-speed,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch { background:#151515 !important; border-color:#777 !important; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-player-icon,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player-icon { background:#303030 !important; box-shadow:none; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-player audio,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player audio { color-scheme:dark; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-player audio::-webkit-media-controls-panel,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player audio::-webkit-media-controls-panel { background:#252525; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-switch-track,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch-track { background:#626262; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-switch input:checked + .idp-listening-switch-track { background:#fff; }
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch input:checked + .idp-listening-switch-track { background:#ffe600; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-switch input:checked + .idp-listening-switch-track:after,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch input:checked + .idp-listening-switch-track:after { background:#151515; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-switch input:focus + .idp-listening-switch-track,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch input:focus + .idp-listening-switch-track { outline-color:currentColor; }
+    body.ielts-reading-test-running .idp-split-row > .idp-split-divider.ng-hide { display:none !important; }
+    @media (max-width:600px) {
+        .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding:8px !important; }
+        .idp-listening-player { gap:6px; padding:5px 6px; }
+        .idp-listening-player-icon { flex-basis:30px; width:30px; height:30px; font-size:14px; border-radius:9px; }
+        .idp-listening-control-row { gap:8px; }
+        .idp-listening-toggles { width:100%; }
+        .idp-listening-switch { flex:1 1 auto; padding:8px 9px; gap:8px; }
     }
 
     .idp-reading-page .idp-finish-btn {
