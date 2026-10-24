@@ -32,6 +32,9 @@
         this.checkFlower = function (token, id, date, key, completed) {
             return $http.put(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/entries/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {completed: completed}, {skipSessionAuth: true});
         };
+        this.checkFlowerAsAdmin = function (token, id, date, key, completed) {
+            return $http.put(settings.api.baseUrl + 'api/campaign-flower/' + encodeURIComponent(token) + '/campaigns/' + id + '/entries/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {completed: completed});
+        };
         this.studentGarden = function (token, id) {
             return $http.get(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden', {skipSessionAuth: true});
         };

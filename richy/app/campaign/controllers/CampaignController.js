@@ -440,7 +440,13 @@
             var now = Date.now() + serverClockOffset + 7 * 3600000;
             dayTimer = $window.setTimeout(function () { $scope.$evalAsync(function () { updateRosaryGuide(); renderGarden(); }); scheduleNewDay(); }, 86400000 - (now % 86400000) + 50);
         }
-        vm.isDayLocked = function (day) { return day.date !== studentToday(); };
+        vm.canEditAnyFlowerDay = function () {
+            return settings.permissionsLoaded === true && settings.isAdmin === true && !!auth && auth.hasCredentials();
+        };
+        vm.isDayLocked = function (day) {
+            if (!day || !vm.campaign || !day.date || day.date < vm.campaign.startDate || day.date > vm.campaign.endDate) { return true; }
+            return !vm.canEditAnyFlowerDay() && day.date !== studentToday();
+        };
         vm.toggleFlower = function (item, day) {
             var key = item.itemKey + ':' + day.date, campaignId = vm.campaign.id;
             if (!vm.studentMode || vm.sheetLoading || vm.isDayLocked(day)) { vm.checks[key] = vm.savedChecks[key] === true; return; }
@@ -452,7 +458,8 @@
             var returnFocus = $window.document && $window.document.activeElement;
             function current() { return request === studentRequest && token === studentToken && vm.checks === checks && vm.campaign && vm.campaign.id === campaignId; }
             pending[pendingKey] = true; vm.checkError = ''; vm.saveNotice = 'Đang lưu…';
-            return service.checkFlower(token, campaignId, day.date, item.itemKey, completed).then(function (response) {
+            var saveCheck = vm.canEditAnyFlowerDay() ? service.checkFlowerAsAdmin : service.checkFlower;
+            return saveCheck(token, campaignId, day.date, item.itemKey, completed).then(function (response) {
                 checks[key] = response.data.completed === true;
                 if (current()) {
                     vm.savedChecks[key] = checks[key]; vm.saveNotice = 'Đã lưu hoa thiêng.';

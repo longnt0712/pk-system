@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
-function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1'], prayerRandom = Math.random} = {}) {
+function setup({campaignsEnabled = true, manager = false, admin = false, credentials = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1'], prayerRandom = Math.random} = {}) {
     let Controller;
     const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
     const calls = [], watches = [], events = {};
@@ -20,6 +20,7 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
     service.studentLanding = async () => ({data: {serverTime, student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaigns: activeCampaigns || (campaign ? [campaign] : [])}});
     service.studentSheet = async (token, id, week) => {calls.push(['sheet', token, id, week]); return {data: {student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaign, entries, serverTime}};};
     service.checkFlower = async (...args) => {calls.push(['check', ...args]); return {data: {completed: args[4]}};};
+    service.checkFlowerAsAdmin = async (...args) => {calls.push(['adminCheck', ...args]); return {data: {completed: args[4]}};};
     let gardenEntries = structuredClone(entries);
     service.studentGarden = async () => ({data: {campaign, entries: structuredClone(gardenEntries), serverTime}});
     service.paintFlower = async (token, id, date, itemKey, color) => {
@@ -36,7 +37,7 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
     const ClockDate = clock ? class extends Date { static now() { return clock.now; } } : Date;
     const sandbox = nodeVm.createContext({Date: ClockDate, Math: Object.assign(Object.create(Math), {random: prayerRandom}), angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone}});
     nodeVm.runInContext(source, sandbox);
-    const vm = new Controller({$root: {}, $watch: (...args) => watches.push(args), $evalAsync: fn => {digests++;if(fn)fn();}, $on: (event, fn) => {events[event]=fn;if(event==='$destroy')destroyed = fn;}}, state, {id, studentMode, campaignId, campaignCode}, {URL, location: {hash: '#' + token}, print() {calls.push(['print']);}, confirm:()=>true, ...windowExtras, ...(clock ? {setTimeout(fn, delay) {dayCallback=fn; dayDelay=delay; return 1;}, clearTimeout() {dayCallback=null;}} : {})}, settings, service, {success() {}, error() {}}, {hash(value) {if(windowExtras.history){windowExtras.history.replaceState(null,'','/hoa-thieng'+(campaignCode?'/c/'+campaignCode:campaignId?'/'+campaignId:'')+(value?'#'+value:''));}return this;}, replace() {return this;}});
+    const vm = new Controller({$root: {}, $watch: (...args) => watches.push(args), $evalAsync: fn => {digests++;if(fn)fn();}, $on: (event, fn) => {events[event]=fn;if(event==='$destroy')destroyed = fn;}}, state, {id, studentMode, campaignId, campaignCode}, {URL, location: {hash: '#' + token}, print() {calls.push(['print']);}, confirm:()=>true, ...windowExtras, ...(clock ? {setTimeout(fn, delay) {dayCallback=fn; dayDelay=delay; return 1;}, clearTimeout() {dayCallback=null;}} : {})}, settings, service, {success() {}, error() {}}, {hash(value) {if(windowExtras.history){windowExtras.history.replaceState(null,'','/hoa-thieng'+(campaignCode?'/c/'+campaignCode:campaignId?'/'+campaignId:'')+(value?'#'+value:''));}return this;}, replace() {return this;}}, {hasCredentials: () => credentials});
     return {vm, settings, calls, apiCalls, service, watches, events, getDayDelay: () => dayDelay, midnight: () => dayCallback(), getDigests: () => digests, destroy: () => destroyed(), hasDayTimer: () => !!dayCallback};
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -203,6 +204,80 @@ test('failed student saves revert the checkbox and retain a visible error', asyn
     h.vm.checks['practice-1:2026-10-01'] = true;
     await h.vm.toggleFlower(studentCampaign.flowerItems[0], {date:'2026-10-01'});
     assert.equal(h.vm.checks['practice-1:2026-10-01'], false); assert.ok(h.vm.checkError); assert.equal(Object.keys(h.vm.pendingChecks).length, 0);
+});
+
+test('authenticated Admin can check and uncheck past or future campaign days through the private API', async () => {
+    const h = setup({studentMode: true, admin: true, credentials: true, campaign: studentCampaign});
+    await tick();
+    assert.equal(h.vm.canEditAnyFlowerDay(), true);
+    for (const date of [studentCampaign.startDate, '2026-09-30', '2026-10-02', studentCampaign.endDate]) {
+        const day = {date}, key = 'practice-1:' + date;
+        assert.equal(h.vm.isDayLocked(day), false);
+        for (const completed of [true, false]) {
+            h.vm.checks[key] = completed;
+            await h.vm.toggleFlower(studentCampaign.flowerItems[0], day);
+            assert.deepEqual(h.calls.at(-1), ['adminCheck', 'a'.repeat(43), 5, date, 'practice-1', completed]);
+            assert.equal(h.vm.savedChecks[key], completed);
+            h.vm.closeFlowerPrayer();
+        }
+    }
+    for (const date of ['2026-09-28', '2026-11-01']) {
+        const before = h.calls.length;
+        assert.equal(h.vm.isDayLocked({date}), true);
+        h.vm.checks['practice-1:' + date] = true;
+        await h.vm.toggleFlower(studentCampaign.flowerItems[0], {date});
+        assert.equal(h.calls.length, before);
+    }
+    assert.equal(h.calls.filter(call => call[0] === 'check').length, 0);
+});
+
+test('other roles, missing credentials and unfinished permissions keep past and future days locked', async () => {
+    for (const options of [{}, {manager: true, credentials: true}, {credentials: true}, {admin: true}]) {
+        const h = setup({studentMode: true, campaign: studentCampaign, ...options});
+        await tick();
+        assert.equal(h.vm.canEditAnyFlowerDay(), false);
+        assert.equal(h.vm.isDayLocked({date: '2026-09-30'}), true);
+        assert.equal(h.vm.isDayLocked({date: '2026-10-02'}), true);
+        assert.equal(h.vm.isDayLocked({date: '2026-10-01'}), false);
+    }
+    const admin = setup({studentMode: true, admin: true, credentials: true, campaign: studentCampaign});
+    await tick();
+    admin.settings.permissionsLoaded = false;
+    assert.equal(admin.vm.isDayLocked({date: '2026-09-30'}), true);
+    admin.settings.permissionsLoaded = true;
+    assert.equal(admin.vm.isDayLocked({date: '2026-09-30'}), false);
+    admin.settings.isAdmin = false;
+    assert.equal(admin.vm.isDayLocked({date: '2026-09-30'}), true);
+});
+
+test('an Admin save rejected by the server restores the checkbox and releases its pending lock', async () => {
+    const h = setup({studentMode: true, admin: true, credentials: true, campaign: studentCampaign});
+    await tick();
+    h.service.checkFlowerAsAdmin = async () => {throw {status: 403};};
+    const day = {date: '2026-09-30'}, key = 'practice-1:' + day.date;
+    h.vm.checks[key] = true;
+    await h.vm.toggleFlower(studentCampaign.flowerItems[0], day);
+    assert.equal(h.vm.checks[key], false);
+    assert.ok(h.vm.checkError);
+    assert.equal(Object.keys(h.vm.pendingChecks).length, 0);
+    assert.equal(h.vm.flowerPrayer, null);
+});
+
+test('only the explicit Admin checkbox service uses the authenticated API', async () => {
+    let registration;
+    nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname, '../campaign/business/CampaignService.js'), 'utf8'),
+        {angular: {module: () => ({service(name, definition) {registration = definition;}})}});
+    const requests = [];
+    const Service = registration.at(-1);
+    const service = new Service({put(...args) {requests.push(structuredClone(args)); return Promise.resolve();}},
+        {api: {baseUrl: '/service/'}});
+    await service.checkFlower('a'.repeat(43), 5, '2026-10-01', 'practice-1', true);
+    await service.checkFlowerAsAdmin('a'.repeat(43), 5, '2026-09-30', 'practice-1', false);
+    assert.match(requests[0][0], /^\/service\/public\/campaign-flower\//);
+    assert.equal(requests[0][2].skipSessionAuth, true);
+    assert.match(requests[1][0], /^\/service\/api\/campaign-flower\//);
+    assert.deepEqual(requests[1][1], {completed: false});
+    assert.equal(requests[1][2]?.skipSessionAuth, undefined);
 });
 test('prayer appears only after a new check is confirmed; failure, unchecked response and repeated true never show it',async()=>{
     const key='practice-1:2026-10-01',day={date:'2026-10-01'},item=studentCampaign.flowerItems[0];

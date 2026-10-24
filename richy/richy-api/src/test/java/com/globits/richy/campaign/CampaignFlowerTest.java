@@ -48,8 +48,9 @@ public class CampaignFlowerTest {
         @Bean public CampaignFlowerService service() { return new CampaignFlowerService(); }
         @Bean public EntityManagerFactory entityManagerFactory() {
             EntityManagerFactory factory = mock(EntityManagerFactory.class);
+            EntityManager manager = mock(EntityManager.class);
             when(factory.getProperties()).thenReturn(Collections.emptyMap());
-            when(factory.createEntityManager()).thenReturn(mock(EntityManager.class));
+            when(factory.createEntityManager()).thenReturn(manager);
             return factory;
         }
         @Bean public UserRepository users() { return mock(UserRepository.class); }
@@ -255,6 +256,121 @@ public class CampaignFlowerTest {
         try { service.check(tokenA, 5L, today, "other-item", true); fail("Unknown practice"); } catch (CampaignService.InvalidCampaignException expected) { }
         try { service.check(tokenA, 5L, today, key, null); fail("Missing completion"); } catch (CampaignService.InvalidCampaignException expected) { }
         verify(entries, never()).saveAndFlush(any(CampaignFlowerEntry.class));
+    }
+    @Test public void authenticatedAdminCanCheckAndUncheckEveryCampaignDayAndRecordsTheActor() {
+        identity("ROLE_ADMIN");
+        for (String day : Arrays.asList(campaign.getStartDate(), LocalDate.parse(today).minusDays(1).toString(),
+                today, LocalDate.parse(today).plusDays(1).toString(), campaign.getEndDate())) {
+            assertTrue(service.checkAsAdmin(tokenA, 5L, day, key, true).completed);
+            CampaignFlowerEntry entry = saved.get(entryKey(7L, day, key));
+            assertEquals("test", entry.getCreatedBy()); assertEquals("test", entry.getModifiedBy());
+            assertFalse(service.checkAsAdmin(tokenA, 5L, day, key, false).completed);
+            assertEquals("test", entry.getModifiedBy());
+        }
+        assertEquals(5, saved.size());
+        verify(access, atLeastOnce()).lockByTokenHash(StudentMarkShareSupport.hashToken(tokenA));
+        assertTrue(service.sheet(tokenB, 5L, 0).entries.isEmpty());
+    }
+    @Test public void adminUpdatesPreserveOriginalCreatorAndReconcilePastPaint() {
+        service.check(tokenA, 5L, today, key, true);
+        identity("ROLE_ADMIN"); service.checkAsAdmin(tokenA, 5L, today, key, false);
+        CampaignFlowerEntry existing = saved.get(entryKey(7L, today, key));
+        assertEquals(studentA.getUsername(), existing.getCreatedBy()); assertEquals("test", existing.getModifiedBy());
+        String yesterday = LocalDate.parse(today).minusDays(1).toString();
+        service.checkAsAdmin(tokenA, 5L, yesterday, key, true);
+        service.paint(tokenA, 5L, yesterday, key, "#EF5350");
+        assertEquals("#EF5350", saved.get(entryKey(7L, yesterday, key)).getPaintColor());
+        service.checkAsAdmin(tokenA, 5L, yesterday, key, false);
+        assertNull(saved.get(entryKey(7L, yesterday, key)).getPaintColor());
+    }
+    @Test public void nonAdminAndUnauthenticatedIdentitiesCannotUseTheAdminOverride() {
+        RestCampaignFlowerAccessController controller = context.getBean(RestCampaignFlowerAccessController.class);
+        CampaignFlowerDto.CheckRequest request = new CampaignFlowerDto.CheckRequest(); request.completed = true;
+        String yesterday = LocalDate.parse(today).minusDays(1).toString();
+        for (String role : Arrays.asList("ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT", "ROLE_VIEWER", "ROLE_STUDENT", "ROLE_USER", "ROLE_STAFF")) {
+            identity(role);
+            denied(() -> service.checkAsAdmin(tokenA, 5L, yesterday, key, true));
+            denied(() -> controller.checkAsAdmin(tokenA, 5L, yesterday, key, request));
+        }
+        SecurityContextHolder.clearContext();
+        denied(() -> service.checkAsAdmin(tokenA, 5L, yesterday, key, true));
+        identity("ROLE_ADMIN"); SecurityContextHolder.getContext().getAuthentication().setAuthenticated(false);
+        // This isolated method-security context has no login AuthenticationManager.
+        CampaignFlowerService target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(service);
+        denied(() -> target.checkAsAdmin(tokenA, 5L, yesterday, key, true));
+        SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken("test", "anonymous",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        denied(() -> service.checkAsAdmin(tokenA, 5L, yesterday, key, true));
+        verify(entries, never()).saveAndFlush(any(CampaignFlowerEntry.class));
+        assertTrue(saved.isEmpty());
+    }
+    @Test public void adminOverrideStillRejectsInvalidBoundsKeysCompletionQrAndInactiveParticipants() {
+        identity("ROLE_ADMIN");
+        for (String day : Arrays.asList(null, "", "bad", "2026-02-30", "2026-2-03",
+                LocalDate.parse(campaign.getStartDate()).minusDays(1).toString(), LocalDate.parse(campaign.getEndDate()).plusDays(1).toString())) {
+            for (boolean completed : new boolean[]{true, false}) {
+                try { service.checkAsAdmin(tokenA, 5L, day, key, completed); fail("Invalid Admin date accepted"); }
+                catch (CampaignService.InvalidCampaignException expected) { }
+            }
+        }
+        for (String invalidKey : Arrays.asList(null, "", "retired")) {
+            try { service.checkAsAdmin(tokenA, 5L, today, invalidKey, true); fail("Invalid Admin item accepted"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        try { service.checkAsAdmin(tokenA, 5L, today, key, null); fail("Missing completion accepted"); }
+        catch (CampaignService.InvalidCampaignException expected) { }
+        try { service.checkAsAdmin("bad", 5L, today, key, true); fail("Invalid Admin QR accepted"); }
+        catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+        try { service.checkAsAdmin(tokenA, 404L, today, key, true); fail("Unknown campaign accepted"); }
+        catch (CampaignService.CampaignNotFoundException expected) { }
+        studentA.setActive(false);
+        try { service.checkAsAdmin(tokenA, 5L, today, key, true); fail("Inactive participant accepted"); }
+        catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+        verify(entries, never()).saveAndFlush(any(CampaignFlowerEntry.class));
+    }
+    @Test public void adminHttpUsesTheQrOwnerAndReturnsValidationErrors() throws Exception {
+        identity("ROLE_ADMIN");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(context.getBean(RestCampaignFlowerAccessController.class)).build();
+        String path = "/api/campaign-flower/" + tokenA + "/campaigns/5/entries/";
+        String yesterday = LocalDate.parse(today).minusDays(1).toString();
+        mvc.perform(put(path + yesterday + "/" + key).contentType("application/json").content("{\"completed\":true,\"studentId\":9,\"isAdmin\":false}"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store, max-age=0"));
+        assertTrue(saved.get(entryKey(7L, yesterday, key)).isCompleted());
+        assertNull(saved.get(entryKey(9L, yesterday, key)));
+        MvcResult invalid = mvc.perform(put(path + LocalDate.parse(campaign.getEndDate()).plusDays(1) + "/" + key)
+                .contentType("application/json").content("{\"completed\":true}"))
+                .andExpect(status().isBadRequest()).andReturn();
+        assertTrue(new ObjectMapper().readTree(invalid.getResponse().getContentAsString()).has("message"));
+        identity("ROLE_EDUCATION_MANAGERMENT");
+        try {
+            mvc.perform(put(path + yesterday + "/" + key).contentType("application/json").content("{\"completed\":false,\"isAdmin\":true}"));
+            fail("Non-Admin HTTP override accepted");
+        } catch (Exception expected) {
+            Throwable cause = expected;
+            while (cause.getCause() != null) { cause = cause.getCause(); }
+            assertTrue(cause instanceof AccessDeniedException);
+        }
+        assertTrue(saved.get(entryKey(7L, yesterday, key)).isCompleted());
+    }
+    @Test public void publicChecksRemainTodayOnlyForAdminsAndIgnoreSpoofedOverrideFields() throws Exception {
+        identity("ROLE_ADMIN");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(context.getBean(RestPublicCampaignFlowerController.class)).build();
+        String path = "/public/campaign-flower/" + tokenA + "/campaigns/5/entries/";
+        for (String day : Arrays.asList(LocalDate.parse(today).minusDays(1).toString(), LocalDate.parse(today).plusDays(1).toString())) {
+            try { service.check(tokenA, 5L, day, key, true); fail("Public service gained Admin date override"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+            mvc.perform(put(path + day + "/" + key).contentType("application/json")
+                    .content("{\"completed\":true,\"isAdmin\":true,\"allowOtherDays\":true,\"studentId\":9}"))
+                    .andExpect(status().isBadRequest());
+        }
+        assertTrue(saved.isEmpty());
+        assertTrue(service.check(tokenA, 5L, today, key, true).completed);
+        assertEquals(studentA.getUsername(), saved.get(entryKey(7L, today, key)).getCreatedBy());
+    }
+    private void denied(Runnable action) {
+        try { action.run(); fail("Admin override must require authenticated ROLE_ADMIN"); }
+        catch (AccessDeniedException expected) { }
+        catch (org.springframework.security.authentication.AuthenticationCredentialsNotFoundException expected) { }
     }
     @Test public void invalidQrAndDisabledStudentsCannotReadOrWrite() {
         for (String token : Arrays.asList("hs0007", "bad", tokenA.substring(1), String.join("", Collections.nCopies(43, "z")))) {

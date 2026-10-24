@@ -7,7 +7,11 @@ import javax.persistence.*;
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -92,13 +96,30 @@ public class CampaignFlowerService {
     }
 
     public CampaignFlowerDto.Entry check(String token, Long campaignId, String date, String itemKey, Boolean completed) {
+        return checkEntry(token, campaignId, date, itemKey, completed, false, null);
+    }
+
+    @Secured({"ROLE_ADMIN"})
+    public CampaignFlowerDto.Entry checkAsAdmin(String token, Long campaignId, String date, String itemKey, Boolean completed) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AccessDeniedException("Hãy đăng nhập bằng tài khoản Admin để cập nhật ngày khác.");
+        }
+        return checkEntry(token, campaignId, date, itemKey, completed, true, authentication.getName());
+    }
+
+    private CampaignFlowerDto.Entry checkEntry(String token, Long campaignId, String date, String itemKey,
+            Boolean completed, boolean allowOtherDays, String actor) {
         User student = access(token, true).getStudent(); Campaign campaign = campaign(campaignId);
         LocalDate day;
         try {
             if (date == null || !date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) { throw new IllegalArgumentException(); }
             day = LocalDate.parse(date);
         } catch (RuntimeException error) { throw new CampaignService.InvalidCampaignException("Ngày hoa thiêng không hợp lệ."); }
-        if (completed == null || day.isBefore(LocalDate.parse(campaign.getStartDate())) || day.isAfter(LocalDate.parse(campaign.getEndDate())) || !day.equals(today())) {
+        if (completed == null || day.isBefore(LocalDate.parse(campaign.getStartDate())) || day.isAfter(LocalDate.parse(campaign.getEndDate()))) {
+            throw new CampaignService.InvalidCampaignException("Ngày hoặc trạng thái hoa thiêng không hợp lệ trong chiến dịch.");
+        }
+        if (!allowOtherDays && !day.equals(today())) {
             throw new CampaignService.InvalidCampaignException("Chỉ tích hoặc bỏ tích hoa thiêng cho ngày hôm nay. Các ngày khác chỉ được xem.");
         }
         boolean found = false;
@@ -109,9 +130,9 @@ public class CampaignFlowerService {
         CampaignFlowerEntry entry = entries.findByCampaignIdAndStudentIdAndDateAndItemKey(campaignId, student.getId(), date, itemKey);
         if (entry == null) {
             entry = new CampaignFlowerEntry(); entry.setCampaignId(campaignId); entry.setStudentId(student.getId());
-            entry.setDate(date); entry.setItemKey(itemKey); entry.setCreatedBy(student.getUsername()); entry.setCreateDate(LocalDateTime.now());
+            entry.setDate(date); entry.setItemKey(itemKey); entry.setCreatedBy(actor == null ? student.getUsername() : actor); entry.setCreateDate(LocalDateTime.now());
         }
-        entry.setCompleted(completed); entry.setModifiedBy(student.getUsername()); entry.setModifyDate(LocalDateTime.now());
+        entry.setCompleted(completed); entry.setModifiedBy(actor == null ? student.getUsername() : actor); entry.setModifyDate(LocalDateTime.now());
         entries.saveAndFlush(entry);
         // Removing a check also removes excess paint; colors never create completion credit.
         reconcilePaint(campaign, dayEntries(campaign, student, date));
