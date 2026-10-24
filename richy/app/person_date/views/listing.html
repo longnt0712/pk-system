@@ -140,16 +140,17 @@
                         </div>
 
                         <div class="attendance-filter-item">
-                            <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
-                                    ng-change="vm.getPage()"
-                                    close-on-select="true">
-                                <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
-                                    {{$select.selected.name}}
-                                </ui-select-match>
-                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: vm.directorySchoolId} | propsFilter:{name:$select.search}">
-                                    <div ng-bind-html="cls.name | highlight:$select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
+                            <div class="attendance-class-filter-control">
+                                <button type="button" class="form-control attendance-class-filter-trigger"
+                                        ng-click="vm.openClassFilter(true)" aria-haspopup="dialog" aria-label="Chọn lớp để lọc"
+                                        ng-attr-title="{{vm.classFilterLabel() || 'Chọn lớp để lọc'}}">
+                                    <i class="fa fa-sitemap" aria-hidden="true"></i>
+                                    <span ng-class="{'attendance-class-filter-placeholder': !vm.classFilterLabel()}">{{vm.classFilterLabel() || 'Chọn lớp để lọc'}}</span>
+                                    <i class="fa fa-angle-down" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="attendance-class-filter-clear" ng-if="vm.searchDto.user.person.enrollmentClassId"
+                                        ng-click="vm.clearClassFilter(true)" aria-label="Bỏ lọc lớp" title="Bỏ lọc lớp"><i class="fa fa-times" aria-hidden="true"></i></button>
+                            </div>
                         </div>
 
                         <div class="attendance-filter-item">
@@ -412,17 +413,17 @@
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
-                                <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
-                                        ng-change=""
-                                        close-on-select="true">
-                                    <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
-                                        {{$select.selected.name}}
-                                    </ui-select-match>
-
-                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: vm.directorySchoolId} | propsFilter:{name:$select.search}">
-                                        <div ng-bind-html="cls.name | highlight:$select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
+                                <div class="attendance-class-filter-control">
+                                    <button type="button" class="form-control attendance-class-filter-trigger"
+                                            ng-click="vm.openClassFilter(false)" aria-haspopup="dialog" aria-label="Chọn lớp thống kê"
+                                            ng-attr-title="{{vm.classFilterLabel() || 'Chọn lớp để lọc'}}">
+                                        <i class="fa fa-sitemap" aria-hidden="true"></i>
+                                        <span ng-class="{'attendance-class-filter-placeholder': !vm.classFilterLabel()}">{{vm.classFilterLabel() || 'Chọn lớp để lọc'}}</span>
+                                        <i class="fa fa-angle-down" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="attendance-class-filter-clear" ng-if="vm.searchDto.user.person.enrollmentClassId"
+                                            ng-click="vm.clearClassFilter(false)" aria-label="Bỏ lọc lớp thống kê" title="Bỏ lọc lớp"><i class="fa fa-times" aria-hidden="true"></i></button>
+                                </div>
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
@@ -684,6 +685,54 @@
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
             <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="attendance_class_filter_modal.html">
+    <div class="attendance-class-filter-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-class-filter-title">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-label="Đóng"><span aria-hidden="true">×</span></button>
+            <h4 class="modal-title" id="attendance-class-filter-title"><i class="fa fa-sitemap" aria-hidden="true"></i> Chọn lớp / đội</h4>
+            <p>Chọn lớp hoặc mở rộng lớp để tìm đội trực thuộc.</p>
+        </div>
+        <div class="modal-body">
+            <input type="search" class="form-control attendance-class-filter-search" ng-model="vm.classFilterSearch"
+                   ng-change="vm.rebuildClassFilterTree()" placeholder="Tìm theo tên hoặc mã lớp, đội..."
+                   aria-label="Tìm lớp hoặc đội" autofocus />
+            <div class="text-center attendance-class-filter-message" ng-if="vm.enrollmentClassesLoading" role="status">
+                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải danh sách lớp...
+            </div>
+            <div class="alert alert-danger" ng-if="vm.enrollmentClassesError && !vm.enrollmentClassesLoading" role="alert">
+                Không tải được danh sách lớp.
+                <button type="button" class="btn btn-default btn-sm" ng-click="vm.loadEnrollmentClasses()">Tải lại</button>
+            </div>
+            <div class="attendance-class-filter-tree" ng-if="!vm.enrollmentClassesLoading && !vm.enrollmentClassesError">
+                <div class="attendance-class-filter-row" ng-repeat="row in vm.classFilterRows track by row.id"
+                     ng-class="{'is-selected': row.id == vm.searchDto.user.person.enrollmentClassId}"
+                     ng-style="{'padding-left': (row.level * 22) + 'px'}">
+                    <span class="attendance-class-filter-branch" ng-if="row.level > 0" aria-hidden="true"></span>
+                    <button type="button" class="attendance-class-filter-toggle" ng-if="row.hasChildren"
+                            ng-click="vm.toggleClassFilterNode(row)" ng-disabled="!!vm.classFilterSearch"
+                            ng-attr-aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.name}}">
+                        <i class="fa" ng-class="row.expanded ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
+                    </button>
+                    <span class="attendance-class-filter-spacer" ng-if="!row.hasChildren"></span>
+                    <button type="button" class="attendance-class-filter-option" ng-click="vm.selectClassFilter(row)"
+                            ng-attr-aria-pressed="{{row.id == vm.searchDto.user.person.enrollmentClassId}}">
+                        <i class="fa" ng-class="row.level === 0 ? 'fa-folder-open' : 'fa-users'" aria-hidden="true"></i>
+                        <span class="attendance-class-filter-name"><strong>{{row.name}}</strong><small ng-if="row.code">{{row.code}}</small></span>
+                        <span class="attendance-class-filter-kind">{{row.level === 0 ? 'Lớp' : 'Đội'}}<span ng-if="row.childCount"> · {{row.childCount}}</span></span>
+                        <i class="fa fa-check" ng-if="row.id == vm.searchDto.user.person.enrollmentClassId" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="attendance-class-filter-message text-center" ng-if="!vm.classFilterRows.length">Không có lớp hoặc đội phù hợp.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-click="vm.clearClassFilter(vm.classFilterRefreshList)"
+                    ng-if="vm.searchDto.user.person.enrollmentClassId">Bỏ lọc lớp</button>
+            <button type="button" class="btn btn-primary" ng-click="$dismiss()">Đóng</button>
         </div>
     </div>
 </script>
@@ -965,6 +1014,53 @@
 </script>
 
 <style>
+    .attendance-class-filter-control { position: relative; min-width: 0; }
+    .attendance-class-filter-trigger.form-control { display: flex; align-items: center; gap: 8px; width: 100%; padding-right: 48px; text-align: left; cursor: pointer; }
+    .attendance-class-filter-trigger > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .attendance-class-filter-placeholder { color: #7b879c; }
+    .attendance-class-filter-trigger > .fa-angle-down { position: absolute; right: 11px; }
+    .attendance-class-filter-clear { position: absolute; top: 0; right: 26px; height: 100%; width: 24px; padding: 0; border: 0; background: transparent; color: #7b879c; }
+    .attendance-class-filter-clear:hover { color: #d64464; }
+    .attendance-class-filter-window .modal-dialog { width: 760px; max-width: calc(100vw - 24px); margin: 4vh auto; }
+    .attendance-class-filter-window .modal-content { max-height: 92vh; overflow: hidden; border-radius: 16px; }
+    .attendance-class-filter-modal { display: flex; flex-direction: column; max-height: 92vh; color: #30415f; }
+    .attendance-class-filter-modal .modal-header, .attendance-class-filter-modal .modal-footer { flex: 0 0 auto; }
+    .attendance-class-filter-modal .modal-header { background: #f5f3ff; }
+    .attendance-class-filter-modal .modal-header .close { width: 24px; height: 24px; margin: 0; background: none !important; color: inherit; opacity: .8; text-indent: 0; font-size: 24px; line-height: 1; }
+    .attendance-class-filter-modal .modal-header p { margin: 7px 24px 0 0; color: #6b7891; }
+    .attendance-class-filter-modal .modal-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; gap: 14px; }
+    .attendance-class-filter-search { flex: 0 0 auto; }
+    .attendance-class-filter-tree { flex: 1 1 auto; min-height: 0; max-height: 56vh; overflow-y: auto; overflow-x: hidden; padding: 2px; }
+    .attendance-class-filter-row { position: relative; display: flex; align-items: center; min-width: 0; margin: 3px 0; border-radius: 8px; }
+    .attendance-class-filter-branch { position: absolute; width: 12px; height: 28px; margin-left: -13px; margin-top: -14px; border-left: 1px solid #d6deef; border-bottom: 1px solid #d6deef; }
+    .attendance-class-filter-toggle, .attendance-class-filter-spacer { flex: 0 0 30px; width: 30px; }
+    .attendance-class-filter-toggle { min-height: 34px; padding: 5px; border: 0; border-radius: 6px; background: transparent; color: #6571aa; }
+    .attendance-class-filter-toggle:disabled { opacity: .5; }
+    .attendance-class-filter-option { display: flex; align-items: center; flex: 1 1 auto; gap: 10px; min-width: 0; padding: 12px 10px; border: 1px solid #e2e7f3; border-radius: 8px; background: #fff; color: inherit; text-align: left; }
+    .attendance-class-filter-option:hover, .attendance-class-filter-toggle:hover { background: #f3f5ff; }
+    .attendance-class-filter-row.is-selected .attendance-class-filter-option { border-color: #8a77ef; background: #f1edff; color: #5a43bb; }
+    .attendance-class-filter-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+    .attendance-class-filter-name strong, .attendance-class-filter-name small { display: block; }
+    .attendance-class-filter-name small { margin-top: 3px; color: #7b879c; }
+    .attendance-class-filter-kind { flex: 0 0 auto; font-size: 11px; color: #78849b; }
+    .attendance-class-filter-message { padding: 22px 8px; margin: 0; color: #7b879c; }
+    .attendance-class-filter-option:focus-visible, .attendance-class-filter-toggle:focus-visible, .attendance-class-filter-clear:focus-visible { outline: 2px solid #8068ee; outline-offset: 2px; }
+    html.global-dark-mode .attendance-class-filter-modal { color: #e0e8f8; background: #182338; }
+    html.global-dark-mode .attendance-class-filter-modal .modal-header { background: #222c44; }
+    html.global-dark-mode .attendance-class-filter-option { color: #e0e8f8; background: #1c2b42; border-color: #3b4b65; }
+    html.global-dark-mode .attendance-class-filter-option:hover, html.global-dark-mode .attendance-class-filter-toggle:hover { background: #293953; }
+    html.global-dark-mode .attendance-class-filter-row.is-selected .attendance-class-filter-option { background: #39315d; color: #f1ebff; border-color: #ab94ff; }
+    html.global-dark-mode .attendance-class-filter-branch { border-color: #465770; }
+    html.global-dark-mode .attendance-class-filter-modal .modal-header p,
+    html.global-dark-mode .attendance-class-filter-name small,
+    html.global-dark-mode .attendance-class-filter-kind,
+    html.global-dark-mode .attendance-class-filter-placeholder,
+    html.global-dark-mode .attendance-class-filter-message { color: #acbad0; }
+    @media (max-width: 480px) {
+        .attendance-class-filter-modal .modal-body { padding: 12px; }
+        .attendance-class-filter-option { gap: 7px; padding: 10px 8px; }
+        .attendance-class-filter-toggle, .attendance-class-filter-spacer { flex-basis: 24px; width: 24px; }
+    }
     .attendance-config-modal fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
     .attendance-config-section { margin: 16px 0; padding: 16px; border: 1px solid #dce3ef; border-radius: 12px; background: #f8faff; }
     .attendance-config-section h5 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #354269; }

@@ -997,17 +997,26 @@
                 });
         };
 
-        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
-            vm.enrollmentClasses = data.content || [];
-
-            vm.enrollmentClassMap = {};
-            angular.forEach(vm.enrollmentClasses, function (cls) {
-                vm.enrollmentClassMap[cls.id] = cls.name;
+        vm.enrollmentClassesLoading = false;
+        vm.enrollmentClassesError = false;
+        vm.loadEnrollmentClasses = function () {
+            if (vm.enrollmentClassesLoading) { return; }
+            vm.enrollmentClassesLoading = true;
+            vm.enrollmentClassesError = false;
+            return service.getEnrolmentClass({schoolId: vm.directorySchoolId}, 1, 1000000).then(function (data) {
+                vm.enrollmentClasses = data.content || [];
+                vm.enrollmentClassMap = {};
+                angular.forEach(vm.enrollmentClasses, function (cls) {
+                    vm.enrollmentClassMap[cls.id] = cls.name;
+                });
+                if (vm.rebuildClassFilterTree) { vm.rebuildClassFilterTree(); }
+            }).catch(function () {
+                vm.enrollmentClassesError = true;
+            }).finally(function () {
+                vm.enrollmentClassesLoading = false;
             });
-
-            // Mặc định không chọn lớp và không tự tải toàn bộ bảng điểm danh.
-            vm.searchDto.user.person.enrollmentClassId = null;
-        });
+        };
+        vm.loadEnrollmentClasses();
 
         // =====================================================
         // THỐNG KÊ ĐIỂM DANH THEO LỚP / ĐỘI - THEO DOMAIN
@@ -1045,6 +1054,118 @@
 
             return found;
         }
+
+        vm.classFilterRows = [];
+        vm.classFilterSearch = '';
+        vm.classFilterExpanded = {};
+        vm.classFilterModalInstance = null;
+
+        function classFilterText(value) {
+            return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        vm.classFilterLabel = function () {
+            var selected = vm.searchDto.user.person.enrollmentClassId;
+            var parts = [], visited = {};
+            var current = findEnrollmentClass(selected);
+            while (current && Number(current.schoolId) === vm.directorySchoolId && !visited[current.id]) {
+                visited[current.id] = true;
+                parts.unshift(current.name || current.code || String(current.id));
+                current = findEnrollmentClass(current.parentId);
+            }
+            return parts.join(' / ');
+        };
+
+        vm.rebuildClassFilterTree = function () {
+            var nodes = [], byId = {}, children = {}, roots = [], included = {};
+            var query = classFilterText(vm.classFilterSearch);
+            angular.forEach(vm.enrollmentClasses || [], function (item) {
+                if (!item || Number(item.schoolId) !== vm.directorySchoolId) { return; }
+                var id = normalizeId(item.id);
+                if (id === null || byId[id]) { return; }
+                var node = {id: id, parentId: normalizeId(item.parentId), name: item.name || '', code: item.code || ''};
+                nodes.push(node); byId[id] = node; children[id] = [];
+            });
+            angular.forEach(nodes, function (node) {
+                if (node.parentId !== node.id && byId[node.parentId]) { children[node.parentId].push(node); }
+                else { roots.push(node); }
+            });
+            function sort(items) { items.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi') || a.id - b.id; }); }
+            sort(roots); angular.forEach(children, sort);
+            if (query) {
+                angular.forEach(nodes, function (node) {
+                    var path = [], current = node, seen = {};
+                    while (current && !seen[current.id]) {
+                        seen[current.id] = true; path.push(current.name); current = byId[current.parentId];
+                    }
+                    if (classFilterText(path.join(' ') + ' ' + node.code).indexOf(query) < 0) { return; }
+                    current = node; seen = {};
+                    while (current && !seen[current.id]) {
+                        seen[current.id] = true; included[current.id] = true; current = byId[current.parentId];
+                    }
+                });
+            }
+            var rows = [], visited = {};
+            function append(node, level) {
+                if (visited[node.id] || (query && !included[node.id])) { return; }
+                visited[node.id] = true;
+                node.level = level; node.hasChildren = children[node.id].length > 0;
+                node.childCount = children[node.id].length;
+                node.expanded = !!query || vm.classFilterExpanded[node.id] === true;
+                rows.push(node);
+                if (node.expanded) { angular.forEach(children[node.id], function (child) { append(child, level + 1); }); }
+            }
+            angular.forEach(roots, function (node) { append(node, 0); });
+            // Old malformed cycles have no root; show them once without changing stored relationships.
+            angular.forEach(nodes, function (node) {
+                if (visited[node.id]) { return; }
+                var current = node, seen = {};
+                while (current && !seen[current.id]) { seen[current.id] = true; current = byId[current.parentId]; }
+                if (current) { append(node, 0); }
+            });
+            vm.classFilterRows = rows;
+        };
+
+        vm.toggleClassFilterNode = function (row) {
+            if (!row.hasChildren || classFilterText(vm.classFilterSearch)) { return; }
+            vm.classFilterExpanded[row.id] = !vm.classFilterExpanded[row.id];
+            vm.rebuildClassFilterTree();
+        };
+
+        vm.openClassFilter = function (refreshList) {
+            if (vm.classFilterModalInstance) { return; }
+            vm.classFilterRefreshList = refreshList === true;
+            vm.classFilterSearch = '';
+            vm.classFilterExpanded = {};
+            vm.rebuildClassFilterTree();
+            var instance = modal.open({
+                animation: true, templateUrl: 'attendance_class_filter_modal.html', scope: $scope,
+                size: 'lg', windowClass: 'attendance-class-filter-window'
+            });
+            vm.classFilterModalInstance = instance;
+            function closed() { if (vm.classFilterModalInstance === instance) { vm.classFilterModalInstance = null; } }
+            instance.result.then(closed, closed);
+        };
+
+        vm.selectClassFilter = function (row) {
+            var selected = row && findEnrollmentClass(row.id);
+            if (!selected || vm.enrollmentClassesLoading || vm.enrollmentClassesError || Number(selected.schoolId) !== vm.directorySchoolId) { return; }
+            var id = normalizeId(selected.id);
+            vm.searchDto.user.person.enrollmentClassId = id;
+            vm.searchDto.attendanceClassId = id;
+            vm.pageIndex = 1;
+            if (vm.classFilterModalInstance) { vm.classFilterModalInstance.close(); }
+            if (vm.classFilterRefreshList) { return vm.getPage(); }
+        };
+
+        vm.clearClassFilter = function (refreshList) {
+            vm.searchDto.user.person.enrollmentClassId = null;
+            vm.searchDto.attendanceClassId = null;
+            vm.pageIndex = 1;
+            if (vm.classFilterModalInstance) { vm.classFilterModalInstance.close(); }
+            if (refreshList === true) { return vm.getPage(); }
+        };
 
         function getDirectorySchoolParentClasses() {
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {

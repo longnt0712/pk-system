@@ -38,7 +38,7 @@ function setup({schoolId = 2, classId = null, keyword = ''} = {}) {
         console: {error() {}}
     });
     nodeVm.runInContext(section('vm.groupChange = function', 'service.getAllGroups()'), context);
-    nodeVm.runInContext(section('var attendanceListRequest =', 'service.getEnrolmentClass('), context);
+    nodeVm.runInContext(section('var attendanceListRequest =', 'vm.loadEnrollmentClasses = function'), context);
     return {vm, calls};
 }
 
