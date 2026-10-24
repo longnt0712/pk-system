@@ -245,8 +245,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	                    .getEnrollmentClassId() != null
 	    ) {
 	        whereClause +=
-	                " and u.person.enrollmentClassId = " +
-	                ":enrollmentClassId";
+	                " and (u.person.enrollmentClassId = :enrollmentClassId " +
+	                "or :additionalEnrollmentClassId member of u.enrollmentClassIds)";
 	    }
 
 	    sql += whereClause;
@@ -375,6 +375,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	                "enrollmentClassId",
 	                enrollmentClassId
 	        );
+	        q.setParameter("additionalEnrollmentClassId", enrollmentClassId.longValue());
+	        qCount.setParameter("additionalEnrollmentClassId", enrollmentClassId.longValue());
 	    }
 
 	    q.setFirstResult(

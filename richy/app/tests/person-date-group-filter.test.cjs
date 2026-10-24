@@ -181,3 +181,26 @@ test('a current request failure reports the problem and always stops the loading
     assert.equal(h.calls.starts, 1);
     assert.equal(h.calls.stops, 1);
 });
+
+test('statistics use the newly selected class and clear an old class scope when selection is cleared', async () => {
+    for (const selectedClassId of [200, null]) {
+        const calls = [], selectedDate = new Date(2026, 9, 24);
+        const vm = {statStartDate: selectedDate, statEndDate: selectedDate,
+            searchDto: {schoolId: 2, attendanceClassId: 100, user: {person: {enrollmentClassId: selectedClassId}}},
+            updateVisibleStatisticDates() {}};
+        const context = nodeVm.createContext({vm, angular: {copy: structuredClone},
+            getSearchDateRange: () => ({start: selectedDate, end: selectedDate}),
+            normalizeId: value => value == null ? null : Number(value),
+            buildDateColumns: () => [], buildStatisticRows: () => [],
+            blockUI: {start() {}, stop() {}}, toastr: {warning() {}, error() {}},
+            service: {getPage(payload) {calls.push(payload); return Promise.resolve({content: []});}}});
+        nodeVm.runInContext(section('vm.loadDailyStatistics = function', 'function buildDateColumns('), context);
+        vm.loadDailyStatistics();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].attendanceClassId, selectedClassId);
+        assert.equal(calls[0].user.person.enrollmentClassId, selectedClassId);
+        assert.equal(calls[0].schoolId, 2);
+        assert.equal(vm.searchDto.attendanceClassId, 100);
+    }
+});

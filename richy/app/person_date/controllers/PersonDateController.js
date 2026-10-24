@@ -2948,6 +2948,8 @@
             vm.dailyStatisticDates = buildDateColumns(fromDate, toDate);
 
             var search = angular.copy(vm.searchDto || {});
+            search.attendanceClassId = normalizeId(search.user && search.user.person
+                ? search.user.person.enrollmentClassId : null);
 
             if (search.group && search.group.id) {
                 search.groupId = search.group.id;
