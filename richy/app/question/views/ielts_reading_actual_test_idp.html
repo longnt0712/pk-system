@@ -398,7 +398,7 @@
                                     <span>Xem video để mở câu hỏi.</span>
                                 </div>
                                 <!--<span style="" my-draggable>Drag Me</span>-->
-                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions" ng-show="vm.videoPackageVisible(item)">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions" ng-show="vm.videoPackageVisible(item) && vm.listeningPackageVisible(item)">
                                     <div class="comprehensive-video-cue-badge" ng-if="vm.hasComprehensiveVideo() && item.type != 1 && item.videoTimeSeconds != null"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(item.videoTimeSeconds)}}</div>
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-1 right_panel" class="row">
@@ -460,7 +460,7 @@
                                                         </div>
                                                     </td>
                                                     <td style="width: 65%;padding-top:70px">
-                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)">
+                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)" ng-show="vm.listeningQuestionVisible(q)">
                                                             <span id="question-number-{{q.ordinalNumber}}" class="bold" compile="q.question"></span>
                                                             <ui-select
                                                                     ng-change="vm.selectHeadingMedia1(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
@@ -499,7 +499,7 @@
                                                                 </td>
                                                             </tr>
 
-                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                                 <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
                                                                     <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                                     <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -548,7 +548,7 @@
                                                     </td>
                                                 </tr>
 
-                                                <tr ng-repeat="q in item.subQuestions" >
+                                                <tr ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                     <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
                                                         <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                         <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -581,7 +581,7 @@
 
 
 
-                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1 && vm.videoQuestionVisible(q)" ng-class="{'comprehensive-video-active-question': vm.videoQuestionActive(q)}">
+                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1 && vm.videoQuestionVisible(q)" ng-class="{'comprehensive-video-active-question': vm.videoQuestionActive(q)}" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="comprehensive-video-cue-badge" ng-if="vm.hasComprehensiveVideo() && q.videoTimeSeconds != null"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(q.videoTimeSeconds)}}</div>
                                         <div class="row idp-single-choice-heading">
                                             <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
@@ -602,14 +602,14 @@
                                         </div>
                                     </div>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
@@ -650,7 +650,7 @@
 
                                     <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index" ng-show="vm.listeningQuestionVisible(endingQuestion)">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -757,7 +757,7 @@
                                     </div>
 
                                     <div class="row row-two-column">
-                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6" ng-show="vm.listeningQuestionVisible(q)">
                                             <div class="row" style="">
                                                 <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -798,7 +798,7 @@
                                         <!--</div>-->
                                     <!--</div>-->
 
-                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="row" style="" >
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
@@ -878,7 +878,7 @@
                                  aria-label="Resize reading and question panels"></div>
 
                             <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-2">
-                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions" ng-show="vm.listeningPackageVisible(item)">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
                                         <p class="col-md-12 actual-test-font-global" compile="item.question" ng-if="item.type != 8 && item.type != 9">
@@ -892,7 +892,7 @@
                                                         </div>
                                                     </td>
                                                     <td style="width: 65%;padding-top:70px">
-                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)">
+                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)" ng-show="vm.listeningQuestionVisible(q)">
                                                             <span id="question-number-{{q.ordinalNumber}}" class="bold" compile="q.question"></span>
                                                             <ui-select
                                                                     ng-change="vm.selectHeadingMedia2(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
@@ -931,7 +931,7 @@
                                                                 </td>
                                                             </tr>
 
-                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                                 <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
                                                                     <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                                     <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -980,7 +980,7 @@
                                                     </td>
                                                 </tr>
 
-                                                <tr ng-repeat="q in item.subQuestions" >
+                                                <tr ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                     <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
                                                         <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                         <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -1011,7 +1011,7 @@
 
                                     </div>
 
-                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="row idp-single-choice-heading">
                                             <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>
@@ -1031,14 +1031,14 @@
                                         </div>
                                     </div>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
@@ -1078,7 +1078,7 @@
 
                                     <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index" ng-show="vm.listeningQuestionVisible(endingQuestion)">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -1166,7 +1166,7 @@
                                     </div>
 
                                     <div class="row row-two-column">
-                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6" ng-show="vm.listeningQuestionVisible(q)">
                                             <div class="row" style="">
                                                 <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -1207,7 +1207,7 @@
                                         <!--</div>-->
                                     <!--</div>-->
 
-                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="row" style="" >
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
@@ -1288,7 +1288,7 @@
                                  aria-label="Resize reading and question panels"></div>
 
                             <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && !vm.isListeningContentVisible()) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-3">
-                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions" ng-show="vm.listeningPackageVisible(item)">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
                                         <p class="col-md-12 actual-test-font-global" compile="item.question" ng-if="item.type != 8 && item.type != 9">
@@ -1302,7 +1302,7 @@
                                                         </div>
                                                     </td>
                                                     <td style="width: 65%;padding-top:70px">
-                                                        <div id="question-number-{{q.ordinalNumber}}" class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)">
+                                                        <div id="question-number-{{q.ordinalNumber}}" class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8" ng-init="x = vm.getStudyMatchingModel(q)" ng-show="vm.listeningQuestionVisible(q)">
                                                             <span class="bold" compile="q.question"></span>
                                                             <ui-select
                                                                     ng-change="vm.selectHeadingMedia3(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
@@ -1341,7 +1341,7 @@
                                                                 </td>
                                                             </tr>
 
-                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                                 <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
                                                                     <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                                     <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -1390,7 +1390,7 @@
                                                     </td>
                                                 </tr>
 
-                                                <tr ng-repeat="q in item.subQuestions" >
+                                                <tr ng-repeat="q in item.subQuestions"  ng-show="vm.listeningQuestionVisible(q)">
                                                     <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
                                                         <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
                                                         <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -1419,7 +1419,7 @@
 
                                         </div>
                                     </div>
-                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="row idp-single-choice-heading">
                                             <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>
@@ -1439,14 +1439,14 @@
                                         </div>
                                     </div>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
-                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3" ng-show="vm.listeningQuestionVisible(q)">
                                         <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy:vm.questionAnswerDisplayOrder | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
@@ -1486,7 +1486,7 @@
 
                                     <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index" ng-show="vm.listeningQuestionVisible(endingQuestion)">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -1591,7 +1591,7 @@
                                     </div>
 
                                     <div class="row row-two-column">
-                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6" ng-show="vm.listeningQuestionVisible(q)">
                                             <div class="row" style="">
                                                 <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
@@ -1632,7 +1632,7 @@
                                         <!--</div>-->
                                     <!--</div>-->
 
-                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7" ng-show="vm.listeningQuestionVisible(q)">
                                         <div class="row" style="" >
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->

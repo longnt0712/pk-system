@@ -3028,6 +3028,8 @@
             });
             angular.forEach(thirdWorkspace.subQuestions, function (questionPackage, packageIndex) {
                 questionPackage.ordinalNumber = packageIndex + 1;
+                questionPackage.parent = {id: thirdWorkspace.id, ordinalNumber: thirdWorkspace.ordinalNumber || 3,
+                    questionType: thirdWorkspace.questionType || {code: 'IELTSRTP3'}};
             });
             data.subQuestions = data.subQuestions.slice(0, 3);
             return data;
@@ -4453,10 +4455,22 @@
                     (writingParts.length ? Number(writingParts[0].number) : Number(requestedWritingPart));
             }
             if (vm.isListeningRoute) {
-                var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber);
+                var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber) ||
+                    listeningPartNumberForOrdinal(vm.tempOrdinalNumber);
                 return currentPart || vm.assignedPart || Math.min(vm.passageNumber || 1, 4);
             }
             return vm.passageNumber || vm.assignedPart;
+        };
+
+        vm.listeningQuestionVisible = function (question) {
+            if (!vm.isListeningRoute) { return true; }
+            var part = listeningPartNumberForOrdinal(question && question.ordinalNumber);
+            return !part || part === Number(vm.activeIeltsNavigationPart());
+        };
+
+        vm.listeningPackageVisible = function (questionPackage) {
+            var questions = (questionPackage && questionPackage.subQuestions) || [];
+            return !vm.isListeningRoute || !questions.length || questions.some(vm.listeningQuestionVisible);
         };
 
         vm.ieltsNavigationAnsweredCount = function (part) {
@@ -4892,6 +4906,77 @@
             // $scope.models.lists.B1.push({label: "Item B1" + i});
         // }
 
+        function isolateListeningEditorParts(html) {
+            if (!vm.isListeningRoute || !html) { return html; }
+            var sourceParts = [];
+            String(html).replace(/(?:text-question-number-|question-number-)(\d+)/g, function (whole, ordinal) {
+                var part = listeningPartNumberForOrdinal(ordinal);
+                if (part && sourceParts.indexOf(part) < 0) { sourceParts.push(part); }
+                return whole;
+            });
+            if (sourceParts.length < 2) { return html; }
+            var root = document.createElement('div');
+            root.innerHTML = html;
+            var selector = '[id^="text-question-number-"],.complete-list-drop-box[id^="question-number-"]';
+            function markerPart(node) {
+                if (!node || node.nodeType !== 1) { return null; }
+                var id = String(node.getAttribute('id') || ''), match = id.match(/^(?:text-question-number-|question-number-)(\d+)$/);
+                if (!match || (id.indexOf('text-') !== 0 &&
+                        !/(?:^|\s)complete-list-drop-box(?:\s|$)/.test(node.getAttribute('class') || ''))) { return null; }
+                return listeningPartNumberForOrdinal(match[1]);
+            }
+            function partsIn(node) {
+                var parts = [], own = markerPart(node);
+                if (own) { parts.push(own); }
+                Array.prototype.forEach.call(node.querySelectorAll(selector), function (marker) {
+                    var part = markerPart(marker);
+                    if (part && parts.indexOf(part) < 0) { parts.push(part); }
+                });
+                return parts;
+            }
+            if (partsIn(root).length < 2) { return html; }
+            function groupLines(node) {
+                var children = Array.prototype.slice.call(node.childNodes || []);
+                if (!/^(TABLE|THEAD|TBODY|TFOOT|TR|SELECT|SVG)$/.test(node.tagName) &&
+                        children.some(function (child) { return child.nodeType === 1 && child.tagName === 'BR'; })) {
+                    var groups = [], current = [];
+                    children.forEach(function (child, index) {
+                        current.push(child);
+                        var next = children[index + 1];
+                        if (child.nodeType === 1 && child.tagName === 'BR' &&
+                                !(next && next.nodeType === 1 && next.tagName === 'BR')) { groups.push(current); current = []; }
+                    });
+                    if (current.length) { groups.push(current); }
+                    groups.forEach(function (group) {
+                        var parts = [];
+                        group.forEach(function (child) {
+                            if (child.nodeType !== 1) { return; }
+                            partsIn(child).forEach(function (part) { if (parts.indexOf(part) < 0) { parts.push(part); } });
+                        });
+                        if (parts.length !== 1) { return; }
+                        var line = document.createElement('span');
+                        line.style.display = 'contents';
+                        node.insertBefore(line, group[0]);
+                        group.forEach(function (child) { line.appendChild(child); });
+                    });
+                }
+                children.forEach(function (child) { if (child.nodeType === 1) { groupLines(child); } });
+            }
+            function isolate(node) {
+                var parts = partsIn(node);
+                if (node !== root && parts.length === 1) {
+                    var prior = node.getAttribute('ng-show');
+                    node.setAttribute('ng-show', (prior ? '(' + prior + ') && ' : '') +
+                        'vm.activeIeltsNavigationPart() === ' + parts[0]);
+                    return;
+                }
+                Array.prototype.forEach.call(node.children || [], isolate);
+            }
+            groupLines(root);
+            isolate(root);
+            return root.innerHTML;
+        }
+
         function buildOneEditorQuestion(questionPackage) {
             var questions = questionPackage.subQuestions || [];
             questions.sort(function (left, right) {
@@ -4912,7 +4997,7 @@
                 content = content.replace(/\}\{SPACE\}\{/i, input);
             });
 
-            questionPackage.oneEditorRenderedQuestion = content.replace(/\}\{ENTER\}\{/gi, '<br><br>');
+            questionPackage.oneEditorRenderedQuestion = isolateListeningEditorParts(content.replace(/\}\{ENTER\}\{/gi, '<br><br>'));
         }
 
         function shuffleCompleteListWords(words) {
@@ -4982,7 +5067,7 @@
                 content = content.replace(/\}\{SPACE\}\{/i, dropBox);
             });
 
-            questionPackage.completeListRenderedQuestion = content.replace(/\}\{ENTER\}\{/gi, '<br><br>');
+            questionPackage.completeListRenderedQuestion = isolateListeningEditorParts(content.replace(/\}\{ENTER\}\{/gi, '<br><br>'));
         }
 
         vm.isCompleteListWordUsed = function (questionPackage, word) {
