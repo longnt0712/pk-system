@@ -151,6 +151,12 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.setPlayerCarry = function (roomCode, targetUsername, enabled) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/players/' +
+                encodeURIComponent(String(targetUsername || '')) + '/carry', {enabled: enabled === true})
+                .then(function (response) { return response.data; });
+        };
+
         self.assignPlayerTeam = function (roomCode, targetUsername, teamNumber) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/team',

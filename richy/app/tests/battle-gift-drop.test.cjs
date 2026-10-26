@@ -159,7 +159,7 @@ test('egg mode offers only three skills and a claimed skill appears without addi
 test('host egg dashboard has four columns, keeps live claim history and is host-only',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../question/views/battle_quiz_online.html'),'utf8');
  const view=fs.readFileSync(path.join(__dirname,'../question/views/battle_online_egg_host.html'),'utf8');
- assert.match(main,/ng-if="[^"]*vm\.isLumNgayMode\(\) && vm\.isHost\(\)"\s+src="'question\/views\/battle_online_egg_host/);
+ assert.match(main,/ng-if="[^"]*vm\.isLumNgayMode\(\) && vm\.isHost\(\)"\s+src="vm\.eggHostTemplate"/);
  assert.equal((view.match(/<section class="egg-host-column/g)||[]).length,4);
  const h=setup('host'),latest=h.room(1,5);latest.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:0,points:10}];h.hooks.applyRoom(latest,true);
  const stale=h.room(1,4);stale.giftDrop.claims=[];h.hooks.applyRoom(stale,true);

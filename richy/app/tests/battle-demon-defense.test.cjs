@@ -47,7 +47,7 @@ function setup(username = 'alice') {
     return {vm, hooks, room, realtimeCalls};
 }
 
-test('DEMON_DEFENSE is preserved in room settings and requires teams without bonus bullets', () => {
+test('DEMON_DEFENSE is preserved in room settings and requires teams with authoritative bullet counts', () => {
     const h = setup('host');
     h.vm.room = h.room();
     h.vm.hostSettings.mode = 'DEMON_DEFENSE';

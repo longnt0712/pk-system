@@ -20,6 +20,13 @@ public class BattleOnlinePlayerDto implements Serializable {
     private int unfreezeCharges;
     private boolean demonEliminated;
     private int demonRescues;
+    private int demonBullets;
+    private int demonMinimumBullets;
+
+    public int getDemonBullets() { return demonBullets; }
+    public void setDemonBullets(int value) { demonBullets = value; }
+    public int getDemonMinimumBullets() { return demonMinimumBullets; }
+    public void setDemonMinimumBullets(int value) { demonMinimumBullets = value; }
 
     public int getUnfreezeCharges() { return unfreezeCharges; }
     public void setUnfreezeCharges(int value) { unfreezeCharges = value; }

@@ -264,6 +264,8 @@
         </div>
 
         <div class="battle-online-room-actions">
+            <button type="button" class="battle-online-copy-btn" ng-if="vm.canManageTeams()"
+                    ng-click="vm.openTeamManager($event)" aria-haspopup="dialog" aria-controls="battle-team-manager">👥 XẾP ĐỘI / GÁNH</button>
             <button type="button"
                     class="battle-online-copy-btn battle-online-music-trigger"
                     ng-if="vm.room.status === 'PLAYING' && vm.isHost()"
@@ -284,6 +286,54 @@
         </div>
     </section>
 
+
+    <!-- Battle team manager -->
+    <div id="battle-team-manager-layer" class="battle-team-manager-backdrop" ng-show="vm.teamManagerOpen && vm.canManageTeams()"
+         ng-click="vm.closeTeamManager()">
+        <section id="battle-team-manager" class="battle-team-manager" role="dialog" aria-modal="true"
+                 aria-labelledby="battle-team-manager-title" tabindex="-1" ng-click="$event.stopPropagation()">
+            <header class="battle-team-manager-heading"><div><small>QUẢN LÝ ĐỘI</small><h2 id="battle-team-manager-title">Xếp đội / Người gánh đội</h2></div>
+                <button type="button" ng-click="vm.closeTeamManager()" aria-label="Đóng xếp đội">×</button></header>
+            <p>Kéo người chơi sang đội khác hoặc chọn đội trên thẻ. Nhấn ⚡ Gánh để bật / tắt; có thể chọn nhiều người.</p>
+            <p class="battle-team-manager-new-notice" ng-if="vm.teamManagerNewUsernames.length">Có người mới vào phòng. Bạn có thể đổi đội cho người đó ngay.</p>
+            <div class="battle-team-manager-grid">
+                <section class="battle-team-manager-team" ng-repeat="teamNumber in vm.getTeamNumbers() track by teamNumber"
+                         ng-class="{'is-eliminated': vm.isTeamEliminated(teamNumber), 'is-saving-target': vm.assigningTeamNumber === teamNumber}">
+                    <h3>ĐỘI {{teamNumber}} <small>{{vm.getLobbyTeamPlayers(teamNumber).length}} người <span ng-if="vm.isTeamEliminated(teamNumber)">• Đã bị loại</span></small></h3>
+                    <div class="battle-team-manager-dropzone" dnd-list="" dnd-allowed-types="['battle-player']"
+                         dnd-drop="vm.dropPlayerIntoTeam(teamNumber, item)" dnd-disable-if="vm.assigningTeamUsername || vm.isTeamEliminated(teamNumber)">
+                        <article class="battle-team-manager-player" ng-repeat="player in vm.getLobbyTeamPlayers(teamNumber) track by player.username"
+                                 dnd-draggable="player" dnd-type="'battle-player'" dnd-effect-allowed="move"
+                                 dnd-disable-if="vm.assigningTeamUsername || player.demonEliminated"
+                                 dnd-dragstart="vm.onLobbyPlayerDragStart(player)" dnd-dragend="vm.onLobbyPlayerDragEnd()"
+                                 ng-class="{'is-new': vm.isTeamManagerNewPlayer(player), 'is-offline': !player.connected}">
+                            <div class="battle-team-manager-player-name"><img ng-src="{{vm.getPlayerPetImage(player)}}" alt=""><strong>{{vm.getPlayerDisplayName(player)}}</strong>
+                                <small ng-if="vm.isTeamManagerNewPlayer(player)">MỚI</small><small ng-if="!player.connected">Mất kết nối</small></div>
+                            <label dnd-nodrag>Chuyển đội:
+                                <select ng-model="player.teamNumber" ng-options="team as ('Đội ' + team) disable when vm.isTeamEliminated(team) for team in vm.getTeamNumbers()"
+                                        ng-change="vm.assignPlayerTeam(player)" ng-disabled="vm.assigningTeamUsername || player.demonEliminated"
+                                        ng-attr-aria-label="Chuyển đội cho {{vm.getPlayerDisplayName(player)}}"></select></label>
+                            <div class="battle-team-manager-player-actions"><button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                                <button type="button" class="battle-online-kick-mini-btn" dnd-nodrag ng-if="vm.canKickPlayer(player)"
+                                        ng-click="vm.openKickConfirm(player); $event.stopPropagation()" aria-label="Kích người chơi khỏi phòng">KÍCH</button></div>
+                        </article>
+                        <p class="battle-online-team-empty" ng-if="!vm.getLobbyTeamPlayers(teamNumber).length">Kéo người chơi vào đây</p>
+                    </div>
+                </section>
+            </div>
+            <div class="battle-team-manager-kick" ng-if="vm.kickConfirmModalOpen && vm.playerToKick" ng-click="$event.stopPropagation()">
+                <section id="battle-team-manager-kick" role="alertdialog" aria-modal="true" aria-label="Xác nhận kích người chơi">
+                    <h3>Kích {{vm.getPlayerDisplayName(vm.playerToKick)}} khỏi phòng?</h3>
+                    <button type="button" ng-click="vm.closeKickConfirm()" ng-disabled="vm.kickingPlayer">Hủy</button>
+                    <button type="button" class="battle-online-kick-mini-btn" ng-click="vm.confirmKickPlayer()" ng-disabled="vm.kickingPlayer">Kích khỏi phòng</button>
+                </section>
+            </div>
+        </section>
+    </div>
+    <!-- End battle team manager -->
 
     <!-- =====================================================
          LESSON / PRELOAD STATUS
@@ -652,6 +702,10 @@
                             <span class="battle-online-ready-badge is-waiting"
                                   ng-if="!player.host && !player.ready">WAITING</span>
 
+                            <button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
                             <button type="button"
                                     class="battle-online-kick-mini-btn"
                                     dnd-nodrag
@@ -699,7 +753,11 @@
                             KHÁN GIẢ
                         </span>
 
-                        <button type="button"
+                        <button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                            <button type="button"
                                 class="battle-online-kick-mini-btn"
                                 ng-if="vm.canKickPlayer(player)"
                                 ng-click="vm.openKickConfirm(player); $event.stopPropagation()"
@@ -776,7 +834,11 @@
                         WAITING
                     </span>
 
-                    <button type="button"
+                    <button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                            <button type="button"
                             class="battle-online-kick-mini-btn"
                             ng-if="vm.canKickPlayer(player)"
                             ng-click="vm.openKickConfirm(player); $event.stopPropagation()"
@@ -817,7 +879,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1&videoSettings=20261009_1'"></ng-include>
+            <ng-include src="vm.hostSettingsTemplate"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -903,7 +965,7 @@
             </div>
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.teamCount >= 2 && vm.room.settings.doubleActionUsername">
+                 ng-if="vm.room.settings.teamCount >= 2 && vm.hasDoubleActionPlayers()">
                 <span>Người gánh đội</span>
                 <strong>⚡ {{vm.getDoubleActionPlayerName()}} — x2</strong>
             </div>
@@ -932,13 +994,13 @@
                 <span ng-if="vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
                     Mỗi người nhận câu random riêng, trả lời xong sang câu tiếp ngay
                     và không chờ người khác. Đúng đẩy QUỶ NGU sang đội kia;
-                    sai kéo quỷ về đội mình. HOST có thể chọn một thành viên để nhân đôi điểm và tác động
+                    sai kéo quỷ về đội mình. HOST có thể chọn nhiều thành viên để nhân đôi điểm và tác động
                     lên QUỶ NGU. Mode này không có skill CƯỚP ĐIỂM và PHÁ STREAK;
                     skill ĐẢO LỘN sẽ lật ngược màn hình trả lời trong 7 giây.
                 </span>
                 <span ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">
                     Trả lời đúng để súng của mình bắn quỷ; streak 20/30/40 bắn 2/3/4 viên.
-                    Phá streak trừ 5, sai về 0. Quỷ NGU KHỦNG KHIẾP cần 2 phát. Dùng Giải băng để cứu một đồng đội.
+                    Sai mất streak nhưng giữ mức đạn đã chốt khi lên level. Quỷ 1/2/3 máu cho 1/2/3 điểm. Một đội đủ điểm thì cả phòng lên level. Dùng Giải băng để cứu đồng đội.
                     Theo dõi trận đấu trên màn hình host; thiết bị của bạn chỉ hiện câu hỏi và cảnh báo.
                 </span>
             </div>
@@ -1073,6 +1135,7 @@
                 ng-click="vm.resumeHostVideoMatch()" ng-disabled="vm.hostVideoReopening">Về câu hiện tại</button>
         <button id="battle-host-video-question-open" type="button" class="btn btn-default"
                 ng-if="vm.room.videoPhase === 'ANSWERING'" ng-click="vm.openHostVideoQuestionModal()">Xem câu hỏi</button>
+        <button type="button" class="btn btn-default" ng-if="vm.canManageTeams()" ng-click="vm.openTeamManager($event)">👥 Xếp đội / Gánh</button>
         <button type="button" class="btn btn-default" ng-click="vm.toggleHostVideoFullscreen()">
             {{vm.hostVideoFullscreen ? '⛶ Thu nhỏ' : '⛶ Toàn màn hình'}}
         </button>
@@ -1157,7 +1220,7 @@
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1&lightning=20261016_1&autoRead=20261017_1&classicControl=20261017_2'"></ng-include>
+                src="vm.eggHostTemplate"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-host-layout': vm.isHost() && vm.isClassicMode() && !vm.room.videoSynchronized}">
@@ -1172,7 +1235,8 @@
               }">
 
             <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
-                <span>ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
+                <span>LEVEL {{vm.room.demonDefense.level || 1}} • ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
+                <small class="demon-level-summary">{{vm.getMyDemonTeam().levelPoints || 0}} / {{vm.room.demonDefense.levelTargetPoints || 20}} điểm lên level • Giữ tối thiểu {{vm.me().demonMinimumBullets || 1}} đạn</small>
                 <button type="button" ng-if="vm.isGameSkillEnabled('UNFREEZE') && vm.me().unfreezeCharges"
                         ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
                         ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
@@ -1853,6 +1917,11 @@
                     </div>
                 </div>
 
+                <div class="battle-online-ranking-actions" ng-if="vm.canManageTeams()"><button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                    <button type="button" class="battle-online-kick-mini-btn" ng-if="vm.canKickPlayer(player)" ng-click="vm.openKickConfirm(player); $event.stopPropagation()" aria-label="Kích người chơi khỏi phòng">KÍCH</button></div>
                 <b class="battle-online-score">
                     {{vm.formatScore(player.score)}}
                 </b>
@@ -1885,7 +1954,7 @@
          FINISHED
          ===================================================== -->
     <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode() && (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')"
-                src="'question/views/battle_online_demon_arena.html?autoRead=20261017_1&classicControl=20261017_2&matchControls=20261017_2'"></ng-include>
+                src="vm.demonArenaTemplate"></ng-include>
 
     <section class="battle-online-card battle-online-finished"
              ng-if="vm.room && vm.room.status === 'FINISHED'">
@@ -2020,6 +2089,11 @@
                     </div>
                 </div>
 
+                <div class="battle-online-ranking-actions" ng-if="vm.canManageTeams()"><button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                    <button type="button" class="battle-online-kick-mini-btn" ng-if="vm.canKickPlayer(player)" ng-click="vm.openKickConfirm(player); $event.stopPropagation()" aria-label="Kích người chơi khỏi phòng">KÍCH</button></div>
                 <b class="battle-online-score">
                     {{vm.formatScore(player.score)}}
                 </b>
@@ -2489,7 +2563,12 @@
                         </div>
                     </div>
 
-                    <b class="battle-online-score">
+                    <div class="battle-online-ranking-actions" ng-if="vm.canManageTeams()"><button type="button" class="battle-online-carry-toggle" dnd-nodrag
+                                    ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button>
+                    <button type="button" class="battle-online-kick-mini-btn" ng-if="vm.canKickPlayer(player)" ng-click="vm.openKickConfirm(player); $event.stopPropagation()" aria-label="Kích người chơi khỏi phòng">KÍCH</button></div>
+                <b class="battle-online-score">
                         {{vm.formatScore(player.score)}}
                     </b>
                 </div>
@@ -2516,7 +2595,7 @@
     </div>
 
     <div class="battle-online-ranking-modal-backdrop battle-online-kick-backdrop"
-         ng-if="vm.kickConfirmModalOpen && vm.playerToKick"
+         ng-if="vm.kickConfirmModalOpen && vm.playerToKick && !vm.teamManagerOpen"
          ng-click="vm.closeKickConfirm()">
         <section class="battle-online-kick-modal"
                  role="dialog"
@@ -2669,7 +2748,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1&videoSettings=20261009_1'"></ng-include>
+                    <ng-include src="vm.hostSettingsTemplate"></ng-include>
                 </div>
             </div>
         </section>
@@ -2756,6 +2835,49 @@
 
 
 <style>
+    .battle-online-carry-toggle { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:7px 10px; border:1px solid #d7d9e6; border-radius:9px; background:#f3f4f8; color:#697386; font-size:11px; font-weight:800; line-height:1.2; white-space:nowrap; }
+    .battle-online-carry-toggle.is-active { background:#fff1a8; color:#855300; border-color:#f2bf39; box-shadow:0 0 10px rgba(245,182,35,.35); }
+    .battle-online-carry-toggle:disabled { opacity:.6; cursor:wait; }
+    .battle-online-ranking-actions { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+    .battle-online-ranking-row > .battle-online-ranking-actions { grid-column:2 / -1; grid-row:2; justify-content:flex-end; }
+    .battle-online-ranking-row > .battle-online-score { grid-column:3; grid-row:1; }
+    .battle-online-player-card > .battle-online-carry-toggle { flex:0 0 auto; padding:5px 7px; font-size:8px; }
+    .battle-team-manager-backdrop { position:fixed; inset:0; z-index:34000; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(19,29,53,.65); }
+    .battle-team-manager { position:relative; width:min(1100px,100%); max-height:calc(100dvh - 40px); overflow:auto; overscroll-behavior:contain; padding:22px; border:1px solid #d8d0ff; border-radius:22px; background:#fff; color:#1c2942; box-shadow:0 24px 70px rgba(0,0,0,.22); font-family:inherit; }
+    .battle-team-manager:focus { outline:none; }
+    .battle-team-manager-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .battle-team-manager-heading h2 { margin:4px 0 10px; font-size:22px; font-weight:800; }
+    .battle-team-manager-heading small { color:#7854e8; font-size:10px; letter-spacing:1px; font-weight:800; }
+    .battle-team-manager-heading > button { width:36px; height:36px; border:0; border-radius:50%; font-size:24px; color:#6b7389; background:#f0f2f9; }
+    .battle-team-manager > p { margin:4px 0 12px; font-size:13px; line-height:1.4; }
+    .battle-team-manager .battle-team-manager-new-notice { padding:9px 12px; background:#fff5d8; color:#875b10; border-radius:9px; }
+    .battle-team-manager-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+    .battle-team-manager-team { min-width:0; padding:12px; border:1px solid #dedaf1; border-radius:14px; background:#f8f7ff; }
+    .battle-team-manager-team.is-eliminated { background:#f8f0f0; }
+    .battle-team-manager-team h3 { display:flex; justify-content:space-between; gap:8px; margin:0 0 10px; font-size:15px; font-weight:800; }
+    .battle-team-manager-team h3 small { font-size:11px; color:#758094; }
+    .battle-team-manager-dropzone { min-height:120px; }
+    .battle-team-manager-player { padding:12px; margin-bottom:9px; border:1px solid #e3e2ec; border-radius:12px; background:#fff; cursor:grab; }
+    .battle-team-manager-player.is-new { border-color:#ebb840; box-shadow:0 0 0 2px rgba(235,184,64,.15); }
+    .battle-team-manager-player.is-offline { opacity:.65; }
+    .battle-team-manager-player-name { display:flex; align-items:center; gap:7px; margin-bottom:8px; overflow-wrap:anywhere; }
+    .battle-team-manager-player-name img { width:32px; height:32px; object-fit:contain; }
+    .battle-team-manager-player-name strong { flex:1; min-width:0; font-size:13px; }
+    .battle-team-manager-player-name small { color:#a36a0e; font-size:9px; font-weight:800; }
+    .battle-team-manager-player label { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; }
+    .battle-team-manager-player select { max-width:130px; padding:6px 9px; border:1px solid #dce0ed; border-radius:8px; background:white; color:#26324a; }
+    .battle-team-manager-player-actions { display:flex; justify-content:flex-end; align-items:center; gap:7px; margin-top:10px; }
+    .battle-team-manager .battle-online-kick-mini-btn { position:static; margin:0; }
+    .battle-team-manager .dndPlaceholder { display:block; min-height:64px; border:2px dashed #8d6cf0; border-radius:12px; margin:8px 0; }
+    .battle-team-manager-kick { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(23,34,55,.65); border-radius:inherit; }
+    .battle-team-manager-kick > section { padding:24px; border-radius:16px; background:#fff; max-width:430px; text-align:center; }
+    .battle-team-manager-kick h3 { margin:0 0 18px; font-size:18px; }
+    .battle-team-manager-kick button { margin:4px; padding:9px 14px; border:1px solid #d5dbea; border-radius:9px; }
+    .demon-level-summary { display:block; color:#596b80; font-size:11px; }
+    .demon-level-progress { margin:8px 0; padding:7px 10px; border-radius:8px; background:#253d50; color:#d5f2a8; font-size:12px; }
+    .demon-level-progress progress { width:100%; height:8px; display:block; margin-top:5px; accent-color:#82dcb5; }
+    @media(max-width:600px) { .battle-team-manager-backdrop { padding:10px; } .battle-team-manager { max-height:calc(100dvh - 20px); padding:15px; border-radius:16px; } .battle-team-manager-grid { grid-template-columns:1fr; } .battle-team-manager-heading h2 { font-size:18px; } .battle-online-ranking-actions { justify-content:flex-end; } }
+
     .is-demon-student *, .is-demon-student *::before, .is-demon-student *::after {
         animation: none !important; transition: none !important;
         backdrop-filter: none !important; -webkit-backdrop-filter: none !important;

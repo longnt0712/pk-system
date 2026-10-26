@@ -12,10 +12,14 @@ public final class DemonDefenseGame {
     public static final long WAVE_MS = 30000L;
     public static final double DANGER_PROGRESS = 0.75D;
     public static final int BREAK_STREAK_DEDUCTION = 5;
+    public static final long BASE_SPAWN_INTERVAL_MS = 4000L;
+    private static final int[] LEVEL_TARGETS = {20, 40, 60, 90, 120, 160, 200, 250, 300, 360};
     private final long startedAt;
     private long stoppedAt;
     private long nextShotId;
+    private int level = 1;
     private final Map<Integer, TeamState> teams = new LinkedHashMap<Integer, TeamState>();
+    private final Map<String, PlayerProgress> players = new LinkedHashMap<String, PlayerProgress>();
 
     public DemonDefenseGame(long startedAt, Map<Integer, Integer> members) {
         this.startedAt = startedAt;
@@ -28,6 +32,55 @@ public final class DemonDefenseGame {
 
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
     public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
+    public static int pointsRequiredForLevel(int value) {
+        int index = Math.max(1, value) - 1;
+        return index < LEVEL_TARGETS.length ? LEVEL_TARGETS[index]
+                : (int) Math.min(Integer.MAX_VALUE, 360L + (index - 9L) * 60L);
+    }
+    public int minimumBulletsForPlayer(String username) {
+        PlayerProgress player = players.get(username);
+        return player == null ? 1 : player.bulletFloor;
+    }
+    public int bulletsForPlayer(String username, int streak) {
+        return Math.max(minimumBulletsForPlayer(username), bulletsForStreak(streak));
+    }
+    public void updatePlayerStreak(String username, int streak) {
+        if (username == null) { return; }
+        PlayerProgress player = players.get(username);
+        if (player == null) { player = new PlayerProgress(); players.put(username, player); }
+        player.streak = Math.max(0, streak);
+    }
+
+    /** Roster changes affect future spawns, never existing enemies, points, or eliminated teams. */
+    public void syncPlayers(Map<String, Integer> playerTeams, Map<String, Integer> streaks, long now) {
+        advance(now);
+        if (stoppedAt > 0L) { return; }
+        Map<Integer, Integer> counts = new LinkedHashMap<Integer, Integer>();
+        for (Map.Entry<String, Integer> entry : playerTeams.entrySet()) {
+            Integer number = entry.getValue();
+            if (number == null || number < 1) { continue; }
+            Integer count = counts.get(number); counts.put(number, count == null ? 1 : count + 1);
+            updatePlayerStreak(entry.getKey(), streaks.containsKey(entry.getKey()) ? streaks.get(entry.getKey()) : 0);
+            players.get(entry.getKey()).teamNumber = number;
+        }
+        players.keySet().retainAll(playerTeams.keySet());
+        for (TeamState team : teams.values()) {
+            int count = counts.containsKey(team.number) ? counts.get(team.number) : 0;
+            if (count != team.memberCount) {
+                team.memberCount = count;
+                if (count == 0 && team.eliminatedAt == 0L) { team.eliminatedAt = now; }
+                if (team.eliminatedAt == 0L && count > 0) {
+                    team.nextSpawnAt = now + spawnInterval(team, now);
+                }
+            }
+        }
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            if (!teams.containsKey(entry.getKey())) {
+                teams.put(entry.getKey(), new TeamState(entry.getKey(), entry.getValue(), now));
+            }
+        }
+        if (livingTeams() <= 1 && teams.size() >= 2) { stoppedAt = now; }
+    }
     public boolean containsTeam(int number) { return teams.containsKey(number); }
     public boolean isEliminated(int number) {
         TeamState team = teams.get(number);
@@ -43,21 +96,14 @@ public final class DemonDefenseGame {
                 long at = team.nextSpawnAt;
                 if (firstCollision(team) <= at) { break; }
                 long offset = Math.max(0L, at - startedAt);
-                int wave = (int) (offset / WAVE_MS) + 1;
                 long phase = offset % WAVE_MS;
-                // Same variant schedule for all teams; density scales with roster.
-                long interval = Math.max(900L, 6500L - (wave - 1) * 450L) / team.memberCount;
-                if (phase >= 23000L && phase < 27000L) { interval = Math.max(180L, interval / 2L); }
+                if (team.memberCount == 0) { team.nextSpawnAt = now + BASE_SPAWN_INTERVAL_MS; break; }
+                long interval = spawnInterval(team, at);
                 if (phase >= 27000L) {
                     team.nextSpawnAt = startedAt + (offset / WAVE_MS + 1L) * WAVE_MS;
                     continue;
                 }
-                long id = ++team.nextDemonId;
-                boolean tough = id % 11L == 0L;
-                boolean fast = !tough && id % 7L == 0L;
-                long travelMs = Math.max(8500L, 26000L - (wave - 1) * 1300L);
-                if (fast) { travelMs = travelMs * 2L / 3L; }
-                team.demons.add(new Enemy(id, at, at + travelMs, fast, tough));
+                spawnBatch(team, at);
                 team.nextSpawnAt = at + Math.max(180L, interval);
                 if (phase < 23000L) {
                     team.nextSpawnAt = Math.min(team.nextSpawnAt,
@@ -77,6 +123,29 @@ public final class DemonDefenseGame {
         if (livingTeams() <= 1 && teams.size() >= 2) { stoppedAt = now; }
     }
 
+    private long spawnInterval(TeamState team, long at) {
+        long interval = Math.max(180L, BASE_SPAWN_INTERVAL_MS / Math.max(1, team.memberCount));
+        long phase = Math.max(0L, at - startedAt) % WAVE_MS;
+        return phase >= 23000L && phase < 27000L ? Math.max(180L, interval / 2L) : interval;
+    }
+
+    /** Every batch spends exactly this level's point budget, mixing one-, two-, and three-point enemies. */
+    private void spawnBatch(TeamState team, long at) {
+        int remaining = level;
+        long batch = ++team.spawnBatches;
+        int part = 0;
+        while (remaining > 0) {
+            int maximum = Math.min(3, remaining);
+            int points = 1 + (int) ((batch + part++) % maximum);
+            long id = ++team.nextDemonId;
+            boolean fast = points == 1 && id % 7L == 0L;
+            long travelMs = Math.max(8500L, 26000L - (level - 1L) * 1300L);
+            if (fast) { travelMs = travelMs * 2L / 3L; }
+            team.demons.add(new Enemy(id, at, at + travelMs, fast, points));
+            remaining -= points;
+        }
+    }
+
     private long firstCollision(TeamState team) {
         long at = Long.MAX_VALUE;
         for (Enemy enemy : team.demons) { at = Math.min(at, enemy.arrivesAt); }
@@ -84,12 +153,18 @@ public final class DemonDefenseGame {
     }
 
     public ShotResult shoot(int number, String username, int streak, long now) {
+        return shoot(number, username, streak, now, false);
+    }
+
+    public ShotResult shoot(int number, String username, int streak, long now, boolean carry) {
         advance(now);
         TeamState team = teams.get(number);
-        int bullets = bulletsForStreak(streak), hits = 0, kills = 0;
+        updatePlayerStreak(username, streak);
+        if (username != null) { players.get(username).teamNumber = number; }
+        int bullets = bulletsForPlayer(username, streak) * (carry ? 2 : 1), hits = 0, kills = 0, points = 0;
         boolean rescued = false;
         if (team == null || team.eliminatedAt > 0L || stoppedAt > 0L) {
-            return new ShotResult(0, 0, 0, false);
+            return new ShotResult(0, 0, 0, 0, false);
         }
         for (int index = 0; index < bullets; index++) {
             Enemy nearest = null;
@@ -107,16 +182,31 @@ public final class DemonDefenseGame {
                     rescued |= progress >= DANGER_PROGRESS;
                     team.demons.remove(nearest);
                     kills++;
+                    points += nearest.points;
                 }
             }
         }
         team.kills += kills;
+        team.points += points;
+        team.levelPoints += points;
+        while (team.levelPoints >= pointsRequiredForLevel(level)) {
+            int overflow = team.levelPoints - pointsRequiredForLevel(level);
+            level++;
+            for (TeamState other : teams.values()) {
+                other.levelPoints = 0;
+                if (other.eliminatedAt == 0L) { other.nextSpawnAt = now + spawnInterval(other, now); }
+            }
+            team.levelPoints = overflow;
+            for (PlayerProgress player : players.values()) {
+                player.bulletFloor = Math.max(player.bulletFloor, bulletsForStreak(player.streak));
+            }
+        }
         if (rescued) {
             team.rescues++;
             team.rescueUsername = username;
             team.rescueAt = now;
         }
-        return new ShotResult(bullets, hits, kills, rescued);
+        return new ShotResult(bullets, hits, kills, points, rescued);
     }
 
     public int livingTeams() {
@@ -145,7 +235,7 @@ public final class DemonDefenseGame {
         long offset = Math.max(0L, at - startedAt), phaseMs = offset % WAVE_MS;
         String phase = phaseMs >= 27000L ? "REST" : phaseMs >= 23000L ? "HORDE" :
                 phaseMs >= 20000L ? "WARNING" : "NORMAL";
-        return new Snapshot(startedAt, at, (int) (offset / WAVE_MS) + 1, phase,
+        return new Snapshot(startedAt, at, (int) (offset / WAVE_MS) + 1, level, pointsRequiredForLevel(level), phase,
                 "WARNING".equals(phase) ? (int) ((23000L - phaseMs + 999L) / 1000L) : 0,
                 result, stoppedAt > 0L);
     }
@@ -155,14 +245,15 @@ public final class DemonDefenseGame {
         if (a.eliminatedAt > 0L || b.eliminatedAt > 0L) {
             return Long.compare(b.eliminatedAt, a.eliminatedAt);
         }
-        // At the time limit, normalized kills distinguish surviving teams of different sizes.
-        return Long.compare((long) b.kills * a.memberCount, (long) a.kills * b.memberCount);
+        // At the time limit, compare earned points per member, including stronger demons' full value.
+        return Long.compare((long) b.points * Math.max(1, a.memberCount), (long) a.points * Math.max(1, b.memberCount));
     }
 
     private static final class TeamState {
-        final int number, memberCount;
-        long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt;
-        int kills, rescues;
+        final int number;
+        int memberCount;
+        long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches;
+        int kills, points, levelPoints, rescues;
         String rescueUsername;
         final List<Enemy> demons = new ArrayList<Enemy>();
         final List<Shot> shots = new ArrayList<Shot>();
@@ -170,13 +261,17 @@ public final class DemonDefenseGame {
             this.number = number; this.memberCount = memberCount; this.nextSpawnAt = at + 3000L;
         }
     }
+    private static final class PlayerProgress {
+        int teamNumber, streak, bulletFloor = 1;
+    }
     private static final class Enemy {
         final long id, spawnedAt, arrivesAt;
         final boolean fast, tough;
+        final int points;
         int health;
-        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, boolean tough) {
+        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int points) {
             this.id = id; this.spawnedAt = spawnedAt; this.arrivesAt = arrivesAt; this.fast = fast;
-            this.tough = tough; this.health = tough ? 2 : 1;
+            this.points = points; this.tough = points > 1; this.health = points;
         }
         double progress(long now) { return Math.max(0D, Math.min(1D, (double) (now - spawnedAt) / (arrivesAt - spawnedAt))); }
     }
@@ -185,17 +280,18 @@ public final class DemonDefenseGame {
     public static final class Snapshot {
         public final long startedAt, snapshotAt;
         public final double dangerProgress = DANGER_PROGRESS;
-        public final int wave, warningSeconds;
+        public final int wave, level, levelTargetPoints, warningSeconds;
         public final String phase;
         public final List<Team> teams;
         public final boolean finished;
-        Snapshot(long startedAt, long snapshotAt, int wave, String phase, int warningSeconds, List<Team> teams, boolean finished) {
+        Snapshot(long startedAt, long snapshotAt, int wave, int level, int levelTargetPoints, String phase, int warningSeconds, List<Team> teams, boolean finished) {
             this.startedAt = startedAt; this.snapshotAt = snapshotAt; this.wave = wave; this.phase = phase;
             this.warningSeconds = warningSeconds; this.teams = teams; this.finished = finished;
+            this.level = level; this.levelTargetPoints = levelTargetPoints;
         }
     }
     public static final class Team {
-        public final int number, memberCount, kills, rescues, rank;
+        public final int number, memberCount, kills, points, levelPoints, rescues, rank;
         public final long eliminatedAt, rescueAt, survivedMs;
         public final String rescueUsername;
         public final boolean danger;
@@ -204,6 +300,7 @@ public final class DemonDefenseGame {
         public final List<Shot> shots;
         Team(TeamState state, long at, long startedAt, int rank, boolean includeArena) {
             number = state.number; memberCount = state.memberCount; kills = state.kills; rescues = state.rescues;
+            points = state.points; levelPoints = state.levelPoints;
             eliminatedAt = state.eliminatedAt; rescueAt = state.rescueAt; rescueUsername = state.rescueUsername;
             this.rank = rank;
             survivedMs = Math.max(0L, (eliminatedAt > 0L ? eliminatedAt : at) - startedAt);
@@ -228,9 +325,10 @@ public final class DemonDefenseGame {
         public final long id;
         public final double progress, speed;
         public final boolean fast, tough;
-        public final int health;
+        public final int health, maxHealth, points;
         Demon(Enemy enemy, long at) {
             id = enemy.id; progress = enemy.progress(at); fast = enemy.fast; tough = enemy.tough; health = enemy.health;
+            maxHealth = enemy.points; points = enemy.points;
             speed = 1D / (enemy.arrivesAt - enemy.spawnedAt);
         }
     }
@@ -244,10 +342,11 @@ public final class DemonDefenseGame {
         }
     }
     public static final class ShotResult {
-        public final int bullets, hits, kills;
+        public final int bullets, hits, kills, points;
         public final boolean rescued;
-        ShotResult(int bullets, int hits, int kills, boolean rescued) {
+        ShotResult(int bullets, int hits, int kills, int points, boolean rescued) {
             this.bullets = bullets; this.hits = hits; this.kills = kills; this.rescued = rescued;
+            this.points = points;
         }
     }
 }

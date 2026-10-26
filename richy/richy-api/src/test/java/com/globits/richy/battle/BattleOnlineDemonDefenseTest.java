@@ -68,7 +68,8 @@ public class BattleOnlineDemonDefenseTest {
         assertEquals("DEMON_DEFENSE", saved.getSettings().getMode());
         assertEquals(2, saved.getSettings().getTeamCount());
         assertTrue((Boolean) get(players.get("host"), "spectator"));
-        assertNull(saved.getSettings().getDoubleActionUsername());
+        assertEquals("alice", saved.getSettings().getDoubleActionUsername());
+        assertEquals(java.util.Collections.singletonList("alice"), saved.getSettings().getDoubleActionUsernames());
         Map<Long, Object> prepared = (Map<Long, Object>) get(room, "preparedQuestions");
         for (long id = 1; id <= 4; id++) {
             Object question = state("QuestionState");
@@ -174,9 +175,14 @@ public class BattleOnlineDemonDefenseTest {
     @Test public void correctAnswersFromTwoTeammatesShareDamageAndOnlyFinishingHitScores() throws Exception {
         long now = System.currentTimeMillis();
         Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>();
-        members.put(1, 3); members.put(2, 3);
-        DemonDefenseGame game = new DemonDefenseGame(now - 24000L, members);
-        assertEquals(10, game.shoot(1, "warmup", 100, now).kills);
+        members.put(1, 2); members.put(2, 1);
+        DemonDefenseGame game = new DemonDefenseGame(now, members);
+        // Seed one two-point enemy; shared damage must only score when its final health is removed.
+        java.lang.reflect.Constructor<?> enemy = Class.forName(DemonDefenseGame.class.getName()+"$Enemy")
+                .getDeclaredConstructor(long.class,long.class,long.class,boolean.class,int.class);
+        enemy.setAccessible(true);
+        Object team = ((Map<?,?>) get(game,"teams")).get(1);
+        ((List<Object>) get(team,"demons")).add(enemy.newInstance(1L,now-1000L,now+25000L,false,2));
         set(room, "demonDefense", game);
         Object question = state("QuestionState");
         set(question, "id", 7L); set(question, "question", "hello");
@@ -191,9 +197,10 @@ public class BattleOnlineDemonDefenseTest {
         BattleOnlineRoomDto host = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "host");
         assertEquals(1, host.getDemonDefense().teams.get(0).demons.get(0).health);
         BattleOnlineAnswerResultDto second = service.answer("DEMON1", "bob", request);
-        assertTrue(second.isCorrect()); assertEquals(1D, second.getScore(), 0D);
+        assertTrue(second.isCorrect()); assertEquals(2D, second.getScore(), 0D);
         assertTrue(second.getMessage().contains("trúng 1 phát, diệt 1 quỷ"));
-        assertEquals(11, second.getRoom().getDemonDefense().teams.get(0).kills);
+        assertEquals(1, second.getRoom().getDemonDefense().teams.get(0).kills);
+        assertEquals(2, second.getRoom().getDemonDefense().teams.get(0).points);
         assertEquals(0D, (Double) get(alice, "score"), 0D);
     }
 

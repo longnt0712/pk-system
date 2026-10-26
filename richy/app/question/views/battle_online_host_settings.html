@@ -456,11 +456,11 @@
                 <p ng-if="vm.hostSettings.mode === 'DEMON_DEFENSE'">
                     Mỗi học sinh có một súng, cả đội bảo vệ chung một hàng quỷ.
                     Đúng: bắn 1 viên; streak 20/30/40: bắn 2/3/4 viên, tự nhắm quỷ gần nhất.
-                    NGU và RẤT NGU: 1 phát; NGU KHỦNG KHIẾP: 2 phát mới chết.
-                    Sai: streak về 0. PHÁ STREAK trừ 5; ĐÓNG BĂNG khóa một đối thủ 3 giây.
+                    Quỷ 1/2/3 máu cho 1/2/3 điểm. Một đội đủ điểm thì cả phòng lên level.
+                    Sai: streak về 0, giữ mức đạn chốt khi lên level. PHÁ STREAK trừ 5; ĐÓNG BĂNG khóa một đối thủ 3 giây.
                     GIẢI BĂNG hiếm được giữ tối đa 1 lượt để cứu đồng đội.
-                    Quỷ tăng theo thời gian và quy mô đội. Chạm vạch phòng thủ là đội bị loại.
-                    Đội sống cuối cùng thắng; hết giờ xét quỷ diệt / thành viên, bằng nhau đồng hạng.
+                    Quỷ tăng theo level và quy mô đội; người vào sau vẫn tham gia được. Chạm vạch phòng thủ là đội bị loại.
+                    Đội sống cuối cùng thắng; hết giờ xét điểm diệt quỷ / thành viên, bằng nhau đồng hạng.
                     Host điều hành ở chế độ khán giả. Học sinh nhận cảnh báo chữ và màu, không rung.
                 </p>
 
@@ -474,7 +474,7 @@
                     Mỗi người nhận câu random riêng và trả lời xong có câu tiếp ngay,
                     không chờ người khác. Đúng đẩy QUỶ NGU sang đối thủ 1 bước;
                     sai kéo quỷ về đội mình 1 bước; CHÁY LÊN đẩy 2 bước.
-                    HOST có thể chọn một thành viên bất kỳ làm NGƯỜI GÁNH ĐỘI x2.
+                    HOST có thể chọn nhiều thành viên làm NGƯỜI GÁNH ĐỘI x2.
                     Không có PHÁ STREAK và CƯỚP ĐIỂM; ĐẢO LỘN làm màn hình
                     trả lời của đối thủ lật ngược trong 7 giây.
                     Mỗi nửa thanh dài bằng 20% tổng số câu của bài.
@@ -590,34 +590,12 @@
                     người chơi có thể tự chọn đội và HOST vẫn có thể đổi thành viên.
                 </p>
 
-                <div class="battle-online-double-action-setting"
-                     ng-if="vm.hasTeamMode() && vm.hostSettings.mode !== 'DEMON_DEFENSE'">
-                    <div class="battle-online-double-action-title">
-                        ⚡ NGƯỜI GÁNH ĐỘI x2
-                    </div>
-
-                    <p ng-if="!vm.hasTeamMode()">
-                        Hãy lưu mode trước để server chia ĐỘI 1 và ĐỘI 2.
-                    </p>
-
-                    <div ng-if="vm.hasTeamMode()">
-                        <label>
-                            CHỌN 1 NGƯỜI GÁNH ĐỘI
-                        </label>
-
-                        <select class="form-control"
-                                ng-model="vm.hostSettings.doubleActionUsername"
-                                ng-options="player.username as (vm.getPlayerDisplayName(player) + ' — ĐỘI ' + player.teamNumber) for player in vm.getEscapeDoubleActionCandidates()"
-                                ng-change="vm.markDoubleActionTouched()">
-                            <option value="">-- KHÔNG CHỌN --</option>
-                        </select>
-
-                        <p>
-                            Mọi điểm số của người được chọn đều ×2.
-                            <span ng-if="vm.hostSettings.mode === 'LUM_NGAY'">Riêng trứng thối vẫn cho 0,5 điểm.</span>
-                            Trong THOÁT KHỎI QUỶ NGU, tác động đẩy/kéo quỷ cũng ×2.
-                        </p>
-                    </div>
+                <div class="battle-online-double-action-setting" ng-if="vm.hasTeamMode()">
+                    <div class="battle-online-double-action-title">⚡ NGƯỜI GÁNH ĐỘI x2</div>
+                    <button type="button" class="btn btn-default" ng-click="vm.openTeamManager($event)">👥 Xếp đội / Chọn người gánh</button>
+                    <p>Nhấn ⚡ Gánh cạnh tên thành viên để bật / tắt. Có thể chọn nhiều người, trước và trong trận.</p>
+                    <p ng-if="vm.hasDoubleActionPlayers()">Đang gánh: {{vm.getDoubleActionPlayerName()}}</p>
+                    <p>Điểm và tác động ×2; Diệt quỷ bắn gấp đôi số đạn. Riêng trứng thối vẫn cho 0,5 điểm.</p>
                 </div>
             </div>
 

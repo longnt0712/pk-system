@@ -67,6 +67,11 @@
         vm.kickingPlayer = false;
         vm.assigningTeamUsername = '';
         vm.assigningTeamNumber = 0;
+        vm.carrySavingUsername = '';
+        vm.teamManagerOpen = false;
+        vm.teamManagerNewUsernames = [];
+        var teamManagerTrigger = null, teamManagerParent = null, teamManagerNextSibling = null;
+        var teamManagerSeenRoom = '', teamManagerSeenPlayers = Object.create(null);
         vm.draggingPlayerUsername = '';
 
         vm.realtimeConnected = false;
@@ -388,7 +393,7 @@
             vm.hostVideoFullscreen = $window.document.fullscreenElement === stage;
         }
         function hostVideoFullscreenChanged() {
-            $scope.$evalAsync(syncHostVideoFullscreen);
+            $scope.$evalAsync(function () { syncHostVideoFullscreen(); if (vm.teamManagerOpen) { placeTeamManager(); } });
         }
         vm.toggleHostVideoFullscreen = function () {
             var stage = $window.document.getElementById('battle-host-video-stage');
@@ -691,6 +696,7 @@
             giftBasePoints: 10,
             teamCount: 0,
             doubleActionUsername: '',
+            doubleActionUsernames: null,
             guessLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             guessAdvanceMode: 'AUTO'
         };
@@ -796,6 +802,9 @@
             return stars >= 1 && stars <= 7
                 ? getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png') : '';
         };
+        vm.hostSettingsTemplate = 'question/views/battle_online_host_settings.html?v=' + encodeURIComponent($window.APP_VERSION || '');
+        vm.eggHostTemplate = 'question/views/battle_online_egg_host.html?v=' + encodeURIComponent($window.APP_VERSION || '');
+        vm.demonArenaTemplate = 'question/views/battle_online_demon_arena.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.dragonBallCollectionTemplate = 'question/views/battle_online_dragon_collection.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.dragonBallCollection = [1,2,3,4,5,6,7].map(function (stars, index) {
             return {stars: stars, column: [2,4,1,3,5,2,4][index] + ' / span 2',
@@ -1149,6 +1158,17 @@
         vm.getDumbBallStatus = getDumbBallStatus;
         vm.isSpectator = isSpectator;
         vm.canKickPlayer = canKickPlayer;
+        vm.canManageTeams = canManageTeams;
+        vm.openTeamManager = openTeamManager;
+        vm.closeTeamManager = closeTeamManager;
+        vm.canToggleCarry = canToggleCarry;
+        vm.toggleCarryPlayer = toggleCarryPlayer;
+        vm.hasDoubleActionPlayers = function () { return getDoubleActionUsernames().length > 0; };
+        vm.isTeamManagerNewPlayer = function (player) { return vm.teamManagerNewUsernames.indexOf(player.username) >= 0; };
+        vm.isTeamEliminated = function (number) {
+            var teams = vm.room && vm.room.demonDefense && vm.room.demonDefense.teams || [];
+            return isDemonDefenseMode() && teams.some(function (team) { return Number(team.number) === Number(number) && !!team.eliminatedAt; });
+        };
         vm.me = getMe;
 
         vm.createRoom = createRoom;
@@ -1909,7 +1929,12 @@
             return mode === 'DEMON_DEFENSE';
         }
 
-        function getDemonBullets(player) { return Math.max(1, Math.floor(Number((player || {}).streak || 0) / 10)); }
+        function getDemonBullets(player) {
+            player = player || {};
+            if (Number(player.demonBullets) > 0) { return Number(player.demonBullets); }
+            var base = Math.max(1, Number(player.demonMinimumBullets || 0), Math.floor(Number(player.streak || 0) / 10));
+            return isDoubleActionPlayer(player) ? base * 2 : base;
+        }
         function getDemonTeamPlayers(number) {
             return ((vm.room && vm.room.players) || []).filter(function (player) {
                 return !player.spectator && Number(player.teamNumber) === Number(number);
@@ -3200,6 +3225,7 @@
                 incoming.videoReview = previousRoom.videoReview;
             }
             vm.room = incoming;
+            syncTeamManagement(previousRoom, incoming);
             if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
                     (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }
             var videoRoundChanged = !!(previousRoom && Number(previousRoom.videoQuestionRound || 0) !== Number(incoming.videoQuestionRound || 0));
@@ -3423,8 +3449,9 @@
                     incoming.status !== 'LOBBY' ||
                     vm.hostDoubleActionDirty !== true
                 ) {
-                    vm.hostSettings.doubleActionUsername =
-                        incoming.settings.doubleActionUsername || '';
+                    vm.hostSettings.doubleActionUsername = incoming.settings.doubleActionUsername || '';
+                    vm.hostSettings.doubleActionUsernames = Array.isArray(incoming.settings.doubleActionUsernames)
+                        ? normalizeCarryUsernames(incoming.settings.doubleActionUsernames) : null;
                 }
 
                 /*
@@ -3622,7 +3649,6 @@
             }
             if (vm.hostSettings.mode === 'DEMON_DEFENSE') {
                 vm.hostSettings.teamCount = Math.max(2, Number(vm.hostSettings.teamCount) || 2);
-                vm.hostSettings.doubleActionUsername = '';
                 vm.hostTeamCountDirty = true;
             }
 
@@ -3826,15 +3852,10 @@
                             0
                         ),
 
-                doubleActionUsername:
-                    vm.hostSettings.mode !== 'DEMON_DEFENSE' && (
-                        vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
-                        Number(vm.hostSettings.teamCount || 0) >= 2
-                    )
-                        ? String(
-                            vm.hostSettings.doubleActionUsername || ''
-                        ).trim()
-                        : ''
+                doubleActionUsernames: (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || Number(vm.hostSettings.teamCount || 0) >= 2)
+                    ? getDoubleActionUsernames() : [],
+                doubleActionUsername: (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || Number(vm.hostSettings.teamCount || 0) >= 2)
+                    ? (getDoubleActionUsernames()[0] || '') : ''
             };
         }
 
@@ -4060,8 +4081,8 @@
 
             if (
                 !vm.room ||
-                vm.room.status !== 'LOBBY' ||
-                (!isHost() && !isCurrentPlayer) ||
+                ['LOBBY', 'PLAYING'].indexOf(vm.room.status) < 0 ||
+                (!isHost() && (vm.room.status !== 'LOBBY' || !isCurrentPlayer)) ||
                 !player ||
                 player.spectator ||
                 vm.assigningTeamUsername
@@ -4079,6 +4100,7 @@
                 1
             );
 
+            var assignmentRoomCode = vm.room.code;
             vm.assigningTeamUsername = player.username;
             vm.assigningTeamNumber = teamNumber;
 
@@ -4090,7 +4112,7 @@
                 )
                 .then(
                     function (room) {
-                        applyRoom(room, false);
+                        if (!applyTeamManagementRoom(room, assignmentRoomCode)) { return; }
                         if (isCurrentPlayer && !isHost()) {
                             toastr.success(
                                 'Bạn đã chuyển sang ĐỘI ' + teamNumber + '.',
@@ -4136,7 +4158,7 @@
         function dropPlayerIntoTeam(teamNumber, draggedPlayer) {
             if (
                 !vm.room ||
-                vm.room.status !== 'LOBBY' ||
+                ['LOBBY', 'PLAYING'].indexOf(vm.room.status) < 0 ||
                 !isHost() ||
                 vm.assigningTeamUsername ||
                 !draggedPlayer ||
@@ -4261,7 +4283,7 @@
             if (isDemonDefenseMode() && vm.room.demonDefense) {
                 return stableTeamSummaries(vm.room.demonDefense.teams.map(function (team) {
                     var players = getDemonTeamPlayers(team.number);
-                    return {number: team.number, rank: team.rank, score: team.kills, memberCount: team.memberCount,
+                    return {number: team.number, rank: team.rank, score: team.points != null ? team.points : team.kills, memberCount: team.memberCount,
                         survivedMs: team.survivedMs, rescues: team.rescues,
                         correctCount: players.reduce(function (sum, player) { return sum + Number(player.correctCount || 0); }, 0),
                         wrongCount: players.reduce(function (sum, player) { return sum + Number(player.wrongCount || 0); }, 0)};
@@ -4407,51 +4429,94 @@
         }
 
 
-        function getDoubleActionUsername() {
-            if (
-                isHost() &&
-                vm.room &&
-                vm.room.status === 'LOBBY' &&
-                vm.hostDoubleActionDirty === true
-            ) {
-                return String(
-                    vm.hostSettings.doubleActionUsername || ''
-                ).trim();
-            }
-
-            return String(
-                vm.room &&
-                vm.room.settings &&
-                vm.room.settings.doubleActionUsername ||
-                vm.hostSettings.doubleActionUsername ||
-                ''
-            ).trim();
-        }
-
-
-        function isDoubleActionPlayer(player) {
-            return !!(
-                player &&
-                player.username &&
-                getDoubleActionUsername() === String(player.username)
-            );
-        }
-
-
-        function getDoubleActionPlayerName() {
-            var username = getDoubleActionUsername();
-            var result = '';
-
-            angular.forEach(
-                (vm.room && vm.room.players) || [],
-                function (player) {
-                    if (!result && player && player.username === username) {
-                        result = getPlayerDisplayName(player);
-                    }
-                }
-            );
-
+        function normalizeCarryUsernames(values) {
+            var result = [];
+            (values || []).forEach(function (value) {
+                value = String(value || '').trim();
+                if (value && result.indexOf(value) < 0) { result.push(value); }
+            });
             return result;
+        }
+        function getDoubleActionUsernames() {
+            var staged = isHost() && vm.room && vm.room.status === 'LOBBY' && vm.hostDoubleActionDirty === true;
+            var settings = staged ? vm.hostSettings : vm.room && vm.room.settings || vm.hostSettings;
+            return Array.isArray(settings.doubleActionUsernames) ? normalizeCarryUsernames(settings.doubleActionUsernames)
+                : normalizeCarryUsernames([settings.doubleActionUsername]);
+        }
+        function isDoubleActionPlayer(player) {
+            return !!(player && player.username && getDoubleActionUsernames().indexOf(String(player.username)) >= 0);
+        }
+        function getDoubleActionPlayerName() {
+            var usernames = getDoubleActionUsernames();
+            return ((vm.room && vm.room.players) || []).filter(function (player) { return usernames.indexOf(player.username) >= 0; })
+                .map(getPlayerDisplayName).join(', ');
+        }
+        function canManageTeams() {
+            return !!(vm.room && isHost() && hasTeamMode() && ['LOBBY', 'PLAYING'].indexOf(vm.room.status) >= 0);
+        }
+        function canToggleCarry(player) {
+            return !!(canManageTeams() && player && !player.spectator && player.teamNumber > 0);
+        }
+        function toggleCarryPlayer(player) {
+            if (!canToggleCarry(player) || vm.carrySavingUsername || !battleService.setPlayerCarry) { return; }
+            var carryRoomCode = vm.room.code;
+            vm.carrySavingUsername = player.username;
+            battleService.setPlayerCarry(carryRoomCode, player.username, !isDoubleActionPlayer(player)).then(function (room) {
+                if (applyTeamManagementRoom(room, carryRoomCode)) { vm.hostDoubleActionDirty = false; }
+            }, showRequestError).finally(function () { vm.carrySavingUsername = ''; });
+        }
+        function applyTeamManagementRoom(room, expectedCode) {
+            if (!room || !vm.room || vm.room.code !== expectedCode || room.code !== expectedCode ||
+                    (Number(room.serverTime || 0) && Number(vm.room.serverTime || 0) > Number(room.serverTime))) { return false; }
+            applyRoom(room, false); return true;
+        }
+        function placeTeamManager() {
+            var document = $window.document, layer = document.getElementById('battle-team-manager-layer');
+            if (!layer || !layer.parentNode) { return; }
+            if (!teamManagerParent) { teamManagerParent = layer.parentNode; teamManagerNextSibling = layer.nextSibling; }
+            var parent = vm.teamManagerOpen && document.fullscreenElement || teamManagerParent;
+            if (layer.parentNode !== parent) {
+                if (parent === teamManagerParent && teamManagerNextSibling && teamManagerNextSibling.parentNode === parent) {
+                    parent.insertBefore(layer, teamManagerNextSibling);
+                } else { parent.appendChild(layer); }
+            }
+        }
+        function openTeamManager(event) {
+            if (!canManageTeams()) { return; }
+            if (event) { teamManagerTrigger = event.currentTarget || null; }
+            vm.teamManagerOpen = true;
+            $timeout(function () {
+                if (!vm.teamManagerOpen) { return; }
+                placeTeamManager();
+                var modal = $window.document.getElementById('battle-team-manager');
+                if (modal && modal.focus) { modal.focus(); }
+            }, 0);
+        }
+        function closeTeamManager() {
+            vm.teamManagerOpen = false; vm.teamManagerNewUsernames = []; vm.draggingPlayerUsername = '';
+            vm.kickConfirmModalOpen = false;
+            placeTeamManager();
+            if (teamManagerTrigger && teamManagerTrigger.focus) { teamManagerTrigger.focus(); }
+            teamManagerTrigger = null;
+        }
+        function syncTeamManagement(previous, incoming) {
+            var reset = teamManagerSeenRoom !== incoming.code ||
+                (incoming.status === 'LOBBY' && previous && previous.status !== 'LOBBY');
+            if (reset) { teamManagerSeenRoom = incoming.code; teamManagerSeenPlayers = Object.create(null); }
+            var mayOpen = !reset && previous && previous.code === incoming.code && previous.status === 'PLAYING' &&
+                incoming.status === 'PLAYING' && canManageTeams();
+            var added = [];
+            (incoming.players || []).forEach(function (player) {
+                if (mayOpen && !teamManagerSeenPlayers[player.username] && !player.spectator && player.username !== incoming.hostUsername) {
+                    added.push(player.username);
+                }
+                teamManagerSeenPlayers[player.username] = true;
+            });
+            if (!canManageTeams()) { if (vm.teamManagerOpen) { closeTeamManager(); } return; }
+            if (added.length) {
+                vm.teamManagerNewUsernames = normalizeCarryUsernames(vm.teamManagerNewUsernames.concat(added));
+                openTeamManager();
+            }
         }
 
 
@@ -8077,6 +8142,19 @@
                 if (event.stopPropagation) { event.stopPropagation(); }
                 return;
             }
+            if (vm.teamManagerOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) { event.preventDefault(); $scope.$evalAsync(vm.kickConfirmModalOpen ? closeKickConfirm : closeTeamManager); }
+                else if (event.key === 'Tab' || event.keyCode === 9) {
+                    var teamModal = $window.document.getElementById(vm.kickConfirmModalOpen ? 'battle-team-manager-kick' : 'battle-team-manager');
+                    var teamControls = teamModal && teamModal.querySelectorAll('button:not([disabled]),select:not([disabled]),[tabindex="0"]');
+                    if (teamControls && teamControls.length && (!teamModal.contains($window.document.activeElement) ||
+                            (event.shiftKey && $window.document.activeElement === teamControls[0]) ||
+                            (!event.shiftKey && $window.document.activeElement === teamControls[teamControls.length - 1]))) {
+                        event.preventDefault(); (event.shiftKey ? teamControls[teamControls.length - 1] : teamControls[0]).focus();
+                    }
+                }
+                return;
+            }
             if (vm.exercisePickerOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) { event.preventDefault(); $scope.$evalAsync(vm.closeExercisePicker); }
                 if (event.key === 'Tab' || event.keyCode === 9) {
@@ -8294,6 +8372,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                closeTeamManager();
                 $window.document.body.classList.remove('battle-dragon-celebrating');
                 if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
                 $timeout.cancel(videoRetryTimer);

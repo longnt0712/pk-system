@@ -63,10 +63,15 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private int teamCount = 0;
 
     /*
-     * Mọi mode có chia đội: HOST có thể chọn một NGƯỜI GÁNH ĐỘI.
+     * Mọi mode có chia đội: HOST có thể chọn nhiều NGƯỜI GÁNH ĐỘI.
      * Toàn bộ tác động điểm/mode của người này được nhân 2.
      */
     private String doubleActionUsername;
+    /* Null on legacy requests; an explicit empty list clears every selection. */
+    private List<String> doubleActionUsernames;
+
+    public List<String> getDoubleActionUsernames() { return doubleActionUsernames; }
+    public void setDoubleActionUsernames(List<String> values) { doubleActionUsernames = values; }
 
     public BattleOnlineRoomSettingsDto() {
     }

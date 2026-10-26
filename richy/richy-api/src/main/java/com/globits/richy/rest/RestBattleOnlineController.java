@@ -150,6 +150,14 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/players/{targetUsername}/carry", method = RequestMethod.POST)
+    public BattleOnlineRoomDto setPlayerCarry(
+            @PathVariable String roomCode,
+            @PathVariable String targetUsername,
+            @RequestBody com.globits.richy.dto.BattleOnlineCarryDto request) {
+        return battleOnlineService.setPlayerCarry(roomCode, currentUsername(), targetUsername, request);
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/settings", method = RequestMethod.PUT)
     public BattleOnlineRoomDto updateSettings(
             @PathVariable String roomCode,

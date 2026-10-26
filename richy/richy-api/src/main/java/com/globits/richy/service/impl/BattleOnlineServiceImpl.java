@@ -738,8 +738,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 dto = snapshotLocked(room, username);
             } else {
                 if (PLAYING.equals(room.status) && MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
-                    throw new BattleOnlineException(HttpStatus.CONFLICT,
-                            "DIỆT QUỶ NGU đã bắt đầu. Hãy chờ trận tiếp theo để tham gia.");
+                    advanceDemonDefenseLocked(room, System.currentTimeMillis());
+                    if (!PLAYING.equals(room.status)) {
+                        throw new BattleOnlineException(HttpStatus.CONFLICT, "Trận đã kết thúc. Hãy chờ trận tiếp theo để tham gia.");
+                    }
                 }
                 if (room.players.size() >= MAX_PLAYERS) {
                     throw new BattleOnlineException(
@@ -764,8 +766,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.players.put(username, player);
 
                 if (room.settings.teamCount >= 2) {
-                    player.teamNumber = nextBalancedTeamLocked(room);
+                    player.teamNumber = PLAYING.equals(room.status) && MODE_DEMON_DEFENSE.equals(room.settings.mode)
+                            ? nextLivingDemonTeamLocked(room) : nextBalancedTeamLocked(room);
                 }
+                syncDemonPlayersLocked(room, System.currentTimeMillis());
 
                 /*
                  * Late join:
@@ -1043,7 +1047,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         BattleOnlineRoomDto dto;
 
         synchronized (room) {
-            requireLobby(room);
+            if (!LOBBY.equals(room.status) && !PLAYING.equals(room.status)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ có thể đổi đội trong lobby hoặc khi trận đang diễn ra.");
+            }
+            if (PLAYING.equals(room.status)) { requireHost(room, username); }
 
             if (room.settings.teamCount < 2) {
                 throw new BattleOnlineException(
@@ -1089,7 +1096,25 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            if (PLAYING.equals(room.status) && MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
+                advanceDemonDefenseLocked(room, System.currentTimeMillis());
+                if (!PLAYING.equals(room.status) || room.demonDefense == null ||
+                        room.demonDefense.isEliminated(target.teamNumber) ||
+                        (room.demonDefense.containsTeam(teamNumber) && room.demonDefense.isEliminated(teamNumber))) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ có thể chuyển giữa các đội còn trong trận.");
+                }
+                if (target.teamNumber != teamNumber) {
+                    int remaining = 0;
+                    for (PlayerState member : room.players.values()) {
+                        if (member != target && !member.spectator && member.teamNumber == target.teamNumber) { remaining++; }
+                    }
+                    if (remaining == 0) {
+                        throw new BattleOnlineException(HttpStatus.CONFLICT, "Mỗi đội đang thi đấu cần giữ ít nhất một người chơi.");
+                    }
+                }
+            }
             target.teamNumber = teamNumber;
+            syncDemonPlayersLocked(room, System.currentTimeMillis());
             normalizeDoubleActionPlayerLocked(room);
             dto = snapshotLocked(room, username);
         }
@@ -1153,9 +1178,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 releasePendingSkillWhenNoTargetLocked(room, player);
             }
 
-            if (LOBBY.equals(room.status)) {
-                normalizeDoubleActionPlayerLocked(room);
-            }
+            normalizeDoubleActionPlayerLocked(room);
+            syncDemonPlayersLocked(room, System.currentTimeMillis());
 
             dto = snapshotLocked(room, username);
         }
@@ -1165,6 +1189,40 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return dto;
     }
 
+
+    @Override
+    public BattleOnlineRoomDto setPlayerCarry(String roomCode, String username, String targetUsername,
+            com.globits.richy.dto.BattleOnlineCarryDto request) {
+        username = requireUsername(username);
+        targetUsername = requireUsername(targetUsername);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+        synchronized (room) {
+            requireHost(room, username);
+            if (!LOBBY.equals(room.status) && !PLAYING.equals(room.status)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ có thể chọn người gánh đội trong lobby hoặc khi trận đang diễn ra.");
+            }
+            if (room.settings.teamCount < 2) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hãy bật chế độ chia đội trước.");
+            }
+            if (request == null || request.getEnabled() == null) {
+                throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Thiếu trạng thái gánh đội.");
+            }
+            PlayerState target = requirePlayer(room, targetUsername);
+            if (target.spectator) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Khán giả không thể gánh đội.");
+            }
+            normalizeDoubleActionPlayerLocked(room);
+            if (request.getEnabled()) { room.settings.doubleActionUsernames.add(targetUsername); }
+            else { room.settings.doubleActionUsernames.remove(targetUsername); }
+            room.settings.doubleActionUsername = room.settings.doubleActionUsernames.isEmpty()
+                    ? null : room.settings.doubleActionUsernames.get(0);
+            normalizeDoubleActionPlayerLocked(room);
+            dto = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room);
+        return dto;
+    }
 
     @Override
     public BattleOnlineRoomDto updateSettings(
@@ -1280,8 +1338,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             normalizeTeamAssignmentsLocked(room);
 
-            room.settings.doubleActionUsername =
-                    clean(settings.getDoubleActionUsername());
+            room.settings.doubleActionUsernames.clear();
+            if (settings.getDoubleActionUsernames() != null) {
+                room.settings.doubleActionUsernames.addAll(settings.getDoubleActionUsernames());
+                room.settings.doubleActionUsername = null;
+            } else {
+                room.settings.doubleActionUsername = clean(settings.getDoubleActionUsername());
+            }
 
             ensureDemonHostSpectatorLocked(room);
 
@@ -1432,6 +1495,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.dumbBallMaxDistance =
                     calculateDumbBallMaxDistance(room);
             room.settings.doubleActionUsername = null;
+            room.settings.doubleActionUsernames.clear();
             room.lastGuessWord = null;
             room.lastGuessMeaning = null;
             room.lastGuessSequence = 0L;
@@ -1835,6 +1899,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.code,
                 room.matchEndsAt
             ); }
+        syncDemonPlayersLocked(room, System.currentTimeMillis());
         if (room.demonDefense != null) { scheduleDemonTick(room); }
     }
 
@@ -2450,10 +2515,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             DemonDefenseGame.ShotResult demonShot = null;
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
-                demonShot = correct ? room.demonDefense.shoot(player.teamNumber, player.username, player.streak, demonGameTime(room, now)) : null;
-                // In this mode score measures actual kills; bonus/luck does not create extra bullets.
+                syncDemonPlayersLocked(room, now);
+                demonShot = correct ? room.demonDefense.shoot(player.teamNumber, player.username, player.streak,
+                        demonGameTime(room, now), isDoubleActionPlayerLocked(room, player)) : null;
+                // Demon scores measure actual killed health points; carry changes bullets, never duplicates points.
                 double previousScore = player.score - scoreDelta;
-                scoreDelta = demonShot == null ? 0D : demonShot.kills;
+                scoreDelta = demonShot == null ? 0D : demonShot.points;
                 player.score = previousScore + scoreDelta;
                 if (demonShot != null && demonShot.rescued) { player.demonRescues++; }
             }
@@ -2468,11 +2535,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     scoreMultiplier
             );
 
-            scoreDelta = applyDoubleActionScoreLocked(
-                    room,
-                    player,
-                    scoreDelta
-            );
+            if (!MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
+                scoreDelta = applyDoubleActionScoreLocked(room, player, scoreDelta);
+            }
 
             boolean fireActivated =
                     SKILL_FIRE_UP.equals(earnedSkill);
@@ -2512,8 +2577,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
                 result.setMessage(correct
                         ? "CHÍNH XÁC! Bắn " + demonShot.bullets + " viên, trúng " + demonShot.hits + " phát, diệt " + demonShot.kills + " quỷ." +
-                            (demonShot.rescued ? " CỨU ĐỘI!" : "")
-                        : "SAI RỒI! Streak về 0, không có đạn.");
+                            " +" + demonShot.points + " điểm." + (demonShot.rescued ? " CỨU ĐỘI!" : "")
+                        : "SAI RỒI! Streak về 0; vẫn giữ mức súng đã chốt khi lên level.");
             }
 
             if (correct && scoreMultiplier > 1) {
@@ -2749,6 +2814,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 ? Math.min(DemonDefenseGame.BREAK_STREAK_DEDUCTION, target.streak) : target.streak;
                         target.streak = MODE_DEMON_DEFENSE.equals(room.settings.mode)
                                 ? DemonDefenseGame.breakStreak(target.streak) : 0;
+                        if (room.demonDefense != null) { room.demonDefense.updatePlayerStreak(target.username, target.streak); }
                     } else if (SKILL_STEAL_SCORE.equals(skillType)) {
                         amount = Math.floor(
                                 Math.max(0D, target.score) * 0.05D
@@ -6081,6 +6147,34 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (host != null) { host.spectator = true; host.teamNumber = 0; host.ready = true; }
     }
 
+    private void syncDemonPlayersLocked(RoomState room, long now) {
+        if (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) { return; }
+        Map<String, Integer> teams = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> streaks = new LinkedHashMap<String, Integer>();
+        for (PlayerState player : room.players.values()) {
+            if (!player.spectator && player.teamNumber > 0) {
+                teams.put(player.username, player.teamNumber);
+                streaks.put(player.username, player.streak);
+            }
+        }
+        room.demonDefense.syncPlayers(teams, streaks, demonGameTime(room, now));
+        if (PLAYING.equals(room.status) && room.demonDefense.isFinished()) { finishMatchLocked(room); }
+    }
+
+    private int nextLivingDemonTeamLocked(RoomState room) {
+        int selected = 0, smallest = Integer.MAX_VALUE;
+        for (int number = 1; number <= room.settings.teamCount; number++) {
+            if (room.demonDefense == null || room.demonDefense.isEliminated(number)) { continue; }
+            int count = 0;
+            for (PlayerState player : room.players.values()) {
+                if (!player.spectator && player.teamNumber == number) { count++; }
+            }
+            if (count < smallest) { selected = number; smallest = count; }
+        }
+        if (selected == 0) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Không còn đội đang thi đấu để tham gia."); }
+        return selected;
+    }
+
     private void requireLivingDemonPlayerLocked(RoomState room, PlayerState player) {
         if (MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                 (room.demonDefense == null || room.demonDefense.isEliminated(player.teamNumber))) {
@@ -7468,6 +7562,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
             player.setUnfreezeCharges(state.unfreezeCharges);
             player.setDemonRescues(state.demonRescues);
+            if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && room.demonDefense != null && !state.spectator) {
+                int multiplier = isDoubleActionPlayerLocked(room, state) ? 2 : 1;
+                player.setDemonBullets(room.demonDefense.bulletsForPlayer(state.username, state.streak) * multiplier);
+                player.setDemonMinimumBullets(room.demonDefense.minimumBulletsForPlayer(state.username) * multiplier);
+            }
             player.setDemonEliminated(MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                     !state.spectator && room.demonDefense != null && room.demonDefense.isEliminated(state.teamNumber));
 
@@ -7767,46 +7866,27 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private void normalizeDoubleActionPlayerLocked(RoomState room) {
-        if (
-            room == null ||
-            room.settings.teamCount < 2 || MODE_DEMON_DEFENSE.equals(room.settings.mode)
-        ) {
-            if (room != null) {
-                room.settings.doubleActionUsername = null;
+        if (room == null) { return; }
+        LinkedHashSet<String> selected = new LinkedHashSet<String>();
+        selected.addAll(room.settings.doubleActionUsernames);
+        if (!isBlank(room.settings.doubleActionUsername)) { selected.add(room.settings.doubleActionUsername); }
+        room.settings.doubleActionUsernames.clear();
+        if (room.settings.teamCount >= 2) {
+            for (String username : selected) {
+                PlayerState player = room.players.get(clean(username));
+                if (player != null && !player.spectator && player.teamNumber >= 1 && player.teamNumber <= room.settings.teamCount) {
+                    if (!room.settings.doubleActionUsernames.contains(player.username)) { room.settings.doubleActionUsernames.add(player.username); }
+                }
             }
-
-            return;
         }
-
-        String selectedUsername = clean(
-                room.settings.doubleActionUsername
-        );
-        PlayerState selected = room.players.get(selectedUsername);
-
-        if (
-            selected == null ||
-            selected.spectator ||
-            !selected.connected ||
-            selected.teamNumber < 1 ||
-            selected.teamNumber > room.settings.teamCount
-        ) {
-            room.settings.doubleActionUsername = null;
-            return;
-        }
-
-        room.settings.doubleActionUsername = selected.username;
+        room.settings.doubleActionUsername = room.settings.doubleActionUsernames.isEmpty()
+                ? null : room.settings.doubleActionUsernames.get(0);
     }
 
-
-    private boolean isDoubleActionPlayerLocked(
-            RoomState room,
-            PlayerState player) {
-
-        return room != null &&
-                player != null &&
-                room.settings.teamCount >= 2 &&
-                !isBlank(room.settings.doubleActionUsername) &&
-                room.settings.doubleActionUsername.equals(player.username);
+    private boolean isDoubleActionPlayerLocked(RoomState room, PlayerState player) {
+        return room != null && player != null && !player.spectator && room.settings.teamCount >= 2 &&
+                (room.settings.doubleActionUsernames.contains(player.username) ||
+                        player.username.equals(room.settings.doubleActionUsername));
     }
 
 
@@ -8653,9 +8733,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 source.teamCount
         );
 
-        dto.setDoubleActionUsername(
-                source.doubleActionUsername
-        );
+        dto.setDoubleActionUsername(source.doubleActionUsername);
+        List<String> carryNames = new ArrayList<String>(source.doubleActionUsernames);
+        if (carryNames.isEmpty() && !isBlank(source.doubleActionUsername)) { carryNames.add(source.doubleActionUsername); }
+        dto.setDoubleActionUsernames(carryNames);
 
         return dto;
     }
@@ -9201,6 +9282,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int teamCount = 0;
 
         String doubleActionUsername;
+        final List<String> doubleActionUsernames = new ArrayList<String>();
     }
 
 
