@@ -1418,6 +1418,9 @@
             if (petKey === 'CUTE_PERRY' && level >= 4) {
                 return 'assets/images/learning-pets/perry/pet-level-4.png' + suffix;
             }
+            if (petKey === 'SPARKLING_LIGHTNING' && level >= 20) {
+                return 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png' + suffix;
+            }
 
             if (petKey === 'CUTE_PIKACHU' && level >= 18) {
                 if (level >= 20) {
@@ -1568,6 +1571,9 @@
                         ? 'Pikachu'
                         : (level === 19 ? 'Trứng Pikachu đang nứt' : 'Trứng Pikachu')
                 });
+            }
+            if (level >= 20) {
+                battlePetOptions.push({key: 'SPARKLING_LIGHTNING', label: 'Tia sét lấp lánh'});
             }
             for (var stars = 1; stars <= 7; stars++) {
                 if (level >= 5 + stars) {

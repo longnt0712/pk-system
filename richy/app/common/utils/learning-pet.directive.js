@@ -63,6 +63,7 @@
             var pikachuEggUrl = 'assets/images/learning-pets/pikachu/egg-level-18.png?v=' + version;
             var pikachuCrackedEggUrl = 'assets/images/learning-pets/pikachu/egg-level-19.png?v=' + version;
             var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
+            var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -106,6 +107,7 @@
             vm.hasNewJerryMouseEgg = false;
             vm.hasNewTuffyMouseEgg = false;
             vm.hasNewPikachuEgg = false;
+            vm.hasNewSparklingLightning = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -140,6 +142,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_PIKACHU' && level < 18) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'SPARKLING_LIGHTNING' && level < 20) {
                     selectedPet = 'MAM_HOC';
                 }
                 var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(selectedPet);
@@ -277,6 +282,17 @@
                     vm.hasNewPikachuEgg = false;
                 }
 
+                vm.hasNewSparklingLightning = level >= 20 && !admin && hasUnseenSparklingLightning(user);
+                if (level >= 20) {
+                    vm.availablePets.push({
+                        key: 'SPARKLING_LIGHTNING',
+                        name: 'Tia sét lấp lánh',
+                        description: 'Mở cùng Pikachu ở level 20',
+                        image: sparklingLightningUrl,
+                        isNew: vm.hasNewSparklingLightning
+                    });
+                }
+
                 for (var stars = 1; stars <= 7; stars++) {
                     if (level >= 5 + stars) {
                         vm.availablePets.push({
@@ -295,6 +311,11 @@
                 if (selectedPet === 'CUTE_PERRY') {
                     vm.petForm = 'perry-hatched';
                     vm.petImage = perryPetUrl;
+                    return;
+                }
+                if (selectedPet === 'SPARKLING_LIGHTNING') {
+                    vm.petForm = 'sparkling-lightning';
+                    vm.petImage = sparklingLightningUrl;
                     return;
                 }
                 if (selectedPet === 'CAPYBARA_EGG') {
@@ -510,6 +531,28 @@
                 });
             }
 
+            function sparklingLightningSeenKey(user) {
+                return 'learning-pet:sparkling-lightning-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenSparklingLightning(user) {
+                try {
+                    return $window.localStorage.getItem(sparklingLightningSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markSparklingLightningSeen(user) {
+                try {
+                    $window.localStorage.setItem(sparklingLightningSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewSparklingLightning = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'SPARKLING_LIGHTNING') { item.isNew = false; }
+                });
+            }
+
             vm.selectedPet = function () {
                 for (var i = 0; i < vm.availablePets.length; i++) {
                     if (vm.availablePets[i].key === vm.selectedPetKey) { return vm.availablePets[i]; }
@@ -574,6 +617,9 @@
                         }
                         if (user.selectedLearningPet === 'CUTE_PIKACHU') {
                             markPikachuEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'SPARKLING_LIGHTNING') {
+                            markSparklingLightningSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -908,8 +954,12 @@
                         (vm.hasNewCuteTomCatEgg ? 1 : 0) +
                         (vm.hasNewJerryMouseEgg ? 1 : 0) +
                         (vm.hasNewTuffyMouseEgg ? 1 : 0) +
-                        (vm.hasNewPikachuEgg ? 1 : 0);
-                if (vm.hasNewPikachuEgg) {
+                        (vm.hasNewPikachuEgg ? 1 : 0) +
+                        (vm.hasNewSparklingLightning ? 1 : 0);
+                if (vm.hasNewSparklingLightning) {
+                    vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
+                    vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';
+                } else if (vm.hasNewPikachuEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Pikachu mới!';
                     vm.message = 'Level 18 đã mở khóa trứng Pikachu. Level 19 trứng sẽ nứt và level 20 sẽ nở.';
                 } else if (vm.hasNewTuffyMouseEgg) {
@@ -1286,6 +1336,9 @@
                 }
                 if (vm.hasNewPikachuEgg) {
                     markPikachuEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewSparklingLightning) {
+                    markSparklingLightningSeen(readCurrentUser());
                 }
                 updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';

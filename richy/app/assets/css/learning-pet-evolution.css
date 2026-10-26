@@ -63,6 +63,85 @@
     animation: learning-pet-pikachu-lightning 7.2s ease-in-out infinite;
 }
 
+/* The level-20 collectible keeps the Lụm Trứng bolt and adds quiet gold glints. */
+.learning-pet-lightning {
+    position: relative;
+    display: block;
+    width: 104px;
+    height: 108px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.learning-pet-lightning img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+img[src*="assets/images/learning-pets/sparkling-lightning/"] {
+    image-rendering: auto !important;
+    animation: pet-lightning-glow 4.8s ease-in-out infinite;
+}
+
+.pet-lightning-sparkles {
+    position: relative;
+    isolation: isolate;
+}
+
+.pet-lightning-sparkles::before,
+.pet-lightning-sparkles::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    width: 12%;
+    height: 16%;
+    pointer-events: none;
+    background: radial-gradient(ellipse, #fff 0%, #fff7cc 42%, #ffd04d 100%);
+    clip-path: polygon(50% 0, 62% 37%, 100% 50%, 62% 63%, 50% 100%, 38% 63%, 0 50%, 38% 37%);
+    opacity: .3;
+    animation: pet-lightning-twinkle 3.6s ease-in-out infinite;
+}
+
+.pet-lightning-sparkles::before {
+    top: 16%;
+    left: 20%;
+}
+
+.pet-lightning-sparkles::after {
+    top: 66%;
+    right: 13%;
+    animation-delay: -1.8s;
+}
+
+@keyframes pet-lightning-glow {
+    0%, 100% { filter: drop-shadow(0 0 1px #ffd56866); }
+    50% { filter: drop-shadow(0 0 5px #ffc739bb) drop-shadow(0 0 9px #ffeb9e66); }
+}
+
+@keyframes pet-lightning-twinkle {
+    0%, 38%, 100% { opacity: .2; transform: scale(.5); }
+    56% { opacity: 1; transform: scale(1.15); }
+    76% { opacity: .5; transform: scale(.8); }
+}
+
+.learning-pet-shell.is-dragging img[src*="assets/images/learning-pets/sparkling-lightning/"],
+.learning-pet-shell.is-dragging .pet-lightning-sparkles::before,
+.learning-pet-shell.is-dragging .pet-lightning-sparkles::after {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    img[src*="assets/images/learning-pets/sparkling-lightning/"],
+    .pet-lightning-sparkles::before,
+    .pet-lightning-sparkles::after {
+        animation: none !important;
+    }
+    .pet-lightning-sparkles::before,
+    .pet-lightning-sparkles::after { opacity: .75; }
+}
+
 /* A long quiet interval, then two brief flashes of the source-image streaks. */
 @keyframes learning-pet-pikachu-lightning {
     0%, 74%, 84%, 94%, 100% { opacity: 0; }

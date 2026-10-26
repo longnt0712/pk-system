@@ -89,7 +89,7 @@ test('both pet displays use the same Jerry stage at levels 12, 13, 14 and later'
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options, 'option reference stays stable between digests');
-        assert.equal(options.length, level >= 18 ? 15 : (level >= 15 ? 14 : 13), 'earlier pets stay available');
+        assert.equal(options.length, level >= 20 ? 16 : (level >= 18 ? 15 : (level >= 15 ? 14 : 13)), 'earlier pets stay available');
     }
 });
 
@@ -144,11 +144,12 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CUTE_JERRY_MOUSE', 'pet-level-14.png'],
         ['CUTE_TUFFY_MOUSE', 'pet-level-17.png'],
         ['CUTE_PIKACHU', 'pet-level-20.png'],
-        ['CUTE_PERRY', 'pet-level-4.png']
+        ['CUTE_PERRY', 'pet-level-4.png'],
+        ['SPARKLING_LIGHTNING', 'sparkling-lightning/pet-level-20.png']
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 15);
+        assert.equal(h.pet.availablePets.length, 16);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -164,7 +165,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 15);
+    assert.equal(options.length, 16);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
@@ -174,6 +175,8 @@ test('the battle picker unlocks grown pets only for admins and keeps other playe
     assert.match(admin.getBattlePetOptionImage('CUTE_PIKACHU'), /pet-level-20.png/);
     assert.equal(options.find(item => item.key === 'CUTE_PERRY').label, 'Perry');
     assert.match(admin.getBattlePetOptionImage('CUTE_PERRY'), /perry\/pet-level-4.png/);
+    assert.equal(options.find(item => item.key === 'SPARKLING_LIGHTNING').label, 'Tia sét lấp lánh');
+    assert.match(admin.getBattlePetOptionImage('SPARKLING_LIGHTNING'), /sparkling-lightning\/pet-level-20.png/);
     assert.match(admin.getPlayerPetImage({username: 'student', selectedPetKey: 'CUTE_TOM_CAT', vocabularyExperienceLevel: 0}), /pet-level-11.png/);
     assert.match(admin.getPlayerPetImage({username: 'another-student', selectedPetKey: 'MAM_HOC', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.equal(admin.currentUser.vocabularyExperienceLevel, 0);
@@ -217,7 +220,7 @@ test('Tuffy evolves at levels 15, 16 and 17 consistently in the assistant and ba
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, level >= 18 ? 15 : 14);
+        assert.equal(options.length, level >= 20 ? 16 : (level >= 18 ? 15 : 14));
         if (level <= 17) {
             assert.equal(battle.getGiftRewardImage(level), expected);
             assert.match(battle.getGiftRewardLabel(level), /Chuột Tuffy/);
@@ -270,7 +273,7 @@ test('Pikachu evolves consistently in the assistant, battle and reward preview',
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, 15);
+        assert.equal(options.length, level >= 20 ? 16 : 15);
         assert.ok(options.some(item => item.key === 'CUTE_TUFFY_MOUSE'));
         if (level <= 20) {
             assert.equal(battle.getGiftRewardImage(level), expected);
@@ -450,4 +453,81 @@ test('each ball has matching artwork and level guards in the assistant and battl
         assert.equal(fresh.user().selectedLearningPet,key);assert.equal(fresh.pet.petImage,expected);
         assert.equal(fresh.requests[0].body.petKey,key);
     }
+});
+
+test('sparkling lightning unlocks with grown Pikachu at level 20 in both pet pickers', () => {
+    for (const level of [0, 18, 19]) {
+        const {pet} = setupLearningPet(level, 'SPARKLING_LIGHTNING');
+        const battle = setupBattle(level);
+        assert.equal(pet.selectedPetKey, 'MAM_HOC', 'a stale selection cannot bypass the unlock');
+        assert.equal(pet.availablePets.some(item => item.key === 'SPARKLING_LIGHTNING'), false);
+        assert.equal(pet.hasNewSparklingLightning, false);
+        assert.equal(battle.getBattlePetOptions().some(item => item.key === 'SPARKLING_LIGHTNING'), false);
+        assert.doesNotMatch(battle.getPlayerPetImage({selectedPetKey: 'SPARKLING_LIGHTNING', vocabularyExperienceLevel: level}), /sparkling-lightning/);
+    }
+    for (const level of [20, 21, 50]) {
+        const {pet} = setupLearningPet(level, 'SPARKLING_LIGHTNING');
+        const battle = setupBattle(level);
+        const expected = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=pet-test';
+        assert.equal(pet.petForm, 'sparkling-lightning');
+        assert.equal(pet.petImage, expected);
+        assert.equal(pet.selectedPet().name, 'Tia sét lấp lánh');
+        assert.equal(pet.selectedPet().image, expected);
+        assert.equal(battle.getPlayerPetImage({selectedPetKey: 'SPARKLING_LIGHTNING', vocabularyExperienceLevel: level}), expected);
+        assert.equal(battle.getBattlePetOptionImage('SPARKLING_LIGHTNING'), expected);
+        const options = battle.getBattlePetOptions();
+        assert.equal(options.find(item => item.key === 'SPARKLING_LIGHTNING').label, 'Tia sét lấp lánh');
+        assert.strictEqual(battle.getBattlePetOptions(), options, 'options stay stable across digests');
+        assert.match(pet.availablePets.find(item => item.key === 'CUTE_PIKACHU').image, /pikachu\/pet-level-20.png/);
+        assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, 'Pikachu');
+        assert.equal(setupLearningPet(level, 'CUTE_PIKACHU').pet.selectedPetKey, 'CUTE_PIKACHU', 'unlock preserves the chosen pet');
+    }
+});
+
+test('choosing sparkling lightning saves and acknowledges its unlock for the current account', async () => {
+    const h = setupLearningPet(20, 'CUTE_PIKACHU');
+    assert.equal(h.pet.hasNewSparklingLightning, true);
+    assert.match(h.pet.message, /Level 20.*Tia sét lấp lánh.*Pikachu/);
+    assert.doesNotMatch(h.pet.message, /trứng|nứt|nở/);
+    h.pet.selectPet('SPARKLING_LIGHTNING');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests[0].body.petKey, 'SPARKLING_LIGHTNING');
+    assert.equal(h.user().selectedLearningPet, 'SPARKLING_LIGHTNING');
+    assert.equal(h.pet.petForm, 'sparkling-lightning');
+    assert.equal(h.pet.hasNewSparklingLightning, false);
+    assert.equal(h.pet.selectedPet().isNew, false);
+    assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', 'SPARKLING_LIGHTNING']]);
+    assert.equal(setupLearningPet(20, 'SPARKLING_LIGHTNING', h.storage).pet.hasNewSparklingLightning, false);
+    h.hooks.form({id: 8, vocabularyExperienceLevel: 20, selectedLearningPet: 'SPARKLING_LIGHTNING'});
+    assert.equal(h.pet.hasNewSparklingLightning, true, 'seen state is separate per account');
+});
+
+test('opening the pet panel acknowledges sparkling lightning without switching away from Pikachu', () => {
+    const h = setupLearningPet(20, 'CUTE_PIKACHU');
+    h.pet.openPanel();
+    assert.equal(h.pet.hasNewSparklingLightning, false);
+    assert.equal(h.pet.availablePets.find(item => item.key === 'SPARKLING_LIGHTNING').isNew, false);
+    assert.equal(h.pet.notificationCount, 0);
+    assert.equal(h.pet.selectedPetKey, 'CUTE_PIKACHU');
+});
+
+test('admin access to lightning never unlocks an unrelated student or changes experience', () => {
+    const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
+    const expected = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=pet-test';
+    assert.equal(admin.getPlayerPetImage({username: 'student', selectedPetKey: 'SPARKLING_LIGHTNING', vocabularyExperienceLevel: 0}), expected);
+    assert.doesNotMatch(admin.getPlayerPetImage({username: 'someone-else', selectedPetKey: 'SPARKLING_LIGHTNING', vocabularyExperienceLevel: 19}), /sparkling-lightning/);
+    assert.equal(setupBattle(0).getPlayerPetImage({selectedPetKey: 'SPARKLING_LIGHTNING', vocabularyExperienceLevel: 0, allPetsUnlocked: true}), expected);
+    assert.equal(admin.currentUser.vocabularyExperienceLevel, 0);
+    assert.equal(setupLearningPet(0, 'SPARKLING_LIGHTNING', new Map(), [{name: 'ROLE_ADMIN'}]).pet.hasNewSparklingLightning, false);
+});
+
+test('the lightning collectible packages transparent artwork without changing the game reward', () => {
+    const png = fs.readFileSync(path.join(assets, 'sparkling-lightning/pet-level-20.png'));
+    assert.equal(png.subarray(1, 4).toString(), 'PNG');
+    assert.equal(png.readUInt32BE(16), 1024);
+    assert.equal(png.readUInt32BE(20), 1024);
+    assert.equal(png[25], 6);
+    const battle = setupBattle(20);
+    assert.equal(battle.getGiftRewardImage(-4), 'assets/images/battle-lightning.svg?v=pet-test');
+    assert.equal(battle.getGiftRewardImage(21), 'assets/images/learning-pets/perry/pet-level-4.png?v=pet-test');
 });

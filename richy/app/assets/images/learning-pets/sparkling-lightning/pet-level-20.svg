@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Tia sét lấp lánh</title>
+  <desc id="desc">Tia sét vàng trong Lụm Trứng, có quầng sáng dịu và những ngôi sao nhỏ. Mở khóa hoàn chỉnh ở level 20.</desc>
+  <defs>
+    <linearGradient id="bolt" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#fff447"/>
+      <stop offset=".5" stop-color="#ffc400"/>
+      <stop offset="1" stop-color="#ff7613"/>
+    </linearGradient>
+    <linearGradient id="glint" x1="0" y1="0" x2=".3" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".38" stop-color="#fff7bc"/>
+      <stop offset="1" stop-color="#ffc539"/>
+    </linearGradient>
+    <filter id="warm-halo" x="-35%" y="-25%" width="170%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#ffbe30" flood-opacity=".28"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="3.5" flood-color="#fff6b5" flood-opacity=".62"/>
+    </filter>
+    <filter id="glint-halo" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#ffd651" flood-opacity=".48"/>
+    </filter>
+    <path id="diamond" d="M0-30 7-7 30 0 7 7 0 30-7 7-30 0-7-7Z"/>
+  </defs>
+  <!-- Both bolt outlines and the inner highlight retain the exact game paths. -->
+  <g transform="translate(200 104) scale(2.25)" filter="url(#warm-halo)">
+    <path d="M213 13 61 167h73L35 344l210-210h-83L263 8Z" fill="url(#bolt)" stroke="#25202a" stroke-width="9" stroke-linejoin="miter"/>
+    <path d="m213 32-125 122h72L69 295l150-145h-79Z" fill="none" stroke="#fff79a" stroke-width="5"/>
+    <path d="m48 157-35 72h30L18 284l75-90H60l23-52Z" fill="#ffc900" stroke="#25202a" stroke-width="6"/>
+  </g>
+  <g fill="url(#glint)" stroke="#efad28" stroke-width="2" stroke-linejoin="round" filter="url(#glint-halo)">
+    <use href="#diamond" transform="translate(344 254) scale(1.12)"/>
+    <use href="#diamond" transform="translate(828 354) scale(.96)"/>
+    <use href="#diamond" transform="translate(722 714) scale(1.08)"/>
+    <use href="#diamond" transform="translate(218 784) scale(.75)"/>
+    <use href="#diamond" transform="translate(514 901) scale(.55)"/>
+  </g>
+  <g fill="#fff3a6">
+    <circle cx="302" cy="204" r="5"/>
+    <circle cx="873" cy="408" r="5"/>
+    <circle cx="772" cy="764" r="4.5"/>
+    <circle cx="170" cy="723" r="4"/>
+  </g>
+</svg>

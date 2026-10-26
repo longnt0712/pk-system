@@ -17,7 +17,7 @@
             <section class="learning-pet-collection" ng-if="pet.availablePets.length">
                 <button type="button" class="learning-pet-picker-button"
                         ng-click="pet.openPetPicker($event)" aria-haspopup="dialog">
-                    <span class="learning-pet-choice-image">
+                    <span class="learning-pet-choice-image" ng-class="{'pet-lightning-sparkles': pet.selectedPetKey === 'SPARKLING_LIGHTNING'}">
                         <img ng-src="{{pet.selectedPet().image}}" alt="" aria-hidden="true"
                              ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'}">
                     </span>
@@ -71,7 +71,10 @@
                     'is-perry-pet': pet.petForm === 'perry-hatched',
                     'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'
                  }"
-                 ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+                 ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched' && pet.petForm !== 'sparkling-lightning'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+            <span class="learning-pet-lightning pet-lightning-sparkles" ng-if="pet.petForm === 'sparkling-lightning'" aria-hidden="true">
+                <img ng-src="{{pet.petImage}}" draggable="false" alt="" />
+            </span>
             <span class="learning-pet-pikachu" ng-if="pet.petForm === 'pikachu-hatched'" aria-hidden="true">
                 <img class="learning-pet-pikachu__body" ng-src="{{pet.petImage}}" draggable="false" alt="" />
                 <span class="learning-pet-pikachu__electricity" aria-hidden="true">
