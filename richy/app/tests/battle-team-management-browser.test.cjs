@@ -26,7 +26,7 @@ async function open(width=1280,username='host',status='PLAYING',mode='CLASSIC'){
   '<div ng-if="vm.isDemonDefenseMode()" ng-include="vm.demonArenaTemplate"></div></main><div id="qa-fullscreen"></div></body></html>');
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-drag-and-drop-lists.js')});
- await page.evaluate(({username,status,mode,arena,controls})=>{
+ await page.evaluate(({username,status,mode,arena,controls,hostSettings})=>{
   window.APP_VERSION='qa';window.qaRequests=[];window.qaErrors=[];
   const now=Date.now();
   window.qaServerRoom={code:'TEAMQA',hostUsername:'host',status,serverTime:now,matchEndsAt:now+600000,questionEndsAt:now+600000,
@@ -51,9 +51,13 @@ async function open(width=1280,username='host',status='PLAYING',mode='CLASSIC'){
      if(enabled&&!selected.includes(target))selected.push(target);if(!enabled&&selected.includes(target))selected.splice(selected.indexOf(target),1);
      window.qaServerRoom.settings.doubleActionUsername=selected[0]||'';return $q.when(angular.copy(window.qaServerRoom));},
     assignPlayerTeam(code,target,team){window.qaRequests.push({action:'team',target,team});window.qaServerRoom.players.find(player=>player.username===target).teamNumber=team;return $q.when(angular.copy(window.qaServerRoom));},
+    randomizeTeams(code){window.qaRequests.push({action:'randomize',code});
+     const players=window.qaServerRoom.players.filter(player=>!player.spectator),turn=window.qaRequests.filter(request=>request.action==='randomize').length;
+     players.forEach((player,index)=>player.teamNumber=1+(index+turn)%window.qaServerRoom.settings.teamCount);
+     window.qaServerRoom.serverTime=Date.now();return $q.when(angular.copy(window.qaServerRoom));},
     getRoom(){return $q.when(angular.copy(window.qaServerRoom));},connectRealtime(){return $q.when(true);},disconnectRealtime(){}};})
-   .run(function($templateCache){$templateCache.put('question/views/battle_online_demon_arena.html?v=qa',arena);$templateCache.put('question/views/battle_online_match_controls.html?matchControls=20261017_2',controls);});
- },{username,status,mode,arena:read('question/views/battle_online_demon_arena.html'),controls:read('question/views/battle_online_match_controls.html')});
+   .run(function($templateCache){$templateCache.put('question/views/battle_online_demon_arena.html?v=qa',arena);$templateCache.put('question/views/battle_online_match_controls.html?matchControls=20261017_2',controls);$templateCache.put('question/views/battle_online_host_settings.html?v=qa',hostSettings);});
+ },{username,status,mode,arena:read('question/views/battle_online_demon_arena.html'),controls:read('question/views/battle_online_match_controls.html'),hostSettings:read('question/views/battle_online_host_settings.html')});
  await page.addScriptTag({content:read('question/controllers/BattleQuizOnlineController.js').replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.teamQaHooks={applyRoom,applyDemonArena};')});
  await page.evaluate(()=>{
   angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.teamQaScope=angular.element(document.getElementById('qa')).scope();
@@ -148,6 +152,62 @@ test('the real Demon host arena displays levels, point progress, three-hit enemi
    assert.match(await arena.locator('.demon-level-progress').first().textContent(),/0\s*\/\s*90/);
    if(process.env.BATTLE_TEAM_SCREENSHOTS){fs.mkdirSync(process.env.BATTLE_TEAM_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.BATTLE_TEAM_SCREENSHOTS,'demon-level-'+width+'.png'),fullPage:true});}
    await arena.getByRole('button',{name:'👥 Xếp đội / Gánh',exact:true}).click();await page.locator('#battle-team-manager').waitFor({state:'visible'});
+   assert.deepEqual(errors,[]);
+  }finally{await page.close();}
+ }
+});
+
+test('each press of Random again updates balanced teams in the live dialog while keeping the selected carry',async()=>{
+ for(const status of ['LOBBY','PLAYING'])for(const width of [390,1280]){
+  const {page,errors}=await open(width,'host',status);
+  try{
+   await page.evaluate(()=>{const room=angular.copy(window.qaServerRoom);room.players.filter(player=>!player.spectator).forEach(player=>player.teamNumber=1);room.settings.doubleActionUsernames=['bob'];window.qaApply(room,false);});
+   await page.getByRole('button',{name:'Xếp đội',exact:true}).click();const dialog=page.locator('#battle-team-manager');await dialog.waitFor({state:'visible'});
+   const assignments=[];
+   for(let press=0;press<3;press++){
+    await dialog.locator('#battle-team-randomize').click();
+    await page.waitForFunction(expected=>window.qaRequests.filter(request=>request.action==='randomize').length===expected,press+1);
+    const teams=await page.evaluate(()=>window.teamQaScope.vm.room.players.filter(player=>!player.spectator).map(player=>player.teamNumber));
+    const sizes=[teams.filter(team=>team===1).length,teams.filter(team=>team===2).length];assert.ok(Math.abs(sizes[0]-sizes[1])<=1);
+    assignments.push(teams);if(press>0)assert.notDeepEqual(assignments[press],assignments[press-1]);
+    assert.equal(await dialog.locator('.battle-online-carry-toggle[aria-pressed="true"]').count(),1);
+   }
+   assert.equal(await dialog.locator('[dnd-draggable]').count(),3);assert.deepEqual(errors,[]);
+  }finally{await page.close();}
+ }
+});
+
+test('the actual desktop host settings scroll independently, keep Start reachable and remain natural on mobile',async()=>{
+ const marker=view.indexOf('HOST MODE SETTINGS'),asideStart=view.indexOf('<aside',marker),asideEnd=view.indexOf('</aside>',asideStart)+8;
+ assert.ok(marker>=0&&asideStart>marker&&asideEnd>asideStart);const aside=view.slice(asideStart,asideEnd);
+ for(const width of [1280,390]){
+  const {page,errors}=await open(width,'host','LOBBY');
+  try{
+   await page.evaluate(aside=>{
+    const scope=window.teamQaScope,injector=angular.element(document.getElementById('qa')).injector();
+    const fragment='<div class="battle-online-layout" style="margin-top:160px"><section class="battle-online-card battle-online-main-card" style="height:1700px"><strong id="qa-left-marker">Danh sách người chơi</strong></section>'+aside+'</div>';
+    scope.$apply(()=>document.getElementById('qa').appendChild(injector.get('$compile')(fragment)(scope)[0]));window.dispatchEvent(new Event('resize'));
+   },aside);
+   const panel=page.locator('#battle-online-lobby-settings');await panel.locator('.battle-online-start-btn').waitFor({state:'attached'});
+   if(width>820){
+    await page.waitForFunction(()=>{const panel=document.getElementById('battle-online-lobby-settings');return panel&&panel.clientHeight>0&&panel.scrollHeight>panel.clientHeight;});
+    const bounds=await panel.boundingBox();assert.ok(bounds.y+bounds.height<=900+1,'the panel fits the currently available viewport');
+    const before=await page.evaluate(()=>({page:scrollY,left:document.getElementById('qa-left-marker').getBoundingClientRect().top}));
+    await page.mouse.move(bounds.x+bounds.width/2,bounds.y+100);await page.mouse.wheel(0,650);
+    await page.waitForFunction(()=>document.getElementById('battle-online-lobby-settings').scrollTop>100);
+    const after=await page.evaluate(()=>({page:scrollY,left:document.getElementById('qa-left-marker').getBoundingClientRect().top}));
+    assert.deepEqual(after,before,'scrolling the right panel must not move the page or left column');
+    await panel.evaluate(element=>element.scrollTop=element.scrollHeight);
+    await panel.locator('#battle-settings-team-randomize').click();
+    await page.waitForFunction(()=>window.qaRequests.filter(request=>request.action==='randomize').length===1);
+    const start=await panel.locator('.battle-online-start-btn').boundingBox();assert.ok(start.y>=0&&start.y+start.height<=900+1,'Start remains reachable inside the panel');
+    await page.mouse.wheel(0,650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(()=>scrollY),before.page,'reaching the panel bottom does not scroll the page');
+    if(process.env.BATTLE_TEAM_SCREENSHOTS)await page.screenshot({path:path.join(process.env.BATTLE_TEAM_SCREENSHOTS,'lobby-scroll-1280.png')});
+   }else{
+    const style=await panel.evaluate(element=>({position:getComputedStyle(element).position,maxHeight:getComputedStyle(element).maxHeight,overflow:getComputedStyle(element).overflowY}));
+    assert.equal(style.position,'static');assert.equal(style.maxHeight,'none');assert.equal(style.overflow,'visible');
+   }
    assert.deepEqual(errors,[]);
   }finally{await page.close();}
  }

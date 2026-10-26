@@ -1204,6 +1204,56 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     @Override
+    public BattleOnlineRoomDto randomizeTeams(String roomCode, String username) {
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+        synchronized (room) {
+            requireHost(room, username);
+            if (!LOBBY.equals(room.status) && !PLAYING.equals(room.status)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ có thể chia đội ngẫu nhiên trong lobby hoặc khi trận đang diễn ra.");
+            }
+            if (room.settings.teamCount < 2) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hãy bật chế độ chia đội và lưu thiết lập trước.");
+            }
+            boolean liveDemon = PLAYING.equals(room.status) && MODE_DEMON_DEFENSE.equals(room.settings.mode);
+            if (liveDemon) {
+                advanceDemonDefenseLocked(room, System.currentTimeMillis());
+                if (!PLAYING.equals(room.status) || room.demonDefense == null) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Trận đã kết thúc, không thể chia lại đội.");
+                }
+            }
+            List<Integer> teamNumbers = new ArrayList<Integer>();
+            for (int number = 1; number <= room.settings.teamCount; number++) {
+                if (!liveDemon || !room.demonDefense.isEliminated(number)) { teamNumbers.add(number); }
+            }
+            List<PlayerState> participants = new ArrayList<PlayerState>();
+            for (PlayerState player : room.players.values()) {
+                if (!player.spectator && (!liveDemon || teamNumbers.contains(player.teamNumber))) { participants.add(player); }
+            }
+            if (participants.isEmpty() || teamNumbers.size() < 2) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Cần có người chơi và ít nhất hai đội để chia ngẫu nhiên.");
+            }
+            Collections.shuffle(participants, random);
+            Collections.shuffle(teamNumbers, random);
+            boolean changed = false;
+            for (int index = 0; index < participants.size(); index++) {
+                if (participants.get(index).teamNumber != teamNumbers.get(index % teamNumbers.size())) { changed = true; break; }
+            }
+            // Even an identical random draw must produce another arrangement when alternatives exist.
+            // Rotating the destination labels preserves balanced counts and never needs partial roster updates.
+            int rotation = changed ? 0 : 1;
+            for (int index = 0; index < participants.size(); index++) {
+                participants.get(index).teamNumber = teamNumbers.get((index + rotation) % teamNumbers.size());
+            }
+            syncDemonPlayersLocked(room, System.currentTimeMillis());
+            dto = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room);
+        return dto;
+    }
+
+    @Override
     public BattleOnlineRoomDto setPlayerCarry(String roomCode, String username, String targetUsername,
             com.globits.richy.dto.BattleOnlineCarryDto request) {
         username = requireUsername(username);

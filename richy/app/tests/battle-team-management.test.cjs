@@ -15,16 +15,16 @@ function setup(username='host') {
  nodeVm.runInNewContext(controller.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,
   'expose({applyRoom,keydownHandler,buildSettingsDto});'),{angular,expose(value){hooks=value;}});
  const timer=(fn,delay)=>{if(delay===0)timers.push(fn);return 1;};timer.cancel=()=>{};
- const service={getRoom(){return new Promise(()=>{});},setPlayerCarry(...args){return new Promise(resolve=>requests.push({kind:'carry',args,resolve}));},
+ const service={getRoom(){return new Promise(()=>{});},randomizeTeams(...args){return new Promise((resolve,reject)=>requests.push({kind:'random',args,resolve,reject}));},setPlayerCarry(...args){return new Promise(resolve=>requests.push({kind:'carry',args,resolve}));},
   assignPlayerTeam(...args){return new Promise(resolve=>requests.push({kind:'team',args,resolve}));}};
- const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},
-  {document,location:{origin:'https://example.test'},navigator:{},localStorage:{getItem(){return null;},setItem(){}}},
+ const window={document,location:{origin:'https://example.test'},navigator:{},localStorage:{getItem(){return null;},setItem(){}}};
+ const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,
   {warning(){},error(){},success(){}},{},{},service);
  function room(status='PLAYING',mode='DEMON_DEFENSE') {const now=Date.now();return{code:'TEAMS',hostUsername:'host',status,serverTime:now,matchEndsAt:now+60000,
   settings:{mode,teamCount:2,topicIds:[],topicNames:[],guessLevels:[],doubleActionUsernames:[]},recentEvents:[],
   players:[{username:'host',spectator:true,connected:true},{username:'alice',displayName:'Alice',teamNumber:1,connected:true}],
   demonDefense:mode==='DEMON_DEFENSE'?{startedAt:now-1000,snapshotAt:now,level:2,levelTargetPoints:40,teams:[{number:1,memberCount:1,points:10,kills:4,levelPoints:5},{number:2,memberCount:1,points:0,kills:0,levelPoints:0}]}:null};}
- return{vm,hooks,requests,room,document,layer,parent,fullscreen,focus,controls,gestures,flush(){while(timers.length)timers.shift()();}};
+ return{vm,hooks,requests,room,window,document,layer,parent,fullscreen,focus,controls,gestures,flush(){while(timers.length)timers.shift()();}};
 }
 const copy=value=>JSON.parse(JSON.stringify(value));
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
@@ -93,4 +93,43 @@ test('carry service uses a scoped atomic endpoint and encodes usernames',async()
   {angular:{module(){return{service(name,fn){Service=fn;}};}}});
  let sent;const api=new Service({post(url,payload){sent={url,payload};return Promise.resolve({data:{ok:true}});}},null,null,null,{api:{baseUrl:'/api/',apiV1Url:'v1/'}});
  assert.equal((await api.setPlayerCarry('room1','a/b',true)).ok,true);assert.equal(sent.url,'/api/v1/battle-online/rooms/ROOM1/players/a%2Fb/carry');assert.equal(sent.payload.enabled,true);
+ await api.randomizeTeams('room2');assert.equal(sent.url,'/api/v1/battle-online/rooms/ROOM2/teams/randomize');assert.deepEqual(Object.keys(sent.payload),[]);
+});
+
+test('randomizing teams works in lobby and play and serializes random, manual moves and carry edits',async()=>{
+ for(const status of ['LOBBY','PLAYING']) {
+  const h=setup(),room=h.room(status,'CLASSIC');h.hooks.applyRoom(room,false);
+  h.vm.randomizeTeams();assert.equal(h.vm.randomizingTeams,true);assert.equal(h.vm.teamManagementBusy(),true);
+  h.vm.randomizeTeams();h.vm.assignPlayerTeam(h.vm.room.players[1],2);h.vm.toggleCarryPlayer(h.vm.room.players[1]);
+  assert.equal(h.vm.dropPlayerIntoTeam(2,h.vm.room.players[1]),false);assert.equal(h.requests.length,1);
+  assert.equal(h.requests[0].kind,'random');assert.deepEqual(Array.from(h.requests[0].args),['TEAMS']);
+  const result=copy(room);result.serverTime++;result.players[1].teamNumber=2;h.requests[0].resolve(result);await settle();
+  assert.equal(h.vm.randomizingTeams,false);assert.equal(h.vm.room.players[1].teamNumber,2);
+  h.vm.toggleCarryPlayer(h.vm.room.players[1]);h.vm.randomizeTeams();h.vm.assignPlayerTeam(h.vm.room.players[1],1);assert.equal(h.requests.length,2);
+  h.requests[1].resolve(copy(h.vm.room));await settle();
+  h.vm.assignPlayerTeam(h.vm.room.players[1],1);h.vm.randomizeTeams();h.vm.toggleCarryPlayer(h.vm.room.players[1]);assert.equal(h.requests.length,3);
+ }
+});
+
+test('random controls reject non-hosts, finished matches and rooms with no eligible team players',()=>{
+ const student=setup('alice');student.hooks.applyRoom(student.room(),false);student.vm.randomizeTeams();assert.equal(student.requests.length,0);
+ const h=setup();h.hooks.applyRoom(h.room('FINISHED'),false);assert.equal(h.vm.canRandomizeTeams(),false);h.vm.randomizeTeams();assert.equal(h.requests.length,0);
+ const empty=h.room('LOBBY');empty.players=empty.players.filter(player=>player.spectator);h.hooks.applyRoom(empty,false);assert.equal(h.vm.canRandomizeTeams(),false);
+ const eliminated=h.room();eliminated.demonDefense.teams[1].eliminatedAt=Date.now();h.hooks.applyRoom(eliminated,false);assert.equal(h.vm.canRandomizeTeams(),false);
+});
+
+test('random failures and stale responses preserve the current room and release the busy state',async()=>{
+ const h=setup(),room=h.room();h.hooks.applyRoom(room,false);h.vm.randomizeTeams();const before=copy(h.vm.room);
+ h.requests[0].reject({data:{message:'Không thể random'}});await settle();assert.equal(h.vm.randomizingTeams,false);assert.deepEqual(copy(h.vm.room),before);
+ h.vm.randomizeTeams();const stale=copy(h.vm.room),live=copy(stale);live.serverTime+=100;live.players[1].score=81;h.hooks.applyRoom(live,true);
+ h.requests[1].resolve(stale);await settle();assert.equal(h.vm.room.players[1].score,81);assert.equal(h.vm.teamManagementBusy(),false);
+ h.vm.randomizeTeams();const different=h.room();different.code='OTHER';h.hooks.applyRoom(different,false);h.requests[2].resolve(live);await settle();assert.equal(h.vm.room.code,'OTHER');
+});
+
+test('desktop lobby settings height follows its actual viewport position and is released on mobile',()=>{
+ const h=setup();let top=220;const styles={},panel={style:{setProperty(key,value){styles[key]=value;},removeProperty(key){delete styles[key];}},getBoundingClientRect(){return{top};}};
+ const previous=h.document.getElementById;h.document.getElementById=id=>id==='battle-online-lobby-settings'?panel:previous(id);h.window.innerWidth=1280;
+ h.vm.refreshLobbySettingsViewport();assert.equal(styles['--battle-lobby-panel-top'],'220px');
+ top=-40;h.gestures['scroll resize']();assert.equal(styles['--battle-lobby-panel-top'],'12px');
+ h.window.innerWidth=390;h.vm.refreshLobbySettingsViewport();assert.equal(styles['--battle-lobby-panel-top'],undefined);
 });

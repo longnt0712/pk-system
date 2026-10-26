@@ -82,6 +82,8 @@ public interface BattleOnlineService {
             BattleOnlineTeamAssignmentDto teamDto
     );
 
+    BattleOnlineRoomDto randomizeTeams(String roomCode, String username);
+
     BattleOnlineRoomDto setPlayerCarry(String roomCode, String username, String targetUsername, com.globits.richy.dto.BattleOnlineCarryDto request);
 
     BattleOnlineRoomDto updateSettings(

@@ -592,7 +592,11 @@
 
                 <div class="battle-online-double-action-setting" ng-if="vm.hasTeamMode()">
                     <div class="battle-online-double-action-title">⚡ NGƯỜI GÁNH ĐỘI x2</div>
-                    <button type="button" class="btn btn-default" ng-click="vm.openTeamManager($event)">👥 Xếp đội / Chọn người gánh</button>
+                    <div class="battle-online-team-settings-actions"><button type="button" class="btn btn-default" ng-click="vm.openTeamManager($event)">👥 Xếp đội / Chọn người gánh</button>
+                        <button id="battle-settings-team-randomize" type="button" class="battle-online-team-randomize" ng-if="vm.canManageTeams()"
+                                ng-click="vm.randomizeTeams()" ng-disabled="vm.teamManagementBusy() || !vm.canRandomizeTeams()"
+                                ng-attr-aria-busy="{{vm.randomizingTeams}}">{{vm.randomizingTeams ? 'Đang random…' : '🎲 Random lại đội'}}</button>
+                    </div>
                     <p>Nhấn ⚡ Gánh cạnh tên thành viên để bật / tắt. Có thể chọn nhiều người, trước và trong trận.</p>
                     <p ng-if="vm.hasDoubleActionPlayers()">Đang gánh: {{vm.getDoubleActionPlayerName()}}</p>
                     <p>Điểm và tác động ×2; Diệt quỷ bắn gấp đôi số đạn. Riêng trứng thối vẫn cho 0,5 điểm.</p>

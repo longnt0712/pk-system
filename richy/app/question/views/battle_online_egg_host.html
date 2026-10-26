@@ -20,7 +20,7 @@
                 <b>{{vm.formatScore(player.score)}}</b>
                 <div class="battle-online-ranking-actions" ng-if="vm.canManageTeams()"><button type="button" class="battle-online-carry-toggle" dnd-nodrag
                                     ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
-                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.carrySavingUsername"
+                                    ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.teamManagementBusy()"
                                     ng-attr-aria-pressed="{{vm.isDoubleActionPlayer(player)}}" ng-attr-aria-label="Gánh đội cho {{vm.getPlayerDisplayName(player)}}">⚡ Gánh</button><button type="button" class="battle-online-kick-mini-btn" ng-if="vm.canKickPlayer(player)" ng-click="vm.openKickConfirm(player); $event.stopPropagation()">KÍCH</button></div>
             </div>
         </div>

@@ -157,6 +157,11 @@
                 .then(function (response) { return response.data; });
         };
 
+        self.randomizeTeams = function (roomCode) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/teams/randomize', {})
+                .then(function (response) { return response.data; });
+        };
+
         self.assignPlayerTeam = function (roomCode, targetUsername, teamNumber) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/team',

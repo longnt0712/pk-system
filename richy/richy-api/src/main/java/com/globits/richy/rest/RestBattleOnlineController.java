@@ -150,6 +150,11 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/teams/randomize", method = RequestMethod.POST)
+    public BattleOnlineRoomDto randomizeTeams(@PathVariable String roomCode) {
+        return battleOnlineService.randomizeTeams(roomCode, currentUsername());
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/players/{targetUsername}/carry", method = RequestMethod.POST)
     public BattleOnlineRoomDto setPlayerCarry(
             @PathVariable String roomCode,

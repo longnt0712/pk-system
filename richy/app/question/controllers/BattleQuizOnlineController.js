@@ -68,6 +68,7 @@
         vm.assigningTeamUsername = '';
         vm.assigningTeamNumber = 0;
         vm.carrySavingUsername = '';
+        vm.randomizingTeams = false;
         vm.teamManagerOpen = false;
         vm.teamManagerNewUsernames = [];
         var teamManagerTrigger = null, teamManagerParent = null, teamManagerNextSibling = null;
@@ -1159,6 +1160,10 @@
         vm.isSpectator = isSpectator;
         vm.canKickPlayer = canKickPlayer;
         vm.canManageTeams = canManageTeams;
+        vm.teamManagementBusy = teamManagementBusy;
+        vm.canRandomizeTeams = canRandomizeTeams;
+        vm.randomizeTeams = randomizeTeams;
+        vm.refreshLobbySettingsViewport = refreshLobbySettingsViewport;
         vm.openTeamManager = openTeamManager;
         vm.closeTeamManager = closeTeamManager;
         vm.canToggleCarry = canToggleCarry;
@@ -3232,6 +3237,7 @@
             }
             vm.room = incoming;
             syncTeamManagement(previousRoom, incoming);
+            if (incoming.status === 'LOBBY' && isHost()) { $timeout(refreshLobbySettingsViewport, 0, false); }
             if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
                     (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }
             var videoRoundChanged = !!(previousRoom && Number(previousRoom.videoQuestionRound || 0) !== Number(incoming.videoQuestionRound || 0));
@@ -4091,7 +4097,7 @@
                 (!isHost() && (vm.room.status !== 'LOBBY' || !isCurrentPlayer)) ||
                 !player ||
                 player.spectator ||
-                vm.assigningTeamUsername
+                teamManagementBusy()
             ) {
                 return;
             }
@@ -4166,7 +4172,7 @@
                 !vm.room ||
                 ['LOBBY', 'PLAYING'].indexOf(vm.room.status) < 0 ||
                 !isHost() ||
-                vm.assigningTeamUsername ||
+                teamManagementBusy() ||
                 !draggedPlayer ||
                 draggedPlayer.spectator === true
             ) {
@@ -4201,7 +4207,7 @@
 
 
         function onLobbyPlayerDragStart(player) {
-            if (!isHost() || !player || player.spectator === true) {
+            if (!isHost() || teamManagementBusy() || !player || player.spectator === true) {
                 return;
             }
 
@@ -4460,11 +4466,37 @@
         function canManageTeams() {
             return !!(vm.room && isHost() && hasTeamMode() && ['LOBBY', 'PLAYING'].indexOf(vm.room.status) >= 0);
         }
+        function teamManagementBusy() {
+            return !!(vm.randomizingTeams || vm.assigningTeamUsername || vm.carrySavingUsername);
+        }
+        function canRandomizeTeams() {
+            return !!(canManageTeams() && getTeamNumbers().filter(function (number) { return !vm.isTeamEliminated(number); }).length >= 2 &&
+                (vm.room.players || []).some(function (player) {
+                    return !player.spectator && !player.demonEliminated && Number(player.teamNumber) > 0 && !vm.isTeamEliminated(player.teamNumber);
+                }));
+        }
+        function randomizeTeams() {
+            if (!canRandomizeTeams() || teamManagementBusy() || !battleService.randomizeTeams) { return; }
+            var roomCode = vm.room.code;
+            vm.randomizingTeams = true;
+            return battleService.randomizeTeams(roomCode).then(function (room) {
+                applyTeamManagementRoom(room, roomCode);
+            }, showRequestError).finally(function () { vm.randomizingTeams = false; });
+        }
+        function refreshLobbySettingsViewport() {
+            var document = $window.document;
+            if (!document || !document.getElementById) { return; }
+            var panel = document.getElementById('battle-online-lobby-settings');
+            if (!panel || !panel.style || !panel.getBoundingClientRect) { return; }
+            if (Number($window.innerWidth || 0) <= 820) { panel.style.removeProperty('--battle-lobby-panel-top'); return; }
+            var top = Math.max(12, panel.getBoundingClientRect().top);
+            panel.style.setProperty('--battle-lobby-panel-top', top + 'px');
+        }
         function canToggleCarry(player) {
             return !!(canManageTeams() && player && !player.spectator && player.teamNumber > 0);
         }
         function toggleCarryPlayer(player) {
-            if (!canToggleCarry(player) || vm.carrySavingUsername || !battleService.setPlayerCarry) { return; }
+            if (!canToggleCarry(player) || teamManagementBusy() || !battleService.setPlayerCarry) { return; }
             var carryRoomCode = vm.room.code;
             vm.carrySavingUsername = player.username;
             battleService.setPlayerCarry(carryRoomCode, player.username, !isDoubleActionPlayer(player)).then(function (room) {
@@ -4473,6 +4505,7 @@
         }
         function applyTeamManagementRoom(room, expectedCode) {
             if (!room || !vm.room || vm.room.code !== expectedCode || room.code !== expectedCode ||
+                    (vm.room.status === 'FINISHED' && room.status !== 'FINISHED') ||
                     (Number(room.serverTime || 0) && Number(vm.room.serverTime || 0) > Number(room.serverTime))) { return false; }
             applyRoom(room, false); return true;
         }
@@ -8355,6 +8388,7 @@
         );
         angular.element($window).on('resize', hostVideoListResize);
         angular.element($window.document).on('fullscreenchange', hostVideoFullscreenChanged);
+        angular.element($window).on('scroll resize', refreshLobbySettingsViewport);
 
         angular.element(
             $window.document
@@ -8385,6 +8419,7 @@
                 vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); vm.closeHostVideoAnswers(); clearHostVideoReplay(); clearVideoAnswerToast();
                 angular.element($window).off('resize', hostVideoListResize);
                 angular.element($window.document).off('fullscreenchange', hostVideoFullscreenChanged);
+                angular.element($window).off('scroll resize', refreshLobbySettingsViewport);
                 vm.closeGiftModal(true);
                 if (demonAudioContext) {
                     var closingAudio = demonAudioContext.close();
