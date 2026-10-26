@@ -194,14 +194,19 @@
                     <div class="portlet-body">
                         <div class="row">
                             <div ng-show="vm.isListeningRoute" class="col-md-12 idp-listening-toolbar" ng-class="{'is-serious': !vm.isStudyMode()}">
-                                <div class="idp-listening-player" ng-show="vm.isStudyMode()">
-                                    <span class="idp-listening-player-icon" aria-hidden="true"><i class="fa fa-headphones"></i></span>
-                                    <audio ng-show="vm.isStudyMode()" id="main-audio" controls controlsList="nodownload" preload="metadata" aria-label="Trình phát bài nghe">
+                                <div class="idp-listening-player" ng-show="vm.isStudyMode()"
+                                     audio-player-for="main-audio" audio-player-enabled="vm.isListeningRoute && vm.isStudyMode()">
+                                    <audio id="main-audio" preload="metadata" aria-hidden="true">
                                         Your browser does not support the audio element.
                                     </audio>
+                                    <button class="idp-listening-play" type="button" aria-label="Phát bài nghe" title="Phát bài nghe" aria-controls="main-audio" disabled>
+                                        <i class="fa fa-play" aria-hidden="true"></i>
+                                    </button>
+                                    <output class="idp-listening-time" aria-label="Thời gian bài nghe">0:00 / 0:00</output>
                                     <input class="idp-listening-seek" type="range" min="0" max="0" step="1" value="0"
                                            audio-seek-for="main-audio" audio-seek-enabled="vm.isListeningRoute && vm.isStudyMode()"
                                            aria-label="Tua bài nghe" title="Kéo để tua bài nghe">
+                                    <span class="idp-listening-status" role="status" aria-live="polite" hidden></span>
                                 </div>
                                 <div class="idp-listening-control-row">
                                     <div class="idp-listening-stepper idp-listening-skip" ng-if="vm.isStudyMode()" role="group" aria-label="Tua nhanh bài nghe">
@@ -3525,9 +3530,27 @@
     }
 
     /* Full-screen exam mode: the document stays still; only both exam panes scroll. */
-    body.ielts-reading-test-running {
-        height: 100vh !important;
+    html.ielts-reading-test-running {
+        --idp-viewport-height: 100vh;
+        height: 100%;
         overflow: hidden !important;
+        overscroll-behavior: none;
+    }
+
+    @supports (height: 100dvh) {
+        html.ielts-reading-test-running { --idp-viewport-height: 100dvh; }
+    }
+
+    body.ielts-reading-test-running {
+        position: fixed;
+        top: var(--idp-viewport-top, 0px);
+        left: var(--idp-viewport-left, 0px);
+        width: var(--idp-viewport-width, 100%);
+        height: var(--idp-viewport-height, 100vh) !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        overscroll-behavior: none;
     }
 
     body.ielts-reading-test-running .page-wrapper-top,
@@ -3546,7 +3569,7 @@
     body.ielts-reading-test-running .page-content > .container,
     body.ielts-reading-test-running .page-content > .container > .fade-in-up {
         width: 100% !important;
-        height: 100vh !important;
+        height: 100% !important;
         min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -3555,9 +3578,14 @@
 
     body.ielts-reading-test-running .idp-reading-page,
     body.ielts-reading-test-running .idp-reading-test-shell {
-        height: 100vh !important;
+        height: 100% !important;
         min-height: 0 !important;
         overflow: hidden !important;
+    }
+
+    body.ielts-reading-test-running .page-content > .container > .fade-in-up {
+        animation: none !important;
+        transform: none !important;
     }
 
     body.ielts-reading-test-running .idp-reading-test-shell {
@@ -3582,8 +3610,22 @@
     }
 
     body.ielts-reading-test-running .idp-instruction-bar,
-    body.ielts-reading-test-running .idp-question-nav {
+    body.ielts-reading-test-running .idp-question-nav,
+    body.ielts-reading-test-running .idp-exam-topbar,
+    body.ielts-reading-test-running .idp-reading-preview-banner {
         flex: 0 0 auto;
+    }
+
+    body.ielts-reading-test-running .idp-main-test {
+        padding-bottom: 0 !important;
+    }
+
+    body.ielts-reading-test-running .idp-exam-topbar {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    body.ielts-reading-test-running .idp-question-nav {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     body.ielts-reading-test-running .idp-workspace {
@@ -4183,11 +4225,14 @@
     }
     .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding:10px 14px !important; }
     .idp-listening-toolbar { display:flex; align-items:center; gap:12px; min-width:0; }
-    .idp-listening-player { display:flex; align-items:center; flex:1 1 auto; min-width:280px; gap:8px; padding:0 8px; margin-bottom:0; border:1px solid #e0eafb; border-radius:14px; background:linear-gradient(110deg,#f5f8ff,#edf7ff); }
-    .idp-listening-player-icon { display:flex; align-items:center; justify-content:center; flex:0 0 36px; width:36px; height:36px; border-radius:11px; color:#fff; background:linear-gradient(135deg,#268fe0,#6375ee); box-shadow:0 4px 10px rgba(50,115,215,.18); font-size:17px; }
-    .idp-reading-page .idp-listening-player audio { display:block; flex:0 0 220px; min-width:0; width:220px; height:60px; max-height:none; border-radius:14px; accent-color:#327bd8; }
-    .idp-listening-player audio::-webkit-media-controls-panel { background:#f1f6ff; }
-    .idp-listening-player audio::-webkit-media-controls-timeline { display:none; }
+    .idp-listening-player { position:relative; display:flex; align-items:center; flex:1 1 auto; min-width:280px; min-height:56px; gap:8px; padding:5px 8px; margin-bottom:0; border:1px solid #e0eafb; border-radius:14px; background:linear-gradient(110deg,#f5f8ff,#edf7ff); }
+    .idp-reading-page .idp-listening-player audio { display:none !important; }
+    .idp-reading-page .idp-listening-play { display:inline-flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; padding:0; border:1px solid #d6e5f8; border-radius:11px; color:#327bd8; background:#fff; box-shadow:0 2px 6px rgba(50,115,215,.1); font-size:17px; }
+    .idp-listening-play:hover:not(:disabled) { background:#eaf3ff; border-color:#91b7ed; }
+    .idp-listening-play:focus-visible { outline:2px solid #327bd8; outline-offset:2px; }
+    .idp-listening-play:disabled { opacity:.45; cursor:wait; }
+    .idp-listening-time { display:block; flex:0 0 auto; padding:0; color:#375582; font-size:12px; font-weight:600; line-height:1.4; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .idp-listening-status { position:absolute; z-index:1; top:100%; left:0; max-width:100%; padding:4px 8px; border:1px solid #e4c5c5; border-radius:6px; color:#8b3232; background:#fff5f5; font-size:12px; }
     .idp-listening-seek { --seek-position:0%; -webkit-appearance:none; appearance:none; display:block; flex:1 1 auto; min-width:80px; width:100%; height:44px; margin:0 6px; padding:0; border:0; background:transparent; cursor:pointer; touch-action:pan-y; }
     .idp-listening-seek::-webkit-slider-runnable-track { height:8px; border-radius:8px; background:linear-gradient(to right,#327bd8 0 var(--seek-position),#c9d7e9 var(--seek-position) 100%); }
     .idp-listening-seek::-moz-range-track { height:8px; border-radius:8px; background:linear-gradient(to right,#327bd8 0 var(--seek-position),#c9d7e9 var(--seek-position) 100%); }
@@ -4242,12 +4287,8 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-listening-player,
     .idp-reading-page.idp-contrast-yellow-black .idp-listening-speed,
     .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch { background:#151515 !important; border-color:#777 !important; }
-    .idp-reading-page.idp-contrast-white-black .idp-listening-player-icon,
-    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player-icon { background:#303030 !important; box-shadow:none; }
-    .idp-reading-page.idp-contrast-white-black .idp-listening-player audio,
-    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player audio { color-scheme:dark; }
-    .idp-reading-page.idp-contrast-white-black .idp-listening-player audio::-webkit-media-controls-panel,
-    .idp-reading-page.idp-contrast-yellow-black .idp-listening-player audio::-webkit-media-controls-panel { background:#252525; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-play,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-play { background:#303030 !important; border-color:#777 !important; box-shadow:none; }
     .idp-reading-page.idp-contrast-white-black .idp-listening-switch-track,
     .idp-reading-page.idp-contrast-yellow-black .idp-listening-switch-track { background:#626262; }
     .idp-reading-page.idp-contrast-white-black .idp-listening-switch input:checked + .idp-listening-switch-track { background:#fff; }
@@ -4259,7 +4300,6 @@
     body.ielts-reading-test-running .idp-split-row > .idp-split-divider.ng-hide { display:none !important; }
     @media (max-width:1199px) {
         .idp-listening-toolbar { gap:8px; }
-        .idp-listening-player-icon { display:none; }
         .idp-listening-speed { gap:6px; padding:5px 7px; }
         .idp-listening-speed-label > small { display:none; }
         .idp-listening-stepper output { min-width:44px; }
@@ -4277,8 +4317,7 @@
         .idp-exam-test-title { flex:1 1 auto; max-width:none; font-size:12px; }
         .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding:8px !important; }
         .idp-listening-player { gap:6px; padding:5px 6px; }
-        .idp-reading-page .idp-listening-player audio { flex-basis:150px; width:150px; }
-        .idp-listening-player-icon { flex-basis:30px; width:30px; height:30px; font-size:14px; border-radius:9px; }
+        .idp-listening-time { font-size:11px; }
         .idp-listening-control-row { flex-wrap:wrap; gap:8px; }
         .idp-listening-toggles { width:100%; }
         .idp-listening-switch { flex:1 1 auto; padding:8px 9px; gap:8px; }
@@ -4615,19 +4654,14 @@
     }
 
     .idp-reading-preview-banner {
-        position: fixed;
-        top: 8px;
-        left: 50%;
-        z-index: 1300;
-        transform: translateX(-50%);
-        padding: 8px 17px;
-        border-radius: 24px;
+        position: relative;
+        padding: 4px 12px;
         background: #25366d;
         color: #ffffff;
-        box-shadow: 0 5px 18px rgba(20, 31, 75, .28);
-        font-size: 13px;
+        font-size: 12px;
+        line-height: 1.5;
         font-weight: 800;
-        white-space: nowrap;
+        text-align: center;
     }
 
     .idp-reading-preview-banner span {

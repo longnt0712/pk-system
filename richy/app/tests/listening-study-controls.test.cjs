@@ -190,9 +190,11 @@ test('all three Listening panes and dividers follow the content switch and quest
   }
 });
 
-test('the native audio element stays mounted and is visible in Study regardless of the retired Show audio model',()=>{
+test('the media stays mounted while custom playback is available only in Study regardless of the retired Show audio model',()=>{
   const audio=view.match(/<audio\b[^>]*\bid="main-audio"[^>]*>/);assert.ok(audio);assert.doesNotMatch(audio[0],/\bng-if=/);
-  const show=attribute(audio[0],'ng-show');
+  assert.doesNotMatch(audio[0],/\bcontrols(?:\s|=|>)/,'native player does not add a second timeline on Safari');
+  const player=view.match(/<div\b[^>]*class="idp-listening-player"[^>]*>/);assert.ok(player);
+  const show=attribute(player[0],'ng-show');
   for(const [mode,shown,expected]of[['STUDY',true,true],['STUDY',false,true],['SERIOUS',true,false],['SERIOUS',false,false]]){
     const f=fixture({mode});f.vm.showAudio=shown;assert.equal(!!evaluate(show,f),expected);
   }

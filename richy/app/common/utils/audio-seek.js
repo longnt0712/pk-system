@@ -1,7 +1,73 @@
 (function () {
     'use strict';
 
-    angular.module('Hrm').directive('audioSeekFor', ['$document', '$timeout', function ($document, $timeout) {
+    angular.module('Hrm').directive('audioPlayerFor', ['$document', '$timeout', function ($document, $timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var audio = null, destroyed = false, failure = '';
+                var button = element[0].querySelector('.idp-listening-play');
+                var icon = button.querySelector('i');
+                var time = element[0].querySelector('.idp-listening-time');
+                var status = element[0].querySelector('.idp-listening-status');
+                var events = ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended', 'emptied', 'error', 'loadstart', 'playing'];
+
+                function clock(seconds) {
+                    seconds = Math.max(0, Math.floor(Number(seconds) || 0));
+                    if (!isFinite(seconds)) { seconds = 0; }
+                    return Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2);
+                }
+                function enabled() {
+                    return !!audio && !audio.error && !!(audio.getAttribute('src') || audio.querySelector('source[src]')) &&
+                        (!attrs.audioPlayerEnabled || scope.$eval(attrs.audioPlayerEnabled));
+                }
+                function refresh(event) {
+                    if (destroyed) { return; }
+                    if (event && /^(emptied|loadstart|playing)$/.test(event.type)) { failure = ''; }
+                    var playing = !!audio && !audio.paused && !audio.ended;
+                    var label = playing ? 'Tạm dừng bài nghe' : 'Phát bài nghe';
+                    button.disabled = !enabled();
+                    button.setAttribute('aria-label', label);
+                    button.title = label;
+                    icon.className = playing ? 'fa fa-pause' : 'fa fa-play';
+                    time.textContent = clock(audio && audio.currentTime) + ' / ' + clock(audio && audio.duration);
+                    status.textContent = audio && audio.error ? 'Không tải được audio. Hãy thử tải lại trang.' : failure;
+                    status.hidden = !status.textContent;
+                }
+                function playFailed(error) {
+                    if (destroyed || (error && error.name === 'AbortError')) { return; }
+                    failure = 'Chưa phát được audio. Chạm nút phát để thử lại.';
+                    refresh();
+                }
+                function toggle() {
+                    if (!enabled()) { refresh(); return; }
+                    failure = '';
+                    if (!audio.paused) { audio.pause(); }
+                    else {
+                        try {
+                            var result = audio.play();
+                            if (result && result.catch) { result.catch(playFailed); }
+                        } catch (error) { playFailed(error); }
+                    }
+                    refresh();
+                }
+                var pending = $timeout(function () {
+                    audio = $document[0].getElementById(attrs.audioPlayerFor);
+                    if (audio) { events.forEach(function (name) { audio.addEventListener(name, refresh); }); }
+                    refresh();
+                }, 0, false);
+                var unwatch = scope.$watch(attrs.audioPlayerEnabled || 'true', refresh);
+                button.addEventListener('click', toggle);
+                scope.$on('$destroy', function () {
+                    destroyed = true;
+                    $timeout.cancel(pending);
+                    unwatch();
+                    button.removeEventListener('click', toggle);
+                    if (audio) { events.forEach(function (name) { audio.removeEventListener(name, refresh); }); }
+                });
+            }
+        };
+    }]).directive('audioSeekFor', ['$document', '$timeout', function ($document, $timeout) {
         return {
             restrict: 'A',
             link: function (scope, element, attrs) {

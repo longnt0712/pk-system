@@ -1205,33 +1205,117 @@
         /* Keep the active exam inside one viewport and restore the normal site
            layout as soon as the test ends or this screen is left. */
         var examBodyClass = 'ielts-reading-test-running';
-        var viewportMeta = $window.document.querySelector('meta[name="viewport"]');
-        var normalViewportContent = 'width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1';
+        var examDocument = $window.document;
+        var viewportMeta = examDocument.querySelector('meta[name="viewport"]');
+        var normalViewportContent = viewportMeta && viewportMeta.getAttribute('content');
         var examViewportContent = 'width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=5, user-scalable=yes, viewport-fit=cover';
+        var examViewport = null, examLayoutRunning = false, examViewportFrame = null;
+        var examKeyboardTimers = [];
+        var requestExamFrame = $window.requestAnimationFrame
+            ? function (callback) { return $window.requestAnimationFrame(callback); }
+            : function (callback) { return $window.setTimeout(callback, 16); };
+        var cancelExamFrame = $window.cancelAnimationFrame
+            ? function (id) { $window.cancelAnimationFrame(id); }
+            : function (id) { $window.clearTimeout(id); };
 
         function setExamViewportZoom(enabled) {
             if (!viewportMeta) {
                 return;
             }
-            viewportMeta.setAttribute(
-                'content',
-                enabled ? examViewportContent : normalViewportContent
-            );
+            if (!enabled && normalViewportContent === null) { viewportMeta.removeAttribute('content'); }
+            else { viewportMeta.setAttribute('content', enabled ? examViewportContent : normalViewportContent); }
+        }
+
+        function refreshExamViewport() {
+            examViewportFrame = null;
+            if (!examLayoutRunning) { return; }
+            // Pinch zoom must magnify/pan the existing layout, rather than shrink it again.
+            if (examViewport && Math.abs((examViewport.scale || 1) - 1) > 0.05) { return; }
+            var root = examDocument.documentElement;
+            function positive(value, fallback) { return isFinite(value) && value > 0 ? value : fallback; }
+            var dimensions = {
+                width: positive(examViewport && examViewport.width, $window.innerWidth || root.clientWidth),
+                height: positive(examViewport && examViewport.height, $window.innerHeight || root.clientHeight),
+                top: Math.max(0, Number(examViewport && examViewport.offsetTop) || 0),
+                left: Math.max(0, Number(examViewport && examViewport.offsetLeft) || 0)
+            };
+            Object.keys(dimensions).forEach(function (name) {
+                var property = '--idp-viewport-' + name;
+                var value = Math.round(dimensions[name] * 100) / 100 + 'px';
+                if (root.style.getPropertyValue(property) !== value) { root.style.setProperty(property, value); }
+            });
+            // Keep the focused answer above the software keyboard by scrolling its pane only.
+            var input = examDocument.activeElement;
+            if (!input || !input.closest || !input.matches('input,textarea,[contenteditable="true"]')) { return; }
+            var pane = input.closest('.idp-reading-page .question-content, .idp-reading-page .passage-text, .idp-reading-page .idp-writing-answer-pane');
+            if (!pane) { return; }
+            var bounds = pane.getBoundingClientRect(), answer = input.getBoundingClientRect();
+            // A growing essay field can span many screens; let its caret keep the
+            // browser's native scroll position instead of jumping to the field's end.
+            if (answer.height > bounds.height - 24) { return; }
+            if (answer.bottom > bounds.bottom - 12) { pane.scrollTop += answer.bottom - bounds.bottom + 12; }
+            else if (answer.top < bounds.top + 12) { pane.scrollTop -= bounds.top + 12 - answer.top; }
+        }
+
+        function scheduleExamViewport() {
+            if (examLayoutRunning && examViewportFrame === null) { examViewportFrame = requestExamFrame(refreshExamViewport); }
+        }
+
+        function onExamFocusChange() {
+            examKeyboardTimers.forEach(function (timer) { $window.clearTimeout(timer); });
+            examKeyboardTimers = [];
+            if (!examLayoutRunning) { return; }
+            scheduleExamViewport();
+            [80, 250, 550].forEach(function (delay) {
+                examKeyboardTimers.push($window.setTimeout(scheduleExamViewport, delay));
+            });
+        }
+
+        function setExamLayoutRunning(isRunning) {
+            if (examLayoutRunning === isRunning) { return; }
+            examLayoutRunning = isRunning;
+            examDocument.documentElement.classList.toggle(examBodyClass, isRunning);
+            examDocument.body.classList.toggle(examBodyClass, isRunning);
+            setExamViewportZoom(isRunning);
+            if (isRunning) {
+                examViewport = $window.visualViewport || null;
+                $window.addEventListener('resize', scheduleExamViewport);
+                $window.addEventListener('orientationchange', onExamFocusChange);
+                if (examViewport) {
+                    examViewport.addEventListener('resize', scheduleExamViewport);
+                    examViewport.addEventListener('scroll', scheduleExamViewport);
+                }
+                examDocument.addEventListener('focusin', onExamFocusChange, true);
+                examDocument.addEventListener('focusout', onExamFocusChange, true);
+                refreshExamViewport();
+                scheduleExamViewport();
+            } else {
+                if (examViewportFrame !== null) { cancelExamFrame(examViewportFrame); examViewportFrame = null; }
+                onExamFocusChange();
+                $window.removeEventListener('resize', scheduleExamViewport);
+                $window.removeEventListener('orientationchange', onExamFocusChange);
+                if (examViewport) {
+                    examViewport.removeEventListener('resize', scheduleExamViewport);
+                    examViewport.removeEventListener('scroll', scheduleExamViewport);
+                }
+                examDocument.removeEventListener('focusin', onExamFocusChange, true);
+                examDocument.removeEventListener('focusout', onExamFocusChange, true);
+                examViewport = null;
+                ['top', 'left', 'width', 'height'].forEach(function (name) { examDocument.documentElement.style.removeProperty('--idp-viewport-' + name); });
+            }
         }
 
         var unwatchExamLayout = $scope.$watch(function () {
             return vm.isStartTest === true && vm.passageNumber != 4;
         }, function (isRunning) {
-            $window.document.body.classList.toggle(examBodyClass, isRunning);
-            setExamViewportZoom(isRunning);
+            setExamLayoutRunning(isRunning);
         });
 
         $scope.$on('$destroy', function () {
             stopReadingResize();
             if (writingTaskDraftTimer) { $timeout.cancel(writingTaskDraftTimer); }
             unwatchExamLayout();
-            $window.document.body.classList.remove(examBodyClass);
-            setExamViewportZoom(false);
+            setExamLayoutRunning(false);
         });
 
         /* Adjustable exam panels for mouse, pen and touch. */
