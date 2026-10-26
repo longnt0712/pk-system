@@ -3880,6 +3880,18 @@
             applyPlaybackSpeed(normalizedPlaybackSpeed(vm.playbackValue) - 0.1);
         };
 
+        vm.seekListeningAudio = function (seconds) {
+            if (!vm.isListeningRoute || !vm.isStudyMode()) { return false; }
+            var audioElement = getMainAudio();
+            if (!audioElement) { return false; }
+            var duration = Number(audioElement.duration), current = Number(audioElement.currentTime), offset = Number(seconds);
+            if (!isFinite(duration) || duration <= 0 || !isFinite(current) || !isFinite(offset)) { return false; }
+            try {
+                audioElement.currentTime = Math.max(0, Math.min(duration, current + offset));
+                return true;
+            } catch (unavailableSeek) { return false; }
+        };
+
         $scope.counter = 3600;
         $scope.minuteDisplay = 60;
         $scope.secondDisplay = 0;

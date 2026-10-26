@@ -194,9 +194,9 @@
                     <div class="portlet-body">
                         <div class="row">
                             <div ng-show="vm.isListeningRoute" class="col-md-12 idp-listening-toolbar" ng-class="{'is-serious': !vm.isStudyMode()}">
-                                <div class="idp-listening-player" ng-show="vm.isStudyMode() && vm.showAudio">
+                                <div class="idp-listening-player" ng-show="vm.isStudyMode()">
                                     <span class="idp-listening-player-icon" aria-hidden="true"><i class="fa fa-headphones"></i></span>
-                                    <audio ng-show="vm.isStudyMode() && vm.showAudio" id="main-audio" controls controlsList="nodownload" preload="metadata" aria-label="Trình phát bài nghe">
+                                    <audio ng-show="vm.isStudyMode()" id="main-audio" controls controlsList="nodownload" preload="metadata" aria-label="Trình phát bài nghe">
                                         Your browser does not support the audio element.
                                     </audio>
                                     <input class="idp-listening-seek" type="range" min="0" max="0" step="1" value="0"
@@ -204,6 +204,10 @@
                                            aria-label="Tua bài nghe" title="Kéo để tua bài nghe">
                                 </div>
                                 <div class="idp-listening-control-row">
+                                    <div class="idp-listening-stepper idp-listening-skip" ng-if="vm.isStudyMode()" role="group" aria-label="Tua nhanh bài nghe">
+                                        <button type="button" ng-click="vm.seekListeningAudio(-5)" aria-label="Lùi 5 giây" title="Lùi 5 giây"><i class="fa fa-undo" aria-hidden="true"></i><small>5s</small></button>
+                                        <button type="button" ng-click="vm.seekListeningAudio(5)" aria-label="Tiến 5 giây" title="Tiến 5 giây"><i class="fa fa-repeat" aria-hidden="true"></i><small>5s</small></button>
+                                    </div>
                                     <div class="idp-listening-speed">
                                         <span class="idp-listening-speed-label">Tốc độ <small>{{vm.isStudyMode() ? '0.6× – 4×' : 'Từ 1×'}}</small></span>
                                         <div class="idp-listening-stepper">
@@ -213,11 +217,6 @@
                                         </div>
                                     </div>
                                     <div class="idp-listening-toggles" ng-if="vm.isStudyMode()">
-                                        <label class="idp-listening-switch" for="listening-audio-switch" title="Hiện hoặc ẩn thanh phát audio">
-                                            <span class="idp-listening-switch-label"><i class="fa fa-volume-up" aria-hidden="true"></i> Show audio</span>
-                                            <input id="listening-audio-switch" type="checkbox" role="switch" ng-model="vm.showAudio" aria-label="Hiện thanh audio" ng-attr-aria-checked="{{!!vm.showAudio}}">
-                                            <span class="idp-listening-switch-track" aria-hidden="true"></span>
-                                        </label>
                                         <label class="idp-listening-switch" for="listening-content-switch" title="Hiện nội dung bên trái và kéo để chia cột">
                                             <span class="idp-listening-switch-label"><i class="fa fa-align-left" aria-hidden="true"></i> Nội dung</span>
                                             <input id="listening-content-switch" type="checkbox" role="switch" ng-model="vm.showListeningContent" ng-change="vm.toggleListeningContent()" aria-label="Hiện nội dung Listening" ng-attr-aria-checked="{{!!vm.showListeningContent}}">
@@ -4205,6 +4204,11 @@
     .idp-listening-stepper button:focus-visible { outline:2px solid #4389e3; outline-offset:2px; }
     .idp-listening-stepper output { display:block; min-width:58px; padding:0 4px; color:#1e3e6b; font-size:17px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; }
     .idp-listening-stepper output > small { margin-left:2px; color:#7792b6; font-size:12px; }
+    .idp-listening-skip { flex:0 0 auto; gap:6px; }
+    .idp-reading-page .idp-listening-skip button { flex-direction:column; gap:2px; width:44px; height:44px; padding:4px; font-size:15px; }
+    .idp-listening-skip button > small { font-size:10px; line-height:1; font-weight:700; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-skip button,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip button { background:#151515 !important; border-color:#777 !important; }
     .idp-listening-toggles { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; }
     .idp-listening-switch { position:relative; display:inline-flex; align-items:center; justify-content:space-between; gap:10px; min-height:42px; margin:0; padding:8px 11px; border:1px solid #e1e8f1; border-radius:12px; background:#fff; cursor:pointer; user-select:none; }
     .idp-listening-switch-label { display:inline-flex; align-items:center; gap:6px; color:#53657e; font-size:12px; font-weight:700; line-height:1.4; white-space:nowrap; }

@@ -112,8 +112,6 @@ test('the enlarged seek target supports pointer and keyboard, while display swit
             const audio = document.getElementById('main-audio');
             audio.playbackRate = 1.7; await audio.play();
         });
-        await page.locator('label[for="listening-audio-switch"]').click();
-        await page.locator('label[for="listening-audio-switch"]').click();
         await page.locator('.idp-header-audio-switch').click();
         await page.locator('.idp-header-audio-switch').click();
         const state = await page.locator('#main-audio').evaluate(audio => ({same:audio === window.originalAudio, time:audio.currentTime, paused:audio.paused, rate:audio.playbackRate}));

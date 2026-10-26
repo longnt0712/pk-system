@@ -26,7 +26,7 @@ function functionCode(name,property=false){
 function fixture(options={}){
   const values=new Map(Object.entries(options.preferences||{})),listeners=new Map(),frames=new Map();let frameId=0;
   const log={storageReads:[],storageWrites:[],loads:0,plays:0,pauses:0,requests:0,domRemoved:0};
-  const audio={playbackRate:1,defaultPlaybackRate:1,currentTime:18.5,src:'existing.mp3',
+  const audio={playbackRate:1,defaultPlaybackRate:1,currentTime:18.5,duration:60,paused:false,src:'existing.mp3',
     load(){log.loads++;this.playbackRate=1;this.defaultPlaybackRate=1;},play(){log.plays++;return Promise.resolve();},pause(){log.pauses++;}};
   const document={getElementById(id){return id==='main-audio'&&options.noMedia!==true?audio:null;},
     addEventListener(name,callback){listeners.set(name,callback);},removeEventListener(name){listeners.delete(name);},
@@ -97,6 +97,55 @@ test('audio setup reapplies the selected clamped speed after media load resets n
   }
 });
 
+test('five-second controls seek in both directions and clamp to the recording bounds without restarting media or changing work',()=>{
+  for(const paused of[false,true]){
+    const f=fixture(),answers=plain(f.vm.testResult),notes=plain(f.vm.annotationNotes);
+    f.audio.paused=paused;f.audio.playbackRate=1.7;f.audio.defaultPlaybackRate=1.7;f.vm.playbackValue=1.7;
+    assert.equal(f.vm.seekListeningAudio(-5),true);assert.equal(f.audio.currentTime,13.5);
+    assert.equal(f.vm.seekListeningAudio(5),true);assert.equal(f.audio.currentTime,18.5);
+    f.audio.currentTime=2;assert.equal(f.vm.seekListeningAudio(-5),true);assert.equal(f.audio.currentTime,0);
+    f.audio.currentTime=58;assert.equal(f.vm.seekListeningAudio(5),true);assert.equal(f.audio.currentTime,60);
+    assert.equal(f.audio.paused,paused);assert.equal(f.audio.playbackRate,1.7);assert.equal(f.audio.defaultPlaybackRate,1.7);
+    assert.equal(f.vm.playbackValue,1.7);assert.equal(f.audio.src,'existing.mp3');
+    assert.deepEqual(plain(f.vm.testResult),answers);assert.deepEqual(plain(f.vm.annotationNotes),notes);
+    assert.equal(f.log.loads+f.log.plays+f.log.pauses+f.log.requests,0);
+  }
+});
+
+test('five-second seeking safely rejects missing or invalid media metadata and native setter failures',()=>{
+  const missing=fixture({noMedia:true});assert.equal(missing.vm.seekListeningAudio(5),false);
+  for(const duration of[undefined,NaN,Infinity,0,-1]){
+    const f=fixture();f.audio.duration=duration;
+    assert.equal(f.vm.seekListeningAudio(5),false);assert.equal(f.audio.currentTime,18.5);
+    assert.equal(f.log.loads+f.log.plays+f.log.pauses+f.log.requests,0);
+  }
+  for(const current of[undefined,NaN,Infinity,-Infinity]){
+    const f=fixture();f.audio.currentTime=current;
+    assert.equal(f.vm.seekListeningAudio(5),false);assert.equal(f.audio.currentTime,current);
+  }
+  for(const offset of[undefined,NaN,Infinity,-Infinity]){
+    const f=fixture();assert.equal(f.vm.seekListeningAudio(offset),false);assert.equal(f.audio.currentTime,18.5);
+  }
+  const unavailable=fixture();let writes=0;
+  Object.defineProperty(unavailable.audio,'currentTime',{get:()=>18.5,set(){writes++;throw Error('not seekable yet');}});
+  assert.equal(unavailable.vm.seekListeningAudio(5),false);assert.equal(writes,1);assert.equal(unavailable.audio.currentTime,18.5);
+  assert.equal(unavailable.log.loads+unavailable.log.plays+unavailable.log.pauses+unavailable.log.requests,0);
+});
+
+test('five-second controls remain Study-only and sit between the player and speed controls',()=>{
+  for(const options of[{mode:'SERIOUS'},{mode:'SERIOUS',preview:true},{listening:false}]){
+    const f=fixture(options);assert.equal(f.vm.seekListeningAudio(-5),false);assert.equal(f.vm.seekListeningAudio(5),false);
+    assert.equal(f.audio.currentTime,18.5);assert.equal(f.log.loads+f.log.plays+f.log.pauses+f.log.requests,0);
+  }
+  const group=openingTags('idp-listening-skip')[0];assert.ok(group);assert.equal(attribute(group,'ng-if'),'vm.isStudyMode()');
+  const playerAt=view.indexOf('class="idp-listening-player"'),skipAt=view.indexOf(group),speedAt=view.indexOf('class="idp-listening-speed"');
+  assert.ok(playerAt>=0&&playerAt<skipAt&&skipAt<speedAt);
+  for(const [offset,label]of[[-5,'Lùi 5 giây'],[5,'Tiến 5 giây']]){
+    const button=[...view.matchAll(/<button\b[^>]*>/g)].map(match=>match[0]).find(tag=>tag.includes('ng-click="vm.seekListeningAudio('+offset+')"'));
+    assert.ok(button);assert.equal(attribute(button,'type'),'button');assert.equal(attribute(button,'aria-label'),label);
+  }
+});
+
 test('Listening split preferences are independent from Reading and absent Listening preference starts at 50%',()=>{
   const f=fixture({preferences:{ieltsReadingPanePercent:'5'}});assert.equal(f.vm.readingPanePercent,50);
   assert.ok(f.log.storageReads.includes('ieltsListeningPanePercent'));assert.equal(f.vm.isListeningContentVisible(),false);
@@ -141,17 +190,18 @@ test('all three Listening panes and dividers follow the content switch and quest
   }
 });
 
-test('the native audio element stays mounted and its display is limited to Study plus Show audio',()=>{
+test('the native audio element stays mounted and is visible in Study regardless of the retired Show audio model',()=>{
   const audio=view.match(/<audio\b[^>]*\bid="main-audio"[^>]*>/);assert.ok(audio);assert.doesNotMatch(audio[0],/\bng-if=/);
   const show=attribute(audio[0],'ng-show');
-  for(const [mode,shown,expected]of[['STUDY',true,true],['STUDY',false,false],['SERIOUS',true,false],['SERIOUS',false,false]]){
+  for(const [mode,shown,expected]of[['STUDY',true,true],['STUDY',false,true],['SERIOUS',true,false],['SERIOUS',false,false]]){
     const f=fixture({mode});f.vm.showAudio=shown;assert.equal(!!evaluate(show,f),expected);
   }
 });
 
-test('audio and content switches are real labelled checkboxes with independent models, and minus disables at the mode floor',()=>{
+test('content and header switches remain labelled after Show audio is removed, and minus disables at the mode floor',()=>{
   const inputs=[...view.matchAll(/<input\b[^>]*>/g)].map(match=>match[0]);
-  for(const model of['vm.showAudio','vm.showListeningContent']){
+  assert.doesNotMatch(view,/ng-model="vm\.showAudio"|listening-audio-switch|Show audio/);
+  for(const model of['vm.showListeningToolbar','vm.showListeningContent']){
     const input=inputs.find(tag=>new RegExp('(?:data-)?ng-model="'+model.replace(/\./g,'\\.')+'"').test(tag));assert.ok(input,model);
     assert.equal(attribute(input,'type'),'checkbox');assert.equal(attribute(input,'role'),'switch');
     const labelled=input.match(/\baria-label="([^"]+)"/)||input.match(/\bid="([^"]+)"/);assert.ok(labelled,'native switch has an accessible label association');
