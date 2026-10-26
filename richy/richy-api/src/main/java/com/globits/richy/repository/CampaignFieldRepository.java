@@ -59,7 +59,10 @@ public class CampaignFieldRepository {
 
     @SuppressWarnings("unchecked")
     public List<Object[]> classes() {
-        return entityManager.createNativeQuery("select id as class_id,cast(name as nvarchar(200)) as class_name from tbl_enrolment_class where school_id=2").getResultList();
+        return entityManager.createNativeQuery("select c.id as class_id,cast(c.name as nvarchar(200)) as class_name,"
+                + " p.id as parent_class_id,cast(c.code as nvarchar(200)) as class_code,c.school_id as school_id"
+                + " from tbl_enrolment_class c left join tbl_enrolment_class p on p.id=c.parent_id and p.school_id=2"
+                + " where c.school_id=2").getResultList();
     }
     @SuppressWarnings("unchecked")
     public List<Object[]> participantClasses(List<Long> ids) {

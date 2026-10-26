@@ -58,12 +58,13 @@
 
                 <div class="row">
                     <div class="col-md-2">
-                        <ui-select ng-model="vm.searchDisplayDto.enrollmentClass" ng-disabled="vm.hasUnsavedMarks()" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
-                            <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter: {name: $select.search}">
-                                <div class="bold" ng-bind-html="cls.name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <class-tree-picker classes="vm.enrollmentClasses"
+                                           ng-model="vm.searchDisplayDto.enrollmentClass"
+                                           school-id="2"
+                                           disabled="vm.hasUnsavedMarks()"
+                                           on-change="vm.getListDisplayStudentMark()"
+                                           placeholder="LỚP HỌC"
+                                           label="Chọn lớp để lọc"></class-tree-picker>
                     </div>
                     <div class="col-md-3">
                         <ui-select ng-model="vm.searchDisplayDto.educationProgramId" ng-disabled="vm.hasUnsavedMarks()" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">

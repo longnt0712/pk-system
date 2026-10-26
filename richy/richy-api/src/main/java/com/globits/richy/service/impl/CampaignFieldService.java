@@ -36,7 +36,9 @@ public class CampaignFieldService {
         campaign(id);
         List<CampaignFieldDto.ClassOption> result=new ArrayList<>();
         for(Object[] row:field.classes()) {
-            CampaignFieldDto.ClassOption option=new CampaignFieldDto.ClassOption(); option.id=number(row[0]); option.name=clean(row[1]); result.add(option);
+            CampaignFieldDto.ClassOption option=new CampaignFieldDto.ClassOption(); option.id=number(row[0]); option.name=clean(row[1]);
+            option.parentId=row[2]==null ? null : number(row[2]); option.code=clean(row[3]); option.schoolId=((Number)row[4]).intValue();
+            result.add(option);
         }
         result.sort(Comparator.comparing(o->o.name)); return result;
     }

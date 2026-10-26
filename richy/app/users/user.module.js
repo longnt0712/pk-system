@@ -33,6 +33,8 @@
                             name: 'Hrm.User',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
+                                'common/class-tree-picker.css?v=' + version,
+                                'common/directives/ClassTreePicker.js?v=' + version,
                                 'users/controllers/UserController.js?v=' + version,
                             ]
                         });

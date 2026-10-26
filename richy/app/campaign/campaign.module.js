@@ -39,6 +39,8 @@
                 controller: 'CampaignFieldController as vm',
                 resolve: {deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                     return $ocLazyLoad.load({name: 'Hrm.Campaign', files: [
+                        'common/class-tree-picker.css?v=' + version,
+                        'common/directives/ClassTreePicker.js?v=' + version,
                         'campaign/field.css?v=' + version,
                         'campaign/business/CampaignService.js?v=' + version,
                         'campaign/rosary2026/FlowerGarden2026.js?v=' + version,

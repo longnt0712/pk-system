@@ -49,7 +49,8 @@ public class CampaignFieldTest {
         @Bean public EntityManagerFactory entityManagerFactory(){
             EntityManagerFactory factory=mock(EntityManagerFactory.class);
             when(factory.getProperties()).thenReturn(Collections.emptyMap());
-            when(factory.createEntityManager()).thenReturn(mock(EntityManager.class));return factory;
+            EntityManager manager=mock(EntityManager.class);
+            when(factory.createEntityManager()).thenReturn(manager);return factory;
         }
         @Bean public CampaignRepository campaigns(){return mock(CampaignRepository.class);}
         @Bean public CampaignFlowerEntryRepository entries(){return mock(CampaignFlowerEntryRepository.class);}
@@ -74,11 +75,11 @@ public class CampaignFieldTest {
         String roleNameColumn=Role.class.getDeclaredField("name").getAnnotation(javax.persistence.Column.class).name();
         execute("create table tbl_role(id bigint,"+roleNameColumn+" varchar(150))");
         execute("create table tbl_user_role(user_id bigint,role_id bigint)");
-        execute("create table tbl_enrolment_class(id bigint,name varchar(100),school_id int)");
+        execute("create table tbl_enrolment_class(id bigint,name varchar(100),school_id int,parent_id bigint,code varchar(100))");
         execute("create table tbl_user_enrolment_class(user_id bigint,enrolment_class_id bigint)");
         execute("create table tbl_campaign_flower_entry(campaign_id bigint,student_id bigint,entry_date varchar(10),item_key varchar(36),completed int)");
         execute("insert into tbl_role values(1,'ROLE_STUDENT'),(2,'ROLE_ADMIN'),(3,'ROLE_EDUCATION_MANAGERMENT'),(4,'ROLE_STUDENT_MANAGERMENT'),(5,'ROLE_VIEWER'),(6,'ROLE_STAFF')");
-        execute("insert into tbl_enrolment_class values(12,'Thiếu 1',2),(13,'Ấu 1',2),(99,'IELTS',1)");
+        execute("insert into tbl_enrolment_class(id,name,school_id) values(12,'Thiếu 1',2),(13,'Ấu 1',2),(99,'IELTS',1)");
         participant(1,1,12,1);participant(2,1,13,1);participant(3,2,12,1);participant(4,3,12,1);participant(5,4,12,1);
         participant(6,1,99,1);participant(7,5,99,1);participant(8,1,12,0);participant(9,6,12,1);participant(10,1,null,1);
         participant(11,1,12,1);execute("insert into tbl_user_role values(11,2)");
@@ -132,6 +133,37 @@ public class CampaignFieldTest {
     @Test public void classFilterSupportsMultipleClassesAndRejectsForeignClasses(){
         assertEquals(Arrays.asList(1L,2L),ids(service.students(5L,13L,"","",6)));
         try{service.students(5L,99L,"","",6);fail();}catch(CampaignService.InvalidCampaignException expected){}
+    }
+    @Test public void publicClassOptionsIncludeSafeHierarchyWithoutChangingClassMembershipFilters() throws Exception {
+        execute("insert into tbl_enrolment_class values(14,'Đội Lucia',2,12,'LC'),(15,'Đội khác trường cha',2,99,'OTHER'),(16,'Đội lẻ',2,999,'ORPHAN')");
+        List<CampaignFieldDto.ClassOption> options=service.classes(5L);
+        assertEquals(5,options.size());
+        Map<Long,CampaignFieldDto.ClassOption> byId=new HashMap<>();
+        for(CampaignFieldDto.ClassOption option:options){byId.put(option.id,option);assertEquals(Integer.valueOf(2),option.schoolId);}
+        assertFalse(byId.containsKey(99L));
+        assertNull(byId.get(12L).parentId);
+        assertEquals("Thiếu 1",byId.get(12L).name);
+        assertEquals(Long.valueOf(12L),byId.get(14L).parentId);
+        assertEquals("LC",byId.get(14L).code);
+        assertNull(byId.get(15L).parentId);
+        assertNull(byId.get(16L).parentId);
+        execute("insert into tbl_user_enrolment_class values(2,14)");
+        assertEquals(Arrays.asList(2L),ids(service.students(5L,14L,"","",6)));
+        login("ROLE_ADMIN");
+        assertEquals(Arrays.asList(2L),ids(service.managed(5L,14L,"","",6)));
+        assertEquals(Arrays.asList(1L,3L,4L,5L,11L),ids(service.managed(5L,12L,"","",12)));
+    }
+    @Test public void publicClassOptionsHttpPublishesOnlyClassMetadata() throws Exception {
+        execute("insert into tbl_enrolment_class values(14,'Lucia',2,12,'LC')");
+        MockMvc mvc=MockMvcBuilders.standaloneSetup(context.getBean(RestCampaignFieldController.class)).build();
+        MvcResult response=mvc.perform(get("/public/campaigns/5/field/classes"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store, max-age=0")).andReturn();
+        com.fasterxml.jackson.databind.JsonNode options=new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getResponse().getContentAsString());
+        com.fasterxml.jackson.databind.JsonNode team=null;
+        for(com.fasterxml.jackson.databind.JsonNode option:options){if(option.path("id").asLong()==14L){team=option;}}
+        assertNotNull(team);assertEquals(12L,team.path("parentId").asLong());assertEquals("LC",team.path("code").asText());assertEquals(2,team.path("schoolId").asInt());
+        assertEquals(5,team.size());
+        String json=options.toString();assertFalse(json.contains("token"));assertFalse(json.contains("username"));assertFalse(json.contains("email"));
     }
     @Test public void cursorIsBoundedAndReachesTheZeroCreditGarden(){
         CampaignFieldDto first=service.students(5L,null,"","",1);assertEquals(Arrays.asList(1L),ids(first));assertTrue(first.hasMore);assertEquals("2:1",first.nextCursor);

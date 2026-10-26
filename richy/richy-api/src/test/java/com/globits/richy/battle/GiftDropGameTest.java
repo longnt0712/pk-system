@@ -371,7 +371,7 @@ public class GiftDropGameTest {
                 - firstEffectTicket(game,random,level,stars,lightning,protectedFromRotten,now);
     }
 
-    @Test public void eachBallHasFivePercentChanceAndFixedTenToSeventyPointsWithAllSkillsAndEffects() {
+    @Test public void eachBallHasTwoAndAHalfPercentChanceAndFixedTenToSeventyPointsWithAllSkillsAndEffects() {
         for (int mask = 0; mask < 8; mask++) for (boolean lightning : new boolean[] {false,true})
             for (boolean protectedFromRotten : new boolean[] {false,true}) {
             List<String> skills = new ArrayList<String>();
@@ -379,15 +379,15 @@ public class GiftDropGameTest {
             TicketRandom random = new TicketRandom();
             GiftDropGame game = new GiftDropGame(mask == 0 ? 1 : 10000,random,skills,ballsCatalog());
             for (int stars = 1; stars <= 7; stars++) {
-                assertEquals(50000,effectTickets(game,random,1000 + stars,0,lightning,protectedFromRotten,1001L));
-                assertEquals(50000,effectTickets(game,random,1000 + stars,7,lightning,protectedFromRotten,1001L));
+                assertEquals(25000,effectTickets(game,random,1000 + stars,0,lightning,protectedFromRotten,1001L));
+                assertEquals(25000,effectTickets(game,random,1000 + stars,7,lightning,protectedFromRotten,1001L));
                 int ticket = firstEffectTicket(game,random,1000 + stars,7,lightning,protectedFromRotten,1001L);
                 GiftDropGame.Gift gift = effectGiftAt(game,random,ticket,7,lightning,protectedFromRotten,1001L);
                 assertEquals(10D * stars,gift.points,0D);
                 assertEquals("Ngọc rồng " + stars + " sao",gift.rewardLabel);
                 assertTrue(gift.rewardImage.contains("dragon-ball-" + stars + "/pet.png"));
             }
-            assertEquals(650000,firstEffectTicket(game,random,1001,7,lightning,protectedFromRotten,1001L));
+            assertEquals(825000,firstEffectTicket(game,random,1001,7,lightning,protectedFromRotten,1001L));
         }
     }
 

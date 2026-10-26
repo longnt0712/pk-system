@@ -4208,13 +4208,22 @@
     .idp-listening-stepper button:focus-visible { outline:2px solid #4389e3; outline-offset:2px; }
     .idp-listening-stepper output { display:block; min-width:58px; padding:0 4px; color:#1e3e6b; font-size:17px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; }
     .idp-listening-stepper output > small { margin-left:2px; color:#7792b6; font-size:12px; }
-    .idp-listening-skip { flex:0 0 auto; gap:6px; }
-    .idp-reading-page .idp-listening-skip button { width:44px; height:44px; padding:7px; border-radius:12px; }
-    .idp-listening-skip svg { display:block; width:28px; height:28px; overflow:visible; }
+    .idp-listening-skip { flex:0 0 auto; gap:4px; padding:5px; border:1px solid #dfe9f8; border-radius:14px; background:linear-gradient(110deg,#f5f8ff,#edf7ff); box-shadow:inset 0 1px 0 rgba(255,255,255,.7); }
+    .idp-reading-page .idp-listening-skip button { width:44px; height:44px; padding:8px; border:1px solid transparent; border-radius:10px; background:transparent; color:#327bd8; box-shadow:none; transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease; }
+    .idp-reading-page .idp-listening-skip button:hover:not(:disabled),
+    .idp-reading-page .idp-listening-skip button:focus-visible { border-color:#d6e5f8; background:#fff; box-shadow:0 3px 9px rgba(50,115,215,.12); }
+    .idp-reading-page .idp-listening-skip button:active:not(:disabled) { transform:translateY(1px); border-color:#bfd7f5; background:#dfeeff; box-shadow:none; }
+    .idp-listening-skip svg { display:block; width:26px; height:26px; overflow:visible; }
     .idp-listening-skip path { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     .idp-listening-skip text { fill:currentColor; stroke:none; text-anchor:middle; font-family:Arial,sans-serif; font-size:9px; font-weight:700; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-skip,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip { background:#151515 !important; border-color:#777 !important; box-shadow:none; }
     .idp-reading-page.idp-contrast-white-black .idp-listening-skip button,
-    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip button { background:#151515 !important; border-color:#777 !important; }
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip button { background:transparent !important; border-color:transparent !important; box-shadow:none; }
+    .idp-reading-page.idp-contrast-white-black .idp-listening-skip button:hover:not(:disabled),
+    .idp-reading-page.idp-contrast-white-black .idp-listening-skip button:focus-visible,
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip button:hover:not(:disabled),
+    .idp-reading-page.idp-contrast-yellow-black .idp-listening-skip button:focus-visible { background:#303030 !important; border-color:currentColor !important; }
     .idp-listening-toggles { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; }
     .idp-listening-switch { position:relative; display:inline-flex; align-items:center; justify-content:space-between; gap:10px; min-height:42px; margin:0; padding:8px 11px; border:1px solid #e1e8f1; border-radius:12px; background:#fff; cursor:pointer; user-select:none; }
     .idp-listening-switch-label { display:inline-flex; align-items:center; gap:6px; color:#53657e; font-size:12px; font-weight:700; line-height:1.4; white-space:nowrap; }

@@ -1,0 +1,43 @@
+class-tree-picker { display:block; min-width:0; }
+.class-tree-control { position:relative; min-width:0; }
+.class-tree-trigger.form-control { display:flex; align-items:center; gap:8px; width:100%; padding-right:48px; text-align:left; cursor:pointer; }
+.class-tree-trigger > span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.class-tree-placeholder { color:#7b879c; }
+.class-tree-trigger > .fa-angle-down { position:absolute; right:11px; }
+.class-tree-clear { position:absolute; inset:0 26px 0 auto; width:24px; padding:0; border:0; background:transparent; color:#7b879c; }
+.class-tree-clear:hover { color:#d64464; }
+.class-tree-trigger:disabled,.class-tree-clear:disabled { cursor:not-allowed; opacity:.6; }
+.class-tree-picker-window.modal { z-index:10150!important; }
+.modal-backdrop.class-tree-picker-backdrop { z-index:10140!important; }
+.class-tree-picker-window .modal-dialog { width:760px; max-width:calc(100vw - 24px); margin:4vh auto!important; }
+.class-tree-picker-window .modal-content { max-height:92vh; overflow:hidden; border-radius:16px; }
+.class-tree-dialog { display:flex; flex-direction:column; max-height:92vh; color:#30415f; }
+.class-tree-dialog .modal-header,.class-tree-dialog .modal-footer { flex:0 0 auto; }
+.class-tree-dialog .modal-header { background:#f5f3ff; }
+.class-tree-dialog .modal-header .close { width:24px; height:24px; margin:0; background:none!important; color:inherit; opacity:.8; text-indent:0; font-size:24px; line-height:1; }
+.class-tree-dialog .modal-header p { margin:7px 24px 0 0; color:#6b7891; }
+.class-tree-dialog .modal-body { display:flex; flex-direction:column; min-height:0; overflow:hidden; gap:14px; }
+.class-tree-search { flex:0 0 auto; }
+.class-tree-list { flex:1 1 auto; min-height:0; max-height:56vh; overflow-y:auto; overflow-x:hidden; padding:2px; }
+.class-tree-row { position:relative; display:flex; align-items:center; min-width:0; margin:3px 0; border-radius:8px; }
+.class-tree-branch { position:absolute; width:12px; height:28px; margin-left:-13px; margin-top:-14px; border-left:1px solid #d6deef; border-bottom:1px solid #d6deef; }
+.class-tree-toggle,.class-tree-spacer { flex:0 0 30px; width:30px; }
+.class-tree-toggle { min-height:34px; padding:5px; border:0; border-radius:6px; background:transparent; color:#6571aa; }
+.class-tree-toggle:disabled { opacity:.5; }
+.class-tree-option { display:flex; align-items:center; flex:1 1 auto; gap:10px; min-width:0; padding:12px 10px; border:1px solid #e2e7f3; border-radius:8px; background:#fff; color:inherit; text-align:left; }
+.class-tree-option:hover,.class-tree-toggle:hover { background:#f3f5ff; }
+.class-tree-row.is-selected .class-tree-option { border-color:#8a77ef; background:#f1edff; color:#5a43bb; }
+.class-tree-name { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+.class-tree-name strong,.class-tree-name small { display:block; }
+.class-tree-name small { margin-top:3px; color:#7b879c; }
+.class-tree-kind { flex:0 0 auto; font-size:11px; color:#78849b; }
+.class-tree-message { padding:22px 8px; margin:0; color:#7b879c; text-align:center; }
+.class-tree-option:focus-visible,.class-tree-toggle:focus-visible,.class-tree-clear:focus-visible { outline:2px solid #8068ee; outline-offset:2px; }
+html.global-dark-mode .class-tree-dialog { color:#e0e8f8; background:#182338; }
+html.global-dark-mode .class-tree-dialog .modal-header { background:#222c44; }
+html.global-dark-mode .class-tree-option { color:#e0e8f8; background:#1c2b42; border-color:#3b4b65; }
+html.global-dark-mode .class-tree-option:hover,html.global-dark-mode .class-tree-toggle:hover { background:#293953; }
+html.global-dark-mode .class-tree-row.is-selected .class-tree-option { background:#39315d; color:#f1ebff; border-color:#ab94ff; }
+html.global-dark-mode .class-tree-branch { border-color:#465770; }
+html.global-dark-mode .class-tree-dialog .modal-header p,html.global-dark-mode .class-tree-name small,html.global-dark-mode .class-tree-kind,html.global-dark-mode .class-tree-placeholder,html.global-dark-mode .class-tree-message { color:#acbad0; }
+@media(max-width:480px) { .class-tree-dialog .modal-body { padding:12px; }.class-tree-option { gap:7px; padding:10px 8px; }.class-tree-toggle,.class-tree-spacer { flex-basis:24px; width:24px; } }

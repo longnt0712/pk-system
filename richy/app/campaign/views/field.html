@@ -6,7 +6,7 @@
             <p class="field-intro">Mỗi việc tốt là một đóa hoa dâng Mẹ. Cùng ngắm những vườn hoa các em chăm sóc mỗi ngày.</p>
         </header>
         <form class="field-filters" ng-if="vm.campaign" ng-submit="vm.reload()">
-            <label for="field-class">Chọn lớp<select id="field-class" ng-model="vm.classId" ng-options="item.id as item.name for item in vm.classes" ng-change="vm.reload()"><option value="">Tất cả lớp</option></select></label>
+            <div class="field-class-filter"><span class="field-filter-label">Chọn lớp</span><class-tree-picker classes="vm.classes" ng-model="vm.classId" on-change="vm.reload()" loading="vm.starting" load-error="vm.classesError" on-retry="vm.start()" placeholder="Tất cả lớp" label="Chọn lớp để lọc Hoa thiêng"></class-tree-picker></div>
             <label for="field-search">Tìm vườn hoa theo tên<input id="field-search" type="search" ng-model="vm.query" ng-change="vm.searchChanged()" maxlength="100" placeholder="Nhập tên thánh hoặc họ tên…" autocomplete="off"></label>
             <button type="submit" class="field-button">Tìm vườn hoa</button>
             <button type="button" class="field-button field-export-button" ng-if="vm.canExport()" ng-click="vm.openExport()" ng-disabled="!vm.classesLoaded || vm.exportingId != null">Xuất ảnh tất cả</button>

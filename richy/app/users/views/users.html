@@ -70,22 +70,17 @@
                         </ui-select>
                     </div>
                     <div class="col-md-3">
-                        <ui-select ng-model="vm.filter.enrollmentClass"
-                                   ng-disabled="vm.isIeltsRoomDomain && vm.showUnassignedStudents"
-                                   data-ng-change="vm.searchByQuickEnrollmentClass()"
-                                   sortable="true"
-                                   close-on-select="true">
-                            <ui-select-match allow-clear="true" placeholder="LỚP HỌC">
-                                {{$select.selected.treeLabel || $select.selected.name}}
-                            </ui-select-match>
-                            <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
-                                | filter:vm.filterQuickEnrollmentClass
-                                | propsFilter:{treeLabel: $select.search, name: $select.search}">
-                                <div class="bold"
-                                     ng-bind-html="(so.treeLabel || so.name) | highlight: $select.search"></div>
-                                <small>{{so.old}}</small>
-                            </ui-select-choices>
-                        </ui-select>
+                        <class-tree-picker classes="vm.enrollmentClasses"
+                                           ng-model="vm.filter.enrollmentClass"
+                                           school-id="vm.directorySchoolId"
+                                           filter-class="vm.filterQuickEnrollmentClass(item)"
+                                           disabled="vm.isIeltsRoomDomain && vm.showUnassignedStudents"
+                                           loading="vm.enrollmentClassesLoading"
+                                           load-error="vm.enrollmentClassesError"
+                                           on-retry="vm.loadEnrollmentClasses()"
+                                           on-change="vm.searchByQuickEnrollmentClass()"
+                                           placeholder="LỚP HỌC"
+                                           label="Chọn lớp để lọc"></class-tree-picker>
                     </div>
                     <div class="col-md-4">
                         <div class="input-group">

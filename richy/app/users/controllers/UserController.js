@@ -595,10 +595,22 @@
             // {id: 24, name: "KHÁC"}
 
         ];
-		service.getEnrollmentClassTree(vm.directorySchoolId).then(function (data) {
-			vm.enrollmentClasses = angular.isArray(data) ? data : [];
-			prepareEnrollmentClassTree();
-        });
+        vm.enrollmentClassesLoading = false;
+        vm.enrollmentClassesError = false;
+        vm.loadEnrollmentClasses = function () {
+            if (vm.enrollmentClassesLoading) { return; }
+            vm.enrollmentClassesLoading = true;
+            vm.enrollmentClassesError = false;
+            return service.getEnrollmentClassTree(vm.directorySchoolId).then(function (data) {
+                vm.enrollmentClasses = angular.isArray(data) ? data : [];
+                prepareEnrollmentClassTree();
+            }).catch(function () {
+                vm.enrollmentClassesError = true;
+            }).finally(function () {
+                vm.enrollmentClassesLoading = false;
+            });
+        };
+        vm.loadEnrollmentClasses();
 
 		function prepareEnrollmentClassTree() {
 			var byId = {};

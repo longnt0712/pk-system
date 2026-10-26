@@ -27,5 +27,8 @@ public class CampaignFieldDto {
     public static class ClassOption {
         public Long id;
         public String name;
+        public Long parentId;
+        public String code;
+        public Integer schoolId;
     }
 }

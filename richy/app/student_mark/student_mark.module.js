@@ -28,6 +28,8 @@
                             name: 'Hrm.StudentMark',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
+                                'common/class-tree-picker.css?v=' + version,
+                                'common/directives/ClassTreePicker.js?v=' + version,
                                 'student_mark/controllers/StudentMarkController.js?v=' + version,
                                 'student_mark/business/StudentMarkService.js?v=' + version
                             ]
