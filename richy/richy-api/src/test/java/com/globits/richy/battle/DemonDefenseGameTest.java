@@ -44,17 +44,65 @@ public class DemonDefenseGameTest {
         assertEquals(420,DemonDefenseGame.pointsRequiredForLevel(11)); assertEquals(480,DemonDefenseGame.pointsRequiredForLevel(12));
         assertEquals(20,game(1).snapshot(START,false).levelTargetPoints); assertEquals(20,game(4).snapshot(START,false).levelTargetPoints);
     }
-    @Test public void levelOneSpawnsOnePointEveryFourSecondsPerMember() {
-        DemonDefenseGame small = game(1), large = game(3); small.advance(START + 6999L);
-        assertEquals(1,enemyPoints(team(small,1,6999,true))); small.advance(START + 7000L);
-        assertEquals(2,enemyPoints(team(small,1,7000,true))); small.advance(START + 15000L); large.advance(START + 15000L);
-        assertEquals(4,enemyPoints(team(small,1,15000,true))); assertEquals(10,enemyPoints(team(large,1,15000,true)));
+    @Test public void levelOneSpawnsOnePointEveryEightSecondsPerMember() {
+        DemonDefenseGame small = game(1), large = game(3); small.advance(START + 10999L);
+        assertEquals(1,enemyPoints(team(small,1,10999,true))); small.advance(START + 11000L);
+        assertEquals(2,enemyPoints(team(small,1,11000,true))); small.advance(START + 15000L); large.advance(START + 15000L);
+        assertEquals(2,enemyPoints(team(small,1,15000,true))); assertEquals(5,enemyPoints(team(large,1,15000,true)));
         for (DemonDefenseGame.Demon demon : team(large,1,15000,true).demons) { assertEquals(1,demon.health); }
+    }
+    @Test public void normalPressureIsHalvedForSmallAndLargeTeamsWithTheOpeningGraceUnchanged() {
+        for (int members : new int[] {1,2,4,25,200}) {
+            DemonDefenseGame game = game(members);
+            game.advance(START + 2999L); assertTrue(team(game,1,2999,true).demons.isEmpty());
+            game.advance(START + 3000L); assertEquals(1,enemyPoints(team(game,1,3000,true)));
+            long interval = Math.max(360L,8000L / members);
+            game.advance(START + 3000L + interval - 1L);
+            assertEquals(1,enemyPoints(team(game,1,3000L + interval - 1L,true)));
+            game.advance(START + 3000L + interval);
+            assertEquals(2,enemyPoints(team(game,1,3000L + interval,true)));
+        }
+    }
+    @Test public void hordePressureAlsoUsesTheHalvedRateIncludingTheLargeTeamMinimum() {
+        for (int members : new int[] {2,4,25,200}) {
+            // Join two new lanes so their three-second opening grace ends exactly at HORDE.
+            DemonDefenseGame game = new DemonDefenseGame(START - 20000L,new LinkedHashMap<Integer,Integer>());
+            Map<String,Integer> roster = new LinkedHashMap<String,Integer>(), streaks = new LinkedHashMap<String,Integer>();
+            for (int number = 1; number <= 2; number++) for (int i = 0; i < members; i++) {
+                String username = number + ":" + i; roster.put(username,number); streaks.put(username,0);
+            }
+            game.syncPlayers(roster,streaks,START);
+            game.advance(START + 3000L);
+            assertEquals("HORDE",game.snapshot(START + 3000L,false).phase);
+            assertEquals(1,enemyPoints(team(game,1,3000L,true)));
+            long interval = Math.max(360L,Math.max(360L,8000L / members) / 2L);
+            game.advance(START + 3000L + interval - 1L);
+            assertEquals(1,enemyPoints(team(game,1,3000L + interval - 1L,true)));
+            game.advance(START + 3000L + interval);
+            assertEquals(2,enemyPoints(team(game,1,3000L + interval,true)));
+        }
+    }
+    @Test public void lateRosterChangesUseEightSecondsPerMemberWithoutChangingTheOtherTeamsClock() {
+        DemonDefenseGame game = game(1);
+        game.syncPlayers(values("alice","1","bob","2"),values("alice","0","bob","0"),START);
+        game.advance(START + 4000L);
+        long firstId = team(game,1,4000L,true).demons.get(0).id;
+        game.syncPlayers(values("alice","1","newbie","1","bob","2"),values("alice","0","newbie","0","bob","0"),START + 4000L);
+        game.advance(START + 7999L); assertEquals(1,enemyPoints(team(game,1,7999L,true)));
+        game.advance(START + 8000L); assertEquals(2,enemyPoints(team(game,1,8000L,true)));
+        assertEquals(1,enemyPoints(team(game,2,8000L,true)));
+        assertEquals(firstId,team(game,1,8000L,true).demons.get(0).id);
+        game.syncPlayers(values("alice","1","newbie","2","bob","2"),values("alice","0","newbie","0","bob","0"),START + 8000L);
+        game.advance(START + 12000L);
+        assertEquals(2,enemyPoints(team(game,1,12000L,true))); assertEquals(2,enemyPoints(team(game,2,12000L,true)));
+        game.advance(START + 15999L); assertEquals(2,enemyPoints(team(game,1,15999L,true)));
+        game.advance(START + 16000L); assertEquals(3,enemyPoints(team(game,1,16000L,true)));
+        assertEquals(3,enemyPoints(team(game,2,16000L,true)));
     }
     @Test public void eachSpawnBatchSpendsItsLevelBudgetAndMixesHealthValues() throws Exception {
         for (int level : new int[] {2,3,5}) {
-            DemonDefenseGame game = atLevel(level,1); game.advance(START + 15000L);
-            DemonDefenseGame.Team team = team(game,1,15000,true); assertEquals(level * 4,enemyPoints(team));
+            DemonDefenseGame game = atLevel(level,1); game.advance(START + 19000L);
+            DemonDefenseGame.Team team = team(game,1,19000,true); assertEquals(level * 3,enemyPoints(team));
             boolean one = false, two = false, three = false;
             for (DemonDefenseGame.Demon demon : team.demons) {
                 assertEquals(demon.maxHealth,demon.health); assertEquals(demon.maxHealth,demon.points);
@@ -77,13 +125,13 @@ public class DemonDefenseGameTest {
     }
     @Test public void threePointDemonNeedsThreeHitsAndAwardsThreePointsOnlyOnce() throws Exception {
         DemonDefenseGame game = atLevel(3,1); assertEquals(3,game.shoot(1,"alice",30,START + 3000L).points);
-        game.advance(START + 7000L); assertEquals(3,team(game,1,7000,true).demons.get(0).health);
-        assertEquals(0,game.shoot(1,"alice",1,START + 7000L).points); assertEquals(0,game.shoot(1,"bob",1,START + 7000L).points);
-        assertEquals(3,game.shoot(1,"carol",1,START + 7000L).points); assertEquals(0,game.shoot(1,"carol",1,START + 7000L).points);
-        assertEquals(6,team(game,1,7000,true).points);
+        game.advance(START + 11000L); assertEquals(3,team(game,1,11000,true).demons.get(0).health);
+        assertEquals(0,game.shoot(1,"alice",1,START + 11000L).points); assertEquals(0,game.shoot(1,"bob",1,START + 11000L).points);
+        assertEquals(3,game.shoot(1,"carol",1,START + 11000L).points); assertEquals(0,game.shoot(1,"carol",1,START + 11000L).points);
+        assertEquals(6,team(game,1,11000,true).points);
     }
     @Test public void oneTeamAdvancesGlobalLevelAndCheckpointsEveryPlayersLatestGun() {
-        DemonDefenseGame game = game(4); assertEquals(3,game.shoot(2,"other",30,START + 24000L).points);
+        DemonDefenseGame game = game(8); assertEquals(3,game.shoot(2,"other",30,START + 24000L).points);
         game.updatePlayerStreak("other",0); game.updatePlayerStreak("bob",30); game.updatePlayerStreak("carol",0);
         assertEquals(19,game.shoot(1,"warmup",190,START + 24000L).points); assertEquals(1,game.snapshot(START + 24000L,false).level);
         assertEquals(2,game.shoot(1,"alice",20,START + 24000L).points);
@@ -104,7 +152,7 @@ public class DemonDefenseGameTest {
         assertEquals(3,game.minimumBulletsForPlayer("bob"));
     }
     @Test public void carryDoublesShotsButItsTemporaryBonusNeverBecomesTheCheckpointFloor() {
-        DemonDefenseGame game = game(4); assertEquals(19,game.shoot(1,"warmup",190,START + 24000L).points);
+        DemonDefenseGame game = game(8); assertEquals(19,game.shoot(1,"warmup",190,START + 24000L).points);
         assertEquals(2,game.shoot(1,"alice",1,START + 24000L,true).bullets);
         assertEquals(2,game.snapshot(START + 24000L,false).level); assertEquals(1,game.minimumBulletsForPlayer("alice"));
         assertEquals(1,game.shoot(1,"alice",0,START + 24000L,false).bullets);
@@ -113,14 +161,14 @@ public class DemonDefenseGameTest {
     @Test public void lateJoinAndTeamChangesKeepExistingEnemiesAndPoints() {
         DemonDefenseGame game = game(1);
         game.syncPlayers(values("alice","1","bob","2"),values("alice","20","bob","0"),START);
-        assertEquals(1,game.shoot(1,"alice",20,START + 3000L).points); game.advance(START + 7000L);
-        long id = team(game,1,7000,true).demons.get(0).id;
-        game.syncPlayers(values("alice","1","newbie","1","bob","2"),values("alice","20","newbie","0","bob","0"),START + 8000L);
-        assertEquals(2,team(game,1,8000,true).memberCount); assertEquals(1,team(game,1,8000,true).points);
-        assertEquals(id,team(game,1,8000,true).demons.get(0).id); assertEquals(1,game.minimumBulletsForPlayer("newbie"));
-        game.syncPlayers(values("alice","1","newbie","2","bob","2"),values("alice","20","newbie","0","bob","0"),START + 8000L);
-        assertEquals(1,team(game,1,8000,true).memberCount); assertEquals(2,team(game,2,8000,true).memberCount);
-        assertEquals(id,team(game,1,8000,true).demons.get(0).id); assertFalse(game.isFinished());
+        assertEquals(1,game.shoot(1,"alice",20,START + 3000L).points); game.advance(START + 11000L);
+        long id = team(game,1,11000,true).demons.get(0).id;
+        game.syncPlayers(values("alice","1","newbie","1","bob","2"),values("alice","20","newbie","0","bob","0"),START + 12000L);
+        assertEquals(2,team(game,1,12000,true).memberCount); assertEquals(1,team(game,1,12000,true).points);
+        assertEquals(id,team(game,1,12000,true).demons.get(0).id); assertEquals(1,game.minimumBulletsForPlayer("newbie"));
+        game.syncPlayers(values("alice","1","newbie","2","bob","2"),values("alice","20","newbie","0","bob","0"),START + 12000L);
+        assertEquals(1,team(game,1,12000,true).memberCount); assertEquals(2,team(game,2,12000,true).memberCount);
+        assertEquals(id,team(game,1,12000,true).demons.get(0).id); assertFalse(game.isFinished());
     }
     @Test public void emptyTeamsAreEliminatedWithoutGhostLanesOrRevival() {
         DemonDefenseGame game = game(1);

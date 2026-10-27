@@ -149,7 +149,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void claimingPerryUsesMamHocPointsAndPublishesPerrysOwnImageAndLabel() throws Exception {
-        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return 824999; } });
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return 941668; } });
         set(room,"giftDrop",pool);
         BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());

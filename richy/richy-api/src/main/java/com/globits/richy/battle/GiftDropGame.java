@@ -14,7 +14,7 @@ public class GiftDropGame {
     public static final long DRAGON_BALL_BOOST_MILLIS = 20000L;
     public static final long DRAGON_BALL_IMMUNITY_MILLIS = 180000L;
     public static final long DRAGON_BALL_CELEBRATION_MILLIS = 5000L;
-    private static final int DRAGON_BALL_TICKETS = 25000; // 2.5% per ball out of one million tickets.
+    private static final int DRAGON_BALL_TICKETS = 8333; // 0.8333% per ball: previous 2.5% divided by three, rounded to whole tickets.
     public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
@@ -290,7 +290,7 @@ public class GiftDropGame {
         System.arraycopy(rewardWeights, 0, normalDrawWeights, skillWeights.length + 2, rewardWeights.length);
         int total = 0;
         for (int weight : normalDrawWeights) { total += weight; }
-        // Put at most a few rounding tickets into the first ordinary reward; ball chances stay exactly 2.5%.
+        // Put at most a few rounding tickets into the first ordinary reward; ball chances stay exactly 0.8333%.
         for (int i = 0; i < rewards.size(); i++) {
             if (rewards.get(i).dragonBallStars == 0) {
                 normalDrawWeights[skillWeights.length + 2 + i] += DRAW_RESOLUTION - total; break;
