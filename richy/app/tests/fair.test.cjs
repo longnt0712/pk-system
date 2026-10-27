@@ -59,7 +59,7 @@ test('public phone lookup does not request operator privileges or create any tra
     assert.equal(h.calls.filter(c => c[0] === 'operator' || c[0] === 'transact').length, 0);
     h.timers[0].fn(); assert.equal(h.instance.participant, null); assert.equal(h.instance.canScan(), true);
 });
-test('scan first, then one tier tap awards the configured price and ignores repeated taps', async () => {
+test('scan first, then confirmed tier choice awards the configured price and ignores repeated taps', async () => {
     const h = setup(); await tick();
     await h.instance.chooseTier(h.instance.tiers[2]);
     assert.equal(h.calls.filter(c => c[0] === 'transact').length, 0, 'choosing before scanning must not send a transaction');
@@ -68,9 +68,22 @@ test('scan first, then one tier tap awards the configured price and ignores repe
     assert.equal(h.calls.filter(c => c[0] === 'transact').length, 0);
     const first = h.instance.chooseTier(h.instance.tiers[2]); h.instance.chooseTier(h.instance.tiers[0]); await first;
     const writes = h.calls.filter(c => c[0] === 'transact'); assert.equal(writes.length, 1); assert.equal(writes[0][2].amount, 30); assert.equal(writes[0][2].tier, 'HARD');
+    assert.equal(h.confirmations.length, 1); assert.match(h.confirmations[0], /Khó/); assert.match(h.confirmations[0], /30/); assert.match(h.confirmations[0], /Nguyễn An/);
     assert.equal(h.instance.receipt.participant.balance, 30); assert.equal(h.storage.size, 0);
     await h.instance.chooseTier(h.instance.tiers[1]); assert.equal(h.calls.filter(c => c[0] === 'transact').length, 1, 'receipt must block another award');
     h.instance.next(); assert.equal(h.instance.selectedTier, '');
+});
+test('award confirmation uses the canonical configured tier and cancel preserves the scanned selection', async () => {
+    const h = setup({confirmation: false}); await tick(); await h.instance.scan('HS001');
+    await h.instance.chooseTier({key: 'EASY', name: 'Sai mức', amount: 999});
+    assert.equal(h.calls.filter(c => c[0] === 'transact').length, 0); assert.equal(h.storage.size, 0);
+    assert.equal(h.instance.participant.cardCode, 'HS001'); assert.equal(h.instance.selectedTier, ''); assert.equal(h.instance.receipt, undefined);
+    assert.match(h.confirmations[0], /Dễ/); assert.match(h.confirmations[0], /5/); assert.match(h.confirmations[0], /Nguyễn An/);
+    assert.doesNotMatch(h.confirmations[0], /999|Sai mức/);
+    h.setConfirmation(true);
+    await h.instance.chooseTier(h.instance.tiers[1]);
+    assert.match(h.confirmations[1], /Trung bình/); assert.match(h.confirmations[1], /15/);
+    assert.equal(h.calls.filter(c => c[0] === 'transact').length, 1); assert.equal(h.instance.participant.balance, 15);
 });
 test('roles select the only operation even without station assignment or with stale opposite metadata', async () => {
     for (const operation of ['PLAY', 'GIFT']) {
@@ -97,10 +110,11 @@ test('gift tiers that exceed the scanned balance never submit', async () => {
     await h.instance.chooseTier(h.instance.tiers[0]); assert.equal(h.instance.receipt.participant.balance, 0);
 });
 test('undoing the last award requires confirmation, reverses once and cannot be repeated', async () => {
-    const h = setup({confirmation: false}); await tick();
+    const h = setup(); await tick();
     assert.equal(!!h.instance.canUndo(), false);
     await h.instance.scan('HS001'); await h.instance.chooseTier(h.instance.tiers[2]);
     assert.equal(!!h.instance.canUndo(), true);
+    h.confirmations.length = 0; h.setConfirmation(false);
     await h.instance.undoLast(); assert.equal(h.confirmations.length, 1); assert.equal(h.calls.filter(c => c[0] === 'undo').length, 0);
     assert.equal(h.instance.participant.balance, 30);
     h.setConfirmation(true);
@@ -134,6 +148,7 @@ test('uncertain network result retains exact request across reload and retries w
     const second = setup({storage}); await tick(); assert.equal(second.instance.pending.request.requestKey, pending.request.requestKey);
     await second.instance.retry(); const write = second.calls.find(c => c[0] === 'transact');
     assert.equal(write[2].requestKey, pending.request.requestKey); assert.equal(write[2].amount, 5); assert.equal(second.instance.pending, null);
+    assert.equal(second.confirmations.length, 0, 'retry checks the already-confirmed award without creating another confirmation');
 });
 test('a definitive server rejection clears pending so operator can correct the selection', async () => {
     const h = setup({transact: async () => {throw {status: 400, data: {message: 'Mức đã thay đổi'}};}}); await tick();

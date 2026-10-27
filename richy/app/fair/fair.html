@@ -74,7 +74,7 @@
                             <small class="fair-tier-shortage" ng-if="vm.operation === 'GIFT' && vm.participant.balance < tier.amount">Thiếu {{tier.amount - vm.participant.balance}} phiếu</small>
                         </button>
                     </div>
-                    <p class="fair-muted">{{vm.operation === 'PLAY' ? 'Bấm mức thưởng để cộng phiếu ngay.' : 'Bấm mức quà để trừ phiếu ngay. Chỉ trao quà sau khi báo thành công.'}}</p>
+                    <p class="fair-muted">{{vm.operation === 'PLAY' ? 'Bấm mức thưởng rồi xác nhận để cộng phiếu.' : 'Bấm mức quà để trừ phiếu ngay. Chỉ trao quà sau khi báo thành công.'}}</p>
                 </div>
                 <button type="button" class="fair-button fair-button--light fair-undo" ng-if="vm.canUndo()" ng-click="vm.undoLast()">Hoàn tác cộng phiếu</button>
                 <button type="button" class="fair-button fair-button--light fair-next" ng-click="vm.next()" ng-disabled="vm.busy || vm.pending">{{vm.mode === 'lookup' || vm.receipt ? 'Quét lượt tiếp theo' : 'Chỉ xem · Quét thẻ khác'}}</button>

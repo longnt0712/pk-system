@@ -101,6 +101,18 @@ test('phone scan-choose-result flow respects roles, balances, public lookup and 
         assert.equal(play.writes.length, 0, 'scanning must not award before choosing a tier');
         assert.equal(await play.page.locator('.fair-balance-number').count(), 0, 'the result balance belongs after the tier action');
         await play.page.screenshot({path: path.join(repo, '.tmp/fair-choose-390.png'), fullPage: true});
+        play.page.once('dialog', dialog => {
+            assert.equal(dialog.type(), 'confirm'); assert.match(dialog.message(), /Khó/); assert.match(dialog.message(), /20/); assert.match(dialog.message(), /Nguyễn Văn An/);
+            dialog.dismiss();
+        });
+        await play.page.locator('.fair-tier[data-tier="HARD"]').click();
+        assert.equal(play.writes.length, 0); assert.equal(play.state.balance, 20);
+        assert.equal(await play.page.locator('.fair-tier').count(), 3, 'cancelling must keep the same scanned card and tier choices');
+        assert.equal(await play.page.locator('.fair-balance-number').count(), 0);
+        play.page.once('dialog', dialog => {
+            assert.equal(dialog.type(), 'confirm'); assert.match(dialog.message(), /Khó/); assert.match(dialog.message(), /20/); assert.match(dialog.message(), /Nguyễn Văn An/);
+            dialog.accept();
+        });
         await play.page.locator('.fair-tier[data-tier="HARD"]').click();
         await play.page.locator('.fair-receipt').waitFor(); assert.equal(play.writes.length, 1); assert.equal(play.writes[0].amount, 20);
         assert.equal(play.writes[0].operation, 'PLAY');
@@ -110,9 +122,9 @@ test('phone scan-choose-result flow respects roles, balances, public lookup and 
         assert.ok(nextButton.y + nextButton.height <= 844, 'Next-turn button should fit the phone viewport');
         await play.page.screenshot({path: path.join(repo, '.tmp/fair-award-390.png'), fullPage: true});
         assert.equal(await play.page.locator('.fair-undo').count(), 1);
-        play.page.once('dialog', dialog => {assert.equal(dialog.type(), 'confirm'); dialog.dismiss();});
+        play.page.once('dialog', dialog => {assert.equal(dialog.type(), 'confirm'); assert.match(dialog.message(), /hoàn tác/i); dialog.dismiss();});
         await play.page.locator('.fair-undo').click(); assert.equal(play.undos.length, 0); assert.equal(play.state.balance, 40);
-        play.page.once('dialog', dialog => dialog.accept());
+        play.page.once('dialog', dialog => {assert.match(dialog.message(), /hoàn tác/i); dialog.accept();});
         await play.page.locator('.fair-undo').click();
         await play.page.waitForFunction(() => /20/.test(document.querySelector('.fair-balance-number')?.textContent || ''));
         assert.equal(play.undos.length, 1); assert.equal(play.state.balance, 20); assert.equal(await play.page.locator('.fair-undo').count(), 0);

@@ -76,9 +76,11 @@
                 && !!tier && (vm.operation !== 'GIFT' || vm.participant.balance >= tier.amount);
         };
         vm.chooseTier = function (tier) {
-            if (!vm.canChooseTier(tier)) { return; }
-            if (!vm.tiers.some(function (value) { return value.key === tier.key; })) { return; }
-            vm.selectedTier = tier.key;
+            var selected = tier && vm.tiers.filter(function (value) { return value.key === tier.key; })[0];
+            if (!vm.canChooseTier(selected)) { return; }
+            if (vm.operation === 'PLAY' && !$window.confirm('Bạn muốn cộng mức ' + selected.name + ' — ' + selected.amount
+                + ' phiếu cho ' + vm.participant.displayName + ' (' + vm.participant.cardCode + ')?')) { return; }
+            vm.selectedTier = selected.key;
             return vm.submit();
         };
         vm.scan = function (raw) {
