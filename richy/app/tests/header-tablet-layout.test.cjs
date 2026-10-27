@@ -40,7 +40,7 @@ for (const viewport of [
             window.Hrm = angular.module('HeaderLayoutTest', []).value('$state', {});
             window.Layout = {initContent() {}};
             Hrm.run(['$rootScope', root => {
-                root.settings = {permissionsLoaded: true, ieltsRoom: true, salesEnabled: false, isAdmin: true, isViewer: true, campaignsEnabled: true, assetsPath: 'assets', api: {baseUrl: '/'}};
+                root.settings = {permissionsLoaded: true, ieltsRoom: true, salesEnabled: false, isAdmin: true, isViewer: true, campaignsEnabled: true, fairsEnabled: true, assetsPath: 'assets', api: {baseUrl: '/'}};
                 root.currentUser = {person: {lastName: 'NGUYỄN', firstName: 'NGƯỜI DÙNG THỬ NGHIỆM'}, username: 'long.tablet.account', hasPhoto: false};
                 root.canManageOwnProfile = () => true;
                 root.$state = {current: {name: 'application.dashboard'}, includes: () => false};
@@ -48,6 +48,22 @@ for (const viewport of [
         });
         await page.addScriptTag({path: path.join(app, 'application.controllers.js')});
         await page.evaluate(() => angular.bootstrap(document.body, ['HeaderLayoutTest']));
+        if (viewport.width === 390) {
+            for (const variant of [
+                {enabled: false, admin: true, visible: false},
+                {enabled: true, play: true, visible: true},
+                {enabled: true, gift: true, visible: true},
+                {enabled: true, visible: false},
+                {enabled: true, admin: true, visible: true}
+            ]) {
+                await page.evaluate(variant => {
+                    const root = angular.element(document.body).scope();
+                    root.$apply(() => Object.assign(root.settings, {fairsEnabled: variant.enabled,
+                        isAdmin: !!variant.admin, isFairPlay: !!variant.play, isFairGift: !!variant.gift}));
+                }, variant);
+                assert.equal(await page.locator('.fair-nav').count(), variant.visible ? 1 : 0, 'fair menu respects domain and role: ' + JSON.stringify(variant));
+            }
+        }
         assert.equal(await page.locator('.learning-nav-brand--ielts .learning-brand-text').isVisible(),
             viewport.width < 768 || viewport.width > 1366, 'tablet keeps the logo without the brand text');
         assert.equal(await page.locator('.learning-nav-brand--ielts .learning-brand-icon').isVisible(), true);

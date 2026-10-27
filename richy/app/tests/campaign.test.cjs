@@ -174,7 +174,7 @@ test('delete requires a selected confirmation and manager role', async () => {
 });
 test('public route exemption is limited to campaign listing and numeric detail URLs', () => {
     const app = fs.readFileSync(path.join(__dirname, '../application.js'), 'utf8');
-    const fn = app.slice(app.indexOf('function isPublicCampaignPage()'), app.indexOf("$rootScope.$on('$stateChangeStart'", app.indexOf('function isPublicCampaignPage()')));
+    const fn = app.slice(app.indexOf('function isPublicFairPage()'), app.indexOf("$rootScope.$on('$stateChangeStart'", app.indexOf('function isPublicCampaignPage()')));
     for (const [pathname, allowed] of [['/campaigns', true], ['/campaigns/5', true], ['/campaigns/5/', true], ['/hoa-thieng', true], ['/hoa-thieng/', true], ['/hoa-thieng/c/'+ 'c'.repeat(32), true], ['/campaigns/c/'+ 'c'.repeat(32), true], ['/hoa-thieng/c/short', false], ['/campaigns/c/123', false], ['/hoa-thieng/5', true], ['/hoa-thieng/5/', true], ['/hoa-thieng/0', false], ['/hoa-thieng/5/edit', false], ['/hoa-thieng/admin', false], ['/campaigns/admin', false], ['/dashboard', false], ['/campaigns/0', false], ['/campaigns/5/edit', false]]) {
         const context = nodeVm.createContext({settings: {campaignsEnabled: true}, window: {location: {pathname}}}); nodeVm.runInContext(fn, context);
         assert.equal(context.isPublicCampaignPage(), allowed, pathname);

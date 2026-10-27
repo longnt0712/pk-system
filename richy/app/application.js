@@ -253,11 +253,11 @@
                 var fairPath;
                 try { fairPath = window.sessionStorage.getItem('fair.returnPath'); window.sessionStorage.removeItem('fair.returnPath'); } catch (ignore) {}
                 var fairRoute = /^\/hoi-cho\/(?:([1-9][0-9]*)\/)?(lam-viec|quan-tri)\/?$/.exec(fairPath || '');
-                if (fairRoute) {
+                if (settings.fairsEnabled && fairRoute) {
                     $state.go('fair_' + (fairRoute[2] === 'quan-tri' ? 'admin' : 'work') + (fairRoute[1] ? '_event' : ''), {id: fairRoute[1] ? Number(fairRoute[1]) : null});
                     return;
                 }
-                if (!settings.isAdmin && (settings.isFairPlay || settings.isFairGift)) { $state.go('fair_work'); return; }
+                if (settings.fairsEnabled && !settings.isAdmin && (settings.isFairPlay || settings.isFairGift)) { $state.go('fair_work'); return; }
                 $state.go('application.dashboard');
             };
 
@@ -385,6 +385,7 @@
 
             // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
             settings.campaignsEnabled = /^(www\.)?tnttphungkhoang\.com$/i.test(window.location.hostname || '');
+            settings.fairsEnabled = settings.campaignsEnabled;
             settings.chapter = isChapterDomain;
             settings.ieltsRoom = !isChapterDomain;
             settings.salesEnabled = hostname !== 'ieltsroom.com';
@@ -393,11 +394,19 @@
             // =========================
             // OAuth errors
             // =========================
+            function isPublicFairPage() {
+                return settings.fairsEnabled === true && /^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '');
+            }
             function isPublicCampaignPage() {
-                if (/^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '')) { return true; }
+                if (isPublicFairPage()) { return true; }
                 return settings.campaignsEnabled && (/^\/campaigns(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}(?:\/canh-dong-hoa)?))?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || ''));
             }
             $rootScope.$on('$stateChangeStart', function (event, nextState, nextParams) {
+                if (nextState.data && (nextState.data.publicFair || nextState.data.fairPrivate) && !settings.fairsEnabled) {
+                    event.preventDefault();
+                    $state.go('login', {showHome: true}, {location: 'replace'});
+                    return;
+                }
                 if (nextState.data && nextState.data.fairPrivate && !authSession.hasCredentials()) {
                     var fairTarget = '/hoi-cho/' + (nextParams && nextParams.id ? nextParams.id + '/' : '')
                         + (nextState.name && nextState.name.indexOf('fair_admin') === 0 ? 'quan-tri' : 'lam-viec');
@@ -418,7 +427,7 @@
                 resetPermissionSettings();
                 settings.permissionsLoaded = false;
                 if (isPublicCampaignPage()) { return; }
-                if (/^\/hoi-cho\//.test(window.location.pathname || '')) {
+                if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
                     try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
                 }
                 $rootScope.$emit('$unauthorized', function () {});
@@ -435,7 +444,7 @@
             var lastUserCheckSession = null;
             function checkCurrentUser(attempt, force) {
                 if (userCheckInFlight) { return; }
-                if (/^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '')) { return; }
+                if (isPublicFairPage()) { return; }
 
                 if (!authSession.hasCredentials()) {
                     // A stale user cookie must not keep an unauthenticated
@@ -446,7 +455,7 @@
                         return;
                     }
                     if (isPublicCampaignPage()) { return; }
-                    if (/^\/hoi-cho\//.test(window.location.pathname || '')) {
+                    if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
                         try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
                     }
                     prepareBattleRoomLoginRedirect();

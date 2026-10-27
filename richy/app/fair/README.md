@@ -2,6 +2,8 @@
 
 Giao diện dùng trên trình duyệt điện thoại, ưu tiên màn hình dọc và camera sau.
 
+Phần hội chợ chỉ mở trên `tnttphungkhoang.com` và `www.tnttphungkhoang.com`. Các domain khác không hiển thị menu và không mở được các trang `/hoi-cho`, kể cả khi tài khoản có quyền hội chợ.
+
 ## Mở các trang
 
 - `/hoi-cho/quan-tri`: admin tạo hội chợ, sửa mức phiếu, gán gian hàng, tạo/in thẻ khách và sửa giao dịch.

@@ -51,7 +51,7 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'NÃ
     await page.addScriptTag({path: path.join(app, 'fair/fair.module.js')});
     await page.evaluate(() => {
         Hrm.requires.push('Hrm.Fair');
-        Hrm.value('settings', {api: {baseUrl: 'https://fair.test/service/'}});
+        Hrm.value('settings', {fairsEnabled: true, api: {baseUrl: 'https://fair.test/service/'}});
         Hrm.config(['$locationProvider', function ($locationProvider) {$locationProvider.html5Mode({enabled: true, requireBase: false});}]);
         angular.bootstrap(document, ['Hrm']);
     });

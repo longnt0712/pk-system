@@ -50,7 +50,7 @@
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
                 <li class="dropdown fair-nav"
-                    ng-if="settings.isAdmin || settings.isFairPlay || settings.isFairGift"
+                    ng-if="settings.fairsEnabled === true && (settings.isAdmin || settings.isFairPlay || settings.isFairGift)"
                     ng-class="{'is-route-active': $state.includes('fair_work') || $state.includes('fair_work_event') || $state.includes('fair_lookup') || $state.includes('fair_lookup_event') || $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         HỘI CHỢ <span class="caret"></span>

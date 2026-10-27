@@ -1,8 +1,12 @@
 (function () {
     'use strict';
     angular.module('Hrm.Fair').controller('FairController', FairController);
-    FairController.$inject = ['$scope', '$state', '$stateParams', '$window', '$timeout', 'FairService'];
-    function FairController($scope, $state, $stateParams, $window, $timeout, api) {
+    FairController.$inject = ['$scope', '$state', '$stateParams', '$window', '$timeout', 'settings', 'FairService'];
+    function FairController($scope, $state, $stateParams, $window, $timeout, settings, api) {
+        if (settings.fairsEnabled !== true) {
+            $state.go('login', {showHome: true}, {location: 'replace'});
+            return;
+        }
         var vm = this, core = $window.FairCore, resetTimer, pendingKey, disposed = false;
         var viewport = $window.document && $window.document.querySelector('meta[name="viewport"]');
         var previousViewport = viewport && viewport.getAttribute('content');

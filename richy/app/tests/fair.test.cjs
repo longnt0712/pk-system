@@ -7,10 +7,10 @@ const crypto = require('node:crypto').webcrypto;
 const controllerSource = fs.readFileSync(__dirname + '/../fair/FairController.js', 'utf8');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const event = {id: 7, name: 'Hội chợ', active: true, easyAmount: 5, mediumAmount: 15, hardAmount: 30};
-function setup({mode = 'work', storage = new Map(), transact, station = {name: 'Ném bóng', operation: 'PLAY', tier: 'CHOOSE'}} = {}) {
+function setup({mode = 'work', enabled = true, storage = new Map(), transact, station = {name: 'Ném bóng', operation: 'PLAY', tier: 'CHOOSE'}} = {}) {
     let Controller;
     vm.runInNewContext(controllerSource, {Promise, Date, angular: {copy: value => JSON.parse(JSON.stringify(value)), module: () => ({controller(name, fn) { Controller = fn; }})}});
-    const calls = [], timers = [], handlers = {};
+    const calls = [], timers = [], handlers = {}, navigations = [];
     const win = {FairCore: core, crypto, location: {pathname: '/hoi-cho/7/lam-viec'},
         localStorage: {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)},
         sessionStorage: {setItem() {}}, print() {}};
@@ -23,9 +23,16 @@ function setup({mode = 'work', storage = new Map(), transact, station = {name: '
     };
     function timeout(fn, delay) { const timer = {fn, delay}; timers.push(timer); return timer; }
     timeout.cancel = () => {};
-    const instance = new Controller({$on(name, fn) {handlers[name] = fn;}}, {go() {}}, {fairMode: mode}, win, timeout, api);
-    return {instance, calls, timers, storage, handlers};
+    const instance = new Controller({$on(name, fn) {handlers[name] = fn;}}, {go(...args) {navigations.push(args);}}, {fairMode: mode}, win, timeout, {fairsEnabled: enabled}, api);
+    return {instance, calls, timers, storage, handlers, navigations};
 }
+test('disabled fair domains redirect before API calls, camera setup, storage or timers', async () => {
+    for (const mode of ['lookup', 'work', 'admin']) {
+        const h = setup({mode, enabled: false}); await tick();
+        assert.deepEqual(h.calls, []); assert.deepEqual(h.timers, []); assert.deepEqual(h.handlers, {});
+        assert.deepEqual(structuredClone(h.navigations), [['login', {showHome: true}, {location: 'replace'}]]);
+    }
+});
 test('prices come from event configuration and QR parsing accepts existing cards and direct links', () => {
     assert.deepEqual(core.tiers(event).map(t => t.amount), [5, 15, 30]);
     assert.equal(core.cardCode(' HS001 '), 'HS001');

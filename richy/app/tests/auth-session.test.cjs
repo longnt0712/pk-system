@@ -685,20 +685,46 @@ test('Sales navigation is disabled only on IELTS Room and its www alias, preserv
     }
 });
 
-test('fair lookup is public on every domain while work and management still require login', () => {
-    for (const pathname of ['/hoi-cho', '/hoi-cho/7/tra-cuu', '/hoi-cho/lam-viec', '/hoi-cho/7/quan-tri', '/hoi-cho/7/transactions']) {
-        const h = setup(() => {throw Error('Anonymous lookup must not check the current user');});
-        const app = startApp(h, 'ieltsroom.com');
-        h.token.removeToken(); delete h.cookies['education.user']; h.deps.$rootScope.currentUser = null; h.context.window.location.pathname = pathname;
-        app.listeners.$locationChangeSuccess();
-        assert.deepEqual(app.navigations, /^\/hoi-cho(?:\/7\/tra-cuu)?$/.test(pathname) ? [] : ['login'], pathname);
+test('all fair routes are limited to the exact TNTT domain and its www alias, including for admins', () => {
+    const routes = ['fair_lookup', 'fair_lookup_event', 'fair_work', 'fair_work_event', 'fair_admin', 'fair_admin_event'];
+    for (const hostname of ['tnttphungkhoang.com', 'www.tnttphungkhoang.com', 'TNTTPHUNGKHOANG.COM', 'WWW.TNTTPHUNGKHOANG.COM',
+        'ieltsroom.com', 'www.ieltsroom.com', 'localhost', 'other.example', 'stage.tnttphungkhoang.com', 'tnttphungkhoang.com.evil.example']) {
+        for (const admin of [false, true]) {
+            const h = setup(() => ({data: {id: 7, roles: []}}));
+            h.session.saveUser({id: 7, roles: admin ? [{name: 'ROLE_ADMIN'}] : []});
+            const app = startApp(h, hostname), allowed = /^(www\.)?tnttphungkhoang\.com$/i.test(hostname), redirects = [];
+            assert.equal(app.settings.fairsEnabled, allowed, hostname);
+            assert.equal(app.settings.isAdmin, admin);
+            app.state.go = (...args) => redirects.push(args);
+            for (const name of routes) {
+                let prevented = false;
+                const lookup = name.startsWith('fair_lookup');
+                app.listeners.$stateChangeStart({preventDefault() {prevented = true;}}, {name, data: {publicFair: lookup, fairPrivate: !lookup}}, {id: 7});
+                assert.equal(prevented, !allowed, hostname + ': ' + name + ', admin=' + admin);
+            }
+            assert.equal(redirects.length, allowed ? 0 : routes.length);
+            if (!allowed) assert.deepEqual(structuredClone(redirects[0]), ['login', {showHome: true}, {location: 'replace'}]);
+        }
+    }
+});
+
+test('anonymous fair lookup bypasses login only on TNTT; work and management still require login', () => {
+    for (const hostname of ['tnttphungkhoang.com', 'www.tnttphungkhoang.com', 'ieltsroom.com', 'www.ieltsroom.com', 'localhost']) {
+        for (const pathname of ['/hoi-cho', '/hoi-cho/7/tra-cuu', '/hoi-cho/lam-viec', '/hoi-cho/7/quan-tri', '/hoi-cho/7/transactions']) {
+            const h = setup(() => {throw Error('Anonymous lookup must not check the current user');});
+            const app = startApp(h, hostname);
+            h.token.removeToken(); delete h.cookies['education.user']; h.deps.$rootScope.currentUser = null; h.context.window.location.pathname = pathname;
+            app.listeners.$locationChangeSuccess();
+            const publicLookup = app.settings.fairsEnabled && /^\/hoi-cho(?:\/7\/tra-cuu)?$/.test(pathname);
+            assert.deepEqual(app.navigations, publicLookup ? [] : ['login'], hostname + pathname);
+        }
     }
 });
 
 test('fair operator roles survive permission loading and take the operator to the phone work page', async () => {
     for (const role of ['ROLE_PLAY', 'ROLE_GIFT']) {
         const h = setup(() => ({data: {id: 7, roles: [{name: role}]}}));
-        const app = startApp(h); app.state.current.name = 'login'; app.state.params.showHome = false;
+        const app = startApp(h, 'tnttphungkhoang.com'); app.state.current.name = 'login'; app.state.params.showHome = false;
         app.listeners.$locationChangeSuccess(); await new Promise(resolve => setImmediate(resolve));
         assert.equal(app.settings.isFairPlay, role === 'ROLE_PLAY'); assert.equal(app.settings.isFairGift, role === 'ROLE_GIFT');
         assert.deepEqual(app.navigations, ['fair_work']);
@@ -706,7 +732,7 @@ test('fair operator roles survive permission loading and take the operator to th
 });
 
 test('opening fair management from the public page remembers the intended page before login', () => {
-    const h = setup(() => ({data: {}})), app = startApp(h), saved = {};
+    const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com'), saved = {};
     h.token.removeToken(); h.context.window.location.pathname = '/hoi-cho';
     h.context.window.sessionStorage.setItem = (key, value) => {saved[key] = value;};
     let prevented = false;
@@ -714,9 +740,32 @@ test('opening fair management from the public page remembers the intended page b
     assert.equal(prevented, true); assert.equal(saved['fair.returnPath'], '/hoi-cho/7/quan-tri'); assert.deepEqual(app.navigations, ['login']);
 });
 test('a fresh manual login routes fair staff using the saved user before any background permission refresh', () => {
-    const h = setup(() => ({data: {}})), app = startApp(h);
+    const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com');
     h.session.saveUser({id: 7, roles: [{name: 'ROLE_PLAY'}]});
     app.settings.isFairPlay = false;
     h.deps.$rootScope.navigateAfterLogin();
     assert.deepEqual(app.navigations, ['fair_work']); assert.equal(app.settings.isFairPlay, true);
+});
+
+test('fair staff roles and saved fair destinations do not open fair pages after login outside TNTT', async () => {
+    for (const hostname of ['ieltsroom.com', 'www.ieltsroom.com', 'localhost', 'stage.tnttphungkhoang.com']) {
+        for (const role of ['ROLE_PLAY', 'ROLE_GIFT']) {
+            for (const destination of [null, '/hoi-cho/7/lam-viec', '/hoi-cho/7/quan-tri']) {
+                const h = setup(() => ({data: {id: 7, roles: [{name: role}]}})), app = startApp(h, hostname);
+                h.context.window.sessionStorage.getItem = key => key === 'fair.returnPath' ? destination : null;
+                app.state.current.name = 'login'; app.state.params.showHome = false;
+                app.listeners.$locationChangeSuccess(); await new Promise(resolve => setImmediate(resolve));
+                assert.deepEqual(app.navigations, ['application.dashboard'], hostname + ': ' + role + ', destination=' + destination);
+            }
+        }
+    }
+});
+
+test('a disabled-domain fair route is rejected before creating a post-login destination', () => {
+    const h = setup(() => ({data: {}})), app = startApp(h, 'ieltsroom.com'), saved = {};
+    h.token.removeToken(); h.context.window.location.pathname = '/hoi-cho';
+    h.context.window.sessionStorage.setItem = (key, value) => {saved[key] = value;};
+    let prevented = false;
+    app.listeners.$stateChangeStart({preventDefault() {prevented = true;}}, {name: 'fair_admin_event', data: {fairPrivate: true}}, {id: 7});
+    assert.equal(prevented, true); assert.equal(saved['fair.returnPath'], undefined); assert.deepEqual(app.navigations, ['login']);
 });
