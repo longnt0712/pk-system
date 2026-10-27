@@ -1588,7 +1588,8 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 		}
 		
-		setListSubQuestions(dto, domain, currentDate, currentUserName);
+		QuestionTreeSaveContext treeSave = new QuestionTreeSaveContext(dto);
+		setListSubQuestions(dto, domain, currentDate, currentUserName, treeSave);
 //		setListQuestionAnswers(dto,domain,currentDate,currentUserName);
 //		if(dto.getSubQuestions()!=null && dto.getSubQuestions().size()>0) {
 //			HashSet<Question> subQuestions = new HashSet<Question>();
@@ -1774,6 +1775,13 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 		}
 		domain = questionRepository.save(domain);
+		if (!treeSave.movedFromParents.isEmpty()) {
+			// A child retained elsewhere in the submitted tree is a move, not
+			// an orphan. Flush its owning parent FK before refreshing the old
+			// inverse collections so the returned DTO contains it only once.
+			manager.flush();
+			for (Question oldParent : treeSave.movedFromParents) { manager.refresh(oldParent); }
+		}
 		ret = new QuestionDto(domain);
 		ret.setMessage(message);
 		return ret;
@@ -1936,7 +1944,25 @@ public class QuestionServiceImpl implements QuestionService {
 		return ret;
 	}
 
+	private static final class QuestionTreeSaveContext {
+		private final Set<Long> retainedQuestionIds = new HashSet<Long>();
+		private final Set<Question> movedFromParents = new HashSet<Question>();
+		private QuestionTreeSaveContext(QuestionDto root) { collect(root); }
+		private void collect(QuestionDto question) {
+			if (question == null) { return; }
+			if (question.getId() != null) { retainedQuestionIds.add(question.getId()); }
+			if (question.getSubQuestions() != null) {
+				for (QuestionDto child : question.getSubQuestions()) { collect(child); }
+			}
+		}
+	}
+
 	public void setListSubQuestions(QuestionDto dto, Question parentQuestion,LocalDateTime currentDate, String currentUserName) {
+		setListSubQuestions(dto, parentQuestion, currentDate, currentUserName, new QuestionTreeSaveContext(dto));
+	}
+
+	private void setListSubQuestions(QuestionDto dto, Question parentQuestion, LocalDateTime currentDate,
+			String currentUserName, QuestionTreeSaveContext treeSave) {
 		if(dto.getSubQuestions()!=null && dto.getSubQuestions().size()>0) {
 			HashSet<Question> subQuestions = new HashSet<Question>();
 			for(QuestionDto sDto: dto.getSubQuestions()) {
@@ -1965,7 +1991,7 @@ public class QuestionServiceImpl implements QuestionService {
 				}
 				
 				if(sDto.getSubQuestions() != null && sDto.getSubQuestions().size() > 0) {
-					setListSubQuestions(sDto,subQuestion,currentDate,currentUserName);
+					setListSubQuestions(sDto,subQuestion,currentDate,currentUserName,treeSave);
 				}
 				
 				if(sDto.getQuestionAnswers() != null && sDto.getQuestionAnswers().size()>0) {
@@ -2015,6 +2041,12 @@ public class QuestionServiceImpl implements QuestionService {
 //				subQuestion.setQuestionAnswers(setListQuestionAnswers(sDto,parentQuestion,currentDate,currentUserName));
 				
 				subQuestion.setOrdinalNumber(sDto.getOrdinalNumber());
+				Question previousParent = subQuestion.getParent();
+				if (previousParent != null && previousParent != parentQuestion
+						&& (previousParent.getId() == null || parentQuestion.getId() == null
+								|| !previousParent.getId().equals(parentQuestion.getId()))) {
+					treeSave.movedFromParents.add(previousParent);
+				}
 				subQuestion.setParent(parentQuestion);
 				subQuestion.setType(sDto.getType());
 				subQuestions.add(subQuestion);
@@ -2050,6 +2082,15 @@ public class QuestionServiceImpl implements QuestionService {
 //				}
 			}
 			if(parentQuestion.getSubQuestions()!=null) {
+				for (Question previous : parentQuestion.getSubQuestions()) {
+					if (previous.getId() != null && treeSave.retainedQuestionIds.contains(previous.getId())
+							&& !subQuestions.contains(previous)) {
+						// Keeping the old inverse membership until the owning FK
+						// is flushed prevents orphanRemoval from deleting a move.
+						subQuestions.add(previous);
+						treeSave.movedFromParents.add(parentQuestion);
+					}
+				}
 				parentQuestion.getSubQuestions().clear();
 				parentQuestion.getSubQuestions().addAll(subQuestions);
 			}else {

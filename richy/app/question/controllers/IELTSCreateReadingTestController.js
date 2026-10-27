@@ -1071,7 +1071,12 @@
                     return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
                 });
                 while (question.questionAnswers.length < sourceAnswers.length) {
-                    question.questionAnswers.push(angular.copy(sourceAnswers[question.questionAnswers.length]));
+                    var copiedAnswer = angular.copy(sourceAnswers[question.questionAnswers.length]);
+                    delete copiedAnswer.id;
+                    copiedAnswer.answer = copiedAnswer.answer || {answer: ''};
+                    delete copiedAnswer.answer.id;
+                    copiedAnswer.question = question.id != null ? {id: question.id} : {};
+                    question.questionAnswers.push(copiedAnswer);
                 }
                 if (question.questionAnswers.length > sourceAnswers.length) {
                     question.questionAnswers = question.questionAnswers.slice(0, sourceAnswers.length);
@@ -1124,7 +1129,12 @@
                     return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
                 });
                 while (question.questionAnswers.length < sourceAnswers.length) {
-                    question.questionAnswers.push(angular.copy(sourceAnswers[question.questionAnswers.length]));
+                    var copiedAnswer = angular.copy(sourceAnswers[question.questionAnswers.length]);
+                    delete copiedAnswer.id;
+                    copiedAnswer.answer = copiedAnswer.answer || {answer: ''};
+                    delete copiedAnswer.answer.id;
+                    copiedAnswer.question = question.id != null ? {id: question.id} : {};
+                    question.questionAnswers.push(copiedAnswer);
                 }
                 if (question.questionAnswers.length > sourceAnswers.length) {
                     question.questionAnswers = question.questionAnswers.slice(0, sourceAnswers.length);
@@ -1566,11 +1576,11 @@
                         });
                     });
                 }
-                if (!vm.isWritingMode && !vm.isVideoBuilder() && (!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
+                if (!vm.isWritingMode && !vm.isListeningMode && !vm.isVideoBuilder() && (!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
                     addIssue(vm.isComprehensiveMode ? 'Đang bật hiển thị văn bản nhưng chưa nhập nội dung.' :
                         rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
-                if (!vm.isFlexibleMode && !passage.type) {
+                if (!vm.isFlexibleMode && !vm.isListeningMode && !passage.type) {
                     addIssue(rule.name + ': chưa chọn dạng hiển thị bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
                 if (!packages.length) {
