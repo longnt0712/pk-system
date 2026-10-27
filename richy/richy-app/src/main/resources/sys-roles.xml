@@ -53,4 +53,12 @@
 		<name>ROLE_STAFF_MANAGEMENT</name>
 		<description></description>
 	</sys-role>
+    <sys-role>
+        <name>ROLE_PLAY</name>
+        <description>Hoi cho - thuong phieu tro choi</description>
+    </sys-role>
+    <sys-role>
+        <name>ROLE_GIFT</name>
+        <description>Hoi cho - doi qua</description>
+    </sys-role>
 </sys-roles>

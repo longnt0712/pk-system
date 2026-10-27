@@ -1,0 +1,44 @@
+# Hội chợ tổng kết
+
+Giao diện dùng trên trình duyệt điện thoại, ưu tiên màn hình dọc và camera sau.
+
+## Mở các trang
+
+- `/hoi-cho/quan-tri`: admin tạo hội chợ, sửa mức phiếu, gán gian hàng, tạo/in thẻ khách và sửa giao dịch.
+- `/hoi-cho/lam-viec`: người trực cộng phiếu hoặc đổi quà theo quyền và gian hàng đã giao.
+- `/hoi-cho`: tra cứu công khai, không đăng nhập; mặc định mở hội chợ đang hoạt động mới nhất.
+- `/hoi-cho/{id}/tra-cuu`: link tra cứu cố định của một hội chợ. Có thể thêm `?ma=MA_THE` để xem ngay.
+- `/hoi-cho/{id}/lam-viec` và `/hoi-cho/{id}/quan-tri`: mở cố định hội chợ theo mã.
+
+Trang quản lý có sẵn đường link tra cứu để mở trên các điện thoại dùng chung.
+
+## Chuẩn bị hội chợ
+
+1. Cập nhật cả backend và frontend. Backend tự tạo `ROLE_PLAY`, `ROLE_GIFT` nếu chưa có. Bốn bảng `tbl_fair_event`, `tbl_fair_wallet`, `tbl_fair_station`, `tbl_fair_transaction` được tạo bởi cơ chế Hibernate `ddl-auto=update` hiện có.
+2. Admin tạo hội chợ, đặt ba mức dễ / trung bình / khó. Giá trị mặc định là 8 / 12 / 20; mỗi mức nhận số nguyên dương. Cấu hình này áp dụng cho cả thưởng trò chơi và đổi quà.
+3. Gán `ROLE_PLAY` cho tài khoản trực trò chơi, `ROLE_GIFT` cho tài khoản đổi quà trong trang tài khoản hiện có.
+4. Trong quản lý hội chợ, gán từng tài khoản với tên gian, chức năng và mức cố định. Có thể chọn “Người trực chọn mức mỗi lượt” nếu một gian có nhiều mức. Người trực không tự đổi cấu hình gian.
+5. Tạo khoảng 100 thẻ khách, rồi bấm in. Mỗi lần tạo thêm sinh mã mới và đánh số tiếp, không tái sử dụng ví cũ. QR của khách có mã đầy đủ `HC-{event}-KHxxx-{suffix}`; số KHxxx cũng được in rõ trên thẻ.
+6. Người phụ trách mở sẵn link tra cứu trên các điện thoại, cấp quyền camera rồi để học sinh tự quét. Cần HTTPS và kết nối mạng.
+
+## Quy tắc phiếu
+
+- Phiếu giấy dùng độc lập: thu giấy khi đổi quà, không nhập thành phiếu ảo.
+- Phiếu trong thẻ bắt đầu bằng 0 cho từng học sinh/khách ở từng hội chợ. Tra cứu ví chưa phát sinh giao dịch chỉ trả 0, không tạo ví hay cộng phiếu.
+- Thẻ học sinh in sẵn vẫn dùng mã học sinh hiện tại; chỉ tài khoản học sinh đang hoạt động được nhận diện.
+- Quét thẻ chỉ đọc số dư. Người trực kiểm tra tên, mức thưởng/quà, rồi bấm nút xác nhận cộng/trừ. Sau kết quả, bấm “Quét lượt tiếp theo”. Camera không tự tạo giao dịch.
+- Gian cố định gắn với tên mức, không sao chép số phiếu. Khi admin đổi cấu hình, gian dùng mức mới. Nếu điện thoại còn giá cũ, máy chủ từ chối lượt đó, giao diện tải lại cấu hình; kiểm tra mức mới trước khi thử lại.
+- Mỗi lượt có mã chống trùng. Lượt đang gửi được lưu trên điện thoại trước khi gửi. Khi mạng chưa xác nhận, bấm “Kiểm tra kết quả” để gửi lại đúng mã cũ; không lập lượt khác. Sau tải lại trang/đăng nhập lại cùng tài khoản, lượt này vẫn được phục hồi.
+- Số dư được khóa trong giao dịch cơ sở dữ liệu khi cập nhật; hai gian hàng không thể cùng tiêu vượt số phiếu đang có.
+- Chỉ admin sửa giao dịch. Nhập số phiếu đúng của lượt và lý do; hệ thống ghi riêng phần chênh lệch, giữ bản gốc. Ví dụ đã cộng 8, đúng là 20 thì cộng bù 12. Nhập 0 để hủy tác động của lượt. Mỗi lượt gốc được sửa một lần; không cho sửa làm số dư âm.
+- Đổi cấu hình không tính lại lịch sử hoặc số dư. Đóng hội chợ dừng giao dịch mới và vẫn cho phép tra cứu qua link cố định. Muốn bắt đầu số dư 0 cho đợt mới, tạo hội chợ mới.
+
+## Kiểm tra
+
+```text
+node --test richy/app/tests/fair.test.cjs richy/app/tests/auth-session.test.cjs richy/app/tests/campaign.test.cjs
+node --test richy/app/tests/fair-browser.test.cjs
+mvn -f richy/richy-api/pom.xml -DskipTests=false -Dtest=FairServiceTest test
+```
+
+Kiểm tra trình duyệt dùng Playwright/Chrome theo cùng cách với các bài kiểm tra giao diện hiện có. Java test chạy H2 độc lập, không kết nối cơ sở dữ liệu ứng dụng, bao gồm giao dịch đồng thời và gửi lại cùng mã.

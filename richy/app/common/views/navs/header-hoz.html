@@ -49,6 +49,9 @@
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
+                <li ng-if="settings.isAdmin || settings.isFairPlay || settings.isFairGift">
+                    <a ui-sref="fair_work" href="/hoi-cho/lam-viec">HỘI CHỢ</a>
+                </li>
                 <li ng-if="settings.campaignsEnabled === true" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
                     <a ui-sref="campaigns" href="campaigns">CHIẾN DỊCH</a>
                 </li>

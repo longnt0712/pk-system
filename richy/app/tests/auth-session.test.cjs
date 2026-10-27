@@ -684,3 +684,39 @@ test('Sales navigation is disabled only on IELTS Room and its www alias, preserv
         assert.equal(app.settings.salesEnabled, !/^(www\.)?ieltsroom\.com$/i.test(hostname), hostname);
     }
 });
+
+test('fair lookup is public on every domain while work and management still require login', () => {
+    for (const pathname of ['/hoi-cho', '/hoi-cho/7/tra-cuu', '/hoi-cho/lam-viec', '/hoi-cho/7/quan-tri', '/hoi-cho/7/transactions']) {
+        const h = setup(() => {throw Error('Anonymous lookup must not check the current user');});
+        const app = startApp(h, 'ieltsroom.com');
+        h.token.removeToken(); delete h.cookies['education.user']; h.deps.$rootScope.currentUser = null; h.context.window.location.pathname = pathname;
+        app.listeners.$locationChangeSuccess();
+        assert.deepEqual(app.navigations, /^\/hoi-cho(?:\/7\/tra-cuu)?$/.test(pathname) ? [] : ['login'], pathname);
+    }
+});
+
+test('fair operator roles survive permission loading and take the operator to the phone work page', async () => {
+    for (const role of ['ROLE_PLAY', 'ROLE_GIFT']) {
+        const h = setup(() => ({data: {id: 7, roles: [{name: role}]}}));
+        const app = startApp(h); app.state.current.name = 'login'; app.state.params.showHome = false;
+        app.listeners.$locationChangeSuccess(); await new Promise(resolve => setImmediate(resolve));
+        assert.equal(app.settings.isFairPlay, role === 'ROLE_PLAY'); assert.equal(app.settings.isFairGift, role === 'ROLE_GIFT');
+        assert.deepEqual(app.navigations, ['fair_work']);
+    }
+});
+
+test('opening fair management from the public page remembers the intended page before login', () => {
+    const h = setup(() => ({data: {}})), app = startApp(h), saved = {};
+    h.token.removeToken(); h.context.window.location.pathname = '/hoi-cho';
+    h.context.window.sessionStorage.setItem = (key, value) => {saved[key] = value;};
+    let prevented = false;
+    app.listeners.$stateChangeStart({preventDefault() {prevented = true;}}, {name: 'fair_admin_event', data: {fairPrivate: true}}, {id: 7});
+    assert.equal(prevented, true); assert.equal(saved['fair.returnPath'], '/hoi-cho/7/quan-tri'); assert.deepEqual(app.navigations, ['login']);
+});
+test('a fresh manual login routes fair staff using the saved user before any background permission refresh', () => {
+    const h = setup(() => ({data: {}})), app = startApp(h);
+    h.session.saveUser({id: 7, roles: [{name: 'ROLE_PLAY'}]});
+    app.settings.isFairPlay = false;
+    h.deps.$rootScope.navigateAfterLogin();
+    assert.deepEqual(app.navigations, ['fair_work']); assert.equal(app.settings.isFairPlay, true);
+});

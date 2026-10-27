@@ -42,6 +42,7 @@
             'Hrm.PersonDate',
             'Hrm.EducationProgram',
             'Hrm.Campaign',
+            'Hrm.Fair',
             'Hrm.Mark',
             'Hrm.StudentMark',
             'Hrm.TopicCategory',
@@ -247,6 +248,16 @@
                     return;
                 }
 
+                var signedInUser = $rootScope.currentUser || $cookies.getObject(constants.cookies_user);
+                if (signedInUser) { applyRolesToSettings(signedInUser); }
+                var fairPath;
+                try { fairPath = window.sessionStorage.getItem('fair.returnPath'); window.sessionStorage.removeItem('fair.returnPath'); } catch (ignore) {}
+                var fairRoute = /^\/hoi-cho\/(?:([1-9][0-9]*)\/)?(lam-viec|quan-tri)\/?$/.exec(fairPath || '');
+                if (fairRoute) {
+                    $state.go('fair_' + (fairRoute[2] === 'quan-tri' ? 'admin' : 'work') + (fairRoute[1] ? '_event' : ''), {id: fairRoute[1] ? Number(fairRoute[1]) : null});
+                    return;
+                }
+                if (!settings.isAdmin && (settings.isFairPlay || settings.isFairGift)) { $state.go('fair_work'); return; }
                 $state.go('application.dashboard');
             };
 
@@ -263,6 +274,8 @@
             settings.isEducationManagerment = false;
 
             function resetPermissionSettings() {
+                settings.isFairPlay = false;
+                settings.isFairGift = false;
                 settings.isAdmin = false;
                 settings.isViewer = false;
                 settings.isStaff = false;
@@ -278,6 +291,8 @@
                 }
 
                 angular.forEach(user.roles, function (value) {
+                    if (value.name === 'ROLE_PLAY') { settings.isFairPlay = true; }
+                    if (value.name === 'ROLE_GIFT') { settings.isFairGift = true; }
                     if (value.name === "ROLE_ADMIN") {
                         settings.isAdmin = true;
                         console.log("ADMIN");
@@ -379,9 +394,16 @@
             // OAuth errors
             // =========================
             function isPublicCampaignPage() {
+                if (/^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '')) { return true; }
                 return settings.campaignsEnabled && (/^\/campaigns(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}(?:\/canh-dong-hoa)?))?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || ''));
             }
-            $rootScope.$on('$stateChangeStart', function (event, nextState) {
+            $rootScope.$on('$stateChangeStart', function (event, nextState, nextParams) {
+                if (nextState.data && nextState.data.fairPrivate && !authSession.hasCredentials()) {
+                    var fairTarget = '/hoi-cho/' + (nextParams && nextParams.id ? nextParams.id + '/' : '')
+                        + (nextState.name && nextState.name.indexOf('fair_admin') === 0 ? 'quan-tri' : 'lam-viec');
+                    try { window.sessionStorage.setItem('fair.returnPath', fairTarget); } catch (ignore) {}
+                    event.preventDefault(); $state.go('login'); return;
+                }
                 if (nextState.data && nextState.data.publicCampaign && !settings.campaignsEnabled) {
                     event.preventDefault();
                     $state.go('login', {showHome: true}, {location: 'replace'});
@@ -396,6 +418,9 @@
                 resetPermissionSettings();
                 settings.permissionsLoaded = false;
                 if (isPublicCampaignPage()) { return; }
+                if (/^\/hoi-cho\//.test(window.location.pathname || '')) {
+                    try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
+                }
                 $rootScope.$emit('$unauthorized', function () {});
                 prepareBattleRoomLoginRedirect();
                 $state.go('login');
@@ -410,6 +435,7 @@
             var lastUserCheckSession = null;
             function checkCurrentUser(attempt, force) {
                 if (userCheckInFlight) { return; }
+                if (/^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '')) { return; }
 
                 if (!authSession.hasCredentials()) {
                     // A stale user cookie must not keep an unauthenticated
@@ -420,6 +446,9 @@
                         return;
                     }
                     if (isPublicCampaignPage()) { return; }
+                    if (/^\/hoi-cho\//.test(window.location.pathname || '')) {
+                        try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
+                    }
                     prepareBattleRoomLoginRedirect();
                     $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
