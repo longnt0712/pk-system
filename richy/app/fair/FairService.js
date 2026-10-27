@@ -13,6 +13,7 @@
         this.guests = function (id) { return $http.get(privateUrl + '/' + id + '/guests'); };
         this.generateGuests = function (id, count) { return $http.post(privateUrl + '/' + id + '/guests', {count: count}); };
         this.transact = function (id, request) { return $http.post(privateUrl + '/' + id + '/transactions', request, {timeout: 20000}); };
+        this.undo = function (id, transactionId, request) { return $http.post(privateUrl + '/' + id + '/transactions/' + transactionId + '/undo', request, {timeout: 20000}); };
         this.correct = function (id, transactionId, request) { return $http.post(privateUrl + '/' + id + '/transactions/' + transactionId + '/correct', request, {timeout: 20000}); };
         this.history = function (id, code, before) { return $http.get(privateUrl + '/' + id + '/transactions', {params: {cardCode: code || '', before: before || 0}, timeout: 15000}); };
     }]);

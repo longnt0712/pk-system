@@ -14,7 +14,8 @@
         vm.mode = $stateParams.fairMode || 'lookup'; vm.loading = true; vm.error = ''; vm.message = '';
         vm.events = []; vm.tiers = []; vm.code = ''; vm.operation = ''; vm.selectedTier = ''; vm.guestCount = 100;
         vm.eventForm = {name: 'Hội chợ tổng kết ' + new Date().getFullYear(), active: true, easyAmount: 8, mediumAmount: 12, hardAmount: 20};
-        vm.stationForm = {operation: 'PLAY', tier: 'HARD'}; vm.guests = []; vm.stations = []; vm.transactions = [];
+        vm.showStationSetup = false;
+        vm.stationForm = {operation: 'PLAY', tier: 'CHOOSE'}; vm.guests = []; vm.stations = []; vm.transactions = [];
         function errorMessage(error) {
             if (error && error.data && error.data.message) { return error.data.message; }
             if (error && error.status === 401) { vm.needLogin = true; return 'Hãy đăng nhập bằng tài khoản người trực.'; }
@@ -22,6 +23,25 @@
             return error && error.message || 'Chưa kết nối được hệ thống. Hãy kiểm tra mạng rồi thử lại.';
         }
         function failure(error) { if (!disposed) { vm.error = errorMessage(error); } }
+        function applyOperator(operator) {
+            vm.operator = operator;
+            if (!operator.admin) {
+                if (operator.canPlay && !operator.canGift) { vm.operation = 'PLAY'; }
+                else if (operator.canGift && !operator.canPlay) { vm.operation = 'GIFT'; }
+                else if (operator.canPlay && operator.canGift) {
+                    vm.operation = operator.station && operator.station.operation === 'GIFT' ? 'GIFT' : 'PLAY';
+                } else { vm.operation = ''; }
+            } else if (vm.operation !== 'PLAY' && vm.operation !== 'GIFT') { vm.operation = 'PLAY'; }
+            vm.selectedTier = '';
+        }
+        function focusParticipant() {
+            if (!$window.document) { return; }
+            $timeout(function () {
+                if (disposed) { return; }
+                var panel = $window.document.getElementById('fair-participant');
+                if (panel) { panel.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            }, 0);
+        }
         function storageGet(key) { try { return JSON.parse($window.localStorage.getItem(key) || 'null'); } catch (error) { return null; } }
         function rememberPending(request) {
             // Persist before sending. If storage is unavailable, no transaction is sent.
@@ -43,36 +63,54 @@
         vm.canScan = function () { return !!vm.event && !vm.busy && !vm.loading && !vm.participant && !vm.receipt && !vm.pending && !vm.error; };
         vm.tier = function () { return vm.tiers.filter(function (tier) { return tier.key === vm.selectedTier; })[0]; };
         vm.canOperate = function () {
-            return vm.operator && (vm.operator.admin || vm.operator.station) && vm.event && vm.event.active
+            return vm.operator && vm.event && vm.event.active
                 && ((vm.operation === 'PLAY' && vm.operator.canPlay) || (vm.operation === 'GIFT' && vm.operator.canGift));
         };
-        vm.chooseOperation = function (operation) { if (!vm.participant && !vm.pending && !vm.receipt) { vm.operation = operation; vm.selectedTier = ''; } };
-        vm.chooseTier = function (tier) { if (!vm.busy && !vm.pending && !vm.receipt) { vm.selectedTier = tier.key; } };
+        vm.chooseOperation = function (operation) {
+            if (!vm.operator || !vm.operator.admin || vm.busy || vm.participant || vm.pending || vm.receipt) { return; }
+            if (operation !== 'PLAY' && operation !== 'GIFT') { return; }
+            vm.operation = operation; vm.selectedTier = '';
+        };
+        vm.canChooseTier = function (tier) {
+            return vm.mode === 'work' && !!vm.participant && !vm.busy && !vm.pending && !vm.receipt && vm.canOperate()
+                && !!tier && (vm.operation !== 'GIFT' || vm.participant.balance >= tier.amount);
+        };
+        vm.chooseTier = function (tier) {
+            if (!vm.canChooseTier(tier)) { return; }
+            if (!vm.tiers.some(function (value) { return value.key === tier.key; })) { return; }
+            vm.selectedTier = tier.key;
+            return vm.submit();
+        };
         vm.scan = function (raw) {
             if (!vm.canScan()) { return; }
             var code;
             try { code = core.cardCode(raw); } catch (error) { failure(error); return; }
-            vm.busy = true; vm.error = ''; vm.message = '';
+            vm.busy = true; vm.error = ''; vm.message = ''; vm.selectedTier = '';
             return api.balance(vm.event.id, code).then(function (response) {
                 if (disposed) { return; }
                 vm.participant = response.data; vm.code = '';
                 if (vm.mode === 'lookup') { resetTimer = $timeout(vm.next, 8000); }
+                else { focusParticipant(); }
             }).catch(failure).finally(function () { vm.busy = false; });
         };
         vm.next = function () {
             if (vm.busy || vm.pending) { return; }
             $timeout.cancel(resetTimer); vm.participant = null; vm.receipt = null; vm.error = ''; vm.message = ''; vm.code = '';
-            if (!vm.operator || !vm.operator.station || vm.operator.station.tier === 'CHOOSE' || vm.operator.admin) { vm.selectedTier = ''; }
+            vm.selectedTier = '';
         };
         function sendPending() {
             if (vm.busy || !vm.pending) { return; }
             vm.busy = true; vm.error = '';
-            var payload = vm.pending, call = payload.correctionId
-                ? api.correct(vm.event.id, payload.correctionId, payload.request)
+            var payload = vm.pending, call = payload.undoId
+                ? api.undo(vm.event.id, payload.undoId, payload.request)
+                : payload.correctionId ? api.correct(vm.event.id, payload.correctionId, payload.request)
                 : api.transact(vm.event.id, payload.request);
             return call.then(function (response) {
                 clearPending(); vm.receipt = response.data; vm.participant = response.data.participant;
-                vm.message = response.data.replayed ? 'Lượt này đã được ghi nhận trước đó, số phiếu không bị tính thêm. Hãy kiểm tra lượt trao quà trước khi trao thêm.' : 'Đã ghi nhận thành công.';
+                vm.receipt.undone = !!payload.undoId;
+                vm.message = payload.undoId ? (response.data.replayed ? 'Lượt cộng này đã được hoàn tác trước đó.' : 'Đã hoàn tác lượt cộng phiếu.')
+                    : response.data.replayed ? 'Lượt này đã được ghi nhận trước đó, số phiếu không bị tính thêm. Hãy kiểm tra lượt trao quà trước khi trao thêm.' : 'Đã ghi nhận thành công.';
+                if (vm.mode === 'work') { focusParticipant(); }
                 if (vm.mode === 'admin') { vm.refreshHistory(); }
             }).catch(function (error) {
                 if (error && (error.status === 401 || error.status === 403)) {
@@ -87,11 +125,7 @@
                             vm.event = result.data; vm.tiers = core.tiers(vm.event);
                             return api.operator(vm.event.id);
                         }).then(function (result) {
-                            vm.operator = result.data;
-                            if (!vm.operator.admin && vm.operator.station) {
-                                vm.operation = vm.operator.station.operation;
-                                vm.selectedTier = vm.operator.station.tier === 'CHOOSE' ? '' : vm.operator.station.tier;
-                            }
+                            applyOperator(result.data);
                         }).catch(function () {});
                     }
                 }
@@ -106,6 +140,19 @@
                 rememberPending({request: {cardCode: vm.participant.cardCode, operation: vm.operation,
                     tier: tier.key, amount: tier.amount, requestKey: core.key($window.crypto)}});
             } catch (error) { vm.error = 'Chưa lưu được lượt giao dịch trên điện thoại. Hãy cho phép lưu trữ rồi thử lại.'; return; }
+            return sendPending();
+        };
+        vm.canUndo = function () {
+            var tx = vm.receipt && vm.receipt.transaction;
+            return vm.mode === 'work' && vm.operator && (vm.operator.admin || vm.operator.canPlay) && !vm.busy && !vm.pending
+                && tx && tx.operation === 'PLAY' && tx.delta > 0 && !tx.corrected && !tx.correctionOf && !vm.receipt.undone;
+        };
+        vm.undoLast = function () {
+            if (!vm.canUndo()) { return; }
+            var tx = vm.receipt.transaction;
+            if (!$window.confirm('Bạn có chắc chắn muốn hoàn tác lượt cộng này?\nTrừ lại ' + tx.amount + ' phiếu vừa cộng cho ' + vm.participant.displayName + '.')) { return; }
+            try { rememberPending({undoId: tx.id, request: {requestKey: core.key($window.crypto)}}); }
+            catch (error) { vm.error = 'Chưa lưu được lượt hoàn tác. Hãy cho phép lưu trữ rồi thử lại.'; return; }
             return sendPending();
         };
         vm.refreshHistory = function (more) {
@@ -163,18 +210,18 @@
             vm.event = event; vm.selectedEvent = event.id; vm.tiers = core.tiers(event); vm.eventForm = angular.copy(event);
             if (vm.mode === 'lookup') { return; }
             return api.operator(event.id).then(function (response) {
-                vm.operator = response.data;
+                applyOperator(response.data);
                 if (vm.mode === 'admin' && !vm.operator.admin) { throw Error('Chỉ quản trị viên được mở trang quản lý hội chợ.'); }
-                vm.operation = vm.operator.station && !vm.operator.admin ? vm.operator.station.operation : (vm.operator.canPlay ? 'PLAY' : 'GIFT');
-                vm.selectedTier = vm.operator.station && !vm.operator.admin && vm.operator.station.tier !== 'CHOOSE' ? vm.operator.station.tier : '';
                 pendingKey = 'fair.pending.' + event.id + '.' + vm.operator.username;
                 vm.pending = storageGet(pendingKey);
                 if (vm.pending) { vm.error = 'Có một lượt chưa xác nhận kết quả. Hãy bấm “Kiểm tra kết quả” trước khi tiếp tục.'; }
                 if (vm.mode === 'admin') {
-                    return Promise.all([
+                    var reads = [
                         api.guests(event.id).then(function (result) { vm.guests = result.data; }),
-                        api.stations(event.id).then(function (result) { vm.stations = result.data; }), vm.refreshHistory()
-                    ]);
+                        vm.refreshHistory()
+                    ];
+                    if (vm.showStationSetup) { reads.push(api.stations(event.id).then(function (result) { vm.stations = result.data; })); }
+                    return Promise.all(reads);
                 }
             });
         }

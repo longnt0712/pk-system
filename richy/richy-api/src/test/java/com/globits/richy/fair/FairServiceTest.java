@@ -66,10 +66,22 @@ public class FairServiceTest {
     private void station(String operator, String operation, String tier) {
         run("admin", "ROLE_ADMIN", service -> { FairDto.StationRequest request = new FairDto.StationRequest(); request.operatorName = operator; request.name = "Gian " + operator; request.operation = operation; request.tier = tier; return service.saveStation(event, request); });
     }
+    private void legacyStation(String operator, String operation, String tier) {
+        // Persist the old assignment shape directly: current saveStation deliberately normalizes it.
+        EntityManager em = factory.createEntityManager(); em.getTransaction().begin();
+        try {
+            FairStation value = em.createQuery("from FairStation where eventId=:event and operatorName=:operator", FairStation.class)
+                .setParameter("event", event).setParameter("operator", operator).getSingleResult();
+            value.operation = operation; value.tier = tier; em.getTransaction().commit();
+        } finally { if (em.getTransaction().isActive()) { em.getTransaction().rollback(); } em.close(); }
+    }
     private FairDto.Receipt post(String actor, String role, FairDto.TransactionRequest request) { return run(actor, role, service -> service.transact(event, request)); }
+    private FairDto.UndoRequest undoRequest() { FairDto.UndoRequest request = new FairDto.UndoRequest(); request.requestKey = UUID.randomUUID().toString(); return request; }
+    private FairDto.Receipt undo(String actor, String role, Long transactionId, FairDto.UndoRequest request) { return run(actor, role, service -> service.undo(event, transactionId, request)); }
     private int balance(String code) { return run(null, null, service -> service.balance(event, code).balance); }
     private void invalid(Runnable action) { try { action.run(); fail("Expected rejected transaction"); } catch (FairService.Invalid expected) {} }
     private void forbidden(Runnable action) { try { action.run(); fail("Expected permission check"); } catch (AccessDeniedException expected) {} }
+    private void rejectedUndo(Runnable action) { try { action.run(); fail("Expected rejected undo"); } catch (FairService.Invalid expected) {} catch (AccessDeniedException expected) {} }
 
     @Test public void publicLookupStartsAtZeroAndDoesNotCreateWalletOrExposeUserDetails() {
         assertEquals(0, balance("HS001"));
@@ -113,6 +125,102 @@ public class FairServiceTest {
         assertEquals(12, post("gift", "ROLE_GIFT", request("GIFT", "EASY", 8)).participant.balance);
         invalid(() -> post("gift", "ROLE_GIFT", request("GIFT", "HARD", 20))); assertEquals(12, balance("HS001"));
     }
+    @Test public void operatorRolesCanAwardAndRedeemWithoutAssignedStations() {
+        EntityManager em = factory.createEntityManager(); em.getTransaction().begin();
+        try { em.createQuery("delete from FairStation where eventId=:event").setParameter("event", event).executeUpdate(); em.getTransaction().commit(); }
+        finally { if (em.getTransaction().isActive()) { em.getTransaction().rollback(); } em.close(); }
+        FairDto.Operator play = run("play", "ROLE_PLAY", service -> service.operator(event));
+        FairDto.Operator gift = run("gift", "ROLE_GIFT", service -> service.operator(event));
+        assertNull(play.station); assertTrue(play.canPlay); assertFalse(play.canGift);
+        assertNull(gift.station); assertFalse(gift.canPlay); assertTrue(gift.canGift);
+        assertEquals(20, post("play", "ROLE_PLAY", request("PLAY", "HARD", 20)).participant.balance);
+        assertEquals(8, post("gift", "ROLE_GIFT", request("GIFT", "MEDIUM", 12)).participant.balance);
+        forbidden(() -> post("play", "ROLE_PLAY", request("GIFT", "EASY", 8)));
+        forbidden(() -> post("gift", "ROLE_GIFT", request("PLAY", "EASY", 8)));
+    }
+    @Test public void legacyFixedStationAcceptsAllConfiguredTiersOnSuccessiveTurns() {
+        legacyStation("play", "PLAY", "HARD");
+        assertEquals(8, post("play", "ROLE_PLAY", request("PLAY", "EASY", 8)).participant.balance);
+        assertEquals(28, post("play", "ROLE_PLAY", request("PLAY", "HARD", 20)).participant.balance);
+        assertEquals(40, post("play", "ROLE_PLAY", request("PLAY", "MEDIUM", 12)).participant.balance);
+    }
+    @Test public void stationSetupNormalizesLegacyFixedTierInputsToPerTurnChoice() {
+        station("play", "PLAY", "HARD");
+        assertEquals("CHOOSE", run("play", "ROLE_PLAY", service -> service.operator(event)).station.tier);
+        station("gift", "GIFT", null);
+        assertEquals("CHOOSE", run("gift", "ROLE_GIFT", service -> service.operator(event)).station.tier);
+    }
+    @Test public void staleStationOperationsCannotGrantPermissionsOrMislabelTransactions() {
+        legacyStation("play", "GIFT", "HARD"); legacyStation("gift", "PLAY", "HARD");
+        FairDto.Receipt award = post("play", "ROLE_PLAY", request("PLAY", "HARD", 20));
+        FairDto.Receipt redemption = post("gift", "ROLE_GIFT", request("GIFT", "EASY", 8));
+        assertEquals(12, redemption.participant.balance);
+        assertNotEquals("Gian play", award.transaction.stationName);
+        assertNotEquals("Gian gift", redemption.transaction.stationName);
+        assertNotNull(award.transaction.stationName); assertFalse(award.transaction.stationName.trim().isEmpty());
+        assertNotNull(redemption.transaction.stationName); assertFalse(redemption.transaction.stationName.trim().isEmpty());
+        forbidden(() -> post("play", "ROLE_PLAY", request("GIFT", "EASY", 8)));
+        forbidden(() -> post("gift", "ROLE_GIFT", request("PLAY", "EASY", 8)));
+    }
+    @Test public void ownerCanUndoLatestPlayAwardUsingOriginalAmountAndKeepingAuditTrail() {
+        FairDto.Receipt award = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        run("admin", "ROLE_ADMIN", service -> { FairDto.EventRequest request = new FairDto.EventRequest(); request.name = "Hội chợ thử"; request.easyAmount = 5; return service.saveEvent(event, request); });
+        FairDto.Receipt undone = undo("play", "ROLE_PLAY", award.transaction.id, undoRequest());
+        assertEquals(0, undone.participant.balance); assertEquals(-8, undone.transaction.delta); assertEquals(0, undone.transaction.amount);
+        assertEquals(award.transaction.id, undone.transaction.correctionOf); assertEquals("Hoàn tác cộng phiếu", undone.transaction.reason);
+        List<FairTransaction> history = run("admin", "ROLE_ADMIN", service -> service.history(event, "", 0));
+        assertEquals(2, history.size()); assertEquals(undone.transaction.id, history.get(0).id); assertTrue(history.get(1).corrected);
+        assertEquals(8, history.get(1).amount);
+    }
+    @Test public void undoRetryRemainsIdempotentAfterNewAwardsAndCannotTargetAnotherOriginal() {
+        FairDto.Receipt firstAward = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        FairDto.UndoRequest request = undoRequest();
+        FairDto.Receipt firstUndo = undo("play", "ROLE_PLAY", firstAward.transaction.id, request);
+        FairDto.Receipt secondAward = post("play", "ROLE_PLAY", request("PLAY", "HARD", 20));
+        FairDto.Receipt replay = undo("play", "ROLE_PLAY", firstAward.transaction.id, request);
+        assertTrue(replay.replayed); assertEquals(firstUndo.transaction.id, replay.transaction.id); assertEquals(20, replay.participant.balance);
+        invalid(() -> undo("play", "ROLE_PLAY", secondAward.transaction.id, request)); assertEquals(20, balance("HS001"));
+        assertEquals(3, run("admin", "ROLE_ADMIN", service -> service.history(event, "", 0)).size());
+    }
+    @Test public void undoRequiresPlayOrAdminRoleAndOwnershipOfTheOriginalAward() {
+        FairDto.Receipt playAward = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        forbidden(() -> undo("gift", "ROLE_GIFT", playAward.transaction.id, undoRequest()));
+        forbidden(() -> undo(null, null, playAward.transaction.id, undoRequest()));
+        rejectedUndo(() -> undo("other-play", "ROLE_PLAY", playAward.transaction.id, undoRequest()));
+        rejectedUndo(() -> undo("admin", "ROLE_ADMIN", playAward.transaction.id, undoRequest()));
+        FairDto.Receipt adminAward = post("admin", "ROLE_ADMIN", request("PLAY", "HARD", 20));
+        rejectedUndo(() -> undo("play", "ROLE_PLAY", adminAward.transaction.id, undoRequest()));
+        assertEquals(28, balance("HS001"));
+        assertEquals(8, undo("admin", "ROLE_ADMIN", adminAward.transaction.id, undoRequest()).participant.balance);
+    }
+    @Test public void anOlderAwardCannotBeUndoneAfterTheActorHasCompletedAnotherAward() {
+        FairDto.Receipt first = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        FairDto.Receipt second = post("play", "ROLE_PLAY", request("PLAY", "HARD", 20));
+        invalid(() -> undo("play", "ROLE_PLAY", first.transaction.id, undoRequest())); assertEquals(28, balance("HS001"));
+        assertEquals(8, undo("play", "ROLE_PLAY", second.transaction.id, undoRequest()).participant.balance);
+        invalid(() -> undo("play", "ROLE_PLAY", first.transaction.id, undoRequest())); assertEquals(8, balance("HS001"));
+    }
+    @Test public void anotherOperatorsActivityDoesNotReplaceTheOwnersLatestAward() {
+        FairDto.Receipt award = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        post("admin", "ROLE_ADMIN", request("PLAY", "HARD", 20));
+        assertEquals(20, undo("play", "ROLE_PLAY", award.transaction.id, undoRequest()).participant.balance);
+    }
+    @Test public void undoCannotMakeTheWalletNegativeAfterItsAwardHasBeenSpent() {
+        FairDto.Receipt award = post("play", "ROLE_PLAY", request("PLAY", "HARD", 20));
+        post("gift", "ROLE_GIFT", request("GIFT", "HARD", 20));
+        invalid(() -> undo("play", "ROLE_PLAY", award.transaction.id, undoRequest())); assertEquals(0, balance("HS001"));
+        List<FairTransaction> history = run("admin", "ROLE_ADMIN", service -> service.history(event, "", 0));
+        assertEquals(2, history.size()); assertFalse(history.get(1).corrected);
+    }
+    @Test public void correctedAwardsCorrectionEntriesAndGiftTransactionsCannotBeUndone() {
+        FairDto.Receipt award = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));
+        FairDto.CorrectionRequest correction = new FairDto.CorrectionRequest(); correction.amount = 20; correction.reason = "Chọn nhầm mức"; correction.requestKey = UUID.randomUUID().toString();
+        FairDto.Receipt adjusted = run("admin", "ROLE_ADMIN", service -> service.correct(event, award.transaction.id, correction));
+        invalid(() -> undo("play", "ROLE_PLAY", award.transaction.id, undoRequest()));
+        invalid(() -> undo("admin", "ROLE_ADMIN", adjusted.transaction.id, undoRequest()));
+        FairDto.Receipt gift = post("admin", "ROLE_ADMIN", request("GIFT", "EASY", 8));
+        invalid(() -> undo("admin", "ROLE_ADMIN", gift.transaction.id, undoRequest())); assertEquals(12, balance("HS001"));
+    }
     @Test public void repeatedRequestIsAppliedOnceAndCannotBeChangedOrUsedByAnotherActor() {
         FairDto.TransactionRequest request = request("PLAY", "EASY", 8);
         FairDto.Receipt first = post("play", "ROLE_PLAY", request), replay = post("play", "ROLE_PLAY", request);
@@ -127,9 +235,9 @@ public class FairServiceTest {
         assertTrue(post("play", "ROLE_PLAY", old).replayed);
         invalid(() -> post("play", "ROLE_PLAY", request("PLAY", "HARD", 20)));
         assertEquals(50, post("play", "ROLE_PLAY", request("PLAY", "HARD", 30)).participant.balance);
-        invalid(() -> post("play", "ROLE_PLAY", request("PLAY", "EASY", 5)));
+        assertEquals(55, post("play", "ROLE_PLAY", request("PLAY", "EASY", 5)).participant.balance);
         forbidden(() -> run("play", "ROLE_PLAY", service -> { FairDto.EventRequest value = new FairDto.EventRequest(); value.name = "No"; return service.saveEvent(event, value); }));
-        assertEquals(20, run("admin", "ROLE_ADMIN", service -> service.history(event, "", 0)).get(1).amount);
+        assertEquals(20, run("admin", "ROLE_ADMIN", service -> service.history(event, "", 0)).get(2).amount);
     }
     @Test public void adminCorrectionAddsOnlyTheDifferenceAndKeepsAnAuditTrail() {
         FairDto.Receipt first = post("play", "ROLE_PLAY", request("PLAY", "EASY", 8));

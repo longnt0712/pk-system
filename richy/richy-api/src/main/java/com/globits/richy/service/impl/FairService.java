@@ -92,12 +92,11 @@ public class FairService {
                 || ("ROLE_" + request.operation).equals(role.getName()))) {
             throw invalid("Tài khoản cần được gán quyền ROLE_" + request.operation + " trước.");
         }
-        if (!"CHOOSE".equals(request.tier)) { price(event(eventId), request.tier); }
         // Serialize initial assignment so two admins cannot create duplicate stations for one account.
         em.lock(event(eventId), LockModeType.PESSIMISTIC_WRITE);
         FairStation value = station(eventId, user.getUsername());
         if (value == null) { value = new FairStation(); value.eventId = eventId; value.operatorName = user.getUsername(); }
-        value.name = text(request.name, 150, "Hãy nhập tên gian hàng."); value.operation = request.operation; value.tier = request.tier;
+        value.name = text(request.name, 150, "Hãy nhập tên gian hàng."); value.operation = request.operation; value.tier = "CHOOSE";
         if (value.id == null) { em.persist(value); }
         return value;
     }
@@ -145,16 +144,38 @@ public class FairService {
         if (!event.active) { throw invalid("Hội chợ đã đóng, không thể cộng hoặc đổi phiếu."); }
         if (price(event, request.tier) != request.amount) { throw invalid("Cấu hình mức phiếu đã thay đổi. Hãy kiểm tra mức mới rồi xác nhận lại."); }
         FairStation station = station(eventId, actor());
-        if (!has("ROLE_ADMIN")) {
-            if (station == null) { throw invalid("Tài khoản chưa được gán gian hàng. Hãy nhờ quản trị viên thiết lập."); }
-            if (!request.operation.equals(station.operation) || (!"CHOOSE".equals(station.tier) && !station.tier.equals(request.tier))) {
-                throw invalid("Mức phiếu hoặc chức năng không đúng với gian hàng đã được giao. Hãy tải lại trang.");
-            }
-        }
+        // Roles authorize the action. Legacy station assignments only supply an audit label.
+        String stationName = station != null && request.operation.equals(station.operation) ? station.name
+            : "PLAY".equals(request.operation) ? "Thưởng trò chơi" : "Đổi quà";
         int delta = "PLAY".equals(request.operation) ? request.amount : -request.amount;
         FairTransaction tx = record(wallet, request.operation, request.amount, delta, request.requestKey,
-            has("ROLE_ADMIN") ? "Quản trị viên" : station.name, null, null);
+            has("ROLE_ADMIN") ? "Quản trị viên" : stationName, null, null);
         tx.tier = request.tier;
+        return new FairDto.Receipt(wallet, tx, false);
+    }
+
+    public FairDto.Receipt undo(Long eventId, Long transactionId, FairDto.UndoRequest request) {
+        require("ROLE_ADMIN", "ROLE_PLAY"); key(request.requestKey); event(eventId);
+        FairTransaction original = transactionId == null ? null : em.find(FairTransaction.class, transactionId);
+        if (original == null || !eventId.equals(original.eventId) || !"PLAY".equals(original.operation)
+                || original.correctionOf != null || original.delta <= 0) { throw invalid("Chỉ có thể hoàn tác một lượt cộng phiếu gốc."); }
+        if (!actor().equals(original.actor)) { throw new AccessDeniedException("Chỉ được hoàn tác lượt cộng do chính tài khoản này thực hiện."); }
+        FairWallet wallet = em.find(FairWallet.class, original.walletId, LockModeType.PESSIMISTIC_WRITE);
+        em.refresh(wallet, LockModeType.PESSIMISTIC_WRITE);
+        FairTransaction previous = request(eventId, request.requestKey);
+        if (previous != null) {
+            same(previous, wallet, "PLAY", 0, original.id);
+            if (!"Hoàn tác cộng phiếu".equals(previous.reason)) { throw invalid("Mã giao dịch đã dùng cho một thao tác khác."); }
+            return new FairDto.Receipt(wallet, previous, true);
+        }
+        em.refresh(original);
+        if (original.corrected) { throw invalid("Lượt cộng này đã được hoàn tác hoặc điều chỉnh trước đó."); }
+        List<FairTransaction> latest = em.createQuery("from FairTransaction where eventId=:event and actor=:actor and correctionOf is null order by id desc", FairTransaction.class)
+            .setParameter("event", eventId).setParameter("actor", actor()).setMaxResults(1).getResultList();
+        if (latest.isEmpty() || !latest.get(0).id.equals(original.id)) { throw invalid("Chỉ được hoàn tác lượt cộng gần nhất của tài khoản này."); }
+        FairTransaction tx = record(wallet, "PLAY", 0, -original.amount, request.requestKey,
+            original.stationName, original.id, "Hoàn tác cộng phiếu");
+        original.corrected = true;
         return new FairDto.Receipt(wallet, tx, false);
     }
 

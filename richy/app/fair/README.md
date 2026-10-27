@@ -19,7 +19,7 @@ Trang quản lý có sẵn đường link tra cứu để mở trên các điệ
 1. Cập nhật cả backend và frontend. Backend tự tạo `ROLE_PLAY`, `ROLE_GIFT` nếu chưa có. Bốn bảng `tbl_fair_event`, `tbl_fair_wallet`, `tbl_fair_station`, `tbl_fair_transaction` được tạo bởi cơ chế Hibernate `ddl-auto=update` hiện có.
 2. Admin tạo hội chợ, đặt ba mức dễ / trung bình / khó. Giá trị mặc định là 8 / 12 / 20; mỗi mức nhận số nguyên dương. Cấu hình này áp dụng cho cả thưởng trò chơi và đổi quà.
 3. Gán `ROLE_PLAY` cho tài khoản trực trò chơi, `ROLE_GIFT` cho tài khoản đổi quà trong trang tài khoản hiện có.
-4. Trong quản lý hội chợ, gán từng tài khoản với tên gian, chức năng và mức cố định. Có thể chọn “Người trực chọn mức mỗi lượt” nếu một gian có nhiều mức. Người trực không tự đổi cấu hình gian.
+4. Người trực đăng nhập bằng tài khoản đã gán quyền ở danh sách học sinh/tài khoản là dùng được ngay, không cần gán gian thêm. Khối “Gán người trực gian hàng” đang tạm ẩn (`showStationSetup=false`), giữ lại mã và dữ liệu để có thể bật lại sau.
 5. Tạo khoảng 100 thẻ khách, rồi bấm in. Mỗi lần tạo thêm sinh mã mới và đánh số tiếp, không tái sử dụng ví cũ. QR của khách có mã đầy đủ `HC-{event}-KHxxx-{suffix}`; số KHxxx cũng được in rõ trên thẻ.
 6. Người phụ trách mở sẵn link tra cứu trên các điện thoại, cấp quyền camera rồi để học sinh tự quét. Cần HTTPS và kết nối mạng.
 
@@ -28,11 +28,13 @@ Trang quản lý có sẵn đường link tra cứu để mở trên các điệ
 - Phiếu giấy dùng độc lập: thu giấy khi đổi quà, không nhập thành phiếu ảo.
 - Phiếu trong thẻ bắt đầu bằng 0 cho từng học sinh/khách ở từng hội chợ. Tra cứu ví chưa phát sinh giao dịch chỉ trả 0, không tạo ví hay cộng phiếu.
 - Thẻ học sinh in sẵn vẫn dùng mã học sinh hiện tại; chỉ tài khoản học sinh đang hoạt động được nhận diện.
-- Quét thẻ chỉ đọc số dư. Người trực kiểm tra tên, mức thưởng/quà, rồi bấm nút xác nhận cộng/trừ. Sau kết quả, bấm “Quét lượt tiếp theo”. Camera không tự tạo giao dịch.
-- Gian cố định gắn với tên mức, không sao chép số phiếu. Khi admin đổi cấu hình, gian dùng mức mới. Nếu điện thoại còn giá cũ, máy chủ từ chối lượt đó, giao diện tải lại cấu hình; kiểm tra mức mới trước khi thử lại.
+- `ROLE_PLAY` chỉ hiện “Thưởng trò chơi”, `ROLE_GIFT` chỉ hiện “Đổi quà”, admin hiện cả hai. Quyền tài khoản quyết định thao tác; cấu hình gian cũ không ép người trực chọn sai chức năng hoặc khóa một mức.
+- Luồng người trực: bật camera → quét thẻ → kiểm tra tên và chọn mức dễ / trung bình / khó → hệ thống ghi nhận ngay và hiện số dư mới. Không có bước xác nhận cộng/trừ thứ hai. Camera và bấm lặp không tạo thêm lượt khi đang xử lý hoặc đã hiện kết quả.
+- Các mức luôn lấy từ cấu hình hội chợ. Khi admin đổi số phiếu, giao dịch cũ giữ nguyên. Nếu điện thoại còn giá cũ, máy chủ từ chối lượt đó, giao diện tải lại cấu hình; kiểm tra mức mới trước khi thử lại.
+- Sau một lượt cộng, nút “Hoàn tác cộng phiếu” hỏi xác nhận trước khi trừ lại đúng số vừa cộng. Chỉ tài khoản đã thực hiện được hoàn tác lượt cộng gốc gần nhất của mình; không hoàn tác lại lượt đã sửa/hoàn tác, không làm số dư âm. Hoàn tác có mã chống trùng và lịch sử riêng; thử lại sau mất mạng không trừ thêm lần nữa. Đổi quà không có nút hoàn tác cộng phiếu.
 - Mỗi lượt có mã chống trùng. Lượt đang gửi được lưu trên điện thoại trước khi gửi. Khi mạng chưa xác nhận, bấm “Kiểm tra kết quả” để gửi lại đúng mã cũ; không lập lượt khác. Sau tải lại trang/đăng nhập lại cùng tài khoản, lượt này vẫn được phục hồi.
 - Số dư được khóa trong giao dịch cơ sở dữ liệu khi cập nhật; hai gian hàng không thể cùng tiêu vượt số phiếu đang có.
-- Chỉ admin sửa giao dịch. Nhập số phiếu đúng của lượt và lý do; hệ thống ghi riêng phần chênh lệch, giữ bản gốc. Ví dụ đã cộng 8, đúng là 20 thì cộng bù 12. Nhập 0 để hủy tác động của lượt. Mỗi lượt gốc được sửa một lần; không cho sửa làm số dư âm.
+- Ngoài nút hoàn tác lượt cộng của chính mình, chỉ admin được sửa giao dịch trong lịch sử. Nhập số phiếu đúng của lượt và lý do; hệ thống ghi riêng phần chênh lệch, giữ bản gốc. Ví dụ đã cộng 8, đúng là 20 thì cộng bù 12. Nhập 0 để hủy tác động của lượt. Mỗi lượt gốc được sửa một lần; không cho sửa làm số dư âm.
 - Đổi cấu hình không tính lại lịch sử hoặc số dư. Đóng hội chợ dừng giao dịch mới và vẫn cho phép tra cứu qua link cố định. Muốn bắt đầu số dư 0 cho đợt mới, tạo hội chợ mới.
 
 ## Kiểm tra

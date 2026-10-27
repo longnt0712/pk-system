@@ -33,19 +33,13 @@
         <section ng-if="vm.mode !== 'admin' && vm.event && !vm.needLogin" fair-scanner>
             <div class="fair-station" ng-if="vm.mode === 'work' && vm.operator">
                 <div><span class="fair-eyebrow">{{vm.operation === 'PLAY' ? 'THƯỞNG TRÒ CHƠI · CỘNG PHIẾU' : 'ĐỔI QUÀ · TRỪ PHIẾU'}}</span>
-                    <h2>{{vm.operator.admin ? 'Quản trị viên' : vm.operator.station.name || 'Chưa được gán gian hàng'}}</h2></div>
+                    <h2>{{vm.operator.admin ? 'Quản trị viên' : vm.operator.station.operation === vm.operation ? vm.operator.station.name : vm.operator.username}}</h2></div>
                 <strong ng-if="vm.tier()">{{vm.tier().amount}}<small>phiếu / lượt</small></strong>
             </div>
-            <p class="fair-alert" ng-if="vm.mode === 'work' && vm.operator && !vm.operator.admin && !vm.operator.station">Hãy nhờ quản trị viên gán gian hàng cho tài khoản này trước khi thao tác.</p>
             <p class="fair-alert" ng-if="!vm.event.active">Hội chợ đã đóng. Em vẫn có thể xem số dư; các gian hàng đã dừng cộng và đổi phiếu.</p>
-            <div class="fair-mode-picker" ng-if="vm.mode === 'work' && vm.operator.admin">
-                <button class="fair-button" type="button" ng-class="{'is-selected': vm.operation === 'PLAY'}" ng-click="vm.chooseOperation('PLAY')" ng-disabled="vm.busy || vm.participant || vm.pending || vm.receipt">Thưởng trò chơi</button>
-                <button class="fair-button" type="button" ng-class="{'is-selected': vm.operation === 'GIFT'}" ng-click="vm.chooseOperation('GIFT')" ng-disabled="vm.busy || vm.participant || vm.pending || vm.receipt">Đổi quà</button>
-            </div>
-            <div class="fair-tiers" ng-if="vm.mode === 'work' && vm.operator && (vm.operator.admin || vm.operator.station.tier === 'CHOOSE') && !vm.receipt && !vm.pending">
-                <button type="button" class="fair-tier" ng-repeat="tier in vm.tiers" ng-class="{'is-selected': vm.selectedTier === tier.key}" ng-click="vm.chooseTier(tier)" ng-disabled="vm.busy" aria-pressed="{{vm.selectedTier === tier.key}}">
-                    <span>{{tier.name}}</span><strong>{{tier.amount}}</strong><small>phiếu</small>
-                </button>
+            <div class="fair-mode-picker" ng-if="vm.mode === 'work' && vm.operator" ng-class="{'fair-mode-picker--single': !vm.operator.admin}">
+                <button class="fair-button" type="button" ng-if="vm.operator.admin || vm.operation === 'PLAY'" ng-class="{'is-selected': vm.operation === 'PLAY'}" ng-click="vm.chooseOperation('PLAY')" ng-disabled="vm.busy || vm.participant || vm.pending || vm.receipt">Thưởng trò chơi</button>
+                <button class="fair-button" type="button" ng-if="vm.operator.admin || vm.operation === 'GIFT'" ng-class="{'is-selected': vm.operation === 'GIFT'}" ng-click="vm.chooseOperation('GIFT')" ng-disabled="vm.busy || vm.participant || vm.pending || vm.receipt">Đổi quà</button>
             </div>
             <section class="fair-panel fair-scan" ng-show="!vm.participant && !vm.receipt && !vm.pending">
                 <div class="fair-scan-icon" aria-hidden="true">⌗</div>
@@ -59,25 +53,30 @@
                     <div><input id="fair-card-code" ng-model="vm.code" maxlength="100" placeholder="Ví dụ: HS0123" autocomplete="off" autocapitalize="off" spellcheck="false" ng-disabled="vm.busy"><button type="submit" class="fair-button" ng-disabled="vm.busy || !vm.code || !!vm.error">Xem phiếu</button></div>
                 </form>
             </section>
-            <section class="fair-panel fair-balance" ng-if="vm.participant" aria-live="polite">
+            <section id="fair-participant" class="fair-panel fair-balance" ng-if="vm.participant" aria-live="polite">
                 <span class="fair-pill">{{vm.participant.guest ? 'THẺ KHÁCH' : 'THẺ HỌC SINH'}}</span>
                 <h2>{{vm.participant.displayName}}</h2><p class="fair-card-code">{{vm.participant.cardCode}}</p>
-                <p class="fair-balance-label">{{vm.receipt ? 'Số dư hiện tại' : 'Phiếu trong thẻ'}}</p>
-                <div class="fair-balance-number">{{vm.participant.balance}}<small>phiếu</small></div>
+                <p class="fair-balance-label" ng-if="vm.mode === 'lookup' || vm.receipt">{{vm.receipt ? 'Số dư hiện tại' : 'Phiếu trong thẻ'}}</p>
+                <div class="fair-balance-number" ng-if="vm.mode === 'lookup' || vm.receipt">{{vm.participant.balance}}<small>phiếu</small></div>
                 <div class="fair-receipt" ng-if="vm.receipt">
-                    <strong>{{vm.receipt.transaction.delta >= 0 ? 'Đã cộng' : 'Đã trừ'}} {{vm.receipt.transaction.delta >= 0 ? vm.receipt.transaction.delta : -vm.receipt.transaction.delta}} phiếu</strong>
+                    <strong>{{vm.receipt.undone ? 'Đã hoàn tác' : vm.receipt.transaction.delta >= 0 ? 'Đã cộng' : 'Đã trừ'}} {{vm.receipt.transaction.delta >= 0 ? vm.receipt.transaction.delta : -vm.receipt.transaction.delta}} phiếu</strong>
                     <span>Mã giao dịch #{{vm.receipt.transaction.id}}</span>
                     <span ng-if="vm.operation === 'GIFT' && !vm.receipt.replayed">Đã đổi thành công. Mời trao quà.</span>
                     <p ng-if="vm.receipt.replayed">{{vm.message}}</p>
-                    <p ng-if="!vm.receipt.replayed">Nếu chọn nhầm, báo quản trị viên mã giao dịch này để sửa.</p>
+                    <p ng-if="!vm.receipt.replayed && !vm.receipt.undone && !vm.canUndo()">Nếu chọn nhầm, báo quản trị viên mã giao dịch này để sửa.</p>
                 </div>
                 <div ng-if="vm.mode === 'work' && !vm.receipt && !vm.pending">
-                    <p ng-if="!vm.tier()">Chọn mức thưởng hoặc mức quà bên trên để tiếp tục.</p>
-                    <p class="fair-alert" ng-if="vm.operation === 'GIFT' && vm.tier() && vm.participant.balance < vm.tier().amount">Còn thiếu {{vm.tier().amount - vm.participant.balance}} phiếu để đổi quà này.</p>
-                    <button type="button" class="fair-button fair-button--primary fair-action" ng-class="{'fair-button--gift': vm.operation === 'GIFT'}" ng-click="vm.submit()" ng-disabled="vm.busy || !vm.tier() || !vm.canOperate() || (vm.operation === 'GIFT' && vm.participant.balance < vm.tier().amount)">
-                        {{vm.busy ? 'Đang ghi nhận…' : (vm.operation === 'PLAY' ? 'Thưởng ' : 'Đổi quà · Trừ ') + (vm.tier().amount || '') + ' phiếu'}}
-                    </button>
+                    <h3 class="fair-stage-title">{{vm.operation === 'PLAY' ? 'Hãy chọn mức cộng phiếu' : 'Hãy chọn mức đổi quà'}}</h3>
+                    <p class="fair-current-balance">Hiện có <strong>{{vm.participant.balance}}</strong> phiếu</p>
+                    <div class="fair-tiers fair-tiers--actions">
+                        <button type="button" class="fair-tier" ng-repeat="tier in vm.tiers" data-tier="{{tier.key}}" ng-class="{'is-selected': vm.selectedTier === tier.key}" ng-click="vm.chooseTier(tier)" ng-disabled="!vm.canChooseTier(tier)">
+                            <span>{{tier.name}}</span><strong>{{vm.operation === 'PLAY' ? '+' : '−'}}{{tier.amount}}</strong><small>phiếu</small>
+                            <small class="fair-tier-shortage" ng-if="vm.operation === 'GIFT' && vm.participant.balance < tier.amount">Thiếu {{tier.amount - vm.participant.balance}} phiếu</small>
+                        </button>
+                    </div>
+                    <p class="fair-muted">{{vm.operation === 'PLAY' ? 'Bấm mức thưởng để cộng phiếu ngay.' : 'Bấm mức quà để trừ phiếu ngay. Chỉ trao quà sau khi báo thành công.'}}</p>
                 </div>
+                <button type="button" class="fair-button fair-button--light fair-undo" ng-if="vm.canUndo()" ng-click="vm.undoLast()">Hoàn tác cộng phiếu</button>
                 <button type="button" class="fair-button fair-button--light fair-next" ng-click="vm.next()" ng-disabled="vm.busy || vm.pending">{{vm.mode === 'lookup' || vm.receipt ? 'Quét lượt tiếp theo' : 'Chỉ xem · Quét thẻ khác'}}</button>
                 <p ng-if="vm.mode === 'lookup'" class="fair-muted">Màn hình tự trở về sau 8 giây.</p>
             </section>
@@ -102,17 +101,16 @@
                 <p ng-if="vm.event"><a ng-href="{{vm.lookupLink()}}" target="_blank" rel="noopener">Mở đường link tra cứu công khai ↗</a></p>
                 <button type="button" class="fair-text-button" ng-if="vm.eventForm.id" ng-click="vm.newEvent()" ng-disabled="vm.busy || vm.pending">Tạo hội chợ mới</button>
             </section>
-            <section class="fair-panel" ng-if="vm.event">
+            <section class="fair-panel" ng-if="vm.event && vm.showStationSetup">
                 <h2>Gán người trực gian hàng</h2>
-                <p>Gán ROLE_PLAY hoặc ROLE_GIFT trong quản lý tài khoản, sau đó thiết lập gian hàng tại đây.</p>
+                <p>Gán ROLE_PLAY hoặc ROLE_GIFT là có thể sử dụng ngay. Có thể thêm tên gian hàng tại đây để nhận biết trong lịch sử.</p>
                 <form ng-submit="vm.saveStation()">
                     <label>Tài khoản người trực<input ng-model="vm.stationForm.operatorName" maxlength="100" required autocapitalize="off"></label>
                     <label>Tên gian hàng<input ng-model="vm.stationForm.name" maxlength="150" required placeholder="Ví dụ: Ném bóng"></label>
                     <label>Chức năng<select ng-model="vm.stationForm.operation"><option value="PLAY">Thưởng trò chơi · Cộng phiếu</option><option value="GIFT">Đổi quà · Trừ phiếu</option></select></label>
-                    <label>Mức cố định<select ng-model="vm.stationForm.tier"><option value="EASY">Dễ · {{vm.event.easyAmount}} phiếu</option><option value="MEDIUM">Trung bình · {{vm.event.mediumAmount}} phiếu</option><option value="HARD">Khó · {{vm.event.hardAmount}} phiếu</option><option value="CHOOSE">Người trực chọn mức mỗi lượt</option></select></label>
                     <button type="submit" class="fair-button" ng-disabled="vm.busy || vm.pending">Lưu gian hàng</button>
                 </form>
-                <ul class="fair-list"><li ng-repeat="station in vm.stations"><div><strong>{{station.name}}</strong><span>{{station.operatorName}} · {{station.operation === 'PLAY' ? 'Thưởng' : 'Đổi quà'}} · {{station.tier === 'CHOOSE' ? 'Chọn từng lượt' : station.tier === 'EASY' ? 'Dễ' : station.tier === 'MEDIUM' ? 'Trung bình' : 'Khó'}}</span></div><button type="button" class="fair-text-button" ng-click="vm.editStation(station)">Sửa</button></li></ul>
+                <ul class="fair-list"><li ng-repeat="station in vm.stations"><div><strong>{{station.name}}</strong><span>{{station.operatorName}} · {{station.operation === 'PLAY' ? 'Thưởng' : 'Đổi quà'}} · Chọn mức sau khi quét</span></div><button type="button" class="fair-text-button" ng-click="vm.editStation(station)">Sửa</button></li></ul>
             </section>
             <section class="fair-panel" ng-if="vm.event">
                 <h2>Thẻ khách</h2><p>Mỗi thẻ có một mã QR riêng và bắt đầu với 0 phiếu. Hiện có <strong>{{vm.guests.length}}</strong> thẻ.</p>

@@ -19,6 +19,7 @@ public final class FairDto {
     public static class StationRequest { public String operatorName, name, operation, tier; }
     public static class TransactionRequest { public String cardCode, operation, requestKey, tier; public Integer amount; }
     public static class CorrectionRequest { public String requestKey, reason; public Integer amount; }
+    public static class UndoRequest { public String requestKey; }
     public static class Operator {
         public String username;
         public boolean admin, canPlay, canGift;

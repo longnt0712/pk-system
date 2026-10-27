@@ -29,6 +29,7 @@ public class RestFairController {
         return response(service.generateGuests(id, request.count == null ? 100 : request.count));
     }
     @PostMapping("/api/fairs/{id}/transactions") public ResponseEntity<FairDto.Receipt> transact(@PathVariable("id") Long id, @RequestBody FairDto.TransactionRequest request) { return response(service.transact(id, request)); }
+    @PostMapping("/api/fairs/{id}/transactions/{transactionId}/undo") public ResponseEntity<FairDto.Receipt> undo(@PathVariable("id") Long id, @PathVariable("transactionId") Long transactionId, @RequestBody FairDto.UndoRequest request) { return response(service.undo(id, transactionId, request)); }
     @PostMapping("/api/fairs/{id}/transactions/{transactionId}/correct") public ResponseEntity<FairDto.Receipt> correct(@PathVariable("id") Long id, @PathVariable("transactionId") Long transactionId, @RequestBody FairDto.CorrectionRequest request) { return response(service.correct(id, transactionId, request)); }
     @GetMapping("/api/fairs/{id}/transactions") public ResponseEntity<List<FairTransaction>> history(@PathVariable("id") Long id,
             @RequestParam(value = "cardCode", defaultValue = "") String code, @RequestParam(value = "before", defaultValue = "0") long before) {
