@@ -4007,10 +4007,11 @@ textarea,
     cursor: wait;
 }
 
-/* The authenticated header can wrap to several rows. Keep its real height in
-   normal flow: the theme's table cells and 45px header assumed a single row and
+/* Public and authenticated headers can wrap. Keep their real height in normal
+   flow: the theme's table cells and 45px header assumed a single row and
    allowed Safari to paint the page underneath the navigation on tablets. */
-.page-wrapper.application-shell {
+.page-wrapper.application-shell,
+.page-wrapper.public-shell {
     display: flex;
     flex-direction: column;
     height: auto;
@@ -4020,27 +4021,45 @@ textarea,
 .page-wrapper.application-shell > .page-wrapper-row,
 .page-wrapper.application-shell .page-wrapper-top,
 .page-wrapper.application-shell .page-wrapper-middle,
-.page-wrapper.application-shell .page-wrapper-bottom {
+.page-wrapper.application-shell .page-wrapper-bottom,
+.page-wrapper.public-shell > .page-wrapper-row,
+.page-wrapper.public-shell .page-wrapper-top,
+.page-wrapper.public-shell .page-wrapper-middle,
+.page-wrapper.public-shell .page-wrapper-bottom {
     display: block;
     height: auto;
 }
 
-.page-wrapper.application-shell > .page-wrapper-row {
+.page-wrapper.application-shell > .page-wrapper-row,
+.page-wrapper.public-shell > .page-wrapper-row {
     flex: 0 0 auto;
     min-width: 0;
 }
 
-.page-wrapper.application-shell > .page-wrapper-row.full-height {
+.page-wrapper.application-shell > .page-wrapper-row.full-height,
+.page-wrapper.public-shell > .page-wrapper-row.full-height {
     flex: 1 0 auto;
     display: flex;
 }
 
-.application-shell .page-wrapper-top > .page-header {
+.application-shell .page-wrapper-top > .page-header,
+.public-shell .page-wrapper-top > .page-header {
     position: relative;
     height: auto;
     min-height: 0;
     /* Above page tools; below Bootstrap's modal backdrop (1040). */
     z-index: 1000;
+}
+
+@media (max-width: 767px) {
+    .public-shell .learning-public-nav .navbar-header {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .public-shell .learning-public-nav .navbar-toggle {
+        margin-right: 0 !important;
+    }
 }
 
 @media (min-width: 768px) and (max-width: 1366px) {
@@ -4050,6 +4069,47 @@ textarea,
 }
 
 @media (min-width: 768px) {
+    /* Keep the public brand and login actions together on tablets and desktops. */
+    .public-shell .learning-public-nav > .container-fluid {
+        display: flex;
+        align-items: center;
+    }
+
+    .public-shell .learning-public-nav > .container-fluid:before,
+    .public-shell .learning-public-nav > .container-fluid:after,
+    .public-shell .learning-public-nav .navbar-collapse:before,
+    .public-shell .learning-public-nav .navbar-collapse:after {
+        display: none;
+    }
+
+    .public-shell .learning-public-nav .navbar-header {
+        flex: 0 0 auto;
+        float: none;
+    }
+
+    .public-shell .learning-public-nav .navbar-collapse {
+        display: flex !important;
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        margin: 0 !important;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .public-shell .learning-public-nav .learning-desktop-login {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        float: none !important;
+        margin-left: auto !important;
+        margin-right: 0;
+    }
+
+    .public-shell .learning-public-nav .learning-desktop-login > li {
+        float: none;
+    }
+
     .application-shell .learning-login-nav .navbar-nav > li > .dropdown-menu {
         max-width: calc(100vw - 24px);
         transform: translateX(var(--header-dropdown-shift, 0px));
