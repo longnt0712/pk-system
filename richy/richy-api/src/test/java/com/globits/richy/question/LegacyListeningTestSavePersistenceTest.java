@@ -14,6 +14,7 @@ import org.hibernate.cfg.Configuration;
 import org.junit.*;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +31,7 @@ public class LegacyListeningTestSavePersistenceTest {
     private QuestionType kind;
     private Long rootId, resultId, detailId, answerId;
     private Set<Long> originalQuestions, originalAnswers;
+    private boolean failAfterRootWrite;
 
     @BeforeClass public static void createDatabase() throws Exception {
         JdbcDataSource dataSource = new JdbcDataSource();
@@ -49,7 +51,8 @@ public class LegacyListeningTestSavePersistenceTest {
     @AfterClass public static void closeDatabase() { if (factory != null) factory.close(); }
     @Before public void seed() {
         manager = factory.createEntityManager(); manager.getTransaction().begin();
-        teacher = new User(); teacher.setUsername("legacy-teacher"); teacher.setEmail("legacy@example.test"); teacher.setPassword("unused"); manager.persist(teacher);
+        String suffix = UUID.randomUUID().toString();
+        teacher = new User(); teacher.setUsername("legacy-teacher-" + suffix); teacher.setEmail(suffix + "@example.test"); teacher.setPassword("unused"); manager.persist(teacher);
         kind = new QuestionType(); kind.setName("IELTS test"); manager.persist(kind);
         Question root = question(null, 1, 0); root.setTitle("Legacy Listening"); root.setPronounce("https://school.test/lesson.mp3");
         root.setQuestionType(kind); root.setUser(teacher); root.setStatus(6); root.setTestFormat("LISTENING");
@@ -79,12 +82,23 @@ public class LegacyListeningTestSavePersistenceTest {
         QuestionRepository questions = mock(QuestionRepository.class);
         when(questions.findOne(anyLong())).thenAnswer(call -> manager.find(Question.class, call.getArguments()[0]));
         when(questions.getOne(anyLong())).thenAnswer(call -> manager.find(Question.class, call.getArguments()[0]));
-        when(questions.save(any(Question.class))).thenAnswer(call -> { Question value = (Question) call.getArguments()[0]; manager.persist(value); return value; });
+        SimpleJpaRepository<Question, Long> questionWrites = new SimpleJpaRepository<Question, Long>(Question.class, manager);
+        // Match Spring Data's real boundary: existing roots merge, new roots persist.
+        when(questions.save(any(Question.class))).thenAnswer(call -> {
+            Question input = (Question) call.getArguments()[0];
+            Question saved = questionWrites.save(input);
+            if (failAfterRootWrite && rootId.equals(input.getId())) {
+                manager.flush();
+                throw new IllegalStateException("injected failure after root write");
+            }
+            return saved;
+        });
         QuestionAnswerRepository options = mock(QuestionAnswerRepository.class);
         when(options.getOne(anyLong())).thenAnswer(call -> manager.find(QuestionAnswer.class, call.getArguments()[0]));
         AnswerRepository answers = mock(AnswerRepository.class);
         when(answers.getOne(anyLong())).thenAnswer(call -> manager.find(Answer.class, call.getArguments()[0]));
-        when(answers.save(any(Answer.class))).thenAnswer(call -> { Answer value = (Answer) call.getArguments()[0]; manager.persist(value); return value; });
+        SimpleJpaRepository<Answer, Long> answerWrites = new SimpleJpaRepository<Answer, Long>(Answer.class, manager);
+        when(answers.save(any(Answer.class))).thenAnswer(call -> answerWrites.save((Answer) call.getArguments()[0]));
         QuestionTypeRepository types = mock(QuestionTypeRepository.class);
         when(types.getOne(anyLong())).thenAnswer(call -> manager.find(QuestionType.class, call.getArguments()[0]));
         ReflectionTestUtils.setField(service, "questionRepository", questions); ReflectionTestUtils.setField(service, "questionAnswerRepository", options);
@@ -113,6 +127,29 @@ public class LegacyListeningTestSavePersistenceTest {
             if (pack.getSubQuestions().get(0).getOrdinalNumber() >= 31) { fourth.getSubQuestions().add(pack); iterator.remove(); }
         }
         dto.getSubQuestions().add(fourth); return dto;
+    }
+    private QuestionDto newBranch(int partNumber, int questionNumber) {
+        QuestionDto part = new QuestionDto(); part.setOrdinalNumber(partNumber); part.setType(0);
+        QuestionDto pack = new QuestionDto(); pack.setOrdinalNumber(1); pack.setType(2);
+        QuestionDto question = new QuestionDto(); question.setOrdinalNumber(questionNumber); question.setType(0);
+        question.setQuestion("New question " + questionNumber);
+        AnswerDto answer = new AnswerDto(); answer.setAnswer("new answer " + questionNumber);
+        QuestionAnswerDto option = new QuestionAnswerDto(); option.setAnswer(answer); option.setCorrect(true); option.setOrdinalNumberQuestionAnswer(1);
+        question.setQuestionAnswers(new ArrayList<QuestionAnswerDto>(Collections.singletonList(option)));
+        pack.setSubQuestions(new ArrayList<QuestionDto>(Collections.singletonList(question)));
+        part.setSubQuestions(new ArrayList<QuestionDto>(Collections.singletonList(pack))); return part;
+    }
+    private void assertBranchParents(QuestionDto root, QuestionDto part) {
+        QuestionDto pack = part.getSubQuestions().get(0);
+        assertEquals(root.getId(), manager.find(Question.class, part.getId()).getParent().getId());
+        assertEquals(part.getId(), manager.find(Question.class, pack.getId()).getParent().getId());
+        for (QuestionDto question : pack.getSubQuestions()) {
+            assertEquals(pack.getId(), manager.find(Question.class, question.getId()).getParent().getId());
+            for (QuestionAnswerDto option : question.getQuestionAnswers()) {
+                assertEquals(question.getId(), manager.find(QuestionAnswer.class, option.getId()).getQuestion().getId());
+                assertEquals(option.getAnswer().getId(), manager.find(QuestionAnswer.class, option.getId()).getAnswer().getId());
+            }
+        }
     }
     @Test public void legacyPartFourMovesWithoutDeletingAnswerHistoryAndCanBeSavedAgainAsDraftAndPublished() {
         QuestionDto saved = service.saveObject(migrate()); manager.flush(); manager.clear();
@@ -177,5 +214,64 @@ public class LegacyListeningTestSavePersistenceTest {
             assertEquals(resultId, manager.find(QuestionAnswerTestResult.class, detailId).getTestResult().getId());
             saved.setStatus(status); saved = service.saveObject(saved); manager.flush(); manager.clear();
         }
+    }
+    @Test public void anAllNewRootPersistsItsCompleteBranchAndCanBeSavedAgain() {
+        QuestionDto input = new QuestionDto(); input.setTitle("Brand new Listening"); input.setOrdinalNumber(1); input.setType(0);
+        input.setStatus(6); input.setPronounce("https://school.test/new.mp3"); input.setTestFormat("LISTENING");
+        input.setQuestionType(new QuestionTypeDto(kind));
+        input.setSubQuestions(new ArrayList<QuestionDto>(Collections.singletonList(newBranch(1, 1))));
+        QuestionDto saved = service.saveObject(input); manager.flush(); manager.clear();
+        assertNotNull(saved.getId()); assertNotEquals(rootId, saved.getId());
+        assertBranchParents(saved, saved.getSubQuestions().get(0));
+        Set<Long> questionsAfterCreate = ids("Question"), answersAfterCreate = ids("QuestionAnswer");
+        assertEquals(originalQuestions.size() + 4, questionsAfterCreate.size());
+        assertEquals(originalAnswers.size() + 1, answersAfterCreate.size());
+        saved.setStatus(7); QuestionDto resaved = service.saveObject(saved); manager.flush(); manager.clear();
+        assertEquals(saved.getId(), resaved.getId());
+        assertEquals(questionsAfterCreate, ids("Question")); assertEquals(answersAfterCreate, ids("QuestionAnswer"));
+        assertBranchParents(resaved, resaved.getSubQuestions().get(0));
+    }
+    @Test public void anExistingQuestionCanMoveIntoAnAllNewNestedBranchWithoutChangingItsHistory() {
+        QuestionDto input = new QuestionDto(manager.find(Question.class, rootId));
+        QuestionDto oldPack = input.getSubQuestions().get(2).getSubQuestions().get(1);
+        QuestionDto moving = oldPack.getSubQuestions().remove(9); Long movingId = moving.getId();
+        QuestionDto newPart = newBranch(4, 41);
+        newPart.getSubQuestions().get(0).getSubQuestions().add(0, moving); input.getSubQuestions().add(newPart);
+        QuestionDto saved = service.saveObject(input); manager.flush(); manager.clear();
+        assertEquals(4, saved.getSubQuestions().size());
+        assertEquals(9, saved.getSubQuestions().get(2).getSubQuestions().get(1).getSubQuestions().size());
+        assertEquals(2, saved.getSubQuestions().get(3).getSubQuestions().get(0).getSubQuestions().size());
+        assertBranchParents(saved, saved.getSubQuestions().get(3));
+        assertEquals(saved.getSubQuestions().get(3).getSubQuestions().get(0).getId(), manager.find(Question.class, movingId).getParent().getId());
+        Set<Long> questionsAfterMove = ids("Question"), answersAfterMove = ids("QuestionAnswer");
+        assertTrue(questionsAfterMove.containsAll(originalQuestions)); assertEquals(originalQuestions.size() + 3, questionsAfterMove.size());
+        assertTrue(answersAfterMove.containsAll(originalAnswers)); assertEquals(originalAnswers.size() + 1, answersAfterMove.size());
+        saved.setStatus(7); saved = service.saveObject(saved); manager.flush(); manager.clear();
+        assertEquals(questionsAfterMove, ids("Question")); assertEquals(answersAfterMove, ids("QuestionAnswer"));
+        assertBranchParents(saved, saved.getSubQuestions().get(3));
+        assertEquals(answerId, manager.find(QuestionAnswerTestResult.class, detailId).getQuestionAnswer().getId());
+        assertEquals(resultId, manager.find(QuestionAnswerTestResult.class, detailId).getTestResult().getId());
+    }
+    @Test public void aFailedSaveRollsBackNewPartAndMovedHistoryAtTheTransactionBoundary() {
+        // The committed seed models already-published data; the failed edit has its own transaction.
+        manager.getTransaction().commit(); manager.clear(); manager.getTransaction().begin();
+        QuestionDto input = migrate(); input.setTitle("Must not survive failed save"); input.setStatus(7);
+        failAfterRootWrite = true;
+        try {
+            service.saveObject(input); fail("Expected injected write failure");
+        } catch (IllegalStateException expected) {
+            assertEquals("injected failure after root write", expected.getMessage());
+        } finally {
+            manager.getTransaction().rollback(); manager.clear(); manager.getTransaction().begin();
+        }
+        Question root = manager.find(Question.class, rootId); QuestionDto unchanged = new QuestionDto(root);
+        assertEquals("Legacy Listening", root.getTitle()); assertEquals(6, root.getStatus());
+        assertEquals(3, unchanged.getSubQuestions().size()); assertEquals(2, unchanged.getSubQuestions().get(2).getSubQuestions().size());
+        assertEquals(originalQuestions, ids("Question")); assertEquals(originalAnswers, ids("QuestionAnswer"));
+        QuestionAnswerTestResult detail = manager.find(QuestionAnswerTestResult.class, detailId);
+        assertEquals(answerId, detail.getQuestionAnswer().getId()); assertEquals("answer 40", detail.getClientAnswer());
+        TestResult history = manager.find(TestResult.class, resultId);
+        assertEquals(resultId, detail.getTestResult().getId()); assertEquals(rootId, history.getSourceQuestionId());
+        assertEquals(Long.valueOf(900L), history.getAssignmentTaskId()); assertEquals("SUCCESS", history.getResultStatus());
     }
 }

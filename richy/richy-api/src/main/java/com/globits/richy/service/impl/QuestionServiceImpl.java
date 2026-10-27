@@ -1970,6 +1970,7 @@ public class QuestionServiceImpl implements QuestionService {
 				if(sDto.getId()!=null) {
 					subQuestion= questionRepository.findOne(sDto.getId());
 				}
+				boolean newSubQuestion = subQuestion == null;
 				if(subQuestion==null) {
 					subQuestion = new Question();
 					subQuestion.setCreateDate(currentDate);
@@ -1988,6 +1989,21 @@ public class QuestionServiceImpl implements QuestionService {
 				subQuestion.setVideoAnswerSeconds(sDto.getVideoAnswerSeconds());
 				if(sDto.getQuestionType() != null && sDto.getQuestionType().getId() != null) {
 					subQuestion.setQuestionType(questionTypeRepository.getOne(sDto.getQuestionType().getId()));
+				}
+				Question previousParent = subQuestion.getParent();
+				if (previousParent != null && previousParent != parentQuestion
+						&& (previousParent.getId() == null || parentQuestion.getId() == null
+								|| !previousParent.getId().equals(parentQuestion.getId()))) {
+					treeSave.movedFromParents.add(previousParent);
+				}
+				subQuestion.setParent(parentQuestion);
+				subQuestion.setOrdinalNumber(sDto.getOrdinalNumber());
+				subQuestion.setType(sDto.getType());
+				if (newSubQuestion && manager != null && manager.contains(parentQuestion)) {
+					// Existing roots are saved with merge(). Register a new Part
+					// before moving managed children to it, so merge cannot leave
+					// their parent pointing at a separate transient instance.
+					manager.persist(subQuestion);
 				}
 				
 				if(sDto.getSubQuestions() != null && sDto.getSubQuestions().size() > 0) {
@@ -2040,15 +2056,6 @@ public class QuestionServiceImpl implements QuestionService {
 				
 //				subQuestion.setQuestionAnswers(setListQuestionAnswers(sDto,parentQuestion,currentDate,currentUserName));
 				
-				subQuestion.setOrdinalNumber(sDto.getOrdinalNumber());
-				Question previousParent = subQuestion.getParent();
-				if (previousParent != null && previousParent != parentQuestion
-						&& (previousParent.getId() == null || parentQuestion.getId() == null
-								|| !previousParent.getId().equals(parentQuestion.getId()))) {
-					treeSave.movedFromParents.add(previousParent);
-				}
-				subQuestion.setParent(parentQuestion);
-				subQuestion.setType(sDto.getType());
 				subQuestions.add(subQuestion);
 				
 //				if(dto.getQuestionTopics() !=null && dto.getQuestionTopics().size()>0) {
