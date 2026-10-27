@@ -182,8 +182,8 @@
                         function removeEditor() {
                             clearBodyComposition();
                             var previous = editor; editor = null; initializing = false; generation++;
-                            if (previous) { evicting = true; try { previous.remove(); } finally { evicting = false; } }
-                            finishMount();
+                            try { if (previous) { evicting = true; previous.remove(); } }
+                            finally { evicting = false; finishMount(); }
                         }
                         function evict() {
                             if (!editor || initializing || pinned()) { return; }
@@ -282,11 +282,13 @@
                             try { flush(); } finally {
                                 record.destroyed = true;
                                 $timeout.cancel(debounce); $timeout.cancel(checkTimer); $timeout.cancel(initTimer);
-                                removeEditor(); service.unregister(record);
-                                node.removeEventListener('compositionstart', compositionStart); node.removeEventListener('compositionend', compositionEnd);
-                                if (placeholder) { placeholder.removeEventListener('click', activate); placeholder.removeEventListener('keydown', activate); }
-                                node.style.display = originalDisplay;
-                                if (host && host.parentNode) { host.parentNode.insertBefore(node, host); host.parentNode.removeChild(host); }
+                                try { removeEditor(); } finally {
+                                    service.unregister(record);
+                                    node.removeEventListener('compositionstart', compositionStart); node.removeEventListener('compositionend', compositionEnd);
+                                    if (placeholder) { placeholder.removeEventListener('click', activate); placeholder.removeEventListener('keydown', activate); }
+                                    node.style.display = originalDisplay;
+                                    if (host && host.parentNode) { host.parentNode.insertBefore(node, host); host.parentNode.removeChild(host); }
+                                }
                             }
                         });
                     }

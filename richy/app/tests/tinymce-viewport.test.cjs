@@ -367,6 +367,30 @@ test('late initialization callbacks from a destroyed field cannot replace the ne
     current.destroy(); h.timeout.advance(1000); assert.equal(h.timeout.pending(), 0);
 });
 
+test('a throwing TinyMCE removal still unregisters the destroyed field and releases the next editor in the queue', () => {
+    const h = harness(), first = h.link({html: '<p>Closing field</p>'}), next = h.link({top: 200, html: '<p>Next field</p>'});
+    const firstWrapper = first.textarea.parentNode;
+    h.timeout.advance(100); assert.equal(h.initCalls.length, 1);
+    const firstEditor = first.editor(), normalRemove = firstEditor.remove;
+    firstEditor.remove = () => { throw new Error('TinyMCE cleanup failed'); };
+    assert.throws(() => first.destroy(), /TinyMCE cleanup failed/);
+    assert.ok(h.observers.every(observer => !observer.targets.has(firstWrapper)));
+    assert.equal(firstWrapper._uiTinymceRecord, undefined);
+    assert.equal(first.textarea.listeners.get('compositionstart').size, 0);
+    assert.equal(first.textarea.listeners.get('compositionend').size, 0);
+    // The unregistered field must never participate in a subsequent global flush.
+    firstEditor.getContent = () => { throw new Error('Destroyed editor was read again'); };
+    assert.doesNotThrow(() => h.service.flush());
+    h.timeout.advance(100); assert.equal(h.initCalls.length, 2, 'Failed cleanup releases the sequential mount queue');
+    firstEditor.remove = normalRemove;
+    h.complete(); h.complete(); h.timeout.advance(100);
+    assert.equal(first.editor(), null); assert.equal(next.editor().getContent(), '<p>Next field</p>');
+    next.destroy(); h.timeout.advance(1000);
+    assert.ok(h.observers.every(observer => observer.targets.size === 0));
+    assert.equal(h.window.listeners.get('resize').size, 0); assert.equal(h.document.listeners.get('click').size, 0);
+    assert.equal(h.timeout.pending(), 0);
+});
+
 test('refresh flushes edits and rebuilds the editor with updated options without removing its Angular textarea', () => {
     const h = harness(), field = h.link(); h.settle(); const previous = field.editor();
     previous.setContent('<p>Before refresh</p>'); previous.fire('input'); field.options.height = 480;
