@@ -49,8 +49,23 @@
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
-                <li ng-if="settings.isAdmin || settings.isFairPlay || settings.isFairGift">
-                    <a ui-sref="fair_work" href="/hoi-cho/lam-viec">HỘI CHỢ</a>
+                <li class="dropdown fair-nav"
+                    ng-if="settings.isAdmin || settings.isFairPlay || settings.isFairGift"
+                    ng-class="{'is-route-active': $state.includes('fair_work') || $state.includes('fair_work_event') || $state.includes('fair_lookup') || $state.includes('fair_lookup_event') || $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        HỘI CHỢ <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li ng-class="{'active': $state.includes('fair_work') || $state.includes('fair_work_event')}">
+                            <a ui-sref="fair_work" href="/hoi-cho/lam-viec"><i class="fa fa-qrcode" aria-hidden="true"></i> Quét thẻ tại gian hàng</a>
+                        </li>
+                        <li ng-class="{'active': $state.includes('fair_lookup') || $state.includes('fair_lookup_event')}">
+                            <a ui-sref="fair_lookup" href="/hoi-cho"><i class="fa fa-search" aria-hidden="true"></i> Tra cứu phiếu</a>
+                        </li>
+                        <li ng-if="settings.isAdmin" ng-class="{'active': $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
+                            <a ui-sref="fair_admin" href="/hoi-cho/quan-tri"><i class="fa fa-cog" aria-hidden="true"></i> Quản lý hội chợ</a>
+                        </li>
+                    </ul>
                 </li>
                 <li ng-if="settings.campaignsEnabled === true" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
                     <a ui-sref="campaigns" href="campaigns">CHIẾN DỊCH</a>
