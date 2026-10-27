@@ -16,11 +16,11 @@ function productionMethod(name) {
     return source.slice(start, end + '\n        };'.length);
 }
 function fixture() {
-    const context = nodeVm.createContext({vm: {isListeningMode: true}, angular: {
+    const context = nodeVm.createContext({vm: {isListeningMode: true}, editorService: {flush() {}}, angular: {
         isArray: Array.isArray, isDefined: value => value !== undefined, copy: structuredClone,
         forEach(collection, callback) { (collection || []).forEach(callback); }
     }});
-    for (const name of ['plainText', 'createListeningPartFour', 'ensureListeningBuilderParts',
+    for (const name of ['flushBuilderEditors', 'plainText', 'createListeningPartFour', 'ensureListeningBuilderParts',
         'ensureMultipleAnswerPackage', 'isSharedChoicePackage', 'ensureSharedChoicePackage',
         'ensureCompleteListPackage', 'ensureWritingTaskPackage', 'prepareSharedChoicePackagesForSave',
         'getPartQuestions', 'buildReadingTestValidation']) {

@@ -43,7 +43,7 @@ function fixture(mode, overrides = {}) {
     const vm = {};
     const angular = {copy, noop() {}, forEach: (items, callback) => (items || []).forEach(callback),
         isArray: Array.isArray, isDefined: value => value !== undefined};
-    const context = {vm, angular, service, wordExport: exporter, $q: {when: value => Promise.resolve(value)},
+    const context = {vm, angular, service, wordExport: exporter, editorService: {flush() {}}, $q: {when: value => Promise.resolve(value)},
         toastr: {error(...args) { errors.push(args); }},
         $window: {localStorage: {setItem: failWrite, removeItem: failWrite},
             sessionStorage: {setItem: failWrite, removeItem: failWrite}, open: failWrite},
@@ -69,6 +69,7 @@ function fixture(mode, overrides = {}) {
         const route = {READING: '/create_ielts_reading_test', LISTENING: '/create_ielts_listening_test',
             WRITING: '/create_ielts_writing_test', COMPREHENSIVE: '/create_comprehensive_test'}[mode];
         context.$location = {path: () => route};
+        nodeVm.runInNewContext(section(builder, '        function flushBuilderEditors(', '        vm.isComprehensiveMode ='), context);
         nodeVm.runInNewContext(section(builder, '        vm.isComprehensiveMode =', '        vm.comprehensiveContentMode ='), context);
         nodeVm.runInNewContext(section(builder, '        vm.exportTestWord = function', '        vm.previewReadingTest ='), context);
         vm.catalogStatusUpdating = {};

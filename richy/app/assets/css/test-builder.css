@@ -1,5 +1,30 @@
 /* Shared layout for test creation pages. */
 
+.ui-tinymce-viewport {
+    position: relative;
+    min-width: 0;
+}
+
+.ui-tinymce-placeholder {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100px;
+    padding: 16px 18px;
+    border: 1px solid #dbe3f0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8faff, #f1f5fc);
+    color: #657391;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ui-tinymce-placeholder:focus {
+    outline: 2px solid #5577da;
+    outline-offset: 2px;
+}
+
 .ielts-builder-mode-hero {
     display: flex;
     align-items: center;

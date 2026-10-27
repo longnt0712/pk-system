@@ -264,7 +264,7 @@
                                 <small>Khi giao riêng Part 1, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
                             <div class="col-md-12" ng-if="!vm.isVideoBuilder()">
-                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[0].question" />
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[0].question" />
                             </div>
                         </div>
 
@@ -333,7 +333,7 @@
                                            ng-change="vm.changeInTheProcessOfCreatingReadingTest(); vm.refreshBuilderValidation()" aria-label="Thời gian trả lời riêng của câu {{videoQuestion.ordinalNumber}}">
                                 </div>
                             </div>
-                            <textarea ng-if="item.type != 16 && item.type != 17 && item.type != 18" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-if="item.type != 16 && item.type != 17 && item.type != 18" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <section class="comprehensive-listening-builder" ng-if="item.type == 18">
                                 <label>Tên phần nghe</label>
@@ -359,14 +359,14 @@
                                     <label><i class="fa fa-file-text-o"></i> Đề bài</label>
                                     <small>Luôn hiển thị ở cả chế độ Thi nghiêm túc và Học tập.</small>
                                     <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
-                                              ui-tinymce="tinymceOptionsToCreateWritingTask"
+                                              ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateWritingTask"
                                               ng-model="item.question"></textarea>
                                 </section>
                                 <section class="writing-task-builder-editor writing-task-builder-editor--outline">
                                     <label><i class="fa fa-lightbulb-o"></i> Hint / Outline</label>
                                     <small>Chỉ học sinh chọn chế độ Học tập mới xem được nội dung này.</small>
                                     <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
-                                              ui-tinymce="tinymceOptionsToCreateWritingTask"
+                                              ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateWritingTask"
                                               ng-model="item.description"></textarea>
                                 </section>
                             </div>
@@ -448,7 +448,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
                                     <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
                                 </button>
@@ -475,7 +475,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                         <div class="reading-complete-list-word__header">
@@ -523,7 +523,7 @@
                                                 <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
-                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' at where it is the correct answer)</small>
                                             </div>
@@ -629,7 +629,7 @@
                                 <small>Khi giao riêng Part 2, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
                             <div class="col-md-12">
-                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[1].question" />
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[1].question" />
                             </div>
                         </div>
 
@@ -668,7 +668,7 @@
                             </div>
 
 
-                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -745,7 +745,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
                                     <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
                                 </button>
@@ -772,7 +772,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                         <div class="reading-complete-list-word__header">
@@ -802,7 +802,7 @@
                                                 <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                         <div class="col-md-10">
-                                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                             <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                             <!--<textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-if="item.type == 3"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>-->
                                             <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage2($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
@@ -911,7 +911,7 @@
                                 <small>Khi giao riêng Part 3, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
                             <div class="col-md-12">
-                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[2].question" />
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[2].question" />
                             </div>
                         </div>
                     </div>
@@ -944,7 +944,7 @@
                                 </div>
                             </div>
 
-                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -1022,7 +1022,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
                                     <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
                                 </button>
@@ -1049,7 +1049,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                         <div class="reading-complete-list-word__header">
@@ -1079,7 +1079,7 @@
                                                 <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
-                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
                                             </div>
@@ -1171,7 +1171,7 @@
                                 <small>Khi giao riêng Part 4, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
                             <div class="col-md-12">
-                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[3].question" />
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[3].question" />
                             </div>
                         </div>
                     </div>
@@ -1204,7 +1204,7 @@
                                 </div>
                             </div>
 
-                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -1282,7 +1282,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
                                     <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
                                 </button>
@@ -1309,7 +1309,7 @@
                                         {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                         <div class="reading-complete-list-word__header">
@@ -1339,7 +1339,7 @@
                                                 <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
-                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
                                             </div>

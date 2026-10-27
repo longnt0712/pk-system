@@ -82,7 +82,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
     };
     const loading = {count: 0, start() { this.count++; }, stop() { this.count--; }};
     const context = {
-        angular, XLSX, video, vm: state, $window: {XLSX},
+        angular, XLSX, video, vm: state, $window: {XLSX}, editorService: {flush() {}},
         toastr: Object.fromEntries(['error', 'warning', 'success'].map(type => [type, (message, title) => messages.push({type, message, title})])),
         $scope: {$applyAsync(callback) { callback(); }},
         $timeout(callback) { return Promise.resolve().then(callback); }, blockUI: loading,
@@ -96,7 +96,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
         FileReader: class {readAsArrayBuffer(file) { this.onload({target: {result: file.workbook}}); }}
     };
     vmModule.createContext(context);
-    vmModule.runInContext(['ensureComprehensiveBuilder', 'ensureDailyListeningPackage', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
+    vmModule.runInContext(['flushBuilderEditors', 'ensureComprehensiveBuilder', 'ensureDailyListeningPackage', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
         'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage', 'prepareTestFolderForSave'].map(productionFunction).join('\n') + '\n' +
         productionFunction('prepareSharedChoicePackagesForSave') + '\n' +
         section('        function readingTestSaveError(', '        var readingPartRules =') + '\n' +

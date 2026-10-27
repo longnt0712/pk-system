@@ -25,13 +25,14 @@
         'ComprehensiveListening',
         'ComprehensiveFolders',
         '$q',
-        'TestWordExport'
+        'TestWordExport',
+        'uiTinymceService'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders,$q,wordExport) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders,$q,wordExport,editorService) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -43,6 +44,16 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+
+        function flushBuilderEditors() {
+            try {
+                editorService.flush();
+                return true;
+            } catch (editorError) {
+                toastr.error('Chưa đọc được nội dung đang chỉnh sửa. Hãy giữ trang và thử lại thao tác.', 'Chưa thể tiếp tục');
+                return false;
+            }
+        }
 
         vm.isComprehensiveMode = /\/create_comprehensive_test(?:\/|$)/i.test($location.path());
         vm.isWritingMode = /\/create_ielts_writing_test(?:\/|$)/i.test($location.path());
@@ -671,7 +682,6 @@
                 vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
                 vm.bsTableControlCreateIELTSReadingTest.options.totalRows = data.totalElements || 0;
                 // x.focus();
-                console.log(vm.ieltsReadingTests);
 
             }, function () {
                 if (requestId !== testCatalogRequestId) { return; }
@@ -882,6 +892,7 @@
                 toastr.warning('Đang lưu tên bài test. Hãy chờ lưu xong.', 'Chưa thể lưu bài');
                 return $timeout(angular.noop);
             }
+            if (!flushBuilderEditors()) { return $timeout(angular.noop); }
             vm.lastSaveError = '';
             if (vm.isVideoBuilder()) {
                 var videoPassage = vm.ieltsReadingTest.subQuestions[0];
@@ -1776,6 +1787,7 @@
         };
 
         vm.continueBuilder = function () {
+            if (!flushBuilderEditors()) { return; }
             var validation = vm.refreshBuilderValidation();
             if (validation.issues.length) {
                 vm.goToBuilderTarget(validation.issues[0].target);
@@ -1785,6 +1797,7 @@
         };
 
         vm.openBuilderReviewModal = function () {
+            if (!flushBuilderEditors()) { return; }
             vm.refreshBuilderValidation();
             vm.showBuilderReview = true;
         };
@@ -1810,6 +1823,7 @@
         };
 
         vm.saveDraftReadingTest = function () {
+            if (!flushBuilderEditors()) { return; }
             if ((vm.catalogStatusUpdating || {})[(vm.ieltsReadingTest || {}).id]) { return vm.saveReadingTest('draft'); }
             vm.ieltsReadingTest.status = 6;
             vm.refreshBuilderValidation();
@@ -1837,6 +1851,7 @@
         vm.exportTestWord = function (item) {
             if (vm.exportingWord || vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending ||
                 (item && ((vm.catalogStatusUpdating || {})[item.id] || (vm.catalogTitleUpdating || {})[item.id]))) { return; }
+            if (!item && !flushBuilderEditors()) { return; }
             vm.exportingWord = true;
             vm.exportingWordId = item ? item.id : null;
             // Catalog rows omit the question tree; the editor exports a snapshot of unsaved changes.
@@ -1854,6 +1869,7 @@
         };
 
         vm.previewReadingTest = function (partIndex) {
+            if (!flushBuilderEditors()) { return; }
             var maximumPreviewPart = vm.isFlexibleMode ? 1 : (vm.isListeningMode ? 4 : 3);
             var targetPart = Math.max(1, Math.min(maximumPreviewPart, parseInt(partIndex, 10) || 1));
             var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
@@ -1887,6 +1903,7 @@
         };
 
         vm.publishReadingTest = function () {
+            if (!flushBuilderEditors()) { return; }
             if ((vm.catalogStatusUpdating || {})[(vm.ieltsReadingTest || {}).id]) { return vm.saveReadingTest('publish'); }
             var validation = vm.refreshBuilderValidation();
             if (!validation.valid) {
@@ -2249,7 +2266,6 @@
                 }
 
                 vm.refreshBuilderValidation();
-                console.log(vm.ieltsReadingTest);
             }, function failure() {
                 toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
             });
@@ -2988,7 +3004,6 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                    console.log(vm.selectedQuestions);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
                         $scope.editCreateIELTSReadingTest(vm.ieltsReadingTest.id);
