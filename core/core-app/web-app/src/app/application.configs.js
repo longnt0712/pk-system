@@ -16,9 +16,43 @@
         OAuthTokenProvider.configure({
             name: constants.oauth2_token,
             options: {
-                secure: false
+                path: '/',
+                secure: window.location.protocol === 'https:'
             }
         });
+    }]);
+
+    // Persist the session across browser restarts. Keep the original refresh
+    // expiry when Spring reuses the same refresh token (it does not rotate it).
+    Core.config(['$provide', function ($provide) {
+        $provide.decorator('OAuthToken', ['$delegate', '$cookies', 'constants',
+            function (token, $cookies, constants) {
+                var options = {path: '/', secure: window.location.protocol === 'https:'};
+                token.setToken = function (value) {
+                    var previous = token.getToken() || {};
+                    var next = angular.copy(value);
+                    var now = Date.now();
+                    var accessLifetime = Number(next.expires_in);
+                    next.access_expires_at = now + (isFinite(accessLifetime) && accessLifetime >= 0 ? accessLifetime : 86400) * 1000;
+                    var refreshExpiry = Number(next.refresh_token_expires_at);
+                    var refreshLifetime = Number(next.refresh_expires_in);
+                    // The server knows the original refresh expiry, even when a
+                    // token is reused on login or this is a new browser profile.
+                    next.session_expires_at = (isFinite(refreshExpiry) && refreshExpiry > 0 ? refreshExpiry : 0) ||
+                        (next.refresh_expires_in != null && isFinite(refreshLifetime) && refreshLifetime >= 0
+                            ? now + refreshLifetime * 1000 : 0) || next.session_expires_at ||
+                        (next.refresh_token && next.refresh_token === previous.refresh_token &&
+                            previous.session_expires_at) ||
+                        (next.refresh_token ? now + 30 * 24 * 60 * 60 * 1000 : next.access_expires_at);
+                    $cookies.putObject(constants.oauth2_token, next,
+                        angular.extend({}, options, {expires: new Date(next.session_expires_at)}));
+                };
+                token.removeToken = function () {
+                    $cookies.remove(constants.oauth2_token, options);
+                };
+                return token;
+            }
+        ]);
     }]);
 
     Core.config(['$compileProvider', function ($compileProvider) {
@@ -59,6 +93,10 @@
         // $httpProvider.defaults.useXDomain = true;
         //
         // $httpProvider.interceptors.push('XSRFInterceptor');
+        $httpProvider.interceptors = $httpProvider.interceptors.filter(function (name) {
+            return name !== 'oauthInterceptor';
+        });
+        $httpProvider.interceptors.push('SessionAuthInterceptor');
         $httpProvider.interceptors.push('ServerExceptionHandlerInterceptor');
     }]);
 

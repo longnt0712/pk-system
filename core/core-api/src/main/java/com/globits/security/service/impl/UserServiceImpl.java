@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.List;
 
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import javax.persistence.Query;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -745,8 +746,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 				}
 			}
 
-			user.getRoles().clear();
-			user.getRoles().addAll(rs);
+			user.replaceRoles(rs);
 		}
 
 		if (userDto.getGroups() != null) {
@@ -875,8 +875,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 				}
 			}
 
-			user.getRoles().clear();
-			user.getRoles().addAll(rs);
+			user.replaceRoles(rs);
 		}
 
 		if (userDto.getGroups() != null) {
@@ -1163,8 +1162,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 				)
 		);
 
-		user.getRoles().clear();
-		user.getRoles().addAll(rolesToKeep);
+		user.replaceRoles(rolesToKeep);
 	}
 
 	private Set<Role> loadRequestedRoles(
@@ -1241,14 +1239,16 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	@Override
 	@Transactional(readOnly = true)
 	public boolean passwordMatch(UserDto dto) {
-
-		if (dto == null || !CommonUtils.isPositive(dto.getId(), true)) {
+		User principal = passwordPrincipal();
+		if (dto == null || CommonUtils.isEmpty(dto.getPassword()) || principal == null
+				|| !CommonUtils.isPositive(principal.getId(), true)) {
 			return false;
 		}
 
-		User user = userRepository.findOne(dto.getId());
+		User user = userRepository.findOne(principal.getId());
 
 		if (user != null) {
+			manager.refresh(user);
 			return SecurityUtils.passwordsMatch(user.getPassword(), dto.getPassword());
 		} else {
 			return false;
@@ -1256,6 +1256,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	}
 
 	@Override
+	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@Transactional(rollbackFor = Exception.class)
 	public UserDto changePassword(UserDto dto) {
 
@@ -1269,6 +1270,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			return null;
 		}
 
+		manager.refresh(user, LockModeType.PESSIMISTIC_WRITE);
 		user.setPassword(SecurityUtils.getHashPassword(dto.getPassword()));
 
 		user = userRepository.save(user);
@@ -1278,6 +1280,40 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		} else {
 			return new UserDto(user);
 		}
+	}
+
+	@Override
+	@PreAuthorize("isAuthenticated()")
+	@Transactional(rollbackFor = Exception.class)
+	public UserDto changeMyPassword(UserDto dto) {
+		User principal = passwordPrincipal();
+		if (principal == null || !CommonUtils.isPositive(principal.getId(), true)) {
+			throw new AccessDeniedException("Không xác định được tài khoản hiện tại.");
+		}
+		if (dto == null || CommonUtils.isEmpty(dto.getPassword())) {
+			throw new IllegalArgumentException("Mật khẩu mới không được để trống.");
+		}
+		User user = userRepository.findOne(principal.getId());
+		if (user == null) {
+			throw new AccessDeniedException("Không xác định được tài khoản hiện tại.");
+		}
+		// Refresh even if OpenEntityManagerInView already cached the user. Hold
+		// the row lock until the password check and update commit together.
+		manager.refresh(user, LockModeType.PESSIMISTIC_WRITE);
+		if (!user.isEnabled() || !user.isAccountNonExpired() || !user.isAccountNonLocked()
+				|| !user.isCredentialsNonExpired() || CommonUtils.isEmpty(dto.getCurrentPassword())
+				|| !SecurityUtils.passwordsMatch(user.getPassword(), dto.getCurrentPassword())) {
+			throw new AccessDeniedException("Mật khẩu hiện tại không đúng hoặc tài khoản đã bị khóa.");
+		}
+		user.setPassword(SecurityUtils.getHashPassword(dto.getPassword()));
+		return new UserDto(userRepository.save(user));
+	}
+
+	private User passwordPrincipal() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		return authentication != null && authentication.isAuthenticated()
+				&& authentication.getPrincipal() instanceof User
+				? (User) authentication.getPrincipal() : null;
 	}
 
 	@Override
@@ -1308,6 +1344,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public User findEntityByUsername(String username) {
 		User user = userRepository.findByUsername(username);
 		return user;

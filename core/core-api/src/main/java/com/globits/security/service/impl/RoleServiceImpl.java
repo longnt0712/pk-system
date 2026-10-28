@@ -3,7 +3,10 @@ package com.globits.security.service.impl;
 
 import org.joda.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,6 +23,7 @@ import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
 import com.globits.security.dto.RoleDto;
 import com.globits.security.repository.RoleRepository;
+import com.globits.security.repository.UserRepository;
 import com.globits.security.service.RoleService;
 
 @Transactional
@@ -28,6 +32,9 @@ public class RoleServiceImpl extends GenericServiceImpl<Role, Long> implements R
 
 	@Autowired
 	RoleRepository roleRepository;
+
+	@Autowired
+	UserRepository userRepository;
 
 	// public Role save(Role role) throws RuntimeException {
 	// return roleRepository.save(role);
@@ -79,9 +86,7 @@ public class RoleServiceImpl extends GenericServiceImpl<Role, Long> implements R
 			role.setCreateDate(currentDate);
 			role.setCreatedBy(currentUserName);
 		}
-		if(roleDto.getName() != null && roleDto.getName().length() > 0) {
-			role.setName(roleDto.getName());
-		}
+		changeRoleName(role, roleDto.getName());
 		
 		if(roleDto.getDescription() != null && roleDto.getDescription().length() > 0) {
 			role.setDescription(roleDto.getDescription());
@@ -108,9 +113,7 @@ public class RoleServiceImpl extends GenericServiceImpl<Role, Long> implements R
 		if(updateRole != null) {
 			updateRole.setModifyDate(currentDate);
 			updateRole.setModifiedBy(currentUserName);
-			if(roleDto.getName() != null && roleDto.getName().length() > 0) {
-				updateRole.setName(roleDto.getName());
-			}
+			changeRoleName(updateRole, roleDto.getName());
 			
 			if(roleDto.getDescription() != null && roleDto.getDescription().length() > 0) {
 				updateRole.setDescription(roleDto.getDescription());
@@ -122,6 +125,36 @@ public class RoleServiceImpl extends GenericServiceImpl<Role, Long> implements R
 		updateRole = roleRepository.save(updateRole);
 		
 		return new RoleDto(updateRole);
+	}
+
+	private void changeRoleName(Role role, String name) {
+		if (name == null || name.isEmpty() || Objects.equals(role.getName(), name)) { return; }
+		if (role.getId() != null) {
+			for (User user : userRepository.findByRoleId(role.getId())) {
+				user.invalidateSessions();
+				userRepository.save(user);
+			}
+		}
+		role.setName(name);
+	}
+
+	@Override
+	public Role delete(Long roleId) {
+		Role role = roleRepository.findOne(roleId);
+		if (role == null) { return null; }
+		for (User user : userRepository.findByRoleId(roleId)) {
+			Set<Role> remaining = new HashSet<Role>();
+			for (Role assigned : user.getRoles()) {
+				if (!Objects.equals(roleId, assigned.getId())) { remaining.add(assigned); }
+			}
+			user.replaceRoles(remaining);
+			user.invalidateSessions();
+			userRepository.save(user);
+		}
+		// Remove user-role join rows before deleting the referenced role.
+		userRepository.flush();
+		roleRepository.delete(role);
+		return role;
 	}
 
 	@Override

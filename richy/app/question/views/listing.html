@@ -884,11 +884,16 @@
                     </div>
 
                     <div class="form-group" ng-if="importVm.topicMode === 'existing'">
-                        <label class="bold" for="excel-import-topic">Topic</label>
-                        <select id="excel-import-topic" class="form-control" ng-model="importVm.selectedTopic"
-                                ng-options="topic as topic.name for topic in importVm.topics track by topic.id">
-                            <option value="">-- Chọn topic --</option>
-                        </select>
+                        <label class="bold" for="excel-import-topic-search">Topic</label>
+                        <ui-select id="excel-import-topic" input-id="excel-import-topic-search" ng-model="importVm.selectedTopic"
+                                   theme="bootstrap" search-enabled="true" reset-search-input="true" style="width: 100%"
+                                   ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" title="Tìm và chọn topic">
+                            <ui-select-match allow-clear="true" placeholder="Gõ để tìm topic...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="topic in importVm.topics | filter: {name: $select.search} track by topic.id">
+                                <div ng-bind="topic.name"></div>
+                            </ui-select-choices>
+                            <ui-select-no-choice>Không tìm thấy topic phù hợp.</ui-select-no-choice>
+                        </ui-select>
                         <div class="help-block" ng-if="!importVm.topics.length">
                             Chưa có topic. Chọn “Tạo topic mới” để tạo ngay trong cửa sổ này.
                         </div>
@@ -901,12 +906,17 @@
                                    ng-model="importVm.newTopic.name" placeholder="Nhập tên topic" aria-required="true">
                         </div>
                         <div class="form-group">
-                            <label class="bold" for="excel-import-topic-category">Category (loại topic) <span class="text-danger">*</span></label>
-                            <select id="excel-import-topic-category" class="form-control" ng-model="importVm.newTopic.topicCategory"
-                                    ng-options="category as category.name for category in importVm.topicCategories track by category.id"
-                                    ng-disabled="importVm.loadingCategories || importVm.categoryLoadError" aria-required="true">
-                                <option value="">-- Chọn category --</option>
-                            </select>
+                            <label class="bold" for="excel-import-topic-category-search">Category (loại topic) <span class="text-danger">*</span></label>
+                            <ui-select id="excel-import-topic-category" input-id="excel-import-topic-category-search"
+                                       ng-model="importVm.newTopic.topicCategory" theme="bootstrap" search-enabled="true"
+                                       reset-search-input="true" style="width: 100%" title="Tìm và chọn category"
+                                       ng-disabled="importVm.loadingCategories || importVm.categoryLoadError || importVm.loadingPreview || importVm.loadingConfirm">
+                                <ui-select-match allow-clear="true" placeholder="Gõ để tìm category...">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat="category in importVm.topicCategories | filter: {name: $select.search} track by category.id">
+                                    <div ng-bind="category.name"></div>
+                                </ui-select-choices>
+                                <ui-select-no-choice>Không tìm thấy category phù hợp.</ui-select-no-choice>
+                            </ui-select>
                             <p class="help-block" ng-if="importVm.loadingCategories" role="status">
                                 <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải category...
                             </p>

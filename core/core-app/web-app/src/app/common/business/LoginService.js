@@ -6,10 +6,10 @@
 
     angular.module('Core.Common').service('LoginService', LoginService);
     LoginService.$inject = [
-        'OAuth'
+        'AuthSession'
     ];
 
-    function LoginService(OAuth) {
+    function LoginService(AuthSession) {
         var self = this;
 
         self.performLogin = performLogin;
@@ -19,7 +19,7 @@
          * @param user
          */
         function performLogin(user) {
-            return OAuth.getAccessToken(user, null);
+            return AuthSession.login(user);
         }
     }
 

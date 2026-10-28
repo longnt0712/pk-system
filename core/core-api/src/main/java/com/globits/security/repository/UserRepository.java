@@ -46,6 +46,9 @@ public interface UserRepository
             + "where u.id = ?1")
     User findById(Long id);
 
+    @Query("select distinct u from User u join u.roles r where r.id = ?1")
+    List<User> findByRoleId(Long roleId);
+
     @Query("select new com.globits.security.dto.UserDto(u) "
             + "from User u "
             + "where u.username like %?1%")

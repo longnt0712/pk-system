@@ -5,8 +5,283 @@
     /* Setup global constants */
     Core.constant('constants', {
         cookies_user: 'education.user',
-        oauth2_token: 'token'
+        oauth2_token: 'token',
+        auth_session: 'education.auth-session'
     });
+
+    Core.factory('AuthSession', ['$q', '$injector', '$rootScope', '$cookies', 'OAuthToken', 'constants',
+        function ($q, $injector, $rootScope, $cookies, token, constants) {
+            var refreshPromise = null;
+            var refreshIdentity = null;
+            var sessionGeneration = 0;
+            var expirationNotified = false;
+            var options = {path: '/', secure: window.location.protocol === 'https:'};
+
+            function credentialKey(value) {
+                return value && (value.refresh_token || value.access_token);
+            }
+
+            function capture() {
+                return {generation: sessionGeneration, marker: $cookies.getObject(constants.auth_session),
+                    credential: credentialKey(token.getToken())};
+            }
+
+            function isCurrent(identity) {
+                return !!identity && identity.generation === sessionGeneration &&
+                    identity.marker === $cookies.getObject(constants.auth_session) &&
+                    identity.credential === credentialKey(token.getToken());
+            }
+
+            function advanceSession() {
+                sessionGeneration++;
+                // A shared marker also invalidates pending work in another tab,
+                // including password logins that started with no token cookie.
+                var marker = Date.now() + '-' + Math.random().toString(36).slice(2);
+                $cookies.putObject(constants.auth_session, marker,
+                    angular.extend({}, options, {expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}));
+                return marker;
+            }
+
+            function revoke(value) {
+                var refresh = value && value.refresh_token;
+                var secret = refresh || (value && value.access_token);
+                if (!secret) { return $q.when(); }
+                return $injector.get('$http').post(
+                    Core.API_SERVER_URL.replace(/\/$/, '') + '/oauth/revoke',
+                    'token=' + encodeURIComponent(secret) + '&token_type_hint=' + (refresh ? 'refresh_token' : 'access_token') +
+                    '&client_id=' + encodeURIComponent(Core.API_CLIENT_ID) +
+                    '&client_secret=' + encodeURIComponent(Core.API_CLIENT_KEY),
+                    {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
+                        sessionRevokeRequest: true, timeout: 20000}
+                ).catch(function () { /* Local logout also works offline. */ });
+            }
+
+            function discardIssuedToken(value) {
+                // Concurrent logins for the same user may reuse the same refresh
+                // token. Never revoke credentials belonging to the winning login.
+                if (credentialKey(value) && credentialKey(value) !== credentialKey(token.getToken())) {
+                    revoke(value);
+                }
+            }
+
+            function changed() { return {status: -1, sessionChanged: true}; }
+
+            function installToken(value, identity) {
+                token.setToken(value);
+                var installed = {generation: identity.generation, marker: identity.marker,
+                    credential: credentialKey(value)};
+                // Cookie writes in different tabs are not atomic. Check again
+                // after writing and fail closed if another tab superseded us.
+                if (!isCurrent(installed)) {
+                    var current = token.getToken();
+                    if (current && current.access_token === value.access_token &&
+                        current.refresh_token === value.refresh_token) { token.removeToken(); }
+                    discardIssuedToken(value);
+                    return null;
+                }
+                return installed;
+            }
+
+            function clear() {
+                advanceSession();
+                token.removeToken();
+                $cookies.remove(constants.cookies_user, options);
+                $rootScope.currentUser = null;
+            }
+
+            function expire(expectedHeader) {
+                // Ignore responses belonging to an earlier login/logout.
+                if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) { return; }
+                // Several dashboard requests can fail at once after the cookie
+                // disappears. Notify/navigate once, not once per request.
+                if (expirationNotified && !token.getToken()) { return; }
+                clear();
+                expirationNotified = true;
+                $rootScope.$emit('session:expired');
+            }
+
+            function refresh(expectedHeader) {
+                if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) {
+                    return $q.when();
+                }
+                if (refreshPromise && isCurrent(refreshIdentity)) { return refreshPromise; }
+                var oldToken = token.getToken() || {};
+                if (!oldToken.refresh_token) {
+                    expire(expectedHeader);
+                    return $q.reject({status: 401, data: {error: 'invalid_grant'}});
+                }
+                var generation = oldToken.refresh_token;
+                var identity = capture();
+                var body = 'grant_type=refresh_token&client_id=' + encodeURIComponent(Core.API_CLIENT_ID) +
+                    '&client_secret=' + encodeURIComponent(Core.API_CLIENT_KEY) +
+                    '&refresh_token=' + encodeURIComponent(generation);
+                var pending = $injector.get('$http').post(
+                    Core.API_SERVER_URL.replace(/\/$/, '') + '/oauth/token', body,
+                    {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
+                        sessionRefreshRequest: true, timeout: 20000}
+                ).then(function (response) {
+                    if (!isCurrent(identity)) {
+                        discardIssuedToken(response.data);
+                        return $q.reject(changed());
+                    }
+                    if (!response.data || !response.data.access_token || !response.data.token_type) {
+                        expire();
+                        return $q.reject({status: 401, data: {error: 'invalid_token'}});
+                    }
+                    if (!installToken(response.data, identity)) { return $q.reject(changed()); }
+                    expirationNotified = false;
+                    return response;
+                }, function (error) {
+                    if (!isCurrent(identity)) { return $q.reject(changed()); }
+                    if (error.status === 401 || (error.status === 400 && error.data &&
+                            (error.data.error === 'invalid_grant' || error.data.error === 'invalid_token'))) {
+                        expire();
+                    }
+                    // Network/server failures leave the token available for another attempt.
+                    return $q.reject(error);
+                }).finally(function () {
+                    if (refreshPromise === pending) { refreshPromise = null; refreshIdentity = null; }
+                });
+                refreshPromise = pending;
+                refreshIdentity = identity;
+                return refreshPromise;
+            }
+
+            function login(user) {
+                var marker = advanceSession();
+                var identity = capture();
+                identity.marker = marker;
+                var body = 'grant_type=password&client_id=' + encodeURIComponent(Core.API_CLIENT_ID) +
+                    '&client_secret=' + encodeURIComponent(Core.API_CLIENT_KEY) +
+                    '&username=' + encodeURIComponent(user.username) + '&password=' + encodeURIComponent(user.password);
+                return $injector.get('$http').post(Core.API_SERVER_URL.replace(/\/$/, '') + '/oauth/token', body,
+                    {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
+                        loginRequest: true, timeout: 20000}).then(function (response) {
+                    if (!isCurrent(identity)) {
+                        discardIssuedToken(response.data);
+                        return $q.reject(changed());
+                    }
+                    if (!response.data || !response.data.access_token || !response.data.token_type) {
+                        return $q.reject({status: 502});
+                    }
+                    var installed = installToken(response.data, identity);
+                    if (!installed) { return $q.reject(changed()); }
+                    expirationNotified = false;
+                    response.sessionIdentity = installed;
+                    return response;
+                }, function (error) {
+                    return $q.reject(isCurrent(identity) ? error : changed());
+                });
+            }
+
+            return {
+                refresh: refresh,
+                login: login,
+                capture: capture,
+                isCurrent: isCurrent,
+                expire: expire,
+                hasCredentials: function () {
+                    return !!(token.getAuthorizationHeader() || token.getRefreshToken());
+                },
+                restore: function () {
+                    var value = token.getToken();
+                    if (value && !value.session_expires_at) { token.setToken(value); }
+                },
+                saveUser: function (user, identity) {
+                    if (identity && !isCurrent(identity)) { return false; }
+                    var value = token.getToken();
+                    if (!value) { return false; }
+                    expirationNotified = false;
+                    $rootScope.sessionNotice = '';
+                    $rootScope.currentUser = user;
+                    $cookies.putObject(constants.cookies_user, user, angular.extend({}, options,
+                        {expires: new Date(value.session_expires_at)}));
+                    if (identity && !isCurrent(identity)) {
+                        var saved = $cookies.getObject(constants.cookies_user);
+                        if (saved && saved.id === user.id) { $cookies.remove(constants.cookies_user, options); }
+                        if ($rootScope.currentUser === user) { $rootScope.currentUser = null; }
+                        return false;
+                    }
+                    return true;
+                },
+                logout: function () {
+                    var value = token.getToken();
+                    clear();
+                    return revoke(value);
+                }
+            };
+        }
+    ]);
+
+    Core.factory('SessionAuthInterceptor', ['$q', '$injector', 'OAuthToken',
+        function ($q, $injector, token) {
+            var apiRoot = Core.API_SERVER_URL.replace(/\/$/, '') + '/api/';
+            function isApi(config) {
+                if (!config || config.skipSessionAuth || typeof config.url !== 'string') { return false; }
+                // Also recognize root-relative URLs without sending credentials
+                // to a different origin. Resolve just as the browser does.
+                try {
+                    var base = (window.document && window.document.baseURI) || window.location.href || Core.API_SERVER_URL;
+                    return new window.URL(config.url, base).href.indexOf(apiRoot) === 0;
+                } catch (ignore) {
+                    return config.url.indexOf(apiRoot) === 0;
+                }
+            }
+            function retry(config) {
+                if (!token.getAccessToken()) {
+                    return $q.reject({status: 401, sessionChanged: true});
+                }
+                // Preserve FormData/Blob upload bodies; deep copying them loses
+                // the browser's native data. Only the headers need a new object.
+                var next = angular.extend({}, config, {headers: angular.extend({}, config.headers)});
+                next.sessionAuthRetried = true;
+                Object.keys(next.headers).forEach(function (name) {
+                    if (name.toLowerCase() === 'authorization') { delete next.headers[name]; }
+                });
+                return $injector.get('$http')(next);
+            }
+            return {
+                request: function (config) {
+                    config.headers = config.headers || {};
+                    if (isApi(config)) {
+                        var header = token.getAuthorizationHeader();
+                        var explicitHeader;
+                        Object.keys(config.headers).forEach(function (name) {
+                            if (name.toLowerCase() === 'authorization') { explicitHeader = config.headers[name]; }
+                        });
+                        // Respect requests intentionally using a different identity.
+                        if (explicitHeader && explicitHeader !== header) { return config; }
+                        config.sessionAuthManaged = true;
+                        config.sessionAuthHeader = header;
+                        config.sessionAuthAccess = token.getAccessToken();
+                        config.sessionAuthRefresh = token.getRefreshToken();
+                        if (header && !explicitHeader) {
+                            config.headers.Authorization = header;
+                        }
+                    }
+                    return config;
+                },
+                responseError: function (error) {
+                    var config = error.config;
+                    if (!isApi(config) || error.status !== 401 || !config.sessionAuthManaged) {
+                        return $q.reject(error);
+                    }
+                    if (token.getRefreshToken() !== config.sessionAuthRefresh ||
+                        (!config.sessionAuthRefresh && token.getAccessToken() !== config.sessionAuthAccess)) {
+                        return $q.reject(error);
+                    }
+                    var session = $injector.get('AuthSession');
+                    if (config.sessionAuthRetried) {
+                        session.expire(config.sessionAuthHeader);
+                        return $q.reject(error);
+                    }
+                    return session.refresh(config.sessionAuthHeader).then(function () {
+                        return retry(config);
+                    });
+                }
+            };
+        }
+    ]);
 
     Core.filter('weekDay', [function () {
         return function (input) {
@@ -85,6 +360,10 @@
         function ($q, toastr, $cookies, $injector, blockUI, constants) {
             return {
                 responseError: function (rejection) {
+                    if (rejection.sessionChanged || rejection.config &&
+                        (rejection.config.loginRequest || rejection.config.sessionRevokeRequest)) {
+                        return $q.reject(rejection);
+                    }
                     if (rejection.status <= 0) {
                         toastr.warning('Không thể kết nối đến máy chủ.', 'Cảnh báo');
                     }

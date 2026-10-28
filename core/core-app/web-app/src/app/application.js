@@ -31,8 +31,8 @@
     Core.API_PREFIX = 'api/';
 
     /* Init global settings and run the app */
-    Core.run(['$rootScope', 'settings', '$http', '$cookies', '$state', '$injector', 'constants', 'OAuth', 'blockUI', 'toastr', 'Idle', 'Keepalive',
-        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive) {
+    Core.run(['$rootScope', 'settings', '$http', '$cookies', '$state', '$injector', 'constants', 'OAuth', 'blockUI', 'toastr', 'Idle', 'Keepalive', 'AuthSession',
+        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, authSession) {
             $rootScope.$state = $state; // state to be accessed from view
             $rootScope.$settings = settings; // state to be accessed from view
 
@@ -60,59 +60,46 @@
             });
 
             $rootScope.$on('IdleTimeout', function() {
-                OAuth.revokeToken();
-
-                $cookies.remove(constants.oauth2_token);
+                authSession.logout();
                 $state.go('login');
             });
 
-            // oauth2...
-            $rootScope.$on('oauth:error', function (event, rejection) {
-
+            authSession.restore();
+            $rootScope.$on('session:expired', function () {
                 blockUI.stop();
+                toastr.warning('Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại.', 'Đăng nhập');
+                $rootScope.$emit('$unauthorized', function () {});
+                $state.go('login');
+            });
 
-                // Ignore `invalid_grant` error - should be catched on `LoginController`.
-                if (angular.isDefined(rejection.data) && 'invalid_grant' === rejection.data.error) {
-                    toastr.error('Tên đăng nhập hoặc mật khẩu không đúng. Xin mời thử lại.', 'Lỗi');
-
-                    $cookies.remove(constants.oauth2_token);
+            var userCheckInFlight = false;
+            $rootScope.$on('$locationChangeSuccess', function () {
+                if (!authSession.hasCredentials()) {
+                    if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user)) {
+                        authSession.expire();
+                        return;
+                    }
+                    $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
-
                     return;
                 }
-
-                // Refresh token when a `invalid_token` error occurs.
-                if (angular.isDefined(rejection.data) && 'invalid_token' === rejection.data.error) {
-                    return OAuth.getRefreshToken();
-                }
-
-                // Redirect to `/login` with the `error_reason`.
-                $rootScope.$emit('$unauthorized', function (event, data) {});
-                $state.go('login');
-            });
-
-            $rootScope.$on('$locationChangeSuccess', function (event) {
-
-                if (!OAuth.isAuthenticated()) {
-                    $rootScope.$emit('$unauthorized', function (event, data) {});
-                    $state.go('login');
-                }
-
+                if (userCheckInFlight) { return; }
+                userCheckInFlight = true;
+                var identity = authSession.capture();
                 blockUI.start();
-                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
-                    blockUI.stop();
-                    if (response) {
-                        $rootScope.$emit('$onCurrentUserData', response);
-
-                        if ($state.current.name == 'login') {
+                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser', {timeout: 15000})
+                    .then(function (response) {
+                        if (!authSession.saveUser(response.data, identity)) { return; }
+                        $rootScope.$emit('$onCurrentUserData', response.data);
+                        if ($state.current.name === 'login') {
                             $state.go('application.dashboard');
                         }
-                    }
-                }).error(function (response, status, headers, config) {
-                    blockUI.stop();
-                    $cookies.remove(constants.oauth2_token);
-                    $state.go('login');
-                });
+                    }, function (error) {
+                        if (error.status === 401 && authSession.isCurrent(identity)) { authSession.expire(); }
+                    }).finally(function () {
+                        userCheckInFlight = false;
+                        blockUI.stop();
+                    });
             });
         }
     ]);

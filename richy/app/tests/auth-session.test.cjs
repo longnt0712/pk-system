@@ -20,7 +20,7 @@ function deferred() {
     const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
     return {promise, resolve, reject};
 }
-function setup(transport, protocol = 'https:') {
+function setup(transport, protocol = 'https:', frontend = 'richy') {
     const factories = {}, configs = [], cookies = {}, cookieOptions = {}, events = [];
     const Hrm = {
         API_SERVER_URL: 'https://example.test/service/', API_CLIENT_ID: 'education_client', API_CLIENT_KEY: 'password',
@@ -46,9 +46,10 @@ function setup(transport, protocol = 'https:') {
             return type && value.access_token ? type.charAt(0).toUpperCase() + type.slice(1) + ' ' + value.access_token : undefined;
         }
     };
-    const context = vm.createContext({Hrm, window: {URL, location: {protocol, href: 'https://example.test/'}}, angular: {copy, extend: Object.assign}, Date});
+    const appRoot = frontend === 'core' ? path.resolve(__dirname, '../../../core/core-app/web-app/src/app') : path.resolve(__dirname, '..');
+    const context = vm.createContext({Hrm, Core: Hrm, window: {URL, location: {protocol, href: 'https://example.test/'}}, angular: {copy, extend: Object.assign}, Date});
     for (const name of ['application.services.js', 'application.configs.js']) {
-        vm.runInContext(fs.readFileSync(path.join(__dirname, '..', name), 'utf8'), context);
+        vm.runInContext(fs.readFileSync(path.join(appRoot, name), 'utf8'), context);
     }
     invoke(configs.find(def => def[0] === '$provide'), {
         $provide: {decorator(name, def) { deps[name] = invoke(def, {...deps, $delegate: token}); }}
@@ -65,7 +66,7 @@ function setup(transport, protocol = 'https:') {
     deps.$http = http;
     const session = deps.AuthSession = invoke(factories.AuthSession, deps);
     token.setToken({access_token: 'old', refresh_token: 'refresh-1', expires_in: 86400, token_type: 'bearer'});
-    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories};
+    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories, appRoot};
 }
 const api = 'https://example.test/service/api/users/getCurrentUser';
 const invalid = {status: 401, data: {error: 'invalid_token'}};
@@ -166,22 +167,253 @@ test('cookies survive restarts, use HTTPS Secure, and retain the original refres
     assert.ok(local.cookies.token.session_expires_at);
 });
 
-test('logout while refresh is pending never resurrects the session', async () => {
+test('logout revokes refresh credentials while a refresh is pending and never resurrects the session', async () => {
     const gate = deferred();
-    let revokedHeader;
+    const revocations = [];
     const h = setup(config => {
         if (config.url.endsWith('/oauth/token')) return gate.promise;
-        if (config.url.endsWith('/oauth/logout')) { revokedHeader = config.headers.Authorization; return {}; }
+        if (config.url.endsWith('/oauth/revoke')) { revocations.push(config); return {}; }
         throw invalid;
     });
     const pending = h.http({url: api});
     const rejected = assert.rejects(pending, error => error.sessionChanged === true);
     await new Promise(resolve => setImmediate(resolve));
     await h.session.logout();
-    assert.equal(revokedHeader, 'Bearer old');
+    assert.equal(revocations[0].method, 'POST');
+    assert.equal(revocations[0].headers.Authorization, undefined);
+    assert.equal(new URLSearchParams(revocations[0].data).get('token'), 'refresh-1');
+    assert.equal(new URLSearchParams(revocations[0].data).get('token_type_hint'), 'refresh_token');
     gate.resolve(fresh);
     await rejected;
     assert.equal(h.cookies.token, undefined);
+});
+
+test('logout revokes by refresh token even without a usable access token and remains local offline', async () => {
+    let request;
+    const h = setup(config => { request = config; throw {status: 0}; });
+    h.token.setToken({refresh_token: 'refresh-only'});
+    await h.session.logout();
+    assert.equal(new URLSearchParams(request.data).get('token'), 'refresh-only');
+    assert.equal(new URLSearchParams(request.data).get('client_id'), h.Hrm.API_CLIENT_ID);
+    assert.equal(request.headers.Authorization, undefined);
+    assert.equal(h.token.getToken(), undefined);
+    h.token.setToken({access_token: 'access-only', token_type: 'bearer'});
+    await h.session.logout();
+    assert.equal(new URLSearchParams(request.data).get('token'), 'access-only');
+    assert.equal(new URLSearchParams(request.data).get('token_type_hint'), 'access_token');
+});
+
+test('server refresh expiry overrides guessed cookie expiry, with compatibility for older responses', () => {
+    const h = setup(() => ({}));
+    const exact = Date.now() + 45000;
+    h.token.setToken({...fresh.data, refresh_token_expires_at: exact});
+    assert.equal(h.cookies.token.session_expires_at, exact);
+    assert.equal(h.cookieOptions.token.expires.getTime(), exact);
+    h.token.setToken(fresh.data);
+    assert.equal(h.cookies.token.session_expires_at, exact);
+    h.token.setToken({...fresh.data, refresh_token: 'different', refresh_expires_in: 60});
+    assert.ok(Math.abs(h.cookies.token.session_expires_at - Date.now() - 60000) < 1000);
+    h.token.setToken({...fresh.data, refresh_token: 'expired', refresh_expires_in: 0});
+    assert.ok(Math.abs(h.cookies.token.session_expires_at - Date.now()) < 1000);
+});
+
+test('password login cannot revive a logged out session and stale issued credentials are revoked', async () => {
+    const gate = deferred(), revoked = [];
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/revoke')) { revoked.push(new URLSearchParams(config.data).get('token')); return {}; }
+        assert.equal(new URLSearchParams(config.data).get('grant_type'), 'password');
+        assert.equal(config.headers.Authorization, undefined);
+        return gate.promise;
+    });
+    const pending = h.session.login({username: 'A', password: 'fake'});
+    const rejected = assert.rejects(pending, error => error.sessionChanged === true);
+    await h.session.logout();
+    gate.resolve({data: {...fresh.data, refresh_token: 'issued-after-logout'}});
+    await rejected;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.token.getToken(), undefined);
+    assert.deepEqual(revoked, ['refresh-1', 'issued-after-logout']);
+});
+
+test('a logout in another tab cancels a password login that began anonymously', async () => {
+    const gate = deferred();
+    const h = setup(config => config.url.endsWith('/oauth/revoke') ? {} : gate.promise);
+    h.token.removeToken();
+    const pending = h.session.login({username: 'A', password: 'fake'});
+    const rejected = assert.rejects(pending, error => error.sessionChanged === true);
+    const otherTab = invoke(h.factories.AuthSession, {...h.deps, $rootScope: {$emit() {}}});
+    await otherTab.logout();
+    gate.resolve(fresh);
+    await rejected;
+    assert.equal(h.token.getToken(), undefined);
+});
+
+test('password login never adopts a marker written by another tab during session advancement', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(config => config.url.endsWith('/oauth/revoke') ? {} : fresh, 'https:', frontend);
+        const write = h.deps.$cookies.putObject;
+        h.deps.$cookies.putObject = (name, value, options) => {
+            write(name, value, options);
+            if (name === 'education.auth-session') h.cookies[name] = 'other-tab-won';
+        };
+        await assert.rejects(h.session.login({username: 'A', password: 'fake'}), error => error.sessionChanged === true);
+        assert.equal(h.token.getAccessToken(), 'old');
+    }
+});
+
+test('a session change interleaved with writing a token or user fails closed in both frontends', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(config => config.url.endsWith('/oauth/revoke') ? {} : fresh, 'https:', frontend);
+        const write = h.deps.$cookies.putObject;
+        h.deps.$cookies.putObject = (name, value, options) => {
+            if (name === 'token') h.cookies['education.auth-session'] = 'other-tab';
+            write(name, value, options);
+        };
+        await assert.rejects(h.session.login({username: 'A', password: 'fake'}), error => error.sessionChanged === true);
+        assert.equal(h.token.getToken(), undefined);
+        h.deps.$cookies.putObject = write;
+        h.token.setToken(fresh.data);
+        const identity = h.session.capture();
+        h.deps.$cookies.putObject = (name, value, options) => {
+            if (name === 'education.user') h.cookies['education.auth-session'] = 'another-tab';
+            write(name, value, options);
+        };
+        assert.equal(h.session.saveUser({id: 'A', roles: [{name: 'ROLE_ADMIN'}]}, identity), false);
+        assert.equal(h.cookies['education.user'], undefined);
+        assert.equal(h.deps.$rootScope.currentUser, null);
+    }
+});
+
+test('a newer password login wins across tabs and an older response cannot overwrite it', async () => {
+    const first = deferred(), second = deferred(), revoked = [];
+    const h = setup(config => {
+        const form = new URLSearchParams(config.data);
+        if (config.url.endsWith('/oauth/revoke')) { revoked.push(form.get('token')); return {}; }
+        return form.get('username') === 'A' ? first.promise : second.promise;
+    });
+    const pendingA = h.session.login({username: 'A', password: 'fake'});
+    const rejected = assert.rejects(pendingA, error => error.sessionChanged === true);
+    const otherTab = invoke(h.factories.AuthSession, {...h.deps, $rootScope: {$emit() {}}});
+    const pendingB = otherTab.login({username: 'B', password: 'fake'});
+    second.resolve({data: {...fresh.data, access_token: 'B', refresh_token: 'refresh-B'}});
+    const accepted = await pendingB;
+    assert.equal(otherTab.isCurrent(accepted.sessionIdentity), true);
+    first.resolve({data: {...fresh.data, access_token: 'A', refresh_token: 'refresh-A'}});
+    await rejected;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.token.getAccessToken(), 'B');
+    assert.deepEqual(revoked, ['refresh-A']);
+});
+
+test('a stale password response never revokes a winning login that reuses the same refresh token', async () => {
+    const first = deferred(), second = deferred(), revoked = [];
+    let logins = 0;
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/revoke')) { revoked.push(config.data); return {}; }
+        return ++logins === 1 ? first.promise : second.promise;
+    });
+    const old = h.session.login({username: 'same', password: 'fake'});
+    const rejected = assert.rejects(old, error => error.sessionChanged === true);
+    const latest = h.session.login({username: 'same', password: 'fake'});
+    second.resolve(fresh); await latest;
+    first.resolve(fresh); await rejected;
+    assert.deepEqual(revoked, []);
+    assert.equal(h.token.getAccessToken(), 'fresh');
+});
+
+test('a previous refresh never blocks or clears a new session refresh', async () => {
+    const first = deferred(), second = deferred();
+    let refreshes = 0;
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/revoke')) return {};
+        return ++refreshes === 1 ? first.promise : second.promise;
+    });
+    const old = h.session.refresh();
+    const rejected = assert.rejects(old, error => error.sessionChanged === true);
+    await h.session.logout();
+    h.token.setToken({...fresh.data, access_token: 'new-old', refresh_token: 'new-refresh'});
+    const current = h.session.refresh();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(refreshes, 2);
+    first.reject({status: 401}); await rejected;
+    second.resolve({data: {...fresh.data, access_token: 'new-fresh', refresh_token: 'new-refresh'}});
+    await current;
+    assert.equal(h.token.getAccessToken(), 'new-fresh');
+    assert.deepEqual(h.events, []);
+});
+
+test('core frontend also constrains bearer origin, retries one refresh, and revokes with expired access credentials', async () => {
+    let refreshes = 0, revocation;
+    const expiry = Date.now() + 120000;
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/token')) {
+            refreshes++; return {data: {...fresh.data, refresh_token_expires_at: expiry}};
+        }
+        if (config.url.endsWith('/oauth/revoke')) { revocation = config; return {}; }
+        if (config.headers.Authorization === 'Bearer old') throw invalid;
+        return {data: {id: 7}};
+    }, 'https:', 'core');
+    const provider = {interceptors: ['oauthInterceptor']};
+    invoke(h.configs.find(def => def[0] === '$httpProvider'), {$httpProvider: provider});
+    assert.deepEqual(Array.from(provider.interceptors), ['SessionAuthInterceptor', 'ServerExceptionHandlerInterceptor']);
+    assert.equal(h.interceptor.request({url: 'https://other.test/api/'}).headers.Authorization, undefined);
+    await Promise.all([h.http({url: api}), h.http({url: api + '?second=1'})]);
+    assert.equal(refreshes, 1);
+    assert.equal(h.token.getAccessToken(), 'fresh');
+    assert.equal(h.cookies.token.session_expires_at, expiry);
+    h.token.setToken({refresh_token: 'core-refresh-only', refresh_token_expires_at: expiry});
+    await h.session.logout();
+    assert.equal(new URLSearchParams(revocation.data).get('token'), 'core-refresh-only');
+    assert.equal(revocation.headers.Authorization, undefined);
+    assert.equal(h.token.getToken(), undefined);
+});
+
+test('core password login is cancelled by logout in another tab', async () => {
+    const gate = deferred();
+    const h = setup(config => config.url.endsWith('/oauth/revoke') ? {} : gate.promise, 'https:', 'core');
+    h.token.removeToken();
+    const pending = h.session.login({username: 'core-user', password: 'fake'});
+    const rejected = assert.rejects(pending, error => error.sessionChanged === true);
+    const otherTab = invoke(h.factories.AuthSession, {...h.deps, $rootScope: {$emit() {}}});
+    await otherTab.logout();
+    gate.resolve(fresh);
+    await rejected;
+    assert.equal(h.token.getToken(), undefined);
+});
+
+function startCoreApp(h) {
+    const listeners = {}, navigations = [], root = h.deps.$rootScope;
+    root.$on = (name, fn) => { listeners[name] = fn; };
+    root.$emit = (name, ...args) => { h.events.push(name); if (listeners[name]) listeners[name]({}, ...args); };
+    let definition;
+    h.Hrm.run = value => { definition = value; };
+    h.context.angular.module = () => h.Hrm;
+    vm.runInContext(fs.readFileSync(path.join(h.appRoot, 'application.js'), 'utf8'), h.context);
+    invoke(definition, {...h.deps,
+        settings: {api: {baseUrl: 'https://example.test/service/'}},
+        $state: {current: {name: 'login'}, go(name) { navigations.push(name); }},
+        $http: {get: (url, options) => h.http({...options, url, method: 'GET'})},
+        blockUI: {start() {}, stop() {}}, toastr: {warning() {}}, Idle: {watch() {}}, Keepalive: {start() {}}
+    });
+    return {listeners, navigations};
+}
+
+test('core route checks preserve the session during server/network failures and ignore stale successful users', async () => {
+    for (const status of [0, 503]) {
+        const h = setup(() => {throw {status};}, 'https:', 'core'), app = startCoreApp(h);
+        app.listeners.$locationChangeSuccess();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.token.getAccessToken(), 'old');
+        assert.deepEqual(app.navigations, []);
+    }
+    const gate = deferred(), h = setup(() => gate.promise, 'https:', 'core'), app = startCoreApp(h);
+    app.listeners.$locationChangeSuccess();
+    h.token.setToken({...fresh.data, access_token: 'B', refresh_token: 'refresh-B'});
+    h.session.saveUser({id: 'B', roles: []});
+    gate.resolve({data: {id: 'A', roles: [{name: 'ROLE_ADMIN'}]}});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.cookies['education.user'].id, 'B');
+    assert.deepEqual(app.navigations, []);
 });
 
 test('responses from the previous user cannot retry as a new user', async () => {
@@ -384,7 +616,7 @@ test('a late headerless 401 cannot clear a newer login', async () => {
 
 test('a late current-user 401 after intentional logout does not claim the session expired', async () => {
     const gate = deferred();
-    const h = setup(config => config.url.endsWith('/oauth/logout') ? {} : gate.promise);
+    const h = setup(config => config.url.endsWith('/oauth/revoke') ? {} : gate.promise);
     h.session.saveUser({id: 7});
     const app = startApp(h);
     app.listeners.$locationChangeSuccess();
@@ -580,17 +812,17 @@ test('a background error never stops an unrelated foreground Block UI', async ()
     assert.equal(h.notices.length, 1);
 });
 
-function loginHarness(performLogin) {
-    const h = setup(() => ({data: {id: 7, roles: []}}));
+function loginHarness(performLogin, frontend = 'richy') {
+    const h = setup(() => ({data: {id: 7, roles: []}}), 'https:', frontend);
     let Controller;
     h.context.angular.module = () => ({controller(name, fn) { Controller = fn; }});
     h.context.angular.isFunction = value => typeof value === 'function';
     h.context.angular.isObject = value => value !== null && typeof value === 'object';
     h.context.angular.forEach = (items, fn) => items.forEach(fn);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'common/controllers/LoginController.js'), 'utf8'), h.context);
+    vm.runInContext(fs.readFileSync(path.join(h.appRoot, 'common/controllers/LoginController.js'), 'utf8'), h.context);
     const notices = [], blocks = [], navigations = [];
     const deps = {...h.deps,
-        $rootScope: {}, $scope: {$on() {}},
+        $rootScope: h.deps.$rootScope, $scope: {$on() {}},
         $state: {go(name) { navigations.push(name); }},
         settings: {api: {baseUrl: h.Hrm.API_SERVER_URL}},
         LoginService: {performLogin}, toastr: {error(message) { notices.push(message); }}, focus() {},
@@ -601,8 +833,97 @@ function loginHarness(performLogin) {
     const controller = {};
     Controller.apply(controller, Controller.$inject.map(name => deps[name]));
     controller.user = {username: 'test', password: 'wrong'};
-    return {controller, notices, blocks, navigations, deps};
+    return {controller, notices, blocks, navigations, deps, h};
 }
+
+test('manual login user lookup cannot overwrite another account or navigate after logout', async () => {
+    for (const frontend of ['richy', 'core']) {
+    for (const change of ['new-account', 'logout']) {
+        const lookup = deferred();
+        const login = loginHarness(() => Promise.resolve({data: {access_token: 'valid'}}), frontend);
+        login.deps.$http.get = () => lookup.promise;
+        login.deps.settings.isAdmin = false;
+        const pending = login.controller.login();
+        await new Promise(resolve => setImmediate(resolve));
+        if (change === 'new-account') {
+            login.h.token.setToken({...fresh.data, access_token: 'B', refresh_token: 'refresh-B'});
+            login.h.session.saveUser({id: 'B', roles: []});
+        } else {
+            await login.h.session.logout();
+        }
+        lookup.resolve({data: {id: 'A', roles: [{name: 'ROLE_ADMIN'}]}});
+        await pending;
+        assert.equal(login.h.cookies['education.user'] && login.h.cookies['education.user'].id,
+            change === 'new-account' ? 'B' : undefined);
+        assert.equal(login.deps.settings.isAdmin, false);
+        assert.deepEqual(login.navigations, []);
+        assert.equal(login.controller.isLoggingIn, false);
+    }
+    }
+});
+
+test('LoginService routes password login through AuthSession rather than the bundled token writer', () => {
+    const h = setup(() => ({}));
+    let Service;
+    h.context.angular.module = () => ({service(name, fn) { Service = fn; }});
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'common/business/LoginService.js'), 'utf8'), h.context);
+    const user = {username: 'A', password: 'fake'}, response = {};
+    const service = {};
+    Service.apply(service, Service.$inject.map(name => name === 'AuthSession'
+        ? {login(value) { assert.equal(value, user); return response; }} : undefined));
+    assert.equal(service.performLogin(user), response);
+});
+
+test('both self-password screens send the current password atomically and wait for server success', async () => {
+    const appRoots = [path.resolve(__dirname, '..'), path.resolve(__dirname, '../../../core/core-app/web-app/src/app')];
+    for (const appRoot of appRoots) {
+        for (const accepted of [true, false]) {
+            const h = setup(() => ({})), gate = deferred(), controllers = {}, opened = [], notices = [], mutations = [];
+            h.Hrm.controller = (name, definition) => { controllers[name] = definition; };
+            h.context.Core = h.Hrm;
+            h.context.angular.forEach = (items, fn) => items.forEach(fn);
+            vm.runInContext(fs.readFileSync(path.join(appRoot, 'application.controllers.js'), 'utf8'), h.context);
+            const scope = {$on() {}}, root = {$on() {}}, modal = {
+                open(options) {
+                    const item = {options, closed: false, close() { this.closed = true; }};
+                    opened.push(item); return item;
+                }
+            };
+            invoke(controllers.AppController, {...h.deps,
+                $scope: scope, $rootScope: root, $state: {go() {}}, $timeout() {}, settings: {}, $uibModal: modal,
+                toastr: {info(message) { notices.push(['success', message]); }, error(message) { notices.push(['error', message]); }},
+                Upload: {}, focus() {}, OAuth: {},
+                UserService: {
+                    passwordValid() { throw Error('Do not validate in a separate request'); },
+                    changePasswordSelf(value) { mutations.push(value); return gate.promise; }
+                }
+            });
+            scope.currentUser = {id: 7, username: 'synthetic', roles: [{name: 'ROLE_ADMIN'}]};
+            scope.changePassword();
+            Object.assign(scope.changePasswordObj, {currentPassword: 'old-secret', newPassword: 'new-secret', newPasswordRep: 'new-secret'});
+            const pending = scope.changePasswordObj.saveNewPassword();
+            scope.changePasswordObj.saveNewPassword();
+            assert.equal(mutations.length, 1);
+            assert.deepEqual({...mutations[0]}, {currentPassword: 'old-secret', password: 'new-secret'});
+            assert.equal(scope.changePasswordObj.isSaving, true);
+            assert.equal(opened.length, 1);
+            assert.equal(opened[0].closed, false);
+            assert.deepEqual(notices, []);
+            if (accepted) gate.resolve({}); else gate.reject({status: 400});
+            await pending;
+            assert.equal(scope.changePasswordObj.isSaving, false);
+            assert.equal(opened[0].closed, accepted);
+            assert.equal(opened.length, 1);
+            assert.equal(notices[0][0], accepted ? 'success' : 'error');
+            if (accepted) {
+                assert.equal(scope.changePasswordObj.currentPassword, null);
+                assert.equal(h.token.getToken(), undefined);
+            } else {
+                assert.equal(h.token.getAccessToken(), 'old');
+            }
+        }
+    }
+});
 
 test('wrong password has a visible Vietnamese error, including OAuth 400 and HTTP 401', async () => {
     for (const error of [{status: 400, data: {error: 'invalid_grant'}}, {status: 401}]) {

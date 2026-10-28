@@ -1,15 +1,12 @@
 package com.globits.security;
 
-import java.util.Collection;
-import java.util.Date;
-
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.core.utils.CommonUtils;
 import com.globits.security.domain.User;
@@ -23,26 +20,21 @@ public class CustomUserDetailsService implements UserDetailsService, Initializin
 	private UserService userService;
 
 	@Override
+	@Transactional(readOnly = true, noRollbackFor = UsernameNotFoundException.class)
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-
-		UserDto userDto = null;
-		try {
-			userDto = userService.findByUsername(username);
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-
-		if (CommonUtils.isNull(userDto) || !CommonUtils.isPositive(userDto.getId(), true)) {
+		User entity = userService.findEntityByUsername(username);
+		if (entity == null || !CommonUtils.isPositive(entity.getId(), true)) {
 			throw new UsernameNotFoundException("User with username (" + username + ") not found.");
 		}
 
-		User user = userDto.toEntity();
-		Collection<? extends GrantedAuthority> cols = user.getAuthorities();
-
-		for (GrantedAuthority col : cols) {
-			user.getAuthorities().add(col);
-		}
-		//userService.updateUserLastLogin(userDto.getId());
+		// Build a detached principal while the user's roles/profile are available.
+		// The public DTO conversion defaults these flags for newly created users;
+		// authentication must retain the persisted flags instead.
+		User user = new UserDto(entity).toEntity();
+		user.setAccountNonExpired(entity.getAccountNonExpired());
+		user.setAccountNonLocked(entity.getAccountNonLocked());
+		user.setCredentialsNonExpired(entity.getCredentialsNonExpired());
+		user.setAuthVersion(entity.getAuthVersion());
 		return user;
 	}
 

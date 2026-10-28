@@ -16,7 +16,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.access.channel.ChannelProcessingFilter;
 
-import com.globits.security.CustomUserDetailsService;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import com.globits.security.filter.CorsFilter;
 
 @Configuration
@@ -26,7 +26,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Autowired
 	@Qualifier("userService")
-	private CustomUserDetailsService userServiceDetails;
+	private UserDetailsService userServiceDetails;
 
 	@Autowired
 	private CorsFilter corsFilter;
@@ -63,7 +63,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
 				.antMatchers("/login").permitAll()
 
-				.antMatchers("/tokens/**").permitAll()
+				.antMatchers("/tokens/**").denyAll()
 
 				.antMatchers("/admin/**").fullyAuthenticated()
 

@@ -39,6 +39,8 @@ public interface UserService extends GenericService<User, Long> {
 	public boolean passwordMatch(UserDto dto);
 
 	public UserDto changePassword(UserDto dto);
+
+	public UserDto changeMyPassword(UserDto dto);
 	
 	public Page<UserDto> findByPageUsername(String username, int pageIndex, int pageSize);
 

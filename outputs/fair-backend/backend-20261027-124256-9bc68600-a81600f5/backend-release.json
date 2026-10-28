@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "tag": "backend-20261027-124256-9bc68600-a81600f5",
+  "commit": "9bc68600a9b430d394633eecf5d17b6c2a15d288",
+  "sourceDirty": false,
+  "builtAtUtc": "2026-10-27T12:42:56.053Z",
+  "javaMajor": 8,
+  "jar": {
+    "name": "richy-wine-exec.jar",
+    "sha256": "4465d0e1d270d315b263e3a17b69acbbbedad1f251e8ef8970a2446f271f8de8",
+    "bytes": 86803172
+  }
+}

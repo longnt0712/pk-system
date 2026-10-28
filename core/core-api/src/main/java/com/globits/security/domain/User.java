@@ -1,6 +1,8 @@
 package com.globits.security.domain;
 
 import java.util.Collection;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -30,6 +32,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.globits.core.auditing.AuditableEntity;
 import com.globits.core.domain.BaseObject;
 import com.globits.core.domain.Person;
@@ -50,7 +53,14 @@ public class User extends BaseObject implements UserDetails {
 	private String username;
 
 	@Column(name = "password", nullable = false)
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String password;
+
+	// A committed security change permanently invalidates earlier token snapshots.
+	// Existing accounts may keep NULL until their first security change.
+	@Column(name = "auth_version", length = 36, nullable = true)
+	@JsonIgnore
+	private String authVersion;
 
 	@Column(name = "just_created", nullable = false)
 	private Boolean justCreated = true;
@@ -114,6 +124,7 @@ public class User extends BaseObject implements UserDetails {
 	private Boolean changePassword = false;
 
 	@Transient
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String confirmPassword;
 
 	/* Spring Security fields */
@@ -143,6 +154,7 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setUsername(String username) {
+		if (!Objects.equals(this.username, username)) { rotateAuthVersion(); }
 		this.username = username;
 	}
 
@@ -151,7 +163,28 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setPassword(String password) {
+		if (!Objects.equals(this.password, password)) { rotateAuthVersion(); }
 		this.password = password;
+	}
+
+	@JsonIgnore
+	public String getAuthVersion() {
+		return authVersion;
+	}
+
+	@JsonIgnore
+	public void setAuthVersion(String authVersion) {
+		this.authVersion = authVersion;
+	}
+
+	private void rotateAuthVersion() {
+		this.authVersion = UUID.randomUUID().toString();
+	}
+
+	/** Internal invalidation for a shared authority definition changing. */
+	@JsonIgnore
+	public void invalidateSessions() {
+		rotateAuthVersion();
 	}
 
 	public Boolean getJustCreated() {
@@ -271,6 +304,7 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setActive(Boolean active) {
+		if (!Objects.equals(this.active, active)) { rotateAuthVersion(); }
 		this.active = active;
 	}
 
@@ -283,7 +317,26 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setRoles(Set<Role> roles) {
-		this.roles = roles;
+		replaceRoles(roles);
+	}
+
+	/** Preserve Hibernate's managed collection and rotate only on authority changes. */
+	public void replaceRoles(Collection<Role> requestedRoles) {
+		Set<Role> replacement = requestedRoles == null ? new HashSet<Role>() : new HashSet<Role>(requestedRoles);
+		if (!roleNames(this.roles).equals(roleNames(replacement))) { rotateAuthVersion(); }
+		if (this.roles == null) { this.roles = new HashSet<Role>(); }
+		this.roles.clear();
+		this.roles.addAll(replacement);
+	}
+
+	private Set<String> roleNames(Collection<Role> values) {
+		Set<String> names = new HashSet<String>();
+		if (values != null) {
+			for (Role role : values) {
+				if (role != null) { names.add(role.getName()); }
+			}
+		}
+		return names;
 	}
 
 	public Set<UserGroup> getGroups() {
@@ -315,14 +368,17 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setAccountNonExpired(Boolean accountNonExpired) {
+		if (!Objects.equals(this.accountNonExpired, accountNonExpired)) { rotateAuthVersion(); }
 		this.accountNonExpired = accountNonExpired;
 	}
 
 	public void setAccountNonLocked(Boolean accountNonLocked) {
+		if (!Objects.equals(this.accountNonLocked, accountNonLocked)) { rotateAuthVersion(); }
 		this.accountNonLocked = accountNonLocked;
 	}
 
 	public void setCredentialsNonExpired(Boolean credentialsNonExpired) {
+		if (!Objects.equals(this.credentialsNonExpired, credentialsNonExpired)) { rotateAuthVersion(); }
 		this.credentialsNonExpired = credentialsNonExpired;
 	}
 
@@ -337,19 +393,19 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public boolean isAccountNonExpired() {
-		return this.accountNonExpired;
+		return Boolean.TRUE.equals(this.accountNonExpired);
 	}
 
 	public boolean isAccountNonLocked() {
-		return this.accountNonLocked;
+		return Boolean.TRUE.equals(this.accountNonLocked);
 	}
 
 	public boolean isCredentialsNonExpired() {
-		return this.credentialsNonExpired;
+		return Boolean.TRUE.equals(this.credentialsNonExpired);
 	}
 
 	public boolean isEnabled() {
-		return this.active;
+		return Boolean.TRUE.equals(this.active);
 	}
 
 	public Boolean getChangePassword() {
@@ -396,6 +452,7 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public User(User user, boolean isSetPerson) {
+		this.authVersion = user.getAuthVersion();
 		this.accountNonExpired = user.isAccountNonExpired();
 		this.accountNonLocked = user.isAccountNonLocked();
 		this.active = user.getActive();

@@ -1,30 +1,28 @@
 package com.globits.richy.config;
 
-import javax.sql.DataSource;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
-import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
-import org.springframework.security.oauth2.provider.token.TokenStore;
-import org.springframework.security.oauth2.provider.token.store.JdbcTokenStore;
 import org.springframework.security.web.access.channel.ChannelProcessingFilter;
 
 import com.globits.security.filter.CorsFilter;
 import com.globits.security.filter.JsonToUrlEncodedAuthenticationFilter;
+import com.globits.security.SessionTokenServices;
+import com.globits.security.config.TokenSecurityConfig;
 
 @Configuration
 @EnableResourceServer
+@Import(TokenSecurityConfig.class)
 public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter {
 
 	@Autowired
-	private DataSource dataSource;
+	private SessionTokenServices tokenServices;
 
 	@Autowired
 	private JsonToUrlEncodedAuthenticationFilter jsonFilter;
@@ -42,13 +40,17 @@ public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter 
 
 				.sessionManagement()
 
-				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 
 				.and().httpBasic().disable()
 
 				.anonymous()
 
 				.and().authorizeRequests()
+
+				.antMatchers(HttpMethod.POST, "/oauth/revoke").permitAll()
+
+				.antMatchers("/tokens/**").denyAll()
 
 				// .antMatchers("/public").permitAll()
 
@@ -66,20 +68,6 @@ public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter 
 
 	@Override
 	public void configure(final ResourceServerSecurityConfigurer config) {
-		config.tokenServices(tokenServices());
+		config.tokenServices(tokenServices).stateless(true);
 	}
-
-	@Bean
-	@Primary
-	public DefaultTokenServices tokenServices() {
-		final DefaultTokenServices defaultTokenServices = new DefaultTokenServices();
-		defaultTokenServices.setTokenStore(tokenStore());
-		return defaultTokenServices;
-	}
-
-	@Bean
-	public TokenStore tokenStore() {
-		return new JdbcTokenStore(dataSource);
-	}
-
 }

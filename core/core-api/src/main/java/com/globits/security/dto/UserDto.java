@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 
 import com.globits.core.dto.AuditableEntityDto;
@@ -21,9 +22,14 @@ public class UserDto extends AuditableEntityDto {
 
 	private String username;
 
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String password;
 
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String confirmPassword;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private String currentPassword;
 
 	private boolean isSetPassword;
 
@@ -233,6 +239,14 @@ public class UserDto extends AuditableEntityDto {
 
 	public void setConfirmPassword(String confirmPassword) {
 		this.confirmPassword = confirmPassword;
+	}
+
+	public String getCurrentPassword() {
+		return currentPassword;
+	}
+
+	public void setCurrentPassword(String currentPassword) {
+		this.currentPassword = currentPassword;
 	}
 
 	public boolean isSetPassword() {

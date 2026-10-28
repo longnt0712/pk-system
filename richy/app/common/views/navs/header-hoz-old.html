@@ -791,7 +791,7 @@
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy</button>
-            <button type="button" ng-click="changePasswordObj.saveNewPassword()" class="btn blue-dark" data-dismiss="modal">Cập nhật</button>
+            <button type="button" ng-click="changePasswordObj.saveNewPassword()" ng-disabled="changePasswordObj.isSaving" class="btn blue-dark">{{changePasswordObj.isSaving ? 'Đang cập nhật…' : 'Cập nhật'}}</button>
         </div>
     </div>
 </script>

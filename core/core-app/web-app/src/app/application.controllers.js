@@ -3,8 +3,8 @@
     'use strict';
 
     /* Setup App Main Controller */
-    Core.controller('AppController', ['$rootScope', '$scope', '$cookies', '$state', '$timeout', 'constants', 'settings', '$uibModal', 'toastr', 'Upload', 'focus', 'UserService', 'OAuth',
-        function ($rootScope, $scope, $cookies, $state, $timeout, constants, settings, modal, toastr, Upload, focus, userService, OAuth) {
+    Core.controller('AppController', ['$rootScope', '$scope', '$cookies', '$state', '$timeout', 'constants', 'settings', '$uibModal', 'toastr', 'Upload', 'focus', 'UserService', 'OAuth', 'AuthSession',
+        function ($rootScope, $scope, $cookies, $state, $timeout, constants, settings, modal, toastr, Upload, focus, userService, OAuth, authSession) {
             $scope.safeApply = function(fn) {
                 var phase = this.$root.$$phase;
                 if(phase == '$apply' || phase == '$digest') {
@@ -55,7 +55,9 @@
                     currentPassword: null,
                     newPassword: null,
                     newPasswordRep: null,
+                    isSaving: false,
                     saveNewPassword: function () {
+                        if ($scope.changePasswordObj.isSaving) { return; }
                         if (!$scope.changePasswordObj.currentPassword || $scope.changePasswordObj.currentPassword.trim() == '') {
                             toastr.error('Vui lòng nhập mật khẩu hiện thời của bạn.', 'Thông báo');
                             focus('_frm_change_password.current_password');
@@ -74,36 +76,21 @@
                             return;
                         }
 
-                        userService.passwordValid({password: $scope.changePasswordObj.currentPassword}).then(function (data) {
-                            if (!data) {
-                                toastr.error('Mật khẩu hiện thời không đúng. Vui lòng kiểm tra lại!', 'Thông báo');
-                                focus('_frm_change_password.current_password');
-                                return;
-                            } else {
-                                var userObj = {
-                                    id: $scope.currentUser.id,
-                                    username: $scope.currentUser.username,
-                                    password: $scope.changePasswordObj.newPassword
-                                };
-                                userService.changePasswordSelf(userObj, function success() {
-
-                                    toastr.info('Bạn đã cập nhật thành công mật khẩu của mình.', 'Thông báo');
-
-                                    modal.open({
-                                        animation: true,
-                                        templateUrl: 'password_changed_modal.html',
-                                        scope: $scope,
-                                        backdrop: 'static',
-                                        keyboard: false,
-                                        size: 'md'
-                                    });
-
-                                }, function error() {
-                                    toastr.error('Có lỗi xảy ra khi cập nhật mật khẩu. Mật khẩu của bạn vẫn được giữ nguyên như cũ.', 'Thông báo');
-                                }).then(function (data) {
-                                    modalInstance.close();
-                                });
-                            }
+                        var form = $scope.changePasswordObj;
+                        form.isSaving = true;
+                        return userService.changePasswordSelf({
+                            currentPassword: form.currentPassword,
+                            password: form.newPassword
+                        }).then(function () {
+                            form.currentPassword = form.newPassword = form.newPasswordRep = null;
+                            modalInstance.close();
+                            $scope.logout();
+                            toastr.info('Bạn đã cập nhật mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.', 'Thông báo');
+                        }, function () {
+                            toastr.error('Chưa thể cập nhật mật khẩu. Kiểm tra mật khẩu hiện thời và kết nối rồi thử lại.', 'Thông báo');
+                            focus('_frm_change_password.current_password');
+                        }).finally(function () {
+                            form.isSaving = false;
                         });
                     }
                 };
@@ -277,8 +264,7 @@
              * Logout...
              */
             $scope.logout = function () {
-                OAuth.revokeToken();
-                $cookies.remove(constants.oauth2_token);
+                authSession.logout();
                 $state.go('login');
             };
         }

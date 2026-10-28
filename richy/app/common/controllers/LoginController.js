@@ -143,10 +143,12 @@
                 if (!response || !angular.isObject(response.data)) {
                     throw {status: 502};
                 }
+                var identity = response.sessionIdentity || authSession.capture();
+                if (!authSession.isCurrent(identity)) { throw {status: -1, sessionChanged: true}; }
                 credentialsAccepted = true;
                 return $http.get(settings.api.baseUrl + 'api/users/getCurrentUser',
                     {loginRequest: true, timeout: 20000}).then(function (result) {
-                    authSession.saveUser(result.data);
+                    if (!authSession.saveUser(result.data, identity)) { return; }
                     settings.isAdmin = false;
                     angular.forEach(result.data.roles || [], function (role) {
                         if (role.name === 'ROLE_ADMIN') { settings.isAdmin = true; }
@@ -158,6 +160,7 @@
                     }
                 });
             }).catch(function (error) {
+                if (error && error.sessionChanged) { return; }
                 var status = error && error.status;
                 var code = error && error.data && error.data.error;
                 if (!credentialsAccepted && (code === 'invalid_grant' || status === 401)) {

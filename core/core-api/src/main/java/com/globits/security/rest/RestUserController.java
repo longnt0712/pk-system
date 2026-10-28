@@ -202,23 +202,21 @@ public class RestUserController {
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@RequestMapping(path = "/api/users/password", method = RequestMethod.PUT)
 	public ResponseEntity<UserDto> changePassword(@RequestBody UserDto user) {
-		return new ResponseEntity<UserDto>(userService.changePassword(user), HttpStatus.OK);
+		if (user == null || !CommonUtils.isPositive(user.getId(), true) || CommonUtils.isEmpty(user.getPassword())) {
+			return new ResponseEntity<UserDto>(HttpStatus.BAD_REQUEST);
+		}
+		UserDto changed = userService.changePassword(user);
+		return changed == null ? new ResponseEntity<UserDto>(HttpStatus.NOT_FOUND)
+				: new ResponseEntity<UserDto>(changed, HttpStatus.OK);
 	}
 
 	@PreAuthorize("isAuthenticated()")
 	@RequestMapping(path = "/api/users/password/self", method = RequestMethod.PUT)
 	public ResponseEntity<UserDto> changeMyPassword(@RequestBody UserDto dto) {
-
-		User user = SecurityUtils.getCurrentUser();
-		if (user == null) {
-			return new ResponseEntity<UserDto>(new UserDto(), HttpStatus.FORBIDDEN);
+		if (dto == null || CommonUtils.isEmpty(dto.getPassword())) {
+			return new ResponseEntity<UserDto>(HttpStatus.BAD_REQUEST);
 		}
-
-		if (!user.getUsername().equals(dto.getUsername())) {
-			return new ResponseEntity<UserDto>(new UserDto(), HttpStatus.FORBIDDEN);
-		}
-
-		return new ResponseEntity<UserDto>(userService.changePassword(dto), HttpStatus.OK);
+		return new ResponseEntity<UserDto>(userService.changeMyPassword(dto), HttpStatus.OK);
 	}
 
 	@PreAuthorize("isAuthenticated()")
@@ -228,12 +226,9 @@ public class RestUserController {
 			return new ResponseEntity<Boolean>(false, HttpStatus.BAD_REQUEST);
 		}
 
-		User user = SecurityUtils.getCurrentUser();
-		if (user == null) {
-			return new ResponseEntity<Boolean>(false, HttpStatus.FORBIDDEN);
-		}
-
-		Boolean matched = SecurityUtils.passwordsMatch(user.getPassword(), dto.getPassword());
+		UserDto password = new UserDto();
+		password.setPassword(dto.getPassword());
+		Boolean matched = userService.passwordMatch(password);
 
 		return new ResponseEntity<Boolean>(matched, HttpStatus.OK);
 	}
