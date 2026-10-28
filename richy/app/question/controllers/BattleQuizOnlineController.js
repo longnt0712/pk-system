@@ -134,11 +134,7 @@
         vm.topicOwners = [];
         vm.selectedTopicOwner = null;
 
-        /*
-         * Có thể gom nhiều bài từ nhiều category trước khi CREATE ROOM.
-         * selectedTopicToCreate chỉ là bài đang đứng trong ô chọn.
-         */
-        vm.selectedTopicToCreate = null;
+        // Keep selected topics when switching category, as in the task assignment picker.
         vm.selectedTopicsToCreate = [];
         vm.questionSource = 'VOCABULARY';
         vm.exerciseTests = [];
@@ -803,7 +799,7 @@
             return stars >= 1 && stars <= 7
                 ? getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png') : '';
         };
-        vm.hostSettingsTemplate = 'question/views/battle_online_host_settings.html?v=' + encodeURIComponent($window.APP_VERSION || '');
+        vm.hostSettingsTemplate = 'question/views/battle_online_host_settings.html?v=' + encodeURIComponent($window.APP_VERSION || '') + '&vocabPicker=20261028_1';
         vm.eggHostTemplate = 'question/views/battle_online_egg_host.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.demonArenaTemplate = 'question/views/battle_online_demon_arena.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.dragonBallCollectionTemplate = 'question/views/battle_online_dragon_collection.html?v=' + encodeURIComponent($window.APP_VERSION || '');
@@ -1182,8 +1178,8 @@
 
         vm.getTopics = getTopics;
         vm.chooseTopicOwner = chooseTopicOwner;
-        vm.addTopicToCreate = addTopicToCreate;
-        vm.removeTopicToCreate = removeTopicToCreate;
+        vm.topicChoicesToCreate = topicChoicesToCreate;
+        vm.vocabPickerTemplate = 'question/views/battle_online_vocab_picker.html?v=20261028_1';
         vm.formatTopicNames = formatTopicNames;
         vm.openLobbyTopicEditor = openLobbyTopicEditor;
         vm.closeLobbyTopicEditor = closeLobbyTopicEditor;
@@ -2242,7 +2238,6 @@
 
         function getTopics() {
             var requestId = ++topicLoadRequestId;
-            vm.selectedTopicToCreate = null;
             vm.topics = [];
             vm.topicLoadError = '';
 
@@ -2255,6 +2250,8 @@
                 return;
             }
 
+            var category = angular.copy(vm.searchTopicDto.topicCategory);
+            var owner = angular.copy(vm.selectedTopicOwner || {});
             vm.loadingTopics = true;
             questionService
                 .getTopicsForGames(
@@ -2267,11 +2264,21 @@
                         if (destroyed || requestId !== topicLoadRequestId) {
                             return;
                         }
-                        vm.topics =
-                            data &&
-                            data.content
-                                ? data.content
-                                : [];
+                        vm.topics = ((data && data.content) || []).filter(function (topic) {
+                            return topic && topic.id != null;
+                        }).map(function (topic) {
+                            return {
+                                id: topic.id,
+                                name: topic.name || '',
+                                ownerId: owner.id,
+                                ownerName: owner.name || 'TỪ CỦA TÔI',
+                                categoryId: category.id,
+                                categoryName: category.name || '',
+                                displayName: (owner.name ? owner.name + ' — ' : '') +
+                                    (category.name ? category.name + ' — ' : '') +
+                                    (topic.name || 'Bài từ vựng')
+                            };
+                        });
                     },
                     function () {
                         if (!destroyed && requestId === topicLoadRequestId) {
@@ -2292,7 +2299,6 @@
                     ? vm.selectedTopicOwner.id
                     : vm.currentUser.id;
 
-            vm.selectedTopicToCreate = null;
             vm.selectedTopicsToCreate = [];
             vm.topics = [];
 
@@ -2300,84 +2306,15 @@
         }
 
 
-        function addTopicToCreate() {
-            var topic = vm.selectedTopicToCreate;
-
-            if (!topic || topic.id == null) {
-                toastr.warning(
-                    'Chọn một bài rồi bấm THÊM BÀI.',
-                    'BATTLE ONLINE'
-                );
-                return;
-            }
-
-            var duplicate = false;
-
-            angular.forEach(
-                vm.selectedTopicsToCreate,
-                function (selected) {
-                    if (
-                        selected &&
-                        String(selected.id) === String(topic.id)
-                    ) {
-                        duplicate = true;
-                    }
-                }
-            );
-
-            if (duplicate) {
-                toastr.info(
-                    'Bài này đã có trong danh sách.',
-                    'BATTLE ONLINE'
-                );
-                vm.selectedTopicToCreate = null;
-                return;
-            }
-
-            var category =
-                vm.searchTopicDto.topicCategory || {};
-
-            var owner =
-                vm.selectedTopicOwner || {};
-
-            vm.selectedTopicsToCreate.push({
-                id: topic.id,
-                name: topic.name || '',
-                ownerId: owner.id,
-                ownerName: owner.name || 'TỪ CỦA TÔI',
-                categoryId: category.id,
-                categoryName: category.name || '',
-                displayName:
-                    (owner.name
-                        ? owner.name + ' — '
-                        : '') +
-                    (category.name
-                        ? category.name + ' — '
-                        : '') +
-                    (topic.name || 'Bài từ vựng')
+        function topicChoicesToCreate() {
+            var choices = [], seen = Object.create(null);
+            // Selected objects stay in the source so ui-select can resolve chips across categories.
+            angular.forEach((vm.selectedTopicsToCreate || []).concat(vm.topics || []), function (topic) {
+                if (!topic || topic.id == null || seen[String(topic.id)]) { return; }
+                seen[String(topic.id)] = true;
+                choices.push(topic);
             });
-
-            vm.selectedTopicToCreate = null;
-        }
-
-
-        function removeTopicToCreate(topic) {
-            if (!topic) {
-                return;
-            }
-
-            for (
-                var index = vm.selectedTopicsToCreate.length - 1;
-                index >= 0;
-                index -= 1
-            ) {
-                if (
-                    String(vm.selectedTopicsToCreate[index].id) ===
-                    String(topic.id)
-                ) {
-                    vm.selectedTopicsToCreate.splice(index, 1);
-                }
-            }
+            return choices;
         }
 
 
@@ -2416,7 +2353,6 @@
 
             vm.selectedTopicOwner = owner;
             vm.searchTopicDto.userId = owner ? owner.id : vm.currentUser.id;
-            vm.selectedTopicToCreate = null;
             vm.selectedTopicsToCreate = [];
 
             angular.forEach(topicIds, function (topicId, index) {
@@ -2437,7 +2373,8 @@
         }
 
 
-        function closeLobbyTopicEditor() {
+        function closeLobbyTopicEditor(event) {
+            if (event && event.target !== event.currentTarget) { return; }
             if (vm.savingLobbyTopics) {
                 return;
             }

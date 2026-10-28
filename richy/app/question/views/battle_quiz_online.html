@@ -121,59 +121,7 @@
                 </ui-select>
 
 
-                <label>BÀI TỪ VỰNG</label>
-
-                <div class="battle-online-topic-loading" ng-if="vm.loadingTopics || vm.loadingTopicCategories"
-                     role="status" aria-live="polite">
-                    <span class="battle-online-topic-spinner" aria-hidden="true"></span>
-                    {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
-                </div>
-                <button type="button" class="battle-online-topic-load-error"
-                        ng-if="vm.topicLoadError && !vm.loadingTopics" ng-click="vm.getTopics()">
-                    {{vm.topicLoadError}}
-                </button>
-
-                <div class="battle-online-topic-picker-row">
-                    <ui-select
-                        ng-model="vm.selectedTopicToCreate"
-                        ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || !vm.topics.length"
-                        theme="bootstrap">
-
-                        <ui-select-match placeholder="Chọn bài muốn thêm">
-                            {{$select.selected.name}}
-                        </ui-select-match>
-
-                        <ui-select-choices
-                            repeat="topic in vm.topics | filter:$select.search">
-
-                            <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-
-                    <button type="button"
-                            class="battle-online-add-topic-btn"
-                            ng-disabled="vm.loadingTopics || !vm.selectedTopicToCreate"
-                            ng-click="vm.addTopicToCreate()">
-                        <i class="fa fa-plus"></i>
-                        THÊM BÀI
-                    </button>
-                </div>
-
-                <div class="battle-online-selected-topics"
-                     ng-if="vm.selectedTopicsToCreate.length">
-                    <div class="battle-online-selected-topic"
-                         ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
-                        <span>
-                            <small>
-                                {{topic.ownerName}} • {{topic.categoryName}}
-                            </small>
-                            <strong>{{topic.name}}</strong>
-                        </span>
-                        <button type="button"
-                                title="Bỏ bài này"
-                                ng-click="vm.removeTopicToCreate(topic)">×</button>
-                    </div>
-                </div>
+                <div ng-include="vm.vocabPickerTemplate"></div>
 
             </div>
 
@@ -409,13 +357,12 @@
 
     <div class="battle-online-lobby-topic-backdrop"
          ng-if="vm.room && vm.room.status === 'LOBBY' && vm.isHost() && vm.lobbyTopicEditorOpen"
-         ng-click="vm.closeLobbyTopicEditor()"
+         ng-click="vm.closeLobbyTopicEditor($event)"
          role="presentation">
         <section class="battle-online-card battle-online-lobby-topic-editor"
                  role="dialog"
                  aria-modal="true"
-                 aria-labelledby="battle-online-topic-modal-title"
-                 ng-click="$event.stopPropagation()">
+                 aria-labelledby="battle-online-topic-modal-title">
             <div class="battle-online-lobby-topic-editor-head">
                 <div>
                     <small>THAY BÀI TRONG LOBBY</small>
@@ -469,60 +416,7 @@
                     </ui-select-choices>
                 </ui-select>
 
-                <label>BÀI TỪ VỰNG</label>
-                <div class="battle-online-topic-loading"
-                     ng-if="vm.loadingTopics || vm.loadingTopicCategories"
-                     role="status"
-                     aria-live="polite">
-                    <span class="battle-online-topic-spinner" aria-hidden="true"></span>
-                    {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
-                </div>
-                <button type="button"
-                        class="battle-online-topic-load-error"
-                        ng-if="vm.topicLoadError && !vm.loadingTopics"
-                        ng-click="vm.getTopics()">
-                    {{vm.topicLoadError}}
-                </button>
-
-                <div class="battle-online-topic-picker-row">
-                    <ui-select ng-model="vm.selectedTopicToCreate"
-                               class="battle-online-lobby-ui-select"
-                               append-to-body="true"
-                               ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.savingLobbyTopics || !vm.topics.length"
-                               theme="bootstrap">
-                        <ui-select-match placeholder="Chọn bài muốn thêm">
-                            {{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="battle-online-lobby-dropdown"
-                                           repeat="topic in vm.topics | filter:$select.search">
-                            <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-
-                    <button type="button"
-                            class="battle-online-add-topic-btn"
-                            ng-disabled="vm.loadingTopics || vm.savingLobbyTopics || !vm.selectedTopicToCreate"
-                            ng-click="vm.addTopicToCreate()">
-                        <i class="fa fa-plus"></i>
-                        THÊM BÀI
-                    </button>
-                </div>
-
-                <div class="battle-online-selected-topics"
-                     ng-if="vm.selectedTopicsToCreate.length">
-                    <div class="battle-online-selected-topic"
-                         ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
-                        <span>
-                            <small>{{topic.ownerName}} • {{topic.categoryName}}</small>
-                            <strong>{{topic.name}}</strong>
-                        </span>
-                        <button type="button"
-                                title="Bỏ bài này"
-                                aria-label="Bỏ {{topic.name}}"
-                                ng-disabled="vm.savingLobbyTopics"
-                                ng-click="vm.removeTopicToCreate(topic)">×</button>
-                    </div>
-                </div>
+                <div ng-include="vm.vocabPickerTemplate"></div>
 
                 <div class="battle-online-lobby-topic-actions">
                     <button type="button"
@@ -3594,26 +3488,90 @@
         margin: 8px 0 16px;
     }
 
-    .battle-online-topic-picker-row {
-        display: grid;
-        grid-template-columns: minmax(0,1fr) auto;
-        gap: 7px;
-        align-items: stretch;
+    .battle-online-vocab-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 9px;
     }
 
-    .battle-online-add-topic-btn {
-        min-width: 102px;
-        padding: 0 12px;
-        border: 0;
+    .battle-online-vocab-heading > span {
+        padding: 4px 10px;
+        border-radius: 20px;
+        color: #6d4fc8;
+        background: #eee8ff;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .battle-online-vocab-select.ui-select-multiple.ui-select-bootstrap {
+        width: 100%;
+        min-height: 48px;
+        height: auto !important;
+        padding: 8px 12px;
+        border: 1px solid #dce4f2;
         border-radius: 10px;
-        color: #fff;
-        background: linear-gradient(135deg, #5b68ed, #8059eb);
-        font-size: 9px;
-        font-weight: 900;
+        background: #fff;
+        text-align: left;
     }
 
-    .battle-online-add-topic-btn:disabled {
-        opacity: .45;
+    .battle-online-vocab-select > div:first-child {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .battle-online-vocab-select input.ui-select-search {
+        order: -1;
+        width: 100% !important;
+        min-height: 30px;
+        padding: 2px 0;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .battle-online-vocab-select .ui-select-match-item {
+        max-width: 100%;
+        height: auto !important;
+        padding: 5px 8px;
+        margin: 5px 5px 0 0;
+        border: 1px solid #d8d0fb;
+        border-radius: 6px;
+        color: #53408e;
+        background: #f0ebff;
+        font-size: 13px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: left;
+    }
+
+    .battle-online-vocab-select .ui-select-match-close {
+        margin-left: 8px;
+        opacity: .65;
+    }
+
+    .battle-online-vocab-select .ui-select-choices-row,
+    .battle-online-vocab-select .ui-select-choices-row > span,
+    .battle-online-vocab-select .ui-select-choices-row-inner {
+        padding: 9px 12px;
+        font-size: 14px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .battle-online-vocab-select .ui-select-choices-row small {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+    }
+
+    .battle-online-vocab-select .ui-select-no-choice {
+        padding: 12px;
+        color: #64748b;
+        font-size: 13px;
+        white-space: normal;
     }
 
     .battle-online-selected-topics {
@@ -7910,14 +7868,6 @@
         background: #482936 !important;
     }
 
-    html.global-dark-mode
-    .battle-online-add-topic-btn:disabled {
-        color: #c4cce0 !important;
-        background: #3d3a78 !important;
-        opacity: .72;
-    }
-
-
     /* =====================================================
        MOBILE
        ===================================================== */
@@ -8195,14 +8145,6 @@
 
         .battle-online-mode-grid {
             grid-template-columns: 1fr;
-        }
-
-        .battle-online-topic-picker-row {
-            grid-template-columns: 1fr;
-        }
-
-        .battle-online-add-topic-btn {
-            min-height: 38px;
         }
 
         .battle-online-mode-card {

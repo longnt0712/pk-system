@@ -1,0 +1,30 @@
+<div class="battle-online-vocab-heading">
+    <label>BÀI TỪ VỰNG</label>
+    <span>{{vm.selectedTopicsToCreate.length || 0}} bài đã chọn</span>
+</div>
+
+<div class="battle-online-topic-loading" ng-if="vm.loadingTopics || vm.loadingTopicCategories"
+     role="status" aria-live="polite">
+    <span class="battle-online-topic-spinner" aria-hidden="true"></span>
+    {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
+</div>
+<button type="button" class="battle-online-topic-load-error"
+        ng-if="vm.topicLoadError && !vm.loadingTopics" ng-click="vm.getTopics()">
+    {{vm.topicLoadError}}
+</button>
+
+<ui-select multiple theme="bootstrap" title="Bài từ vựng"
+           class="battle-online-vocab-select battle-online-lobby-ui-select"
+           ng-model="vm.selectedTopicsToCreate" close-on-select="false" append-to-body="true"
+           ng-keyup="$event.which === 27 && $select.close()"
+           ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.creatingRoom || vm.savingLobbyTopics">
+    <ui-select-match placeholder="Tìm và chọn một hoặc nhiều bài..." title="{{$item.displayName || $item.name}}">
+        {{$item.name}}
+    </ui-select-match>
+    <ui-select-choices class="battle-online-lobby-dropdown"
+                       repeat="topic in vm.topicChoicesToCreate() | propsFilter:{name:$select.search} track by topic.id">
+        <div ng-bind-html="topic.name | highlight:$select.search"></div>
+        <small>{{topic.categoryName || 'Không phân loại'}}</small>
+    </ui-select-choices>
+    <ui-select-no-choice>Không còn bài phù hợp. Thử tên hoặc category khác.</ui-select-no-choice>
+</ui-select>
