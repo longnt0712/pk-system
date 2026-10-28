@@ -1,0 +1,472 @@
+/* Shared IELTS Room seasonal theme. Removing the root class restores the
+   original site. The repeated class gives these scoped rules precedence over
+   both the site's dark preference and styles embedded in route templates. */
+html.ieltsroom-halloween.ieltsroom-halloween {
+    color-scheme: light;
+    --hwl-night: #171123;
+    --hwl-plum: #342144;
+    --hwl-purple: #69428c;
+    --hwl-orange: #ef8a39;
+    --hwl-orange-dark: #a84c12;
+    --hwl-gold: #ffd48c;
+    --hwl-paper: #fffaf0;
+    --hwl-soft: #f6ecdf;
+    --hwl-line: #e8d8c3;
+    --hwl-ink: #33263c;
+    --hwl-muted: #76677d;
+    background: var(--hwl-night) !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween body {
+    --edu-blue: #b8601f;
+    --edu-blue-dark: #914215;
+    --edu-purple: #765095;
+    --edu-purple-dark: #58356f;
+    --edu-pink: #df8746;
+    --edu-yellow: #ffd48c;
+    --edu-ink: #33263c;
+    --edu-muted: #76677d;
+    --edu-bg: #1c142a;
+    --edu-surface: #fffaf0;
+    --edu-surface-soft: #f6ecdf;
+    --edu-border: #e8d8c3;
+    --edu-shadow-sm: 0 4px 14px #09051124;
+    --edu-shadow-md: 0 10px 28px #09051138;
+    --edu-shadow-lg: 0 18px 42px #09051150;
+    color: var(--hwl-ink) !important;
+    transition: none !important;
+    background: radial-gradient(ellipse at 10% 0%, #4c2b5f80, transparent 45%),
+        radial-gradient(ellipse at 95% 60%, #8e491f1a, transparent 40%), var(--hwl-night) !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper,
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-middle,
+html.ieltsroom-halloween.ieltsroom-halloween .page-content,
+html.ieltsroom-halloween.ieltsroom-halloween .page-container,
+html.ieltsroom-halloween.ieltsroom-halloween .page-content-wrapper {
+    background: transparent !important;
+    transition: none !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .page-title,
+html.ieltsroom-halloween.ieltsroom-halloween .page-head .page-title h1,
+html.ieltsroom-halloween.ieltsroom-halloween .page-breadcrumb > li > a {
+    color: #ffe5bd !important;
+}
+
+/* Navigation and public sign-in. These rules change paint only; the existing
+   tablet/mobile sizing and modal layering remain owned by the layout CSS. */
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav {
+    --nav-ink: #fff1da;
+    --nav-muted: #d0bddc;
+    --nav-border: #705076;
+    --public-ink: #fff1da;
+    --public-muted: #d0bddc;
+    --public-border: #705076;
+    --public-blue: #a95018;
+    --public-purple: #785096;
+    border-color: #79516b !important;
+    background: linear-gradient(110deg, #271a35, #3d2548) !important;
+    box-shadow: 0 8px 28px #08051040, inset 0 1px 0 #ffd48c12 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .container-fluid,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .container-fluid {
+    background: transparent !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-nav-brand,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-brand-text,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-brand,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-brand-text,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-nav > li > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-nav > li > a > span,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .navbar-nav > li > a {
+    color: #fff1da !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-nav > li > a:hover,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-nav > li.open > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-nav > li.is-route-active > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .navbar-nav > li > a:hover,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .navbar-nav > li.open > a {
+    color: #fff3d5 !important;
+    background: #684234 !important;
+    box-shadow: inset 0 0 0 1px #efad6359 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .user-dropdown-mobile > a { color: #fff1da !important; background: #4b2e4e !important; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .dropdown-menu {
+    border-color: var(--hwl-line) !important;
+    color: var(--hwl-ink) !important;
+    background: var(--hwl-paper) !important;
+    box-shadow: 0 16px 40px #08051040 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .dropdown-menu > li > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li > a > span {
+    color: var(--hwl-ink) !important;
+    background: transparent !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li > a:hover,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li.active > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .dropdown-menu > li > a:hover {
+    color: #853d13 !important;
+    background: #fbe6ca !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li > a > i,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .dropdown-menu > li > a > i::before,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .dropdown-menu > li > a > i {
+    color: #ab551c !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .global-theme-toggle,
+html.ieltsroom-halloween.ieltsroom-halloween .mobile-global-theme-toggle,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-theme-toggle,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-login-nav .navbar-toggle,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .navbar-toggle {
+    color: #ffe2b2 !important;
+    border-color: #92718f !important;
+    background: #503250 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .navbar-toggle .icon-bar { background: #ffe2b2 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .global-theme-toggle-item,
+html.ieltsroom-halloween.ieltsroom-halloween .mobile-global-theme-toggle,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-theme-item,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-mobile-theme-toggle { display: none !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-brand-icon,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-brand-icon { border-color: #e8b778 !important; box-shadow: 0 0 18px #ef8a3926 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-desktop-login > li > a,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-login-submit { color: #fffaf0 !important; background: linear-gradient(135deg, #a85018, #794597) !important; }
+
+/* Battle setup panels share seasonal paint; team colors, answer states,
+   animated game arenas and character artwork keep their game-specific rules. */
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-page {
+    --qb2-bg: #21162d;
+    --qb2-panel: #fffaf0;
+    --qb2-panel-soft: #f6ecdf;
+    --qb2-text: #33263c;
+    --qb2-muted: #76677d;
+    --qb2-line: #e8d8c3;
+    --qb2-yellow: #efb66b;
+    --qb2-navy: #432c55;
+    background-color: #21162d !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-header { color: #fff1d6 !important; border-color: #936047 !important; background: url('../images/halloween/harvest-night.svg') right center / 300px auto no-repeat, linear-gradient(115deg, #33203f, #57305b) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-title,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-subtitle { color: #fff1d6 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-search,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-controls,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-score,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-player,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-question-face,
+html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-waiting { border-color: var(--hwl-line) !important; background: var(--hwl-paper) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-page {
+    --bo-bg: #21162d;
+    --bo-card: #fffaf0;
+    --bo-soft: #f6ecdf;
+    --bo-line: #e8d8c3;
+    --bo-text: #33263c;
+    --bo-muted: #76677d;
+    --bo-purple: #83518f;
+    --bo-blue: #a85a24;
+    --bo-orange: #ef9c46;
+    background-color: #21162d !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-home-card h2,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-home-card p,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-room-header { color: var(--hwl-ink) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .battle-team-manager,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-host-question-panel,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-copy-btn,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-save-btn { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; background: var(--hwl-paper) !important; }
+
+/* The harvest illustration is a background image, so it cannot intercept
+   pointer input or add spoken content to the learning hub. */
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-page {
+    --hub-ink: #33263c;
+    --hub-muted: #76677d;
+    --hub-bg: transparent;
+    background: transparent !important;
+    transition: none !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-hero-card,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-library-hero,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-builder-hero,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-hero {
+    color: #fff3de !important;
+    border: 1px solid #936047 !important;
+    background: url('../images/halloween/harvest-night.svg') right center / 400px auto no-repeat,
+        radial-gradient(circle at 10% 0%, #85442560, transparent 48%),
+        linear-gradient(115deg, #33203f, #57305b 62%, #35223f) !important;
+    box-shadow: 0 12px 34px #07040e40, inset 0 1px 0 #ffd48c1c !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero::before { background: url('../images/halloween/corner-web.svg') left top / contain no-repeat !important; opacity: .7 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero h1,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero p,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-kicker,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-page-title,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-page-subtitle,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-library-hero h1,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-library-hero p,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-builder-hero h1,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-hero h1 { color: #fff1d6 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-kicker-dot { background: var(--hwl-orange) !important; box-shadow: 0 0 0 6px #ef8a3924 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-star { color: var(--hwl-gold) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-book { border-color: #efbd80 !important; background: #fff0d5 !important; box-shadow: 0 12px 30px #170d2470 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .user-learning-level { border-color: #b8805a66 !important; background: #160d2a66 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .user-learning-level-badge,
+html.ieltsroom-halloween.ieltsroom-halloween .user-learning-progress-label { color: #ffe4b2 !important; background: #6b434166 !important; border-color: #ddb17566 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .user-learning-progress-track { background: #211333 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .user-learning-progress-fill { background: linear-gradient(90deg, #e08b40, #ffe0a5) !important; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile { border: 1px solid #b6815a59 !important; box-shadow: 0 10px 25px #08051038 !important; background: linear-gradient(135deg, #7a3f20, #985021 65%, #a85a25) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-battle,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-flashcards,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-listening { background: linear-gradient(135deg, #453060, #694082 65%, #805078) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-classes,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-writing { background: linear-gradient(135deg, #334b3d, #475a40 65%, #596747) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-title,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-desc,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-go { color: #fff5e7 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-tag { color: #6a381d !important; background: #fff0d6 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-tile-icon { color: #fff0cf !important; background: #ffffff1f !important; box-shadow: inset 0 0 0 1px #ffdc9b4d !important; }
+
+/* Shared surfaces cover the administration and learning screens. Status chips,
+   answer feedback and destructive action colors keep their existing semantics. */
+html.ieltsroom-halloween.ieltsroom-halloween .portlet:not([class*="idp-"]),
+html.ieltsroom-halloween.ieltsroom-halloween .panel,
+html.ieltsroom-halloween.ieltsroom-halloween .modal-content,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-board,
+html.ieltsroom-halloween.ieltsroom-halloween .student-resume-board,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-card:not(.is-overdue):not(.is-complete),
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-card,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-test-card,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-builder-section,
+html.ieltsroom-halloween.ieltsroom-halloween .test-explorer,
+html.ieltsroom-halloween.ieltsroom-halloween .test-explorer-file,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-panel,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-game-shell,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-question-card,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-stat-card,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-card {
+    color: var(--hwl-ink) !important;
+    border-color: var(--hwl-line) !important;
+    background: var(--hwl-paper) !important;
+    box-shadow: 0 8px 22px #0d081329 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .portlet > .portlet-title,
+html.ieltsroom-halloween.ieltsroom-halloween .panel-heading,
+html.ieltsroom-halloween.ieltsroom-halloween .modal-header,
+html.ieltsroom-halloween.ieltsroom-halloween .modal-footer,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-class-heading,
+html.ieltsroom-halloween.ieltsroom-halloween .test-explorer-toolbar,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-test-card__mode-actions {
+    color: var(--hwl-ink) !important;
+    border-color: var(--hwl-line) !important;
+    background: #f5e9d9 !important;
+}
+
+html.ieltsroom-halloween.ieltsroom-halloween .modal-title,
+html.ieltsroom-halloween.ieltsroom-halloween .portlet-title .caption,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-heading h2,
+html.ieltsroom-halloween.ieltsroom-halloween .student-resume-heading h2,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-copy h3,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-class-heading h3,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-copy h3,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-test-card__title,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-section-heading h2,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-question-text,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-setting-copy label,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-setting-copy span { color: var(--hwl-ink) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-heading p,
+html.ieltsroom-halloween.ieltsroom-halloween .student-resume-heading p,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-title,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-meta,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-section-heading p,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-pronounce,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-field-label,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-setting-copy small { color: var(--hwl-muted) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-kicker,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-kicker,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-meta i { color: #9c4d20 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-card::before,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-card::before { background: linear-gradient(90deg, #b7692b, #8a559c) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-icon,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-icon,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-count { color: #fff6e8 !important; background: linear-gradient(135deg, #9d501d, #81518e) !important; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .form-control,
+html.ieltsroom-halloween.ieltsroom-halloween .ui-select-bootstrap > .ui-select-match > .btn,
+html.ieltsroom-halloween.ieltsroom-halloween .ui-select-bootstrap .ui-select-search,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-login-form .form-control {
+    color-scheme: light;
+    color: var(--hwl-ink) !important;
+    border-color: #d7bf9f !important;
+    background: #fffdfa !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .form-control::placeholder { color: #81717c !important; opacity: 1; }
+html.ieltsroom-halloween.ieltsroom-halloween .form-control:focus,
+html.ieltsroom-halloween.ieltsroom-halloween .ui-select-bootstrap .ui-select-search:focus { border-color: #a95820 !important; box-shadow: 0 0 0 3px #e48b3433 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween input[type="checkbox"],
+html.ieltsroom-halloween.ieltsroom-halloween input[type="radio"] { accent-color: #ad581d; }
+html.ieltsroom-halloween.ieltsroom-halloween .ui-select-choices,
+html.ieltsroom-halloween.ieltsroom-halloween .select2-drop,
+html.ieltsroom-halloween.ieltsroom-halloween .datepicker { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; background: var(--hwl-paper) !important; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .btn-primary,
+html.ieltsroom-halloween.ieltsroom-halloween .btn.blue,
+html.ieltsroom-halloween.ieltsroom-halloween .btn.purple,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-search-btn,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-actions .is-continue,
+html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-footer button,
+html.ieltsroom-halloween.ieltsroom-halloween .battle-online-btn-primary {
+    border-color: #c97b35 !important;
+    color: #2e1c26 !important;
+    background: linear-gradient(135deg, #ed923f, #f4b15d) !important;
+    box-shadow: 0 5px 14px #9b4e1d26 !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .btn-primary:hover,
+html.ieltsroom-halloween.ieltsroom-halloween .btn.blue:hover,
+html.ieltsroom-halloween.ieltsroom-halloween .btn.purple:hover { color: #2e1c26 !important; background: #ffc477 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .btn-default,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-test-card__action,
+html.ieltsroom-halloween.ieltsroom-halloween .reading-resume-actions .is-cancel { color: #71491f !important; border-color: #d7bf9f !important; background: #fff3df !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .reading-test-card__action.is-serious { color: #59396b !important; border-color: #cab3d3 !important; background: #eee2f5 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .btn-link { color: #97501e !important; }
+html.ieltsroom-halloween.ieltsroom-halloween a:focus-visible,
+html.ieltsroom-halloween.ieltsroom-halloween button:focus-visible { outline: 3px solid #d78b43; outline-offset: 3px; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .table {
+    color: var(--hwl-ink) !important;
+    border-color: var(--hwl-line) !important;
+    background: var(--hwl-paper) !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .table > thead > tr > th { color: #5d3f54 !important; border-color: #dfc7aa !important; background: #f0dfc9 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .table > tbody > tr:not(.success):not(.danger):not(.warning):not(.info) > td { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .table-striped > tbody > tr:nth-of-type(odd):not(.success):not(.danger):not(.warning):not(.info) { background: #f8efdf !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .pagination > li > a,
+html.ieltsroom-halloween.ieltsroom-halloween .pagination > li > span { color: #82451c !important; border-color: #dec8aa !important; background: #fff8eb !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .pagination > .active > a,
+html.ieltsroom-halloween.ieltsroom-halloween .pagination > .active > span { color: #fffaf0 !important; border-color: #a9551f !important; background: #a9551f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .nav-tabs > li.active > a { color: #80431e !important; border-color: #d9bd9c !important; background: var(--hwl-paper) !important; }
+
+/* Library, test authoring and the standalone listening workspace use tokens. */
+html.ieltsroom-halloween.ieltsroom-halloween .ielts-test-library-page {
+    --library-accent: #a6541d;
+    --library-accent-2: #d28a39;
+    --library-tint: #f7e6cd;
+    --library-ink: #33263c;
+    --library-muted: #76677d;
+    --library-surface: #fffaf0;
+    --library-glass: #fff8e8;
+    --library-edge: #e8d8c3;
+    --library-divider: #6043271f;
+    --library-shadow: 0 8px 26px #09051126;
+    --library-on-accent: #fffaf0;
+    background: transparent !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .test-explorer-folder { color: #694222 !important; border-color: #dfc39f !important; background: #fbefda !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .reading-builder-action-bar { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; background: #fff6e8f5 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios {
+    --dl-blue: #a6541d;
+    --dl-ink: #33263c;
+    --dl-muted: #76677d;
+    --dl-surface: #fffaf0;
+    --dl-edge: #e8d8c3;
+    --dl-shadow: 0 8px 28px #09051124;
+    color: var(--hwl-ink) !important;
+    background: #f5eadb !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios .ios-dl-header,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios .ios-dl-media-strip,
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios .ios-dl-transport { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; background: var(--hwl-paper) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios .ios-dl-transport button.ios-dl-play { color: #fffaf0 !important; background: #a6541d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .daily-listening-ios .ios-dl-progress-track span { background: linear-gradient(90deg, #a6541d, #edb15b) !important; }
+
+/* Candidate papers retain high contrast and answer feedback. Accessibility
+   contrast modes deliberately continue to own the passage/question surfaces. */
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) {
+    --idp-yellow: #efb66b;
+    --idp-yellow-dark: #a6531d;
+    --idp-soft: #f3e9db;
+    --idp-line: #dfccb4;
+    --idp-panel: #fffaf0;
+    --idp-ink: #33263c;
+    background: #f3e9db !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-reading-test-shell,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-exam-stage,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-main-test { background: #f3e9db !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-exam-topbar { border-color: #a96636 !important; background: #fff9ee !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-exam-logo { color: #964414 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-reading-preview-banner { color: #fff1d6 !important; background: #4d2d60 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .passage-text,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .question-content,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-writing-prompt-pane,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-writing-answer-pane { color: #29212d !important; border-color: #dfccb4 !important; background: #fffdf8 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-instruction-bar,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-question-nav { color: #33263c !important; border-color: #ddc6a9 !important; background: #fff6e5 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-part-question-button.is-current { color: #41291e !important; border-color: #ac5e26 !important; background: #ffe2ad !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-part-group.is-active { background: #f6e6cd !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-player,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-speed,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-skip,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-switch { color: #70401e !important; border-color: #e5cba9 !important; background: #fbefdb !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-play,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-skip button,
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-listening-time { color: #925020 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast-white-black):not(.idp-contrast-yellow-black) .idp-top-check { color: #fffaf0 !important; background: #a6541d !important; }
+
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page.idp-contrast-white-black :is(.table, .table > thead > tr > th, .table > tbody > tr > td, .form-control) { color: #fff !important; border-color: #6b6b6b !important; background: #050505 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page.idp-contrast-yellow-black :is(.table, .table > thead > tr > th, .table > tbody > tr > td, .form-control) { color: #ffe600 !important; border-color: #6b6b6b !important; background: #050505 !important; }
+
+/* Footer, pet popovers and previews share the same seasonal surfaces. */
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-bottom,
+html.ieltsroom-halloween.ieltsroom-halloween .student-footer-board,
+html.ieltsroom-halloween.ieltsroom-halloween .page-footer { color: #ead7ed !important; border-color: #69436c !important; background: #24182f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-notebook { color: #f3e0c4 !important; border-color: #745274 !important; background: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #eecb9d12 28px), #342139 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-footer-brand-copy strong { color: #ffe2b2 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-footer-brand-copy small,
+html.ieltsroom-halloween.ieltsroom-halloween .student-footer-meta { color: #cfb9d1 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .learning-pet-panel,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-pet-bubble { color: var(--hwl-ink) !important; border-color: var(--hwl-line) !important; background: var(--hwl-paper) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .student-scroll-top { color: #fff2da !important; border-color: #f3bb77 !important; background: #7b488b !important; }
+
+/* Admin selection uses the same palette as the shared theme. */
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-open { color: #ffe4bd !important; border-color: #a97c64 !important; background: #623d4c !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-open:hover { color: #fff4df !important; background: #80503f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-kicker { color: #9b501f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-option { color: var(--hwl-ink) !important; border-color: #ddc6a9 !important; background: #fffdf8 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-option.is-selected { border-color: #a75422 !important; background: #fff0d5 !important; box-shadow: 0 0 0 1px #a75422 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-option input { accent-color: #a75422 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-close { color: #714324 !important; background: #f3e1c9 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-editor .modal-header p,
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-option > span:last-child,
+html.ieltsroom-halloween.ieltsroom-halloween .site-theme-current { color: #756172 !important; }
+
+@media (max-width: 767px) {
+    html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero,
+    html.ieltsroom-halloween.ieltsroom-halloween .daily-hero-card,
+    html.ieltsroom-halloween.ieltsroom-halloween .reading-library-hero,
+    html.ieltsroom-halloween.ieltsroom-halloween .reading-builder-hero,
+    html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-header,
+    html.ieltsroom-halloween.ieltsroom-halloween .battle-online-hero { background-image: linear-gradient(90deg, #33203f38, #33203fb8), url('../images/halloween/harvest-night.svg'), radial-gradient(circle at 10% 0%, #85442560, transparent 48%), linear-gradient(115deg, #33203f, #57305b 62%, #35223f) !important; background-size: auto, 270px auto, auto, auto !important; background-position: center, right bottom, center, center !important; background-repeat: no-repeat !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.ieltsroom-halloween.ieltsroom-halloween .learning-hub-hero,
+    html.ieltsroom-halloween.ieltsroom-halloween .learning-tile,
+    html.ieltsroom-halloween.ieltsroom-halloween .student-assignment-card { animation: none !important; transition: none !important; }
+}

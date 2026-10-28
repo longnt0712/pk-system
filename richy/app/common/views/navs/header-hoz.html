@@ -331,6 +331,9 @@
             </ul>
 
             <ul class="nav navbar-nav navbar-right">
+                <li class="site-theme-nav" ng-if="settings.siteThemeEnabled && settings.isAdmin">
+                    <site-theme-control></site-theme-control>
+                </li>
                 <li class="dropdown user-dropdown-mobile">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" data-close-others="true">
                         <span class="username username-hide-on-mobile user-dropdown-label" data-ng-cloak="">
