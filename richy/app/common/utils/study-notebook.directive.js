@@ -13,7 +13,7 @@
                     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5L20 7v13.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M16 3.5V8h4M8 11h8M8 15h6M7 3.5v17"/></svg></button>',
                     '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
                     '<section class="study-notebook-dialog" role="dialog" aria-modal="true" ng-attr-id="{{notebook.dialogId}}" ng-attr-aria-labelledby="{{notebook.dialogId}}-title">',
-                    '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><span>SỔ TAY HỌC TẬP</span><h2 ng-attr-id="{{notebook.dialogId}}-title">Ghi lại điều bạn vừa học</h2></div>',
+                    '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">Sổ tay học tập</h2></div>',
                     '<div class="study-notebook-heading__actions"><span class="study-notebook-status" ng-class="\'is-\'+notebook.session.status" role="status" aria-live="polite">{{notebook.statusText()}}</span>',
                     '<button type="button" class="study-notebook-action" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
@@ -24,22 +24,24 @@
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
                     '<div class="study-notebook-paper-options"><label><span>Khổ giấy A4</span><select ng-model="notebook.session.document.orientation" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Hướng giấy A4"><option value="portrait">Dọc</option><option value="landscape">Ngang</option></select></label>',
-                    '<label><span>Kiểu giấy</span><select ng-model="notebook.session.document.pattern" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Kiểu kẻ giấy"><option value="blank">Giấy trơn</option><option value="lined">Dòng kẻ ngang</option><option value="vertical">Dòng kẻ dọc</option><option value="grid">Ô ly</option><option value="squares">Ô vuông lớn</option></select></label></div></div>',
+                    '<label><span>Kiểu giấy</span><select ng-model="notebook.session.document.pattern" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Kiểu kẻ giấy"><option value="blank">Giấy trơn</option><option value="lined">Dòng kẻ ngang</option><option value="vertical">Dòng kẻ dọc</option><option value="grid">Ô ly</option><option value="squares">Ô vuông lớn</option><option value="sketch">Giấy nhám phác thảo</option></select></label></div>',
+                    '<div class="study-notebook-zoom" role="group" aria-label="Thu phóng trang giấy"><button type="button" ng-click="notebook.zoomOut()" ng-disabled="notebook.zoomPercent<=50" aria-label="Thu nhỏ trang giấy" title="Thu nhỏ"><i class="fa fa-search-minus" aria-hidden="true"></i></button><output aria-live="polite" aria-label="Mức thu phóng">{{notebook.zoomPercent}}%</output><button type="button" ng-click="notebook.zoomIn()" ng-disabled="notebook.zoomPercent>=200" aria-label="Phóng to trang giấy" title="Phóng to"><i class="fa fa-search-plus" aria-hidden="true"></i></button><button type="button" class="study-notebook-zoom__fit" ng-click="notebook.fitZoom()" title="Đưa trang giấy về vừa màn hình">Vừa trang</button></div></div>',
                     '<div class="study-notebook-notice" ng-if="notebook.session.error || notebook.session.status===\'conflict\'">',
                     '<span>{{notebook.session.error || \'Có bản ghi chú khác vừa được đồng bộ. Chọn bản bạn muốn giữ.\'}}</span>',
                     '<button type="button" ng-if="notebook.session.status!==\'conflict\'" ng-click="notebook.refresh()">Thử đồng bộ lại</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'keepLocal\')">Giữ bản trên máy</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'useRemote\')">Dùng bản đồng bộ</button></div>',
-                    '<div class="study-notebook-scroll"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
+                    '<div class="study-notebook-scroll"><div class="study-notebook-page-frame"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
                     '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" placeholder="Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
-                    '</div></div>',
+                    '</div></div></div>',
                     '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> Ghi chú riêng của bạn trong đề này</span><label><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
                     '</section></div>'
                 ].join(''),
                 link: function (scope, element, attrs, ui) {
                     var document = $window.document, host = element[0], button = host.querySelector('.study-notebook-toggle');
                     var overlay = host.querySelector('.study-notebook-overlay'), dialog = host.querySelector('.study-notebook-dialog');
+                    var scroller = host.querySelector('.study-notebook-scroll'), pageFrame = host.querySelector('.study-notebook-page-frame');
                     var paper = host.querySelector('.study-notebook-paper'), textarea = host.querySelector('.study-notebook-text');
                     var canvas = host.querySelector('.study-notebook-canvas'), context = canvas.getContext && canvas.getContext('2d');
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
@@ -47,10 +49,12 @@
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
                     var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null;
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
+                    var zoomAnchor = null;
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
                     ui.tool = 'text'; ui.inkColor = '#315bbe'; ui.inkWidth = '4'; ui.touchDrawing = false;
+                    ui.zoomPercent = 100;
                     ui.tools = [{ id: 'text', label: 'Gõ chữ', icon: 'fa-font' }, { id: 'pen', label: 'Bút', icon: 'fa-pencil' },
                         { id: 'highlighter', label: 'Đánh dấu', icon: 'fa-paint-brush' }, { id: 'eraser', label: 'Tẩy', icon: 'fa-eraser' }];
                     // Portal outside the exam header's stacking/overflow contexts.
@@ -127,6 +131,23 @@
                     };
                     ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); markChanged(); scheduleLayout(); } };
                     ui.setTool = function (tool) { finishStroke(true); ui.tool = tool; scheduleDraw(); };
+                    function captureZoomAnchor() {
+                        if (!visible() || !scale) { return null; }
+                        var viewport = scroller.getBoundingClientRect(), bounds = paper.getBoundingClientRect();
+                        var x = (scroller.clientWidth || viewport.width) / 2, y = (scroller.clientHeight || viewport.height) / 2;
+                        return { x: (viewport.left + (scroller.clientLeft || 0) + x - bounds.left) / scale,
+                            y: (viewport.top + (scroller.clientTop || 0) + y - bounds.top) / scale, viewportX: x, viewportY: y };
+                    }
+                    ui.setZoom = function (percent) {
+                        percent = Number(percent);
+                        if (!isFinite(percent)) { return; }
+                        percent = Math.max(50, Math.min(200, Math.round(percent)));
+                        if (percent === ui.zoomPercent) { return; }
+                        flushText(); finishStroke(true); zoomAnchor = captureZoomAnchor(); ui.zoomPercent = percent; layout();
+                    };
+                    ui.zoomIn = function () { ui.setZoom(ui.zoomPercent + 25); };
+                    ui.zoomOut = function () { ui.setZoom(ui.zoomPercent - 25); };
+                    ui.fitZoom = function () { ui.setZoom(100); };
                     ui.canUndo = function () { return undo.length > 0 && !ui.isLocked(); };
                     ui.canRedo = function () { return redo.length > 0 && !ui.isLocked(); };
                     function replaceStrokes(next, history) {
@@ -150,22 +171,45 @@
                         if (!visible() || !ui.session || !ui.session.document) { return; }
                         var previousScale = scale, previousDpr = dpr;
                         positionOverlay(); extent();
-                        paper.style.maxWidth = logicalWidth + 'px';
-                        var width = paper.getBoundingClientRect().width;
-                        if (!width) { return; }
+                        var viewport = scroller.getBoundingClientRect();
+                        var scrollStyle = $window.getComputedStyle ? $window.getComputedStyle(scroller) : null;
+                        var paddingX = scrollStyle ? (parseFloat(scrollStyle.paddingLeft) || 0) + (parseFloat(scrollStyle.paddingRight) || 0) : 0;
+                        var availableWidth = Math.max(1, (scroller.clientWidth || viewport.width || paper.getBoundingClientRect().width) - paddingX);
+                        var width = logicalWidth * Math.min(1, availableWidth / logicalWidth) * (ui.zoomPercent / 100);
+                        paper.style.maxWidth = 'none'; paper.style.width = width + 'px';
+                        pageFrame.style.width = Math.max(availableWidth, width) + 'px';
                         scale = width / logicalWidth;
+                        var pattern = ui.session.document.pattern;
+                        var lineHeight = pattern === 'grid' ? 20 : (pattern === 'squares' ? 64 : 28);
+                        var ascent = 15, descent = 4;
+                        if (context && context.measureText) {
+                            var previousFont = context.font; context.font = '17px Arial';
+                            var metrics = context.measureText('Mg'); context.font = previousFont;
+                            if (isFinite(metrics.fontBoundingBoxAscent) && isFinite(metrics.fontBoundingBoxDescent) && metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent > 0) {
+                                ascent = metrics.fontBoundingBoxAscent; descent = metrics.fontBoundingBoxDescent;
+                            }
+                        }
+                        var baseline = (lineHeight - ascent - descent) / 2 + ascent;
+                        var paddingTop = 40;
+                        if (pattern === 'lined' || pattern === 'grid' || pattern === 'squares') {
+                            paddingTop = Math.round((40 + baseline) / lineHeight) * lineHeight - baseline;
+                        }
                         paper.style.setProperty('--notebook-line-step', (28 * scale) + 'px');
                         paper.style.setProperty('--notebook-grid-step', (20 * scale) + 'px');
                         paper.style.setProperty('--notebook-square-step', (64 * scale) + 'px');
                         paper.style.setProperty('--notebook-rule-width', Math.min(1, scale) + 'px');
+                        paper.style.setProperty('--notebook-text-line-height', (lineHeight * scale) + 'px');
+                        paper.style.setProperty('--notebook-rule-offset-y', '0px');
                         paper.style.minHeight = Math.round(logicalHeight * scale) + 'px';
                         textarea.style.fontSize = (17 * scale) + 'px';
-                        textarea.style.lineHeight = (28 * scale) + 'px';
+                        textarea.style.lineHeight = (lineHeight * scale) + 'px';
                         textarea.style.padding = (40 * scale) + 'px';
+                        textarea.style.paddingTop = (paddingTop * scale) + 'px';
                         textarea.style.height = '0px';
                         var textHeight = textarea.scrollHeight;
                         textarea.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
                         var height = Math.max(logicalHeight * scale, textarea.getBoundingClientRect().height);
+                        pageFrame.style.height = Math.ceil(height) + 'px';
                         logicalHeight = Math.max(logicalHeight, height / scale);
                         // Long notes must not allocate a giant iPad canvas. Uniform
                         // raster downscaling keeps canonical ink coordinates unchanged.
@@ -175,6 +219,12 @@
                         if (inkCache.width !== pixelsWide || inkCache.height !== pixelsHigh) { inkCache.width = pixelsWide; inkCache.height = pixelsHigh; cacheDirty = true; }
                         canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
                         if (scale !== previousScale || dpr !== previousDpr) { cacheDirty = true; }
+                        if (zoomAnchor) {
+                            var anchor = zoomAnchor; zoomAnchor = null;
+                            var updatedPaper = paper.getBoundingClientRect(), updatedViewport = scroller.getBoundingClientRect();
+                            scroller.scrollLeft += updatedPaper.left + anchor.x * scale - updatedViewport.left - (scroller.clientLeft || 0) - anchor.viewportX;
+                            scroller.scrollTop += updatedPaper.top + anchor.y * scale - updatedViewport.top - (scroller.clientTop || 0) - anchor.viewportY;
+                        }
                         scheduleDraw();
                     }
                     function scheduleLayout() {
@@ -334,7 +384,7 @@
                         if (identity === next) { return; }
                         identity = next; ui.close();
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
-                        undo = []; redo = []; knownStrokes = null;
+                        undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; zoomAnchor = null;
                     }
                     var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled'], identityChanged);
                     var unwatchStrokes = scope.$watchCollection(function () { return strokes(); }, function (value) {

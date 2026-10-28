@@ -405,3 +405,20 @@ test('a background cloud refresh keeps an existing notebook editable and preserv
     assert.equal(JSON.parse(h.storage.get(session.localKey)).document.text, session.document.text);
     assert.equal(JSON.parse(h.storage.get(session.localKey)).dirty, true); assert.equal(h.posts.length, 0);
 });
+
+test('sketch paper round-trips through local and cloud storage without changing either A4 orientation or existing ink', async () => {
+    for (const orientation of ['portrait', 'landscape']) {
+        const h = harness(), session = h.open(); await session.ready;
+        const strokes = [{id: 'kept-ink', tool: 'pen', color: '#315bbe', width: 4, points: [[100, 120, .4], [240, 150, .8]]}];
+        session.document.text = 'Scratch notes for this lesson'; session.document.strokes = clone(strokes);
+        session.document.orientation = orientation; session.document.pattern = 'sketch'; session.changed();
+        const local = JSON.parse(h.storage.get(session.localKey));
+        assert.equal(local.document.pattern, 'sketch'); assert.deepEqual(local.document.strokes, strokes);
+        await session.save(); assert.equal(session.status, 'saved');
+        const cloud = JSON.parse(h.cloud.get(session.key).payload);
+        assert.equal(cloud.document.pattern, 'sketch'); assert.equal(cloud.document.orientation, orientation); assert.deepEqual(cloud.document.strokes, strokes);
+        const reopened = h.instantiate().open(identity); await reopened.ready;
+        assert.equal(reopened.document.pattern, 'sketch'); assert.equal(reopened.document.orientation, orientation);
+        assert.deepEqual(clone(reopened.document.strokes), strokes); assert.equal(reopened.document.text, 'Scratch notes for this lesson');
+    }
+});

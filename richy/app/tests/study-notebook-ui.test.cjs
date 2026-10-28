@@ -20,6 +20,7 @@ function harness(options = {}) {
             this.classes = new Set(); this.classList = {add: name => this.classes.add(name), remove: name => this.classes.delete(name), contains: name => this.classes.has(name)};
             this.width = 300; this.height = 150; this.scrollHeight = options.textHeight || 300;
             this.bounds = {left: 40, top: 30, width: options.width || 794, height: 1123};
+            this.clientWidth = options.width || 794; this.clientHeight = 600; this.scrollLeft = 0; this.scrollTop = 0;
         }
         appendChild(node) { if (node.parentNode) node.parentNode.removeChild(node); this.children.push(node); node.parentNode = this; return node; }
         removeChild(node) { const index = this.children.indexOf(node); if (index >= 0) this.children.splice(index, 1); node.parentNode = null; return node; }
@@ -27,9 +28,13 @@ function harness(options = {}) {
         addEventListener(name, callback) { if (!this.listeners.has(name)) this.listeners.set(name, new Set()); this.listeners.get(name).add(callback); }
         removeEventListener(name, callback) { (this.listeners.get(name) || new Set()).delete(callback); }
         getBoundingClientRect() {
-            const width = this.name === 'canvas' && this.style.width ? parseFloat(this.style.width) : this.bounds.width;
+            const width = this.style.width ? parseFloat(this.style.width) : this.bounds.width;
             const height = this.style.height && this.style.height !== '0px' ? parseFloat(this.style.height) : this.bounds.height;
-            return {...this.bounds, width, height, right: this.bounds.left + width, bottom: this.bounds.top + height};
+            let left = this.bounds.left, top = this.bounds.top;
+            if (this.name === 'frame') { left = scroller.bounds.left - scroller.scrollLeft; top = scroller.bounds.top - scroller.scrollTop; }
+            if (this.name === 'paper') { const bounds = frame.getBoundingClientRect(); left = bounds.left + Math.max(0, (bounds.width - width) / 2); top = bounds.top; }
+            if (this.name === 'canvas' || this.name === 'textarea') { const bounds = paper.getBoundingClientRect(); left = bounds.left; top = bounds.top; }
+            return {...this.bounds, left, top, width, height, right: left + width, bottom: top + height};
         }
         getClientRects() { return [this.getBoundingClientRect()]; }
         focus() { document.activeElement = this; }
@@ -44,10 +49,13 @@ function harness(options = {}) {
     }
     const host = new Node('host'), button = new Node('button'), overlay = new Node('overlay'), dialog = new Node('dialog');
     const paper = new Node('paper'), textarea = new Node('textarea'), canvas = new Node('canvas'), close = new Node('close');
+    const scroller = new Node('scroller'), frame = new Node('frame');
     host.selectors = {'.study-notebook-toggle': button, '.study-notebook-overlay': overlay, '.study-notebook-dialog': dialog,
-        '.study-notebook-paper': paper, '.study-notebook-text': textarea, '.study-notebook-canvas': canvas};
+        '.study-notebook-paper': paper, '.study-notebook-text': textarea, '.study-notebook-canvas': canvas,
+        '.study-notebook-scroll': scroller, '.study-notebook-page-frame': frame};
     dialog.selectors = {'.study-notebook-close': close}; dialog.controls = [close, textarea];
-    host.appendChild(button); host.appendChild(overlay); overlay.appendChild(dialog); dialog.appendChild(close); dialog.appendChild(paper);
+    host.appendChild(button); host.appendChild(overlay); overlay.appendChild(dialog); dialog.appendChild(close); dialog.appendChild(scroller);
+    scroller.appendChild(frame); frame.appendChild(paper);
     paper.appendChild(textarea); paper.appendChild(canvas);
     document = new Node('document'); document.body = new Node('body'); document.documentElement = new Node('html');
     document.documentElement.appendChild(document.body); document.body.appendChild(host); document.activeElement = button;
@@ -55,6 +63,7 @@ function harness(options = {}) {
     function createContext(label) {
         const value = {};
         for (const name of ['setTransform', 'clearRect', 'beginPath', 'arc', 'fill', 'moveTo', 'lineTo', 'stroke', 'drawImage']) value[name] = (...args) => drawCalls.push({name, args, context: label});
+        value.measureText = text => ({width: String(text).length * 8, actualBoundingBoxAscent: 15, actualBoundingBoxDescent: 4});
         return value;
     }
     const context = createContext('main');
@@ -64,6 +73,10 @@ function harness(options = {}) {
     function timeout(callback) { const id = ++nextTimer; timers.set(id, callback); return id; }
     timeout.cancel = id => timers.delete(id);
     const window = new Node('window'); window.document = document; window.devicePixelRatio = options.dpr || 1; window.innerHeight = 900;
+    window.getComputedStyle = node => ({paddingLeft: '0px', paddingRight: '0px', fontFamily: 'Arial',
+        fontSize: node.style.fontSize || '17px', lineHeight: node.style.lineHeight || '28px'});
+    Object.defineProperty(scroller, 'scrollWidth', {get() { return Math.max(scroller.clientWidth, parseFloat(frame.style.width) || 0); }});
+    Object.defineProperty(scroller, 'scrollHeight', {get() { return Math.max(scroller.clientHeight, parseFloat(frame.style.height) || 0); }});
     window.requestAnimationFrame = callback => { const id = ++nextFrame; frames.set(id, callback); return id; };
     window.cancelAnimationFrame = id => frames.delete(id);
     window.setTimeout = timeout; window.clearTimeout = timeout.cancel;
@@ -122,7 +135,7 @@ function harness(options = {}) {
         }
         throw new Error('Notebook layout did not settle');
     }
-    return {ui, scope, document, window, host, button, overlay, dialog, paper, textarea, canvas, captures, context, drawCalls,
+    return {ui, scope, document, window, host, button, overlay, dialog, paper, textarea, canvas, scroller, frame, captures, context, drawCalls,
         opened, sessions, directive, flush, timers, frames, resizeObservers, textModel,
         async open() { ui.toggle(); await flush(); return ui.session; },
         pointer(name, values) { return canvas.fire(name, values); }};
@@ -189,7 +202,7 @@ test('changing A4 orientation or paper lines keeps stored strokes at their origi
     const h = harness(), session = await h.open(); h.ui.setTool('pen');
     h.pointer('pointerdown'); h.pointer('pointerup', {clientX: 240}); const before = clone(session.document.strokes);
     session.document.orientation = 'landscape'; session.document.pattern = 'squares'; h.ui.changed(); await h.flush();
-    assert.deepEqual(clone(session.document.strokes), before); assert.equal(h.paper.style.maxWidth, '1123px');
+    assert.deepEqual(clone(session.document.strokes), before); assert.ok(h.paper.getBoundingClientRect().width <= h.scroller.clientWidth);
     h.ui.save(); assert.equal(session.saved.at(-1).orientation, 'landscape'); assert.equal(session.saved.at(-1).pattern, 'squares');
 });
 
@@ -263,7 +276,7 @@ test('responsive A4 layout scales text, padding and paper lines by the same fact
     assert.equal(parseFloat(h.textarea.style.fontSize), 17); assert.equal(parseFloat(h.textarea.style.lineHeight), 28);
     assert.equal(parseFloat(h.textarea.style.padding), 40); assert.equal(parseFloat(h.paper.style['--notebook-line-step']), 28);
     assert.equal(parseFloat(h.paper.style['--notebook-grid-step']), 20); assert.equal(parseFloat(h.paper.style['--notebook-square-step']), 64);
-    h.paper.bounds.width = 397; h.window.fire('resize'); await h.flush();
+    h.paper.bounds.width = 397; h.scroller.clientWidth = 397; h.window.fire('resize'); await h.flush();
     assert.equal(parseFloat(h.textarea.style.fontSize), 8.5); assert.equal(parseFloat(h.textarea.style.lineHeight), 14);
     assert.equal(parseFloat(h.textarea.style.padding), 20); assert.equal(parseFloat(h.paper.style['--notebook-line-step']), 14);
     assert.equal(parseFloat(h.paper.style['--notebook-grid-step']), 10); assert.equal(parseFloat(h.paper.style['--notebook-square-step']), 32);
@@ -324,6 +337,70 @@ test('ordinary text changes reuse the committed ink cache until stroke geometry 
     assert.ok(cachePaints() > painted, 'A newly committed stroke invalidates the cached ink');
 });
 
+test('zoom buttons respect their bounds, fit resets the view, and the page frame exposes horizontal overflow only when required', async () => {
+    const h = harness({width: 397}), session = await h.open(); session.document.text = 'The same note while zooming';
+    assert.equal(h.ui.zoomPercent, 100);
+    for (let index = 0; index < 10; index++) h.ui.zoomIn(); await h.flush();
+    assert.equal(h.ui.zoomPercent, 200); assert.equal(parseFloat(h.paper.style.width), 794);
+    assert.equal(parseFloat(h.frame.style.width), 794); assert.ok(h.scroller.scrollWidth > h.scroller.clientWidth);
+    assert.ok(parseFloat(h.frame.style.height) >= parseFloat(h.canvas.style.height));
+    for (let index = 0; index < 10; index++) h.ui.zoomOut(); await h.flush();
+    assert.equal(h.ui.zoomPercent, 50); assert.equal(parseFloat(h.paper.style.width), 198.5);
+    assert.equal(parseFloat(h.frame.style.width), 397);
+    h.ui.fitZoom(); await h.flush();
+    assert.equal(h.ui.zoomPercent, 100); assert.equal(parseFloat(h.paper.style.width), 397);
+    assert.equal(h.scroller.scrollWidth, h.scroller.clientWidth); assert.equal(session.document.text, 'The same note while zooming');
+});
+
+test('zoom scales text, paper grids and pointer projection together while every saved stroke stays in canonical page coordinates', async () => {
+    const existing = [{id: 'existing', tool: 'pen', color: '#315bbe', width: 4, points: [[100, 120, .4], [200, 140, .8]]}];
+    const h = harness({document: {text: 'Anchored annotations', strokes: existing}}), session = await h.open();
+    h.ui.setZoom(150); await h.flush();
+    assert.equal(parseFloat(h.textarea.style.fontSize), 25.5); assert.equal(parseFloat(h.textarea.style.lineHeight), 42);
+    assert.equal(parseFloat(h.textarea.style.padding), 60); assert.equal(parseFloat(h.paper.style['--notebook-line-step']), 42);
+    assert.equal(parseFloat(h.paper.style['--notebook-grid-step']), 30); assert.equal(parseFloat(h.paper.style['--notebook-square-step']), 96);
+    h.ui.setTool('pen'); let box = h.canvas.getBoundingClientRect();
+    h.pointer('pointerdown', {clientX: box.left + 400 * 1.5, clientY: box.top + 300 * 1.5});
+    h.pointer('pointerup', {clientX: box.left + 450 * 1.5, clientY: box.top + 350 * 1.5});
+    assert.deepEqual(clone(session.document.strokes[1].points), [[400, 300, .5], [450, 350, .5]]);
+    h.ui.setZoom(50); await h.flush(); box = h.canvas.getBoundingClientRect();
+    assert.equal(parseFloat(h.textarea.style.fontSize), 8.5); assert.equal(parseFloat(h.paper.style['--notebook-grid-step']), 10);
+    h.pointer('pointerdown', {clientX: box.left + 400 * .5, clientY: box.top + 500 * .5});
+    h.pointer('pointerup', {clientX: box.left + 450 * .5, clientY: box.top + 550 * .5});
+    assert.deepEqual(clone(session.document.strokes[2].points), [[400, 500, .5], [450, 550, .5]]);
+    assert.deepEqual(clone(session.document.strokes[0]), existing[0]); assert.equal(session.document.text, 'Anchored annotations');
+    h.ui.fitZoom(); await h.flush(); h.ui.save();
+    assert.deepEqual(clone(session.saved.at(-1).strokes), clone(session.document.strokes));
+});
+
+test('changing zoom commits an active gesture before its drawing scale changes', async () => {
+    const h = harness(), session = await h.open(); h.ui.setTool('pen');
+    h.pointer('pointerdown', {clientX: 440, clientY: 330}); h.pointer('pointermove', {clientX: 490, clientY: 380});
+    h.ui.zoomIn(); await h.flush();
+    assert.equal(h.ui.zoomPercent, 125); assert.equal(h.captures.size, 0); assert.equal(session.changedCalls, 1);
+    assert.deepEqual(clone(session.document.strokes[0].points), [[400, 300, .5], [450, 350, .5]]);
+    assert.equal(session.document.orientation, 'portrait');
+});
+
+test('text baselines align with unchanged paper rules at mobile widths and every supported zoom', async () => {
+    const existing = [{id: 'anchored-ink', tool: 'pen', color: '#315bbe', width: 4, points: [[100, 100, .5], [200, 100, .5]]}];
+    const h = harness({width: 397, document: {text: 'Words written on the ruled paper', strokes: existing}}), session = await h.open();
+    for (const [pattern, canonicalStep, variable] of [['lined', 28, '--notebook-line-step'], ['grid', 20, '--notebook-grid-step'], ['squares', 64, '--notebook-square-step']]) {
+        session.document.pattern = pattern; h.ui.changed(); await h.flush();
+        for (const zoom of [50, 100, 150, 200]) {
+            h.ui.setZoom(zoom); await h.flush();
+            const scale = h.paper.getBoundingClientRect().width / 794, step = parseFloat(h.paper.style[variable]);
+            const baselineWithinLine = ((canonicalStep - 15 - 4) / 2 + 15) * scale;
+            const firstBaseline = parseFloat(h.textarea.style.paddingTop) + baselineWithinLine;
+            const nextBaseline = firstBaseline + parseFloat(h.textarea.style.lineHeight);
+            assert.ok(Math.abs(firstBaseline / step - Math.round(firstBaseline / step)) < 1e-8, pattern + ' first baseline at ' + zoom);
+            assert.ok(Math.abs(nextBaseline / step - Math.round(nextBaseline / step)) < 1e-8, pattern + ' next baseline at ' + zoom);
+            assert.equal(h.paper.style['--notebook-rule-offset-y'], '0px', 'The stored handwriting must not see a shifted paper grid');
+            assert.deepEqual(clone(session.document.strokes), existing);
+        }
+    }
+});
+
 test('the shared Study header mounts the notebook between the logo and title and loads versioned notebook assets', () => {
     const header = read('question/views/ielts_reading_actual_test_idp.html');
     const logo = header.indexOf('idp-ieltsroom-logo'), notebook = header.indexOf('<study-notebook'), title = header.indexOf('idp-exam-test-context');
@@ -332,9 +409,12 @@ test('the shared Study header mounts the notebook between the logo and title and
     assert.match(markup, /ng-if="vm\.isStudyMode\(\) && !vm\.isPreviewMode"/);
     for (const mode of ['READING', 'LISTENING', 'WRITING', 'COMPREHENSIVE']) assert.ok(markup.includes(mode));
     const index = read('index.html');
-    for (const script of ['common/utils/study-notebook-store.js', 'common/utils/study-notebook.directive.js']) assert.ok(index.includes("writeVersionedScript('" + script + "')"));
-    assert.ok(index.includes("writeVersionedStylesheet('assets/css/study-notebook.css')"));
+    for (const script of ['common/utils/study-notebook-store.js', 'common/utils/study-notebook.directive.js']) {
+        assert.match(index, new RegExp("writeVersionedScript\\('" + script.replace(/\./g, '\\.') + "(?:\\?[^']*)?'\\)"));
+    }
+    assert.match(index, /writeVersionedStylesheet\('assets\/css\/study-notebook\.css(?:\?[^']*)?'\)/);
     const css = read('assets/css/study-notebook.css'); assert.match(css, /\.study-notebook-toggle\.is-active\s*\{/);
+    assert.ok(read('common/utils/study-notebook.directive.js').includes('value="sketch"'), 'Sketch paper can be selected in the notebook toolbar');
     const routes = read('question/question.module.js');
     for (const mode of ['ielts_reading_actual_test', 'ielts_listening_actual_test', 'ielts_writing_actual_test', 'comprehensive_actual_test']) {
         const start = routes.indexOf(".state('application." + mode + "'");

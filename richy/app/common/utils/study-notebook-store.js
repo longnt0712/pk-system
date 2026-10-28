@@ -5,7 +5,7 @@
         function ($window, $timeout, $q, $cookies, api) {
             var entries = {}, listening = false, sequence = 0;
             var modes = ['READING', 'LISTENING', 'WRITING', 'COMPREHENSIVE'];
-            var patterns = ['blank', 'lined', 'vertical', 'grid', 'squares'];
+            var patterns = ['blank', 'lined', 'vertical', 'grid', 'squares', 'sketch'];
 
             function revision() {
                 return Date.now().toString(36) + '-' + (++sequence).toString(36) + '-' + Math.random().toString(36).slice(2, 12);
