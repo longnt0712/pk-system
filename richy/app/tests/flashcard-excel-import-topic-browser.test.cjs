@@ -13,7 +13,7 @@ const start = template.indexOf('<script type="text/ng-template" id="question_exc
 const modalTemplate = template.slice(start, template.indexOf('</script>', start) + '</script>'.length);
 const button = template.match(/<button type="button" class="btn btn-success" question-excel-import[\s\S]*?<\/button>/)[0];
 const styles = [...template.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(match => match[1]).join('\n');
-const css = ['assets/css/external/bootstrap.min.css', 'assets/css/components-md.min.css',
+const css = ['assets/css/external/bootstrap.min.css', 'assets/css/external/select.min.css', 'assets/css/components-md.min.css',
     'assets/fontawesome/css/all.css'].map(name => fs.readFileSync(path.join(app, name), 'utf8')).join('\n');
 
 async function settledModal(page) {
@@ -65,7 +65,7 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
     await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>' + css + styles +
         'body{padding:24px!important;background:#f7f8fc}</style></head><body><main ng-controller="Fixture as vm">' +
         button + modalTemplate + '</main></body></html>');
-    for (const name of ['jquery.min.js', 'angular.min.js', 'angular-sanitize.min.js', 'ui-bootstrap-tpls.min.js']) {
+    for (const name of ['jquery.min.js', 'angular.min.js', 'angular-sanitize.min.js', 'ui-bootstrap-tpls.min.js', 'select.min.js']) {
         await page.addScriptTag({path: path.join(app, 'assets/scripts/external', name)});
     }
     await page.evaluate(existing => {
@@ -74,13 +74,14 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
         window.importedNotifications = 0;
         angular.module('Hrm.Common', []);
         angular.module('Hrm.Topic', []);
-        angular.module('Hrm.Question', ['ui.bootstrap', 'ngSanitize', 'Hrm.Common', 'Hrm.Topic'])
+        angular.module('Hrm.Question', ['ui.bootstrap', 'ui.select', 'ngSanitize', 'Hrm.Common', 'Hrm.Topic'])
             .value('settings', {api: {baseUrl: '/', apiV1Url: 'api/'}})
             .value('toastr', Object.fromEntries(['error', 'warning', 'success'].map(type =>
                 [type, message => window.messages.push({type, message})])))
             .controller('Fixture', function () {
                 this.currentUser = {id: 5};
-                this.topics = existing ? [{id: 8, name: 'Existing topic'}] : [];
+                this.topics = existing ? [{id: 8, name: 'Existing topic'}, {id: 12, name: 'Grammar lesson'},
+                    {id: 13, name: 'Prepositions week 2'}] : [];
                 this.getTopics = () => window.createdNotifications++;
                 this.onFlashCardImported = () => window.importedNotifications++;
             });
@@ -97,9 +98,15 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
 
 async function fillNewTopic(page) {
     await page.getByLabel('Tên topic mới').fill('  My words  ');
-    await page.locator('#excel-import-topic-category option').filter({hasText: 'Giao tiếp'}).waitFor({state: 'attached'});
-    await page.getByLabel('Category (loại topic)').selectOption({label: 'Giao tiếp'});
+    await chooseSearchable(page, '#excel-import-topic-category', 'giao', 'Giao tiếp');
     await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
+}
+
+async function chooseSearchable(page, selector, query, name) {
+    const picker = page.locator(selector);
+    await picker.locator('.ui-select-toggle').click();
+    await picker.locator('input.ui-select-search').fill(query);
+    await picker.locator('.ui-select-choices-row-inner:visible').filter({hasText: name}).click();
 }
 
 test('create topic with category and import within the same modal on desktop and mobile', async () => {
@@ -147,7 +154,7 @@ test('existing topic imports retain their original flow', async () => {
     try {
         const {page, state} = await fixture(browser, {existing: true});
         assert.equal(await page.getByLabel('Topic có sẵn', {exact: true}).isChecked(), true);
-        await page.getByLabel('Topic', {exact: true}).selectOption({label: 'Existing topic'});
+        await chooseSearchable(page, '#excel-import-topic', 'EXISTING', 'Existing topic');
         await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
         await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
         await page.getByRole('button', {name: /Confirm import/}).click();
@@ -174,7 +181,7 @@ test('category and creation errors preserve inputs; preview retry reuses the new
         state.failSave = false;
         await page.getByRole('button', {name: 'Tạo topic và xem trước', exact: true}).click();
         await page.waitForFunction(() => window.messages.some(message => message.message === 'Invalid worksheet'));
-        assert.equal(await page.getByLabel('Topic', {exact: true}).inputValue(), '41');
+        assert.match(await page.locator('#excel-import-topic .ui-select-match').innerText(), /My words/i);
         assert.equal(await page.evaluate(() => window.createdNotifications), 1);
         state.failPreview = false;
         await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
@@ -185,5 +192,38 @@ test('category and creation errors preserve inputs; preview retry reuses the new
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});
         assert.deepEqual(state.confirms, []);
         assert.deepEqual(state.errors, []);
+    } finally {await browser.close();}
+});
+
+test('topic dropdown filters while typing, supports keyboard selection and preserves the selected ID on desktop/mobile', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const width of [1440, 390]) {
+            const {page, state} = await fixture(browser, {width, existing: true});
+            await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
+            const picker = page.locator('#excel-import-topic');
+            const search = picker.locator('input.ui-select-search');
+            const choices = picker.locator('.ui-select-choices-row-inner:visible');
+            await picker.locator('.ui-select-toggle').click();
+            assert.equal(await choices.count(), 3);
+            await search.fill('week 2');
+            assert.equal(await choices.count(), 1);
+            assert.match(await choices.innerText(), /Prepositions week 2/);
+            assert.equal(await page.getByRole('button', {name: 'Read and preview', exact: true}).isDisabled(), true);
+            await search.press('Enter');
+            assert.match(await picker.locator('.ui-select-match').innerText(), /Prepositions week 2/i);
+            await picker.locator('.ui-select-toggle').click();
+            await search.fill('no-matching-topic');
+            assert.equal(await choices.count(), 0);
+            assert.equal(await picker.locator('.ui-select-no-choice:visible').count(), 1);
+            await search.press('Escape');
+            assert.match(await picker.locator('.ui-select-match').innerText(), /Prepositions week 2/i);
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+            await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
+            await page.getByRole('button', {name: /Confirm import/}).waitFor();
+            assert.match(state.previews[0], /name="topicId"\r\n\r\n13/);
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
     } finally {await browser.close();}
 });
