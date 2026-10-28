@@ -25,7 +25,7 @@
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
                     '<div class="study-notebook-paper-options"><label><span>Khổ giấy A4</span><select ng-model="notebook.session.document.orientation" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Hướng giấy A4"><option value="portrait">Dọc</option><option value="landscape">Ngang</option></select></label>',
                     '<label><span>Kiểu giấy</span><select ng-model="notebook.session.document.pattern" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Kiểu kẻ giấy"><option value="blank">Giấy trơn</option><option value="lined">Dòng kẻ ngang</option><option value="vertical">Dòng kẻ dọc</option><option value="grid">Ô ly</option><option value="squares">Ô vuông lớn</option><option value="sketch">Giấy nhám phác thảo</option></select></label></div>',
-                    '<div class="study-notebook-zoom" role="group" aria-label="Thu phóng trang giấy"><button type="button" ng-click="notebook.zoomOut()" ng-disabled="notebook.zoomPercent<=50" aria-label="Thu nhỏ trang giấy" title="Thu nhỏ"><i class="fa fa-search-minus" aria-hidden="true"></i></button><output aria-live="polite" aria-label="Mức thu phóng">{{notebook.zoomPercent}}%</output><button type="button" ng-click="notebook.zoomIn()" ng-disabled="notebook.zoomPercent>=200" aria-label="Phóng to trang giấy" title="Phóng to"><i class="fa fa-search-plus" aria-hidden="true"></i></button><button type="button" class="study-notebook-zoom__fit" ng-click="notebook.fitZoom()" title="Đưa trang giấy về vừa màn hình">Vừa trang</button></div></div>',
+                    '<div class="study-notebook-zoom" role="group" aria-label="Thu phóng trang giấy"><button type="button" ng-click="notebook.zoomOut()" ng-disabled="notebook.zoomPercent<=50" aria-label="Thu nhỏ trang giấy" title="Thu nhỏ"><i class="fa fa-search-minus" aria-hidden="true"></i></button><input type="range" class="study-notebook-zoom__slider" min="50" max="200" step="5" ng-model="notebook.zoomSliderValue" ng-change="notebook.setZoom(notebook.zoomSliderValue)" aria-label="Kéo để thu phóng trang giấy" ng-attr-aria-valuetext="{{notebook.zoomPercent}} phần trăm"><output aria-live="polite" aria-label="Mức thu phóng">{{notebook.zoomPercent}}%</output><button type="button" ng-click="notebook.zoomIn()" ng-disabled="notebook.zoomPercent>=200" aria-label="Phóng to trang giấy" title="Phóng to"><i class="fa fa-search-plus" aria-hidden="true"></i></button><button type="button" class="study-notebook-zoom__fit" ng-click="notebook.fitZoom()" title="Đưa trang giấy về vừa màn hình">Vừa trang</button></div></div>',
                     '<div class="study-notebook-notice" ng-if="notebook.session.error || notebook.session.status===\'conflict\'">',
                     '<span>{{notebook.session.error || \'Có bản ghi chú khác vừa được đồng bộ. Chọn bản bạn muốn giữ.\'}}</span>',
                     '<button type="button" ng-if="notebook.session.status!==\'conflict\'" ng-click="notebook.refresh()">Thử đồng bộ lại</button>',
@@ -55,6 +55,7 @@
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
                     ui.tool = 'text'; ui.inkColor = '#315bbe'; ui.inkWidth = '4'; ui.touchDrawing = false;
                     ui.zoomPercent = 100;
+                    ui.zoomSliderValue = 100;
                     ui.tools = [{ id: 'text', label: 'Gõ chữ', icon: 'fa-font' }, { id: 'pen', label: 'Bút', icon: 'fa-pencil' },
                         { id: 'highlighter', label: 'Đánh dấu', icon: 'fa-paint-brush' }, { id: 'eraser', label: 'Tẩy', icon: 'fa-eraser' }];
                     // Portal outside the exam header's stacking/overflow contexts.
@@ -142,6 +143,7 @@
                         percent = Number(percent);
                         if (!isFinite(percent)) { return; }
                         percent = Math.max(50, Math.min(200, Math.round(percent)));
+                        ui.zoomSliderValue = percent;
                         if (percent === ui.zoomPercent) { return; }
                         flushText(); finishStroke(true); zoomAnchor = captureZoomAnchor(); ui.zoomPercent = percent; layout();
                     };
@@ -384,7 +386,7 @@
                         if (identity === next) { return; }
                         identity = next; ui.close();
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
-                        undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; zoomAnchor = null;
+                        undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
                     }
                     var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled'], identityChanged);
                     var unwatchStrokes = scope.$watchCollection(function () { return strokes(); }, function (value) {

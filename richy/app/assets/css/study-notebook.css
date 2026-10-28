@@ -49,6 +49,15 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-zoom { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #e2e8f3; }
 .study-notebook-zoom button { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 25px; padding: 2px 5px; color: #4668b8; background: #f7f9fd; border: 1px solid #dce3f0; border-radius: 5px; font-size: 11px; cursor: pointer; }
 .study-notebook-zoom output { min-width: 36px; padding: 0; color: #52617d; font-size: 11px; text-align: center; }
+.study-notebook-zoom input.study-notebook-zoom__slider {
+    -webkit-appearance: none; appearance: none; flex: 0 0 100px; width: 100px; height: 24px;
+    margin: 0 3px; padding: 0; border: 0; background: transparent; box-shadow: none; accent-color: #687bce; cursor: ew-resize;
+}
+.study-notebook-zoom__slider::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: #d6def3; }
+.study-notebook-zoom__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 2px solid #fff; border-radius: 50%; background: #687bce; box-shadow: 0 1px 4px rgba(70,86,146,.28); }
+.study-notebook-zoom__slider::-moz-range-track { height: 4px; border-radius: 4px; background: #d6def3; }
+.study-notebook-zoom__slider::-moz-range-progress { height: 4px; border-radius: 4px; background: #8796d9; }
+.study-notebook-zoom__slider::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: #687bce; box-shadow: 0 1px 4px rgba(70,86,146,.28); }
 .study-notebook-dialog button:disabled, .study-notebook-dialog select:disabled { opacity: .45; cursor: default; }
 .study-notebook-notice { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 9px 20px; border-bottom: 1px solid #f1dba8; color: #8c611d; background: #fff6de; font-size: 12px; line-height: 1.5; }
 .study-notebook-notice > span { flex: 1 1 280px; }
@@ -94,6 +103,7 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
     .study-notebook-footer { padding: 3px 12px; }
 }
 @media (max-width: 560px) {
+    .study-notebook-zoom input.study-notebook-zoom__slider { flex-basis: 75px; width: 75px; }
     study-notebook { margin-left: 10px; margin-right: 2px; }
     .study-notebook-toggle { width: 34px; height: 34px; padding: 7px; border-radius: 10px; }
     .study-notebook-overlay { padding: 5px 6px 8px; }

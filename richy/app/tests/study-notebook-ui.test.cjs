@@ -340,15 +340,23 @@ test('ordinary text changes reuse the committed ink cache until stroke geometry 
 test('zoom buttons respect their bounds, fit resets the view, and the page frame exposes horizontal overflow only when required', async () => {
     const h = harness({width: 397}), session = await h.open(); session.document.text = 'The same note while zooming';
     assert.equal(h.ui.zoomPercent, 100);
+    assert.equal(h.ui.zoomSliderValue, 100);
     for (let index = 0; index < 10; index++) h.ui.zoomIn(); await h.flush();
     assert.equal(h.ui.zoomPercent, 200); assert.equal(parseFloat(h.paper.style.width), 794);
+    assert.equal(h.ui.zoomSliderValue, 200);
     assert.equal(parseFloat(h.frame.style.width), 794); assert.ok(h.scroller.scrollWidth > h.scroller.clientWidth);
     assert.ok(parseFloat(h.frame.style.height) >= parseFloat(h.canvas.style.height));
     for (let index = 0; index < 10; index++) h.ui.zoomOut(); await h.flush();
     assert.equal(h.ui.zoomPercent, 50); assert.equal(parseFloat(h.paper.style.width), 198.5);
+    assert.equal(h.ui.zoomSliderValue, 50);
     assert.equal(parseFloat(h.frame.style.width), 397);
+    // Angular 1.5 treats native range inputs as text: ngModel changes before ng-change runs.
+    h.ui.zoomSliderValue = '135'; h.ui.setZoom(h.ui.zoomSliderValue); await h.flush();
+    assert.equal(h.ui.zoomPercent, 135); assert.equal(h.ui.zoomSliderValue, 135);
+    assert.ok(Math.abs(parseFloat(h.paper.style.width) - 535.95) < 0.001);
     h.ui.fitZoom(); await h.flush();
     assert.equal(h.ui.zoomPercent, 100); assert.equal(parseFloat(h.paper.style.width), 397);
+    assert.equal(h.ui.zoomSliderValue, 100);
     assert.equal(h.scroller.scrollWidth, h.scroller.clientWidth); assert.equal(session.document.text, 'The same note while zooming');
 });
 
