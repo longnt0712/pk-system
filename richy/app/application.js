@@ -257,7 +257,6 @@
                     $state.go('fair_' + (fairRoute[2] === 'quan-tri' ? 'admin' : 'work') + (fairRoute[1] ? '_event' : ''), {id: fairRoute[1] ? Number(fairRoute[1]) : null});
                     return;
                 }
-                if (settings.fairsEnabled && !settings.isAdmin && (settings.isFairPlay || settings.isFairGift)) { $state.go('fair_work'); return; }
                 $state.go('application.dashboard');
             };
 

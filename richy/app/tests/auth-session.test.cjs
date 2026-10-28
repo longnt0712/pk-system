@@ -1042,13 +1042,13 @@ test('anonymous fair lookup bypasses login only on TNTT; work and management sti
     }
 });
 
-test('fair operator roles survive permission loading and take the operator to the phone work page', async () => {
+test('fair operator roles survive permission loading while ordinary login opens the dashboard', async () => {
     for (const role of ['ROLE_PLAY', 'ROLE_GIFT']) {
         const h = setup(() => ({data: {id: 7, roles: [{name: role}]}}));
         const app = startApp(h, 'tnttphungkhoang.com'); app.state.current.name = 'login'; app.state.params.showHome = false;
         app.listeners.$locationChangeSuccess(); await new Promise(resolve => setImmediate(resolve));
         assert.equal(app.settings.isFairPlay, role === 'ROLE_PLAY'); assert.equal(app.settings.isFairGift, role === 'ROLE_GIFT');
-        assert.deepEqual(app.navigations, ['fair_work']);
+        assert.deepEqual(app.navigations, ['application.dashboard']);
     }
 });
 
@@ -1060,12 +1060,36 @@ test('opening fair management from the public page remembers the intended page b
     app.listeners.$stateChangeStart({preventDefault() {prevented = true;}}, {name: 'fair_admin_event', data: {fairPrivate: true}}, {id: 7});
     assert.equal(prevented, true); assert.equal(saved['fair.returnPath'], '/hoi-cho/7/quan-tri'); assert.deepEqual(app.navigations, ['login']);
 });
-test('a fresh manual login routes fair staff using the saved user before any background permission refresh', () => {
-    const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com');
-    h.session.saveUser({id: 7, roles: [{name: 'ROLE_PLAY'}]});
-    app.settings.isFairPlay = false;
-    h.deps.$rootScope.navigateAfterLogin();
-    assert.deepEqual(app.navigations, ['fair_work']); assert.equal(app.settings.isFairPlay, true);
+test('fresh manual login defaults to the dashboard for ordinary users, fair staff and admins', () => {
+    for (const roles of [[], ['ROLE_PLAY'], ['ROLE_GIFT'], ['ROLE_PLAY', 'ROLE_GIFT'], ['ROLE_ADMIN'], ['ROLE_ADMIN', 'ROLE_PLAY']]) {
+        const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com');
+        h.session.saveUser({id: 7, roles: roles.map(name => ({name}))});
+        app.settings.isFairPlay = false; app.settings.isFairGift = false;
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(app.navigations, ['application.dashboard'], roles.join(','));
+        assert.equal(app.settings.isFairPlay, roles.includes('ROLE_PLAY'));
+        assert.equal(app.settings.isFairGift, roles.includes('ROLE_GIFT'));
+        assert.equal(app.settings.isAdmin, roles.includes('ROLE_ADMIN'));
+    }
+});
+
+test('explicit fair links still resume their validated destination once after login', () => {
+    for (const [destination, state, id] of [
+        ['/hoi-cho/lam-viec', 'fair_work', null], ['/hoi-cho/7/lam-viec', 'fair_work_event', 7],
+        ['/hoi-cho/quan-tri', 'fair_admin', null], ['/hoi-cho/7/quan-tri', 'fair_admin_event', 7]
+    ]) {
+        const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com');
+        const saved = {'fair.returnPath': destination}, redirects = [];
+        h.context.window.sessionStorage.getItem = key => saved[key] || null;
+        h.context.window.sessionStorage.removeItem = key => {delete saved[key];};
+        app.state.go = (...args) => redirects.push(structuredClone(args));
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(redirects, [[state, {id}]]);
+        assert.equal(saved['fair.returnPath'], undefined);
+        h.deps.$rootScope.resetPostLoginNavigation();
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(redirects[1], ['application.dashboard']);
+    }
 });
 
 test('fair staff roles and saved fair destinations do not open fair pages after login outside TNTT', async () => {
