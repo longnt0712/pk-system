@@ -25,6 +25,7 @@
             var spriteTimer = null;
             var refreshTimer = null;
             var greetingTimer = null;
+            var petSeasonTimer = null;
             var draftsRevision = 0;
             var frameIndex = 0;
             var currentAnimation = '';
@@ -64,6 +65,7 @@
             var pikachuCrackedEggUrl = 'assets/images/learning-pets/pikachu/egg-level-19.png?v=' + version;
             var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
             var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
+            var halloweenPumpkinUrl = 'assets/images/learning-pets/halloween-pumpkin/pet.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -117,12 +119,35 @@
                 catch (ignoreUserCookie) { return null; }
             }
 
+            function isHalloweenPetSeason() {
+                // The school calendar uses UTC+7, independent of the device timezone.
+                var date = new Date(Date.now() + 7 * 60 * 60 * 1000);
+                return date.getUTCMonth() === 9 || (date.getUTCMonth() === 10 && date.getUTCDate() <= 5);
+            }
+
+            function schedulePetSeasonUpdate() {
+                if (petSeasonTimer) { $timeout.cancel(petSeasonTimer); }
+                var now = Date.now();
+                var date = new Date(now + 7 * 60 * 60 * 1000);
+                var nextMidnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1) - 7 * 60 * 60 * 1000;
+                petSeasonTimer = $timeout(function () {
+                    updatePetForm(readCurrentUser());
+                    updateMessage();
+                    if (vm.visible && vm.petForm === 'hatched') { preloadSprite(); }
+                    schedulePetSeasonUpdate();
+                }, Math.max(1, nextMidnight - now));
+            }
+
             function updatePetForm(user) {
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
                 if (admin) { level = Math.max(level, 20); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
+                var halloweenAvailable = admin || isHalloweenPetSeason();
+                if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
+                    selectedPet = 'MAM_HOC';
+                }
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
                     selectedPet = 'MAM_HOC';
                 }
@@ -163,6 +188,13 @@
                                 ? 'assets/images/learning-pets/mam-hoc/egg-level-1.png?v=' + version
                                 : vm.hatchedFallbackImage)
                 }];
+                vm.availablePets.push({
+                    key: 'HALLOWEEN_PUMPKIN',
+                    name: 'Bí ngô Halloween',
+                    description: admin ? 'Admin · chọn quanh năm' : 'Mở từ 1/10 đến hết 5/11 hằng năm',
+                    image: halloweenPumpkinUrl,
+                    locked: !halloweenAvailable
+                });
                 if (level >= 3) {
                     var capybaraStageImage = level >= 5
                             ? capybaraPetUrl
@@ -306,6 +338,11 @@
                 if (dragonBall) {
                     vm.petForm = 'dragon-ball';
                     vm.petImage = 'assets/images/learning-pets/dragon-ball-' + dragonBall[1] + '/pet.png?v=' + version;
+                    return;
+                }
+                if (selectedPet === 'HALLOWEEN_PUMPKIN') {
+                    vm.petForm = 'halloween-pumpkin';
+                    vm.petImage = halloweenPumpkinUrl;
                     return;
                 }
                 if (selectedPet === 'CUTE_PERRY') {
@@ -562,6 +599,7 @@
 
             vm.openPetPicker = function (event) {
                 if (event) { event.stopPropagation(); }
+                updatePetForm(readCurrentUser());
                 if (petPickerModal || !vm.availablePets.length) { return; }
                 vm.petSelectionError = '';
                 var modal = $uibModal.open({
@@ -584,6 +622,12 @@
 
             vm.selectPet = function (petKey) {
                 if (vm.selectingPet || !petKey) { return; }
+                if (petKey === 'HALLOWEEN_PUMPKIN' && !hasAdminRole(readCurrentUser()) && !isHalloweenPetSeason()) {
+                    updatePetForm(readCurrentUser());
+                    updateMessage();
+                    vm.petSelectionError = 'Bí ngô Halloween chỉ mở từ 1/10 đến hết 5/11 hằng năm (UTC+7).';
+                    return;
+                }
                 if (petKey === vm.selectedPetKey) {
                     vm.closePetPicker();
                     return;
@@ -1199,6 +1243,7 @@
             }
 
             vm.refresh = function () {
+                updatePetForm(readCurrentUser());
                 if (!shouldDisplay()) {
                     vm.visible = false;
                     return $q.when();
@@ -1378,6 +1423,7 @@
 
             function initialize() {
                 updatePetForm(readCurrentUser());
+                schedulePetSeasonUpdate();
                 vm.visible = shouldDisplay();
                 if (!vm.visible) { return; }
                 if (vm.petForm === 'hatched') { preloadSprite(); }
@@ -1439,6 +1485,7 @@
                 stopSpriteTimer();
                 if (refreshTimer) { $interval.cancel(refreshTimer); }
                 if (greetingTimer) { $timeout.cancel(greetingTimer); }
+                if (petSeasonTimer) { $timeout.cancel(petSeasonTimer); }
                 if (dragFrame) { $window.cancelAnimationFrame(dragFrame); }
                 dragCleanup();
                 $window.removeEventListener('resize', handleViewportResize);

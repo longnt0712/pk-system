@@ -23,7 +23,8 @@
 .learning-pet-egg.is-jerry-mouse-pet,
 .learning-pet-egg.is-tuffy-mouse-pet,
 .learning-pet-egg.is-pikachu-pet,
-.learning-pet-egg.is-perry-pet {
+.learning-pet-egg.is-perry-pet,
+.learning-pet-egg.is-halloween-pumpkin {
     width: 104px;
     height: 108px;
 }
@@ -238,6 +239,7 @@ img[src*="assets/images/learning-pets/jerry-mouse/"],
 img[src*="assets/images/learning-pets/tuffy-mouse/"],
 img[src*="assets/images/learning-pets/pikachu/"],
 img[src*="assets/images/learning-pets/perry/"],
+img[src*="assets/images/learning-pets/halloween-pumpkin/"],
 img[src*="assets/images/learning-pets/dragon-ball-"] {
     image-rendering: auto !important;
 }
@@ -586,6 +588,17 @@ img[src*="assets/images/learning-pets/dragon-ball-"] {
 
 .learning-pet-picker-card.is-selected .learning-pet-picker-selection {
     color: #6554ee;
+}
+
+.learning-pet-picker-card.is-locked {
+    background: #f7f7fa;
+    border-color: #e4e5ec;
+    cursor: not-allowed;
+}
+
+.learning-pet-picker-card.is-locked .learning-pet-picker-art img {
+    filter: grayscale(.75);
+    opacity: .6;
 }
 
 .learning-pet-picker-error {

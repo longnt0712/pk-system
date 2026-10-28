@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Bí ngô Halloween</title>
+  <desc id="desc">Một quả bí ngô cam tròn với cuống xanh uốn cong, lá nhỏ và gương mặt đèn lồng vàng ấm đang cười.</desc>
+  <defs>
+    <radialGradient id="pumpkin" cx=".37" cy=".2" r=".87">
+      <stop stop-color="#ffca49"/>
+      <stop offset=".38" stop-color="#ff962c"/>
+      <stop offset=".74" stop-color="#ed6417"/>
+      <stop offset="1" stop-color="#c5460d"/>
+    </radialGradient>
+    <linearGradient id="rib-light" x1="0" y1="0" x2="1" y2=".7">
+      <stop stop-color="#ffdc70" stop-opacity=".72"/>
+      <stop offset=".65" stop-color="#ffb040" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#ff9e28" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="stem" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#719844"/>
+      <stop offset=".5" stop-color="#436e37"/>
+      <stop offset="1" stop-color="#294b2d"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#9cbf4d"/>
+      <stop offset=".58" stop-color="#5d8d3a"/>
+      <stop offset="1" stop-color="#365d32"/>
+    </linearGradient>
+    <radialGradient id="lantern" cx=".5" cy=".3" r=".95">
+      <stop stop-color="#fffbd6"/>
+      <stop offset=".42" stop-color="#fff286"/>
+      <stop offset="1" stop-color="#ffc13e"/>
+    </radialGradient>
+    <filter id="warm-glow" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#ffd84a" flood-opacity=".46"/>
+    </filter>
+    <filter id="edge-shadow" x="-10%" y="-10%" width="120%" height="125%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="9" stdDeviation="5" flood-color="#632719" flood-opacity=".14"/>
+    </filter>
+    <path id="pumpkin-body" d="M511 334C451 291 390 290 332 322C252 303 192 349 172 423C122 469 125 580 158 650C172 730 223 805 298 824C357 862 437 857 512 842C587 864 665 864 727 836C806 823 864 753 875 682C921 617 923 518 879 454C871 372 806 307 727 322C666 290 601 298 547 332C534 341 524 343 511 334Z"/>
+  </defs>
+  <!-- Fully editable native vector artwork; no raster image is embedded. -->
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <path d="M480 350C494 308 492 271 507 231C523 187 550 164 583 166C599 168 607 181 599 193C582 192 565 203 559 224C548 260 560 301 550 346Z" fill="url(#stem)" stroke="#29482c" stroke-width="13"/>
+    <path d="M515 315C520 275 526 231 552 204" fill="none" stroke="#afc36c" stroke-width="8" opacity=".66"/>
+    <path d="M546 301C578 259 627 237 675 255C653 289 617 317 573 312Z" fill="url(#leaf)" stroke="#335b31" stroke-width="10"/>
+    <path d="M564 302C591 281 620 270 650 265M600 283L603 263M620 275L636 288" fill="none" stroke="#c2d774" stroke-width="5" opacity=".8"/>
+    <path d="M557 304C609 309 671 326 694 294C712 270 685 248 666 266C654 277 666 289 678 284" fill="none" stroke="#3c6331" stroke-width="10"/>
+    <g filter="url(#edge-shadow)">
+      <use href="#pumpkin-body" fill="url(#pumpkin)" stroke="#71321c" stroke-width="15"/>
+      <path d="M327 328C255 411 245 554 267 676C279 744 304 790 341 824C302 815 272 784 254 746C209 649 205 456 272 363Z" fill="#ca4d11" opacity=".24"/>
+      <path d="M704 328C773 391 796 520 779 649C771 724 742 791 704 826C759 811 801 754 814 684C839 552 808 409 751 354Z" fill="#a93c0c" opacity=".22"/>
+      <path d="M427 319C372 402 350 533 367 677C373 745 393 802 420 843" fill="none" stroke="#bf4b12" stroke-width="11" opacity=".43"/>
+      <path d="M597 318C649 401 674 535 659 674C652 744 635 802 606 846" fill="none" stroke="#a9430f" stroke-width="11" opacity=".4"/>
+      <path d="M328 342C273 415 266 507 275 562C280 568 288 566 290 556C283 468 307 399 349 347Z" fill="url(#rib-light)"/>
+      <path d="M462 339C415 419 407 530 417 596C420 605 430 601 430 591C423 504 436 414 478 343Z" fill="url(#rib-light)"/>
+      <path d="M210 477C197 513 196 555 201 581" fill="none" stroke="#ffcf65" stroke-width="13" opacity=".48"/>
+      <path d="M349 793C373 816 403 829 437 828" fill="none" stroke="#ffb147" stroke-width="8" opacity=".5"/>
+    </g>
+    <!-- Round carved corners and warm light keep the jack-o-lantern friendly. -->
+    <g fill="url(#lantern)" stroke="#77331b" stroke-width="15" filter="url(#warm-glow)">
+      <path d="M338 522C346 502 365 475 383 464C391 459 399 462 401 472L424 539C427 551 420 557 409 556L350 548C339 547 334 536 338 522Z"/>
+      <path d="M601 540L624 474C628 463 635 461 644 467C664 481 682 508 690 529C695 540 689 550 679 551L617 557C605 558 597 552 601 540Z"/>
+      <path d="M498 566L513 550L533 572C539 579 534 587 526 586L502 584C493 584 492 573 498 566Z" stroke-width="10"/>
+      <path d="M332 622Q370 650 416 662L425 687L452 692L449 673Q510 688 572 673L569 695L597 687L606 661Q651 644 693 620Q666 720 600 751L591 731L562 739L564 766Q513 783 462 767L462 740L434 733L423 754Q355 720 332 622Z"/>
+    </g>
+    <path d="M349 534L402 542M618 542L677 536" fill="none" stroke="#fffbd9" stroke-width="5" opacity=".7"/>
+    <ellipse cx="306" cy="585" rx="21" ry="10" fill="#ffbc49" opacity=".48"/>
+    <ellipse cx="722" cy="586" rx="21" ry="10" fill="#ffbc49" opacity=".48"/>
+    <circle cx="301" cy="608" r="4" fill="#d45b19"/>
+    <circle cx="321" cy="612" r="3.5" fill="#d45b19"/>
+    <circle cx="710" cy="612" r="3.5" fill="#d45b19"/>
+    <circle cx="731" cy="608" r="4" fill="#d45b19"/>
+  </g>
+</svg>

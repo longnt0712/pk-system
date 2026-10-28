@@ -1019,6 +1019,7 @@
         ).toUpperCase();
         vm.savingBattlePet = false;
         var battlePetOptionsLevel = null;
+        var battlePetOptionsHalloween = null;
         var battlePetOptions = [];
 
         vm.currentUserDisplayName =
@@ -1413,6 +1414,14 @@
         }
 
 
+        function isHalloweenPetSeason() {
+            // Use the room's server clock and UTC+7, independent of device timezone.
+            var date = new Date(serverNow() + 7 * 60 * 60 * 1000);
+            var month = date.getUTCMonth() + 1;
+            return month === 10 || (month === 11 && date.getUTCDate() <= 5);
+        }
+
+
         function getPlayerPetImage(player) {
             var version = $window.APP_VERSION || '';
             var suffix = version ? '?v=' + encodeURIComponent(version) : '';
@@ -1427,6 +1436,10 @@
                 player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
             if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
                 level = Math.max(level, 20);
+            }
+            if (petKey === 'HALLOWEEN_PUMPKIN' &&
+                    (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
+                return 'assets/images/learning-pets/halloween-pumpkin/pet.png' + suffix;
             }
 
             var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(petKey);
@@ -1520,7 +1533,9 @@
                         : (vm.currentUser || {}).vocabularyExperienceLevel
                 ) || 0
             );
-            if ((me && me.allPetsUnlocked === true) || hasAdminPetAccess()) {
+            var adminAccess = (me && me.allPetsUnlocked === true) || hasAdminPetAccess();
+            var halloweenAvailable = !!adminAccess || isHalloweenPetSeason();
+            if (adminAccess) {
                 level = Math.max(level, 20);
             }
 
@@ -1528,17 +1543,24 @@
              * ng-options theo dõi collection bằng $watchCollection. Nếu tạo
              * object mới ở mỗi digest, Angular luôn cho rằng collection đã
              * đổi và rơi vào lỗi $rootScope:infdig. Chỉ dựng lại options khi
-             * level thật sự thay đổi để giữ cùng reference giữa các digest.
+             * level hoặc mùa pet thay đổi để giữ cùng reference giữa các digest.
              */
-            if (battlePetOptionsLevel === level) {
+            if (!halloweenAvailable && vm.selectedBattlePetKey === 'HALLOWEEN_PUMPKIN') {
+                vm.selectedBattlePetKey = 'MAM_HOC';
+            }
+            if (battlePetOptionsLevel === level && battlePetOptionsHalloween === halloweenAvailable) {
                 return battlePetOptions;
             }
 
             battlePetOptionsLevel = level;
+            battlePetOptionsHalloween = halloweenAvailable;
             battlePetOptions = [{
                 key: 'MAM_HOC',
                 label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
             }];
+            if (halloweenAvailable) {
+                battlePetOptions.push({key: 'HALLOWEEN_PUMPKIN', label: 'Bí ngô Halloween'});
+            }
             if (level >= 3) {
                 battlePetOptions.push({
                     key: 'CAPYBARA_EGG',
@@ -1616,10 +1638,10 @@
 
 
         function getSelectedBattlePetLabel() {
+            var options = getBattlePetOptions();
             var selectedKey = String(
                 vm.selectedBattlePetKey || 'MAM_HOC'
             ).toUpperCase();
-            var options = getBattlePetOptions();
 
             for (var index = 0; index < options.length; index += 1) {
                 if (options[index].key === selectedKey) {
@@ -1658,6 +1680,10 @@
                 (vm.currentUser || {}).selectedLearningPet ||
                 'MAM_HOC'
             ).toUpperCase();
+            if (previousPetKey === 'HALLOWEEN_PUMPKIN' && !isHalloweenPetSeason() &&
+                    !(me && me.allPetsUnlocked === true) && !hasAdminPetAccess()) {
+                previousPetKey = 'MAM_HOC';
+            }
             var requestedPetKey = String(
                 petKey || vm.selectedBattlePetKey || ''
             ).toUpperCase();

@@ -1,11 +1,18 @@
 package com.globits.richy.battle;
 
 import com.globits.richy.dto.BattleOnlinePetSelectionDto;
+import com.globits.richy.dto.BattleOnlineRoomDto;
+import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.impl.BattleOnlineServiceImpl;
 import com.globits.security.domain.User;
 import com.globits.security.domain.Role;
 import java.util.Collections;
+import java.util.Map;
+import java.lang.reflect.Constructor;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import com.globits.security.repository.UserRepository;
@@ -25,6 +32,7 @@ public class BattleOnlinePetSelectionTest {
     @Before
     public void setup() {
         service = new BattleOnlineServiceImpl();
+        setSeasonClock("2026-06-15T12:00:00Z");
         users = mock(UserRepository.class);
         ReflectionTestUtils.setField(service, "userRepository", users);
         student = new User();
@@ -38,6 +46,10 @@ public class BattleOnlinePetSelectionTest {
         BattleOnlinePetSelectionDto request = new BattleOnlinePetSelectionDto();
         request.setPetKey(key);
         return service.selectPet("student", request);
+    }
+
+    private void setSeasonClock(String instant) {
+        ReflectionTestUtils.setField(service, "petSeasonClock", Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     }
 
     @Test
@@ -111,16 +123,16 @@ public class BattleOnlinePetSelectionTest {
         Role admin = new Role();
         admin.setName("ROLE_ADMIN");
         student.getRoles().add(admin);
-        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING"}) {
+        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING", "HALLOWEEN_PUMPKIN"}) {
             BattleOnlinePetSelectionDto result = choose(key, 0);
             assertEquals(key, student.getSelectedLearningPet());
             assertEquals(key, result.getSelectedPetKey());
             assertTrue(result.isAllPetsUnlocked());
-            assertEquals(16, result.getUnlockedPetKeys().size());
+            assertEquals(17, result.getUnlockedPetKeys().size());
             assertEquals(0, result.getVocabularyExperienceLevel());
             assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
         }
-        verify(users, times(9)).save(student);
+        verify(users, times(10)).save(student);
     }
 
     @Test
@@ -401,6 +413,145 @@ public class BattleOnlinePetSelectionTest {
             Object identity = ReflectionTestUtils.invokeMethod(service,"findPlayerIdentity","student");
             assertEquals(delta < 0 ? "MAM_HOC" : "DRAGON_BALL_" + stars,ReflectionTestUtils.getField(identity,"selectedPetKey"));
         }
+    }
+
+    @Test
+    public void halloweenSeasonUsesUtcPlusSevenAndRepeatsEveryYear() {
+        String[] instants = {
+                "2026-09-30T16:59:59.999Z", "2026-09-30T17:00:00Z", "2026-10-31T17:00:00Z",
+                "2026-11-05T16:59:59.999Z", "2026-11-05T17:00:00Z", "2027-01-01T00:00:00Z",
+                "2027-09-30T17:00:00Z", "2027-11-05T16:59:59.999Z", "2027-11-05T17:00:00Z"
+        };
+        boolean[] available = {false, true, true, true, false, false, true, true, false};
+        for (int i = 0; i < instants.length; i++) {
+            setSeasonClock(instants[i]);
+            assertEquals(instants[i], available[i], ReflectionTestUtils.<Boolean>invokeMethod(service, "isHalloweenPetSeason"));
+            BattleOnlinePetSelectionDto ordinary = choose("MAM_HOC", 0);
+            assertEquals(instants[i], available[i], ordinary.getUnlockedPetKeys().contains("HALLOWEEN_PUMPKIN"));
+            if (available[i]) {
+                assertEquals("HALLOWEEN_PUMPKIN", choose("HALLOWEEN_PUMPKIN", 0).getSelectedPetKey());
+            } else {
+                try { choose("HALLOWEEN_PUMPKIN", 0); fail("Pumpkin must be locked at " + instants[i]); }
+                catch (BattleOnlineException expected) { assertEquals(HttpStatus.BAD_REQUEST, expected.getStatus()); }
+                assertEquals("MAM_HOC", student.getSelectedLearningPet());
+            }
+        }
+    }
+
+    @Test
+    public void halloweenPumpkinBelongsToEveryoneWithoutARequiredLevel() {
+        setSeasonClock("2026-10-28T00:00:00Z");
+        for (int level : new int[] {0, 1, 20, 50}) {
+            BattleOnlinePetSelectionDto result = choose(" halloween_pumpkin ", level);
+            assertEquals("HALLOWEEN_PUMPKIN", result.getSelectedPetKey());
+            assertEquals("HALLOWEEN_PUMPKIN", student.getSelectedLearningPet());
+            assertEquals(level, result.getVocabularyExperienceLevel());
+            assertFalse(result.isAllPetsUnlocked());
+            assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
+            assertTrue(result.getUnlockedPetKeys().contains("HALLOWEEN_PUMPKIN"));
+            assertEquals(level >= 20 ? 17 : 2, result.getUnlockedPetKeys().size());
+        }
+        verify(users, times(4)).save(student);
+    }
+
+    @Test
+    public void clientCannotBypassTheSeasonWithAClaimedAdminFlagOrAnotherRole() {
+        setSeasonClock("2026-11-05T17:00:00Z");
+        BattleOnlinePetSelectionDto request = new BattleOnlinePetSelectionDto();
+        request.setPetKey("HALLOWEEN_PUMPKIN");
+        request.setAllPetsUnlocked(true);
+        for (String roleName : new String[] {"ROLE_STUDENT", "ROLE_STAFF", "ROLE_ADMINISTRATOR"}) {
+            student.getRoles().clear();
+            Role role = new Role(); role.setName(roleName); student.getRoles().add(role);
+            try { service.selectPet("student", request); fail("Only a real admin may bypass the season"); }
+            catch (BattleOnlineException expected) {
+                assertEquals(HttpStatus.BAD_REQUEST, expected.getStatus());
+                assertTrue(expected.getMessage().contains("1/10"));
+                assertTrue(expected.getMessage().contains("5/11"));
+            }
+            assertEquals("CUTE_TOM_CAT", student.getSelectedLearningPet());
+        }
+        verify(users, never()).save(any(User.class));
+    }
+
+    @Test
+    public void adminsCanChooseThePumpkinAtLevelZeroAllYear() {
+        Role admin = new Role(); admin.setName("ROLE_ADMIN"); student.getRoles().add(admin);
+        for (String instant : new String[] {"2026-01-01T00:00:00Z", "2026-09-30T16:59:59Z", "2026-10-01T00:00:00Z", "2026-11-05T17:00:00Z", "2026-12-31T23:59:59Z"}) {
+            setSeasonClock(instant);
+            BattleOnlinePetSelectionDto result = choose("HALLOWEEN_PUMPKIN", 0);
+            assertTrue(result.isAllPetsUnlocked());
+            assertTrue(result.getUnlockedPetKeys().contains("HALLOWEEN_PUMPKIN"));
+            assertEquals("HALLOWEEN_PUMPKIN", result.getSelectedPetKey());
+            assertEquals(0, result.getVocabularyExperienceLevel());
+            assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
+        }
+    }
+
+    @Test
+    public void reconnectResolvesSavedPumpkinsForTheCurrentSeasonAndRealAdminRole() {
+        EntityManager entity = mock(EntityManager.class);
+        Query account = mock(Query.class), roles = mock(Query.class);
+        ReflectionTestUtils.setField(service, "entityManager", entity);
+        when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
+        when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
+        when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {7L, "", "", "Student", 0L, "HALLOWEEN_PUMPKIN"}));
+        when(roles.getResultList()).thenReturn(Collections.emptyList());
+        setSeasonClock("2026-11-05T16:59:59Z");
+        Object inSeason = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+        assertEquals("HALLOWEEN_PUMPKIN", ReflectionTestUtils.getField(inSeason, "selectedPetKey"));
+        setSeasonClock("2026-11-05T17:00:00Z");
+        Object expired = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+        assertEquals("MAM_HOC", ReflectionTestUtils.getField(expired, "selectedPetKey"));
+        when(roles.getResultList()).thenReturn(Collections.singletonList(1L));
+        Object admin = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+        assertEquals("HALLOWEEN_PUMPKIN", ReflectionTestUtils.getField(admin, "selectedPetKey"));
+        assertEquals(Boolean.TRUE, ReflectionTestUtils.getField(admin, "allPetsUnlocked"));
+        verify(users, never()).save(any(User.class));
+    }
+
+    private Object privateState(String name) throws Exception {
+        Constructor<?> constructor = Class.forName(BattleOnlineServiceImpl.class.getName() + "$" + name).getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor.newInstance();
+    }
+
+    private String selectedInRoom(BattleOnlineRoomDto room, String username) {
+        for (BattleOnlinePlayerDto player : room.getPlayers()) {
+            if (username.equals(player.getUsername())) { return player.getSelectedPetKey(); }
+        }
+        throw new AssertionError("Missing room player " + username);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void alreadyOpenRoomsStopShowingThePumpkinAfterExpiryWhileAdminsKeepIt() throws Exception {
+        Object room = privateState("RoomState");
+        ReflectionTestUtils.setField(room, "code", "HALLOW");
+        ReflectionTestUtils.setField(room, "status", "LOBBY");
+        ReflectionTestUtils.setField(room, "hostUsername", "admin");
+        Object ordinary = privateState("PlayerState"), admin = privateState("PlayerState");
+        for (Object player : new Object[] {ordinary, admin}) {
+            ReflectionTestUtils.setField(player, "selectedPetKey", "HALLOWEEN_PUMPKIN");
+            ReflectionTestUtils.setField(player, "connected", true);
+        }
+        ReflectionTestUtils.setField(ordinary, "username", "student");
+        ReflectionTestUtils.setField(admin, "username", "admin");
+        ReflectionTestUtils.setField(admin, "allPetsUnlocked", true);
+        Map<String, Object> players = (Map<String, Object>) ReflectionTestUtils.getField(room, "players");
+        players.put("student", ordinary); players.put("admin", admin);
+        student.setSelectedLearningPet("HALLOWEEN_PUMPKIN");
+        setSeasonClock("2026-11-05T16:59:59.999Z");
+        BattleOnlineRoomDto before = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "student");
+        assertEquals("HALLOWEEN_PUMPKIN", selectedInRoom(before, "student"));
+        assertEquals("HALLOWEEN_PUMPKIN", selectedInRoom(before, "admin"));
+        setSeasonClock("2026-11-05T17:00:00Z");
+        BattleOnlineRoomDto after = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "student");
+        assertEquals("MAM_HOC", selectedInRoom(after, "student"));
+        assertEquals("HALLOWEEN_PUMPKIN", selectedInRoom(after, "admin"));
+        assertEquals("HALLOWEEN_PUMPKIN", student.getSelectedLearningPet());
+        assertEquals("HALLOWEEN_PUMPKIN", ReflectionTestUtils.getField(ordinary, "selectedPetKey"));
+        verify(users, never()).save(any(User.class));
     }
 
 }

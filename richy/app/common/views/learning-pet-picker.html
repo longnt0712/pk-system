@@ -16,9 +16,9 @@
     <div class="learning-pet-picker-grid">
         <button type="button" class="learning-pet-picker-card"
                 ng-repeat="item in pet.availablePets track by item.key"
-                ng-class="{'is-selected': pet.selectedPetKey === item.key}"
+                ng-class="{'is-selected': pet.selectedPetKey === item.key, 'is-locked': item.locked}"
                 ng-attr-aria-pressed="{{pet.selectedPetKey === item.key}}"
-                ng-click="pet.selectPet(item.key)" ng-disabled="pet.selectingPet">
+                ng-click="pet.selectPet(item.key)" ng-disabled="pet.selectingPet || item.locked">
             <span class="learning-pet-picker-art" ng-class="{'pet-lightning-sparkles': item.key === 'SPARKLING_LIGHTNING'}">
                 <img ng-src="{{item.image}}" alt="" aria-hidden="true">
                 <b ng-if="item.isNew">MỚI</b>
@@ -26,8 +26,8 @@
             <strong>{{item.name}}</strong>
             <small>{{item.description}}</small>
             <span class="learning-pet-picker-selection">
-                <i class="fa" ng-class="pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-paw'" aria-hidden="true"></i>
-                {{pet.selectedPetKey === item.key ? 'Đang dùng' : 'Chọn pet này'}}
+                <i class="fa" ng-class="item.locked ? 'fa-lock' : (pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-paw')" aria-hidden="true"></i>
+                {{item.locked ? 'Chưa đến mùa Halloween' : (pet.selectedPetKey === item.key ? 'Đang dùng' : 'Chọn pet này')}}
             </span>
         </button>
     </div>

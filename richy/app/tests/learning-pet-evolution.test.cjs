@@ -9,7 +9,16 @@ const assets = path.join(__dirname, '../assets/images/learning-pets');
 const timer = () => 1;
 timer.cancel = () => {};
 
-function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Map(), roles = []) {
+function petClock(iso = '2026-02-01T00:00:00Z') {
+    let timestamp = Date.parse(iso);
+    class PetDate extends Date {
+        constructor(...args) { super(...(args.length ? args : [timestamp])); }
+        static now() { return timestamp; }
+    }
+    return {Date: PetDate, set(iso) { timestamp = Date.parse(iso); }};
+}
+
+function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Map(), roles = [], clock = petClock()) {
     let factory, hooks;
     let user = {id: 7, vocabularyExperienceLevel: level, selectedLearningPet: selected, roles};
     const requests = [], broadcasts = [];
@@ -20,9 +29,9 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
         forEach(items, fn) { items.forEach(fn); }
     };
     const source = fs.readFileSync(path.join(__dirname, '../common/utils/learning-pet.directive.js'), 'utf8');
-    const context = nodeVm.createContext({angular, window: {APP_VERSION: 'pet-test'}, expose(value) { hooks = value; }});
+    const context = nodeVm.createContext({angular, Date: clock.Date, window: {APP_VERSION: 'pet-test'}, expose(value) { hooks = value; }});
     nodeVm.runInContext(source.replace('var permissionsListener =',
-        'expose({form: updatePetForm, message: updateMessage, parseDraft: parseDraft, shouldDisplay: shouldDisplay, activeTasks: activeAssignedTasks}); var permissionsListener ='), context);
+        'expose({form: updatePetForm, message: updateMessage, parseDraft: parseDraft, shouldDisplay: shouldDisplay, activeTasks: activeAssignedTasks, scheduleSeason: schedulePetSeasonUpdate}); var permissionsListener ='), context);
     const $http = {post(url, body) {
         requests.push({url, body});
         return Promise.resolve({data: {selectedPetKey: body.petKey}});
@@ -35,16 +44,19 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
     const cookies = {get() { return JSON.stringify(user); }, putObject(key, value) { user = value; }};
     const rootScope = {$on() { return () => {}; }, $broadcast(name, value) { broadcasts.push([name, value]); }};
     const scope = {$on() { return () => {}; }};
-    const definition = factory($http, {}, state, timer, timer, $window, cookies, rootScope,
+    const scheduled = [];
+    const timeout = (fn, delay) => { scheduled.push({fn, delay}); return scheduled.length; };
+    timeout.cancel = () => {};
+    const definition = factory($http, {}, state, timeout, timer, $window, cookies, rootScope,
         {ieltsRoom: true, api: {baseUrl: '/api/', apiV1Url: 'v1/'}});
     const pet = {};
     definition.controller.call(pet, scope);
     hooks.form(user);
     hooks.message();
-    return {pet, hooks, storage, requests, broadcasts, state, user: () => user};
+    return {pet, hooks, storage, requests, broadcasts, state, clock, scheduled, user: () => user};
 }
 
-function setupBattle(level, roles = []) {
+function setupBattle(level, roles = [], clock = petClock()) {
     let Controller;
     const angular = {
         module() { return {controller(name, fn) { Controller = fn; }}; },
@@ -53,7 +65,7 @@ function setupBattle(level, roles = []) {
         element() { return {on() {}, off() {}}; }
     };
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
-    const context = nodeVm.createContext({angular});
+    const context = nodeVm.createContext({angular, Date: clock.Date});
     nodeVm.runInContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/, ''), context);
     const $window = {
         APP_VERSION: 'pet-test', location: {origin: 'https://battle.example'}, navigator: {},
@@ -145,11 +157,12 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CUTE_TUFFY_MOUSE', 'pet-level-17.png'],
         ['CUTE_PIKACHU', 'pet-level-20.png'],
         ['CUTE_PERRY', 'pet-level-4.png'],
-        ['SPARKLING_LIGHTNING', 'sparkling-lightning/pet-level-20.png']
+        ['SPARKLING_LIGHTNING', 'sparkling-lightning/pet-level-20.png'],
+        ['HALLOWEEN_PUMPKIN', 'halloween-pumpkin/pet.png']
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 16);
+        assert.equal(h.pet.availablePets.length, 17);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -165,7 +178,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 16);
+    assert.equal(options.length, 17);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
@@ -531,4 +544,123 @@ test('the lightning collectible packages transparent artwork without changing th
     assert.equal(battle.getGiftRewardImage(-4, null, {rewardImage: 'assets/images/battle-lightning.svg'}),
         'assets/images/battle-lightning.svg?v=pet-test', 'the game keeps its own server-supplied reward artwork');
     assert.equal(battle.getGiftRewardImage(21), 'assets/images/learning-pets/perry/pet-level-4.png?v=pet-test');
+});
+
+test('Halloween pumpkin opens for everyone from October 1 through November 5 in UTC+7 every year', () => {
+    for (const [iso, available] of [
+        ['2026-09-30T16:59:59.999Z', false],
+        ['2026-09-30T17:00:00.000Z', true],
+        ['2026-10-28T12:00:00.000Z', true],
+        ['2026-11-04T17:00:00.000Z', true],
+        ['2026-11-05T16:59:59.999Z', true],
+        ['2026-11-05T17:00:00.000Z', false],
+        ['2026-12-31T17:00:00.000Z', false],
+        ['2027-09-30T17:00:00.000Z', true],
+        ['2027-11-05T17:00:00.000Z', false]
+    ]) {
+        const clock = petClock(iso);
+        const {pet} = setupLearningPet(0, 'HALLOWEEN_PUMPKIN', new Map(), [], clock);
+        const battle = setupBattle(0, [], clock);
+        const card = pet.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN');
+        assert.ok(card, 'everyone owns the pumpkin even while it is seasonally locked');
+        assert.equal(card.locked, !available, iso);
+        assert.equal(pet.selectedPetKey, available ? 'HALLOWEEN_PUMPKIN' : 'MAM_HOC', iso);
+        assert.equal(pet.petForm, available ? 'halloween-pumpkin' : 'egg-intact', iso);
+        assert.equal(battle.getBattlePetOptions().some(item => item.key === 'HALLOWEEN_PUMPKIN'), available, iso);
+        const image = battle.getPlayerPetImage({selectedPetKey: 'HALLOWEEN_PUMPKIN', vocabularyExperienceLevel: 0});
+        assert.equal(image, available ? card.image : 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=pet-test', iso);
+    }
+});
+
+test('Halloween pumpkin saves at level zero without eggs, experience changes or replacing other pets', async () => {
+    const h = setupLearningPet(0, 'MAM_HOC', new Map(), [], petClock('2026-10-01T00:00:00Z'));
+    assert.equal(h.pet.selectedPetKey, 'MAM_HOC', 'season opening does not change the chosen pet');
+    const pumpkin = h.pet.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN');
+    assert.equal(pumpkin.locked, false);
+    assert.match(pumpkin.description, /1\/10.*5\/11/);
+    h.pet.selectPet('HALLOWEEN_PUMPKIN');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests[0].body.petKey, 'HALLOWEEN_PUMPKIN');
+    assert.equal(h.user().selectedLearningPet, 'HALLOWEEN_PUMPKIN');
+    assert.equal(h.user().vocabularyExperienceLevel, 0);
+    assert.equal(h.pet.petForm, 'halloween-pumpkin');
+    assert.equal(h.pet.petImage, pumpkin.image);
+    assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', 'HALLOWEEN_PUMPKIN']]);
+    const grown = setupLearningPet(50, 'HALLOWEEN_PUMPKIN', new Map(), [], h.clock).pet;
+    assert.equal(grown.petImage, pumpkin.image);
+    assert.ok(grown.availablePets.some(item => item.key === 'CUTE_PIKACHU'));
+});
+
+test('a pumpkin card left open at expiry cannot send another selection request', () => {
+    const clock = petClock('2026-11-05T16:59:59.999Z');
+    const h = setupLearningPet(0, 'HALLOWEEN_PUMPKIN', new Map(), [], clock);
+    assert.equal(h.pet.petForm, 'halloween-pumpkin');
+    clock.set('2026-11-05T17:00:00.000Z');
+    h.pet.selectPet('HALLOWEEN_PUMPKIN');
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.pet.selectedPetKey, 'MAM_HOC');
+    assert.equal(h.pet.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN').locked, true);
+    assert.match(h.pet.petSelectionError, /1\/10.*5\/11.*UTC\+7/);
+    assert.equal(h.user().selectedLearningPet, 'HALLOWEEN_PUMPKIN', 'expiry does not rewrite the saved choice');
+});
+
+test('the assistant switches the effective pet at midnight even with the page left open', () => {
+    const clock = petClock('2026-11-05T16:59:59.999Z');
+    const h = setupLearningPet(20, 'HALLOWEEN_PUMPKIN', new Map(), [], clock);
+    h.hooks.scheduleSeason();
+    const expiry = h.scheduled.at(-1);
+    assert.equal(expiry.delay, 1);
+    clock.set('2026-11-05T17:00:00.000Z');
+    expiry.fn();
+    assert.equal(h.pet.selectedPetKey, 'MAM_HOC');
+    assert.equal(h.pet.petForm, 'hatched');
+    assert.equal(h.pet.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN').locked, true);
+    assert.equal(h.scheduled.at(-1).delay, 24 * 60 * 60 * 1000);
+});
+
+test('battle options expire at the same level and keep a stable reference within each season', () => {
+    const clock = petClock('2026-11-05T16:59:59.999Z');
+    const battle = setupBattle(0, [], clock);
+    const inSeason = battle.getBattlePetOptions();
+    assert.ok(inSeason.some(item => item.key === 'HALLOWEEN_PUMPKIN'));
+    assert.strictEqual(battle.getBattlePetOptions(), inSeason);
+    battle.selectedBattlePetKey = 'HALLOWEEN_PUMPKIN';
+    clock.set('2026-11-05T17:00:00Z');
+    const outsideSeason = battle.getBattlePetOptions();
+    assert.notStrictEqual(outsideSeason, inSeason);
+    assert.equal(outsideSeason.some(item => item.key === 'HALLOWEEN_PUMPKIN'), false);
+    assert.strictEqual(battle.getBattlePetOptions(), outsideSeason);
+    assert.equal(battle.selectedBattlePetKey, 'MAM_HOC');
+    assert.doesNotThrow(() => battle.selectBattlePet('HALLOWEEN_PUMPKIN'), 'locked request stops before the service call');
+    clock.set('2027-09-30T17:00:00Z');
+    assert.ok(battle.getBattlePetOptions().some(item => item.key === 'HALLOWEEN_PUMPKIN'));
+});
+
+test('only a real admin or an explicitly unlocked player keeps pumpkin access outside the season', async () => {
+    const clock = petClock('2026-06-15T10:00:00Z');
+    const roles = [{name: 'ROLE_ADMIN'}];
+    const h = setupLearningPet(0, 'MAM_HOC', new Map(), roles, clock);
+    assert.equal(h.pet.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN').locked, false);
+    h.pet.selectPet('HALLOWEEN_PUMPKIN');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.pet.petForm, 'halloween-pumpkin');
+    const expected = h.pet.petImage;
+    const battle = setupBattle(0, roles, clock);
+    assert.ok(battle.getBattlePetOptions().some(item => item.key === 'HALLOWEEN_PUMPKIN'));
+    assert.equal(battle.getPlayerPetImage({username: 'student', selectedPetKey: 'HALLOWEEN_PUMPKIN', vocabularyExperienceLevel: 0}), expected);
+    assert.doesNotMatch(battle.getPlayerPetImage({username: 'another-student', selectedPetKey: 'HALLOWEEN_PUMPKIN', vocabularyExperienceLevel: 50}), /halloween-pumpkin/);
+    assert.equal(setupBattle(0, [], clock).getPlayerPetImage({selectedPetKey: 'HALLOWEEN_PUMPKIN', vocabularyExperienceLevel: 0, allPetsUnlocked: true}), expected);
+    const otherRole = setupLearningPet(50, 'HALLOWEEN_PUMPKIN', new Map(), [{name: 'ROLE_ADMINISTRATOR'}], clock).pet;
+    assert.equal(otherRole.availablePets.find(item => item.key === 'HALLOWEEN_PUMPKIN').locked, true);
+    assert.equal(otherRole.selectedPetKey, 'MAM_HOC');
+    assert.equal(h.user().vocabularyExperienceLevel, 0);
+});
+
+test('pumpkin art is transparent and its seasonal pet never becomes a random game reward', () => {
+    const png = fs.readFileSync(path.join(assets, 'halloween-pumpkin/pet.png'));
+    assert.equal(png.subarray(1, 4).toString(), 'PNG');
+    assert.equal(png.readUInt32BE(16), 1024);
+    assert.equal(png.readUInt32BE(20), 1024);
+    assert.equal(png[25], 6);
+    assert.equal(fs.existsSync(path.join(assets, 'halloween-pumpkin/pet.json')), false);
 });
