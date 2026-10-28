@@ -1037,6 +1037,7 @@
 
             function parseDraft(item) {
                 if (!item || !item.draftKey || !item.payload) { return null; }
+                if (item.draftType === 'STUDY_NOTEBOOK') { return null; }
                 var payload;
                 try { payload = angular.fromJson(item.payload); }
                 catch (ignorePayload) { return null; }

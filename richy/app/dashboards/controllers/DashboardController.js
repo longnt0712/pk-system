@@ -493,6 +493,7 @@
             $http.get(draftsUrl).then(function (response) {
                 angular.forEach(angular.isArray(response.data) ? response.data : [], function (item) {
                     if (!item || !item.draftKey || !item.payload) { return; }
+                    if (item.draftType === 'STUDY_NOTEBOOK') { return; }
                     var payload = null;
                     try { payload = JSON.parse(item.payload); } catch (ignoreServerPayload) { return; }
                     var displayPayload = payload;

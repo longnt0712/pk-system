@@ -81,6 +81,11 @@
                  src="assets/images/troop.jpg"
                  alt="IELTS Room logo">
         </button>
+        <study-notebook ng-if="vm.isStudyMode() && !vm.isPreviewMode"
+                        enabled="vm.isStudyMode() && !vm.isPreviewMode"
+                        user-id="vm.currentUser.id"
+                        test-id="vm.ieltsReadingActualTest.id"
+                        test-mode="{{vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'))}}"></study-notebook>
         <div class="idp-exam-test-context" ng-if="vm.ieltsReadingActualTest.title || vm.isListeningRoute">
             <strong class="idp-exam-test-title" ng-if="vm.ieltsReadingActualTest.title" title="{{vm.ieltsReadingActualTest.title}}">{{vm.ieltsReadingActualTest.title}}</strong>
             <label class="idp-listening-switch idp-header-audio-switch" for="listening-toolbar-switch" ng-if="vm.isListeningRoute" title="Hiện hoặc ẩn toàn bộ thanh điều khiển audio">

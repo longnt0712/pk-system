@@ -124,6 +124,20 @@ test('canceling Daily Listening removes its dashboard card and pet reminder with
     assert.equal(h.pet.drafts.length, 0, 'the reminder remains gone on the next refresh');
 });
 
+test('Study notebooks do not create homework reminders or duplicate their large payloads in the draft cache', async () => {
+    const h = await setup([]), key = 'study-notebook:v1:7:READING:42';
+    const localKey = 'study-notebook-local:v1:7:READING:42';
+    const local = JSON.stringify({document: {text: 'Unsynced writing'}, dirty: true});
+    h.storage.set(localKey, local);
+    h.cloud.push({id: 90, draftKey: key, draftType: 'STUDY_NOTEBOOK', payload: JSON.stringify({userId: 7,
+        document: {text: 'Synced writing'}, hiddenFromDashboard: true})});
+    h.dashboard.loadResumeDrafts(); await tick(); await h.pet.refresh(); await tick();
+    assert.equal(h.dashboard.resumeDrafts.length, 0);
+    assert.equal(h.pet.drafts.length, 0); assert.equal(h.pet.notificationCount, 0);
+    assert.equal(h.storage.has(key), false, 'ignored notebook payloads must not consume another local storage slot');
+    assert.equal(h.storage.get(localKey), local);
+});
+
 test('dismissal removes only that draft and preserves the other draft and assigned task counts', async () => {
     const h = await setup([draft('DAILY_LISTENING', 21), draft('DAILY_LISTENING', 22)],
         {tasks: [{taskId: 88, dueDate: '2026-12-31', overdue: false}]});
