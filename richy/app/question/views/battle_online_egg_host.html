@@ -40,7 +40,7 @@
             <p class="egg-host-empty" ng-if="!vm.room.giftDrop.claims.length">Chưa có ai bóc trứng.</p>
             <article class="egg-host-claim" ng-repeat="claim in vm.room.giftDrop.claims track by claim.id">
                 <div class="egg-host-claim-art"><img ng-src="{{vm.getGiftRewardImage(claim.rewardLevel, claim.skillType, claim)}}" alt="{{vm.getGiftRewardLabel(claim.rewardLevel, claim.skillType, claim)}}"><b ng-if="claim.skillType">{{vm.getSkillIcon(claim.skillType)}}</b></div>
-                <p><strong>{{claim.displayName || claim.username}}</strong><small>{{vm.getGiftRewardLabel(claim.rewardLevel, claim.skillType, claim)}}</small><em>{{claim.rewardLevel === -4 ? 'Cả phòng hưởng sét 30 giây' : claim.skillType ? 'Nhận skill' : '+' + vm.formatScore(claim.points) + ' điểm'}}</em><small>{{claim.claimedAt | date:'HH:mm:ss'}}</small></p>
+                <p><strong>{{claim.displayName || claim.username}}</strong><small>{{vm.getGiftRewardLabel(claim.rewardLevel, claim.skillType, claim)}}</small><em>{{claim.rewardLevel === -4 ? 'Cả phòng +10% tỉ lệ trong 30 giây' : claim.skillType ? 'Nhận skill' : '+' + vm.formatScore(claim.points) + ' điểm'}}</em><small>{{claim.claimedAt | date:'HH:mm:ss'}}</small></p>
             </article>
         </div>
     </section>

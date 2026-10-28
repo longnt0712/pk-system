@@ -3,7 +3,7 @@
         <div class="battle-music-config-header">
             <div>
                 <h2><i class="fa fa-music"></i> Battle Config</h2>
-                <p>Quản lý nhạc chung và nhạc riêng của từng mode Battle Online.</p>
+                <p>Chọn vật phẩm may mắn và quản lý nhạc của các mode Battle Online.</p>
             </div>
         </div>
 
@@ -18,6 +18,22 @@
         <div class="alert alert-danger" data-ng-if="vm.loadError">
             Không tải được cấu hình. Vui lòng tải lại trang.
         </div>
+
+        <section class="battle-lucky-appearance" data-ng-if="!vm.loading && !vm.loadError" aria-labelledby="battle-lucky-appearance-title">
+            <img data-ng-src="{{vm.luckyPreviewImage()}}" alt="" class="battle-lucky-preview" />
+            <div class="battle-lucky-copy">
+                <span class="battle-music-section-label">MODE LỤM NGAY</span>
+                <h3 id="battle-lucky-appearance-title">Vật phẩm may mắn</h3>
+                <p>Cả phòng vẫn được +10% tỉ lệ Tom đến Pikachu trong 30 giây. Lựa chọn áp dụng cho các trận bắt đầu sau khi lưu.</p>
+                <label class="battle-lucky-switch">
+                    <span data-ng-class="{'is-selected': vm.lumLuckyAppearance === 'LIGHTNING'}">⚡ Sét</span>
+                    <input id="battle-lucky-appearance-switch" type="checkbox" role="switch" aria-label="Dùng bí ngô Halloween thay cho sét"
+                           data-ng-model="vm.lumLuckyAppearance" data-ng-true-value="'PUMPKIN'" data-ng-false-value="'LIGHTNING'"
+                           data-ng-attr-aria-checked="{{vm.lumLuckyAppearance === 'PUMPKIN'}}" data-ng-disabled="vm.saving" />
+                    <span data-ng-class="{'is-selected': vm.lumLuckyAppearance === 'PUMPKIN'}">🎃 Bí ngô Halloween</span>
+                </label>
+            </div>
+        </section>
 
         <div class="battle-music-sections" data-ng-if="!vm.loading && !vm.loadError">
             <section class="battle-music-section" data-ng-repeat="section in vm.sections track by section.purpose"
@@ -58,7 +74,7 @@
                             <select class="form-control" data-ng-model="track.purpose" data-ng-disabled="vm.saving">
                                 <option value="BATTLE">Nhạc chung — tất cả mode</option>
                                 <option value="DEMON_DANGER">Diệt Quỷ Ngu — lúc nguy hiểm</option>
-                                <option value="LUM_LIGHTNING">Lụm ngay — Sét may mắn</option>
+                                <option value="LUM_LIGHTNING">Lụm ngay — Vật phẩm may mắn</option>
                             </select>
                         </label>
                         <label class="battle-music-enabled">
@@ -106,6 +122,19 @@
     .battle-music-config-header h2 i { color:#7160ef; }
     .battle-music-config-header p { margin:0; color:#7a879e; }
     .battle-music-config-note { margin-bottom:16px; }
+    .battle-lucky-appearance { display:flex; align-items:center; gap:18px; margin-bottom:22px; padding:18px; border:1px solid #efc88b; border-radius:16px; background:#fff9ee; }
+    .battle-lucky-preview { width:80px; height:80px; flex:0 0 80px; object-fit:contain; }
+    .battle-lucky-copy { min-width:0; }
+    .battle-lucky-copy h3 { margin:5px 0 8px; color:#293653; font-size:20px; font-weight:800; }
+    .battle-lucky-copy p { margin:0 0 12px; color:#728099; line-height:1.4; }
+    .battle-lucky-switch { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:0; font-size:14px; color:#728099; cursor:pointer; }
+    .battle-lucky-switch .is-selected { color:#a65312; font-weight:800; }
+    .battle-lucky-switch input { appearance:none; -webkit-appearance:none; position:relative; width:46px; height:26px; flex:0 0 46px; margin:0; border:2px solid #8b90bd; border-radius:20px; background:#a2a8d3; cursor:pointer; transition:background .15s; }
+    .battle-lucky-switch input::after { content:''; position:absolute; width:18px; height:18px; left:2px; top:2px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0003; transition:transform .15s; }
+    .battle-lucky-switch input:checked { border-color:#d37414; background:#ed9029; }
+    .battle-lucky-switch input:checked::after { transform:translateX(20px); }
+    .battle-lucky-switch input:focus-visible { outline:3px solid #a89aff; outline-offset:3px; }
+    .battle-lucky-switch input:disabled { opacity:.55; cursor:wait; }
     .battle-music-config-loading { padding:45px; color:#6d7890; text-align:center; }
     .battle-music-sections { display:flex; flex-direction:column; gap:22px; }
     .battle-music-section { padding:18px; border:1px solid #dddaf7; border-radius:16px; background:#fcfbff; }
@@ -136,6 +165,10 @@
     .battle-music-config-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding-top:16px; border-top:1px solid #e6eaf2; color:#6c7890; }
     .battle-music-config-footer .btn { min-width:190px; border-radius:9px; font-weight:700; }
     .global-dark-mode .battle-music-config-card { border-color:#343d52; background:#202635; }
+    .global-dark-mode .battle-lucky-appearance { border-color:#795732; background:#302b28; }
+    .global-dark-mode .battle-lucky-copy h3 { color:#eef2ff; }
+    .global-dark-mode .battle-lucky-copy p, .global-dark-mode .battle-lucky-switch { color:#b1bcd2; }
+    .global-dark-mode .battle-lucky-switch .is-selected { color:#ffc879; }
     .global-dark-mode .battle-music-config-header h2 { color:#eef2ff; }
     .global-dark-mode .battle-music-section { border-color:#45415d; background:#252b3b; }
     .global-dark-mode .battle-music-section.is-danger { border-color:#63513c; background:#302b28; }
@@ -160,6 +193,9 @@
         .battle-music-config-footer .btn { width:100%; }
     }
     @media (max-width:480px) {
+        .battle-lucky-appearance { align-items:flex-start; gap:10px; padding:12px; }
+        .battle-lucky-preview { width:48px; height:48px; flex-basis:48px; }
+        .battle-lucky-switch { gap:7px; font-size:13px; }
         .battle-music-config-card { padding:14px; }
         .battle-music-section { padding:12px; }
         .battle-music-track { padding:10px; gap:10px; }

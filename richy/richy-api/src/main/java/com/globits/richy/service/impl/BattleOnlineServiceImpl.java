@@ -71,6 +71,7 @@ import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
+import com.globits.richy.service.BattleMusicConfigService;
 import com.globits.richy.service.QuestionService;
 import com.globits.security.domain.User;
 import com.globits.security.domain.Role;
@@ -263,6 +264,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BattleMusicConfigService battleMusicConfigService;
 
 
     @Override
@@ -1878,6 +1882,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
+        String lumLuckyAppearance = MODE_LUM_NGAY.equals(room.settings.mode) && battleMusicConfigService != null
+                && "LIGHTNING".equals(battleMusicConfigService.getLumLuckyAppearance()) ? "LIGHTNING" : "PUMPKIN";
         room.status = PLAYING;
 
         room.classicQuestions.clear();
@@ -1906,6 +1912,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.classicQuestionIndex = 0;
         }
         if (MODE_LUM_NGAY.equals(room.settings.mode)) {
+            room.lumLuckyAppearance = lumLuckyAppearance;
             List<String> eggSkills = new ArrayList<String>();
             for (String type : GiftDropGame.SKILL_TYPES) { if (isSkillEnabledLocked(room, type)) { eggSkills.add(type); } }
             room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random, eggSkills);
@@ -2960,7 +2967,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.giftCreditVersion++;
             if (room.giftLightning != null && (!room.giftOpening || hasOutstandingGiftCreditsLocked(room))
                     && room.giftLightning.tryCollect(now, player.username, displayName(player))) {
-                gift = GiftDropGame.lightningGift(gift.id);
+                gift = GiftDropGame.lightningGift(gift.id, room.lumLuckyAppearance);
             }
             if (gift.skillType != null) {
                 player.pendingSkillType = gift.skillType;
@@ -7321,6 +7328,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
         dto.setSettings(roomSettingsDto);
         if (room.giftDrop != null) {
+            dto.setLumLuckyAppearance(room.lumLuckyAppearance);
             if (room.giftLightning != null) { dto.setGiftLightning(room.giftLightning.snapshot(System.currentTimeMillis())); }
             PlayerState viewer = room.players.get(viewerUsername);
             dto.setGiftDrop(viewer != null && !viewer.spectator ? room.giftDrop.snapshot(viewerUsername) : room.giftDrop.snapshot());
@@ -9299,6 +9307,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         DemonDefenseGame demonDefense;
         GiftDropGame giftDrop;
         GiftLightningGame giftLightning;
+        String lumLuckyAppearance = "PUMPKIN";
         long lastDemonSummaryAt;
         String lastDemonWarningKey = "";
 

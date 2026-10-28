@@ -70,7 +70,7 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
             {videoId: 'fourthTrack', name: 'Fourth song'}
         ].concat(dangerTracks)}); }});
     function room(status = 'PLAYING') {
-        return {code: 'ABC123', hostUsername: 'teacher', status, settings: {mode: 'COUNTDOWN'},
+        return {code: 'ABC123', lumLuckyAppearance: 'LIGHTNING', hostUsername: 'teacher', status, settings: {mode: 'COUNTDOWN'},
             players: [{username: 'teacher', spectator}], recentEvents: []};
     }
     instance.room = room();
@@ -431,6 +431,17 @@ test('lightning audio respects manual pause, saved volume and disabled tracks', 
     const disabled = setup(); await disabled.prepare(); collectLightning(disabled);
     assert.equal(disabled.state, 1); assert.equal(disabled.lightningState, undefined);
     assert.equal(disabled.instance.isGiftLightningActive(), true, 'muting music never disables the reward');
+});
+
+test('pumpkin uses the same resumable lucky music while showing the pumpkin track label', async () => {
+    const h=setup({dangerTracks:[{videoId:'gOMUTUvVwEk',purpose:'LUM_LIGHTNING'}]});
+    await h.prepare();h.advance(12);h.instance.room.lumLuckyAppearance='PUMPKIN';
+    collectLightning(h);h.markLightningReady();h.advanceLightning(7);
+    assert.equal(h.instance.getMusicTrackName(),'Lụm ngay — Bí ngô may mắn');
+    assert.equal(h.lightningState,1);assert.equal(h.state,2);
+    h.instance.room.giftLightning.endsAt=Date.now()-1;h.hooks.updateCountdown();
+    assert.equal(h.lightningState,2);assert.equal(h.position,12);assert.equal(h.state,1);
+    collectLightning(h);assert.equal(h.lightningPosition,7);assert.equal(h.calls.some(call=>call[0]==='lightning-load'),false);
 });
 
 test('auto reading defaults on, cancels immediately, survives room updates and leaves manual speech and music available', async () => {

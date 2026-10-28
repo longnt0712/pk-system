@@ -397,6 +397,12 @@ public class GiftDropGame {
         return new Gift(gift.id, gift.rewardLevel, gift.points, gift.skillType, gift.rewardImage, gift.rewardLabel, ticket);
     }
     public static Gift lightningGift(String id) {
+        return lightningGift(id, "LIGHTNING");
+    }
+    public static Gift lightningGift(String id, String appearance) {
+        if ("PUMPKIN".equals(appearance)) {
+            return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-pumpkin.svg", "Bí ngô may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
+        }
         return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-lightning.svg", "Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
     }
     private Gift petGift(String id, PetRewardCatalog.Reward reward) {

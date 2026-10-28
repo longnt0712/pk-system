@@ -528,6 +528,7 @@ test('the lightning collectible packages transparent artwork without changing th
     assert.equal(png.readUInt32BE(20), 1024);
     assert.equal(png[25], 6);
     const battle = setupBattle(20);
-    assert.equal(battle.getGiftRewardImage(-4), 'assets/images/battle-lightning.svg?v=pet-test');
+    assert.equal(battle.getGiftRewardImage(-4, null, {rewardImage: 'assets/images/battle-lightning.svg'}),
+        'assets/images/battle-lightning.svg?v=pet-test', 'the game keeps its own server-supplied reward artwork');
     assert.equal(battle.getGiftRewardImage(21), 'assets/images/learning-pets/perry/pet-level-4.png?v=pet-test');
 });

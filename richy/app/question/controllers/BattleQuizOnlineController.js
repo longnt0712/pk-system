@@ -777,6 +777,17 @@
         vm.lastGiftReward = null;
         vm.giftModalOpen = false;
         var giftModalReturnFocus = null;
+        vm.lumLuckyAppearance = 'PUMPKIN';
+        vm.giftLuckyAppearance = function () {
+            var appearance = vm.room && vm.room.lumLuckyAppearance;
+            return appearance === 'PUMPKIN' || appearance === 'LIGHTNING' ? appearance : vm.lumLuckyAppearance;
+        };
+        vm.giftLuckyName = function () { return vm.giftLuckyAppearance() === 'LIGHTNING' ? 'Sét may mắn' : 'Bí ngô may mắn'; };
+        vm.giftLuckyIcon = function () { return vm.giftLuckyAppearance() === 'LIGHTNING' ? '⚡' : '🎃'; };
+        vm.giftLuckyImage = function () {
+            return getGiftImageWithVersion(vm.giftLuckyAppearance() === 'LIGHTNING'
+                ? 'assets/images/battle-lightning.svg' : 'assets/images/battle-pumpkin.svg');
+        };
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
         vm.isGiftLightningActive = function () {
             var effect = vm.room && vm.room.giftLightning;
@@ -800,7 +811,7 @@
                 ? getGiftImageWithVersion('assets/images/learning-pets/dragon-ball-' + stars + '/pet.png') : '';
         };
         vm.hostSettingsTemplate = 'question/views/battle_online_host_settings.html?v=' + encodeURIComponent($window.APP_VERSION || '') + '&vocabPicker=20261028_1';
-        vm.eggHostTemplate = 'question/views/battle_online_egg_host.html?v=' + encodeURIComponent($window.APP_VERSION || '');
+        vm.eggHostTemplate = 'question/views/battle_online_egg_host.html?v=' + encodeURIComponent($window.APP_VERSION || '') + '&luckyAppearance=20261028_1';
         vm.demonArenaTemplate = 'question/views/battle_online_demon_arena.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.dragonBallCollectionTemplate = 'question/views/battle_online_dragon_collection.html?v=' + encodeURIComponent($window.APP_VERSION || '');
         vm.dragonBallCollection = [1,2,3,4,5,6,7].map(function (stars, index) {
@@ -881,7 +892,10 @@
             return isFinite(level) && level >= 0 && level < 21 ? Math.floor(level) : 0;
         }
         vm.getGiftRewardImage = function (level, skillType, reward) {
-            if (Number(level) === -4) { return getGiftImageWithVersion('assets/images/battle-lightning.svg'); }
+            if (Number(level) === -4) {
+                return reward && typeof reward.rewardImage === 'string' && reward.rewardImage.trim()
+                    ? getGiftImageWithVersion(reward.rewardImage.trim()) : vm.giftLuckyImage();
+            }
             if (skillType) { level = 0; }
             if (level === -1) {
                 return getGiftImageWithVersion('assets/images/learning-pets/lum-ngay/rotten-egg.png');
@@ -900,7 +914,10 @@
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
         vm.getGiftRewardLabel = function (level, skillType, reward) {
-            if (Number(level) === -4) { return 'Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây'; }
+            if (Number(level) === -4) {
+                return reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()
+                    ? reward.rewardLabel.trim() : vm.giftLuckyName() + ' — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây';
+            }
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
             if ((level >= 0 || Number(level) === -3) && reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()) {
@@ -6189,6 +6206,7 @@
 
         function loadBattleViewMusicConfig() {
             return battleService.getActiveMusicTracks().then(function (config) {
+                vm.lumLuckyAppearance = config && config.lumLuckyAppearance === 'LIGHTNING' ? 'LIGHTNING' : 'PUMPKIN';
                 var trackIds = [];
                 var dangerTrackIds = [];
                 var lightningIds = [];
@@ -6223,7 +6241,7 @@
 
 
         function getMusicTrackName() {
-            if (lightningMusicActive) { return 'Lụm ngay — Sét may mắn'; }
+            if (lightningMusicActive) { return 'Lụm ngay — ' + vm.giftLuckyName(); }
             if (demonDangerMusicActive) { return 'Nhạc Diệt Quỷ Ngu lúc nguy hiểm'; }
             for (var index = 0; index < vm.musicTracks.length; index += 1) {
                 if (vm.musicTracks[index].videoId === battleViewMusicLastTrackId) {

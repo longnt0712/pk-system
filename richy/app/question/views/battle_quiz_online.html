@@ -8,9 +8,9 @@
 
     <div class="battle-lightning-effect" ng-if="vm.isGiftLightningActive()" ng-class="{'is-host': vm.isHost()}" aria-hidden="true">
         <div class="battle-lightning-visual">
-            <img src="assets/images/battle-lightning.svg" alt="">
+            <img ng-src="{{vm.giftLuckyImage()}}" alt="">
             <p class="battle-lightning-caption" ng-if="vm.isHost()">
-                ⚡ {{vm.room.giftLightning.displayName}} nhặt được Sét may mắn! Cả phòng +10% tỉ lệ Tom đến Pikachu · {{vm.giftLightningSeconds()}}s
+                {{vm.giftLuckyIcon()}} {{vm.room.giftLightning.displayName}} nhặt được {{vm.giftLuckyName()}}! Cả phòng +10% tỉ lệ Tom đến Pikachu · {{vm.giftLightningSeconds()}}s
             </p>
         </div>
     </div>

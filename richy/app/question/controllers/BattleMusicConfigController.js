@@ -15,18 +15,28 @@
         vm.loading = true;
         vm.saving = false;
         vm.loadError = false;
+        vm.lumLuckyAppearance = 'PUMPKIN';
+        vm.luckyPreviewImage = function () {
+            return vm.lumLuckyAppearance === 'LIGHTNING'
+                ? 'assets/images/battle-lightning.svg' : 'assets/images/battle-pumpkin.svg';
+        };
         vm.sections = [
             {purpose: 'BATTLE', title: 'Nhạc chung', label: 'TẤT CẢ MODE BATTLE ONLINE', icon: 'fa-music',
                 description: 'Phát ngẫu nhiên trong các mode Battle Online. Đây là nhạc nền khi trận đấu diễn ra bình thường.', addLabel: 'Thêm nhạc chung'},
             {purpose: 'DEMON_DANGER', title: 'Nhạc lúc nguy hiểm', label: 'MODE DIỆT QUỶ NGU', icon: 'fa-exclamation-triangle',
                 description: 'Phát khi có đội còn sống chạm ngưỡng nguy hiểm trong Diệt Quỷ Ngu. Khi an toàn, nhạc chung phát trở lại.', addLabel: 'Thêm nhạc nguy hiểm'},
-            {purpose: 'LUM_LIGHTNING', title: 'Nhạc Sét may mắn', label: 'MODE LỤM NGAY', icon: 'fa-bolt',
-                description: 'Phát trong 30 giây cả phòng hưởng sét. Giữa các đợt, nhạc này tạm dừng và tiếp tục từ vị trí cũ; hết bài mới phát lại.', addLabel: 'Thêm nhạc sét'}
+            {purpose: 'LUM_LIGHTNING', title: 'Nhạc vật phẩm may mắn', label: 'MODE LỤM NGAY', icon: 'fa-gift',
+                description: 'Phát trong 30 giây cả phòng hưởng hiệu ứng may mắn. Giữa các đợt, nhạc này tạm dừng và tiếp tục từ vị trí cũ; hết bài mới phát lại.', addLabel: 'Thêm nhạc may mắn'}
         ];
 
         function setTracks(tracks) {
             vm.tracks = angular.copy(tracks || []);
             vm.tracks.forEach(function (track) { track.purpose = track.purpose || 'BATTLE'; });
+        }
+
+        function setConfig(config) {
+            setTracks(config && config.tracks);
+            vm.lumLuckyAppearance = config && config.lumLuckyAppearance === 'LIGHTNING' ? 'LIGHTNING' : 'PUMPKIN';
         }
 
         vm.sectionCount = function (purpose) {
@@ -35,7 +45,7 @@
 
         vm.addTrack = function (purpose) {
             vm.tracks.push({
-                name: (purpose === 'DEMON_DANGER' ? 'Nhạc nguy hiểm ' : purpose === 'LUM_LIGHTNING' ? 'Nhạc Sét may mắn ' : 'Battle music ') + (vm.tracks.length + 1),
+                name: (purpose === 'DEMON_DANGER' ? 'Nhạc nguy hiểm ' : purpose === 'LUM_LIGHTNING' ? 'Nhạc may mắn ' : 'Battle music ') + (vm.tracks.length + 1),
                 url: '',
                 enabled: true,
                 purpose: purpose || 'BATTLE'
@@ -96,14 +106,14 @@
             }
 
             vm.saving = true;
-            service.saveBattleMusicConfig({tracks: tracks}).then(function (saved) {
+            service.saveBattleMusicConfig({tracks: tracks, lumLuckyAppearance: vm.lumLuckyAppearance}).then(function (saved) {
                 vm.saving = false;
-                setTracks(saved && saved.tracks);
-                toastr.success('Đã lưu danh sách nhạc battle.', 'Battle Config');
+                setConfig(saved);
+                toastr.success('Đã lưu Battle Config.', 'Battle Config');
             }, function (error) {
                 vm.saving = false;
                 var message = error && error.data && error.data.message
-                    ? error.data.message : 'Không lưu được cấu hình nhạc.';
+                    ? error.data.message : 'Không lưu được Battle Config.';
                 toastr.error(message, 'Battle Config');
             });
         };
@@ -111,7 +121,7 @@
         service.getBattleMusicConfig().then(function (config) {
             vm.loading = false;
             vm.loadError = false;
-            setTracks(config && config.tracks);
+            setConfig(config);
             if (!vm.tracks.length) { vm.addTrack(); }
         }, function () {
             vm.loading = false;

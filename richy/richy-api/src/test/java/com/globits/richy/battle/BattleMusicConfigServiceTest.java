@@ -2,10 +2,12 @@ package com.globits.richy.battle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.globits.richy.domain.BattleMusicTrack;
+import com.globits.richy.domain.BattleConfig;
 import com.globits.richy.dto.BattleMusicConfigDto;
 import com.globits.richy.dto.BattleMusicTrackDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.repository.BattleMusicTrackRepository;
+import com.globits.richy.repository.BattleConfigRepository;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.impl.BattleMusicConfigServiceImpl;
 import java.util.ArrayList;
@@ -19,12 +21,20 @@ import static org.mockito.Mockito.*;
 public class BattleMusicConfigServiceTest {
     private BattleMusicConfigServiceImpl service;
     private BattleMusicTrackRepository repository;
+    private BattleConfigRepository configRepository;
+    private BattleConfig storedConfig;
     private final List<BattleMusicTrack> stored = new ArrayList<BattleMusicTrack>();
 
     @Before @SuppressWarnings("unchecked") public void setup() {
         service = new BattleMusicConfigServiceImpl();
         repository = mock(BattleMusicTrackRepository.class);
+        configRepository = mock(BattleConfigRepository.class);
         ReflectionTestUtils.setField(service, "repository", repository);
+        ReflectionTestUtils.setField(service, "configRepository", configRepository);
+        when(configRepository.findOne(1)).thenAnswer(call -> storedConfig);
+        when(configRepository.saveAndFlush(any(BattleConfig.class))).thenAnswer(call -> {
+            storedConfig = (BattleConfig) call.getArguments()[0]; return storedConfig;
+        });
         when(repository.findAll()).thenAnswer(call -> new ArrayList<BattleMusicTrack>(stored));
         doAnswer(call -> { stored.clear(); return null; }).when(repository).deleteAll();
         doAnswer(call -> {
@@ -105,5 +115,49 @@ public class BattleMusicConfigServiceTest {
         assertFalse(off.isSkillsEnabled());
         assertFalse(mapper.readTree(mapper.writeValueAsString(off)).get("skillsEnabled").asBoolean());
         assertTrue(mapper.readValue("{}", BattleOnlineRoomSettingsDto.class).isSkillsEnabled());
+    }
+
+    @Test public void luckyAppearanceDefaultsToPumpkinForAdminAndGameplayWithoutWritingOnRead() {
+        assertEquals("PUMPKIN", service.getAdminConfig().getLumLuckyAppearance());
+        assertEquals("PUMPKIN", service.getActiveConfig().getLumLuckyAppearance());
+        assertEquals("PUMPKIN", service.getLumLuckyAppearance());
+        verify(configRepository, never()).saveAndFlush(any(BattleConfig.class));
+    }
+
+    @Test public void luckyAppearanceCanSwitchBothWaysAndSurvivesAServiceReload() {
+        BattleMusicConfigDto config = service.getAdminConfig();
+        config.setLumLuckyAppearance("LIGHTNING");
+        assertEquals("LIGHTNING", service.saveConfig(config).getLumLuckyAppearance());
+        BattleMusicConfigServiceImpl reloaded = new BattleMusicConfigServiceImpl();
+        ReflectionTestUtils.setField(reloaded, "repository", repository);
+        ReflectionTestUtils.setField(reloaded, "configRepository", configRepository);
+        assertEquals("LIGHTNING", reloaded.getActiveConfig().getLumLuckyAppearance());
+        config = reloaded.getAdminConfig(); config.setLumLuckyAppearance("PUMPKIN");
+        assertEquals("PUMPKIN", reloaded.saveConfig(config).getLumLuckyAppearance());
+        assertEquals("PUMPKIN", storedConfig.getLumLuckyAppearance());
+        assertEquals(5, stored.size());
+    }
+
+    @Test public void oldMusicOnlyRequestsPreserveTheSavedAppearance() throws Exception {
+        BattleMusicConfigDto config = service.getAdminConfig(); config.setLumLuckyAppearance("LIGHTNING");
+        service.saveConfig(config);
+        BattleMusicConfigDto legacy = new ObjectMapper().readValue("{}", BattleMusicConfigDto.class);
+        assertNull(legacy.getLumLuckyAppearance()); legacy.setTracks(config.getTracks());
+        assertEquals("LIGHTNING", service.saveConfig(legacy).getLumLuckyAppearance());
+        verify(configRepository, times(1)).saveAndFlush(any(BattleConfig.class));
+    }
+
+    @Test public void invalidAppearanceOrTracksAreRejectedBeforeChangingAnyStoredConfig() {
+        for (String appearance : new String[] {"", "pumpkin", "TREE"}) {
+            BattleMusicConfigDto config = service.getAdminConfig(); config.setLumLuckyAppearance(appearance);
+            try { service.saveConfig(config); fail("Invalid appearance must be rejected"); }
+            catch (BattleOnlineException expected) { }
+        }
+        BattleMusicConfigDto invalidMusic = service.getAdminConfig(); invalidMusic.setLumLuckyAppearance("LIGHTNING");
+        invalidMusic.getTracks().get(0).setUrl("invalid");
+        try { service.saveConfig(invalidMusic); fail("Invalid music must be rejected"); }
+        catch (BattleOnlineException expected) { }
+        verify(repository, never()).deleteAll();
+        verify(configRepository, never()).saveAndFlush(any(BattleConfig.class));
     }
 }

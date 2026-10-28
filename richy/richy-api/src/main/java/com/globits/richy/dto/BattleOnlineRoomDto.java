@@ -88,6 +88,9 @@ public class BattleOnlineRoomDto implements Serializable {
     private DemonDefenseGame.Snapshot demonDefense;
     private GiftDropGame.Snapshot giftDrop;
     private GiftLightningGame.Snapshot giftLightning;
+    private String lumLuckyAppearance;
+    public String getLumLuckyAppearance() { return lumLuckyAppearance; }
+    public void setLumLuckyAppearance(String value) { lumLuckyAppearance = value; }
     public GiftLightningGame.Snapshot getGiftLightning() { return giftLightning; }
     public void setGiftLightning(GiftLightningGame.Snapshot value) { giftLightning = value; }
     private Integer giftCredits;

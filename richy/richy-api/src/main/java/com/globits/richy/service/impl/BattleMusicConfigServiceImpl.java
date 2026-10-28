@@ -18,9 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.richy.domain.BattleMusicTrack;
+import com.globits.richy.domain.BattleConfig;
 import com.globits.richy.dto.BattleMusicConfigDto;
 import com.globits.richy.dto.BattleMusicTrackDto;
 import com.globits.richy.repository.BattleMusicTrackRepository;
+import com.globits.richy.repository.BattleConfigRepository;
 import com.globits.richy.service.BattleMusicConfigService;
 import com.globits.richy.service.BattleOnlineException;
 
@@ -40,6 +42,8 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
 
     @Autowired
     private BattleMusicTrackRepository repository;
+    @Autowired
+    private BattleConfigRepository configRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,12 +64,23 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public String getLumLuckyAppearance() {
+        BattleConfig config = configRepository.findOne(1);
+        return config != null && "LIGHTNING".equals(config.getLumLuckyAppearance()) ? "LIGHTNING" : "PUMPKIN";
+    }
+
+    @Override
     public BattleMusicConfigDto saveConfig(BattleMusicConfigDto dto) {
         if (dto == null || dto.getTracks() == null || dto.getTracks().isEmpty()) {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Cần ít nhất một link nhạc battle.");
         }
         if (dto.getTracks().size() > MAX_TRACKS) {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Tối đa " + MAX_TRACKS + " link nhạc battle.");
+        }
+        String appearance = dto.getLumLuckyAppearance();
+        if (appearance != null && !"PUMPKIN".equals(appearance) && !"LIGHTNING".equals(appearance)) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Vật phẩm may mắn phải là bí ngô hoặc sét.");
         }
 
         List<BattleMusicTrack> validated = new ArrayList<BattleMusicTrack>();
@@ -115,6 +130,13 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Cần bật ít nhất một bài nhạc battle.");
         }
 
+        if (appearance != null) {
+            BattleConfig config = configRepository.findOne(1);
+            if (config == null) { config = new BattleConfig(); }
+            config.setLumLuckyAppearance(appearance);
+            configRepository.saveAndFlush(config);
+        }
+
         repository.deleteAll();
         repository.flush();
         repository.save(validated);
@@ -139,6 +161,7 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
         });
 
         BattleMusicConfigDto result = new BattleMusicConfigDto();
+        result.setLumLuckyAppearance(getLumLuckyAppearance());
         if (tracks.isEmpty()) {
             for (int index = 0; index < DEFAULT_TRACKS.length; index += 1) {
                 BattleMusicTrackDto item = new BattleMusicTrackDto();

@@ -14,7 +14,10 @@ const pickerUrl=view.match(/'([^']*battle_online_exercise_picker\.html[^']*)'/)[
 async function open(browser,width,username='host') {
  const page=await browser.newPage({viewport:{width,height:900}});
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
- await page.route('http://battle.test/**',route=>route.fulfill({contentType:'image/svg+xml',body:fs.readFileSync(path.join(app,'assets/images/battle-lightning.svg'))}));
+ await page.route('http://battle.test/**',route=>{
+  const file=path.join(app,new URL(route.request().url()).pathname.slice(1));
+  return fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.abort();
+ });
  await page.setContent('<html><head><base href="http://battle.test/"><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;background:#f4f5ff}'+css+'</style></head><body><div id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm"><select aria-label="Nguồn nội dung" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()"><option value="VOCABULARY">Từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option></select>'+picker+layers+lobbyEditor+'</div></body></html>');
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.evaluate(({username,modal,picker,pickerUrl})=>{
@@ -57,7 +60,7 @@ test('folder picker fits desktop/mobile and lightning overlays show host text, a
    await page.getByRole('button',{name:/Chọn đề theo thư mục/}).click();await dialog.waitFor();
    assert.equal(await page.evaluate(()=>window.qaScope.vm.selectedExerciseTests.length),1);
    await dialog.getByRole('button',{name:/Xong/}).click();
-   const snapshot={code:'LIGHT1',hostUsername:'host',status:'PLAYING',serverTime:Date.now(),matchEndsAt:Date.now()+180000,
+   const snapshot={code:'LIGHT1',lumLuckyAppearance:'LIGHTNING',hostUsername:'host',status:'PLAYING',serverTime:Date.now(),matchEndsAt:Date.now()+180000,
     settings:{mode:'LUM_NGAY',questionSource:'VOCABULARY',teamCount:2},players:[{username:'host',spectator:true},{username:'alice',spectator:false}],recentEvents:[],giftLightning:{startsAt:Date.now()-100,endsAt:Date.now()+30000,displayName:'Alice'}};
    await page.evaluate(r=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false)),snapshot);
    const effect=page.locator('.battle-lightning-effect');assert.equal(await effect.count(),1);
@@ -123,4 +126,37 @@ test('folder picker stays clickable above the actual lobby editor and returns se
    assert.deepEqual(errors,[]);await page.close();
   }
  } finally {await browser.close();}
+});
+
+test('Halloween pumpkin and lightning use their real artwork with faint host/player overlays and leave controls clickable',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try{
+  for(const width of [1280,390])for(const appearance of ['PUMPKIN','LIGHTNING']){
+   const {page,errors}=await open(browser,width);
+   try{
+    await page.emulateMedia({reducedMotion:'reduce'});
+    const now=Date.now(),name=appearance==='PUMPKIN'?'Bí ngô may mắn':'Sét may mắn';
+    const snapshot={code:'LOOKQA',lumLuckyAppearance:appearance,hostUsername:'host',status:'PLAYING',serverTime:now,matchEndsAt:now+180000,
+     settings:{mode:'LUM_NGAY',questionSource:'VOCABULARY',teamCount:2},players:[{username:'host',spectator:true},{username:'alice',spectator:false}],recentEvents:[],giftLightning:{startsAt:now-100,endsAt:now+30000,displayName:'Alice'}};
+    await page.evaluate(room=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(room,false)),snapshot);
+    const effect=page.locator('.battle-lightning-effect'),image=effect.locator('img');await effect.waitFor();
+    await page.waitForFunction(()=>{const image=document.querySelector('.battle-lightning-effect img');return image&&image.complete&&image.naturalWidth>0;});
+    assert.match(await image.getAttribute('src'),new RegExp('assets/images/battle-'+(appearance==='PUMPKIN'?'pumpkin':'lightning')+'\\.svg'));
+    assert.equal(await effect.evaluate(element=>getComputedStyle(element).pointerEvents),'none');
+    assert.equal(await image.evaluate(element=>+getComputedStyle(element).opacity),.28);
+    assert.match(await effect.locator('.battle-lightning-caption').innerText(),new RegExp('Alice nhặt được '+name+'![\\s\\S]*\\+10%'));
+    await page.evaluate(()=>{const button=document.createElement('button');button.id='lucky-click-through';button.textContent='Chọn đáp án';button.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1250;padding:20px';button.onclick=()=>{window.luckyClicks=(window.luckyClicks||0)+1;};document.getElementById('qa').appendChild(button);});
+    await page.locator('#lucky-click-through').click();assert.equal(await page.evaluate(()=>window.luckyClicks),1);
+    if(process.env.BATTLE_LUCKY_SCREENSHOTS){fs.mkdirSync(process.env.BATTLE_LUCKY_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.BATTLE_LUCKY_SCREENSHOTS,'lucky-'+appearance.toLowerCase()+'-host-'+width+'.png')});}
+    snapshot.hostUsername='other-host';await page.evaluate(room=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(room,false)),snapshot);
+    assert.equal(await effect.locator('.battle-lightning-caption').count(),0,'players do not see the host banner');
+    assert.equal(await image.evaluate(element=>+getComputedStyle(element).opacity),.08);
+    await page.locator('#lucky-click-through').click();assert.equal(await page.evaluate(()=>window.luckyClicks),2);
+    if(process.env.BATTLE_LUCKY_SCREENSHOTS)await page.screenshot({path:path.join(process.env.BATTLE_LUCKY_SCREENSHOTS,'lucky-'+appearance.toLowerCase()+'-player-'+width+'.png')});
+    snapshot.giftLightning.endsAt=Date.now()-1;snapshot.serverTime=Date.now();await page.evaluate(room=>window.qaScope.$apply(()=>window.battleHooks.applyRoom(room,false)),snapshot);
+    assert.equal(await effect.count(),0);assert.deepEqual(errors,[]);
+   }finally{await page.close();}
+  }
+ }finally{await browser.close();}
 });

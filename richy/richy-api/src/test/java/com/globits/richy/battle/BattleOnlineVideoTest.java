@@ -12,6 +12,19 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class BattleOnlineVideoTest {
+    @Test public void videoEggOpeningKeepsTheAppearanceCapturedAtMatchStart() throws Exception {
+        setup("LUM_NGAY");
+        com.globits.richy.service.BattleMusicConfigService config=mock(com.globits.richy.service.BattleMusicConfigService.class);
+        when(config.getLumLuckyAppearance()).thenReturn("LIGHTNING");
+        set(service,"battleMusicConfigService",config);set(room,"status","LOBBY");
+        assertEquals("LIGHTNING",service.startMatch("VIDEO1","host").getLumLuckyAppearance());
+        when(config.getLumLuckyAppearance()).thenReturn("PUMPKIN");set(alice,"giftCredits",2);
+        ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
+        BattleOnlineRoomDto finalEggs=service.getRoom("VIDEO1","alice");
+        assertTrue(finalEggs.isGiftOpening());assertNotNull(finalEggs.getGiftLightning());
+        assertEquals("LIGHTNING",finalEggs.getLumLuckyAppearance());
+        verify(config,times(1)).getLumLuckyAppearance();
+    }
     @Test public void manualClassicVideoHoldsTheCueUntilDeadlineAndHostNextWithoutLeakingAnswers() throws Exception {
         setup("CLASSIC");service.setClassicAutoAdvance("VIDEO1","host",false);
         BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
