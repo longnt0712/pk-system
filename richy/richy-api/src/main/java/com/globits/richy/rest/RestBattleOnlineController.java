@@ -43,6 +43,18 @@ public class RestBattleOnlineController {
     @Autowired
     private BattleOnlineService battleOnlineService;
 
+    @Secured("ROLE_ADMIN")
+    @RequestMapping(value = "/admin/rooms", method = RequestMethod.GET)
+    public java.util.List<com.globits.richy.dto.BattleOnlineAdminRoomDto> getAdminRooms() {
+        return battleOnlineService.getAdminRooms();
+    }
+
+    @Secured("ROLE_ADMIN")
+    @RequestMapping(value = "/admin/rooms/{roomCode}/terminate", method = RequestMethod.POST)
+    public com.globits.richy.dto.BattleOnlineAdminRoomDto terminateRoomAsAdmin(@PathVariable("roomCode") String roomCode) {
+        return battleOnlineService.terminateRoomAsAdmin(roomCode);
+    }
+
     @RequestMapping(value = "/pet-selection", method = RequestMethod.POST)
     public BattleOnlinePetSelectionDto selectPet(
             @RequestBody BattleOnlinePetSelectionDto dto) {

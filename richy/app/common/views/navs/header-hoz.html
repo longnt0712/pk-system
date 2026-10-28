@@ -93,7 +93,7 @@
 
                 <!-- BATTLE MODES -->
                 <li class="dropdown battle-modes-nav"
-                    ng-class="{'is-route-active': $state.includes('application.quiz_battle_2') || $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room') || $state.includes('application.battle_music_config')}"
+                    ng-class="{'is-route-active': $state.includes('application.quiz_battle_2') || $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room') || $state.includes('application.battle_music_config') || $state.includes('application.battle_online_admin')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
 
                     <a href=""
@@ -125,6 +125,12 @@
                             <a ui-sref="application.battle_music_config" href="battle-music-config">
                                 <i class="fa fa-music"></i>
                                 BATTLE CONFIG
+                            </a>
+                        </li>
+                        <li data-ng-if="settings.isAdmin" ng-class="{'active': $state.includes('application.battle_online_admin')}">
+                            <a ui-sref="application.battle_online_admin" href="battle-online-admin">
+                                <i class="fa fa-desktop"></i>
+                                TRẬN BATTLE ĐANG DIỄN RA
                             </a>
                         </li>
                     </ul>

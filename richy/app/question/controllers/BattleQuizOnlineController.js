@@ -2971,6 +2971,11 @@
 
             var previousRoom =
                 vm.room;
+            if (previousRoom && previousRoom.code === incoming.code && previousRoom.adminTerminated) {
+                if (incoming.status !== 'FINISHED' ||
+                        (previousRoom.serverTime && incoming.serverTime && incoming.serverTime < previousRoom.serverTime)) { return; }
+                incoming.adminTerminated = true;
+            }
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.classicAnswerRevealed &&
                     previousRoom.serverTime && incoming.serverTime && incoming.serverTime < previousRoom.serverTime) { return; }
             if (fromGenericSocket !== true && previousRoom && previousRoom.code === incoming.code &&
@@ -4692,6 +4697,7 @@
         function restartMatch() {
             if (
                 !vm.room ||
+                vm.room.adminTerminated ||
                 !isHost()
             ) {
                 return;

@@ -16,6 +16,8 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
+    java.util.List<com.globits.richy.dto.BattleOnlineAdminRoomDto> getAdminRooms();
+    com.globits.richy.dto.BattleOnlineAdminRoomDto terminateRoomAsAdmin(String roomCode);
     BattleOnlineRoomDto setClassicAutoAdvance(String roomCode, String username, com.globits.richy.dto.BattleOnlineClassicControlDto control);
     BattleOnlineRoomDto nextClassicQuestion(String roomCode, String username, com.globits.richy.dto.BattleOnlineClassicControlDto control);
     BattleOnlineRoomDto setClassicAutoAdvance(String roomCode, String username, boolean enabled);

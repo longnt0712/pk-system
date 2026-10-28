@@ -94,6 +94,31 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
     };
 }
 
+test('an admin-terminated match cannot restart or be revived by late room responses', () => {
+    const h = setup();
+    const finished = h.room('FINISHED');
+    finished.adminTerminated = true;
+    finished.serverTime = Date.now();
+    h.hooks.applyRoom(finished, true);
+    assert.doesNotThrow(() => h.instance.restartMatch(), 'no restart request is sent for a terminated room');
+    for (const status of ['PLAYING', 'LOBBY']) {
+        const stale = h.room(status);
+        stale.serverTime = finished.serverTime + 10;
+        h.hooks.applyRoom(stale, false);
+        assert.equal(h.instance.room.status, 'FINISHED');
+        assert.equal(h.instance.room.adminTerminated, true);
+    }
+    const terminalUpdate = h.room('FINISHED');
+    terminalUpdate.serverTime = finished.serverTime + 20;
+    h.hooks.applyRoom(terminalUpdate, false);
+    assert.equal(h.instance.room.adminTerminated, true, 'an old terminal response cannot restore the host restart button');
+    const anotherRoom = h.room('LOBBY');
+    anotherRoom.code = 'NEW123';
+    h.hooks.applyRoom(anotherRoom, false);
+    assert.equal(h.instance.room.code, 'NEW123');
+    assert.equal(h.instance.room.status, 'LOBBY', 'admin termination affects only its original room');
+});
+
 test('QR stays open through START and repeated live room updates, closes on FINISHED', async () => {
     const h = setup();
     h.instance.room = h.room('LOBBY');

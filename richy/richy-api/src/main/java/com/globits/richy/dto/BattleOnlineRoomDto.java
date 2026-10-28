@@ -13,6 +13,9 @@ public class BattleOnlineRoomDto implements Serializable {
     private String code;
     private String status;
     private String hostUsername;
+    private boolean adminTerminated;
+    public boolean isAdminTerminated() { return adminTerminated; }
+    public void setAdminTerminated(boolean value) { adminTerminated = value; }
     private BattleOnlineVideoReviewDto videoReview;
     public BattleOnlineVideoReviewDto getVideoReview() { return videoReview; }
     public void setVideoReview(BattleOnlineVideoReviewDto value) { videoReview = value; }

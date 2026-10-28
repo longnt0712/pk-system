@@ -533,6 +533,26 @@
             })
 
 
+            .state('application.battle_online_admin', {
+                url: '/battle-online-admin',
+                templateUrl: 'question/views/battle_online_admin.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'TRẬN BATTLE ĐANG DIỄN RA', adminOnly: true},
+                controller: 'BattleOnlineAdminController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/BattleOnlineAdminController.js?v=' + window.APP_VERSION,
+                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+
             .state('application.battle_music_config', {
                 url: '/battle-music-config',
                 templateUrl: 'question/views/battle_music_config.html?v=' + window.APP_VERSION + '&luckyAppearance=20261028_1',

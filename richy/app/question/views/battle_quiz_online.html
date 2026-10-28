@@ -1869,9 +1869,13 @@
 
         <h2>KẾT QUẢ CUỐI CÙNG</h2>
 
+        <p class="alert alert-info" role="status" ng-if="vm.room.adminTerminated">
+            Trận đã được quản trị viên chấm dứt. Bạn có thể xem kết quả hoặc rời phòng.
+        </p>
+
         <p class="battle-online-finish-expiration" role="status">
             Phòng tự hủy sau {{vm.finishedRoomRemainingLabel || '5 phút'}}.
-            Chơi lại trước khi hết hạn để giữ phòng.
+            <span ng-if="!vm.room.adminTerminated">Chơi lại trước khi hết hạn để giữ phòng.</span>
         </p>
 
 
@@ -2004,7 +2008,7 @@
 
         <button type="button"
                 class="battle-online-start-btn battle-online-finish-btn"
-                ng-if="vm.isHost()"
+                ng-if="vm.isHost() && !vm.room.adminTerminated"
                 ng-click="vm.restartMatch()">
 
             🔁 CHƠI TRẬN MỚI

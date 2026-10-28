@@ -80,6 +80,16 @@
                 .then(function (response) { return response.data; });
         };
 
+        self.getAdminRooms = function () {
+            return $http.get(apiUrl + '/admin/rooms', {cache: false, timeout: 10000})
+                .then(function (response) { return response.data; });
+        };
+
+        self.terminateAdminRoom = function (roomCode) {
+            return $http.post(apiUrl + '/admin/rooms/' + encodeURIComponent(normalizeRoomCode(roomCode)) + '/terminate', {}, {timeout: 15000})
+                .then(function (response) { return response.data; });
+        };
+
         self.joinRoom = function (roomCode) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/join',

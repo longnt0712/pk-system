@@ -30,6 +30,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -53,6 +57,7 @@ import com.globits.richy.dto.BattleOnlinePetSelectionDto;
 import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
+import com.globits.richy.dto.BattleOnlineAdminRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
@@ -273,6 +278,99 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     @Autowired
     private BattleMusicConfigService battleMusicConfigService;
+
+    @Override
+    @Secured("ROLE_ADMIN")
+    public List<BattleOnlineAdminRoomDto> getAdminRooms() {
+        requireAdministrator();
+        List<BattleOnlineAdminRoomDto> result = new ArrayList<BattleOnlineAdminRoomDto>();
+        for (RoomState room : new ArrayList<RoomState>(rooms.values())) {
+            synchronized (room) {
+                if (rooms.get(room.code) == room && !room.adminTerminated &&
+                        (LOBBY.equals(room.status) || PLAYING.equals(room.status))) {
+                    result.add(adminRoomSummaryLocked(room));
+                }
+            }
+        }
+        Collections.sort(result, new Comparator<BattleOnlineAdminRoomDto>() {
+            @Override public int compare(BattleOnlineAdminRoomDto first, BattleOnlineAdminRoomDto second) {
+                int activity = Long.compare(second.getUpdatedAt(), first.getUpdatedAt());
+                return activity != 0 ? activity : first.getCode().compareTo(second.getCode());
+            }
+        });
+        return result;
+    }
+
+    @Override
+    @Secured("ROLE_ADMIN")
+    public BattleOnlineAdminRoomDto terminateRoomAsAdmin(String roomCode) {
+        requireAdministrator();
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineAdminRoomDto result;
+        synchronized (room) {
+            if (rooms.get(room.code) != room || EXPIRED.equals(room.status)) {
+                throw new BattleOnlineException(HttpStatus.NOT_FOUND, "Phòng không còn tồn tại.");
+            }
+            if (!room.adminTerminated) {
+                room.adminTerminated = true;
+                room.preloadGeneration++;
+                room.loadingQuestions = false;
+                cancelPreloadTimer(room.code);
+                cancelLobbyExpirationTimer(room.code);
+                cancelClassicTimer(room.code);
+                cancelGuessRevealTimer(room.code);
+                cancelMatchTimer(room.code);
+                cancelPasswordGuessTimersLocked(room);
+                if (PLAYING.equals(room.status)) {
+                    // Administrative closure skips the optional post-game egg phase.
+                    completeMatchLocked(room);
+                } else if (LOBBY.equals(room.status)) {
+                    room.status = FINISHED;
+                    room.battleResultsSaved = true; // No match was played in this lobby.
+                    room.questionEndsAt = 0L;
+                    room.matchEndsAt = 0L;
+                    room.giftOpening = false;
+                    room.giftOpeningEndsAt = 0L;
+                    scheduleFinishedExpiration(room);
+                }
+            } else if (room.startedAt > 0L && !room.battleResultsSaved) {
+                // A failed EXP transaction may be retried without awarding successful users twice.
+                saveBattleResultsLocked(room);
+            }
+            room.updatedAt = System.currentTimeMillis();
+            result = adminRoomSummaryLocked(room);
+        }
+        broadcastGeneric(room);
+        return result;
+    }
+
+    private void requireAdministrator() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getAuthorities() != null) {
+            for (GrantedAuthority role : authentication.getAuthorities()) {
+                if (role != null && "ROLE_ADMIN".equals(role.getAuthority())) { return; }
+            }
+        }
+        throw new BattleOnlineException(HttpStatus.FORBIDDEN, "Chỉ ADMIN có thể quản lý toàn bộ phòng Battle Online.");
+    }
+
+    private BattleOnlineAdminRoomDto adminRoomSummaryLocked(RoomState room) {
+        BattleOnlineAdminRoomDto summary = new BattleOnlineAdminRoomDto();
+        summary.setCode(room.code); summary.setStatus(room.status); summary.setMode(room.settings.mode);
+        summary.setHostUsername(room.hostUsername);
+        PlayerState host = room.players.get(room.hostUsername);
+        summary.setHostDisplayName(host == null ? room.hostUsername : displayName(host));
+        summary.setTopicName(room.settings.topicNames.isEmpty() ? "Battle Online" : joinText(room.settings.topicNames, " • "));
+        summary.setCreatedAt(room.createdAt); summary.setStartedAt(room.startedAt); summary.setUpdatedAt(room.updatedAt);
+        summary.setMatchEndsAt(room.matchEndsAt); summary.setGiftOpening(room.giftOpening); summary.setAdminTerminated(room.adminTerminated);
+        int players = 0, connected = 0, spectators = 0;
+        for (PlayerState player : room.players.values()) {
+            if (player.spectator) { spectators++; }
+            else { players++; if (player.connected) { connected++; } }
+        }
+        summary.setPlayerCount(players); summary.setConnectedPlayerCount(connected); summary.setSpectatorCount(spectators);
+        return summary;
+    }
 
 
     @Override
@@ -717,6 +815,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             PlayerState existing =
                     room.players.get(username);
+
+            if (room.adminTerminated && existing == null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng đã được ADMIN kết thúc.");
+            }
 
             if (existing != null) {
                 String previousRealName = existing.realName;
@@ -1528,6 +1630,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             cancelLobbyExpirationTimer(room.code);
 
+            room.startedAt = System.currentTimeMillis();
             dto = snapshotLocked(room, username);
         }
 
@@ -1550,6 +1653,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             requireHost(room, username);
 
+            if (room.adminTerminated) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng đã được ADMIN kết thúc. Hãy tạo phòng mới.");
+            }
+
             if (!FINISHED.equals(room.status)) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
@@ -1564,6 +1671,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             cancelMatchTimer(room.code);
 
             room.status = LOBBY;
+            room.startedAt = 0L;
             room.videoSynchronized = false;
             room.videoPhase = null;
             room.videoRevision++;
@@ -3349,9 +3457,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private void schedulePasswordGuessTimeout(final RoomState room, final PlayerState actor, final long expectedEndsAt) {
-        scheduler.schedule(new Runnable() {
+        if (room.adminTerminated || !PLAYING.equals(room.status)) { return; }
+        ScheduledFuture<?> previous = room.passwordGuessTimers.remove(actor.username);
+        if (previous != null) { previous.cancel(false); }
+        ScheduledFuture<?> future = scheduler.schedule(new Runnable() {
             @Override public void run() { expirePasswordGuess(room, actor, expectedEndsAt); }
         }, Math.max(0L, expectedEndsAt - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
+        room.passwordGuessTimers.put(actor.username, future);
     }
 
     private void expirePasswordGuess(RoomState room, PlayerState actor, long expectedEndsAt) {
@@ -3360,12 +3472,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             // A timer from a completed attempt or a removed room must never consume another hack.
             if (rooms.get(room.code) != room || room.players.get(actor.username) != actor ||
                     actor.passwordGuessEndsAt != expectedEndsAt || !PLAYING.equals(room.status)) { return; }
+            room.passwordGuessTimers.remove(actor.username);
             if (System.currentTimeMillis() < expectedEndsAt) {
                 schedulePasswordGuessTimeout(room, actor, expectedEndsAt); return;
             }
             changed = expirePasswordGuessLocked(room, actor, System.currentTimeMillis());
         }
         if (changed) { broadcastGeneric(room); }
+    }
+
+    private void cancelPasswordGuessTimersLocked(RoomState room) {
+        for (ScheduledFuture<?> timer : room.passwordGuessTimers.values()) { timer.cancel(false); }
+        room.passwordGuessTimers.clear();
     }
 
     private boolean expirePasswordGuessLocked(RoomState room, PlayerState actor, long now) {
@@ -6516,6 +6634,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         cancelGuessRevealTimer(room.code);
         cancelMatchTimer(room.code);
 
+        cancelPasswordGuessTimersLocked(room);
         for (PlayerState player : room.players.values()) {
             player.currentQuestion = null;
             player.currentSkillType = null;
@@ -6689,56 +6808,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.preloadRetryCount = 0;
     }
 
-    private void schedulePreload(
-            final String roomCode,
-            long delayMillis) {
-
-        String code =
-                normalizeRoomCode(roomCode);
-
+    private void schedulePreload(final String roomCode, long delayMillis) {
+        final String code = normalizeRoomCode(roomCode);
         final RoomState scheduledRoom = rooms.get(code);
-
-        if (scheduledRoom == null) {
-            return;
-        }
-
-        final long expectedGeneration;
-
+        if (scheduledRoom == null) { return; }
         synchronized (scheduledRoom) {
-            expectedGeneration = scheduledRoom.preloadGeneration;
+            if (rooms.get(code) != scheduledRoom || scheduledRoom.adminTerminated ||
+                    FINISHED.equals(scheduledRoom.status) || EXPIRED.equals(scheduledRoom.status)) { return; }
+            final long expectedGeneration = scheduledRoom.preloadGeneration;
+            ScheduledFuture<?> existing = preloadTimers.get(code);
+            if (existing != null && !existing.isDone()) { return; }
+            ScheduledFuture<?> future = scheduler.schedule(new Runnable() {
+                @Override public void run() { loadNextPreloadBatch(code, expectedGeneration); }
+            }, Math.max(0L, delayMillis), TimeUnit.MILLISECONDS);
+            preloadTimers.put(code, future);
         }
-
-        ScheduledFuture<?> existing =
-                preloadTimers.get(code);
-
-        if (
-            existing != null &&
-            !existing.isDone()
-        ) {
-            return;
-        }
-
-        ScheduledFuture<?> future =
-                scheduler.schedule(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            loadNextPreloadBatch(
-                                    roomCode,
-                                    expectedGeneration
-                            );
-                        }
-                    },
-                    Math.max(0L, delayMillis),
-                    TimeUnit.MILLISECONDS
-                );
-
-        preloadTimers.put(
-                code,
-                future
-        );
     }
-
 
     private void loadNextPreloadBatch(
             String roomCode,
@@ -7346,6 +7431,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         dto.setCode(room.code);
         dto.setStatus(room.status);
+        dto.setAdminTerminated(room.adminTerminated);
         dto.setFinishedExpiresAt(room.finishedExpiresAt);
         dto.setHostUsername(
                 room.hostUsername
@@ -7821,6 +7907,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         BattleOnlineRoomDto dto;
 
         synchronized (room) {
+            room.updatedAt = System.currentTimeMillis();
             dto = snapshotLocked(
                     room,
                     null
@@ -8404,6 +8491,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         cancelPreloadTimer(code);
         cancelLobbyExpirationTimer(code);
         cancelFinishedExpirationTimer(code);
+
+        RoomState removed = rooms.get(code);
+        if (removed != null) { synchronized (removed) { cancelPasswordGuessTimersLocked(removed); } }
 
         rooms.remove(code);
     }
@@ -9246,6 +9336,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private static class RoomState {
+        long createdAt = System.currentTimeMillis(), startedAt, updatedAt = createdAt;
+        boolean adminTerminated;
+        final Map<String, ScheduledFuture<?>> passwordGuessTimers = new LinkedHashMap<String, ScheduledFuture<?>>();
         boolean classicAutoAdvance = true, classicAnswerRevealed;
         com.globits.richy.dto.BattleOnlineVideoReviewDto videoReview;
         final Map<String, ClassicAnswerState> currentClassicAnswers = new LinkedHashMap<String, ClassicAnswerState>();

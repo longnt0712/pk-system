@@ -159,4 +159,31 @@ public class BattleOnlineExperienceTest {
             assertEquals(1003L, total(1)); assertEquals(203L, total(2)); assertEquals(2, resultCount());
         }
     }
+
+    @Test public void administratorClosureAwardsEarnedExperienceOnceAndSkipsRemainingEggCredits() throws Exception {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("outside-admin","ignored",
+                        java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            match("LUM_NGAY");set(room,"startedAt",System.currentTimeMillis()-1000L);set(room,"videoSynchronized",true);
+            set(alice,"giftCredits",99);set(room,"giftOpening",true);set(room,"giftOpeningEndsAt",System.currentTimeMillis()+180000L);
+            assertEquals("FINISHED",service.terminateRoomAsAdmin("EXP1").getStatus());
+            assertEquals(1003L,total(1));assertEquals(203L,total(2));assertEquals(2,resultCount());
+            assertEquals(false,get(room,"giftOpening"));assertEquals(true,get(room,"adminTerminated"));
+            service.terminateRoomAsAdmin("EXP1");set(room,"battleResultsSaved",false);service.terminateRoomAsAdmin("EXP1");
+            assertEquals(1003L,total(1));assertEquals(203L,total(2));assertEquals(2,resultCount());
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+    }
+
+    @Test public void administratorClosureRetriesAFailedExperienceTransactionWithoutDuplicatingSuccessfulUsers() throws Exception {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("outside-admin","ignored",
+                        java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            match("COUNTDOWN");set(room,"startedAt",System.currentTimeMillis()-1000L);failedResultUserId=2L;
+            service.terminateRoomAsAdmin("EXP1");assertEquals(1003L,total(1));assertEquals(200L,total(2));assertEquals(1,resultCount());
+            failedResultUserId=null;service.terminateRoomAsAdmin("EXP1");
+            assertEquals(1003L,total(1));assertEquals(203L,total(2));assertEquals(2,resultCount());assertEquals(true,get(room,"battleResultsSaved"));
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+    }
 }
