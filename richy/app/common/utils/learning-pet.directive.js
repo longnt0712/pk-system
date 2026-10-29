@@ -69,6 +69,7 @@
             var gokuKidEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-21.png?v=' + version;
             var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=' + version;
             var gokuSuperSaiyanUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
+            var gokuSuperSaiyan2Url = 'assets/images/learning-pets/goku-kid/pet-level-24.svg?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -147,7 +148,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 23); }
+                if (admin) { level = Math.max(level, 24); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
@@ -337,10 +338,11 @@
                 if (level >= 21) {
                     vm.availablePets.push({
                         key: 'GOKU_KID',
-                        name: level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí'),
-                        description: level >= 23 ? 'Hào quang rực sáng · Level 23' : (level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21'),
-                        image: level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl),
-                        superSaiyan: level >= 23,
+                        name: level >= 24 ? 'Son Goku Siêu Saiyan cấp 2' : (level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí')),
+                        description: level >= 24 ? 'Hào quang và điện quang · Level 24' : (level >= 23 ? 'Hào quang rực sáng · Level 23' : (level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21')),
+                        image: level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl)),
+                        superSaiyan: level === 23,
+                        superSaiyan2: level >= 24,
                         isNew: vm.hasNewGokuKidEgg
                     });
                 }
@@ -366,8 +368,8 @@
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {
-                    vm.petForm = level >= 23 ? 'goku-super-saiyan' : (level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg');
-                    vm.petImage = level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl);
+                    vm.petForm = level >= 24 ? 'goku-super-saiyan-2' : (level >= 23 ? 'goku-super-saiyan' : (level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg'));
+                    vm.petImage = level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl));
                     return;
                 }
                 if (selectedPet === 'CUTE_PERRY') {
@@ -1049,7 +1051,7 @@
                         (vm.hasNewGokuKidEgg ? 1 : 0);
                 if (vm.hasNewGokuKidEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Goku nhí mới!';
-                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí, level 23 biến thành Siêu Saiyan.';
+                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí, level 23 biến thành Siêu Saiyan và level 24 lên cấp 2.';
                 } else if (vm.hasNewSparklingLightning) {
                     vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
                     vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';

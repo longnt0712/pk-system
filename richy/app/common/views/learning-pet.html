@@ -73,10 +73,10 @@
                     'is-goku-kid-pet': pet.petForm === 'goku-kid-hatched',
                     'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'
                  }"
-                 ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched' && pet.petForm !== 'sparkling-lightning' && pet.petForm !== 'goku-super-saiyan'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
-            <span class="learning-pet-super-saiyan" ng-if="pet.petForm === 'goku-super-saiyan'" aria-hidden="true">
+                 ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched' && pet.petForm !== 'sparkling-lightning' && pet.petForm !== 'goku-super-saiyan' && pet.petForm !== 'goku-super-saiyan-2'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+            <span class="learning-pet-super-saiyan" ng-if="pet.petForm === 'goku-super-saiyan' || pet.petForm === 'goku-super-saiyan-2'" aria-hidden="true">
                 <img class="learning-pet-super-saiyan__body" ng-src="{{pet.petImage}}" draggable="false" alt="" />
-                <img class="learning-pet-super-saiyan__aura" ng-src="{{pet.gokuSuperSaiyanAuraImage}}" draggable="false" alt="" />
+                <img class="learning-pet-super-saiyan__aura" ng-if="pet.petForm === 'goku-super-saiyan'" ng-src="{{pet.gokuSuperSaiyanAuraImage}}" draggable="false" alt="" />
             </span>
             <span class="learning-pet-lightning pet-lightning-sparkles" ng-if="pet.petForm === 'sparkling-lightning'" aria-hidden="true">
                 <img ng-src="{{pet.petImage}}" draggable="false" alt="" />
