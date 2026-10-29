@@ -3,6 +3,10 @@
 .site-theme-open { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; margin:8px 5px; padding:0 12px; border:1px solid #ddd7f5; border-radius:13px; color:#54419a; background:#f4f0ff; font:600 12px system-ui,-apple-system,sans-serif; cursor:pointer; white-space:nowrap; }
 .site-theme-open:hover { color:#432a8f; background:#eae2ff; }
 .site-theme-open:focus-visible { outline:3px solid #9b7ae5; outline-offset:2px; }
+@media (min-width:768px) {
+    /* The navbar list already supplies vertical spacing for every control. */
+    .learning-login-nav .site-theme-open { margin-top:0; margin-bottom:0; }
+}
 .site-theme-dialog .modal-dialog { width:560px; max-width:calc(100vw - 24px); margin:30px auto; }
 .site-theme-dialog .modal-content { max-height:calc(100vh - 60px); max-height:calc(100dvh - 60px); overflow:auto; border:1px solid #e3def1; border-radius:22px; color:#2b2543; background:#fff; }
 .site-theme-editor .modal-header { position:relative; padding:24px 28px 18px; border-bottom:1px solid #eee8f8; }

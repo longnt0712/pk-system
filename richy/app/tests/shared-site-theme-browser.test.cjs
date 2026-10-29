@@ -141,6 +141,83 @@ async function choose(page, theme) {
     return dialog;
 }
 
+test('admin header controls stay vertically aligned on desktop and tablets in both shared themes', async () => {
+    const fixture = await open({theme:'HALLOWEEN'}, {admin:true, viewport:{width:1920,height:1080}});
+    try {
+        await loaded(fixture.page);
+        await fixture.page.evaluate(() => qaScope.$apply(() => {
+            qaScope.currentUser.username = 'long.tablet.account';
+            qaScope.currentUser.person = {lastName:'EM YÊU INH LÍCH', firstName:'NGƯỜI DÙNG THỬ NGHIỆM'};
+        }));
+        for (const variant of [{theme:'HALLOWEEN',dark:false}, {theme:'NORMAL',dark:false}, {theme:'NORMAL',dark:true}]) {
+            await fixture.page.evaluate(async variant => {
+                document.documentElement.classList.toggle('global-dark-mode', variant.dark);
+                if (siteTheme.state.theme !== variant.theme) await siteTheme.save(variant.theme);
+            }, variant);
+            for (const width of [1920,1440,1366,1180,820,768]) {
+                await fixture.page.setViewportSize({width,height:1080});
+                await fixture.page.evaluate(() => new Promise(requestAnimationFrame));
+                const geometry = await fixture.page.evaluate(() => {
+                    const rect = node => {
+                        const r = node.getBoundingClientRect();
+                        return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,center:r.top + r.height / 2};
+                    };
+                    const nav = document.querySelector('.learning-login-nav');
+                    const main = [...nav.querySelectorAll('.navbar-nav:not(.navbar-right) > li > a')]
+                        .filter(node => node.getClientRects().length).map(rect);
+                    return {brand:rect(nav.querySelector('.learning-nav-brand')), nav:rect(nav),
+                        themeControl:rect(nav.querySelector('.site-theme-open')), account:rect(nav.querySelector('.user-dropdown-mobile > a')),
+                        main, width:innerWidth, scrollWidth:document.documentElement.scrollWidth};
+                });
+                const detail = JSON.stringify({width,...variant,...geometry});
+                assert.ok(Math.abs(geometry.themeControl.center - geometry.account.center) <= 1,
+                    'theme and account controls share a vertical center: ' + detail);
+                assert.ok(Math.abs(geometry.themeControl.height - geometry.account.height) <= 1,
+                    'theme and account controls share the same height: ' + detail);
+                if (width >= 1440) {
+                    for (const item of [...geometry.main,geometry.brand]) {
+                        assert.ok(Math.abs(item.center - geometry.account.center) <= 1,
+                            'single-row desktop logo and menu align with account actions: ' + detail);
+                    }
+                }
+                assert.ok(geometry.scrollWidth <= width + 1, 'header never widens the page: ' + detail);
+                for (const item of [geometry.themeControl,geometry.account,...geometry.main]) {
+                    assert.ok(item.left >= geometry.nav.left && item.right <= geometry.nav.right + 1 &&
+                        item.top >= geometry.nav.top && item.bottom <= geometry.nav.bottom + 1,
+                    'all controls remain inside the navbar: ' + detail);
+                }
+                for (let i = 0; i < geometry.main.length; i++) {
+                    const items = [geometry.themeControl,geometry.account,...geometry.main.slice(i + 1)];
+                    for (const other of items) {
+                        const item = geometry.main[i];
+                        assert.ok(Math.min(item.right,other.right) - Math.max(item.left,other.left) <= 1 ||
+                            Math.min(item.bottom,other.bottom) - Math.max(item.top,other.top) <= 1,
+                        'navigation controls never overlap: ' + detail);
+                    }
+                }
+                assert.ok(geometry.themeControl.right <= geometry.account.left + 1 || geometry.themeControl.bottom <= geometry.account.top + 1,
+                    'theme and account controls never overlap: ' + detail);
+                if (process.env.SITE_THEME_SCREENSHOT_DIR && [1920,1180].includes(width) && variant.theme === 'HALLOWEEN') {
+                    fs.mkdirSync(process.env.SITE_THEME_SCREENSHOT_DIR, {recursive:true});
+                    await fixture.page.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,
+                        width === 1920 ? 'header-aligned-desktop.png' : 'header-aligned-ipad.png')});
+                }
+                const account = fixture.page.locator('.user-dropdown-mobile > a');
+                await account.click();
+                const menu = fixture.page.locator('.user-dropdown-mobile > .dropdown-menu');
+                await menu.waitFor({state:'visible'});
+                assert.equal(await menu.locator('a[data-ng-click="logout()"]').evaluate(node => {
+                    const r = node.getBoundingClientRect();
+                    return node.contains(document.elementFromPoint(r.left + r.width / 2,r.top + r.height / 2));
+                }), true, 'account menu stays reachable after the alignment change: ' + detail);
+                await account.click();
+                await menu.waitFor({state:'hidden'});
+            }
+        }
+        assert.deepEqual(fixture.errors, []);
+    } finally { await fixture.context.close(); }
+});
+
 test('only the exact IELTS Room domain and its www alias load the shared theme or expose admin editing', async () => {
     const shared = {theme:'HALLOWEEN'};
     for (const hostname of ['ieltsroom.com', 'www.ieltsroom.com', 'localhost', 'tnttphungkhoang.com', 'sub.ieltsroom.com', 'ieltsroom.com.evil.test', 'richywine.com']) {
