@@ -60,7 +60,7 @@
         <i class="fa fa-eye"></i> PREVIEW MODE <span ng-if="!vm.isFlexibleRoute">· Part {{vm.passageNumber}}</span>
         <span>This is the candidate view</span>
     </div>
-    <div class="idp-exam-topbar" ng-class="{'has-session-label': vm.isPartAssignment && !vm.isPreviewMode, 'has-test-title': !!vm.ieltsReadingActualTest.title}" ng-show="vm.isStartTest && vm.passageNumber != 4">
+    <div class="idp-exam-topbar" ng-class="{'is-study': vm.isStudyMode() && !vm.isPreviewMode, 'has-session-label': vm.isPartAssignment && !vm.isPreviewMode, 'has-test-title': !!vm.ieltsReadingActualTest.title}" ng-show="vm.isStartTest && vm.passageNumber != 4">
         <button type="button"
                 class="idp-home-logo-button"
                 ng-click="vm.confirmLeaveTest($event)"
@@ -7113,6 +7113,88 @@
     .writing-task-runtime__textarea {
         font-size: var(--idp-test-content-font-size) !important;
         line-height: 1.55 !important;
+    }
+    /* A compact audio strip leaves more room for the Listening workspace. */
+    .idp-reading-page .idp-instruction-bar.is-listening-controls { border-radius: 10px !important; }
+    .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding: 4px 8px !important; }
+    .idp-listening-toolbar { gap: 8px; }
+    .idp-listening-player { min-height: 30px; gap: 6px; padding: 2px 5px; border-radius: 9px; }
+    .idp-reading-page .idp-listening-play { flex-basis: 26px; width: 26px; height: 26px; min-height: 26px !important; border-radius: 7px; font-size: 12px; }
+    .idp-listening-time { font-size: 11px; }
+    .idp-listening-seek { height: 26px; margin: 0 4px; }
+    .idp-listening-seek::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; }
+    .idp-listening-seek::-moz-range-track { height: 4px; border-radius: 4px; }
+    .idp-listening-seek::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; border-width: 2px; }
+    .idp-listening-seek::-moz-range-thumb { width: 12px; height: 12px; border-width: 2px; }
+    .idp-listening-control-row { gap: 6px; }
+    .idp-listening-speed { min-height: 30px; gap: 6px; padding: 2px 5px 2px 7px; border-radius: 9px; }
+    .idp-listening-speed-label { font-size: 10px; line-height: 12px; }
+    .idp-listening-speed-label > small { margin-top: 0; font-size: 8px; line-height: 10px; }
+    .idp-listening-stepper { gap: 3px; }
+    .idp-reading-page .idp-listening-stepper button { width: 24px; height: 24px; min-height: 24px !important; padding: 0; border-radius: 6px; font-size: 10px; }
+    .idp-listening-stepper output { min-width: 42px; padding: 0 2px; font-size: 13px; line-height: 20px; }
+    .idp-listening-stepper output > small { font-size: 10px; }
+    .idp-listening-skip { gap: 2px; padding: 1px 2px; border-radius: 9px; }
+    .idp-reading-page .idp-listening-skip button { width: 26px; height: 26px; min-height: 26px !important; padding: 2px; border-radius: 6px; }
+    .idp-listening-skip svg { width: 20px; height: 20px; }
+    .idp-listening-toolbar .idp-listening-switch { flex: 0 0 auto; min-height: 30px; padding: 3px 7px; gap: 6px; border-radius: 9px; }
+    .idp-listening-toolbar .idp-listening-switch-label,
+    .idp-listening-toolbar .idp-listening-switch-label > i { font-size: 11px; }
+    .idp-listening-toolbar .idp-listening-switch-track { flex-basis: 28px; width: 28px; height: 16px; }
+    .idp-listening-toolbar .idp-listening-switch-track:after { top: 2px; left: 2px; width: 12px; height: 12px; }
+    .idp-listening-toolbar .idp-listening-switch input:checked + .idp-listening-switch-track:after { transform: translateX(12px); }
+    @media (min-width: 768px) and (max-width: 991px) {
+        .idp-listening-toolbar { flex-wrap: nowrap; }
+        .idp-listening-player { flex-basis: auto; }
+        .idp-listening-control-row { width: auto; }
+    }
+    @media (max-width: 600px) {
+        .idp-reading-page .idp-instruction-bar.is-listening-controls > .portlet-body { padding: 4px 6px !important; }
+        .idp-listening-control-row { gap: 4px; }
+        .idp-listening-toggles { width: auto; }
+        .idp-listening-toolbar .idp-listening-switch { padding: 3px 5px; gap: 4px; }
+        .idp-listening-speed-label { display: none; }
+    }
+
+    /* Compact Study header: keep the page space available for questions and notes. */
+    .idp-exam-topbar.is-study { box-sizing: border-box; min-height: 35px; padding: 2px 12px; border-top-width: 2px; flex-wrap: nowrap; }
+    .idp-exam-topbar.is-study .idp-exam-logo { margin-right: 16px; font-size: 20px; letter-spacing: -1px; }
+    .idp-exam-topbar.is-study .idp-exam-logo small { margin-top: 2px; font-size: 6px; letter-spacing: .8px; }
+    .idp-exam-topbar.is-study .idp-exam-name { flex: 0 0 auto; line-height: 1.1; }
+    .idp-exam-topbar.is-study .idp-exam-name strong { font-size: 10px; }
+    .idp-exam-topbar.is-study .idp-exam-name span { margin-top: 1px; font-size: 10px !important; }
+    .idp-exam-topbar.is-study .idp-ieltsroom-logo { width: 26px; height: 26px; margin-left: 8px; }
+    .idp-exam-topbar.is-study study-notebook { margin-left: 12px; margin-right: 2px; }
+    .idp-exam-topbar.is-study .study-notebook-toggle { width: 28px; height: 28px; padding: 5px; border-radius: 9px; }
+    .idp-exam-topbar.is-study .study-notebook-toggle svg { width: 18px; height: 18px; }
+    .idp-exam-topbar.is-study .idp-exam-test-context { order: 0; flex: 1 1 0; gap: 7px; margin: 0 8px; padding: 0; }
+    .idp-exam-topbar.is-study .idp-exam-test-title { font-size: 12px; line-height: 16px; }
+    .idp-exam-topbar.is-study .idp-header-audio-switch { min-height: 26px; padding: 3px 6px; gap: 5px; border-radius: 8px; }
+    .idp-exam-topbar.is-study .idp-header-audio-switch .idp-listening-switch-track { flex-basis: 28px; width: 28px; height: 16px; }
+    .idp-exam-topbar.is-study .idp-header-audio-switch .idp-listening-switch-track:after { top: 2px; left: 2px; width: 12px; height: 12px; }
+    .idp-exam-topbar.is-study .idp-header-audio-switch input:checked + .idp-listening-switch-track:after { transform: translateX(12px); }
+    .idp-exam-topbar.is-study .idp-exam-session { flex: 0 1 auto; max-width: 210px; margin: 0 8px; overflow: hidden; font-size: 10px; line-height: 12px; }
+    .idp-exam-topbar.is-study .idp-exam-session strong,
+    .idp-exam-topbar.is-study .idp-exam-session > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .idp-exam-topbar.is-study .idp-exam-tools { flex: 0 0 auto; gap: 10px; font-size: 10px; }
+    .idp-exam-topbar.is-study .idp-exam-tools > small { max-width: 120px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .idp-exam-topbar.is-study .idp-exam-tools span { font-size: 10px !important; }
+    .idp-exam-topbar.is-study .idp-top-timer { gap: 4px; min-width: 90px; font-size: 11px !important; }
+    .idp-exam-topbar.is-study .idp-tool-icon,
+    .idp-exam-topbar.is-study .idp-exam-tools > .idp-display-settings-trigger { width: 28px; height: 28px; font-size: 16px !important; }
+    .idp-exam-topbar.is-study .idp-exam-tools > .idp-top-check { min-height: 26px; margin-right: 0; padding: 4px 8px; font-size: 10px; line-height: 16px; white-space: nowrap; }
+    @media (max-width: 996px) {
+        .idp-exam-topbar.is-study { padding-right: 8px; padding-left: 8px; }
+        .idp-exam-topbar.is-study .idp-exam-logo { margin-right: 6px; font-size: 18px; }
+        .idp-exam-topbar.is-study .idp-exam-tools { gap: 4px; }
+        .idp-exam-topbar.is-study .idp-exam-tools > small { max-width: 65px; }
+        .idp-exam-topbar.is-study .idp-exam-session { max-width: 140px; margin: 0 5px; }
+    }
+    @media (max-width: 600px) {
+        .idp-exam-topbar.is-study .idp-exam-test-context { margin: 0 5px; }
+        .idp-exam-topbar.is-study .idp-exam-session { max-width: 95px; }
+        .idp-exam-topbar.is-study .idp-exam-tools > small { max-width: 42px; }
+        .idp-exam-topbar.is-study study-notebook { margin-left: 8px; }
     }
 </style>
 

@@ -35,18 +35,18 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-action, .study-notebook-history { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 25px; padding: 3px 8px; color: #4668b8; background: #edf3ff; border: 1px solid #d9e5fc; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .study-notebook-close { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; color: #64738c; background: #f1f4f9; border: 0; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; }
 .study-notebook-close:hover { color: #294d9c; background: #e4ecfb; }
-.study-notebook-toolbar { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 4px 14px; background: #fff; border-bottom: 1px solid #e3e9f3; }
-.study-notebook-tools, .study-notebook-ink-options, .study-notebook-paper-options { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.study-notebook-toolbar { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: nowrap; gap: 4px 10px; min-width: 0; padding: 4px 14px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; background: #fff; border-bottom: 1px solid #e3e9f3; }
+.study-notebook-tools, .study-notebook-ink-options, .study-notebook-paper-options { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: nowrap; gap: 6px; }
 .study-notebook-tools { padding: 2px; border-radius: 8px; background: #f0f3f9; }
 .study-notebook-tools > button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 25px; padding: 4px 7px; color: #66748b; background: transparent; border: 0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .study-notebook-tools > button.is-active { color: #3c5ec1; background: #fff; box-shadow: 0 2px 7px rgba(40,62,111,.12); }
 .study-notebook-tools > button:hover { color: #3c5ec1; }
-.study-notebook-toolbar label { display: flex; align-items: center; gap: 6px; margin: 0; color: #728099; font-size: 11px; font-weight: 400; }
+.study-notebook-toolbar label { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin: 0; color: #728099; font-size: 11px; font-weight: 400; white-space: nowrap; }
 .study-notebook-toolbar select { height: 25px; max-width: 155px; padding: 2px 20px 2px 6px; border: 1px solid #dce3f0; border-radius: 6px; color: #415370; background: #fff; font-family: inherit; font-size: 11px; }
 .study-notebook-toolbar input[type="color"] { width: 24px; height: 24px; padding: 1px; border: 1px solid #dce3f0; border-radius: 6px; background: #fff; cursor: pointer; }
 .study-notebook-paper-options { margin-left: auto; gap: 8px; }
 .study-notebook-history { min-height: 25px; width: 25px; padding: 3px; background: #f7f9fd; }
-.study-notebook-zoom { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #e2e8f3; }
+.study-notebook-zoom { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #e2e8f3; white-space: nowrap; }
 .study-notebook-zoom button { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 25px; padding: 2px 5px; color: #4668b8; background: #f7f9fd; border: 1px solid #dce3f0; border-radius: 5px; font-size: 11px; cursor: pointer; }
 .study-notebook-zoom output { min-width: 36px; padding: 0; color: #52617d; font-size: 11px; text-align: center; }
 .study-notebook-zoom input.study-notebook-zoom__slider {
@@ -114,8 +114,8 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
     .study-notebook-action > span { display: none; }
     .study-notebook-toolbar { padding: 4px 9px; gap: 4px 6px; }
     .study-notebook-tools > button { gap: 4px; padding: 4px 6px; }
-    .study-notebook-paper-options { width: auto; flex-wrap: wrap; }
-    .study-notebook-paper-options > label { flex: 1 1 auto; }
+    .study-notebook-paper-options { width: auto; flex-wrap: nowrap; }
+    .study-notebook-paper-options > label { flex: 0 0 auto; }
     .study-notebook-paper-options select { max-width: 125px; }
     .study-notebook-scroll { padding: 10px; }
     .study-notebook-text { font-size: 16px; }
