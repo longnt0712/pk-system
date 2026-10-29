@@ -224,7 +224,7 @@ public class SpeakingServiceImpl {
             if(q==null){q=new SpeakingQuestion();q.setOwnerId(set.getOwnerId());q.setSample(SpeakingImportSupport.text(row.sample));}
             q.setPart(row.part);q.setTopic(SpeakingImportSupport.text(row.topic));q.setPrompt(SpeakingImportSupport.text(row.prompt));q.setContentKey(key);
             if(q.getId()==null){em.persist(q);em.flush();questions.put(q.getId(),q);}
-            if(entry==null){entry=new SpeakingSetEntry();entry.setSetId(setId);entry.setEntryKey(SpeakingImportSupport.entryKey(row));entry.setImportCode(SpeakingImportSupport.text(row.code).isEmpty()?"SP"+row.part+"-"+UUID.randomUUID().toString().substring(0,8):row.code);entries.add(entry);}
+            if(entry==null){entry=new SpeakingSetEntry();entry.setSetId(setId);entry.setEntryKey(SpeakingImportSupport.entryKey(row));entry.setImportCode(SpeakingImportSupport.text(row.code).isEmpty()?"SP"+row.part+"-"+UUID.randomUUID().toString().replace("-",""):row.code);entries.add(entry);}
             entry.setQuestionId(q.getId());entry.setLinkedPart2Id(linked);if(entry.getSample()==null||!SpeakingImportSupport.text(row.sample).isEmpty())entry.setSample(SpeakingImportSupport.text(row.sample));
             if(entry.getId()==null)em.persist(entry);imported++;
         }

@@ -132,6 +132,11 @@ public class SpeakingPersistenceTest {
         assertEquals("INVALID",rows(service.preview(setId,bad)).stream().filter(row->((ImportRow)row.get("row")).part==3).findFirst().get().get("status"));
         try{SpeakingImportSupport.read(exported,2026,2);fail();}catch(IllegalArgumentException expected){}try{SpeakingImportSupport.read(new byte[]{1,2,3},2026,1);fail();}catch(IllegalArgumentException expected){}
     }
+    @Test public void automaticImportCodesRemainStableWhenExportedAndImportedAgain()throws Exception{
+        byte[] data=file("First question","Sample",false);try(Workbook b=WorkbookFactory.create(new ByteArrayInputStream(data));ByteArrayOutputStream out=new ByteArrayOutputStream()){b.getSheet("PART_1").getRow(1).getCell(3).setCellValue("");b.write(out);data=out.toByteArray();}
+        confirm(setId,service.preview(setId,data),"NEW_VARIANT");Map<String,Object> original=bank(setId).get(0);assertTrue(String.valueOf(original.get("code")).matches("SP1-[a-f0-9]{32}"));
+        RestSpeakingController rest=new RestSpeakingController();ReflectionTestUtils.setField(rest,"service",service);Map<String,Object> preview=service.preview(setId,rest.export(setId).getBody());assertEquals("UNCHANGED",rows(preview).get(0).get("status"));confirm(setId,preview,"NEW_VARIANT");assertEquals(1,bank(setId).size());assertEquals(original.get("id"),bank(setId).get(0).get("id"));assertEquals(original.get("code"),bank(setId).get(0).get("code"));
+    }
     @Test public void simultaneousRetriesCreateOnlyOnePractice()throws Exception{
         seed();SetRequest share=new SetRequest();share.studentIds=Collections.singletonList(student.getId());service.share(setId,share);em.getTransaction().commit();
         final Long studentId=student.getId();final PracticeRequest req=request();java.util.concurrent.CountDownLatch ready=new java.util.concurrent.CountDownLatch(2),go=new java.util.concurrent.CountDownLatch(1);

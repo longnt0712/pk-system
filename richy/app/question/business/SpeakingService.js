@@ -12,7 +12,7 @@
             share: function (id, data) { return post('/sets/' + id + '/share', data); },
             preview: function (id, file) {
                 var body = new FormData(); body.append('file', file);
-                return $http.post(base + '/sets/' + id + '/import/preview', body, {transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
+                return $http.post(base + '/sets/' + id + '/import/preview', body, {timeout: 120000, transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
             },
             confirm: function (id, data) { return post('/sets/' + id + '/import/confirm', data); },
             markPass: function (id, data) { return post('/sets/' + id + '/pass', data); },
@@ -25,8 +25,8 @@
                 return $http.post(base + '/recordings/' + id + '/chunks/' + index, bytes, {timeout: 30000, transformRequest: angular.identity, headers: {'Content-Type': 'application/octet-stream'}}).then(function (r) { return r.data; });
             },
             finishRecording: function (id, count) { return post('/recordings/' + id + '/finish', {chunkCount: count}); },
-            audio: function (id) { return $http.get(base + '/recordings/' + id + '/audio', {responseType: 'blob'}).then(function (r) { return r.data; }); },
-            exportSet: function (id) { return $http.get(base + '/sets/' + id + '/export', {responseType: 'arraybuffer'}).then(function (r) { return r.data; }); }
+            audio: function (id) { return $http.get(base + '/recordings/' + id + '/audio', {responseType: 'blob', timeout: 60000}).then(function (r) { return r.data; }); },
+            exportSet: function (id) { return $http.get(base + '/sets/' + id + '/export', {responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); }
         };
     }]);
 })();
