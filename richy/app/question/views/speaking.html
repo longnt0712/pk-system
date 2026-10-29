@@ -1,0 +1,94 @@
+<main class="speaking-page" id="speaking-page" aria-busy="{{vm.loading}}">
+    <header class="sp-hero">
+        <div><span class="sp-eyebrow"><i class="fa fa-microphone"></i> YOUR SPEAKING SPACE</span><h1>Speaking studio</h1><p>Câu hỏi, ý tưởng và từng bước tiến bộ của bạn.</p></div>
+        <button class="sp-button sp-primary" ng-if="vm.canManage" ng-click="vm.openModal('create')"><i class="fa fa-plus"></i> Tạo bộ đề</button>
+    </header>
+    <div class="sp-alert sp-error" role="alert" ng-if="vm.error">{{vm.error}}</div>
+    <div class="sp-alert" role="status" ng-if="vm.notice">{{vm.notice}} <button class="sp-link" ng-click="vm.notice=''">Đóng</button></div>
+    <p ng-if="vm.loading" role="status">Đang mở kho Speaking…</p>
+    <section class="sp-empty sp-panel" ng-if="!vm.loading && !vm.sets.length"><i class="fa fa-comments-o"></i><h2>Khởi đầu một cuộc trò chuyện</h2><p>{{vm.canManage ? 'Tạo bộ đề theo năm, rồi nhập câu hỏi và sample bằng file Excel.' : 'Các bộ Speaking được giáo viên chia sẻ sẽ xuất hiện tại đây.'}}</p></section>
+
+    <div ng-if="vm.sets.length && !vm.practice">
+        <section class="sp-panel sp-filters">
+            <label>Năm<select ng-model="vm.yearFilter" ng-change="vm.changeYear()" ng-options="year as year for year in vm.years"><option value="">Tất cả năm</option></select></label>
+            <label class="sp-grow">Bộ đề<select ng-model="vm.selectedSetId" ng-change="vm.selectSet()" ng-options="set.id as (set.name + ' · Tháng ' + set.fromMonth + '–' + set.toMonth + ' · ' + set.ownerName) for set in vm.availableSets()"></select></label>
+            <button class="sp-button" ng-if="vm.selectedSet.canManage" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
+            <button class="sp-button" ng-if="vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
+            <button class="sp-button sp-primary" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
+        </section>
+        <section class="sp-panel" ng-if="vm.selectedSet">
+            <div class="sp-toolbar">
+                <div class="sp-tabs" role="tablist" aria-label="Speaking Parts"><button ng-repeat="part in [1,2,3]" class="sp-button" ng-class="{'is-active': vm.part==part}" role="tab" aria-selected="{{vm.part==part}}" ng-click="vm.changePart(part)">Part {{part}}</button></div>
+                <label class="sp-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm topic hoặc câu hỏi" placeholder="Tìm topic, tên bài hoặc câu hỏi…" ng-model="vm.query" ng-change="vm.rebuildGroups()" ng-model-options="{debounce:200}"></label>
+            </div>
+            <div class="sp-toolbar sp-muted" ng-if="vm.selectedSet.canManage">
+                <label class="sp-grow">Theo dõi học sinh<select ng-model="vm.studentId" ng-change="vm.loadBank()" ng-options="student.id as (student.name + ' · ' + student.username) for student in vm.students | filter:{canAccess:true}"><option value="">Chọn học sinh để đánh dấu Pass</option></select></label>
+                <label>Tìm học sinh<input type="search" placeholder="Tên hoặc tài khoản chính xác" ng-model="vm.studentQuery" ng-change="vm.loadStudents(vm.studentQuery)" ng-model-options="{debounce:400}"></label>
+                <span>Hoàn thành luyện tập không tự đánh dấu Pass.</span>
+            </div>
+            <p ng-if="vm.loadingBank" role="status">Đang tải câu hỏi…</p>
+            <p class="sp-muted" ng-if="!vm.loadingBank && !vm.groups.length">Chưa có câu phù hợp ở Part {{vm.part}}.</p>
+            <article class="sp-topic" ng-repeat="group in vm.groups | limitTo:6:vm.groupPage*6 track by group.key">
+                <header class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2><small ng-if="group.linkedTitle">Đi cùng cue card: {{group.linkedTitle}}</small></div>
+                    <span class="sp-badge">{{group.passed}}/{{group.questions.length}} Pass</span>
+                    <button class="sp-button" ng-if="vm.selectedSet.canManage && vm.studentId" ng-disabled="vm.passSaving" ng-click="vm.markPass(group.questions,group.passed !== group.questions.length)">{{group.passed === group.questions.length ? 'Bỏ Pass cả bài' : 'Pass cả bài'}}</button>
+                </header>
+                <div class="sp-question" ng-repeat="question in group.visible track by question.entryId" ng-class="{'is-passed': question.passed}">
+                    <div class="sp-question-heading"><span class="sp-number">{{$index+1}}</span><p class="sp-preserve sp-grow">{{question.prompt}}</p>
+                        <button class="sp-pass" ng-if="vm.selectedSet.canManage && vm.studentId" role="checkbox" aria-checked="{{question.passed}}" aria-label="Đánh dấu Pass câu {{$index+1}}" ng-disabled="vm.passSaving" ng-click="vm.markPass([question],!question.passed)"><i class="fa" ng-class="question.passed ? 'fa-check-square' : 'fa-square-o'"></i> Pass</button>
+                        <span class="sp-badge" ng-if="(!vm.selectedSet.canManage || !vm.studentId) && question.passed"><i class="fa fa-check"></i> Pass</span>
+                    </div>
+                    <details ng-if="question.sample"><summary>Sample trả lời</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
+                </div>
+            </article>
+            <nav class="sp-toolbar sp-pagination" ng-if="vm.groups.length>6" aria-label="Trang topic"><button class="sp-button" ng-disabled="vm.groupPage===0" ng-click="vm.groupPage=vm.groupPage-1">← Trước</button><span>Trang {{vm.groupPage+1}}</span><button class="sp-button" ng-disabled="(vm.groupPage+1)*6>=vm.groups.length" ng-click="vm.groupPage=vm.groupPage+1">Sau →</button></nav>
+        </section>
+        <section class="sp-panel"><div class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">PRACTICE JOURNAL</span><h2>Lịch sử luyện tập</h2></div><button class="sp-button" ng-click="vm.loadHistory()">Làm mới</button></div><p class="sp-muted" ng-if="!vm.history.length">Chưa có lượt luyện tập.</p>
+            <div class="sp-history" ng-repeat="session in vm.history track by session.id"><div class="sp-grow"><strong>{{session.studentName}}</strong><div><span ng-repeat="set in session.sets">{{set.name}}{{$last ? '' : ' · '}}</span></div><small>{{session.createdAt | date:'dd/MM/yyyy HH:mm'}} · {{session.questionCount}} câu · {{session.status==='DONE' ? 'Đã luyện' : 'Đang luyện'}}</small></div><button class="sp-button" ng-click="vm.openPractice(session.id)" ng-disabled="vm.loadingPractice">{{session.status==='DONE' ? 'Xem lại' : 'Mở lượt luyện'}}</button></div>
+        </section>
+    </div>
+
+    <section class="sp-practice sp-panel" ng-if="vm.practice">
+        <div class="sp-toolbar"><button class="sp-button" ng-click="vm.leavePractice()">← Kho câu hỏi</button><span class="sp-grow">{{vm.practice.studentName}} · {{vm.practice.status==='DONE' ? 'Đã luyện' : 'Đang luyện'}}</span><strong class="sp-clock">{{vm.clock()}}</strong></div>
+        <div class="sp-alert sp-error" ng-if="vm.progressError" role="alert">{{vm.progressError}} <button class="sp-button" ng-click="vm.retryProgress()">Thử lưu lại</button></div>
+        <div ng-repeat="question in [vm.practice.snapshot.questions[vm.practice.currentIndex]] track by $index" class="sp-cue">
+            <span class="sp-eyebrow">PART {{question.part}} · CÂU {{vm.practice.currentIndex+1}} / {{vm.practice.snapshot.questions.length}}</span><h2>{{question.topic}}</h2><p class="sp-preserve">{{question.prompt}}</p>
+            <details ng-if="question.sample && vm.practice.status==='DONE'"><summary>Sample tham khảo</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
+        </div>
+        <div class="sp-record" ng-if="vm.ownPractice() && vm.practice.status==='ACTIVE'">
+            <button class="sp-button sp-record-start" ng-if="!vm.recorder.state.active && !vm.recorder.state.starting" ng-click="vm.startRecording()" ng-disabled="!vm.recorder.supported()"><i class="fa fa-microphone"></i> Ghi âm câu này</button>
+            <button class="sp-button sp-record-stop" ng-if="vm.recorder.state.active || vm.recorder.state.starting" ng-click="vm.recorder.stop()"><i class="fa fa-stop"></i> Dừng ghi âm</button>
+            <span>Ghi âm là tuỳ chọn. Chuyển câu hoặc rời trang sẽ dừng bản thu hiện tại.</span>
+        </div>
+        <div class="sp-toolbar sp-pagination"><button class="sp-button" ng-disabled="vm.practice.currentIndex===0 || vm.moving" ng-click="vm.moveQuestion(-1)">← Câu trước</button><button class="sp-button" ng-disabled="vm.practice.currentIndex+1>=vm.practice.snapshot.questions.length || vm.moving" ng-click="vm.moveQuestion(1)">Câu tiếp →</button><button class="sp-button sp-primary" ng-if="vm.ownPractice() && vm.practice.status==='ACTIVE'" ng-disabled="vm.finishing" ng-click="vm.finishPractice()">{{vm.finishing ? 'Đang lưu…' : 'Kết thúc luyện tập'}}</button></div>
+        <h3>Bản ghi âm</h3><p class="sp-muted" ng-if="!vm.practice.recordings.length">Chưa có bản thu được gửi lên.</p>
+        <div class="sp-history" ng-repeat="recording in vm.practice.recordings track by recording.id"><span class="sp-grow">Câu {{recording.questionIndex+1}} · {{recording.complete ? 'Đã lưu đủ' : 'Chưa tải đủ'}}</span><button class="sp-button" ng-disabled="!recording.complete || vm.audioLoading" ng-click="vm.playRecording(recording)">Nghe lại</button></div>
+        <div ng-if="vm.audioSource" class="sp-playback"><span>{{vm.audioLabel}}</span><audio controls ng-src="{{vm.audioSource}}" preload="metadata"></audio></div>
+    </section>
+    <aside class="sp-panel sp-sync" ng-if="vm.recorder.state.pending.length || vm.recorder.state.error || vm.recorder.state.message">
+        <p role="status">{{vm.recorder.state.message}}</p><p class="sp-error-text" role="alert" ng-if="vm.recorder.state.error">{{vm.recorder.state.error}}</p>
+        <div class="sp-history" ng-repeat="job in vm.recorder.state.pending track by job.key"><span class="sp-grow">Lượt #{{job.practiceId}} · Câu {{job.questionIndex+1}} · {{job.uploaded}}/{{job.parts.length}} đoạn đã gửi<br><small>{{job.stopped ? 'Đang chờ xác nhận lưu đủ' : 'Bản thu đang mở hoặc bị gián đoạn'}}</small></span><button class="sp-button" ng-if="job.stopped" ng-click="vm.recorder.retry()">Thử đồng bộ</button><button class="sp-button" ng-if="!job.stopped && !vm.recorder.state.active && !vm.recorder.state.starting" ng-click="vm.recoverRecording(job)">Khôi phục bản thu</button></div>
+        <small ng-if="vm.recorder.state.pending.length">Chỉ khôi phục khi bản thu đã dừng ở tab khác. Khi ghi âm, giữ trang mở và tránh khoá màn hình.</small>
+    </aside>
+
+    <div class="sp-overlay" ng-if="vm.modal" ng-click="vm.closeModal()">
+        <section class="sp-modal" role="dialog" aria-modal="true" aria-labelledby="sp-modal-title" ng-click="$event.stopPropagation()">
+            <header><h2 id="sp-modal-title">{{vm.modal==='create' ? 'Tạo bộ Speaking' : vm.modal==='share' ? 'Chia sẻ bộ đề' : vm.modal==='import' ? 'Đối chiếu file import' : 'Thiết lập lượt luyện'}}</h2><button class="sp-close" ng-disabled="vm.busy" ng-click="vm.closeModal()" aria-label="Đóng">×</button></header>
+            <div class="sp-modal-body"><div class="sp-alert sp-error" role="alert" ng-if="vm.error">{{vm.error}}</div>
+                <form id="sp-create-form" ng-if="vm.modal==='create'" ng-submit="vm.createSet()"><div class="sp-form-grid"><label>Năm<input type="number" min="1900" max="2200" required ng-model="vm.newSet.year"></label><label>Bộ đề<select ng-model="vm.newSet.number" required><option ng-value="1">Bộ 1 · Tháng 1–4</option><option ng-value="2">Bộ 2 · Tháng 5–8</option><option ng-value="3">Bộ 3 · Tháng 9–12</option></select></label></div><p>Kho thuộc tài khoản giáo viên của bạn. Bạn chọn lớp hoặc học sinh được truy cập sau khi tạo.</p></form>
+                <div ng-if="vm.modal==='share'"><h3>Lớp học</h3><div class="sp-check-grid"><label ng-repeat="class in vm.classes track by class.id"><input type="checkbox" ng-checked="vm.shareForm.classIds.indexOf(class.id)>=0" ng-click="vm.toggleId(vm.shareForm.classIds,class.id)"> {{class.name}} · {{class.code}}</label></div><h3>Chia sẻ riêng cho học sinh</h3><label>Tìm theo tên hoặc tài khoản<input ng-model="vm.shareQuery" ng-change="vm.loadStudents(vm.shareQuery)" ng-model-options="{debounce:400}" placeholder="Nhập tài khoản chính xác nếu học sinh ngoài lớp"></label><div class="sp-check-grid"><label ng-repeat="student in vm.students track by student.id"><input type="checkbox" ng-checked="vm.shareForm.studentIds.indexOf(student.id)>=0" ng-click="vm.toggleId(vm.shareForm.studentIds,student.id)"> {{student.name}} · {{student.username}}</label></div><div class="sp-chips"><button ng-repeat="id in vm.shareForm.studentIds track by id" class="sp-button" ng-click="vm.toggleId(vm.shareForm.studentIds,id)">{{vm.studentLabel(id)}} ×</button></div><p class="sp-muted">Học sinh chỉ xem dấu Pass. Giáo viên sở hữu kho xác nhận Pass cho từng câu hoặc cả bài.</p></div>
+                <div ng-if="vm.modal==='import'">
+                    <div class="sp-toolbar"><a class="sp-button" href="assets/templates/mau_import_speaking.xlsx" download>Tải mẫu Excel và hướng dẫn</a><button class="sp-button" ng-disabled="vm.busy" ng-click="vm.exportSet()">Xuất bộ hiện tại</button></div>
+                    <p>Điền các tab PART_1, PART_2, PART_3; chỉnh năm và bộ trong THONG_TIN. Giữ mã câu khi cập nhật. Bài không có trong file mới vẫn được giữ.</p>
+                    <label class="sp-file">File .xlsx (tối đa 8 MB)<input type="file" accept=".xlsx" speaking-file="vm.chooseFile(file)" ng-disabled="vm.busy"></label><div class="sp-toolbar"><span class="sp-grow">{{vm.importFile.name}}</span><button class="sp-button sp-primary" ng-disabled="!vm.importFile || vm.busy" ng-click="vm.previewFile()">{{vm.busy ? 'Đang xử lý…' : 'Đọc và đối chiếu'}}</button></div>
+                    <div ng-if="vm.preview"><div class="sp-toolbar"><strong class="sp-grow">{{vm.importRows.length}} dòng · {{vm.importSelected}} dòng được chọn</strong><button class="sp-button" ng-click="vm.selectNewRows()">Chỉ chọn câu mới</button></div><p class="sp-muted">Cách hỏi mới tạo Pass riêng. Chỉ chọn “Sửa lỗi nhỏ, giữ Pass” khi sửa chính tả; thay đổi này áp dụng cho câu dùng chung trong các bộ. Nhập Part 2 liên kết cùng đợt hoặc trước Part 3.</p>
+                        <article class="sp-import-row" ng-repeat="item in vm.importRows | limitTo:50:(vm.importPage-1)*50 track by item.row.rowId" ng-class="{'sp-invalid':item.status==='INVALID'}"><div class="sp-toolbar"><label><input type="checkbox" ng-model="item.selected" ng-disabled="item.status==='INVALID' || vm.busy" ng-change="vm.countSelected()"> {{item.row.rowId}}</label><span class="sp-badge" ng-class="'sp-status-'+item.status">{{vm.importLabels[item.status]}}</span><strong>{{item.row.topic}}</strong></div><p class="sp-preserve">{{item.row.prompt}}</p><p class="sp-error-text" ng-if="item.error">{{item.error}}</p><details ng-if="item.existingQuestionId"><summary>Đối chiếu nội dung cũ / sample mới</summary><p class="sp-preserve">Câu cũ: {{item.oldPrompt}}</p><p class="sp-preserve">Sample cũ: {{item.oldSample}}</p><p class="sp-preserve">Sample trong file: {{item.row.sample}}</p></details><label ng-if="item.status==='CHANGED'">Cách cập nhật<select ng-model="item.action"><option value="NEW_VARIANT">Biến thể mới, Pass riêng</option><option value="MINOR_CORRECTION">Sửa lỗi nhỏ, giữ Pass</option></select></label></article>
+                        <nav class="sp-toolbar sp-pagination" ng-if="vm.importRows.length>50"><button class="sp-button" ng-disabled="vm.importPage<=1" ng-click="vm.importPage=vm.importPage-1">← Trước</button><span>Trang {{vm.importPage}}</span><button class="sp-button" ng-disabled="vm.importPage*50>=vm.importRows.length" ng-click="vm.importPage=vm.importPage+1">Sau →</button></nav>
+                    </div>
+                </div>
+                <div ng-if="vm.modal==='practice'"><h3>Chọn bộ đề</h3><div class="sp-check-grid"><label ng-repeat="set in vm.practiceSets track by set.id"><input type="checkbox" ng-checked="vm.practiceConfig.setIds.indexOf(set.id)>=0" ng-click="vm.toggleId(vm.practiceConfig.setIds,set.id)"> {{set.name}} · Tháng {{set.fromMonth}}–{{set.toMonth}}</label></div><h3>Chọn Parts</h3><div class="sp-check-grid"><label ng-repeat="part in [1,2,3]"><input type="checkbox" ng-model="vm.practiceConfig.parts[part]"> Part {{part}}</label></div><div class="sp-form-grid"><label ng-if="vm.practiceConfig.parts[1]">Số câu Part 1<input type="number" min="1" max="30" ng-model="vm.practiceConfig.part1Count"></label><label ng-if="vm.practiceConfig.parts[3]">Số câu Part 3<input type="number" min="1" max="30" ng-model="vm.practiceConfig.part3Count"></label></div><p>Part 2 chọn một cue card. Khi chọn cả Part 2 và 3, ưu tiên câu Part 3 liên quan. Câu trùng giữa các bộ chỉ xuất hiện một lần; nếu kho ít câu hơn yêu cầu sẽ lấy toàn bộ câu phù hợp.</p><label><input type="checkbox" ng-model="vm.practiceConfig.onlyUnpassed"> Chỉ câu chưa Pass của tôi</label><p class="sp-muted">Sample được ẩn trong lượt giả lập và mở lại khi kết thúc. Luyện tập không tự chuyển thành Pass.</p></div>
+            </div>
+            <footer><button class="sp-button" ng-disabled="vm.busy" ng-click="vm.closeModal()">Đóng</button><button type="submit" form="sp-create-form" class="sp-button sp-primary" ng-if="vm.modal==='create'" ng-disabled="vm.busy">Tạo / mở bộ đề</button><button class="sp-button sp-primary" ng-if="vm.modal==='share'" ng-disabled="vm.busy" ng-click="vm.saveShare()">Lưu chia sẻ</button><button class="sp-button sp-primary" ng-if="vm.modal==='import'" ng-disabled="vm.busy || !vm.importSelected" ng-click="vm.confirmImport()">Nhập {{vm.importSelected || 0}} dòng đã chọn</button><button class="sp-button sp-primary" ng-if="vm.modal==='practice'" ng-disabled="vm.busy" ng-click="vm.startPractice()">{{vm.busy ? 'Đang mở…' : 'Bắt đầu luyện'}}</button></footer>
+        </section>
+    </div>
+</main>

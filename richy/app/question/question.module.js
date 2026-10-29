@@ -370,6 +370,23 @@
                 }
             })
 
+            .state('application.speaking', {
+                url: '/speaking?set&part&practice',
+                reloadOnSearch: false,
+                templateUrl: 'question/views/speaking.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Speaking studio'},
+                controller: 'SpeakingController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'question/speaking.css?v=' + window.APP_VERSION,
+                            'question/business/SpeakingService.js?v=' + window.APP_VERSION,
+                            'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,
+                            'question/controllers/SpeakingController.js?v=' + window.APP_VERSION
+                        ]});
+                    }]
+                }
+            })
             .state('application.daily_listening_tests', {
                 url: '/daily_listening_tests?folder',
                 reloadOnSearch: false,

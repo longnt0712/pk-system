@@ -1,0 +1,201 @@
+(function () {
+    'use strict';
+    angular.module('Hrm.Question').directive('speakingFile', ['$parse', function ($parse) {
+        return {restrict: 'A', link: function (scope, element, attrs) {
+            var callback = $parse(attrs.speakingFile);
+            function changed(event) { var file = event.target.files && event.target.files[0]; scope.$evalAsync(function () { callback(scope, {file: file}); }); element.val(''); }
+            element.on('change', changed); scope.$on('$destroy', function () { element.off('change', changed); });
+        }};
+    }]);
+    angular.module('Hrm.Question').controller('SpeakingController', ['$scope', '$rootScope', '$window', '$location', '$interval', '$q', 'settings', 'SpeakingService', 'SpeakingRecorder', '$sce',
+        function ($scope, $rootScope, $window, $location, $interval, $q, settings, api, recorder, $sce) {
+            var vm = this, alive = true, bankGeneration = 0, practiceGeneration = 0, progressQueue = $q.when(), lastTick = Date.now(), tickCount = 0, audioUrl = null;
+            vm.loading = true; vm.error = ''; vm.sets = []; vm.classes = []; vm.students = []; vm.studentCache = {}; vm.groups = []; vm.questions = [];
+            vm.part = 1; vm.query = ''; vm.groupPage = 0; vm.recorder = recorder; vm.importRows = []; vm.importPage = 1;
+            vm.importLabels = {NEW: 'Chưa import', UNCHANGED: 'Đã import', UPDATE_SAMPLE: 'Sample / liên kết thay đổi', CHANGED: 'Cách hỏi thay đổi', INVALID: 'Cần sửa'};
+            vm.newSet = {year: new Date().getFullYear(), number: 1};
+            vm.practiceConfig = {parts: {1: true, 2: true, 3: true}, setIds: [], part1Count: 5, part3Count: 4, onlyUnpassed: false};
+            $rootScope.settings.layout.pageContentWhite = true;
+            function message(error) { return (error && error.data && error.data.message) || (error && error.message) || 'Chưa xử lý được. Hãy kiểm tra kết nối và thử lại.'; }
+            function fail(error) { if (alive) { vm.error = message(error); } }
+            function owner() { return vm.selectedSet && vm.selectedSet.canManage; }
+            function ownPractice() { return vm.practice && Number(vm.practice.studentId) === Number(vm.userId); }
+            vm.ownPractice = ownPractice;
+            function normalize(text) { return String(text || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim(); }
+            function preferenceKey() { return 'speaking-view:v1:' + vm.userId; }
+            function backupKey(id) { return 'speaking-practice:v1:' + vm.userId + ':' + id; }
+            function startBackupKey() { return 'speaking-start:v1:' + vm.userId; }
+            function saveView() { try { $window.localStorage.setItem(preferenceKey(), JSON.stringify({setId: vm.selectedSetId, part: vm.part})); } catch (ignore) {} }
+            function backupPractice() { if (!ownPractice()) { return; } try { $window.localStorage.setItem(backupKey(vm.practice.id), JSON.stringify({index: vm.practice.currentIndex, elapsed: vm.elapsedSeconds})); } catch (ignore) {} }
+            function clearAudio() { if (audioUrl) { $window.URL.revokeObjectURL(audioUrl); audioUrl = null; } vm.audioSource = null; }
+            function updateClock() {
+                var now = Date.now();
+                if (ownPractice() && vm.practice.status === 'ACTIVE' && !$window.document.hidden) { vm.elapsedSeconds = Math.min(604800, (vm.elapsedSeconds || 0) + Math.max(0, (now - lastTick) / 1000)); }
+                lastTick = now;
+            }
+            vm.clock = function () { var seconds = Math.floor(vm.elapsedSeconds || 0); return Math.floor(seconds / 60) + ':' + ('0' + seconds % 60).slice(-2); };
+            vm.toggleId = function (list, id) { var index = list.indexOf(id); if (index < 0) { list.push(id); } else { list.splice(index, 1); } };
+            vm.availableSets = function () { return vm.sets.filter(function (set) { return !vm.yearFilter || set.year === Number(vm.yearFilter); }); };
+            vm.studentLabel = function (id) { var student = vm.studentCache[id]; return student ? student.name + ' (' + student.username + ')' : 'Học sinh #' + id; };
+            vm.rebuildGroups = function () {
+                var grouped = {}, groups = [], term = normalize(vm.query); vm.groupPage = 0;
+                vm.questions.forEach(function (question) {
+                    if (question.part !== Number(vm.part)) { return; }
+                    var key = question.part + ':' + question.topic + ':' + (question.linkedPart2Id || '');
+                    if (!grouped[key]) { grouped[key] = {key: key, part: question.part, title: question.topic, questions: [], passed: 0, linkedTitle: ''}; groups.push(grouped[key]); }
+                    var group = grouped[key]; group.questions.push(question); if (question.passed) { group.passed++; }
+                    if (question.linkedPart2Id) { var cue = vm.questions.filter(function (q) { return q.id === question.linkedPart2Id; })[0]; group.linkedTitle = cue ? cue.topic : 'Part 2 đã liên kết'; }
+                });
+                groups.forEach(function (group) { group.visible = group.questions.filter(function (q) { return !term || normalize(q.topic + ' ' + q.prompt).indexOf(term) >= 0; }); });
+                vm.groups = groups.filter(function (group) { return group.visible.length; });
+            };
+            vm.changePart = function (part) { vm.part = part; vm.rebuildGroups(); saveView(); $location.search('part', part); };
+            vm.loadStudents = function (query) {
+                if (!owner()) { vm.students = []; return $q.when(); }
+                var id = vm.selectedSetId;
+                return api.students(id, query).then(function (students) { if (!alive || id !== vm.selectedSetId) { return; } vm.students = students; students.forEach(function (s) { vm.studentCache[s.id] = s; }); }, fail);
+            };
+            vm.loadHistory = function () {
+                var id = vm.selectedSetId, student = vm.studentId;
+                return api.history(owner() ? id : null, owner() && student ? student : null).then(function (rows) { if (alive && id === vm.selectedSetId && student === vm.studentId) { vm.history = rows; } }, fail);
+            };
+            vm.loadBank = function () {
+                var generation = ++bankGeneration, id = Number(vm.selectedSetId), student = vm.studentId || null;
+                vm.selectedSet = vm.sets.filter(function (set) { return set.id === id; })[0]; if (!vm.selectedSet) { vm.questions = []; vm.groups = []; return $q.when(); }
+                vm.loadingBank = true; vm.error = ''; saveView();
+                return api.bank(id, student).then(function (data) {
+                    if (!alive || generation !== bankGeneration) { return; }
+                    vm.selectedSet = data.set; vm.questions = data.questions || []; vm.preview = data.importPreview;
+                    vm.rebuildGroups(); vm.loadHistory();
+                }, fail).finally(function () { if (alive && generation === bankGeneration) { vm.loadingBank = false; } });
+            };
+            vm.selectSet = function () { vm.studentId = null; vm.loadBank().then(function () { vm.loadStudents(''); }); $location.search('set', vm.selectedSetId); };
+            vm.changeYear = function () { var available = vm.availableSets(); if (!available.some(function (s) { return s.id === vm.selectedSetId; })) { vm.selectedSetId = available.length ? available[0].id : null; vm.selectSet(); } };
+            vm.markPass = function (questions, value) {
+                if (!owner() || !vm.studentId || vm.passSaving) { return; }
+                var ids = []; questions.forEach(function (q) { if (ids.indexOf(q.id) < 0) { ids.push(q.id); } });
+                var setId = vm.selectedSetId, student = vm.studentId; vm.passSaving = true; vm.error = '';
+                return api.markPass(setId, {studentId: student, questionIds: ids, passed: value}).then(function (ack) {
+                    if (!ack || ack.updated !== ids.length || ack.studentId !== student || ack.passed !== value) { throw new Error('Chưa xác nhận được dấu Pass. Hãy tải lại để đối chiếu.'); }
+                    if (setId === vm.selectedSetId && student === vm.studentId) { vm.questions.forEach(function (q) { if (ids.indexOf(q.id) >= 0) { q.passed = value; } }); vm.rebuildGroups(); }
+                }).catch(fail).finally(function () { vm.passSaving = false; });
+            };
+            vm.openModal = function (name) { vm.modal = name; vm.error = ''; if (name === 'share') { vm.shareForm = {classIds: (vm.selectedSet.classIds || []).slice(), studentIds: (vm.selectedSet.studentIds || []).slice()}; vm.loadStudents(''); } if (name === 'import' && vm.preview) { setPreview(vm.preview); } };
+            vm.closeModal = function () { if (!vm.busy) { vm.modal = null; } };
+            vm.createSet = function () {
+                vm.busy = true; vm.error = '';
+                api.createSet(vm.newSet).then(function (set) { vm.selectedSetId = set.id; vm.yearFilter = null; vm.modal = null; return refresh(set.id); }).catch(fail).finally(function () { vm.busy = false; });
+            };
+            vm.saveShare = function () {
+                vm.busy = true; vm.error = '';
+                api.share(vm.selectedSetId, vm.shareForm).then(function (ack) {
+                    if (!ack || ack.id !== vm.selectedSetId) { throw new Error('Chưa xác nhận được chia sẻ.'); }
+                    vm.modal = null; vm.studentId = null; return refresh(ack.id);
+                }).catch(fail).finally(function () { vm.busy = false; });
+            };
+            vm.chooseFile = function (file) { if (!file) { return; } if (!/\.xlsx$/i.test(file.name) || file.size > 8 * 1024 * 1024) { vm.error = 'Chọn file .xlsx nhỏ hơn 8 MB.'; return; } vm.importFile = file; };
+            function setPreview(preview) {
+                vm.preview = preview; vm.importPage = 1; vm.importRows = (preview.rows || []).map(function (item) {
+                    item.selected = item.status === 'NEW'; item.action = item.status === 'CHANGED' ? 'NEW_VARIANT' : item.status === 'UPDATE_SAMPLE' ? 'UPDATE_SAMPLE' : 'IMPORT'; return item;
+                }); vm.countSelected();
+            }
+            vm.countSelected = function () { vm.importSelected = vm.importRows.filter(function (item) { return item.selected && item.status !== 'INVALID'; }).length; };
+            vm.selectNewRows = function () { vm.importRows.forEach(function (item) { item.selected = item.status === 'NEW'; }); vm.countSelected(); };
+            vm.previewFile = function () {
+                if (!vm.importFile) { return; } vm.busy = true; vm.error = '';
+                api.preview(vm.selectedSetId, vm.importFile).then(setPreview).catch(fail).finally(function () { vm.busy = false; });
+            };
+            vm.confirmImport = function () {
+                var choices = vm.importRows.filter(function (item) { return item.selected && item.status !== 'INVALID'; }).map(function (item) { return {rowId: item.row.rowId, action: item.action}; });
+                if (!choices.length) { vm.error = 'Chưa chọn dòng cần nhập/cập nhật.'; return; } vm.busy = true; vm.error = '';
+                api.confirm(vm.selectedSetId, {token: vm.preview.token, choices: choices}).then(function (ack) {
+                    if (!ack || typeof ack.imported !== 'number') { throw new Error('Chưa xác nhận được kết quả import.'); }
+                    setPreview(ack.preview); vm.notice = 'Đã nhập/cập nhật ' + ack.imported + ' dòng.'; return vm.loadBank();
+                }).catch(fail).finally(function () { vm.busy = false; });
+            };
+            function download(data, type, filename) {
+                var url = $window.URL.createObjectURL(new $window.Blob([data], {type: type})), anchor = $window.document.createElement('a'); anchor.href = url; anchor.download = filename;
+                $window.document.body.appendChild(anchor); anchor.click(); anchor.parentNode.removeChild(anchor); $window.setTimeout(function () { $window.URL.revokeObjectURL(url); }, 1000);
+            }
+            vm.exportSet = function () { vm.busy = true; api.exportSet(vm.selectedSetId).then(function (data) { download(data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'speaking-' + vm.selectedSet.year + '-bo-' + vm.selectedSet.number + '.xlsx'); }).catch(fail).finally(function () { vm.busy = false; }); };
+            vm.openPracticeSetup = function () {
+                vm.practiceSets = vm.sets.filter(function (set) { return set.ownerId === vm.selectedSet.ownerId; }); vm.practiceConfig.setIds = [vm.selectedSetId]; vm.openModal('practice');
+            };
+            function attemptKey() { var crypto = $window.crypto; if (crypto && crypto.getRandomValues) { var numbers = new Uint32Array(4); crypto.getRandomValues(numbers); return Array.prototype.map.call(numbers, function (n) { return ('00000000' + n.toString(16)).slice(-8); }).join(''); } return 'practice-' + Date.now() + '-' + Math.random().toString(36).slice(2); }
+            function setPractice(data) {
+                clearAudio(); vm.practice = data; vm.elapsedSeconds = Number(data.elapsedSeconds) || 0; lastTick = Date.now();
+                if (ownPractice() && data.status === 'ACTIVE') { try { var local = JSON.parse($window.localStorage.getItem(backupKey(data.id)) || 'null'); if (local) { vm.elapsedSeconds = Math.min(604800,Math.max(vm.elapsedSeconds, Number(local.elapsed) || 0)); if (Number.isInteger(Number(local.index)) && local.index >= 0 && local.index < data.snapshot.questions.length) { data.currentIndex = Number(local.index); } } } catch (ignore) {} }
+                vm.modal = null; $location.search('practice', data.id); recorder.loadPending();
+            }
+            vm.startPractice = function () {
+                var config = vm.practiceConfig, parts = Object.keys(config.parts).filter(function (part) { return config.parts[part]; }).map(Number);
+                if (!parts.length || !config.setIds.length) { vm.error = 'Chọn ít nhất một bộ và một Part.'; return; }
+                if (!vm.pendingStart) { try { vm.pendingStart = JSON.parse($window.localStorage.getItem(startBackupKey()) || 'null'); } catch (ignore) {} }
+                if (!vm.pendingStart) { vm.pendingStart = {clientKey: attemptKey(), setIds: config.setIds.slice(), parts: parts, part1Count: config.part1Count, part3Count: config.part3Count, onlyUnpassed: config.onlyUnpassed}; }
+                try { $window.localStorage.setItem(startBackupKey(),JSON.stringify(vm.pendingStart)); } catch (ignore) {}
+                vm.busy = true; vm.error = '';
+                api.start(vm.pendingStart).then(function (data) {
+                    if (!data || !(Number(data.id)>0) || !data.snapshot || !data.snapshot.questions || !data.snapshot.questions.length) { throw new Error('Chưa xác nhận được lượt luyện. Bấm bắt đầu để kiểm tra lại đúng lượt đã gửi.'); }
+                    vm.pendingStart = null; try { $window.localStorage.removeItem(startBackupKey()); } catch (ignore) {} if (alive) { setPractice(data); }
+                }).catch(function (error) {
+                    if (error && error.status>=400 && error.status<500 && error.status!==408 && error.status!==409 && error.status!==429) { vm.pendingStart=null; try { $window.localStorage.removeItem(startBackupKey()); } catch (ignore) {} }
+                    fail(error);
+                }).finally(function () { vm.busy = false; });
+            };
+            vm.openPractice = function (id) {
+                var generation = ++practiceGeneration; vm.loadingPractice = true; vm.error = '';
+                recorder.stop().then(function () { return api.practice(id); }).then(function (data) { if (alive && generation === practiceGeneration) { setPractice(data); } }).catch(fail).finally(function () { if (alive && generation === practiceGeneration) { vm.loadingPractice = false; } });
+            };
+            function saveProgress(finished) {
+                if (!ownPractice() || vm.practice.status !== 'ACTIVE') { return $q.when(); } updateClock(); backupPractice();
+                var id = vm.practice.id, payload = {currentIndex: vm.practice.currentIndex, elapsedSeconds: Math.floor(vm.elapsedSeconds || 0), finished: !!finished};
+                function send() {
+                    return api.progress(id, payload).then(function (ack) {
+                        if (!ack || Number(ack.id) !== Number(id) || (finished && ack.status !== 'DONE')) { throw new Error('Chưa xác nhận được tiến độ luyện tập.'); }
+                        if (alive && vm.practice && vm.practice.id === id) {
+                            vm.progressError = ''; if (ack.status === 'DONE') { vm.practice = ack; try { $window.localStorage.removeItem(backupKey(id)); } catch (ignore) {} }
+                        } return ack;
+                    }).catch(function (error) { if (alive) { vm.progressError = 'Chưa đồng bộ tiến độ, bản nháp vẫn được giữ trên thiết bị. Hãy thử lưu lại.'; } return $q.reject(error); });
+                }
+                progressQueue = progressQueue.then(send, send); return progressQueue;
+            }
+            vm.retryProgress = function () { saveProgress(false).catch(fail); recorder.retry(); };
+            vm.moveQuestion = function (direction) {
+                if (!vm.practice || vm.moving) { return; } var next = vm.practice.currentIndex + direction;
+                if (next < 0 || next >= vm.practice.snapshot.questions.length) { return; } vm.moving = true;
+                recorder.stop().then(function () { vm.practice.currentIndex = next; clearAudio(); if (ownPractice()) { backupPractice(); saveProgress(false).catch(angular.noop); } }).finally(function () { vm.moving = false; });
+            };
+            vm.finishPractice = function () {
+                if (!ownPractice() || vm.finishing) { return; } vm.finishing = true; vm.error = '';
+                recorder.stop().then(function () { return saveProgress(true); }).then(function () { vm.loadHistory(); recorder.retry(); }).catch(fail).finally(function () { vm.finishing = false; });
+            };
+            vm.leavePractice = function () {
+                updateClock(); backupPractice(); recorder.stop(); saveProgress(false).catch(angular.noop); practiceGeneration++; vm.practice = null; clearAudio(); $location.search('practice', null); vm.loadHistory();
+            };
+            vm.startRecording = function () { if (ownPractice() && vm.practice.status === 'ACTIVE') { recorder.start(vm.userId, vm.practice.id, vm.practice.currentIndex).catch(angular.noop); } };
+            vm.playRecording = function (recording) {
+                vm.audioLoading = recording.id; clearAudio(); var id = vm.practice && vm.practice.id;
+                api.audio(recording.id).then(function (blob) { if (!alive || !vm.practice || vm.practice.id !== id) { return; } audioUrl = $window.URL.createObjectURL(blob); vm.audioSource = $sce.trustAsResourceUrl(audioUrl); vm.audioLabel = 'Bản thu câu ' + (recording.questionIndex + 1); }).catch(fail).finally(function () { vm.audioLoading = null; });
+            };
+            vm.refreshPractice = function () { if (!vm.practice) { return; } var id = vm.practice.id; api.practice(id).then(function (data) { if (vm.practice && vm.practice.id === id) { vm.practice.recordings = data.recordings; } }).catch(fail); };
+            vm.recoverRecording = function (job) { recorder.recover(job).then(vm.refreshPractice); };
+            function refresh(preferred) {
+                return api.bootstrap().then(function (data) {
+                    if (!alive) { return; } vm.userId = data.userId; vm.canManage = data.canManage; vm.sets = data.sets || []; vm.classes = data.classes || [];
+                    vm.years = []; vm.sets.forEach(function (set) { if (vm.years.indexOf(set.year) < 0) { vm.years.push(set.year); } });
+                    var saved; try { saved = JSON.parse($window.localStorage.getItem(preferenceKey()) || '{}'); } catch (ignore) { saved = {}; }
+                    vm.part = Number($location.search().part || saved.part) || 1;
+                    vm.selectedSetId = Number(preferred || $location.search().set || saved.setId) || (vm.sets[0] && vm.sets[0].id);
+                    if (!vm.sets.some(function (set) { return set.id === vm.selectedSetId; })) { vm.selectedSetId = vm.sets.length ? vm.sets[0].id : null; }
+                    recorder.loadPending(); return vm.loadBank().then(function () { return vm.loadStudents(''); });
+                });
+            }
+            var timer = $interval(function () { updateClock(); if (++tickCount % 5 === 0) { backupPractice(); saveProgress(false).catch(angular.noop); } }, 1000);
+            function visibility() { updateClock(); if ($window.document.hidden) { recorder.stop(); backupPractice(); saveProgress(false).catch(angular.noop); } lastTick = Date.now(); }
+            function leaving() { updateClock(); backupPractice(); recorder.stop(); saveProgress(false).catch(angular.noop); }
+            $window.document.addEventListener('visibilitychange', visibility); $window.addEventListener('pagehide', leaving);
+            var unwatchPending = $scope.$watch(function () { return recorder.state.pending.length; }, function (value, old) { if (value < old && vm.practice) { vm.refreshPractice(); } });
+            refresh().then(function () { var id = Number($location.search().practice); if (id > 0) { vm.openPractice(id); } }).catch(fail).finally(function () { vm.loading = false; });
+            $scope.$on('$destroy', function () { leaving(); alive = false; bankGeneration++; practiceGeneration++; $interval.cancel(timer); clearAudio(); unwatchPending(); $window.document.removeEventListener('visibilitychange', visibility); $window.removeEventListener('pagehide', leaving); });
+        }]);
+})();

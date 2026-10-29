@@ -1,0 +1,76 @@
+.speaking-page { --sp-ink:#20304b; --sp-muted:#687994; --sp-line:#e1e6f1; --sp-purple:#7151dd; max-width:1440px; margin:0 auto; padding:20px 14px 48px; color:var(--sp-ink); font-family:inherit; }
+.speaking-page * { box-sizing:border-box; }
+.speaking-page h1 { margin:10px 0; font-size:36px; font-weight:800; letter-spacing:-1px; }
+.speaking-page h2 { margin:4px 0 8px; font-size:22px; font-weight:750; }
+.speaking-page h3 { font-size:17px; font-weight:700; }
+.speaking-page p { line-height:1.65; }
+.speaking-page .sp-hero { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:32px; border-radius:24px; background:linear-gradient(115deg,#eeeaff,#e8f5fc); margin-bottom:18px; }
+.speaking-page .sp-eyebrow { color:#6f55c4; font-size:11px; font-weight:800; letter-spacing:1.4px; }
+.speaking-page .sp-panel { border:1px solid var(--sp-line); background:#fff; border-radius:18px; padding:22px; margin-bottom:18px; box-shadow:0 7px 28px rgba(49,65,104,.04); }
+.speaking-page .sp-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid #dce2f0; background:#fff; border-radius:11px; padding:10px 14px; line-height:1.3; color:#4a5d7a; font-size:13px; font-weight:650; text-decoration:none; cursor:pointer; }
+.speaking-page button:disabled { opacity:.5; cursor:default; }
+.speaking-page .sp-button:hover:not(:disabled) { border-color:#a998e8; background:#f6f3ff; }
+.speaking-page .sp-primary { background:var(--sp-purple); color:#fff; border-color:var(--sp-purple); }
+.speaking-page .sp-primary:hover:not(:disabled) { background:#6041c8; color:#fff; }
+.speaking-page button:focus-visible,.speaking-page input:focus-visible,.speaking-page select:focus-visible,.speaking-page summary:focus-visible { outline:3px solid #b7a6f5; outline-offset:2px; }
+.speaking-page .sp-toolbar,.speaking-page .sp-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.speaking-page .sp-toolbar { margin-bottom:14px; }
+.speaking-page .sp-grow { flex:1 1 180px; min-width:0; }
+.speaking-page label { font-size:12px; font-weight:600; margin:0; }
+.speaking-page label>input:not([type=checkbox]),.speaking-page label>select { display:block; margin-top:5px; }
+.speaking-page input:not([type=checkbox]),.speaking-page select { width:100%; border:1px solid var(--sp-line); border-radius:10px; padding:10px 12px; background:#fff; color:var(--sp-ink); font-family:inherit; font-size:13px; min-height:40px; }
+.speaking-page input[type=checkbox] { width:17px; height:17px; accent-color:var(--sp-purple); vertical-align:middle; margin:0 5px 0 0; }
+.speaking-page .sp-filters .sp-button { align-self:flex-end; }
+.speaking-page .sp-search { display:flex; align-items:center; gap:8px; flex:1 1 250px; margin-left:auto; }
+.speaking-page .sp-search input { margin:0 !important; }
+.speaking-page .sp-tabs { display:flex; gap:5px; padding:4px; background:#f3f4fa; border-radius:13px; }
+.speaking-page .sp-tabs .sp-button { border:0; background:transparent; }
+.speaking-page .sp-tabs .is-active { background:#fff; color:var(--sp-purple); box-shadow:0 2px 7px #dfe0ed; }
+.speaking-page .sp-muted { color:var(--sp-muted); font-size:12px; }
+.speaking-page .sp-topic { border:1px solid var(--sp-line); border-radius:15px; padding:20px; margin-top:16px; }
+.speaking-page .sp-question { padding:15px 0; border-top:1px solid #edf0f6; }
+.speaking-page .sp-question-heading { display:flex; align-items:flex-start; gap:12px; }
+.speaking-page .sp-number { display:flex; align-items:center; justify-content:center; border-radius:10px; background:#f1edff; color:#7354cf; min-width:30px; height:30px; font-weight:750; }
+.speaking-page .sp-preserve { white-space:pre-wrap; overflow-wrap:anywhere; margin:0 0 10px; }
+.speaking-page .sp-question .sp-preserve { font-size:15px; }
+.speaking-page .sp-pass { background:transparent; border:0; color:#8790a4; padding:5px; white-space:nowrap; }
+.speaking-page .is-passed .sp-pass,.speaking-page .is-passed .sp-number { color:#098c71; }
+.speaking-page .sp-badge { display:inline-block; border-radius:20px; padding:5px 9px; font-size:11px; font-weight:700; background:#edf6f3; color:#158069; }
+.speaking-page summary { cursor:pointer; color:#7257b5; font-size:12px; padding:7px 0; }
+.speaking-page .sp-sample { background:#f7f5fd; padding:15px; border-radius:12px; margin-top:8px; }
+.speaking-page .sp-pagination { justify-content:flex-end; margin:20px 0 0; }
+.speaking-page .sp-empty { text-align:center; padding:55px 20px; }
+.speaking-page .sp-empty>i { font-size:40px; color:#a897df; margin-bottom:20px; }
+.speaking-page .sp-alert { padding:12px 16px; border-radius:12px; background:#edf8f2; color:#246c53; margin-bottom:14px; }
+.speaking-page .sp-error { background:#fff0ef; color:#a74441; }
+.speaking-page .sp-error-text { color:#a74441; }
+.speaking-page .sp-link { border:0; background:transparent; text-decoration:underline; color:inherit; }
+.speaking-page .sp-history { display:flex; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid #eef0f7; padding:13px 0; font-size:13px; }
+.speaking-page .sp-history small { color:var(--sp-muted); }
+.speaking-page .sp-clock { border-radius:12px; background:#f3effc; padding:10px 15px; font-variant-numeric:tabular-nums; }
+.speaking-page .sp-cue { max-width:880px; margin:30px auto; padding:30px; border-radius:18px; border:1px solid #e6dff6; background:#fbf9ff; }
+.speaking-page .sp-cue h2 { margin:12px 0 20px; }
+.speaking-page .sp-cue>.sp-preserve { font-size:19px; line-height:1.8; }
+.speaking-page .sp-record { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:14px; padding:15px; font-size:12px; color:var(--sp-muted); }
+.speaking-page .sp-record-start { color:#b34460; border-color:#f0cbd5; background:#fff5f8; }
+.speaking-page .sp-record-stop { color:#fff; background:#bc4968; border-color:#bc4968; }
+.speaking-page .sp-playback { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:12px; }
+.speaking-page audio { max-width:100%; }
+.speaking-page .sp-overlay { position:fixed; inset:0; z-index:10060; background:rgba(25,31,53,.4); display:flex; justify-content:center; align-items:center; padding:16px; backdrop-filter:blur(4px); }
+.speaking-page .sp-modal { width:70vw; max-width:1150px; max-height:88vh; max-height:88dvh; display:flex; flex-direction:column; background:#fff; border:1px solid #e5e1f3; border-radius:20px; box-shadow:0 25px 90px #1f27494d; overflow:hidden; }
+.speaking-page .sp-modal>header,.speaking-page .sp-modal>footer { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; gap:12px; padding:18px 22px; background:#faf9fe; }
+.speaking-page .sp-modal>footer { justify-content:flex-end; border-top:1px solid var(--sp-line); flex-wrap:wrap; }
+.speaking-page .sp-modal>header h2 { margin:0; font-size:20px; }
+.speaking-page .sp-close { border:0; border-radius:50%; background:#eeecf6; width:32px; height:32px; font-size:23px; line-height:1; }
+.speaking-page .sp-modal-body { padding:22px; overflow:auto; min-height:0; overscroll-behavior:contain; }
+.speaking-page .sp-form-grid,.speaking-page .sp-check-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+.speaking-page .sp-check-grid label { padding:12px; background:#f7f7fc; border:1px solid #e8e9f3; border-radius:10px; }
+.speaking-page .sp-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.speaking-page .sp-import-row { padding:16px; margin:12px 0; border:1px solid var(--sp-line); border-radius:12px; }
+.speaking-page .sp-import-row>label { display:block; }
+.speaking-page .sp-status-NEW { background:#eee9fc; color:#7655cc; }
+.speaking-page .sp-status-CHANGED,.speaking-page .sp-status-UPDATE_SAMPLE { background:#fff3db; color:#966016; }
+.speaking-page .sp-status-INVALID { background:#fde6e6; color:#a33f3f; }
+.speaking-page .sp-invalid { background:#fff9f8; }
+@media(max-width:900px) { .speaking-page .sp-modal { width:calc(100vw - 32px); } .speaking-page .sp-hero { padding:24px; } }
+@media(max-width:600px) { .speaking-page { padding:12px 5px 30px; } .speaking-page h1 { font-size:28px; } .speaking-page .sp-hero { align-items:flex-start; flex-direction:column; } .speaking-page .sp-panel,.speaking-page .sp-topic { padding:15px; } .speaking-page .sp-form-grid,.speaking-page .sp-check-grid { grid-template-columns:1fr; } .speaking-page .sp-cue { padding:20px; } .speaking-page .sp-modal-body { padding:16px; } .speaking-page .sp-modal>header,.speaking-page .sp-modal>footer { padding:14px; } }
