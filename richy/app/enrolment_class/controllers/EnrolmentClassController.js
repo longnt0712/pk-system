@@ -2099,6 +2099,137 @@
 			return ((vm.scheduleDay && vm.scheduleDay.tasks) || []).filter(function (task) { return task.section === section; });
 		};
 
+        /* Comprehensive assignment sections and timing: the server owns the question membership. */
+        var comprehensivePreviewRequest = 0;
+        vm.comprehensiveAssignmentsEnabled = function () {
+            return !!((vm.scheduleDay && vm.scheduleDay.comprehensiveAssignmentsEnabled === true)
+                || (vm.scheduleClass && vm.scheduleClass.comprehensiveAssignmentsEnabled === true));
+        };
+        function comprehensivePlanSignature(task) {
+            return JSON.stringify([String(task.ieltsTestId || ''), Number(task.comprehensiveQuestionLimit) || null]);
+        }
+        function comprehensiveMinutesValid(value, allowZero) {
+            return value != null && isFinite(Number(value)) && Math.floor(Number(value)) === Number(value)
+                && Number(value) >= (allowZero ? 0 : 1) && Number(value) <= 1440;
+        }
+        function comprehensiveSectionCount(section) {
+            return section.questionCount == null ? (section.questionIds || []).length : Number(section.questionCount);
+        }
+        function comprehensivePlanValid(sections) {
+            var seen = {};
+            return angular.isArray(sections) && sections.length > 0 && sections.every(function (section, index) {
+                if (!section || Number(section.number) !== index + 1 || !angular.isArray(section.questionIds)
+                        || !section.questionIds.length || comprehensiveSectionCount(section) !== section.questionIds.length) { return false; }
+                return section.questionIds.every(function (id) {
+                    id = Number(id);
+                    if (!isFinite(id) || id <= 0 || Math.floor(id) !== id || seen[id]) { return false; }
+                    seen[id] = true; return true;
+                });
+            });
+        }
+        function initializeComprehensiveSectionTime(section, fallback) {
+            if (section.durationMinutes == null) { section.durationMinutes = fallback == null ? 60 : Number(fallback); }
+            section._comprehensiveTimeMode = Number(section.durationMinutes) === 0 ? 'UNTIMED' : 'TIMED';
+            section._comprehensiveTimedMinutes = Number(section.durationMinutes) > 0 ? Number(section.durationMinutes) : (Number(fallback) > 0 ? Number(fallback) : 60);
+        }
+        vm.initializeComprehensiveTaskSettings = function (task) {
+            comprehensivePreviewRequest++; vm.taskComprehensivePlanLoading = false; vm.taskComprehensivePlanError = '';
+            if (!task || task.activityType !== 'COMPREHENSIVE') { return; }
+            task._comprehensiveSplit = Number(task.comprehensiveQuestionLimit) > 0;
+            task._comprehensiveTimeMode = task.comprehensiveTimeLimitMinutes != null && Number(task.comprehensiveTimeLimitMinutes) === 0 ? 'UNTIMED' : 'TIMED';
+            task._comprehensiveTimedMinutes = Number(task.comprehensiveTimeLimitMinutes) > 0 ? Number(task.comprehensiveTimeLimitMinutes) : 60;
+            task._comprehensiveExerciseId = String(task.ieltsTestId || '');
+            task.comprehensiveSections = angular.isArray(task.comprehensiveSections) ? task.comprehensiveSections : [];
+            angular.forEach(task.comprehensiveSections, function (section) { initializeComprehensiveSectionTime(section, task.comprehensiveTimeLimitMinutes); });
+            task._comprehensivePlanSignature = task._comprehensiveSplit && comprehensivePlanValid(task.comprehensiveSections) ? comprehensivePlanSignature(task) : null;
+        };
+        vm.comprehensivePlanChanged = function () {
+            comprehensivePreviewRequest++; vm.taskComprehensivePlanLoading = false; vm.taskComprehensivePlanError = '';
+            if (!vm.taskEditor) { return; }
+            vm.taskEditor.comprehensiveSections = []; vm.taskEditor._comprehensivePlanSignature = null;
+        };
+        vm.comprehensiveSplitChanged = function () {
+            var task = vm.taskEditor; if (!task) { return; }
+            task.comprehensiveQuestionLimit = task._comprehensiveSplit ? (Number(task.comprehensiveQuestionLimit) || 50) : null;
+            vm.comprehensivePlanChanged();
+        };
+        vm.comprehensiveExerciseChanged = function () {
+            var task = vm.taskEditor;
+            if (!task || task.activityType !== 'COMPREHENSIVE') { return; }
+            var id = String(task.ieltsTestId || '');
+            if (task._comprehensiveExerciseId !== id) { vm.comprehensivePlanChanged(); task._comprehensiveExerciseId = id; }
+        };
+        vm.comprehensiveTimeChanged = function () {
+            var task = vm.taskEditor; if (!task) { return; }
+            task.comprehensiveTimeLimitMinutes = task._comprehensiveTimeMode === 'UNTIMED' ? 0 : task._comprehensiveTimedMinutes;
+            angular.forEach(task.comprehensiveSections || [], function (section) {
+                section.durationMinutes = task.comprehensiveTimeLimitMinutes;
+                initializeComprehensiveSectionTime(section, task.comprehensiveTimeLimitMinutes);
+            });
+        };
+        vm.comprehensiveSectionTimeChanged = function (section) {
+            section.durationMinutes = section._comprehensiveTimeMode === 'UNTIMED' ? 0 : section._comprehensiveTimedMinutes;
+        };
+        vm.previewTaskComprehensiveSections = function () {
+            var task = vm.taskEditor;
+            if (!task || task.activityType !== 'COMPREHENSIVE' || !task._comprehensiveSplit || !task.ieltsTestId) { return; }
+            var limit = Number(task.comprehensiveQuestionLimit);
+            if (!isFinite(limit) || Math.floor(limit) !== limit || limit < 2 || limit > 1000) { vm.taskComprehensivePlanError = 'Số câu mục tiêu mỗi phần cần từ 2 đến 1.000.'; return; }
+            var duration = task.comprehensiveTimeLimitMinutes;
+            if (duration != null && !comprehensiveMinutesValid(duration, true)) { vm.taskComprehensivePlanError = 'Thời gian cần từ 1 đến 1.440 phút, hoặc chọn Không tính giờ.'; return; }
+            var request = ++comprehensivePreviewRequest, signature = comprehensivePlanSignature(task);
+            vm.taskComprehensivePlanLoading = true; vm.taskComprehensivePlanError = ''; task._comprehensivePlanSignature = null;
+            return service.previewComprehensiveSections({ieltsTestId: task.ieltsTestId, comprehensiveQuestionLimit: limit,
+                comprehensiveTimeLimitMinutes: duration == null ? null : Number(duration)}).then(function (sections) {
+                if (request !== comprehensivePreviewRequest || vm.taskEditor !== task || signature !== comprehensivePlanSignature(task)) { return; }
+                if (!comprehensivePlanValid(sections)) { throw new Error('Backend chưa trả về cách chia hợp lệ. Hãy thử xem lại cách chia.'); }
+                task.comprehensiveSections = angular.copy(sections);
+                angular.forEach(task.comprehensiveSections, function (section) {
+                    // A teacher can change the timing control while the preview is in flight.
+                    section.durationMinutes = task.comprehensiveTimeLimitMinutes == null ? 60 : task.comprehensiveTimeLimitMinutes;
+                    initializeComprehensiveSectionTime(section, task.comprehensiveTimeLimitMinutes);
+                });
+                task._comprehensivePlanSignature = signature;
+            }).catch(function (error) {
+                if (request !== comprehensivePreviewRequest || vm.taskEditor !== task) { return; }
+                vm.taskComprehensivePlanError = (error && error.data && error.data.message) || (error && error.message) || 'Chưa xem được cách chia. Hãy kiểm tra kết nối hoặc cập nhật backend rồi thử lại.';
+            }).finally(function () { if (request === comprehensivePreviewRequest && vm.taskEditor === task) { vm.taskComprehensivePlanLoading = false; } });
+        };
+        vm.validateComprehensiveTask = function (task) {
+            if (!task || task.activityType !== 'COMPREHENSIVE') { return ''; }
+            var duration = task.comprehensiveTimeLimitMinutes;
+            if (!vm.comprehensiveAssignmentsEnabled() && (Number(task.comprehensiveQuestionLimit) > 0
+                    || (duration != null && Number(duration) !== 60))) {
+                return 'Cần cập nhật backend rồi tải lại kế hoạch trước khi dùng chia phần hoặc đổi thời gian bài Tổng hợp.';
+            }
+            if ((duration != null && !comprehensiveMinutesValid(duration, true))
+                    || (task._comprehensiveTimeMode === 'TIMED' && !comprehensiveMinutesValid(task._comprehensiveTimedMinutes, false))) {
+                return 'Thời gian cần từ 1 đến 1.440 phút, hoặc chọn Không tính giờ.';
+            }
+            if (!task._comprehensiveSplit && !(Number(task.comprehensiveQuestionLimit) > 0)) { return ''; }
+            var limit = Number(task.comprehensiveQuestionLimit);
+            if (!isFinite(limit) || Math.floor(limit) !== limit || limit < 2 || limit > 1000) { return 'Số câu mục tiêu mỗi phần cần từ 2 đến 1.000.'; }
+            if (vm.taskComprehensivePlanLoading || task._comprehensivePlanSignature !== comprehensivePlanSignature(task) || !comprehensivePlanValid(task.comprehensiveSections)) {
+                return 'Bấm “Xem cách chia” và kiểm tra các phần trước khi giao bài.';
+            }
+            if (task.comprehensiveSections.some(function (section) {
+                return !comprehensiveMinutesValid(section.durationMinutes, true)
+                    || (section._comprehensiveTimeMode === 'TIMED' && !comprehensiveMinutesValid(section._comprehensiveTimedMinutes, false));
+            })) { return 'Thời gian của từng phần cần từ 1 đến 1.440 phút, hoặc Không tính giờ.'; }
+            return '';
+        };
+        vm.taskComprehensiveTimingLabel = function (task) {
+            if (!task || task.activityType !== 'COMPREHENSIVE') { return ''; }
+            if (Number(task.comprehensiveQuestionLimit) > 0 && (task.comprehensiveSections || []).length) {
+                return task.comprehensiveSections.length + ' phần · ' + task.comprehensiveSections.map(function (section) {
+                    return 'Phần ' + section.number + ': ' + comprehensiveSectionCount(section) + ' câu, '
+                        + (Number(section.durationMinutes) === 0 ? 'không tính giờ' : (section.durationMinutes == null ? 60 : section.durationMinutes) + ' phút');
+                }).join(' · ');
+            }
+            return task.comprehensiveTimeLimitMinutes != null && Number(task.comprehensiveTimeLimitMinutes) === 0 ? 'Không tính giờ'
+                : (task.comprehensiveTimeLimitMinutes == null ? 60 : task.comprehensiveTimeLimitMinutes) + ' phút / lượt';
+        };
+        /* End comprehensive assignment settings. */
 		vm.openScheduleTask = function (section, task) {
 			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }
@@ -2125,6 +2256,7 @@
 			vm.taskEditor.showProgress = false;
 			if (vm.taskEditor.activityType === 'COMPREHENSIVE') {
 				vm.initializeComprehensiveAssignment(true);
+                if (vm.initializeComprehensiveTaskSettings) { vm.initializeComprehensiveTaskSettings(vm.taskEditor); }
 			}
 			vm.loadTaskListeningItems(true);
             vm.refreshTaskExerciseVideo();
@@ -2213,6 +2345,8 @@
 				vm.taskEditor.ieltsParts = [1];
 				vm.taskEditor.shuffleQuestions = true;
 				vm.initializeComprehensiveAssignment(false);
+                vm.taskEditor.comprehensiveQuestionLimit = null; vm.taskEditor.comprehensiveTimeLimitMinutes = null; vm.taskEditor.comprehensiveSections = [];
+                if (vm.initializeComprehensiveTaskSettings) { vm.initializeComprehensiveTaskSettings(vm.taskEditor); }
 			} else if (vm.isIeltsTask(vm.taskEditor)) {
 				vm.taskEditor.topicId = null; vm.taskEditor.categoryKey = null;
 				vm.taskEditor.sourceQuestionId = null; vm.scheduleListeningItems = [];
@@ -2326,6 +2460,7 @@
                     vm.selectAllTaskParts();
                 }
                 if (!(task.title || '').trim()) { task.title = test.title || ''; }
+                if (vm.comprehensiveExerciseChanged) { vm.comprehensiveExerciseChanged(); }
                 vm.refreshTaskExerciseVideo();
             }, angular.noop).finally(function () { vm.taskExercisePickerOpen = false; });
         };
@@ -2403,6 +2538,13 @@
 				ieltsParts: angular.isArray(task.ieltsParts) ? task.ieltsParts.slice() : null,
 				activityType: task.activityType || 'DAILY_VOCAB',
 				shuffleQuestions: task.activityType === 'COMPREHENSIVE' ? task.shuffleQuestions === true && !vm.taskHasComprehensiveVideo(task) : null,
+                comprehensiveQuestionLimit: task.activityType === 'COMPREHENSIVE' ? task.comprehensiveQuestionLimit || null : null,
+                comprehensiveTimeLimitMinutes: task.activityType === 'COMPREHENSIVE' && task.comprehensiveTimeLimitMinutes != null ? Number(task.comprehensiveTimeLimitMinutes) : null,
+                comprehensiveSections: task.activityType === 'COMPREHENSIVE' && angular.isArray(task.comprehensiveSections) ? task.comprehensiveSections.map(function (section) {
+                    return {key: section.key || null, number: Number(section.number), questionIds: (section.questionIds || []).slice(),
+                        questionCount: section.questionCount, firstOrdinal: section.firstOrdinal, lastOrdinal: section.lastOrdinal,
+                        durationMinutes: section.durationMinutes == null ? null : Number(section.durationMinutes)};
+                }) : null,
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
 				requiredAttempts: Math.max(1, Number(task.requiredAttempts) || 1),
 				studentProgress: progress};
@@ -2414,6 +2556,10 @@
                 toastr.warning('Hãy tải xong thông tin bài tập trước khi lưu task.'); return;
             }
             vm.taskEditorError = '';
+			if (vm.validateComprehensiveTask) {
+                var comprehensiveError = vm.validateComprehensiveTask(vm.taskEditor);
+                if (comprehensiveError) { vm.taskEditorError = comprehensiveError; toastr.warning(comprehensiveError); return; }
+            }
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
             task.topicIds = task.activityType === 'DAILY_VOCAB' ? vm.taskTopicIds(task) : [];
             if (task.activityType === 'DAILY_VOCAB') { task.topicId = task.topicIds[0] || null; }
@@ -2496,6 +2642,7 @@
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task.topicSourceId;
 			delete task._confirmDelete; delete task.legacyDateOnly;
+            Object.keys(task).forEach(function (key) { if (key.indexOf('_comprehensive') === 0) { delete task[key]; } });
             var addingTask = vm.taskEditorIndex < 0;
             var taskIndex = addingTask ? vm.scheduleDay.tasks.length : vm.taskEditorIndex;
             var previousTask = addingTask ? null : vm.scheduleDay.tasks[taskIndex];
@@ -2504,6 +2651,25 @@
             vm.saveScheduleDay({allowTaskEditor: true,
                 successMessage: addingTask ? 'Đã thêm và tự động lưu task.' : 'Đã cập nhật và tự động lưu task.',
                 validateSaved: function (saved) {
+                    if (task.activityType === 'COMPREHENSIVE') {
+                        var comprehensiveSaved = task.id ? saved.tasks.filter(function (item) { return String(item.id) === String(task.id); })[0] : saved.tasks[taskIndex];
+                        var expectedLimit = Number(task.comprehensiveQuestionLimit) || null;
+                        var expectedDuration = task.comprehensiveTimeLimitMinutes == null ? 60 : Number(task.comprehensiveTimeLimitMinutes);
+                        if (!comprehensiveSaved || comprehensiveSaved.activityType !== 'COMPREHENSIVE'
+                                || String(comprehensiveSaved.ieltsTestId) !== String(task.ieltsTestId)
+                                || (Number(comprehensiveSaved.comprehensiveQuestionLimit) || null) !== expectedLimit
+                                || (comprehensiveSaved.comprehensiveTimeLimitMinutes == null ? 60 : Number(comprehensiveSaved.comprehensiveTimeLimitMinutes)) !== expectedDuration) {
+                            return 'Backend chưa xác nhận đúng cách chia/thời gian bài Tổng hợp. Cần cập nhật backend hoặc tải lại kế hoạch trước khi lưu lại.';
+                        }
+                        if (expectedLimit) {
+                            var expectedSections = task.comprehensiveSections || [], savedSections = comprehensiveSaved.comprehensiveSections || [];
+                            if (expectedSections.length !== savedSections.length || expectedSections.some(function (section, index) {
+                                var actual = savedSections[index];
+                                return !actual || Number(actual.number) !== Number(section.number) || Number(actual.durationMinutes) !== Number(section.durationMinutes)
+                                    || JSON.stringify((actual.questionIds || []).map(Number)) !== JSON.stringify((section.questionIds || []).map(Number));
+                            })) { return 'Backend chưa xác nhận đúng các phần và thời gian đã chọn. Hãy tải lại kế hoạch để đối chiếu.'; }
+                        }
+                    }
                     if (directListening) {
                         var directSaved = task.id ? saved.tasks.filter(function (item) { return String(item.id) === String(task.id); })[0] : saved.tasks[taskIndex];
                         if (!directSaved || directSaved.activityType !== 'DAILY_LISTENING' || directSaved.topicId != null

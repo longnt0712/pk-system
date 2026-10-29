@@ -6,6 +6,18 @@ import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.domain.EnrolmentClassTaskProgress;
 
 public class EnrolmentClassScheduleTaskDto implements Serializable {
+    private Integer comprehensiveQuestionLimit;
+    private Integer comprehensiveTimeLimitMinutes;
+    private List<ComprehensiveAssignmentSectionDto> comprehensiveSections;
+    private boolean comprehensiveConfiguration;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean hasComprehensiveConfiguration() { return comprehensiveConfiguration; }
+    public Integer getComprehensiveQuestionLimit() { return comprehensiveQuestionLimit; }
+    public void setComprehensiveQuestionLimit(Integer value) { comprehensiveQuestionLimit = value; comprehensiveConfiguration = true; }
+    public Integer getComprehensiveTimeLimitMinutes() { return comprehensiveTimeLimitMinutes; }
+    public void setComprehensiveTimeLimitMinutes(Integer value) { comprehensiveTimeLimitMinutes = value; comprehensiveConfiguration = true; }
+    public List<ComprehensiveAssignmentSectionDto> getComprehensiveSections() { return comprehensiveSections; }
+    public void setComprehensiveSections(List<ComprehensiveAssignmentSectionDto> value) { comprehensiveSections = value; comprehensiveConfiguration = true; }
     private static final long serialVersionUID = 1L;
     private Long id;
     private String section;
@@ -70,6 +82,9 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private List<EnrolmentClassTaskProgressDto> studentProgress = new ArrayList<EnrolmentClassTaskProgressDto>();
     public EnrolmentClassScheduleTaskDto() { }
     public EnrolmentClassScheduleTaskDto(EnrolmentClassScheduleTask task) {
+        comprehensiveQuestionLimit = task.getComprehensiveQuestionLimit();
+        comprehensiveTimeLimitMinutes = task.getComprehensiveTimeLimitMinutes();
+        comprehensiveSections = com.globits.richy.service.impl.ComprehensiveAssignmentSections.read(task);
         id = task.getId(); section = task.getSection(); title = task.getTitle(); notes = task.getNotes();
         dueDate = task.getDueDate(); status = task.getStatus();
         dueTime = task.getDueTime(); deadlineAutomatic = task.getDeadlineAutomatic();

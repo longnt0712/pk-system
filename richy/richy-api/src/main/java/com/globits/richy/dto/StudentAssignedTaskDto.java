@@ -4,6 +4,30 @@ import java.io.Serializable;
 
 /** Safe, student-only projection used by the dashboard assignment cards. */
 public class StudentAssignedTaskDto implements Serializable {
+    private String assignmentSectionKey;
+    private java.util.List<ComprehensiveAssignmentSectionDto> comprehensiveSections;
+    private Integer sectionNumber;
+    private Integer sectionCount;
+    private Integer sectionQuestionCount;
+    private Integer sectionFirstOrdinal;
+    private Integer sectionLastOrdinal;
+    private Integer comprehensiveTimeLimitMinutes;
+    public String getAssignmentSectionKey() { return assignmentSectionKey; }
+    public void setAssignmentSectionKey(String value) { assignmentSectionKey = value; }
+    public java.util.List<ComprehensiveAssignmentSectionDto> getComprehensiveSections() { return comprehensiveSections; }
+    public void setComprehensiveSections(java.util.List<ComprehensiveAssignmentSectionDto> value) { comprehensiveSections = value; }
+    public Integer getSectionNumber() { return sectionNumber; }
+    public void setSectionNumber(Integer value) { sectionNumber = value; }
+    public Integer getSectionCount() { return sectionCount; }
+    public void setSectionCount(Integer value) { sectionCount = value; }
+    public Integer getSectionQuestionCount() { return sectionQuestionCount; }
+    public void setSectionQuestionCount(Integer value) { sectionQuestionCount = value; }
+    public Integer getSectionFirstOrdinal() { return sectionFirstOrdinal; }
+    public void setSectionFirstOrdinal(Integer value) { sectionFirstOrdinal = value; }
+    public Integer getSectionLastOrdinal() { return sectionLastOrdinal; }
+    public void setSectionLastOrdinal(Integer value) { sectionLastOrdinal = value; }
+    public Integer getComprehensiveTimeLimitMinutes() { return comprehensiveTimeLimitMinutes; }
+    public void setComprehensiveTimeLimitMinutes(Integer value) { comprehensiveTimeLimitMinutes = value; }
     private static final long serialVersionUID = 1L;
     private Long taskId;
     private Long classId;

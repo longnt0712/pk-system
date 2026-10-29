@@ -8,6 +8,7 @@ import java.util.Set;
 import org.joda.time.LocalDateTime;
 import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
 import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
+import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
 
 /** Read-only projection: persisted test results are the completion evidence. */
 public final class HomeworkTopicCompletion {
@@ -67,7 +68,8 @@ public final class HomeworkTopicCompletion {
     }
     public static boolean ieltsEnabled(EnrolmentClassScheduleTaskDto task) {
         return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection()))
-                && task.getIeltsTestId() != null && task.getIeltsParts() != null && !task.getIeltsParts().isEmpty()
+                && task.getIeltsTestId() != null && (hasComprehensiveSections(task)
+                    || (task.getIeltsParts() != null && !task.getIeltsParts().isEmpty()))
                 && ("IELTS_READING".equals(task.getActivityType()) || "IELTS_LISTENING".equals(task.getActivityType())
                 || "IELTS_WRITING".equals(task.getActivityType()) || "COMPREHENSIVE".equals(task.getActivityType()));
     }
@@ -77,7 +79,19 @@ public final class HomeworkTopicCompletion {
         return "IELTS_LISTENING".equals(task.getActivityType()) ? 2 : 4;
     }
     public static int requiredIeltsAttempts(EnrolmentClassScheduleTaskDto task) {
-        return task.getRequiredAttempts() * task.getIeltsParts().size();
+        return task.getRequiredAttempts() * (hasComprehensiveSections(task)
+                ? comprehensiveSectionKeys(task).size() : task.getIeltsParts().size());
+    }
+    public static boolean hasComprehensiveSections(EnrolmentClassScheduleTaskDto task) {
+        return "COMPREHENSIVE".equals(task.getActivityType()) && task.getComprehensiveSections() != null
+                && !task.getComprehensiveSections().isEmpty();
+    }
+    private static java.util.Set<String> comprehensiveSectionKeys(EnrolmentClassScheduleTaskDto task) {
+        java.util.Set<String> keys = new java.util.LinkedHashSet<String>();
+        for (ComprehensiveAssignmentSectionDto section : task.getComprehensiveSections()) {
+            if (section != null && section.getKey() != null && !section.getKey().trim().isEmpty()) { keys.add(section.getKey()); }
+        }
+        return keys;
     }
     public static int completedIeltsAttempts(EnrolmentClassScheduleTaskDto task, Map<Integer, Integer> counts) {
         int completed = 0;
@@ -204,10 +218,13 @@ public final class HomeworkTopicCompletion {
     public static void applyIelts(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
             LocalDateTime start, LocalDateTime end) {
         if (!ieltsEnabled(task)) { return; }
+        if (hasComprehensiveSections(task)) { applyComprehensiveSections(task, completions, start, end); return; }
         removeAutomaticProgress(task);
         int required = requiredIeltsAttempts(task);
         Map<Long, Map<Integer, Integer>> counts = new LinkedHashMap<Long, Map<Integer, Integer>>();
         for (Object[] row : completions) {
+            // A sliced Comprehensive attempt proves its own section, never an old full-test Part 1.
+            if (row.length > 8 && row[8] != null) { continue; }
             Long studentId = (Long) row[0], testId = (Long) row[1];
             Integer part = (Integer) row[2], resultTestType = (Integer) row[5];
             LocalDateTime completed = (LocalDateTime) row[3];
@@ -245,6 +262,54 @@ public final class HomeworkTopicCompletion {
             }
             existing.setAutomatic(true);
             existing.setTestResultId((Long) row[4]); existing.setCompletedAt(completed.toDate());
+        }
+    }
+
+    private static void applyComprehensiveSections(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
+            LocalDateTime start, LocalDateTime end) {
+        removeAutomaticProgress(task);
+        java.util.Set<String> sections = comprehensiveSectionKeys(task);
+        if (sections.isEmpty() || task.getId() == null || start == null || end == null) { return; }
+        int requiredPerSection = task.getRequiredAttempts(), total = sections.size() * requiredPerSection;
+        Map<Long, Map<String, Integer>> counts = new LinkedHashMap<Long, Map<String, Integer>>();
+        Map<Long, java.util.Set<Long>> seenResults = new LinkedHashMap<Long, java.util.Set<Long>>();
+        for (Object[] row : completions) {
+            // Repository supplies only SUCCESS evidence. Older full-test rows have no section key.
+            if (row == null || row.length < 9 || !(row[0] instanceof Long) || !(row[4] instanceof Long)
+                    || !(row[3] instanceof LocalDateTime) || !Integer.valueOf(6).equals(row[5])
+                    || !task.getIeltsTestId().equals(row[1]) || !task.getId().equals(row[6])
+                    || !(row[8] instanceof String) || !sections.contains((String) row[8])) { continue; }
+            Long studentId = (Long) row[0], resultId = (Long) row[4];
+            LocalDateTime completed = (LocalDateTime) row[3];
+            if (completed.isBefore(start) || !completed.isBefore(end)) { continue; }
+            java.util.Set<Long> seen = seenResults.get(studentId);
+            if (seen == null) { seen = new java.util.HashSet<Long>(); seenResults.put(studentId, seen); }
+            if (!seen.add(resultId)) { continue; }
+            Map<String, Integer> sectionCounts = counts.get(studentId);
+            if (sectionCounts == null) { sectionCounts = new LinkedHashMap<String, Integer>(); counts.put(studentId, sectionCounts); }
+            String key = (String) row[8];
+            int previous = sectionCounts.containsKey(key) ? sectionCounts.get(key) : 0;
+            sectionCounts.put(key, Math.min(requiredPerSection, previous + 1));
+            int count = 0;
+            for (Integer value : sectionCounts.values()) { count += value; }
+            EnrolmentClassTaskProgressDto existing = null;
+            for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
+                if (studentId.equals(progress.getStudentUserId())) { existing = progress; break; }
+            }
+            // Teacher feedback keeps exactly the same precedence as existing Homework tasks.
+            if (existing != null && !existing.isAutomatic()
+                    && ("NEEDS_REVIEW".equals(existing.getStatus()) || "DONE".equals(existing.getStatus())
+                    || "UNRECORDED".equals(existing.getStatus())
+                    || (existing.getStatus() != null && existing.getStatus().startsWith("PROGRESS_")))) { continue; }
+            if (existing == null) {
+                existing = new EnrolmentClassTaskProgressDto(); existing.setStudentUserId(studentId);
+                task.getStudentProgress().add(existing);
+            }
+            if (!existing.isAutomatic()) { existing.setManualStatus(existing.getStatus()); }
+            int percent = (int) Math.round(count * 100.0 / total);
+            existing.setProgressPercent(percent);
+            existing.setStatus(count >= total ? "DONE" : "PROGRESS_" + Math.max(1, Math.min(99, percent)));
+            existing.setAutomatic(true); existing.setTestResultId(resultId); existing.setCompletedAt(completed.toDate());
         }
     }
 

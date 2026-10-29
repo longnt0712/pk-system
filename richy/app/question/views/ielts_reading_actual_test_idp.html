@@ -95,7 +95,7 @@
             </label>
         </div>
         <div class="idp-exam-session" ng-if="vm.isPartAssignment && !vm.isPreviewMode">
-            <strong>{{vm.testSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · {{vm.assignedPartsLabel()}}</strong>
+            <strong>{{vm.testSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · {{vm.assignedPartsLabel()}}<span ng-if="vm.isUntimedComprehensiveAssignment()"> · Không tính giờ</span></strong>
             <span ng-if="vm.nextAssignmentParts.length">Tiếp theo: {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} Part {{vm.nextAssignmentParts.join(', ')}}</span>
         </div>
         <div class="idp-exam-tools">
@@ -240,7 +240,7 @@
                                 </div>
                             </div>
                             <div ng-show="!vm.isListeningRoute" class="col-md-12 idp-text-part-instruction" style="margin-left: 20px;margin-bottom: 0 !important" >
-                                <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
+                                <h3 ng-if="vm.isComprehensiveRoute" class="bold">{{vm.comprehensiveAssignedSection ? vm.assignedPartsLabel() : 'Danh sách câu hỏi'}}</h3>
                                 <h4 ng-if="vm.isComprehensiveRoute">{{vm.hasComprehensiveVideo() ? 'Xem video bên trái. Câu hỏi xuất hiện và video dừng tại mốc đã đặt.' : 'Làm lần lượt các câu hỏi bên dưới.'}}</h4>
                                 <div ng-if="vm.isWritingRoute" class="idp-writing-part-instruction">
                                     <h3 class="bold">Part {{vm.activeIeltsNavigationPart()}}</h3>

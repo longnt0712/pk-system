@@ -31,6 +31,10 @@ import com.globits.security.domain.User;
 @Table(name = "tbl_test_result")
 @XmlRootElement
 public class TestResult extends BaseObject{
+    @Column(name="assignment_section_key", length=40)
+    private String assignmentSectionKey;
+    public String getAssignmentSectionKey() { return assignmentSectionKey; }
+    public void setAssignmentSectionKey(String value) { assignmentSectionKey = value; }
     @Column(name="client_attempt_key",length=32)
     private String clientAttemptKey;
     public String getClientAttemptKey(){return clientAttemptKey;}

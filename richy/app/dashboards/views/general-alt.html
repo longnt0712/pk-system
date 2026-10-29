@@ -85,8 +85,9 @@
                 <p class="reading-resume-title">{{draft.title}}</p>
                 <div class="reading-resume-meta">
                     <span><i class="fa fa-check-circle-o"></i> {{draft.progressLabel}} {{draft.progressValue}}</span>
-                    <span ng-if="!draft.pendingSave && draft.sessionMode === 'STUDY'"><i class="fa fa-clock-o"></i> Đã học {{vm.formatReadingDraftTime(draft.elapsedSeconds)}}</span>
-                    <span ng-if="!draft.pendingSave && draft.sessionMode !== 'STUDY' && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
+                    <span ng-if="draft.assignmentSectionKey && draft.sectionNumber">Phần {{draft.sectionNumber}}{{draft.sectionCount ? '/' + draft.sectionCount : ''}}</span>
+                    <span ng-if="!draft.pendingSave && (draft.sessionMode === 'STUDY' || draft.assignmentUntimed)"><i class="fa fa-clock-o"></i> {{draft.assignmentUntimed ? 'Đã làm' : 'Đã học'}} {{vm.formatReadingDraftTime(draft.elapsedSeconds)}}{{draft.assignmentUntimed ? ' · Không tính giờ' : ''}}</span>
+                    <span ng-if="!draft.pendingSave && draft.sessionMode !== 'STUDY' && !draft.assignmentUntimed && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
                     <span ng-if="draft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{draft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
                 </div>
             </div>
@@ -145,9 +146,13 @@
                                 <span>{{vm.assignmentTypeLabel(task)}}</span>
                                 <span class="is-free" ng-if="!vm.hasAssignmentExercise(task)">Nhiệm vụ lớp</span>
                                 <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
+                                <span ng-if="task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey">{{vm.assignmentPartsLabel(task)}}</span>
                             </div>
                             <h3>{{task.taskTotalTopics > 1 ? task.topicName : task.title}}</h3>
                             <p class="student-assignment-class" ng-if="task.taskTotalTopics > 1"><i class="fa fa-tasks"></i> {{task.title}} · {{task.taskCompletedTopics}}/{{task.taskTotalTopics}} topic · {{task.taskProgressPercent}}%</p>
+                            <p class="student-assignment-class" ng-if="task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey"><i class="fa fa-tasks"></i> Tiến độ cả task · {{vm.assignmentTaskProgressPercent(task)}}%</p>
+                            <p class="student-assignment-topic" ng-if="task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey">{{task.sectionQuestionCount}} câu<span ng-if="task.sectionFirstOrdinal"> · Câu {{task.sectionFirstOrdinal}}–{{task.sectionLastOrdinal}}</span> · Cần đạt từ 85%</p>
+                            <p class="student-assignment-topic" ng-if="task.activityType === 'COMPREHENSIVE'"><i class="fa fa-clock-o"></i> {{vm.assignmentTimeLabel(task)}}</p>
                             <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
                             <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
                             <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
@@ -156,7 +161,7 @@
                             <div class="student-assignment-progress">
                                 <span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</span>
                                 <b ng-if="!vm.assignmentTopicComplete(task)">Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
-                                <b ng-if="vm.assignmentTopicComplete(task)"><i class="fa fa-check-circle"></i> Đã hoàn thành topic</b>
+                                <b ng-if="vm.assignmentTopicComplete(task)"><i class="fa fa-check-circle"></i> {{task.assignmentSectionKey ? 'Đã hoàn thành phần' : 'Đã hoàn thành topic'}}</b>
                             </div>
                             <div class="student-assignment-bar"><span ng-style="{'width': vm.assignmentProgressPercent(task) + '%'}"></span></div>
                             <div class="student-assignment-footer">

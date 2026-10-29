@@ -43,6 +43,7 @@ import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
 import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.dto.TestResultDto.sortByOrdinalNumberQuestionAnswerTestResult;
@@ -680,6 +681,7 @@ public class TestResultServiceImpl implements TestResultService {
         // Retry is scoped to the authenticated student, never a client-supplied user.
         TestResult previousAttempt=findRetryAttempt(dto,modifiedUser);
         if(previousAttempt!=null)return new TestResultDto(previousAttempt);
+        ComprehensiveAssignmentSectionDto comprehensiveSection=prepareComprehensiveSectionSubmission(dto,modifiedUser);
 		
 		//daily vocab
 		if(Integer.valueOf(1).equals(dto.getTestType())) {
@@ -717,9 +719,11 @@ public class TestResultServiceImpl implements TestResultService {
 								|| questionPackage.getSubQuestions() == null) { continue; }
 						if (Integer.valueOf(7).equals(dto.getTestType()) && !dto.getCompletedParts().isEmpty()
 								&& !dto.getCompletedParts().contains(questionPackage.getType() == 17 ? 2 : 1)) { continue; }
+                        if(comprehensiveSection!=null&&!questionPackage.getSubQuestions().stream().anyMatch(q->q!=null&&comprehensiveSection.getQuestionIds().contains(q.getId())))continue;
 						writingTaskFound = true;
 						for (Question writingQuestion : questionPackage.getSubQuestions()) {
 							if (writingQuestion != null && writingQuestion.getId() != null) {
+								if(comprehensiveSection!=null&&!comprehensiveSection.getQuestionIds().contains(writingQuestion.getId()))continue;
 								expectedWritingQuestionIds.add(writingQuestion.getId());
 							}
 						}
@@ -759,6 +763,7 @@ public class TestResultServiceImpl implements TestResultService {
 			}
 			// A passed vocabulary completion is immutable: no later ID/topic/time forgery.
 			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
+            if(comprehensiveSection!=null){if(!java.util.Objects.equals(domain.getAssignmentSectionKey(),dto.getAssignmentSectionKey())||!java.util.Objects.equals(domain.getAssignmentTaskId(),dto.getAssignmentTaskId())||!java.util.Objects.equals(domain.getSourceQuestionId(),dto.getSourceQuestionId()))throw new IllegalArgumentException("Kết quả không thuộc phần bài đang nộp.");return new TestResultDto(domain);}
 		}
 		if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType())) {
 			dailyVocabAssignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
@@ -887,6 +892,7 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setCompletedParts(dto.getCompletedParts());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
+        domain.setAssignmentSectionKey(dto.getAssignmentSectionKey());
         domain.setAssignmentTopicId(dto.getAssignmentTopicId());
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			String sessionMode = dto.getAssignmentTaskId() != null ? "SERIOUS"
@@ -957,8 +963,9 @@ public class TestResultServiceImpl implements TestResultService {
 				|| Integer.valueOf(6).equals(dto.getTestType())) {
 			boolean passedObjectiveQuestions = passedIeltsObjectiveThreshold(domain.getQuestionAnswerTestResult());
 			if (Integer.valueOf(6).equals(dto.getTestType())) {
-				passedObjectiveQuestions = passedComprehensive && passedObjectiveQuestions
-						&& passedComprehensiveListening(dto.getSourceQuestionId(), domain.getQuestionAnswerTestResult());
+				passedObjectiveQuestions = passedComprehensive && (comprehensiveSection!=null
+                    ? passedComprehensiveSectionObjective(domain.getQuestionAnswerTestResult())
+                    : passedObjectiveQuestions && passedComprehensiveListening(dto.getSourceQuestionId(), domain.getQuestionAnswerTestResult()));
 			}
 			domain.setResultStatus(passedObjectiveQuestions ? "SUCCESS" : "FAILED");
 		}
@@ -981,6 +988,64 @@ public class TestResultServiceImpl implements TestResultService {
 		
 		return new TestResultDto(domain);
 	}
+
+    private ComprehensiveAssignmentSectionDto prepareComprehensiveSectionSubmission(TestResultDto dto,User actor) {
+        if(!Integer.valueOf(6).equals(dto.getTestType())){if(dto.getAssignmentSectionKey()!=null)throw new IllegalArgumentException("Mã phần chỉ dùng cho bài Tổng hợp được giao.");return null;}
+        EnrolmentClassScheduleTask task=dto.getAssignmentTaskId()==null?null:scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
+        List<ComprehensiveAssignmentSectionDto> sections=ComprehensiveAssignmentSections.read(task);
+        if(sections.isEmpty()){if(dto.getAssignmentSectionKey()!=null)throw new IllegalArgumentException("Task này không có phần bài được yêu cầu.");return null;}
+        ComprehensiveAssignmentSectionDto section=ComprehensiveAssignmentSections.find(task,dto.getAssignmentSectionKey());
+        if(section==null||!"COMPREHENSIVE".equals(task.getActivityType())||task.getIeltsTest()==null||!task.getIeltsTest().getId().equals(dto.getSourceQuestionId()))throw new IllegalArgumentException("Phần bài không khớp với task và đề được giao.");
+        if(!belongsToAssignedClass(actor,task))throw new AccessDeniedException("Bạn không được nộp phần bài được giao của lớp này.");
+        Question source=questionRepository.findOne(dto.getSourceQuestionId());ComprehensiveAssignmentSections.validateAgainstSource(source,sections);
+        java.util.Map<Long,Question> selected=new java.util.LinkedHashMap<Long,Question>();java.util.Map<Integer,Question> byOrdinal=new java.util.HashMap<Integer,Question>();
+        for(Question passage:source.getSubQuestions())for(Question pack:passage.getSubQuestions())for(Question question:pack.getSubQuestions())if(section.getQuestionIds().contains(question.getId())){
+            selected.put(question.getId(),question);if(question.getOrdinalNumber()==null||byOrdinal.put(question.getOrdinalNumber(),question)!=null)throw new IllegalArgumentException("Số thứ tự câu hỏi trong đề bị thiếu hoặc trùng.");}
+        List<QuestionAnswerTestResultDto> answers=dto.getQuestionAnswerTestResult()==null?new ArrayList<QuestionAnswerTestResultDto>():new ArrayList<QuestionAnswerTestResultDto>(dto.getQuestionAnswerTestResult());Set<Long> seen=new HashSet<Long>();
+        for(QuestionAnswerTestResultDto response:answers){
+            if(response==null)throw new IllegalArgumentException("Câu trả lời trong phần bài không hợp lệ.");
+            QuestionAnswer configured=response.getQuestionAnswer()==null||response.getQuestionAnswer().getId()==null?null:questionAnswerRepository.findOne(response.getQuestionAnswer().getId());
+            Question question=response.getOrdinalNumber()==null?null:byOrdinal.get(response.getOrdinalNumber());
+            if(question==null&&configured!=null&&configured.getQuestion()!=null)question=selected.get(configured.getQuestion().getId());
+            if(question==null||!seen.add(question.getId()))throw new IllegalArgumentException("Kết quả chứa câu ngoài phần được giao hoặc một câu bị gửi trùng.");
+            if(configured!=null&&!question.getId().equals(configured.getQuestion()==null?null:configured.getQuestion().getId())){
+                Question actual=configured.getQuestion();Integer type=question.getParent()==null?null:question.getParent().getType();
+                boolean shared=type!=null&&Arrays.asList(4,5,7,8,9,10,12,13,14,15).contains(type)&&actual!=null&&actual.getParent()!=null&&question.getParent()!=null&&java.util.Objects.equals(actual.getParent().getId(),question.getParent().getId())&&selected.containsKey(actual.getId());
+                if(!shared)throw new IllegalArgumentException("Đáp án không thuộc câu hỏi trong phần được giao.");
+                configured=sectionSharedAnswer(question,configured,type);QuestionAnswerDto own=new QuestionAnswerDto();own.setId(configured.getId());response.setQuestionAnswer(own);
+            }
+            if(configured==null){if(response.getQuestionAnswer()!=null&&response.getQuestionAnswer().getId()!=null)throw new IllegalArgumentException("Đáp án không còn tồn tại.");response.setQuestionAnswer(sectionAnswerReference(question));response.setClientAnswer("");}
+            response.setOrdinalNumber(question.getOrdinalNumber());response.setId(null);
+        }
+        // Missing answers are saved as wrong, so 43 answered-correct questions in
+        // a 50-question section mean 86%, never a misleading 100% of sent rows.
+        for(Question question:selected.values())if(!seen.contains(question.getId())){QuestionAnswerTestResultDto blank=new QuestionAnswerTestResultDto();blank.setQuestionAnswer(sectionAnswerReference(question));blank.setOrdinalNumber(question.getOrdinalNumber());blank.setClientAnswer("");answers.add(blank);}
+        dto.setQuestionAnswerTestResult(answers);return section;
+    }
+    private QuestionAnswerDto sectionAnswerReference(Question question) {
+        QuestionAnswer chosen=null;
+        if(question.getQuestionAnswers()!=null)for(QuestionAnswer option:question.getQuestionAnswers())if(option!=null&&option.getId()!=null){if(chosen==null)chosen=option;if(ComprehensiveListeningScore.isResponse(option)){chosen=option;break;}}
+        if(chosen==null)throw new IllegalArgumentException("Một câu hỏi trong phần chưa có đáp án được cấu hình. Hãy báo giáo viên kiểm tra đề.");
+        QuestionAnswerDto ref=new QuestionAnswerDto();ref.setId(chosen.getId());return ref;
+    }
+    private QuestionAnswer sectionSharedAnswer(Question target,QuestionAnswer selected,Integer type) {
+        QuestionAnswer matching=null;
+        for(QuestionAnswer option:target.getQuestionAnswers()){
+            if(Integer.valueOf(4).equals(type)||Integer.valueOf(8).equals(type)){if(option.isCorrect())return option;if(matching==null)matching=option;continue;}
+            String wanted=selected.getAnswer()==null?null:selected.getAnswer().getAnswer(),actual=option.getAnswer()==null?null:option.getAnswer().getAnswer();
+            if(java.util.Objects.equals(wanted,actual)&&java.util.Objects.equals(selected.getOrdinalNumber(),option.getOrdinalNumber()))return option;
+            if(java.util.Objects.equals(wanted,actual))matching=option;
+        }
+        if(matching==null)throw new IllegalArgumentException("Đề thiếu lựa chọn tương ứng ở một câu trong nhóm. Hãy báo giáo viên kiểm tra đề; bài làm vẫn được giữ.");return matching;
+    }
+    private boolean passedComprehensiveSectionObjective(Set<QuestionAnswerTestResult> answers) {
+        int total=0,correct=0;
+        for(QuestionAnswerTestResult response:answers){QuestionAnswer configured=response.getQuestionAnswer();Integer type=configured==null||configured.getQuestion()==null||configured.getQuestion().getParent()==null?null:configured.getQuestion().getParent().getType();
+            if(Integer.valueOf(16).equals(type)||Integer.valueOf(17).equals(type))continue;
+            boolean passed=Boolean.TRUE.equals(new QuestionAnswerTestResultDto(response).getIsCorrectTestResultDetail());
+            if(ComprehensiveListeningScore.isResponse(configured)){if(!passed)return false;continue;}total++;if(passed)correct++;
+        }return total==0||correct*100D/total>=85D;
+    }
 
     private Topic resolveAssignedVocabularyTopic(EnrolmentClassScheduleTask task, Long selectedTopicId) {
         List<Topic> topics = task.getTopics();
@@ -1090,6 +1155,7 @@ public class TestResultServiceImpl implements TestResultService {
         List<TestResult> previous = testResultRepository.findAttemptsForRetry(actor.getId(), dto.getClientAttemptKey(), dto.getTestType());
         if (previous == null || previous.isEmpty()) { return null; }
         TestResult first = previous.get(0);
+        if(!java.util.Objects.equals(first.getAssignmentSectionKey(),dto.getAssignmentSectionKey()))throw new IllegalArgumentException("Mã lượt đã được dùng cho một phần bài khác. Hãy mở lại đúng phần bài.");
         for (int index = 1; index < previous.size(); index++) {
             if (!sameRetryEvidence(first, previous.get(index))) {
                 throw new IllegalStateException("Mã lượt làm có các kết quả cũ không đồng nhất. Cần kiểm tra lịch sử trước khi xác nhận lưu.");
@@ -1110,6 +1176,7 @@ public class TestResultServiceImpl implements TestResultService {
     private boolean sameRetryEvidence(TestResult first, TestResult copy) {
         return java.util.Objects.equals(first.getSourceQuestionId(), copy.getSourceQuestionId())
                 && java.util.Objects.equals(first.getAssignmentTaskId(), copy.getAssignmentTaskId())
+                && java.util.Objects.equals(first.getAssignmentSectionKey(), copy.getAssignmentSectionKey())
                 && java.util.Objects.equals(first.getAssignmentTopicId(), copy.getAssignmentTopicId())
                 && new java.util.HashSet<Integer>(first.getCompletedParts()).equals(new java.util.HashSet<Integer>(copy.getCompletedParts()))
                 && retryTopicIds(first).equals(retryTopicIds(copy))

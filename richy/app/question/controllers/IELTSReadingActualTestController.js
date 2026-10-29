@@ -929,6 +929,53 @@
             });
         };
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
+        vm.assignmentSectionKey = vm.isComprehensiveRoute && vm.assignmentTaskId && $stateParams.assignmentSectionKey
+            ? String($stateParams.assignmentSectionKey) : null;
+        vm.comprehensiveAssignmentConfigured = false;
+        vm.comprehensiveAssignmentMinutes = null;
+        vm.comprehensiveAssignedSection = null;
+        vm.isUntimedComprehensiveAssignment = function () {
+            return vm.isComprehensiveRoute && !!vm.assignmentTaskId && vm.comprehensiveAssignmentConfigured
+                && vm.comprehensiveAssignmentMinutes === 0;
+        };
+        vm.configureComprehensiveAssignment = function (task) {
+            if (!task || task.activityType !== 'COMPREHENSIVE'
+                    || String(task.taskId) !== String(vm.assignmentTaskId)
+                    || String(task.ieltsTestId) !== String($stateParams.ieltsReadingTestId)) {
+                throw new Error('Bài được giao không khớp với đề tổng hợp. Hãy mở lại từ Dashboard.');
+            }
+            var sections = angular.isArray(task.comprehensiveSections) ? task.comprehensiveSections : [];
+            var assignmentIds = [], uniqueIds = {};
+            angular.forEach(sections, function (section, index) {
+                if (!section || Number(section.number) !== index + 1 || !angular.isArray(section.questionIds) || !section.questionIds.length) {
+                    throw new Error('Cấu hình phần được giao không hợp lệ. Hãy mở lại Dashboard.');
+                }
+                angular.forEach(section.questionIds, function (id) {
+                    if (!/^\d+$/.test(String(id)) || Number(id) <= 0 || uniqueIds[String(id)]) { throw new Error('Danh sách câu được giao bị thiếu hoặc trùng.'); }
+                    uniqueIds[String(id)] = true; assignmentIds.push(String(id));
+                });
+            });
+            var selected = null;
+            if (vm.assignmentSectionKey) {
+                if (!/^[A-Za-z0-9_-]{1,40}$/.test(vm.assignmentSectionKey)) { throw new Error('Mã phần được giao không hợp lệ.'); }
+                selected = sections.filter(function (section) { return section && section.key === vm.assignmentSectionKey; })[0];
+                if (!selected || !angular.isArray(selected.questionIds) || !selected.questionIds.length) {
+                    throw new Error('Không tìm thấy phần được giao. Hãy tải lại Dashboard; phần chia cần backend mới.');
+                }
+            } else if (sections.length) {
+                throw new Error('Đề này đã được chia phần. Hãy chọn đúng phần cần làm trên Dashboard.');
+            }
+            var minutes = selected ? selected.durationMinutes : task.comprehensiveTimeLimitMinutes;
+            if (minutes != null && (!isFinite(Number(minutes)) || Math.floor(Number(minutes)) !== Number(minutes)
+                    || Number(minutes) < 0 || Number(minutes) > 1440)) { throw new Error('Thời gian bài được giao không hợp lệ.'); }
+            vm.comprehensiveAssignedSection = selected ? angular.copy(selected) : null;
+            vm.comprehensiveAssignmentQuestionIds = assignmentIds;
+            vm.comprehensiveSectionCount = sections.length;
+            vm.comprehensiveAssignmentMinutes = minutes == null ? null : Number(minutes);
+            vm.comprehensiveAssignmentConfigured = true;
+            vm.assignedParts = [1]; vm.assignedPart = 1; vm.isPartAssignment = true;
+            requestedAssignmentParts = [1];
+        };
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
         var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? 2 : (vm.isListeningRoute ? 4 : 3));
         function normalizeAssignedParts(value) {
@@ -944,6 +991,11 @@
         vm.nextAssignmentParts = [];
         vm.isPartAssignment = vm.assignedParts.length > 0;
         vm.assignedPartsLabel = function () {
+            if (vm.comprehensiveAssignedSection) {
+                var section = vm.comprehensiveAssignedSection;
+                return 'Phần ' + section.number + '/' + vm.comprehensiveSectionCount + ' · Câu '
+                    + section.firstOrdinal + '–' + section.lastOrdinal;
+            }
             return (vm.isWritingRoute ? 'Writing Task ' : 'Part ') + vm.assignedParts.join(', ');
         };
         vm.testSessionMode = 'STUDY';
@@ -1686,7 +1738,8 @@
         vm.testResult.user = vm.currentUser;
 
         var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
-        var legacyReadingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId
+        var sectionReadingDraftSuffix = vm.assignmentSectionKey ? ':section:' + vm.assignmentSectionKey : '';
+        var legacyReadingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId + sectionReadingDraftSuffix
             : (vm.assignedPart ? (vm.isWritingRoute ? ':writing-task:' : ':part:') + vm.assignedPart : '');
         var readingDraftTaskSuffix = vm.assignmentTaskId && vm.isPartAssignment
             ? legacyReadingDraftTaskSuffix + ':parts:' + vm.assignedParts.join('-') : legacyReadingDraftTaskSuffix;
@@ -1708,7 +1761,8 @@
             var sessionSuffix = normalizedMode === 'SERIOUS' ? ':serious' : '';
             return readingDraftBaseKey + (vm.isComprehensiveRoute ? ':comprehensive:test:' : (vm.isWritingRoute ? ':writing:test:' : (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')))
                 + String(testId || 'unknown') + sessionSuffix + (normalizedMode === 'STUDY' ? '' :
-                    (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-') : readingDraftTaskSuffix));
+                    (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-')
+                        + (vm.assignmentSectionKey ? ':section:' + vm.assignmentSectionKey : '') : readingDraftTaskSuffix));
         }
 
         try {
@@ -1722,6 +1776,7 @@
                 var resumeAttempt = /^[a-f0-9]{32}$/.test(resumeMarker.clientAttemptKey || '') ? resumeMarker.clientAttemptKey : null;
                 if (String(resumeMarker.testId) === String($stateParams.ieltsReadingTestId)
                         && String(resumeMarker.assignmentTaskId || '') === String(vm.assignmentTaskId || '')
+                        && String(resumeMarker.assignmentSectionKey || '') === String(vm.assignmentSectionKey || '')
                         && readingSubmissionParts(resumeMarker.assignmentParts) === readingSubmissionParts(vm.isPartAssignment ? vm.assignedParts : [])
                         && resumeMarker.sessionMode === resumeMode
                         && [resumeBase, legacyModeDraftStorageKey, legacyReadingDraftStorageKey].indexOf(readingLocalDraftKey(resumeMarker.draftKey || '')) >= 0
@@ -1733,7 +1788,8 @@
         } catch (ignoreResumeMarker) {}
 
         function assignmentStudyDraftKey(testId) {
-            return readingDraftStorageKey(testId, 'STUDY') + ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-');
+            return readingDraftStorageKey(testId, 'STUDY') + ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-')
+                + (vm.assignmentSectionKey ? ':section:' + vm.assignmentSectionKey : '');
         }
 
         function mergeStudyLearningDrafts(drafts) {
@@ -2009,6 +2065,7 @@
                     if (expectedMode && String(draft.sessionMode || '').toUpperCase() !== expectedMode) {
                         continue;
                     }
+                    if (expectedMode !== 'STUDY' && String(draft.assignmentSectionKey || '') !== String(vm.assignmentSectionKey || '')) { continue; }
                     if (expectedMode === 'STUDY') {
                         if (candidateKeys[keyIndex] === sharedStudyKey) { sharedStudyFound = true; }
                         if (!sharedStudyDraft || candidateKeys[keyIndex] === sharedStudyKey) { studyDrafts.push(draft); }
@@ -2192,6 +2249,12 @@
                     testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING')),
                     sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
+                    assignmentSectionKey: vm.assignmentSectionKey || null,
+                    sectionNumber: vm.comprehensiveAssignedSection ? vm.comprehensiveAssignedSection.number : null,
+                    sectionCount: vm.comprehensiveSectionCount || null,
+                    sectionQuestionCount: vm.comprehensiveAssignedSection ? vm.comprehensiveAssignedSection.questionIds.length : null,
+                    comprehensiveTimeLimitMinutes: vm.comprehensiveAssignmentMinutes,
+                    assignmentUntimed: !!(vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment()),
                     comprehensiveShuffle: angular.copy(vm.comprehensiveShuffleState || null),
                     isPartAssignment: vm.isPartAssignment === true,
                     assignmentPart: vm.isPartAssignment ? (vm.assignedPart || null) : null,
@@ -2226,6 +2289,7 @@
                         }).concat(readingDraft[field]);
                     });
                     readingDraft.assignmentTaskId = null;
+                    readingDraft.assignmentSectionKey = null;
                     readingDraft.assignmentPart = null;
                     readingDraft.assignmentParts = [];
                     readingDraft.isPartAssignment = false;
@@ -2494,6 +2558,11 @@
             }
             if (vm.testSessionMode === 'STUDY' && draft.sessionMode === 'STUDY') {
                 timerRestoredFromDraft = true;
+                countdownEndsAt = null;
+                setStudyElapsedSeconds(Number(draft.elapsedSeconds) || 0);
+            } else if (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment()) {
+                timerRestoredFromDraft = true;
+                countdownEndsAt = null;
                 setStudyElapsedSeconds(Number(draft.elapsedSeconds) || 0);
             } else if (vm.testSessionMode !== 'STUDY' && draft.remainingSeconds != null &&
                     isFinite(Number(draft.remainingSeconds)) && Number(draft.remainingSeconds) >= 0) {
@@ -2501,12 +2570,18 @@
                 if (vm.isVideoHomeworkPractice()) {
                     // A soft limit stays 60 minutes even when an older draft is
                     // already overdue; preserve its elapsed time rather than extending the limit.
-                    seriousTotalSeconds = isFinite(Number(draft.videoHomeworkBudgetSeconds)) && Number(draft.videoHomeworkBudgetSeconds) > 0
-                        ? Number(draft.videoHomeworkBudgetSeconds) : configuredWritingSeconds;
+                    seriousTotalSeconds = vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveAssignmentMinutes != null
+                        ? configuredWritingSeconds : (isFinite(Number(draft.videoHomeworkBudgetSeconds)) && Number(draft.videoHomeworkBudgetSeconds) > 0
+                            ? Number(draft.videoHomeworkBudgetSeconds) : configuredWritingSeconds);
                     var videoElapsed = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds))
                         ? Math.max(0, Number(draft.elapsedSeconds))
                         : Math.max(0, seriousTotalSeconds - Number(draft.remainingSeconds));
                     restoreVideoHomeworkClock(videoElapsed);
+                } else if (vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveAssignmentMinutes != null) {
+                    seriousTotalSeconds = configuredWritingSeconds;
+                    var assignmentElapsed = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds)) ? Math.max(0, Number(draft.elapsedSeconds)) : null;
+                    setCountdownSeconds(assignmentElapsed == null ? Math.min(seriousTotalSeconds, Number(draft.remainingSeconds))
+                        : Math.max(0, seriousTotalSeconds - assignmentElapsed));
                 } else {
                     // Keep the saved elapsed time when the loaded task subset has a different budget.
                     seriousTotalSeconds = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds))
@@ -2874,7 +2949,8 @@
         vm.continueAssignedParts = function () {
             if (!vm.nextAssignmentParts.length) { return; }
             $location.search({assignmentTaskId: vm.assignmentTaskId, assignmentParts: vm.nextAssignmentParts.join(','),
-                assignmentPart: vm.nextAssignmentParts[0], sessionMode: vm.nextAssignmentSessionMode});
+                assignmentPart: vm.nextAssignmentParts[0], assignmentSectionKey: vm.assignmentSectionKey || null,
+                sessionMode: vm.nextAssignmentSessionMode});
         };
 
         vm.confirmLeaveTest = function ($event) {
@@ -2988,6 +3064,78 @@
             layout.questionOrder = questionOrder;
             layout.answerOrders = answerOrders;
             return data;
+        }
+
+        function restrictComprehensiveAssignmentSection(data) {
+            if (!vm.isComprehensiveRoute || !vm.assignmentTaskId || !vm.assignmentSectionKey || vm.isPreviewMode) { return data; }
+            var section = vm.comprehensiveAssignedSection;
+            if (!section || !data || String(data.id) !== String($stateParams.ieltsReadingTestId) || !angular.isArray(data.subQuestions)) {
+                throw new Error('Chưa xác nhận được nội dung phần bài được giao.');
+            }
+            var allowed = {}, found = {}, retained = [], context = [], seenContext = {}, sourceIds = [];
+            angular.forEach(data.subQuestions, function (passage) {
+                angular.forEach((passage || {}).subQuestions || [], function (pack) {
+                    angular.forEach((pack || {}).subQuestions || [], function (question) { sourceIds.push(String((question || {}).id)); });
+                });
+            });
+            if (JSON.stringify(sourceIds.slice().sort()) !== JSON.stringify((vm.comprehensiveAssignmentQuestionIds || []).slice().sort())) {
+                throw new Error('Đề đã thay đổi số câu sau khi giao. Bản nháp vẫn được giữ; hãy báo giáo viên.');
+            }
+            angular.forEach(section.questionIds || [], function (id) {
+                var key = String(id);
+                if (!/^\d+$/.test(key) || Number(id) <= 0 || allowed[key]) { throw new Error('Danh sách câu của phần được giao không hợp lệ.'); }
+                allowed[key] = true;
+            });
+            if (!Object.keys(allowed).length) { throw new Error('Phần được giao chưa có câu hỏi.'); }
+            // Work on a candidate copy. Question/answer identities and global
+            // ordinals remain the grading keys; the source test stays intact.
+            var candidate = angular.copy(data), first = candidate.subQuestions[0], selectedHeadingPassages = 0;
+            if (!first) { throw new Error('Đề bài thiếu khung nội dung.'); }
+            function addContext(html) { if (html && !seenContext[String(html)]) { context.push(String(html)); seenContext[String(html)] = true; } }
+            // The first workspace also holds the common Comprehensive intro.
+            // An unselected heading passage is not common context: its empty
+            // heading markers must never receive another passage's answers.
+            if (!(first.subQuestions || []).some(function (pack) { return Number(pack.type) === 4; })) { addContext(first.question); }
+            angular.forEach(candidate.subQuestions, function (passage) {
+                var hasSelected = false;
+                var passageQuestions = [], linkedHeadings = false;
+                angular.forEach((passage && passage.subQuestions) || [], function (pack) {
+                    if (Number(pack.type) === 4) { linkedHeadings = true; }
+                    Array.prototype.push.apply(passageQuestions, pack.subQuestions || []);
+                });
+                var selectedPassageCount = passageQuestions.filter(function (question) { return !!allowed[String(question.id)]; }).length;
+                if (linkedHeadings && selectedPassageCount && selectedPassageCount !== passageQuestions.length) {
+                    throw new Error('Nhóm matching heading đã thay đổi sau khi giao. Hãy báo giáo viên kiểm tra phần chia.');
+                }
+                if (linkedHeadings && selectedPassageCount && ++selectedHeadingPassages > 1) {
+                    throw new Error('Phần này chứa nhiều ngân hàng matching heading từ các passage khác nhau. Hãy báo giáo viên xem trước và giao lại từng phần.');
+                }
+                angular.forEach((passage && passage.subQuestions) || [], function (pack) {
+                    var questions = (pack && pack.subQuestions) || [], selected = questions.filter(function (question) {
+                        if (!question || !allowed[String(question.id)]) { return false; }
+                        if (found[String(question.id)]) { throw new Error('Câu hỏi của đề bị trùng. Hãy báo giáo viên kiểm tra.'); }
+                        found[String(question.id)] = true; return true;
+                    });
+                    if (!selected.length) { return; }
+                    if (selected.length !== questions.length && [1, 6].indexOf(Number(pack.type)) < 0) {
+                        throw new Error('Nhóm câu hỏi đã thay đổi sau khi giao. Hãy báo giáo viên kiểm tra phần chia.');
+                    }
+                    hasSelected = true; pack.subQuestions = selected;
+                    pack.parent = {id: first.id, ordinalNumber: 1, questionType: {code: 'IELTSRTP1'}};
+                    angular.forEach(selected, function (question) {
+                        question.parent = question.parent || {};
+                        question.parent.type = pack.type;
+                    });
+                    retained.push(pack);
+                });
+                if (hasSelected) { addContext(passage.question); }
+            });
+            if (Object.keys(found).length !== Object.keys(allowed).length) {
+                throw new Error('Có câu trong phần được giao không còn ở đề. Bản nháp vẫn được giữ; hãy báo giáo viên.');
+            }
+            first.subQuestions = retained; first.ordinalNumber = 1; first.question = context.join('<hr>');
+            angular.forEach(candidate.subQuestions.slice(1), function (passage) { if (passage) { passage.subQuestions = []; passage.question = ''; } });
+            return candidate;
         }
 
         function normalizeLocalReadingPreview(data) {
@@ -3253,6 +3401,14 @@
                         seriousTotalSeconds = configuredWritingSeconds;
                         if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
                     }
+                    if (vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveAssignmentConfigured) {
+                        configuredWritingSeconds = (vm.comprehensiveAssignmentMinutes == null ? 60 : vm.comprehensiveAssignmentMinutes) * 60;
+                        seriousTotalSeconds = configuredWritingSeconds;
+                        if (!timerRestoredFromDraft) {
+                            if (vm.isUntimedComprehensiveAssignment()) { countdownEndsAt = null; setStudyElapsedSeconds(0); }
+                            else { setCountdownSeconds(seriousTotalSeconds); }
+                        }
+                    }
                     vm.getOrdinalNumber(data);
                     if (vm.isFlexibleRoute) {
                         vm.resultQuestionTotal = getAllReadingQuestionEntries().length || 1;
@@ -3385,16 +3541,13 @@
                 var testRequest;
                 if (vm.isComprehensiveRoute && vm.assignmentTaskId && !vm.isPreviewMode) {
                     testRequest = service.getAssignedTask(vm.assignmentTaskId).then(function (task) {
-                        if (!task || task.activityType !== 'COMPREHENSIVE'
-                                || String(task.ieltsTestId) !== String($stateParams.ieltsReadingTestId)) {
-                            throw new Error('Bài được giao không khớp với đề tổng hợp.');
-                        }
+                        vm.configureComprehensiveAssignment(task);
                         vm.assignmentShuffleQuestions = task.shuffleQuestions === true;
-                        return service.getOne($stateParams.ieltsReadingTestId);
+                        return service.getOne($stateParams.ieltsReadingTestId).then(restrictComprehensiveAssignmentSection);
                     });
                 } else { testRequest = service.getOne($stateParams.ieltsReadingTestId); }
-                testRequest.then(loadReadingTest, function failure() {
-                    failToStartTest('The test could not be loaded. Please check your connection and try again.');
+                testRequest.then(loadReadingTest, function failure(error) {
+                    failToStartTest(error && error.message || 'The test could not be loaded. Please check your connection and try again.');
                 });
             } else {
                 failToStartTest('The test ID is missing. Please return to the test list and open it again.');
@@ -3544,6 +3697,17 @@
                 if (!task.canStartNewAttempt) {
                     unavailable(task.newAttemptUnavailableReason || 'Bài được giao hiện chưa đến giờ hoặc đã quá hạn; không thể mở lượt mới.', true); return;
                 }
+                if (vm.isComprehensiveRoute && angular.isFunction(vm.configureComprehensiveAssignment)) {
+                    var previousSection = vm.comprehensiveAssignedSection;
+                    try {
+                        vm.configureComprehensiveAssignment(task);
+                        if (previousSection && (!vm.comprehensiveAssignedSection
+                                || JSON.stringify(previousSection.questionIds) !== JSON.stringify(vm.comprehensiveAssignedSection.questionIds))) {
+                            throw new Error('Nội dung phần được giao đã thay đổi. Hãy mở lại phần từ Dashboard.');
+                        }
+                        configuredWritingSeconds = (vm.comprehensiveAssignmentMinutes == null ? 60 : vm.comprehensiveAssignmentMinutes) * 60;
+                    } catch (changedAssignment) { unavailable(changedAssignment.message, true); return; }
+                }
                 vm.isStartingNewWritingAttempt = false;
                 beginNewWritingAttempt();
             }, function () {
@@ -3574,13 +3738,19 @@
             $timeout.cancel(mytimeout); countdownEndsAt = null;
             seriousTotalSeconds = configuredWritingSeconds; timerRestoredFromDraft = false; timerStarted = false;
             videoHomeworkTimeNoticeShown = false;
-            if (vm.testSessionMode === 'STUDY') { setStudyElapsedSeconds(0); }
+            if (vm.testSessionMode === 'STUDY' || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment())) { setStudyElapsedSeconds(0); }
             else { setCountdownSeconds(seriousTotalSeconds); }
             var newDraft = angular.copy(previousDraft);
             newDraft.version = 5; newDraft.userId = vm.currentUser.id; newDraft.testId = vm.ieltsReadingActualTest.id;
             newDraft.title = vm.ieltsReadingActualTest.title;
             newDraft.testMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : 'WRITING'; newDraft.sessionMode = vm.testSessionMode;
             newDraft.assignmentTaskId = vm.assignmentTaskId || null; newDraft.isPartAssignment = vm.isPartAssignment === true;
+            newDraft.assignmentSectionKey = vm.assignmentSectionKey || null;
+            newDraft.sectionNumber = vm.comprehensiveAssignedSection ? vm.comprehensiveAssignedSection.number : null;
+            newDraft.sectionCount = vm.comprehensiveSectionCount || null;
+            newDraft.sectionQuestionCount = vm.comprehensiveAssignedSection ? vm.comprehensiveAssignedSection.questionIds.length : null;
+            newDraft.comprehensiveTimeLimitMinutes = vm.comprehensiveAssignmentMinutes;
+            newDraft.assignmentUntimed = !!(vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment());
             newDraft.assignmentParts = vm.isPartAssignment ? angular.copy(vm.assignedParts) : []; newDraft.assignmentPart = vm.assignedPart || null;
             newDraft.passageNumber = vm.passageNumber; newDraft.hiddenFromDashboard = false;
             newDraft.annotationNotes = angular.copy(vm.annotationNotes || []);
@@ -3686,6 +3856,7 @@
                 && String(payload.sourceQuestionId) === String((vm.ieltsReadingActualTest || {}).id || $stateParams.ieltsReadingTestId)
                 && Number(payload.testType) === readingSubmissionType()
                 && String(payload.assignmentTaskId || '') === String(vm.assignmentTaskId || '')
+                && String(payload.assignmentSectionKey || '') === String(vm.assignmentSectionKey || '')
                 && readingSubmissionParts(payload.completedParts) === readingSubmissionParts(vm.isPartAssignment ? vm.assignedParts : []);
         }
 
@@ -3705,6 +3876,8 @@
                     && String(result.sourceQuestionId || '') !== String(payload.sourceQuestionId || '')) { return false; }
             if (Object.prototype.hasOwnProperty.call(result, 'assignmentTaskId')
                     && String(result.assignmentTaskId || '') !== String(payload.assignmentTaskId || '')) { return false; }
+            if (String(result.assignmentSectionKey || '') !== String(payload.assignmentSectionKey || '')) { return false; }
+            if (payload.assignmentSectionKey && !Object.prototype.hasOwnProperty.call(result, 'assignmentSectionKey')) { return false; }
             if (angular.isArray(result.completedParts)
                     && readingSubmissionParts(result.completedParts) !== readingSubmissionParts(payload.completedParts)) { return false; }
             // Older servers may omit the new key, but the persisted result must
@@ -3727,7 +3900,8 @@
             }
             readingSubmissionState = null;
             readingAttemptKey = !state && /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '') ? draft.clientAttemptKey : null;
-            restoredExpiredReadingDraft = vm.testSessionMode !== 'STUDY' && Number(draft.remainingSeconds) === 0;
+            restoredExpiredReadingDraft = vm.testSessionMode !== 'STUDY'
+                && !(vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment()) && Number(draft.remainingSeconds) === 0;
         }
 
         function persistReadingSubmissionState() {
@@ -3735,6 +3909,7 @@
             var draft = angular.copy(readActiveReadingDraft(key) || {});
             draft.version = draft.version || 5;
             draft.userId = vm.currentUser.id; draft.testId = vm.ieltsReadingActualTest.id;
+            draft.assignmentTaskId = vm.assignmentTaskId || null; draft.assignmentSectionKey = vm.assignmentSectionKey || null;
             draft.clientAttemptKey = readingAttemptKey;
             draft.submissionState = angular.copy(readingSubmissionState);
             draft.savedAt = new Date().toISOString();
@@ -3819,6 +3994,7 @@
             syncTimerForPersistence();
             var activeDurationSeconds = getActiveDurationSeconds();
             vm.testResult.testTime = formatTimerClock(vm.testSessionMode === 'STUDY' || vm.isVideoHomeworkPractice()
+                || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment())
                 ? activeDurationSeconds : Math.max(0, Number($scope.counter) || 0));
             vm.testResult.ieltsSessionMode = vm.testSessionMode;
             vm.testResult.activeDurationSeconds = activeDurationSeconds;
@@ -3882,6 +4058,7 @@
             vm.testResult.clientAttemptKey = readingAttemptKey;
             vm.testResult.completedParts = angular.copy(vm.testResult.completedParts || []);
             vm.testResult.assignmentTaskId = vm.assignmentTaskId || null;
+            vm.testResult.assignmentSectionKey = vm.assignmentSectionKey || null;
             readingSubmissionState = {version: 1, key: readingAttemptKey, status: 'PENDING', payload: angular.copy(vm.testResult)};
             submitReadingAttemptSnapshot();
         };
@@ -4109,6 +4286,10 @@
             return vm.testSessionMode === 'STUDY';
         };
 
+        function usesElapsedTimer() {
+            return vm.isStudyMode() || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment());
+        }
+
         function restoreVideoHomeworkClock(elapsedSeconds) {
             var elapsed = Math.max(0, Number(elapsedSeconds) || 0);
             countdownEndsAt = Date.now() + (seriousTotalSeconds - elapsed) * 1000;
@@ -4118,7 +4299,7 @@
         }
 
         vm.isVideoHomeworkOvertime = function () {
-            return vm.isVideoHomeworkPractice() && !vm.isStudyMode() && getActiveDurationSeconds() >= seriousTotalSeconds;
+            return vm.isVideoHomeworkPractice() && !usesElapsedTimer() && getActiveDurationSeconds() >= seriousTotalSeconds;
         };
 
         function currentStudyElapsedSeconds() {
@@ -4143,7 +4324,7 @@
         }
 
         function resumeStudyTimer() {
-            if (vm.isStudyMode() && vm.isStartTest === true && !$window.document.hidden && studyActiveSince === null) {
+            if (usesElapsedTimer() && vm.isStartTest === true && !$window.document.hidden && studyActiveSince === null) {
                 studyActiveSince = Date.now();
             }
             updateStudyDisplay();
@@ -4167,7 +4348,7 @@
         }
 
         function syncTimerForPersistence() {
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 pauseStudyTimer();
                 resumeStudyTimer();
             } else {
@@ -4176,7 +4357,7 @@
         }
 
         function getActiveDurationSeconds() {
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 return currentStudyElapsedSeconds();
             }
             syncCountdownFromDeadline();
@@ -4197,7 +4378,7 @@
         // remaining time from an absolute deadline instead of counter-- so the
         // exam clock stays correct after switching tabs or locking the screen.
         $scope.onTimeout = function() {
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 updateStudyDisplay();
                 mytimeout = $timeout($scope.onTimeout, 1000);
                 return;
@@ -4231,7 +4412,7 @@
 
         $scope.startCount = function() {
             $timeout.cancel(mytimeout);
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 countdownEndsAt = null;
                 resumeStudyTimer();
             } else if (!timerStarted) {
@@ -4275,7 +4456,7 @@
             mytimeout = null;
             timerStarted = false;
             timerRestoredFromDraft = false;
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 countdownEndsAt = null;
                 setStudyElapsedSeconds(0);
                 return;
@@ -4288,11 +4469,11 @@
 
         function syncTimerWhenVisible() {
             if ($window.document.hidden) {
-                if (vm.isStudyMode()) {
+                if (usesElapsedTimer()) {
                     pauseStudyTimer();
                 }
                 saveReadingDraft();
-            } else if (vm.isStudyMode()) {
+            } else if (usesElapsedTimer()) {
                 $scope.$evalAsync(resumeStudyTimer);
             } else {
                 $scope.$evalAsync(syncCountdownFromDeadline);
@@ -4329,7 +4510,7 @@
         };
 
         vm.getRemainingMinutes = function () {
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 return Math.max(0, Math.floor(currentStudyElapsedSeconds() / 60));
             }
             if (vm.isVideoHomeworkOvertime()) { return Math.floor(getActiveDurationSeconds() / 60); }
@@ -4337,7 +4518,7 @@
         };
 
         vm.getRemainingClock = function () {
-            if (vm.isStudyMode()) {
+            if (usesElapsedTimer()) {
                 return formatTimerClock(currentStudyElapsedSeconds());
             }
             if (vm.isVideoHomeworkOvertime()) { return formatTimerClock(getActiveDurationSeconds()); }
@@ -4347,6 +4528,7 @@
         };
 
         vm.getTimerStatusLabel = function () {
+            if (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment()) { return 'elapsed'; }
             return vm.isStudyMode() || vm.isVideoHomeworkOvertime() ? 'studied' : 'remaining';
         };
 
@@ -6510,6 +6692,7 @@
                 activeDurationSeconds: getActiveDurationSeconds(),
                 passageNumber: vm.passageNumber || 1,
                 assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
+                assignmentSectionKey: vm.assignmentSectionKey || null,
                 comprehensiveShuffle: angular.copy(vm.comprehensiveShuffleState || null),
                 results: serializeReadingDraftResults(),
                 questionStates: serializeReadingQuestionStates(),

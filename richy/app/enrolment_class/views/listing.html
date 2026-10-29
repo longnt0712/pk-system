@@ -785,11 +785,20 @@
     .class-task-topic-count { border-radius:20px; background:#eee9ff; padding:4px 9px; color:#6d50b5; font-size:11px; font-weight:700; }
     .class-task-vocab-select .ui-select-match-item { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:left; }
     .class-task-topic-summary { margin:10px 0 0; border-left:3px solid #9b7ef5; padding:9px 12px; border-radius:5px; background:#f0ebff; color:#604394; font-size:12px; }
+    .class-task-comprehensive-settings { margin:14px 0; padding:16px; border:1px solid #e0dcf1; border-radius:14px; background:#f8f6ff; }
+    .class-task-comprehensive-settings .form-group { margin-bottom:12px; }
+    .class-task-section-preview-heading { display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; }
+    .class-task-section-preview-heading .form-group { flex:1 1 180px; }
+    .class-task-section-list { max-height:360px; overflow:auto; overscroll-behavior:contain; margin-top:12px; }
+    .class-task-section-row { display:grid; grid-template-columns:minmax(0,1fr) 145px 100px; align-items:center; gap:12px; border-top:1px solid #e4e0ef; padding:12px 0; }
+    .class-task-section-row small { display:block; color:#78849b; }
+    .class-task-section-row .form-control { min-width:0; }
     .global-dark-mode .class-task-editor-header { background:#2b293d; border-color:#454258; }
     .global-dark-mode .class-task-editor-header h4,.global-dark-mode .class-task-editor-header small { color:#ded6fc; }
     .global-dark-mode .class-task-editor-modal > .class-task-editor,.global-dark-mode .class-task-editor-footer { background:#202330; color:#e2e6f1; }
     .global-dark-mode .class-task-editor-modal label { color:#d9deed; }
     .global-dark-mode .class-task-topic-count,.global-dark-mode .class-task-topic-summary { background:#37304e; color:#ded1ff; }
+    .global-dark-mode .class-task-comprehensive-settings { background:#292737; border-color:#464256; }
     @media (max-width:991px) and (min-width:768px) { .class-task-editor-modal-window .modal-dialog { width:86vw; max-width:86vw; } }
     @media (max-width:767px) {
         .class-task-editor-modal-window .modal-dialog { width:calc(100vw - 16px); max-width:calc(100vw - 16px); margin:8px; }
@@ -797,6 +806,8 @@
         .class-task-editor-header { padding:16px; }
         .class-task-editor-modal-window .class-task-editor-modal > .class-task-editor { padding:16px; }
         .class-task-editor-modal .class-task-editor-grid { grid-template-columns:1fr; gap:0; }
+        .class-task-section-row { grid-template-columns:minmax(0,1fr) 100px; gap:8px; }
+        .class-task-section-row > div:first-child { grid-column:1/-1; }
         .class-task-editor-footer { padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
     }
 </style>
@@ -1513,7 +1524,7 @@
                 <span>{{vm.taskStatusLabel(task)}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId || (task.activityType === 'DAILY_LISTENING' && task.sourceQuestionId)">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'IELTS_WRITING' ? 'IELTS Writing' : task.activityType === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
-                <span data-ng-if="task.topicId || task.ieltsTestId || (task.activityType === 'DAILY_LISTENING' && task.sourceQuestionId)">Yêu cầu: {{task.requiredAttempts || 1}} lần{{vm.taskTopicIds(task).length > 1 ? ' mỗi topic' : (task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt')}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId || (task.activityType === 'DAILY_LISTENING' && task.sourceQuestionId)">Yêu cầu: {{task.requiredAttempts || 1}} lần{{vm.taskTopicIds(task).length > 1 ? ' mỗi topic' : (task.comprehensiveSections.length > 1 || task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt')}}</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
@@ -1521,6 +1532,7 @@
             <p class="class-task-help" data-ng-repeat="topic in vm.taskSelectedTopics(task) track by topic.id">{{topic.categoryName || 'Không phân loại'}} → {{topic.name}}</p>
             <p class="class-task-help" data-ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
             <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span data-ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.taskIeltsPartsLabel(task)}}</span></p>
+            <p class="class-task-help" data-ng-if="task.activityType === 'COMPREHENSIVE'"><i class="fa fa-clock-o"></i> {{vm.taskComprehensiveTimingLabel(task)}}</p>
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-xs" data-ng-click="vm.openScheduleTask(taskSection, task)"
@@ -1564,7 +1576,7 @@
                 <div class="form-group" data-ng-if="vm.taskHasTopics(vm.taskEditor) || vm.isIeltsTask(vm.taskEditor)">
                     <label>Số lần học sinh phải hoàn thành</label>
                     <input type="number" min="1" max="100" step="1" required class="form-control" data-ng-model="vm.taskEditor.requiredAttempts" />
-                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.' : (vm.isIeltsTask(vm.taskEditor) ? 'Mỗi phần đã chọn cần được nộp đủ số lần này để hoàn thành task.' : (vm.taskEditor.topicIds.length > 1 ? 'Mỗi topic đã chọn cần hoàn thành đủ số lần này. Task chỉ hoàn thành khi xong tất cả topic.' : 'Mỗi lần đạt yêu cầu được tính là một lượt hoàn thành.'))}}</small>
+                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? (vm.taskEditor._comprehensiveSplit ? 'Mỗi phần cần đạt đủ số lượt này. Đủ tất cả phần mới hoàn thành task.' : 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.') : (vm.isIeltsTask(vm.taskEditor) ? 'Mỗi phần đã chọn cần được nộp đủ số lần này để hoàn thành task.' : (vm.taskEditor.topicIds.length > 1 ? 'Mỗi topic đã chọn cần hoàn thành đủ số lần này. Task chỉ hoàn thành khi xong tất cả topic.' : 'Mỗi lần đạt yêu cầu được tính là một lượt hoàn thành.'))}}</small>
                 </div>
             </div>
             <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'COMPREHENSIVE'">
@@ -1600,6 +1612,41 @@
                     <input type="hidden" name="comprehensiveExercise" data-ng-model="vm.taskEditor.ieltsTestId" required>
                     <small>Daily task chỉ hoàn thành khi học sinh nộp đúng bài đích này.</small>
                 </div>
+                <section class="class-task-comprehensive-settings" aria-label="Chia phần và thời gian làm bài Tổng hợp">
+                    <p class="class-task-help text-warning" data-ng-if="!vm.comprehensiveAssignmentsEnabled()">Cần cập nhật backend rồi tải lại kế hoạch trước khi dùng chia phần hoặc đổi thời gian.</p>
+                    <div class="class-task-editor-grid">
+                        <div class="form-group">
+                            <label>{{vm.taskEditor._comprehensiveSplit ? 'Thời gian mặc định mỗi phần' : 'Thời gian làm bài'}}</label>
+                            <select class="form-control" data-ng-model="vm.taskEditor._comprehensiveTimeMode" data-ng-change="vm.comprehensiveTimeChanged()">
+                                <option value="TIMED">Có giới hạn thời gian</option>
+                                <option value="UNTIMED">Không tính giờ</option>
+                            </select>
+                        </div>
+                        <div class="form-group" data-ng-if="vm.taskEditor._comprehensiveTimeMode === 'TIMED'">
+                            <label>Số phút</label>
+                            <input type="number" class="form-control" name="comprehensiveMinutes" min="1" max="1440" step="1" required data-ng-model="vm.taskEditor._comprehensiveTimedMinutes" data-ng-change="vm.comprehensiveTimeChanged()">
+                        </div>
+                    </div>
+                    <p class="class-task-help" data-ng-if="vm.taskEditor._comprehensiveTimeMode === 'UNTIMED'">Học sinh có thể làm lâu hơn và tiếp tục bản nháp; hạn giao bài của giáo viên vẫn được giữ.</p>
+                    <p class="class-task-help" data-ng-if="vm.taskEditor._comprehensiveSplit">Đổi thời gian mặc định sẽ áp dụng cho tất cả phần. Bạn có thể chỉnh riêng từng phần bên dưới.</p>
+                    <div class="form-group"><label><input type="checkbox" data-ng-model="vm.taskEditor._comprehensiveSplit" data-ng-change="vm.comprehensiveSplitChanged()"> Chia đề thành nhiều phần cho học sinh làm riêng</label></div>
+                    <div data-ng-if="vm.taskEditor._comprehensiveSplit">
+                        <div class="class-task-section-preview-heading">
+                            <div class="form-group"><label>Số câu mục tiêu mỗi phần</label><input type="number" name="comprehensiveQuestionLimit" class="form-control" min="2" max="1000" step="1" required data-ng-model="vm.taskEditor.comprehensiveQuestionLimit" data-ng-change="vm.comprehensivePlanChanged()"></div>
+                            <button type="button" class="btn btn-default" data-ng-click="vm.previewTaskComprehensiveSections()" data-ng-disabled="!vm.taskEditor.ieltsTestId || vm.taskComprehensivePlanLoading || taskForm.comprehensiveQuestionLimit.$invalid"><i class="fa" data-ng-class="vm.taskComprehensivePlanLoading ? 'fa-spinner fa-spin' : 'fa-th-list'"></i> {{vm.taskComprehensivePlanLoading ? 'Đang xem cách chia…' : 'Xem cách chia'}}</button>
+                        </div>
+                        <p class="class-task-help">Giữ trọn nhóm câu dùng chung đề/đáp án nên số câu thực tế có thể lệch. Mỗi phần cần đạt từ 85%; làm lại phần chưa đạt sẽ giữ các phần đã đạt.</p>
+                        <p class="text-danger" role="alert" data-ng-if="vm.taskComprehensivePlanError">{{vm.taskComprehensivePlanError}}</p>
+                        <p class="class-task-help" data-ng-if="!vm.taskComprehensivePlanLoading && !vm.taskEditor.comprehensiveSections.length">Chọn bài rồi bấm “Xem cách chia” để kiểm tra các phần trước khi giao.</p>
+                        <div class="class-task-section-list" data-ng-if="vm.taskEditor.comprehensiveSections.length">
+                            <div class="class-task-section-row" data-ng-repeat="part in vm.taskEditor.comprehensiveSections track by part.number">
+                                <div><strong>Phần {{part.number}} · {{part.questionCount || part.questionIds.length}} câu</strong><small>Câu {{part.firstOrdinal}}–{{part.lastOrdinal}}</small></div>
+                                <select class="form-control" aria-label="Cách tính giờ phần {{part.number}}" data-ng-model="part._comprehensiveTimeMode" data-ng-change="vm.comprehensiveSectionTimeChanged(part)"><option value="TIMED">Có tính giờ</option><option value="UNTIMED">Không tính giờ</option></select>
+                                <input type="number" class="form-control" aria-label="Số phút phần {{part.number}}" min="1" max="1440" step="1" required data-ng-if="part._comprehensiveTimeMode === 'TIMED'" data-ng-model="part._comprehensiveTimedMinutes" data-ng-change="vm.comprehensiveSectionTimeChanged(part)">
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 <div class="form-group">
                     <label data-ng-class="{'class-task-shuffle-disabled': vm.taskExerciseVideo || vm.taskExerciseVideoLoading}"><input type="checkbox" data-ng-model="vm.taskEditor.shuffleQuestions" data-ng-disabled="vm.taskExerciseVideo || vm.taskExerciseVideoLoading"> Đảo thứ tự câu hỏi và đáp án</label>
                     <small class="help-block" data-ng-if="vm.taskExerciseVideo">Bài có video giữ nguyên thứ tự câu hỏi, chỉ đảo đáp án.</small>
@@ -1693,7 +1740,7 @@
         <div class="modal-footer class-task-editor-footer">
             <span class="class-task-help" data-ng-if="vm.scheduleDaySaving" role="status"><i class="fa fa-spinner fa-spin"></i> Đang lưu task...</span>
             <button type="button" class="btn btn-default" data-ng-click="vm.cancelScheduleTask()" data-ng-disabled="vm.scheduleDaySaving || vm.taskExercisePickerOpen">Hủy sửa</button>
-            <button type="submit" class="btn btn-primary" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExercisePickerOpen || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+            <button type="submit" class="btn btn-primary" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExercisePickerOpen || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError || vm.validateComprehensiveTask(vm.taskEditor)">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
         </div>
     </form>
 </script>

@@ -95,6 +95,11 @@ public class RestEnrolmentClassController {
 	public StudentAssignedTaskDto getAssignedTask(@PathVariable Long taskId) {
 		return service.getAssignedTask(taskId);
 	}
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @RequestMapping(value="/schedule/comprehensive-sections/preview",method=RequestMethod.POST)
+    public List<com.globits.richy.dto.ComprehensiveAssignmentSectionDto> previewComprehensiveSections(@RequestBody com.globits.richy.dto.EnrolmentClassScheduleTaskDto request) {
+        return service.previewComprehensiveSections(request);
+    }
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}", method = RequestMethod.GET)

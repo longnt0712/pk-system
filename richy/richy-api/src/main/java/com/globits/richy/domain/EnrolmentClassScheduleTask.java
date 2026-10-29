@@ -8,6 +8,18 @@ import com.globits.core.domain.BaseObject;
 @Entity
 @Table(name = "tbl_enrolment_class_schedule_task")
 public class EnrolmentClassScheduleTask extends BaseObject {
+    @Column(name="comprehensive_question_limit")
+    private Integer comprehensiveQuestionLimit;
+    @Column(name="comprehensive_time_limit_minutes")
+    private Integer comprehensiveTimeLimitMinutes;
+    @Lob @Column(name="comprehensive_sections_json", columnDefinition="nvarchar(max)")
+    private String comprehensiveSectionsJson;
+    public Integer getComprehensiveQuestionLimit() { return comprehensiveQuestionLimit; }
+    public void setComprehensiveQuestionLimit(Integer value) { comprehensiveQuestionLimit = value; }
+    public Integer getComprehensiveTimeLimitMinutes() { return comprehensiveTimeLimitMinutes; }
+    public void setComprehensiveTimeLimitMinutes(Integer value) { comprehensiveTimeLimitMinutes = value; }
+    public String getComprehensiveSectionsJson() { return comprehensiveSectionsJson; }
+    public void setComprehensiveSectionsJson(String value) { comprehensiveSectionsJson = value; }
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "schedule_day_id", nullable = false)
     private EnrolmentClassScheduleDay scheduleDay;

@@ -22,6 +22,9 @@ import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
 public class TestResultDto implements Serializable{
+    private String assignmentSectionKey;
+    public String getAssignmentSectionKey() { return assignmentSectionKey; }
+    public void setAssignmentSectionKey(String value) { assignmentSectionKey = value; }
 	private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private String clientAttemptKey;
     public String getClientAttemptKey(){return clientAttemptKey;}
@@ -174,6 +177,7 @@ public class TestResultDto implements Serializable{
 	}
 	private void copyTopics(TestResult domain) {
         clientAttemptKey=domain.getClientAttemptKey();
+        assignmentSectionKey=domain.getAssignmentSectionKey();
         resultStatus=domain.getResultStatus();
         sourceQuestionId=domain.getSourceQuestionId();
         completedPart=domain.getCompletedPart();

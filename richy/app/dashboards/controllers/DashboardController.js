@@ -188,12 +188,23 @@
         };
 
         vm.assignmentKey = function (task) {
-            return String(task.taskId) + ':topic:' + (task.topicId || 'none');
+            return String(task.taskId) + ':topic:' + (task.topicId || 'none')
+                + (task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey ? ':section:' + task.assignmentSectionKey : '');
         };
 
         vm.assignmentTopicComplete = function (task) {
-            return !!task && task.activityType === 'DAILY_VOCAB' && Number(task.taskTotalTopics) > 1
+            return !!task && ((task.activityType === 'DAILY_VOCAB' && Number(task.taskTotalTopics) > 1)
+                || (task.activityType === 'COMPREHENSIVE' && !!task.assignmentSectionKey))
                 && Number(task.completedAttempts) >= Number(task.requiredAttempts) && Number(task.requiredAttempts) > 0;
+        };
+
+        vm.assignmentTaskProgressPercent = function (task) {
+            return Math.max(0, Math.min(100, Math.round(Number((task || {}).taskProgressPercent) || 0)));
+        };
+        vm.assignmentTimeLabel = function (task) {
+            var minutes = task && task.comprehensiveTimeLimitMinutes;
+            if (minutes == null) { return 'Theo thời gian của đề'; }
+            return Number(minutes) === 0 ? 'Không tính giờ' : Number(minutes) + ' phút';
         };
 
         vm.assignmentProgressPercent = function (task) {
@@ -238,7 +249,7 @@
 			if (task && task.activityType === 'IELTS_READING') { return 'Làm Reading Part ' + task.ieltsPart; }
 			if (task && task.activityType === 'IELTS_LISTENING') { return 'Làm Listening Part ' + task.ieltsPart; }
 			if (task && task.activityType === 'IELTS_WRITING') { return 'Làm Writing Task ' + task.ieltsPart; }
-			if (task && task.activityType === 'COMPREHENSIVE') { return 'Làm bài được giao'; }
+			if (task && task.activityType === 'COMPREHENSIVE') { return task.assignmentSectionKey ? 'Làm phần ' + task.sectionNumber : 'Làm bài được giao'; }
             return 'Xem bài được giao';
         };
 
@@ -247,6 +258,7 @@
 				|| task.activityType === 'IELTS_LISTENING' || task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE');
 		};
 		vm.assignmentPartsLabel = function (task) {
+			if (task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey) { return 'Phần ' + task.sectionNumber + '/' + task.sectionCount; }
 			var parts = angular.isArray(task.ieltsParts) ? task.ieltsParts : [task.ieltsPart];
 			return (task.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + parts.join(', ');
 		};
@@ -265,14 +277,16 @@
             } else if (task.activityType === 'DAILY_LISTENING') {
                 $state.go('application.view', params);
 			} else if (vm.isIeltsAssignment(task)) {
-				$state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
-					: (task.activityType === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), {
+				var ieltsParams = {
 					ieltsReadingTestId: task.ieltsTestId,
 					assignmentTaskId: task.taskId,
 					assignmentPart: task.ieltsPart,
 					assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','),
 					sessionMode: 'SERIOUS'
-				});
+				};
+				if (task.activityType === 'COMPREHENSIVE' && task.assignmentSectionKey) { ieltsParams.assignmentSectionKey = task.assignmentSectionKey; }
+				$state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
+					: (task.activityType === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), ieltsParams);
             } else {
                 $state.go('application.englishClass');
             }
@@ -283,21 +297,26 @@
         }
         function ieltsReminderInfo(key, draft) {
             var base = String(key || '').replace(/:attempt:[a-f0-9]{32}$/, '');
-            var taskMatch = /:task:(\d+)(?::parts:[\d-]+)?$/.exec(base);
+            var taskMatch = /:task:(\d+)(?=:|$)/.exec(base);
             var taskId = draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null);
             var parts = angular.isArray(draft.assignmentParts) && draft.assignmentParts.length ? draft.assignmentParts
                 : (draft.isPartAssignment !== false && draft.assignmentPart ? [draft.assignmentPart] : []);
             var mode = draft.testMode || (/comprehensive/i.test(base) ? 'COMPREHENSIVE'
                 : (/writing/i.test(base) ? 'WRITING' : (draft.isListening || /listening/i.test(base) ? 'LISTENING' : 'READING')));
             var type = mode === 'COMPREHENSIVE' ? 6 : (mode === 'WRITING' ? 7 : (mode === 'LISTENING' ? 2 : 4));
+            var sectionMatch = /:section:([A-Za-z0-9_-]{1,40})(?=:|$)/.exec(base);
+            var storedSection = typeof draft.assignmentSectionKey === 'string' ? draft.assignmentSectionKey : '';
+            var sectionKey = mode === 'COMPREHENSIVE' ? (sectionMatch ? sectionMatch[1] : (storedSection || null)) : null;
+            var coherentSection = !sectionMatch || !storedSection || sectionMatch[1] === storedSection;
             var state = draft.submissionState || {}, payload = state.payload || {}, result = state.result || {};
             var attempt = /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '') ? draft.clientAttemptKey
                 : (/^[a-f0-9]{32}$/.test(state.key || '') ? state.key : null);
-            var validState = !!attempt && state.key === attempt && payload.clientAttemptKey === attempt
+            var validState = coherentSection && !!attempt && state.key === attempt && payload.clientAttemptKey === attempt
                 && payload.user && String(payload.user.id) === String(draft.userId)
                 && (Number(payload.testType) === type || ((mode === 'READING' || mode === 'LISTENING')
                     && (Number(payload.testType) === 2 || Number(payload.testType) === 4))) && String(payload.sourceQuestionId) === String(draft.testId)
                 && String(payload.assignmentTaskId || '') === String(taskId || '')
+                && String(payload.assignmentSectionKey || '') === String(sectionKey || '')
                 && ieltsReminderParts(payload.completedParts) === ieltsReminderParts(parts);
             var confirmed = validState && state.status === 'SAVED' && isFinite(Number(result.id)) && Number(result.id) > 0
                 && (result.clientAttemptKey == null || result.clientAttemptKey === attempt)
@@ -305,12 +324,13 @@
                 && String(result.sourceQuestionId) === String(draft.testId)
                 && Object.prototype.hasOwnProperty.call(result, 'assignmentTaskId')
                 && String(result.assignmentTaskId || '') === String(taskId || '') && angular.isArray(result.completedParts)
+                && String(result.assignmentSectionKey || '') === String(sectionKey || '')
                 && ieltsReminderParts(result.completedParts) === ieltsReminderParts(parts);
             var sessionMode = taskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS');
-            return {baseKey: base, attemptKey: attempt, taskId: taskId, parts: parts, sessionMode: sessionMode,
+            return {baseKey: base, attemptKey: attempt, taskId: taskId, parts: parts, sectionKey: sectionKey, sessionMode: sessionMode,
                 confirmed: !!confirmed, pending: !!(validState && state.status === 'PENDING'),
                 context: 'IELTS:' + draft.userId + ':' + mode + ':' + draft.testId + ':' + sessionMode
-                    + ':task:' + (taskId || '') + ':parts:' + ieltsReminderParts(parts)};
+                    + ':task:' + (taskId || '') + ':parts:' + ieltsReminderParts(parts) + (sectionKey ? ':section:' + sectionKey : '')};
         }
         function sameIeltsReminderRun(first, second) {
             return first.ieltsContext && first.ieltsContext === second.ieltsContext
@@ -371,7 +391,7 @@
                 var storedPart = Number(draft.assignmentPart) || null;
                 var isPartAssignment = draft.isPartAssignment === true
                     || /:(?:part|writing-task):\d+$/.test(draftKey)
-                    || (!!storedPart && (!!draft.assignmentTaskId || /:task:\d+(?::parts:[\d-]+)?$/.test(draftKey)));
+                    || (!!storedPart && (!!draft.assignmentTaskId || /:task:\d+(?=:|$)/.test(draftKey)));
                 if (!isPartAssignment) { return null; }
                 return storedPart || Number(draft.passageNumber) || null;
             }
@@ -382,7 +402,6 @@
                 var info = ieltsReminderInfo(key, draft);
                 if (info.confirmed) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
-                var taskMatch = /:task:(\d+)(?::parts:[\d-]+)?$/.exec(key);
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
                     || key.indexOf(ieltsPrefix + ':comprehensive') === 0;
                 var writing = draft.testMode === 'WRITING' || key.indexOf(ieltsPrefix + ':writing') === 0;
@@ -398,6 +417,10 @@
                     savedAt: isFinite(savedAt) ? savedAt : 0,
                     remainingSeconds: Number(draft.remainingSeconds) || 0,
                     elapsedSeconds: Number(draft.elapsedSeconds) || 0,
+                    assignmentUntimed: draft.assignmentUntimed === true,
+                    assignmentSectionKey: info.sectionKey,
+                    sectionNumber: Number(draft.sectionNumber) || null,
+                    sectionCount: Number(draft.sectionCount) || null,
                     sessionMode: info.sessionMode,
                     progressLabel: info.pending ? 'Trạng thái' : 'Đã trả lời',
                     progressValue: info.pending ? 'Chưa nhận xác nhận lưu' : (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
@@ -560,20 +583,24 @@
             }
             if (!draft.testId) { return; }
             try {
-                $window.sessionStorage.setItem('ielts-draft-resume:v1:' + vm.myUser.id, JSON.stringify({
+                var marker = {
                     draftKey: draft.storageKey, clientAttemptKey: draft.ieltsAttemptKey || null, testId: draft.testId,
                     assignmentTaskId: draft.assignmentTaskId || null, assignmentParts: draft.assignmentParts || [],
                     sessionMode: draft.assignmentTaskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS')
-                }));
+                };
+                if (draft.assignmentSectionKey) { marker.assignmentSectionKey = draft.assignmentSectionKey; }
+                $window.sessionStorage.setItem('ielts-draft-resume:v1:' + vm.myUser.id, JSON.stringify(marker));
             } catch (ignoreIeltsResumeChoice) {}
-            $state.go(draft.kind === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
-                : (draft.kind === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (draft.kind === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), {
+            var resumeParams = {
                 ieltsReadingTestId: draft.testId,
                 assignmentTaskId: draft.assignmentTaskId,
                 assignmentPart: draft.assignmentPart,
                 assignmentParts: (draft.assignmentParts || []).join(','),
                 sessionMode: draft.sessionMode || (draft.assignmentTaskId ? 'SERIOUS' : 'STUDY')
-            });
+            };
+            if (draft.kind === 'COMPREHENSIVE' && draft.assignmentSectionKey) { resumeParams.assignmentSectionKey = draft.assignmentSectionKey; }
+            $state.go(draft.kind === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
+                : (draft.kind === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (draft.kind === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), resumeParams);
         };
 
         function matchingIeltsLocalKeys(draft) {

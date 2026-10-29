@@ -41,6 +41,7 @@ import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.domain.EnrolmentClassTaskProgress;
 import com.globits.richy.domain.PersonDate;
 import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
+import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
 import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
 import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -691,6 +692,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	}
 
 	@Override
+    public List<ComprehensiveAssignmentSectionDto> previewComprehensiveSections(EnrolmentClassScheduleTaskDto request) {
+        Question source=request==null||request.getIeltsTestId()==null?null:questionRepository.findOne(request.getIeltsTestId());
+        if(source==null||!"COMPREHENSIVE".equals(source.getTestFormat())||source.getStatus()!=7)
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,"Hãy chọn một đề Tổng hợp đã xuất bản.");
+        try {
+            ComprehensiveAssignmentSections.validateDuration(request.getComprehensiveTimeLimitMinutes());
+            return request.getComprehensiveQuestionLimit()==null?new ArrayList<ComprehensiveAssignmentSectionDto>()
+                :ComprehensiveAssignmentSections.plan(source,request.getComprehensiveQuestionLimit(),request.getComprehensiveTimeLimitMinutes());
+        } catch(IllegalArgumentException error) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,error.getMessage()); }
+    }
+	@Override
 	public List<StudentAssignedTaskDto> getMyAssignedTasks() {
 		User student = getCurrentUser();
 		if (student == null || student.getId() == null) { return new ArrayList<StudentAssignedTaskDto>(); }
@@ -732,6 +744,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                     if ("DAILY_VOCAB".equals(task.getActivityType()) && task.getTopicIds().size() > 1) {
                         appendVocabularyTopicAssignments(result, task, student.getId(), classId, selectedClass.getName(),
                                 day.getScheduleDate(), start, completionEnd);
+                        continue;
+                    }
+                    if ("COMPREHENSIVE".equals(task.getActivityType()) && task.getComprehensiveSections()!=null && !task.getComprehensiveSections().isEmpty()) {
+                        appendComprehensiveSectionAssignments(result,task,student.getId(),classId,selectedClass.getName(),day.getScheduleDate(),start,completionEnd);
                         continue;
                     }
 					int required = task.getRequiredAttempts();
@@ -777,6 +793,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setTaskId(task.getId()); item.setClassId(classId); item.setClassName(selectedClass.getName());
 					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
 					item.setShuffleQuestions(task.getShuffleQuestions());
+                    item.setComprehensiveTimeLimitMinutes(task.getComprehensiveTimeLimitMinutes());
                     item.setTopicIds(task.getTopicIds()); item.setTopics(task.getTopics());
 					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
@@ -854,6 +871,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		StudentAssignedTaskDto dto = new StudentAssignedTaskDto();
 		dto.setTaskId(task.getId()); dto.setClassId(selectedClass.getId());
 		dto.setActivityType(task.getActivityType()); dto.setShuffleQuestions(task.getShuffleQuestions());
+        dto.setTitle(task.getTitle());dto.setNotes(task.getNotes());dto.setComprehensiveTimeLimitMinutes(task.getComprehensiveTimeLimitMinutes());dto.setComprehensiveSections(ComprehensiveAssignmentSections.read(task));
         List<Long> selectedTopicIds = new ArrayList<Long>();
         List<com.globits.richy.dto.AssignmentTopicDto> selectedTopics = new ArrayList<com.globits.richy.dto.AssignmentTopicDto>();
         for (Topic topic : task.getTopics()) {
@@ -874,6 +892,40 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         populateAssignedTaskAvailability(dto, task, LocalDateTime.now());
 		return dto;
 	}
+
+    private void appendComprehensiveSectionAssignments(List<StudentAssignedTaskDto> out,EnrolmentClassScheduleTaskDto task,
+            Long studentId,Long classId,String className,String assignedDate,LocalDateTime start,LocalDateTime end) {
+        List<ComprehensiveAssignmentSectionDto> sections=task.getComprehensiveSections();int required=task.getRequiredAttempts(),completed=0;
+        for(EnrolmentClassTaskProgressDto progress:task.getStudentProgress())if(studentId.equals(progress.getStudentUserId())&&!progress.isAutomatic()&&"DONE".equals(progress.getStatus()))return;
+        Map<String,Integer> counts=new LinkedHashMap<String,Integer>();
+        for(ComprehensiveAssignmentSectionDto section:sections){int count=(int)Math.min(required,testResultRepository.countComprehensiveSectionAssignmentAttempts(studentId,task.getId(),task.getIeltsTestId(),section.getKey(),start,end));counts.put(section.getKey(),count);completed+=count;}
+        if(completed>=required*sections.size())return;
+        int percent=(int)Math.round(completed*100D/(required*sections.size()));
+        for(ComprehensiveAssignmentSectionDto section:sections){StudentAssignedTaskDto item=new StudentAssignedTaskDto();
+            item.setTaskId(task.getId());item.setClassId(classId);item.setClassName(className);item.setTitle(task.getTitle());item.setNotes(task.getNotes());item.setActivityType("COMPREHENSIVE");item.setShuffleQuestions(task.getShuffleQuestions());
+            item.setIeltsTestId(task.getIeltsTestId());item.setIeltsTestTitle(task.getIeltsTestTitle());item.setIeltsPart(1);item.setIeltsParts(Collections.singletonList(1));item.setRemainingIeltsParts(Collections.singletonList(1));
+            item.setAssignmentSectionKey(section.getKey());item.setSectionNumber(section.getNumber());item.setSectionCount(sections.size());item.setSectionQuestionCount(section.getQuestionCount());item.setSectionFirstOrdinal(section.getFirstOrdinal());item.setSectionLastOrdinal(section.getLastOrdinal());item.setComprehensiveTimeLimitMinutes(section.getDurationMinutes());
+            item.setAssignedDate(assignedDate);item.setDueDate(task.getResolvedDueDate());item.setDueTime(task.getResolvedDueTime());item.setRequiredAttempts(required);item.setCompletedAttempts(counts.get(section.getKey()));item.setRemainingAttempts(required-counts.get(section.getKey()));item.setTaskProgressPercent(percent);out.add(item);
+        }
+    }
+
+    private void prepareComprehensiveConfiguration(EnrolmentClassScheduleTask task,EnrolmentClassScheduleTask old,EnrolmentClassScheduleTaskDto input,Question source) {
+        try {
+            boolean sameSource=old!=null&&"COMPREHENSIVE".equals(old.getActivityType())&&old.getIeltsTest()!=null&&old.getIeltsTest().getId().equals(source.getId());
+            if(!input.hasComprehensiveConfiguration()&&sameSource){task.setComprehensiveQuestionLimit(old.getComprehensiveQuestionLimit());task.setComprehensiveTimeLimitMinutes(old.getComprehensiveTimeLimitMinutes());task.setComprehensiveSectionsJson(old.getComprehensiveSectionsJson());return;}
+            Integer limit=input.getComprehensiveQuestionLimit(),minutes=input.getComprehensiveTimeLimitMinutes();ComprehensiveAssignmentSections.validateDuration(minutes);
+            List<ComprehensiveAssignmentSectionDto> previous=sameSource?ComprehensiveAssignmentSections.read(old):new ArrayList<ComprehensiveAssignmentSectionDto>();
+            boolean sameSplit=sameSource&&java.util.Objects.equals(limit,old.getComprehensiveQuestionLimit());
+            if(!sameSplit&&old!=null&&testResultRepository.countByAssignmentTaskId(old.getId())>0)throw new IllegalArgumentException("Task đã có kết quả. Hãy tạo task mới nếu muốn đổi đề hoặc cách chia phần để giữ đúng tiến độ cũ.");
+            List<ComprehensiveAssignmentSectionDto> plan=limit==null?new ArrayList<ComprehensiveAssignmentSectionDto>():sameSplit&&!previous.isEmpty()?previous:ComprehensiveAssignmentSections.plan(source,limit,minutes);
+            List<ComprehensiveAssignmentSectionDto> requested=input.getComprehensiveSections();
+            if(requested!=null&&!requested.isEmpty()){
+                if(plan.size()!=requested.size())throw new IllegalArgumentException("Cách chia đề đã thay đổi. Hãy xem lại cách chia trước khi lưu.");
+                for(int index=0;index<plan.size();index++){ComprehensiveAssignmentSectionDto actual=plan.get(index),choice=requested.get(index);if(choice==null||choice.getNumber()!=actual.getNumber()||(!choice.getQuestionIds().isEmpty()&&!choice.getQuestionIds().equals(actual.getQuestionIds())))throw new IllegalArgumentException("Câu hỏi trong phần chia đã thay đổi. Hãy xem lại cách chia trước khi lưu.");ComprehensiveAssignmentSections.validateDuration(choice.getDurationMinutes());actual.setDurationMinutes(choice.getDurationMinutes());}
+            } else for(ComprehensiveAssignmentSectionDto section:plan)section.setDurationMinutes(minutes);
+            task.setComprehensiveQuestionLimit(limit);task.setComprehensiveTimeLimitMinutes(minutes);ComprehensiveAssignmentSections.write(task,plan);
+        }catch(IllegalArgumentException error){throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,error.getMessage());}
+    }
 
     /** Availability gates a fresh attempt only; metadata and old save receipts remain readable. */
     private void populateAssignedTaskAvailability(StudentAssignedTaskDto dto, EnrolmentClassScheduleTask task, LocalDateTime now) {
@@ -1271,6 +1323,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				task.setShuffleQuestions(prepared.getShuffleQuestions());
 				task.setIeltsTest(prepared.getIeltsTest()); task.setIeltsPart(prepared.getIeltsPart());
 				task.setIeltsParts(prepared.getIeltsParts());
+                task.setComprehensiveQuestionLimit(prepared.getComprehensiveQuestionLimit());task.setComprehensiveTimeLimitMinutes(prepared.getComprehensiveTimeLimitMinutes());task.setComprehensiveSectionsJson(prepared.getComprehensiveSectionsJson());
 				task.setSourceQuestion(prepared.getSourceQuestion());
 				if (task != prepared) {
 					task.getStudentProgress().clear(); task.getStudentProgress().addAll(prepared.getStudentProgress());
@@ -1587,6 +1640,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					}
 				}
 				task.setIeltsTest(test); task.setIeltsPart(selectedParts.get(0)); task.setIeltsParts(selectedParts); task.setSourceQuestion(null);
+                if(comprehensiveActivity)prepareComprehensiveConfiguration(task,oldTask,value,test);
 				task.setTopic(null);
 				task.setAutoCompleteFromTopic(false);
             } else {

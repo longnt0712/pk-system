@@ -97,6 +97,11 @@
             return utils.resolve(settings.api.baseUrl + settings.api.apiV1Url + 'question/get_one/' + encodeURIComponent(id),
                 'GET', angular.noop, angular.noop);
         };
+        self.previewComprehensiveSections = function (payload) {
+            return utils.resolveAlt(baseUrl + '/schedule/comprehensive-sections/preview', 'POST', null, payload, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
         self.getAssignableDailyListeningTests = function () {
             return utils.resolve(baseUrl + '/schedule/daily-listening-tests', 'GET', angular.noop, angular.noop);
         };
