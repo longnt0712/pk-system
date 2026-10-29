@@ -795,5 +795,7 @@ test('both new Goku forms retain the uploaded illustrations and use a new separa
         assert.ok(svg.includes(fs.readFileSync(path.join(assets, 'goku-kid', original)).toString('base64')),
             'the source illustration is embedded unchanged at level ' + level);
     }
-    assert.ok(fs.readFileSync(path.join(assets, 'goku-kid/energy-aura-generated.png')).length > 1000);
+    for (const level of [23, 24]) {
+        assert.ok(fs.readFileSync(path.join(assets, 'goku-kid/energy-outline-level-' + level + '.png')).length > 1000);
+    }
 });

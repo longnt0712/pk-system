@@ -65,7 +65,7 @@
     animation: learning-pet-pikachu-lightning 7.2s ease-in-out infinite;
 }
 
-/* Keep Goku still while the original golden aura swells and shimmers. */
+/* Keep Goku still while the energy follows his silhouette and shimmers. */
 .learning-pet-super-saiyan {
     position: relative;
     display: block;
@@ -110,10 +110,10 @@ img[src*="goku-kid/pet-level-23.png"] {
 }
 
 @keyframes pet-super-saiyan-aura {
-    0%, 100% { opacity: .28; transform: scale(1, 1); filter: brightness(1.05); }
-    34% { opacity: .7; transform: scale(1.025, 1.035); filter: brightness(1.2) drop-shadow(0 0 3px #ffe65daa); }
-    57% { opacity: .42; transform: scale(.99, 1.015); filter: brightness(1.08); }
-    79% { opacity: .64; transform: scale(1.015, 1.03); filter: brightness(1.16); }
+    0%, 100% { opacity: .28; filter: brightness(1.05); }
+    34% { opacity: .7; filter: brightness(1.2) drop-shadow(0 0 3px #ffe65daa); }
+    57% { opacity: .42; filter: brightness(1.08); }
+    79% { opacity: .64; filter: brightness(1.16); }
 }
 
 .learning-pet-shell.is-dragging .learning-pet-super-saiyan img {
