@@ -26,15 +26,21 @@ public class RestSpeakingStudentAnswerController {
     @RequestMapping(method=RequestMethod.PUT)
     public ResponseEntity<Map<String,Object>> save(@RequestBody WriteRequest request){return response(service.save(request),HttpStatus.OK);}
     @RequestMapping(value="/template",method=RequestMethod.GET)
+    @Secured("ROLE_ADMIN")
     public ResponseEntity<byte[]> template(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId)throws IOException{
         byte[] bytes=service.template(setId,studentId);HttpHeaders headers=new HttpHeaders();headers.set("Cache-Control","private, no-store");headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));headers.set("Content-Disposition","attachment; filename=\"speaking-student-answers.xlsx\"");return new ResponseEntity<byte[]>(bytes,headers,HttpStatus.OK);
     }
     @RequestMapping(value="/preview",method=RequestMethod.POST)
+    @Secured("ROLE_ADMIN")
     public ResponseEntity<Map<String,Object>> preview(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("file")MultipartFile file)throws IOException{
         if(file==null||file.isEmpty()||file.getSize()>8L*1024*1024)throw new IllegalArgumentException("Chọn file .xlsx nhỏ hơn 8 MB.");return response(service.preview(setId,studentId,file.getBytes()),HttpStatus.OK);
     }
     @RequestMapping(value="/confirm",method=RequestMethod.POST)
+    @Secured("ROLE_ADMIN")
     public ResponseEntity<Map<String,Object>> confirm(@RequestBody ImportRequest request){return response(service.confirm(request),HttpStatus.OK);}
+    @RequestMapping(value="/students",method=RequestMethod.GET)
+    @Secured("ROLE_ADMIN")
+    public ResponseEntity<Map<String,Object>> students(@RequestParam("setId")Long setId,@RequestParam("classId")Long classId,@RequestParam(value="query",defaultValue="")String query,@RequestParam(value="page",defaultValue="0")int page,@RequestParam(value="pageSize",defaultValue="25")int pageSize){return response(service.adminStudents(setId,classId,query,page,pageSize),HttpStatus.OK);}
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String,Object>> invalid(IllegalArgumentException error){return response(SpeakingServiceImpl.map("message",error.getMessage()),HttpStatus.BAD_REQUEST);}
     @ExceptionHandler(AccessDeniedException.class)

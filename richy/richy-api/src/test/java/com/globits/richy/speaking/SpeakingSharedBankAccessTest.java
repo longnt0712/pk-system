@@ -99,4 +99,13 @@ public class SpeakingSharedBankAccessTest {
         shared.setOwnerId(999L);assertFalse(service.canRead(shared,outside));
         as(teacher);denied(()->service.reviewableStudent(privateSet,student.getId()));privateSet.setStudentIdsJson("[4]");assertSame(student,service.reviewableStudent(privateSet,student.getId()));
     }
+    @Test public void importsAreAdminOnlyEvenForThePrivateTeacherBankOwner()throws Exception {
+        for(User actor:Arrays.asList(teacher,student,unassigned)) {
+            as(actor);denied(()->service.requireAdmin());
+            try{service.preview(privateSet.getId(),new byte[]{1});fail();}catch(AccessDeniedException expected){}
+            denied(()->service.confirm(privateSet.getId(),new ConfirmImport()));
+        }
+        as(admin);assertSame(admin,service.requireAdmin());
+        as(teacher);assertSame(student,service.reviewableStudent(shared,student.getId()));
+    }
 }

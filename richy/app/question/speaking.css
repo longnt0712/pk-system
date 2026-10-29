@@ -76,6 +76,19 @@
 @media(max-width:600px) { .speaking-page { padding:12px 5px 30px; } .speaking-page h1 { font-size:28px; } .speaking-page .sp-hero { align-items:flex-start; flex-direction:column; } .speaking-page .sp-panel,.speaking-page .sp-topic { padding:15px; } .speaking-page .sp-form-grid,.speaking-page .sp-check-grid { grid-template-columns:1fr; } .speaking-page .sp-cue { padding:20px; } .speaking-page .sp-modal-body { padding:16px; } .speaking-page .sp-modal>header,.speaking-page .sp-modal>footer { padding:14px; } }
 .speaking-page .sp-answer-context { margin:18px 0; padding:14px 16px; background:#f5f7ff; border:1px solid #e1e6f6; border-radius:12px; }
 .speaking-page .sp-answer-context small { display:block; margin-top:4px; color:var(--sp-muted); }
+.speaking-page .sp-admin-students { background:linear-gradient(125deg,#fff,#faf8ff); }
+.speaking-page .sp-admin-students h2 { margin-bottom:4px; }
+.speaking-page .sp-admin-students .sp-toolbar p { margin:4px 0 0; }
+.speaking-page .sp-admin-filters { align-items:flex-end; }
+.speaking-page .sp-admin-table-scroll { width:100%; overflow-x:auto; border:1px solid var(--sp-line); border-radius:12px; }
+.speaking-page .sp-admin-table { width:100%; border-collapse:collapse; min-width:560px; font-size:13px; }
+.speaking-page .sp-admin-table th { padding:12px 14px; background:#f1edf9; text-align:left; color:#69548a; font-size:11px; letter-spacing:.4px; }
+.speaking-page .sp-admin-table td { border-top:1px solid #ebe7f3; padding:12px 14px; vertical-align:middle; }
+.speaking-page .sp-admin-table tr.is-viewed td { background:#f0eafa; }
+.speaking-page .sp-admin-table td small { display:block; color:#9b6b38; font-size:11px; margin-top:5px; }
+.speaking-page .sp-admin-table th:last-child { width:210px; }
+.speaking-page .sp-admin-row-actions { display:flex; gap:7px; flex-wrap:nowrap; }
+.speaking-page .sp-admin-row-actions .sp-button { font-size:12px; padding:8px 12px; }
 .speaking-page .sp-answer-toggle { margin-top:8px; border-color:#d8cff2; background:#faf8ff; color:#7151bd; }
 .speaking-page .sp-answer-toggle.is-active { background:#ede7fb; border-color:#a28ad9; }
 .speaking-page speaking-student-answer-editor { display:block; }

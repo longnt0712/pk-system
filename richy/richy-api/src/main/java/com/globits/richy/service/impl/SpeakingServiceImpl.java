@@ -47,6 +47,11 @@ public class SpeakingServiceImpl {
         if (user == null || user.getId() == null) throw new AccessDeniedException("Tài khoản không còn tồn tại."); return user;
     }
     private boolean role(User user, String name) { return user != null && user.getRoles() != null && user.getRoles().stream().anyMatch(r -> r != null && name.equals(r.getName())); }
+    public User requireAdmin() {
+        User actor=currentUser();
+        if (!role(actor,"ROLE_ADMIN")) throw new AccessDeniedException("Chỉ admin được import Speaking và quản lý danh sách nhập bài học sinh.");
+        return actor;
+    }
     public boolean teacher(User user) {
         return role(user,"ROLE_ADMIN") || role(user,"ROLE_USER") || role(user,"ROLE_EDUCATION_MANAGERMENT")
             || classes.findAll().stream().anyMatch(c -> c.getTeachers().stream().anyMatch(t -> user.getId().equals(t.getId())));
@@ -166,6 +171,37 @@ public class SpeakingServiceImpl {
         }
         return result;
     }
+    public Map<String,Object> adminStudents(Long setId,Long classId,String query,int page,int pageSize) {
+        User actor=requireAdmin(); SpeakingSet set=readableSet(setId);
+        if(!canReviewStudents(set,actor))throw new AccessDeniedException("Bạn chưa được theo dõi học sinh trong bộ Speaking này.");
+        if(classId==null||classId<=0||classes.findOne(classId)==null)throw new IllegalArgumentException("Chọn lớp học hợp lệ trước khi mở danh sách học sinh.");
+        if(page<0||page>1000000||pageSize<1||pageSize>100)throw new IllegalArgumentException("Trang hoặc số học sinh mỗi trang không hợp lệ.");
+        Set<Long> family=new LinkedHashSet<Long>();family.add(classId);
+        for(EnrolmentClass candidate:classes.findAll()) {
+            EnrolmentClass current=candidate;Set<Long> seen=new HashSet<Long>();
+            while(current!=null&&seen.add(current.getId())) {
+                if(classId.equals(current.getId())){family.add(candidate.getId());break;}current=current.getParent();
+            }
+        }
+        // An explicit left join retains collection-only memberships even when
+        // the legacy Person association is absent. De-duplicate before paging.
+        List<User> members=em.createQuery("select distinct u from User u left join u.person p left join u.enrollmentClassIds ec where (cast(p.enrollmentClassId as long) in :classes or ec in :classes) and u.active=true",User.class)
+            .setParameter("classes",new ArrayList<Long>(family)).getResultList();
+        String term=SpeakingImportSupport.normalized(query);Map<Long,User> unique=new LinkedHashMap<Long,User>();
+        for(User member:members)if(term.isEmpty()||SpeakingImportSupport.normalized(displayName(member)+" "+member.getUsername()).contains(term))unique.put(member.getId(),member);
+        List<User> filtered=new ArrayList<User>(unique.values());filtered.sort(Comparator.comparing((User member)->SpeakingImportSupport.normalized(displayName(member))).thenComparing(User::getId));
+        int total=filtered.size();int from=(int)Math.min((long)page*pageSize,total),to=Math.min(from+pageSize,total);List<User> selected=filtered.subList(from,to);
+        List<Long> ids=new ArrayList<Long>();for(User member:selected)ids.add(member.getId());
+        Map<Long,Long> counts=new HashMap<Long,Long>(),firstQuestions=new HashMap<Long,Long>();Map<Long,Integer> parts=new HashMap<Long,Integer>();
+        if(!ids.isEmpty()) {
+            List<Object[]> summary=em.createQuery("select a.studentId,count(a.id),min(a.questionId) from SpeakingStudentAnswer a where a.studentId in :students and a.questionId in (select e.questionId from SpeakingSetEntry e where e.setId=:set) group by a.studentId",Object[].class)
+                .setParameter("students",ids).setParameter("set",setId).getResultList();
+            for(Object[] row:summary){Long student=((Number)row[0]).longValue();counts.put(student,((Number)row[1]).longValue());firstQuestions.put(student,((Number)row[2]).longValue());}
+            if(!firstQuestions.isEmpty())for(Object[] row:em.createQuery("select q.id,q.part from SpeakingQuestion q where q.id in :ids",Object[].class).setParameter("ids",new HashSet<Long>(firstQuestions.values())).getResultList())parts.put(((Number)row[0]).longValue(),((Number)row[1]).intValue());
+        }
+        List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();for(User member:selected){Long first=firstQuestions.get(member.getId());rows.add(map("id",member.getId(),"name",displayName(member),"username",member.getUsername(),"canAccess",canRead(set,member),"answerCount",counts.containsKey(member.getId())?counts.get(member.getId()):0L,"firstAnswerQuestionId",first,"firstAnswerPart",first==null?null:parts.get(first)));}
+        return map("setId",setId,"classId",classId,"page",page,"pageSize",pageSize,"total",total,"students",rows);
+    }
     public Map<String,Object> share(Long setId, SetRequest request) {
         SpeakingSet set=ownedSet(setId,true); User user=currentUser();
         List<Long> classIds=uniqueIds(request==null?null:request.classIds,200), studentIds=uniqueIds(request==null?null:request.studentIds,1000);
@@ -190,7 +226,7 @@ public class SpeakingServiceImpl {
         SpeakingSet set=readableSet(setId);User actor=currentUser(),student=reviewableStudent(set,studentId);boolean owner=set.getOwnerId().equals(actor.getId());
         Map<Long,SpeakingQuestion> questions=questionMap(set.getOwnerId());Map<Long,Boolean> passed=passes(student.getId());List<Map<String,Object>> list=new ArrayList<Map<String,Object>>();
         for(SpeakingSetEntry entry:entries(setId)){SpeakingQuestion q=questions.get(entry.getQuestionId());if(q!=null)list.add(questionDto(entry,q,passed));}
-        return map("set",setDto(set,actor),"studentId",student.getId(),"questions",list,"importPreview",owner?previewDto(set):null);
+        return map("set",setDto(set,actor),"studentId",student.getId(),"questions",list,"importPreview",owner&&role(actor,"ROLE_ADMIN")?previewDto(set):null);
     }
     public Map<String,Object> markPass(Long setId,PassRequest request) {
         SpeakingSet set=readableSet(setId);User actor=currentUser();
@@ -218,6 +254,7 @@ public class SpeakingServiceImpl {
         if(found.size()!=1)throw new IllegalArgumentException("Part 3 "+row.rowId+": chưa tìm được duy nhất một Part 2 liên kết. Hãy nhập Part 2 trước hoặc sửa tên/mã liên kết.");return found.iterator().next();
     }
     public Map<String,Object> preview(Long setId,byte[] file) throws IOException {
+        requireAdmin();
         SpeakingSet set=ownedSet(setId,true);List<ImportRow> rows=SpeakingImportSupport.read(file,set.getSeasonYear(),set.getSetNumber());
         set.setImportRowsJson(encode(rows));set.setImportToken(UUID.randomUUID().toString());em.flush();return previewDto(set);
     }
@@ -241,6 +278,7 @@ public class SpeakingServiceImpl {
         return map("token",set.getImportToken(),"rows",result);
     }
     public Map<String,Object> confirm(Long setId,ConfirmImport request) {
+        requireAdmin();
         SpeakingSet set=ownedSet(setId,true);
         if(request==null||set.getImportToken()==null||!set.getImportToken().equals(request.token)||request.choices==null||request.choices.size()>10000)throw new IllegalArgumentException("File đối chiếu đã thay đổi. Hãy mở lại phần import.");
         Map<String,String> actions=new HashMap<String,String>();for(ImportChoice c:request.choices){if(c==null||c.rowId==null||actions.put(c.rowId,c.action)!=null)throw new IllegalArgumentException("Lựa chọn import bị trùng.");}

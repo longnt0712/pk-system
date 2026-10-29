@@ -31,6 +31,7 @@ public class SpeakingStudentAnswerService {
     private static final Set<String> BLOCKED=new HashSet<String>(Arrays.asList("script","style","iframe","object","svg","math"));
     private static final Set<String> CLASSES=new HashSet<String>(Arrays.asList("ielts-annotation","has-note","is-highlighted"));
     public static class Conflict extends RuntimeException { public Conflict(){super("Câu trả lời đã được cập nhật ở nơi khác. Bản đang sửa vẫn được giữ; tải bản mới để đối chiếu trước khi lưu lại.");} }
+    public Map<String,Object> adminStudents(Long setId,Long classId,String query,int page,int pageSize){return speaking.adminStudents(setId,classId,query,page,pageSize);}
     private static class Context {
         Long setId; User student; Map<Long,Map<String,Object>> questions=new LinkedHashMap<Long,Map<String,Object>>();
     }
@@ -111,6 +112,7 @@ public class SpeakingStudentAnswerService {
     }
     private static void row(Sheet sheet,int index,Object...values){Row row=sheet.createRow(index);for(int col=0;col<values.length;col++)row.createCell(col).setCellValue(values[col]==null?"":String.valueOf(values[col]));}
     public byte[] template(Long setId,Long studentId)throws IOException{
+        speaking.requireAdmin();
         Context c=context(setId,studentId);try(XSSFWorkbook book=new XSSFWorkbook();ByteArrayOutputStream out=new ByteArrayOutputStream()){
             Sheet guide=book.createSheet("HUONG_DAN");row(guide,0,"CÂU TRẢ LỜI SPEAKING RIÊNG CỦA HỌC SINH");row(guide,1,"1. File này thuộc đúng bộ và tài khoản ở THONG_TIN; không sửa mã bộ, mã học sinh hoặc mã câu.");row(guide,2,"2. Chỉ copy câu trả lời vào cột F của CAU_TRA_LOI. Có thể dùng đậm, nghiêng, gạch chân và xuống dòng.");row(guide,3,"3. Mỗi lần nhập tối đa 1.000 câu trả lời; ô trống được bỏ qua, không dùng để xóa bài đã lưu. Không nhập công thức.");row(guide,4,"4. Xem đối chiếu và chọn từng câu muốn nhập. Ghi chú cũ của câu được thay thế sẽ được gỡ; sample chung không đổi.");row(guide,5,"5. Sau import, học sinh và giáo viên có thể chỉnh sửa và gắn ghi chú trực tiếp trên website.");guide.setColumnWidth(0,120*256);
             Sheet info=book.createSheet("THONG_TIN");row(info,0,"SPEAKING_STUDENT_ANSWERS_V1");row(info,1,"Mã bộ đề",setId);row(info,2,"Mã học sinh",c.student.getId());row(info,3,"Tài khoản",c.student.getUsername());
@@ -133,6 +135,7 @@ public class SpeakingStudentAnswerService {
     private static void formatted(StringBuilder out,String text,Font font){boolean bold=font!=null&&font.getBold(),italic=font!=null&&font.getItalic(),under=font!=null&&font.getUnderline()!=Font.U_NONE;if(bold)out.append("<strong>");if(italic)out.append("<em>");if(under)out.append("<u>");out.append(escape(text).replace("\r\n","\n").replace("\r","\n").replace("\n","<br>"));if(under)out.append("</u>");if(italic)out.append("</em>");if(bold)out.append("</strong>");}
     private static Long positiveId(String value){try{long id=Long.parseLong(value);if(id>0)return id;}catch(NumberFormatException ignored){}throw new IllegalArgumentException("Thiếu hoặc sai ID câu hỏi.");}
     public Map<String,Object> preview(Long setId,Long studentId,byte[] bytes)throws IOException{
+        speaking.requireAdmin();
         Context c=context(setId,studentId);if(bytes==null||bytes.length==0||bytes.length>8L*1024*1024)throw new IllegalArgumentException("Chọn file .xlsx nhỏ hơn 8 MB.");
         List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();Map<Long,Map<String,Object>> previous=new HashMap<Long,Map<String,Object>>();Map<Long,SpeakingStudentAnswer> saved=new HashMap<Long,SpeakingStudentAnswer>();for(SpeakingStudentAnswer a:savedForSet(c))saved.put(a.getQuestionId(),a);
         try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(bytes))){
@@ -150,6 +153,7 @@ public class SpeakingStudentAnswerService {
         return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"rows",rows);
     }
     public Map<String,Object> confirm(ImportRequest request){
+        speaking.requireAdmin();
         if(request==null||request.rows==null||request.rows.isEmpty()||request.rows.size()>MAX_ROWS)throw new IllegalArgumentException("Chọn từ 1 đến 1.000 câu muốn nhập.");Context c=context(request.setId,request.studentId);Set<Long> seen=new HashSet<Long>();List<CleanHtml> contents=new ArrayList<CleanHtml>();List<List<Note>> noteLists=new ArrayList<List<Note>>();
         for(WriteRequest row:request.rows){if(row==null)throw new IllegalArgumentException("Dòng import không hợp lệ.");requireQuestion(c,row.questionId);if(!seen.add(row.questionId))throw new IllegalArgumentException("Không nhập trùng câu hỏi.");if(row.setId!=null&&!row.setId.equals(request.setId)||row.studentId!=null&&!row.studentId.equals(c.student.getId()))throw new IllegalArgumentException("Dòng import thuộc học sinh hoặc bộ đề khác.");CleanHtml html=clean(row.html);contents.add(html);noteLists.add(validateNotes(row.notes,html.markers));}
         lockStudent(c);List<SpeakingStudentAnswer> old=new ArrayList<SpeakingStudentAnswer>();

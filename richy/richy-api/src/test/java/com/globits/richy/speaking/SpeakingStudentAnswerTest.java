@@ -44,6 +44,7 @@ public class SpeakingStudentAnswerTest {
         em=factory.createEntityManager();em.getTransaction().begin();student=user("student");teacher=user("teacher");other=user("other");actor=student;
         set=new SpeakingSet();set.setOwnerId(teacher.getId());set.setSeasonYear(2026);set.setSetNumber(1);set.setName("Common bank");set.setClassIdsJson("[]");set.setStudentIdsJson("[]");em.persist(set);first=question("HOME_1");second=question("HOME_2");em.flush();
         speaking=mock(SpeakingServiceImpl.class);when(speaking.readableSet(anyLong())).thenAnswer(call->{if(!set.getId().equals(call.getArguments()[0]))throw new AccessDeniedException("Wrong set");return set;});when(speaking.currentUser()).thenAnswer(call->actor);
+        when(speaking.requireAdmin()).thenAnswer(call->{if(actor.getId().equals(teacher.getId()))return actor;throw new AccessDeniedException("Admin only");});
         when(speaking.reviewableStudent(eq(set),any())).thenAnswer(call->{Long id=(Long)call.getArguments()[1];if(id==null||id.equals(actor.getId()))return actor;if(actor.getId().equals(teacher.getId())&&id.equals(student.getId()))return student;throw new AccessDeniedException("Not your student");});
         answers=new SpeakingStudentAnswerService();ReflectionTestUtils.setField(answers,"em",em);ReflectionTestUtils.setField(answers,"speaking",speaking);
     }
@@ -76,21 +77,25 @@ public class SpeakingStudentAnswerTest {
         assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());
     }
     @Test public void templateMetadataPreventsWrongStudentOrSetAndBlankCellsNeverClearExistingAnswers()throws Exception{
+        actor=teacher;
         answers.save(request(first.getId(),"Keep this",0));byte[] template=answers.template(set.getId(),student.getId());assertTrue(previewRows(answers.preview(set.getId(),student.getId(),template)).isEmpty());
         try(XSSFWorkbook b=new XSSFWorkbook(new ByteArrayInputStream(template));ByteArrayOutputStream out=new ByteArrayOutputStream()){b.getSheet("THONG_TIN").getRow(2).getCell(1).setCellValue(String.valueOf(other.getId()));b.write(out);try{answers.preview(set.getId(),student.getId(),out.toByteArray());fail();}catch(IllegalArgumentException expected){assertTrue(expected.getMessage().contains("học sinh"));}}
-        assertEquals("Keep this",rows(answers.list(set.getId(),null,first.getId())).get(0).get("html"));
+        assertEquals("Keep this",rows(answers.list(set.getId(),student.getId(),first.getId())).get(0).get("html"));
     }
     @Test public void excelRichTextAndFormulaValidationArePreviewedBeforeAnyWrite()throws Exception{
+        actor=teacher;
         byte[] bytes=workbook("Bold and underline",null);try(XSSFWorkbook b=new XSSFWorkbook(new ByteArrayInputStream(bytes));ByteArrayOutputStream out=new ByteArrayOutputStream()){
             XSSFRichTextString rich=new XSSFRichTextString("Bold and underline");XSSFFont bold=b.createFont();bold.setBold(true);rich.applyFont(0,4,bold);XSSFFont underline=b.createFont();underline.setUnderline(Font.U_SINGLE);rich.applyFont(9,18,underline);b.getSheet("CAU_TRA_LOI").getRow(1).getCell(5).setCellValue(rich);b.getSheet("CAU_TRA_LOI").getRow(2).getCell(5).setCellFormula("1+1");b.write(out);bytes=out.toByteArray();}
         List<Map<String,Object>> rows=previewRows(answers.preview(set.getId(),student.getId(),bytes));assertEquals(2,rows.size());assertEquals("NEW",rows.get(0).get("status"));assertTrue(String.valueOf(rows.get(0).get("html")).contains("<strong>Bold</strong>"));assertTrue(String.valueOf(rows.get(0).get("html")).contains("<u>underline</u>"));assertEquals("INVALID",rows.get(1).get("status"));assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());
     }
     @Test public void importChecksAllRevisionsBeforeWritingAndKeepsQuestionAndStudentIdentity(){
+        actor=teacher;
         answers.save(request(second.getId(),"Someone else already saved",0));ImportRequest stale=new ImportRequest();stale.setId=set.getId();stale.studentId=student.getId();stale.rows=Arrays.asList(request(first.getId(),"Do not partly save",0),request(second.getId(),"Stale",0));
-        try{answers.confirm(stale);fail();}catch(SpeakingStudentAnswerService.Conflict expected){}assertEquals(0L,revision(rows(answers.list(set.getId(),null,first.getId())).get(0)));
+        try{answers.confirm(stale);fail();}catch(SpeakingStudentAnswerService.Conflict expected){}assertEquals(0L,revision(rows(answers.list(set.getId(),student.getId(),first.getId())).get(0)));
         stale.rows=Arrays.asList(request(first.getId(),"A new answer",0),request(second.getId(),"Updated",1));Map<String,Object> ack=answers.confirm(stale);assertEquals(2,ack.get("saved"));assertEquals(student.getId(),ack.get("studentId"));assertEquals(2,rows(ack).size());assertEquals(2,answers.confirm(stale).get("saved"));assertEquals(2L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());
     }
     @Test public void duplicateImportAndMissingMetadataCannotSilentlyApplyResponses()throws Exception{
+        actor=teacher;
         byte[] bytes=workbook("One","Two");try(XSSFWorkbook b=new XSSFWorkbook(new ByteArrayInputStream(bytes));ByteArrayOutputStream out=new ByteArrayOutputStream()){b.getSheet("CAU_TRA_LOI").getRow(2).getCell(0).setCellValue(String.valueOf(first.getId()));b.getSheet("CAU_TRA_LOI").getRow(2).getCell(1).setCellValue("HOME_1");b.write(out);bytes=out.toByteArray();}
         List<Map<String,Object>> preview=previewRows(answers.preview(set.getId(),student.getId(),bytes));assertEquals("INVALID",preview.get(0).get("status"));assertEquals("INVALID",preview.get(1).get("status"));ImportRequest duplicate=new ImportRequest();duplicate.setId=set.getId();duplicate.studentId=student.getId();duplicate.rows=Arrays.asList(request(first.getId(),"one",0),request(first.getId(),"two",0));try{answers.confirm(duplicate);fail();}catch(IllegalArgumentException expected){}
         assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());

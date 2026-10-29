@@ -34,11 +34,13 @@ public class RestSpeakingController {
     @RequestMapping(value="/sets/{id}/share",method=RequestMethod.POST)
     public Map<String,Object> share(@PathVariable Long id,@RequestBody SetRequest request){return service.share(id,request);}
     @RequestMapping(value="/sets/{id}/import/preview",method=RequestMethod.POST)
+    @Secured("ROLE_ADMIN")
     public Map<String,Object> preview(@PathVariable Long id,@RequestParam("file")MultipartFile file)throws IOException{
         if(file==null||file.isEmpty()||file.getSize()>8L*1024*1024)throw new IllegalArgumentException("File Excel phải nhỏ hơn 8 MB.");
         return service.preview(id,file.getBytes());
     }
     @RequestMapping(value="/sets/{id}/import/confirm",method=RequestMethod.POST)
+    @Secured("ROLE_ADMIN")
     public Map<String,Object> confirm(@PathVariable Long id,@RequestBody ConfirmImport request){return service.confirm(id,request);}
     @RequestMapping(value="/sets/{id}/pass",method=RequestMethod.POST)
     public Map<String,Object> pass(@PathVariable Long id,@RequestBody PassRequest request){return service.markPass(id,request);}

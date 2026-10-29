@@ -28,6 +28,7 @@
             audio: function (id) { return $http.get(base + '/recordings/' + id + '/audio', {responseType: 'blob', timeout: 60000}).then(function (r) { return r.data; }); },
             exportSet: function (id) { return $http.get(base + '/sets/' + id + '/export', {responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
             studentAnswers: function (setId, studentId, questionId) { return get('/student-answers', {setId: setId, studentId: studentId, questionId: questionId}); },
+            adminStudents: function (setId, classId, query, page, pageSize) { return get('/student-answers/students', {setId: setId, classId: classId, query: query || '', page: page || 0, pageSize: pageSize || 25}); },
             saveStudentAnswer: function (data) { return $http.put(base + '/student-answers', data, {timeout: 45000}).then(function (r) { return r.data; }); },
             studentAnswerTemplate: function (setId, studentId) { return $http.get(base + '/student-answers/template', {params: {setId: setId, studentId: studentId}, responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
             previewStudentAnswers: function (setId, studentId, file) {

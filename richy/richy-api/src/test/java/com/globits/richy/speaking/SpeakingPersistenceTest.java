@@ -59,6 +59,8 @@ public class SpeakingPersistenceTest {
     private void as(User u){SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(u,"",Collections.emptyList()));}
     @Before public void fixture()throws Exception{
         em=factory.createEntityManager();em.getTransaction().begin();teacher=user("teacher");student=user("student");stranger=user("stranger");
+        List<com.globits.security.domain.Role> adminRoles=em.createQuery("select r from Role r where r.name=:name",com.globits.security.domain.Role.class).setParameter("name","ROLE_ADMIN").getResultList();
+        com.globits.security.domain.Role adminRole=adminRoles.isEmpty()?new com.globits.security.domain.Role():adminRoles.get(0);if(adminRole.getId()==null){adminRole.setName("ROLE_ADMIN");em.persist(adminRole);}teacher.getRoles().add(adminRole);
         EnrolmentClass clazz=new EnrolmentClass();clazz.setName("Speaking class");clazz.setSchoolId(1);clazz.getTeachers().add(teacher);em.persist(clazz);student.setEnrollmentClassIds(Collections.singleton(clazz.getId()));em.flush();
         UserRepository users=mock(UserRepository.class);when(users.findByUsernameAndPerson(anyString())).thenAnswer(c->em.createQuery("select u from User u where u.username=:name",User.class).setParameter("name",c.getArguments()[0]).getResultList().stream().findFirst().orElse(null));
         when(users.findOne(anyLong())).thenAnswer(c->em.find(User.class,c.getArguments()[0]));when(users.getUsersByEnrollmentClassIds(anyList())).thenReturn(Collections.singletonList(student));
@@ -107,7 +109,7 @@ public class SpeakingPersistenceTest {
         seed();List<Map<String,Object>> before=bank(setId);Long home=((Number)before.stream().filter(q->Integer.valueOf(1).equals(q.get("part"))).findFirst().get().get("id")).longValue();
         service.markPass(setId,pass(home));as(student);Map<String,Object> existingPractice=service.startPractice(request());Long existingId=((Number)existingPractice.get("id")).longValue();
         as(teacher);SpeakingSet set=em.find(SpeakingSet.class,setId);set.setClassIdsJson("[]");set.setStudentIdsJson("[]");
-        com.globits.security.domain.Role adminRole=new com.globits.security.domain.Role();adminRole.setName("ROLE_ADMIN");em.persist(adminRole);teacher.getRoles().add(adminRole);em.flush();
+        em.flush();
         as(stranger);Map<String,Object> loaded=service.bank(setId,null);Map<?,?> info=(Map<?,?>)loaded.get("set");assertEquals(true,info.get("sharedForEveryone"));assertEquals(false,info.get("canManage"));
         @SuppressWarnings("unchecked") List<Map<String,Object>> visible=(List<Map<String,Object>>)loaded.get("questions");assertEquals(before.size(),visible.size());for(int index=0;index<before.size();index++)assertEquals(before.get(index).get("id"),visible.get(index).get("id"));
         assertEquals(3,questions(service.startPractice(request())).size());try{service.getPractice(existingId);fail();}catch(AccessDeniedException expected){}
@@ -121,7 +123,7 @@ public class SpeakingPersistenceTest {
         assertFalse(service.history(null,null).get(0).containsKey("snapshot"));assertEquals(0L,(long)em.createQuery("select count(p) from SpeakingPass p",Long.class).getSingleResult());
     }
     @Test public void accessControlsProtectImportsPassOtherStudentsAndPrivateRecordings()throws Exception{
-        seed();Long q=((Number)bank(setId).get(0).get("id")).longValue();as(stranger);try{service.bank(setId,null);fail();}catch(AccessDeniedException expected){}
+        seed();Long q=((Number)bank(setId).get(0).get("id")).longValue();as(stranger);assertNotNull(service.bank(setId,null));try{service.preview(setId,file("forged","",false));fail();}catch(AccessDeniedException expected){}
         as(student);try{service.markPass(setId,pass(q));fail();}catch(AccessDeniedException expected){}try{service.bank(setId,teacher.getId());fail();}catch(AccessDeniedException expected){}
         Map<String,Object> p=service.startPractice(request());Long practice=((Number)p.get("id")).longValue();as(stranger);try{service.getPractice(practice);fail();}catch(AccessDeniedException expected){}
         as(teacher);assertTrue(questions(service.getPractice(practice)).get(0).containsKey("sample"));RecordingRequest r=new RecordingRequest();r.uploadKey="recording_12345";r.contentType="audio/webm";r.questionIndex=0;try{recordings.create(practice,r);fail();}catch(AccessDeniedException expected){}
