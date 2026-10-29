@@ -801,8 +801,8 @@ test('Super Saiyan 2 carries self-contained alternating lightning and reduced-mo
     }
 });
 
-test('both new Goku forms retain the uploaded illustrations and use a new separate aura asset', () => {
-    for (const [level, original] of [[23, 'reference-super-saiyan-punch-original.png'], [24, 'reference-super-saiyan-2-original.png']]) {
+test('all new Goku forms retain the uploaded illustrations and preserve the approved aura asset', () => {
+    for (const [level, original] of [[23, 'reference-super-saiyan-punch-original.png'], [24, 'reference-super-saiyan-2-original.png'], [25, 'reference-super-saiyan-4-original.png']]) {
         const svg = fs.readFileSync(path.join(assets, 'goku-kid', 'pet-level-' + level + '.svg'), 'utf8');
         assert.ok(svg.includes(fs.readFileSync(path.join(assets, 'goku-kid', original)).toString('base64')),
             'the source illustration is embedded unchanged at level ' + level);

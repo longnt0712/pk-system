@@ -70,6 +70,7 @@
             var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=' + version;
             var gokuSuperSaiyanUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
             var gokuSuperSaiyan2Url = 'assets/images/learning-pets/goku-kid/pet-level-24.svg?v=' + version;
+            var gokuSuperSaiyan4Url = 'assets/images/learning-pets/goku-kid/pet-level-25.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -148,7 +149,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 24); }
+                if (admin) { level = Math.max(level, 25); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
@@ -338,11 +339,12 @@
                 if (level >= 21) {
                     vm.availablePets.push({
                         key: 'GOKU_KID',
-                        name: level >= 24 ? 'Son Goku Siêu Saiyan cấp 2' : (level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí')),
-                        description: level >= 24 ? 'Hào quang và điện quang · Level 24' : (level >= 23 ? 'Hào quang rực sáng · Level 23' : (level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21')),
-                        image: level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl)),
+                        name: level >= 25 ? 'Son Goku Siêu Saiyan 4' : (level >= 24 ? 'Son Goku Siêu Saiyan cấp 2' : (level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí'))),
+                        description: level >= 25 ? 'Son Goku Siêu Saiyan 4 · Level 25' : (level >= 24 ? 'Hào quang và điện quang · Level 24' : (level >= 23 ? 'Hào quang rực sáng · Level 23' : (level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21'))),
+                        image: level >= 25 ? gokuSuperSaiyan4Url : (level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl))),
                         superSaiyan: level === 23,
-                        superSaiyan2: level >= 24,
+                        superSaiyan2: level === 24,
+                        superSaiyan4: level >= 25,
                         isNew: vm.hasNewGokuKidEgg
                     });
                 }
@@ -368,8 +370,8 @@
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {
-                    vm.petForm = level >= 24 ? 'goku-super-saiyan-2' : (level >= 23 ? 'goku-super-saiyan' : (level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg'));
-                    vm.petImage = level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl));
+                    vm.petForm = level >= 25 ? 'goku-super-saiyan-4' : (level >= 24 ? 'goku-super-saiyan-2' : (level >= 23 ? 'goku-super-saiyan' : (level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg')));
+                    vm.petImage = level >= 25 ? gokuSuperSaiyan4Url : (level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl)));
                     return;
                 }
                 if (selectedPet === 'CUTE_PERRY') {
@@ -1051,7 +1053,7 @@
                         (vm.hasNewGokuKidEgg ? 1 : 0);
                 if (vm.hasNewGokuKidEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Goku nhí mới!';
-                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí, level 23 biến thành Siêu Saiyan và level 24 lên cấp 2.';
+                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí, level 23 biến thành Siêu Saiyan, level 24 lên cấp 2 và level 25 thành Siêu Saiyan 4.';
                 } else if (vm.hasNewSparklingLightning) {
                     vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
                     vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';

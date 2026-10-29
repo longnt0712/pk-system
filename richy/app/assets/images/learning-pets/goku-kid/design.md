@@ -28,4 +28,10 @@ The earlier hollow flame ring (`energy-aura-generated.png`) and first pose-speci
 
 Two lightning groups flash fully on and off at different repeating intervals while the character stays still. They use filled white ribbons with irregular broad junctions, narrow filaments, pointed tapered tips and a faint blue fringe, matching the user's reference more closely than constant-width rounded strokes. A foreground branch passes across the waist without obscuring the face. The final `pet-level-24.svg` is self-contained and animated, so lightning works in the floating pet, collection picker and Battle avatars. `pet-level-24.png` is the static RGBA export; `super-saiyan-2-aura.svg`/PNG expose its separate aura. Use `node build-super-saiyan.cjs --level=24` or `--level=23` to update either form independently.
 
-Both new forms are rebuilt by `build-super-saiyan.cjs` from the original uploads and the new aura VFX. The animation includes `prefers-reduced-motion` support. The existing key remains `GOKU_KID`, with no backend or reward-catalog change: level 21 is an egg, level 22 is ordinary Goku, level 23 is Super Saiyan and level 24 is Super Saiyan 2.
+Both golden forms are rebuilt by `build-super-saiyan.cjs` from the original uploads and the new aura VFX. The animation includes `prefers-reduced-motion` support.
+
+## Level 25: Super Saiyan 4
+
+The user's magenta-haired and magenta-furred Goku with a tail becomes the next form at vocabulary level 25. `reference-super-saiyan-4-original.png` preserves that upload, and `pet-level-25.svg` embeds the same source pixels without redrawing the subject. The runtime uses the transparent 1024-square `pet-level-25.png`, retaining the original purple glow rather than adding the level-23/24 golden aura or lightning. The extraction and rebuild details are in `design-level25.md` and `build-super-saiyan-4.cjs`.
+
+The existing key remains `GOKU_KID`, with no backend or reward-catalog change: level 21 is an egg, level 22 is ordinary Goku, level 23 is Super Saiyan, level 24 is Super Saiyan 2 and level 25 is Super Saiyan 4. Evolution preserves the selected family without another save request. Admins preview the level-25 form without changing their experience, while other players retain the form for their actual level.
