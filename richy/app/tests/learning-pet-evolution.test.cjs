@@ -740,6 +740,19 @@ test('admins see Super Saiyan Goku at level zero while students retain their act
     assert.equal(setupBattle(0).getPlayerPetImage({selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 0, allPetsUnlocked: true}), expected);
 });
 
+test('the chosen ordinary Goku transforms at level 23 without a new selection request', () => {
+    const h = setupLearningPet(22, 'GOKU_KID');
+    assert.equal(h.pet.petForm, 'goku-kid-hatched');
+    h.hooks.form({id: 7, vocabularyExperienceLevel: 23, selectedLearningPet: 'GOKU_KID'});
+    assert.equal(h.pet.selectedPetKey, 'GOKU_KID');
+    assert.equal(h.pet.petForm, 'goku-super-saiyan');
+    assert.equal(h.pet.selectedPet().name, 'Son Goku Siêu Saiyan');
+    assert.equal(h.pet.selectedPet().superSaiyan, true);
+    assert.match(h.pet.petImage, /pet-level-23.png/);
+    assert.match(h.pet.gokuSuperSaiyanAuraImage, /super-saiyan-aura.png/);
+    assert.equal(h.requests.length, 0);
+});
+
 test('Goku stages and the separate aura package transparent artwork without changing game rewards', () => {
     for (const file of ['egg-level-21.png', 'pet-level-22.png', 'pet-level-23.png', 'super-saiyan-aura.png']) {
         const png = fs.readFileSync(path.join(assets, 'goku-kid', file));

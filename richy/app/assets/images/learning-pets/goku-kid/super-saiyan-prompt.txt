@@ -1,0 +1,5 @@
+Built-in Imagegen edit, transparent background. Edit target: user-supplied Super Saiyan Goku screenshot.
+
+Use case: background-extraction. Extract the same Super Saiyan child Goku and surrounding brilliant golden flame aura as one transparent game pet asset. Preserve the face, pose, proportions, orange outfit, golden hair, clenched fists, blue boots and golden flame appearance. Remove the brown rocky background and black letterbox bars. Keep the yellow aura with soft luminous translucent edges fading into genuine alpha transparency. Do not add a background, ground, frame or text. The bottom black margin with external branding is outside the artwork. Square transparent canvas, fit the visible character and aura. Intended for a small floating pet UI.
+
+Imagegen output is preserved as reference-super-saiyan-generated.png. The uploaded original is preserved as reference-super-saiyan-original.png. The generated extraction may reconstruct details; the supplied original remains the visual reference. build-super-saiyan.cjs adds transparent padding and masks a separate aura layer, without modifying the prior level-21 or level-22 assets.
