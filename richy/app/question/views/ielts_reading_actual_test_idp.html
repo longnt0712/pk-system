@@ -2158,7 +2158,7 @@
         display: grid;
         grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
         align-items: start;
-        gap: 24px;
+        gap: 16px;
     }
 
     .listening-two-column-dnd > .sentence-ending-questions {
@@ -2166,8 +2166,10 @@
     }
 
     .listening-two-column-dnd .sentence-ending-bank {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 6px;
         position: static;
         align-content: start;
         min-width: 0;
@@ -2175,11 +2177,25 @@
     }
 
     .listening-two-column-dnd .sentence-ending-choice {
-        width: 100%;
+        flex: 0 1 auto;
+        width: auto;
+        max-width: 100%;
         min-width: 0;
+        min-height: 36px;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 6px;
+        padding: 5px 9px;
         box-sizing: border-box;
         overflow-wrap: anywhere;
     }
+
+    .listening-two-column-dnd .sentence-ending-questions { gap: 5px; }
+    .listening-two-column-dnd .sentence-ending-row { flex-direction: row; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 0; line-height: 1.35; }
+    .listening-two-column-dnd .sentence-ending-stem { flex: 0 1 auto; width: auto; max-width: 45%; min-width: 0; overflow-wrap: anywhere; }
+    .listening-two-column-dnd .sentence-ending-stem p,
+    .listening-two-column-dnd .sentence-ending-stem div { display: inline; margin: 0 !important; }
+    .listening-two-column-dnd .sentence-ending-row hr { display: none; }
+    .listening-two-column-dnd .sentence-ending-slot { flex: 1 1 0; width: auto; min-width: 0; min-height: 36px; padding: 5px 8px; border-width: 1px; overflow-wrap: anywhere; }
 
     .sentence-ending-questions {
         display: grid;
