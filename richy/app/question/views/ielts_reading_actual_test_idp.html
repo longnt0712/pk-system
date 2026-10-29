@@ -1834,9 +1834,7 @@
              aria-labelledby="idp-study-check-title">
         <header class="idp-study-check-header">
             <div>
-                <span class="idp-study-check-kicker">STUDY MODE</span>
                 <h2 id="idp-study-check-title">Kiểm tra đáp án</h2>
-                <p>Đây chỉ là phần xem lại tại chỗ, không nộp bài và không lưu kết quả Homework.</p>
             </div>
             <button type="button" class="idp-study-check-close" ng-click="vm.closeStudyAnswerCheck()"
                     aria-label="Đóng bảng kiểm tra đáp án">
@@ -5032,22 +5030,36 @@
     }
 
     .idp-study-check-backdrop {
+        --study-check-space-x: 16px;
+        --study-check-space-y: 12px;
         position: fixed;
-        inset: 0;
+        top: var(--idp-viewport-top, 0px);
+        left: var(--idp-viewport-left, 0px);
+        width: var(--idp-viewport-width, 100%);
+        height: var(--idp-viewport-height, 100vh);
+        box-sizing: border-box;
         z-index: 10120;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 12px 16px;
+        padding: max(var(--study-check-space-y), env(safe-area-inset-top, 0px)) max(var(--study-check-space-x), env(safe-area-inset-right, 0px)) max(var(--study-check-space-y), env(safe-area-inset-bottom, 0px)) max(var(--study-check-space-x), env(safe-area-inset-left, 0px));
         background: rgba(15, 23, 42, .68);
         backdrop-filter: blur(4px);
+    }
+
+    @supports (height: 100dvh) {
+        .idp-study-check-backdrop { height: var(--idp-viewport-height, 100dvh); }
     }
 
     .idp-study-check-dialog {
         display: flex;
         flex-direction: column;
         width: min(1480px, calc(100vw - 32px));
-        max-height: calc(100vh - 24px);
+        max-width: 100%;
+        min-height: 0;
+        max-height: 100%;
+        box-sizing: border-box;
         overflow: hidden;
         border: 1px solid #d7dfeb;
         border-radius: 18px;
@@ -5058,16 +5070,15 @@
 
     .idp-study-check-header {
         display: flex;
+        flex: 0 0 auto;
         align-items: flex-start;
         justify-content: space-between;
         gap: 20px;
-        padding: 22px 24px 18px;
+        padding: 16px 24px;
         border-bottom: 1px solid #e2e8f0;
     }
 
-    .idp-study-check-kicker { color: #426fd2; font-size: 11px; font-weight: 800; letter-spacing: .13em; }
-    .idp-study-check-header h2 { margin: 4px 0 5px; color: inherit; font-size: 24px; font-weight: 800; }
-    .idp-study-check-header p { margin: 0; color: #667085; font-size: 13px; }
+    .idp-study-check-header h2 { margin: 0; color: inherit; font-size: 24px; font-weight: 800; }
     .idp-study-check-close {
         flex: 0 0 38px;
         width: 38px;
@@ -5080,6 +5091,7 @@
 
     .idp-study-check-summary {
         display: grid;
+        flex: 0 0 auto;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 10px;
         padding: 16px 24px;
@@ -5154,7 +5166,7 @@
     }
 
     .idp-study-check-jump { padding: 8px 10px; }
-    .idp-study-check-footer { padding: 13px 24px; border-top: 1px solid #e2e8f0; text-align: right; }
+    .idp-study-check-footer { flex: 0 0 auto; padding: 13px 24px; border-top: 1px solid #e2e8f0; text-align: right; }
     .idp-study-check-footer button { padding: 9px 22px; border-color: #355dcc; color: #ffffff; background: #355dcc; }
 
     /* The heading drop area fills the remaining width of its line. */
@@ -7008,8 +7020,8 @@
         .idp-test-mode-options { grid-template-columns: 1fr; }
         .idp-test-mode-option { min-height: 130px; padding: 17px; }
         .idp-test-mode-option strong { margin-top: 10px; }
-        .idp-study-check-backdrop { padding: 8px; }
-        .idp-study-check-dialog { max-height: calc(100vh - 16px); border-radius: 12px; }
+        .idp-study-check-backdrop { --study-check-space-x: 8px; --study-check-space-y: 8px; }
+        .idp-study-check-dialog { border-radius: 12px; }
         .idp-study-check-header { padding: 16px; }
         .idp-study-check-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 16px; }
         .idp-study-check-list { padding: 2px 16px 14px; }
