@@ -2132,6 +2132,9 @@
 
         function serializeListeningAudioPositions() {
             var positions = {};
+            if (vm.isListeningRoute && !vm.isPreviewMode) {
+                positions.mainAudio = serializeMainListeningAudioPositions();
+            }
             angular.forEach((vm.ieltsReadingActualTest || {}).subQuestions || [], function (part) {
                 angular.forEach(part.subQuestions || [], function (pack) {
                     if (Number(pack.type) === 18 && pack.id != null && isFinite(pack._listeningAudioTime)) {
@@ -2403,6 +2406,9 @@
                 return;
             }
 
+            if (vm.isListeningRoute && !vm.isPreviewMode) {
+                restoreMainListeningAudioPositions((draft.listeningAudioPositions || {}).mainAudio);
+            }
             angular.forEach((vm.ieltsReadingActualTest || {}).subQuestions || [], function (part) {
                 angular.forEach(part.subQuestions || [], function (pack) {
                     var position = (draft.listeningAudioPositions || {})[String(pack.id)];
@@ -3883,6 +3889,85 @@
 
         //--------------------- Reading Actual test -------------------------//
         var mainAudio = null;
+        // The same element can play the full recording or an assigned Part.
+        // Keep source-specific positions inside the existing user/mode/task draft.
+        var mainListeningPositions = [], resumeAudio = null, resumeAudioSource = '';
+        var resumeAudioPending = null, resumeAudioReady = false, resumeAudioDestroyed = false;
+        var resumeAudioEvents = ['loadedmetadata', 'durationchange', 'canplay', 'timeupdate', 'seeked', 'pause', 'ended'];
+
+        function mainListeningPosition(source) {
+            for (var index = 0; index < mainListeningPositions.length; index++) {
+                if (mainListeningPositions[index].source === source) { return mainListeningPositions[index]; }
+            }
+            return null;
+        }
+
+        function rememberMainListeningAudioPosition() {
+            if (!resumeAudio || !resumeAudioReady || resumeAudioPending !== null || !resumeAudioSource ||
+                    !vm.isListeningRoute || vm.isPreviewMode || resumeAudio.readyState < 1 ||
+                    (resumeAudio.currentSrc && resumeAudio.src && resumeAudio.currentSrc !== resumeAudio.src)) { return; }
+            var seconds = Number(resumeAudio.currentTime);
+            if (!isFinite(seconds) || seconds < 0) { return; }
+            var record = mainListeningPosition(resumeAudioSource);
+            if (!record) { record = {source: resumeAudioSource, seconds: 0}; mainListeningPositions.push(record); }
+            record.seconds = Math.round(seconds * 1000) / 1000;
+        }
+
+        function serializeMainListeningAudioPositions() {
+            rememberMainListeningAudioPosition();
+            return mainListeningPositions.map(function (record) { return {source: record.source, seconds: record.seconds}; });
+        }
+
+        function restoreMainListeningAudioPositions(records) {
+            mainListeningPositions = [];
+            if (!angular.isArray(records)) { return; }
+            records.slice(-16).forEach(function (record) {
+                if (!record || typeof record.source !== 'string' || !record.source.trim() ||
+                        typeof record.seconds !== 'number' || !isFinite(record.seconds) || record.seconds < 0) { return; }
+                var source = record.source.trim(), existing = mainListeningPosition(source);
+                if (existing) { existing.seconds = record.seconds; }
+                else { mainListeningPositions.push({source: source, seconds: record.seconds}); }
+            });
+        }
+
+        function refreshMainListeningAudioPosition(event) {
+            if (!resumeAudio || resumeAudio.readyState < 1 ||
+                    (resumeAudio.currentSrc && resumeAudio.src && resumeAudio.currentSrc !== resumeAudio.src)) { return; }
+            if (!resumeAudioReady && event && /^(loadedmetadata|durationchange|canplay)$/.test(event.type)) { resumeAudioReady = true; }
+            if (resumeAudioPending !== null) {
+                var duration = Number(resumeAudio.duration);
+                if (!resumeAudioReady || !isFinite(duration) || duration <= 0) { return; }
+                var target = Math.min(duration, resumeAudioPending);
+                try {
+                    resumeAudio.currentTime = target;
+                    if (Math.abs(Number(resumeAudio.currentTime) - target) > 0.25) { return; }
+                    resumeAudioPending = null;
+                } catch (unavailableAudioSeek) { return; }
+            }
+            rememberMainListeningAudioPosition();
+            if (event && /^(pause|ended)$/.test(event.type) && resumeAudioReady) { saveReadingDraft(); }
+        }
+
+        function detachMainListeningAudioResume() {
+            rememberMainListeningAudioPosition();
+            if (resumeAudio) {
+                resumeAudioEvents.forEach(function (name) { resumeAudio.removeEventListener(name, refreshMainListeningAudioPosition); });
+            }
+            resumeAudio = null; resumeAudioSource = ''; resumeAudioPending = null; resumeAudioReady = false;
+        }
+
+        function prepareMainListeningAudioResume(audioElement, source) {
+            detachMainListeningAudioResume();
+            if (!vm.isListeningRoute || vm.isPreviewMode || resumeAudioDestroyed) { return; }
+            resumeAudio = audioElement; resumeAudioSource = String(source || '').trim();
+            var record = mainListeningPosition(resumeAudioSource);
+            resumeAudioPending = record ? record.seconds : null;
+            resumeAudioEvents.forEach(function (name) { resumeAudio.addEventListener(name, refreshMainListeningAudioPosition); });
+        }
+
+        $scope.$on('$destroy', function () {
+            detachMainListeningAudioResume(); resumeAudioDestroyed = true;
+        });
 
         function getMainAudio() {
             mainAudio = document.getElementById('main-audio');
@@ -3927,9 +4012,12 @@
             // The audio element is created by ng-if/ng-show after the test data
             // arrives, so resolve it after Angular has rendered the candidate view.
             $timeout(function () {
+                if (resumeAudioDestroyed) { return; }
                 var audioElement = getMainAudio();
                 if (!audioElement) { return; }
-                audioElement.src = selectedListeningAudioUrl();
+                var source = selectedListeningAudioUrl();
+                prepareMainListeningAudioResume(audioElement, source);
+                audioElement.src = source;
                 audioElement.loop = false;
                 trackAudioDuration(audioElement);
                 audioElement.load();

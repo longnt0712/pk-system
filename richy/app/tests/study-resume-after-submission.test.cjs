@@ -35,7 +35,8 @@ const commonFunctions=['normalizeAssignedParts','readingDraftStorageKey','mergeS
   'newReadingAttemptKey','readingSubmissionAcknowledged','restoreReadingSubmissionIdentity','reopenSubmittedStudyDraft',
   'findDraftQuestionState','findDraftResult','findDraftResults','findQuestionAnswer','findCompleteListDraftState','findCompleteListWord',
   'restoreMatchingHeadingDraft','restoreReadingDraft','serializeReadingDraftResults','serializeReadingQuestionStates',
-  'serializeCompleteListStates','serializeListeningAudioPositions','getReadingDraftPartNumbers','saveReadingDraft',
+  'serializeCompleteListStates','serializeListeningAudioPositions','mainListeningPosition','rememberMainListeningAudioPosition',
+  'serializeMainListeningAudioPositions','restoreMainListeningAudioPositions','getReadingDraftPartNumbers','saveReadingDraft',
   'persistReadingSubmissionState','submitReadingAttemptSnapshot'];
 function fixture(options={}){
   const type=options.type||4,mode=options.mode||'STUDY',task=options.assignment?238:null;
@@ -53,6 +54,7 @@ function fixture(options={}){
   const c=nodeVm.createContext({vm,angular:{copy:structuredClone,isArray:Array.isArray,isDefined:value=>value!==undefined,
       isFunction:value=>typeof value==='function',noop(){},forEach:(items,callback)=>Object.entries(items||{}).forEach(([key,value])=>callback(value,key))},
     $stateParams:{ieltsReadingTestId:42},$scope:{},$timeout:timeout,Date,JSON,Math,Number,String,Uint8Array,
+    mainListeningPositions:[],resumeAudio:null,resumeAudioReady:false,resumeAudioPending:null,
     $window:{localStorage:local,crypto:{getRandomValues(bytes){log.keys++;for(let i=0;i<bytes.length;i++)bytes[i]=(i+log.keys)%256;}}},
     readingDraftBaseKey:'ieltsReadingInProgress:7',readingDraftTaskSuffix:'',legacyModeDraftStorageKey:'legacy-mode',legacyReadingDraftStorageKey:'legacy',maximumAssignedPart:type===2?4:type===7?2:type===6?1:3,
     readingAttemptKey:null,readingSubmissionState:null,readingDraftSubmitted:false,readingDraftDestroyed:false,restoredExpiredReadingDraft:false,
@@ -86,7 +88,8 @@ function fixture(options={}){
     results:[{questionId:201,answerId:101,answerOrdinal:1,ordinalNumber:1,clientAnswer:'Retained original answer'}],
     questionStates:[{questionId:201,ordinalNumber:1,needReview:true,answers:[{answerId:101,selected:true,clientAnswer:'Retained original answer'}]}],
     annotationNotes:[{id:'n1',text:'My saved note'}],annotations:[{containerId:'passage-text-1',start:1,end:3,color:'yellow'}],
-    listeningAudioPositions:{51:18.5},completeListStates:[],submissionState:{key,status:options.pending?'PENDING':'SAVED',payload:savedPayload,result}};
+    listeningAudioPositions:{51:18.5,...(type===2&&!options.legacy?{mainAudio:[{source:'audio.mp3',seconds:300}]}:{})},
+    completeListStates:[],submissionState:{key,status:options.pending?'PENDING':'SAVED',payload:savedPayload,result}};
   if(options.pending){draft.completed=false;draft.resultId=null;delete draft.submissionState.result;}
   if(options.legacy){delete draft.submissionState;delete draft.clientAttemptKey;}
   function seed(storageKey,value){local.values.set(storageKey,JSON.stringify(value));contextMemory[storageKey]=structuredClone(value);}
@@ -103,6 +106,7 @@ test('Study SAVED receipts reopen Reading, Listening, Comprehensive and Writing 
     assert.notEqual(f.c.readingAttemptKey,f.key);assert.match(f.c.readingAttemptKey,/^[a-f0-9]{32}$/);
     assert.equal(f.vm.passageNumber,1);assert.equal(f.vm.isStartTest,true);assert.equal(f.answer.clientAnswer,'Retained original answer');assert.equal(f.answer.selected,true);
     assert.equal(f.question.needReview,true);assert.equal(f.c.studyElapsedSeconds,627);assert.deepEqual(plain(f.vm.annotationNotes),old.annotationNotes);
+    if(type===2)assert.deepEqual(plain(f.c.serializeMainListeningAudioPositions()),old.listeningAudioPositions.mainAudio);
     assert.deepEqual(f.log.annotations,old.annotations);assert.equal(f.log.resultWrites.length,0);assert.deepEqual(f.log.views,[]);assert.deepEqual(f.log.grades,[]);assert.deepEqual(f.log.deletes,[]);
     const receipt=f.snapshot(f.base+':attempt:'+f.key);assert.deepEqual(plain(receipt),old);
     const learning=f.snapshot(f.base);assert.equal(learning.clientAttemptKey,f.c.readingAttemptKey);assert.equal(learning.submissionState,null);assert.equal(learning.completed,false);assert.equal(learning.resultId,null);

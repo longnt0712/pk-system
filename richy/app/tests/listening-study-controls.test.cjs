@@ -26,7 +26,8 @@ function functionCode(name,property=false){
 function fixture(options={}){
   const values=new Map(Object.entries(options.preferences||{})),listeners=new Map(),frames=new Map();let frameId=0;
   const log={storageReads:[],storageWrites:[],loads:0,plays:0,pauses:0,requests:0,domRemoved:0};
-  const audio={playbackRate:1,defaultPlaybackRate:1,currentTime:18.5,duration:60,paused:false,src:'existing.mp3',
+  const audio={playbackRate:1,defaultPlaybackRate:1,currentTime:18.5,duration:60,readyState:1,paused:false,src:'existing.mp3',
+    addEventListener(){},removeEventListener(){},
     load(){log.loads++;this.playbackRate=1;this.defaultPlaybackRate=1;},play(){log.plays++;return Promise.resolve();},pause(){log.pauses++;}};
   const document={getElementById(id){return id==='main-audio'&&options.noMedia!==true?audio:null;},
     addEventListener(name,callback){listeners.set(name,callback);},removeEventListener(name){listeners.delete(name);},
@@ -39,7 +40,7 @@ function fixture(options={}){
   vm.isStudyMode=()=>vm.testSessionMode==='STUDY';
   const c=nodeVm.createContext({vm,Math,Number,String,parseFloat,isNaN,
     angular:{isFunction:value=>typeof value==='function',noop(){}},document,mainAudio:null,
-    $scope:{$evalAsync(){}},$timeout:callback=>callback(),
+    $scope:{$evalAsync(){},$on(){}},$timeout:callback=>callback(),
     $window:{innerWidth:options.width||1440,document,
       requestAnimationFrame(callback){const id=++frameId;frames.set(id,callback);return id;},cancelAnimationFrame:id=>frames.delete(id),
       localStorage:{getItem(key){log.storageReads.push(key);if(options.blockedStorage)throw Error('blocked');return values.get(key)||null;},
@@ -48,7 +49,8 @@ function fixture(options={}){
     trackAudioDuration(){}});
   nodeVm.runInContext(section('        /* Adjustable exam panels','        /* Reading display preferences'),c);
   nodeVm.runInContext(section('        vm.playbackValue = 1.0;','        $scope.counter = 3600;'),c);
-  for(const name of ['getMainAudio','selectedListeningAudioUrl'])nodeVm.runInContext(functionCode(name),c);
+  nodeVm.runInContext(section('        var mainAudio = null;','        function stripEmbeddedReadingIntro('),c);
+  nodeVm.runInContext(functionCode('selectedListeningAudioUrl'),c);
   for(const name of ['isListeningContentVisible','toggleListeningContent','setUpAudio'])nodeVm.runInContext(functionCode(name,true),c);
   return{vm,c,audio,values,listeners,log,flushFrames(){const pending=[...frames.values()];frames.clear();pending.forEach(callback=>callback());},
     changeContent(value){vm.showListeningContent=value;vm.toggleListeningContent();},
