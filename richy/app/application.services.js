@@ -15,6 +15,8 @@
             var refreshIdentity = null;
             var sessionGeneration = 0;
             var expirationNotified = false;
+            var lastRenewedAt = 0;
+            var lastRenewedIdentity = null;
             var options = {path: '/', secure: window.location.protocol === 'https:'};
 
             function credentialKey(value) {
@@ -80,6 +82,45 @@
                     return null;
                 }
                 return installed;
+            }
+
+            function touch(force) {
+                var value = token.getToken();
+                if (!token.isPersistentSession(value)) { return true; }
+                var identity = capture();
+                if (!force && isCurrent(lastRenewedIdentity) && Date.now() - lastRenewedAt < 60 * 60 * 1000) {
+                    return true;
+                }
+                value = token.renewPersistentSession();
+                if (!isCurrent(identity)) {
+                    var current = token.getToken();
+                    if (current && value && current.access_token === value.access_token &&
+                        current.refresh_token === value.refresh_token) { token.removeToken(); }
+                    return false;
+                }
+                if (identity.marker !== undefined) {
+                    $cookies.putObject(constants.auth_session, identity.marker, angular.extend({}, options,
+                        {expires: new Date(value.session_expires_at)}));
+                    if (!isCurrent(identity)) { return false; }
+                }
+                // A cached user belongs to the browser session that fetched it.
+                // Do not prolong another account's stale cached user after a tab
+                // changed credentials; a missing cache is fetched from the API.
+                var user = $cookies.getObject(constants.cookies_user);
+                if (user && value._browser_session_id && user._auth_session_id === value._browser_session_id) {
+                    $cookies.putObject(constants.cookies_user, user, angular.extend({}, options,
+                        {expires: new Date(value.session_expires_at)}));
+                    if (!isCurrent(identity)) {
+                        var saved = $cookies.getObject(constants.cookies_user);
+                        if (saved && saved._auth_session_id === value._browser_session_id) {
+                            $cookies.remove(constants.cookies_user, options);
+                        }
+                        return false;
+                    }
+                }
+                lastRenewedAt = Date.now();
+                lastRenewedIdentity = identity;
+                return true;
             }
 
             function clear() {
@@ -179,6 +220,8 @@
                 login: login,
                 capture: capture,
                 isCurrent: isCurrent,
+                isPersistent: function () { return token.isPersistentSession(token.getToken()); },
+                touch: touch,
                 expire: expire,
                 hasCredentials: function () {
                     return !!(token.getAuthorizationHeader() || token.getRefreshToken());
@@ -186,15 +229,19 @@
                 restore: function () {
                     var value = token.getToken();
                     if (value && !value.session_expires_at) { token.setToken(value); }
+                    return touch(true);
                 },
                 saveUser: function (user, identity) {
                     if (identity && !isCurrent(identity)) { return false; }
                     var value = token.getToken();
                     if (!value) { return false; }
+                    if (!touch(false)) { return false; }
+                    value = token.getToken();
                     expirationNotified = false;
                     $rootScope.sessionNotice = '';
                     $rootScope.currentUser = user;
-                    $cookies.putObject(constants.cookies_user, user, angular.extend({}, options,
+                    var cachedUser = angular.extend({}, user, {_auth_session_id: value._browser_session_id});
+                    $cookies.putObject(constants.cookies_user, cachedUser, angular.extend({}, options,
                         {expires: new Date(value.session_expires_at)}));
                     if (identity && !isCurrent(identity)) {
                         var saved = $cookies.getObject(constants.cookies_user);
@@ -251,6 +298,8 @@
                         });
                         // Respect requests intentionally using a different identity.
                         if (explicitHeader && explicitHeader !== header) { return config; }
+                        $injector.get('AuthSession').touch(false);
+                        header = token.getAuthorizationHeader();
                         config.sessionAuthManaged = true;
                         config.sessionAuthHeader = header;
                         config.sessionAuthAccess = token.getAccessToken();

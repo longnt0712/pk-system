@@ -41,6 +41,7 @@ import com.globits.security.ValidatingTokenServices;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -53,6 +54,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.common.DefaultOAuth2AccessToken;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
+import org.springframework.security.oauth2.common.ExpiringOAuth2RefreshToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.common.exceptions.InvalidGrantException;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
@@ -163,8 +165,11 @@ public class AuthSecurityRegressionTest {
             clients.setClientDetailsStore(values);
             return clients;
         }
-        @Bean @Primary public ValidatingTokenServices tokenServices() {
-            return new ValidatingTokenServices(tokenStore(), details(), clients());
+        @Bean @Primary public ValidatingTokenServices tokenServices(
+                @Value("${security.auth.persistent-sessions:false}") boolean persistentSessions) {
+            ValidatingTokenServices services = new ValidatingTokenServices(tokenStore(), details(), clients());
+            services.setPersistentSessions(persistentSessions);
+            return services;
         }
     }
 
@@ -187,6 +192,12 @@ public class AuthSecurityRegressionTest {
         USERS.clear();
         USERS.put(11L, user(11L, "student", "ROLE_STUDENT"));
         USERS.put(22L, user(22L, "admin", "ROLE_ADMIN"));
+        startContext(false);
+    }
+
+    private void startContext(boolean persistentSessions) {
+        SecurityContextHolder.clearContext();
+        if (context != null) { context.close(); }
         context = new AnnotationConfigWebApplicationContext();
         context.setServletContext(new MockServletContext());
         Map<String, Object> properties = new HashMap<>();
@@ -195,6 +206,7 @@ public class AuthSecurityRegressionTest {
         properties.put("endpoints.cors.allowed-origins", "https://security-test.invalid");
         properties.put("endpoints.cors.allow-credentials", "false");
         properties.put("endpoints.cors.max-age", "60");
+        properties.put("security.auth.persistent-sessions", persistentSessions);
         context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("security-test", properties));
         context.register(Config.class); context.refresh();
         tokens = context.getBean(SessionTokenServices.class);
@@ -262,6 +274,78 @@ public class AuthSecurityRegressionTest {
                 .contentType("application/json").content("{\"id\":22,\"password\":\"changed\"}")).andReturn();
         assertEquals(403, result.getResponse().getStatus());
         assertEquals(victimHash, USERS.get(22L).getPassword());
+    }
+
+    @Test public void optionalPasswordLogoutRetainsBothPersistentDevicesUntilExplicitOrDefaultLogoutAll() throws Exception {
+        for (String logoutAllOption : Arrays.asList(",\"logoutAllDevices\":true", "")) {
+            USERS.put(11L, user(11L, "student", "ROLE_STUDENT"));
+            startContext(true);
+            OAuth2AccessToken first = issue("student"), second = issue("student");
+            String originalVersion = USERS.get(11L).getAuthVersion();
+            String originalHash = USERS.get(11L).getPassword();
+            assertFalse(first.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+            assertEquals(200, password(first, "{\"password\":\"retained-password\",\"currentPassword\":\"" + PASSWORD
+                    + "\",\"logoutAllDevices\":false}").getResponse().getStatus());
+            assertEquals(originalVersion, USERS.get(11L).getAuthVersion());
+            assertNotEquals(originalHash, USERS.get(11L).getPassword());
+            assertEquals(200, currentUser(first).getResponse().getStatus());
+            assertEquals(200, currentUser(second).getResponse().getStatus());
+            assertEquals("false", http.perform(post("/api/users/password/valid")
+                    .header("Authorization", "Bearer " + first.getValue()).contentType("application/json")
+                    .content("{\"password\":\"" + PASSWORD + "\"}")).andReturn().getResponse().getContentAsString());
+            assertEquals("true", http.perform(post("/api/users/password/valid")
+                    .header("Authorization", "Bearer " + first.getValue()).contentType("application/json")
+                    .content("{\"password\":\"retained-password\"}")).andReturn().getResponse().getContentAsString());
+
+            // Both persisted token snapshots still contain the old hash. Only
+            // the unchanged security generation permits these refreshes.
+            OAuth2AccessToken firstRenewed = successfulRefresh(first);
+            OAuth2AccessToken secondRenewed = successfulRefresh(second);
+            assertEquals(200, currentUser(firstRenewed).getResponse().getStatus());
+            assertEquals(200, currentUser(secondRenewed).getResponse().getStatus());
+            assertEquals(200, password(firstRenewed,
+                    "{\"password\":\"next-password\",\"currentPassword\":\"retained-password\""
+                            + logoutAllOption + "}").getResponse().getStatus());
+            assertNotEquals(originalVersion, USERS.get(11L).getAuthVersion());
+            for (OAuth2AccessToken revoked : Arrays.asList(firstRenewed, secondRenewed)) {
+                assertEquals(401, currentUser(revoked).getResponse().getStatus());
+                assertEquals(400, refresh(revoked).getResponse().getStatus());
+            }
+        }
+    }
+
+    @Test public void adminPasswordResetAlwaysRevokesBothDevicesEvenWhenLogoutOptionIsFalse() throws Exception {
+        startContext(true);
+        OAuth2AccessToken first = issue("student"), second = issue("student"), admin = issue("admin");
+        String originalVersion = USERS.get(11L).getAuthVersion();
+        MvcResult result = http.perform(put("/api/users/password").header("Authorization", "Bearer " + admin.getValue())
+                .contentType("application/json")
+                .content("{\"id\":11,\"password\":\"admin-reset-password\",\"logoutAllDevices\":false}")).andReturn();
+        assertEquals(200, result.getResponse().getStatus());
+        assertNotEquals(originalVersion, USERS.get(11L).getAuthVersion());
+        for (OAuth2AccessToken revoked : Arrays.asList(first, second)) {
+            assertEquals(401, currentUser(revoked).getResponse().getStatus());
+            assertEquals(400, refresh(revoked).getResponse().getStatus());
+        }
+        assertEquals(200, currentUser(admin).getResponse().getStatus());
+    }
+
+    @Test public void persistentPasswordLoginReturnsFiniteAccessAndRestoresAfterAccessExpires() throws Exception {
+        startContext(true);
+        MvcResult login = login("student");
+        assertEquals(200, login.getResponse().getStatus());
+        JsonNode response = JSON.readTree(login.getResponse().getContentAsString());
+        assertTrue(response.get("persistent_session").asBoolean());
+        assertFalse(response.has("refresh_token_expires_at"));
+        assertTrue(response.get("expires_in").asInt() > 590 && response.get("expires_in").asInt() <= 600);
+        OAuth2AccessToken access = store.readAccessToken(response.get("access_token").asText());
+        assertFalse(access.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+        ((DefaultOAuth2AccessToken) access).setExpiration(new java.util.Date(System.currentTimeMillis() - 1000));
+        assertEquals(401, currentUser(access).getResponse().getStatus());
+        OAuth2AccessToken renewed = successfulRefresh(access);
+        assertEquals(access.getRefreshToken().getValue(), renewed.getRefreshToken().getValue());
+        assertEquals(Boolean.TRUE, renewed.getAdditionalInformation().get("persistent_session"));
+        assertEquals(200, currentUser(renewed).getResponse().getStatus());
     }
 
     @Test public void passwordLoginUsesConfiguredLifetimeAndRefreshMetadata() throws Exception {
@@ -332,6 +416,11 @@ public class AuthSecurityRegressionTest {
     }
 
     @Test public void concurrentRefreshInAnotherProcessCannotRestoreARevokedSession() throws Exception {
+        concurrentRefreshCannotRestoreRevokedSession(false);
+        concurrentRefreshCannotRestoreRevokedSession(true);
+    }
+
+    private void concurrentRefreshCannotRestoreRevokedSession(boolean persistentSessions) throws Exception {
         BlockingTokenStore sharedStore = new BlockingTokenStore();
         sharedStore.setAuthenticationKeyGenerator(new SessionAuthenticationKeyGenerator());
         UserDetailsService users = (UserDetailsService) context.getBean("userService");
@@ -339,7 +428,10 @@ public class AuthSecurityRegressionTest {
         // Separate instances deliberately have independent locks, as on two backend processes.
         ValidatingTokenServices refresher = new ValidatingTokenServices(sharedStore, users, clients);
         ValidatingTokenServices revoker = new ValidatingTokenServices(sharedStore, users, clients);
+        refresher.setPersistentSessions(persistentSessions);
+        revoker.setPersistentSessions(persistentSessions);
         OAuth2AccessToken original = refresher.createAccessToken(authentication("student"));
+        assertEquals(persistentSessions, !(original.getRefreshToken() instanceof ExpiringOAuth2RefreshToken));
         sharedStore.blockWrites = true;
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<OAuth2AccessToken> pending = executor.submit(() -> refresher.refreshAccessToken(
@@ -403,6 +495,11 @@ public class AuthSecurityRegressionTest {
     private MvcResult refresh(OAuth2AccessToken access) throws Exception {
         return http.perform(post("/oauth/token").param("grant_type", "refresh_token").param("client_id", CLIENT)
                 .param("client_secret", SECRET).param("refresh_token", access.getRefreshToken().getValue())).andReturn();
+    }
+    private OAuth2AccessToken successfulRefresh(OAuth2AccessToken access) throws Exception {
+        MvcResult result = refresh(access);
+        assertEquals(200, result.getResponse().getStatus());
+        return store.readAccessToken(JSON.readTree(result.getResponse().getContentAsString()).get("access_token").asText());
     }
     private MvcResult revoke(String value, String client, String secret) throws Exception {
         return http.perform(post("/oauth/revoke").contentType("application/x-www-form-urlencoded")

@@ -21,6 +21,11 @@ function deferred() {
     return {promise, resolve, reject};
 }
 function setup(transport, protocol = 'https:', frontend = 'richy') {
+    const clock = {now: Date.now()};
+    class SessionDate extends Date {
+        constructor(...args) { super(...(args.length ? args : [clock.now])); }
+        static now() { return clock.now; }
+    }
     const factories = {}, configs = [], cookies = {}, cookieOptions = {}, events = [];
     const Hrm = {
         API_SERVER_URL: 'https://example.test/service/', API_CLIENT_ID: 'education_client', API_CLIENT_KEY: 'password',
@@ -47,7 +52,7 @@ function setup(transport, protocol = 'https:', frontend = 'richy') {
         }
     };
     const appRoot = frontend === 'core' ? path.resolve(__dirname, '../../../core/core-app/web-app/src/app') : path.resolve(__dirname, '..');
-    const context = vm.createContext({Hrm, Core: Hrm, window: {URL, location: {protocol, href: 'https://example.test/'}}, angular: {copy, extend: Object.assign}, Date});
+    const context = vm.createContext({Hrm, Core: Hrm, window: {URL, location: {protocol, href: 'https://example.test/'}}, angular: {copy, extend: Object.assign}, Date: SessionDate});
     for (const name of ['application.services.js', 'application.configs.js']) {
         vm.runInContext(fs.readFileSync(path.join(appRoot, name), 'utf8'), context);
     }
@@ -66,7 +71,7 @@ function setup(transport, protocol = 'https:', frontend = 'richy') {
     deps.$http = http;
     const session = deps.AuthSession = invoke(factories.AuthSession, deps);
     token.setToken({access_token: 'old', refresh_token: 'refresh-1', expires_in: 86400, token_type: 'bearer'});
-    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories, appRoot};
+    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories, appRoot, clock};
 }
 const api = 'https://example.test/service/api/users/getCurrentUser';
 const invalid = {status: 401, data: {error: 'invalid_token'}};
@@ -215,6 +220,95 @@ test('server refresh expiry overrides guessed cookie expiry, with compatibility 
     assert.ok(Math.abs(h.cookies.token.session_expires_at - Date.now() - 60000) < 1000);
     h.token.setToken({...fresh.data, refresh_token: 'expired', refresh_expires_in: 0});
     assert.ok(Math.abs(h.cookies.token.session_expires_at - Date.now()) < 1000);
+});
+
+test('explicit persistent sessions renew token and matching user cookies on restore without extending access validity', () => {
+    const day = 24 * 60 * 60 * 1000;
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({}), 'https:', frontend);
+        h.token.setToken({...fresh.data, persistent_session: true, expires_in: 60});
+        h.deps.$cookies.putObject('education.auth-session', 'same-session', {expires: new Date(h.clock.now + 30 * day)});
+        const accessExpiry = h.cookies.token.access_expires_at;
+        const browserSession = h.cookies.token._browser_session_id;
+        assert.equal(h.cookies.token.session_expires_at, h.clock.now + 365 * day);
+        h.session.saveUser({id: 7, roles: []}, h.session.capture());
+        h.clock.now += 100 * day;
+        const restarted = invoke(h.factories.AuthSession, {...h.deps, $rootScope: {$emit() {}}});
+        restarted.restore();
+        assert.equal(h.cookies.token.session_expires_at, h.clock.now + 365 * day);
+        assert.equal(h.cookieOptions.token.expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.cookieOptions['education.user'].expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.cookieOptions['education.auth-session'].expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.cookies['education.auth-session'], 'same-session');
+        assert.equal(h.cookies.token.access_expires_at, accessExpiry);
+        assert.ok(accessExpiry < h.clock.now);
+        assert.equal(h.cookies.token._browser_session_id, browserSession);
+        assert.equal(h.cookies['education.user']._auth_session_id, browserSession);
+    }
+});
+
+test('persistent cookie renewal on API use never prolongs a cached user from another session', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({data: {ok: true}}), 'https:', frontend);
+        h.token.setToken({...fresh.data, persistent_session: true});
+        h.session.saveUser({id: 'A', roles: []}, h.session.capture());
+        const oldUserExpiry = h.cookieOptions['education.user'].expires.getTime();
+        h.token.setToken({...fresh.data, access_token: 'B', refresh_token: 'refresh-B', persistent_session: true});
+        h.clock.now += day;
+        await h.http({url: api});
+        assert.equal(h.cookies.token.session_expires_at, h.clock.now + 365 * day);
+        assert.equal(h.cookieOptions['education.user'].expires.getTime(), oldUserExpiry);
+        assert.equal(h.cookies['education.user'].id, 'A');
+        h.session.saveUser({id: 'B', roles: []}, h.session.capture());
+        h.clock.now += day;
+        await h.http({url: api});
+        assert.equal(h.cookieOptions['education.user'].expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.cookies['education.user'].id, 'B');
+    }
+});
+
+test('renewing a persistent session never creates a new marker after the marker cookie disappeared', () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({}), 'https:', frontend);
+        h.token.setToken({...fresh.data, persistent_session: true});
+        h.session.restore();
+        assert.equal(h.cookies['education.auth-session'], undefined);
+        assert.equal(h.session.hasCredentials(), true);
+    }
+});
+
+test('persistent cookie renewal cannot restore credentials removed by a concurrent logout', () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({}), 'https:', frontend);
+        h.token.setToken({...fresh.data, persistent_session: true});
+        const otherTab = invoke(h.factories.AuthSession, {...h.deps, $rootScope: {$emit() {}}});
+        const write = h.deps.$cookies.putObject;
+        h.deps.$cookies.putObject = (name, value, options) => {
+            write(name, value, options);
+            if (name === 'token') otherTab.logout();
+        };
+        assert.equal(h.session.restore(), false);
+        assert.equal(h.token.getToken(), undefined);
+    }
+});
+
+test('finite and legacy sessions are never converted to persistent sessions or extended on restore/use', async () => {
+    for (const frontend of ['richy', 'core']) {
+        for (const metadata of [{}, {persistent_session: 'true'}, {persistent_session: true, refresh_expires_in: 7200},
+            {persistent_session: true, refresh_token_expires_at: Date.now() + 7200000}]) {
+            const h = setup(() => ({data: {ok: true}}), 'https:', frontend);
+            h.token.setToken({...fresh.data, ...metadata});
+            h.session.saveUser({id: 7, roles: []}, h.session.capture());
+            const expiry = h.cookies.token.session_expires_at;
+            h.clock.now += 1000;
+            h.session.restore();
+            await h.http({url: api});
+            assert.equal(h.session.isPersistent(), false);
+            assert.equal(h.cookies.token.session_expires_at, expiry);
+            assert.equal(h.cookieOptions['education.user'].expires.getTime(), expiry);
+        }
+    }
 });
 
 test('password login cannot revive a logged out session and stale issued credentials are revoked', async () => {
@@ -382,7 +476,16 @@ test('core password login is cancelled by logout in another tab', async () => {
 });
 
 function startCoreApp(h) {
-    const listeners = {}, navigations = [], root = h.deps.$rootScope;
+    const listeners = {}, windowListeners = {}, documentListeners = {}, navigations = [], root = h.deps.$rootScope;
+    root.$evalAsync = fn => fn();
+    h.context.window.navigator = {onLine: true};
+    h.context.window.document = {
+        hidden: false,
+        addEventListener(name, fn) { documentListeners[name] = fn; },
+        removeEventListener(name) { delete documentListeners[name]; }
+    };
+    h.context.window.addEventListener = (name, fn) => { windowListeners[name] = fn; };
+    h.context.window.removeEventListener = name => { delete windowListeners[name]; };
     root.$on = (name, fn) => { listeners[name] = fn; };
     root.$emit = (name, ...args) => { h.events.push(name); if (listeners[name]) listeners[name]({}, ...args); };
     let definition;
@@ -395,7 +498,7 @@ function startCoreApp(h) {
         $http: {get: (url, options) => h.http({...options, url, method: 'GET'})},
         blockUI: {start() {}, stop() {}}, toastr: {warning() {}}, Idle: {watch() {}}, Keepalive: {start() {}}
     });
-    return {listeners, navigations};
+    return {listeners, navigations, windowListeners, documentListeners};
 }
 
 test('core route checks preserve the session during server/network failures and ignore stale successful users', async () => {
@@ -505,6 +608,47 @@ function startApp(h, hostname = 'example.test') {
     toastr: {info() {}, warning(message) { notices.push(message); }}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
     return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices, state};
 }
+
+test('persistent login resumes after access expiry and restores a missing user cookie through one refresh', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    for (const frontend of ['richy', 'core']) {
+        let refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) {
+                refreshes++; return {data: {...fresh.data, persistent_session: true}};
+            }
+            if (config.headers.Authorization === 'Bearer old') throw invalid;
+            return {data: {id: 7, roles: []}};
+        }, 'https:', frontend);
+        h.token.setToken({...fresh.data, access_token: 'old', expires_in: 60, persistent_session: true});
+        h.session.saveUser({id: 7, roles: []}, h.session.capture());
+        delete h.cookies['education.user'];
+        h.deps.$rootScope.currentUser = null;
+        h.clock.now += 40 * day;
+        h.session = h.deps.AuthSession = invoke(h.factories.AuthSession, h.deps);
+        const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        app.windowListeners.pageshow();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(refreshes, 1);
+        assert.equal(h.token.getAccessToken(), 'fresh');
+        assert.equal(h.cookies['education.user'].id, 7);
+        assert.equal(h.cookieOptions.token.expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.cookieOptions['education.user'].expires.getTime(), h.clock.now + 365 * day);
+        assert.equal(h.events.includes('session:expired'), false);
+    }
+});
+
+test('core idle timeout preserves persistent device login and still expires finite sessions', async () => {
+    for (const persistent of [true, false]) {
+        const h = setup(() => ({}), 'https:', 'core');
+        h.token.setToken({...fresh.data, persistent_session: persistent});
+        const app = startCoreApp(h);
+        app.listeners.IdleTimeout();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.session.hasCredentials(), persistent);
+        assert.deepEqual(app.navigations, persistent ? [] : ['login']);
+    }
+});
 
 test('returning to the login homepage keeps signed-in users there; normal login still redirects', async () => {
     for (const showHome of [true, false]) {
@@ -877,6 +1021,7 @@ test('LoginService routes password login through AuthSession rather than the bun
 test('both self-password screens send the current password atomically and wait for server success', async () => {
     const appRoots = [path.resolve(__dirname, '..'), path.resolve(__dirname, '../../../core/core-app/web-app/src/app')];
     for (const appRoot of appRoots) {
+        for (const logoutAllDevices of [true, false]) {
         for (const accepted of [true, false]) {
             const h = setup(() => ({})), gate = deferred(), controllers = {}, opened = [], notices = [], mutations = [];
             h.Hrm.controller = (name, definition) => { controllers[name] = definition; };
@@ -900,11 +1045,12 @@ test('both self-password screens send the current password atomically and wait f
             });
             scope.currentUser = {id: 7, username: 'synthetic', roles: [{name: 'ROLE_ADMIN'}]};
             scope.changePassword();
-            Object.assign(scope.changePasswordObj, {currentPassword: 'old-secret', newPassword: 'new-secret', newPasswordRep: 'new-secret'});
+            assert.equal(scope.changePasswordObj.logoutAllDevices, true);
+            Object.assign(scope.changePasswordObj, {currentPassword: 'old-secret', newPassword: 'new-secret', newPasswordRep: 'new-secret', logoutAllDevices});
             const pending = scope.changePasswordObj.saveNewPassword();
             scope.changePasswordObj.saveNewPassword();
             assert.equal(mutations.length, 1);
-            assert.deepEqual({...mutations[0]}, {currentPassword: 'old-secret', password: 'new-secret'});
+            assert.deepEqual({...mutations[0]}, {currentPassword: 'old-secret', password: 'new-secret', logoutAllDevices});
             assert.equal(scope.changePasswordObj.isSaving, true);
             assert.equal(opened.length, 1);
             assert.equal(opened[0].closed, false);
@@ -917,11 +1063,23 @@ test('both self-password screens send the current password atomically and wait f
             assert.equal(notices[0][0], accepted ? 'success' : 'error');
             if (accepted) {
                 assert.equal(scope.changePasswordObj.currentPassword, null);
-                assert.equal(h.token.getToken(), undefined);
+                assert.equal(h.token.getAccessToken(), logoutAllDevices ? undefined : 'old');
             } else {
                 assert.equal(h.token.getAccessToken(), 'old');
             }
         }
+        }
+    }
+});
+
+test('every self-password modal exposes the optional logout-all-devices checkbox', () => {
+    const paths = [
+        '../common/views/navs/header-hoz.html', '../common/views/navs/header-hoz-for-login.html', '../common/views/navs/header-hoz-old.html',
+        '../../../core/core-app/web-app/src/app/common/views/navs/header-hoz.html', '../../../core/core-app/web-app/src/app/common/views/navs/header.html'
+    ];
+    for (const filename of paths) {
+        const html = fs.readFileSync(path.resolve(__dirname, filename), 'utf8');
+        assert.match(html, /type="checkbox"[^>]+ng-model="changePasswordObj\.logoutAllDevices"[^>]+ng-disabled="changePasswordObj\.isSaving"[^>]*\/> Đăng xuất khỏi tất cả thiết bị/);
     }
 });
 

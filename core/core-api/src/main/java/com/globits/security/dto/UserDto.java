@@ -31,6 +31,9 @@ public class UserDto extends AuditableEntityDto {
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String currentPassword;
 
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private Boolean logoutAllDevices = Boolean.TRUE;
+
 	private boolean isSetPassword;
 
 	private Boolean active;
@@ -247,6 +250,14 @@ public class UserDto extends AuditableEntityDto {
 
 	public void setCurrentPassword(String currentPassword) {
 		this.currentPassword = currentPassword;
+	}
+
+	public Boolean getLogoutAllDevices() {
+		return !Boolean.FALSE.equals(logoutAllDevices);
+	}
+
+	public void setLogoutAllDevices(Boolean logoutAllDevices) {
+		this.logoutAllDevices = logoutAllDevices;
 	}
 
 	public boolean isSetPassword() {

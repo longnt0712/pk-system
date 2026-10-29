@@ -3,6 +3,7 @@ package com.globits.security.config;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,7 +35,10 @@ public class TokenSecurityConfig {
     @Primary
     public ValidatingTokenServices tokenServices(TokenStore tokenStore,
             @Qualifier("userService") UserDetailsService users,
-            @Qualifier("oauthClientDetailsService") ClientDetailsService clients) {
-        return new ValidatingTokenServices(tokenStore, users, clients);
+            @Qualifier("oauthClientDetailsService") ClientDetailsService clients,
+            @Value("${security.auth.persistent-sessions:false}") boolean persistentSessions) {
+        ValidatingTokenServices services = new ValidatingTokenServices(tokenStore, users, clients);
+        services.setPersistentSessions(persistentSessions);
+        return services;
     }
 }

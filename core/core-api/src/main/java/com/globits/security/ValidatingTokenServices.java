@@ -35,10 +35,12 @@ import com.globits.security.domain.User;
  */
 public class ValidatingTokenServices extends DefaultTokenServices implements SessionTokenServices {
     public static final String SESSION_ID = "auth_session_id";
+    private static final String PERSISTENT = "auth_persistent";
     private static final String POLICY = "auth_policy";
-    private static final String POLICY_VERSION = "2";
+    private static final String POLICY_VERSION = "3";
     private final TokenStore store;
     private final UserDetailsService users;
+    private boolean persistentSessions;
     // Bounded locks serialize refresh/logout in one process without retaining secrets.
     private final Object[] sessionLocks = new Object[128];
 
@@ -57,11 +59,19 @@ public class ValidatingTokenServices extends DefaultTokenServices implements Ses
         for (int i = 0; i < sessionLocks.length; i++) { sessionLocks[i] = new Object(); }
     }
 
+    /** Only affects newly authenticated sessions; finite sessions keep their deadline. */
+    public void setPersistentSessions(boolean persistentSessions) {
+        this.persistentSessions = persistentSessions;
+    }
+
     @Override
     @Transactional
     public OAuth2AccessToken createAccessToken(OAuth2Authentication authentication) {
         OAuth2Request request = authentication.getOAuth2Request();
         Map<String, Serializable> extensions = new HashMap<>(request.getExtensions());
+        // This is a server policy, never a privilege requested by the client.
+        extensions.remove(PERSISTENT);
+        if (persistentSessions) { extensions.put(PERSISTENT, Boolean.TRUE); }
         extensions.put(POLICY, POLICY_VERSION);
         extensions.put(SESSION_ID, UUID.randomUUID().toString());
         OAuth2Request sessionRequest = new OAuth2Request(request.getRequestParameters(), request.getClientId(),
@@ -180,7 +190,6 @@ public class ValidatingTokenServices extends DefaultTokenServices implements Ses
                 || !current.isAccountNonExpired() || !current.isCredentialsNonExpired()
                 || !Objects.equals(stored.getId(), ((User) current).getId())
                 || !Objects.equals(stored.getAuthVersion(), ((User) current).getAuthVersion())
-                || !sameSecret(stored.getPassword(), current.getPassword())
                 || !authorities(authentication.getAuthorities()).equals(authorities(current.getAuthorities()))) {
             throw invalidToken();
         }
@@ -205,6 +214,11 @@ public class ValidatingTokenServices extends DefaultTokenServices implements Ses
 
     @Override
     protected int getRefreshTokenValiditySeconds(OAuth2Request request) {
+        if (Boolean.TRUE.equals(request.getExtensions().get(PERSISTENT))) {
+            // DefaultTokenServices uses zero only to create a non-expiring
+            // refresh token. Access tokens still have a positive, finite TTL.
+            return 0;
+        }
         int seconds = super.getRefreshTokenValiditySeconds(request);
         if (seconds <= 0) { throw new InvalidGrantException("Refresh token lifetime must be positive"); }
         return seconds;

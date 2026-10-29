@@ -442,6 +442,7 @@
             var lastUserCheckAt = 0;
             var lastUserCheckSession = null;
             function checkCurrentUser(attempt, force) {
+                authSession.restore();
                 if (userCheckInFlight) { return; }
                 if (isPublicFairPage()) { return; }
 
@@ -465,6 +466,7 @@
                 if (window.navigator.onLine === false) { return; }
 
                 var checkedToken = $cookies.getObject(constants.oauth2_token);
+                var checkedIdentity = authSession.capture();
                 var sessionKey = checkedToken && (checkedToken.refresh_token || checkedToken.access_token);
                 // Brief tab switches share the most recent check. API 401s
                 // still refresh immediately through SessionAuthInterceptor.
@@ -485,7 +487,7 @@
                             (!checkedToken.refresh_token && currentToken.access_token !== checkedToken.access_token)) { return; }
 
                         if (response) {
-                            authSession.saveUser(response);
+                            if (!authSession.saveUser(response, checkedIdentity)) { return; }
                             $rootScope.$emit('$onCurrentUserData', response);
 
                             // Ưu tiên update settings role theo response backend cho chắc ăn hơn cookie

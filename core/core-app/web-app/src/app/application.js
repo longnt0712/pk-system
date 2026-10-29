@@ -41,6 +41,7 @@
             Keepalive.start();
 
             $rootScope.$on('IdleStart', function() {
+                if (authSession.isPersistent()) { return; }
                 $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
                     if (response) {
                         /* Display modal warning or sth */
@@ -60,6 +61,7 @@
             });
 
             $rootScope.$on('IdleTimeout', function() {
+                if (authSession.isPersistent()) { authSession.restore(); return; }
                 authSession.logout();
                 $state.go('login');
             });
@@ -73,7 +75,8 @@
             });
 
             var userCheckInFlight = false;
-            $rootScope.$on('$locationChangeSuccess', function () {
+            function checkCurrentUser() {
+                authSession.restore();
                 if (!authSession.hasCredentials()) {
                     if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user)) {
                         authSession.expire();
@@ -100,6 +103,19 @@
                         userCheckInFlight = false;
                         blockUI.stop();
                     });
+            }
+            $rootScope.$on('$locationChangeSuccess', checkCurrentUser);
+            function resumeSession() {
+                if (window.document.hidden || window.navigator.onLine === false || !authSession.hasCredentials()) { return; }
+                $rootScope.$evalAsync(checkCurrentUser);
+            }
+            window.addEventListener('pageshow', resumeSession);
+            window.addEventListener('online', resumeSession);
+            window.document.addEventListener('visibilitychange', resumeSession);
+            $rootScope.$on('$destroy', function () {
+                window.removeEventListener('pageshow', resumeSession);
+                window.removeEventListener('online', resumeSession);
+                window.document.removeEventListener('visibilitychange', resumeSession);
             });
         }
     ]);

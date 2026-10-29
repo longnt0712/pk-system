@@ -1305,7 +1305,13 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 				|| !SecurityUtils.passwordsMatch(user.getPassword(), dto.getCurrentPassword())) {
 			throw new AccessDeniedException("Mật khẩu hiện tại không đúng hoặc tài khoản đã bị khóa.");
 		}
+		String previousAuthVersion = user.getAuthVersion();
 		user.setPassword(SecurityUtils.getHashPassword(dto.getPassword()));
+		if (Boolean.FALSE.equals(dto.getLogoutAllDevices())) {
+			// Password changes can explicitly retain device sessions. The token
+			// policy validates this generation rather than the older hash snapshot.
+			user.setAuthVersion(previousAuthVersion);
+		}
 		return new UserDto(userRepository.save(user));
 	}
 

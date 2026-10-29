@@ -19,6 +19,10 @@ public class CustomTokenEnhancer implements TokenEnhancer {
 		final Map<String, Object> additionalInfo = new HashMap<>();
 
 		additionalInfo.put("organization", authentication.getName() + randomAlphabetic(4));
+		if (accessToken.getRefreshToken() != null
+				&& !(accessToken.getRefreshToken() instanceof ExpiringOAuth2RefreshToken)) {
+			additionalInfo.put("persistent_session", true);
+		}
 		if (accessToken.getRefreshToken() instanceof ExpiringOAuth2RefreshToken) {
 			ExpiringOAuth2RefreshToken refresh = (ExpiringOAuth2RefreshToken) accessToken.getRefreshToken();
 			if (refresh.getExpiration() != null) {

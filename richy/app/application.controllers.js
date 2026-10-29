@@ -63,6 +63,7 @@
                     currentPassword: null,
                     newPassword: null,
                     newPasswordRep: null,
+                    logoutAllDevices: true,
                     isSaving: false,
                     saveNewPassword: function () {
                         if ($scope.changePasswordObj.isSaving) { return; }
@@ -85,15 +86,19 @@
                         }
 
                         var form = $scope.changePasswordObj;
+                        var logoutAllDevices = form.logoutAllDevices === true;
                         form.isSaving = true;
                         return userService.changePasswordSelf({
                             currentPassword: form.currentPassword,
-                            password: form.newPassword
+                            password: form.newPassword,
+                            logoutAllDevices: logoutAllDevices
                         }).then(function () {
                             form.currentPassword = form.newPassword = form.newPasswordRep = null;
                             modalInstance.close();
-                            $scope.logout();
-                            toastr.info('Bạn đã cập nhật mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.', 'Thông báo');
+                            if (logoutAllDevices) { $scope.logout(); }
+                            toastr.info(logoutAllDevices
+                                ? 'Bạn đã cập nhật mật khẩu thành công và đăng xuất khỏi tất cả thiết bị. Vui lòng đăng nhập lại bằng mật khẩu mới.'
+                                : 'Bạn đã cập nhật mật khẩu thành công.', 'Thông báo');
                         }, function () {
                             toastr.error('Chưa thể cập nhật mật khẩu. Kiểm tra mật khẩu hiện thời và kết nối rồi thử lại.', 'Thông báo');
                             focus('_frm_change_password.current_password');

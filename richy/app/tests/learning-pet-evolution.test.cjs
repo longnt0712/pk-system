@@ -159,7 +159,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CUTE_PERRY', 'pet-level-4.png'],
         ['SPARKLING_LIGHTNING', 'sparkling-lightning/pet-level-20.png'],
         ['HALLOWEEN_PUMPKIN', 'halloween-pumpkin/pet.png'],
-        ['GOKU_KID', 'goku-kid/pet-level-22.png']
+        ['GOKU_KID', 'goku-kid/pet-level-23.png']
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
@@ -666,7 +666,7 @@ test('pumpkin art is transparent and its seasonal pet never becomes a random gam
     assert.equal(fs.existsSync(path.join(assets, 'halloween-pumpkin/pet.json')), false);
 });
 
-test('Goku is locked before level 21 and hatches directly at level 22 in the assistant and battle', () => {
+test('Goku hatches at level 22 and transforms into Super Saiyan at level 23 in both displays', () => {
     const locked = setupLearningPet(20, 'GOKU_KID').pet;
     assert.equal(locked.selectedPetKey, 'MAM_HOC');
     assert.equal(locked.hasNewGokuKidEgg, false);
@@ -676,14 +676,15 @@ test('Goku is locked before level 21 and hatches directly at level 22 in the ass
     for (const [level, file, form, label] of [
         [21, 'egg-level-21.png', 'goku-kid-egg', 'Trứng Goku nhí'],
         [22, 'pet-level-22.png', 'goku-kid-hatched', 'Goku nhí'],
-        [23, 'pet-level-22.png', 'goku-kid-hatched', 'Goku nhí'],
-        [50, 'pet-level-22.png', 'goku-kid-hatched', 'Goku nhí']
+        [23, 'pet-level-23.png', 'goku-super-saiyan', 'Son Goku Siêu Saiyan'],
+        [50, 'pet-level-23.png', 'goku-super-saiyan', 'Son Goku Siêu Saiyan']
     ]) {
         const {pet} = setupLearningPet(level, 'GOKU_KID'), battle = setupBattle(level);
         const expected = 'assets/images/learning-pets/goku-kid/' + file + '?v=pet-test';
         assert.equal(pet.petForm, form);
         assert.equal(pet.petImage, expected);
         assert.equal(pet.selectedPet().image, expected);
+        assert.equal(pet.selectedPet().superSaiyan, level >= 23);
         assert.equal(battle.getPlayerPetImage({selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: level}), expected);
         assert.equal(battle.getBattlePetOptionImage('GOKU_KID'), expected);
         const options = battle.getBattlePetOptions();
@@ -699,7 +700,8 @@ test('selecting Goku saves the choice and acknowledges its egg separately for ea
     const h = setupLearningPet(21, 'CUTE_PIKACHU');
     assert.equal(h.pet.hasNewGokuKidEgg, true);
     assert.match(h.pet.message, /Level 21.*Level 22.*nở/);
-    assert.doesNotMatch(h.pet.message, /nứt|23/);
+    assert.match(h.pet.message, /level 23.*Siêu Saiyan/);
+    assert.doesNotMatch(h.pet.message, /nứt/);
     h.pet.selectPet('GOKU_KID');
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(h.requests[0].body.petKey, 'GOKU_KID');
@@ -722,23 +724,24 @@ test('opening the pet panel acknowledges Goku without replacing Pikachu', () => 
     assert.equal(h.pet.selectedPetKey, 'CUTE_PIKACHU');
 });
 
-test('admins see fully grown Goku at level zero while other students keep their actual stages', () => {
-    const roles = [{name: 'ROLE_ADMIN'}], expected = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=pet-test';
+test('admins see Super Saiyan Goku at level zero while students retain their actual evolution', () => {
+    const roles = [{name: 'ROLE_ADMIN'}], expected = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=pet-test';
     const h = setupLearningPet(0, 'GOKU_KID', new Map(), roles), admin = setupBattle(0, roles);
-    assert.equal(h.pet.petForm, 'goku-kid-hatched');
+    assert.equal(h.pet.petForm, 'goku-super-saiyan');
     assert.equal(h.pet.petImage, expected);
     assert.equal(h.pet.hasNewGokuKidEgg, false);
     assert.equal(h.user().vocabularyExperienceLevel, 0);
-    assert.equal(admin.getBattlePetOptions().find(item => item.key === 'GOKU_KID').label, 'Goku nhí');
+    assert.equal(admin.getBattlePetOptions().find(item => item.key === 'GOKU_KID').label, 'Son Goku Siêu Saiyan');
     assert.equal(admin.getBattlePetOptionImage('GOKU_KID'), expected);
     assert.equal(admin.getPlayerPetImage({username: 'student', selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 0}), expected);
     assert.match(admin.getPlayerPetImage({username: 'another', selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 21}), /goku-kid\/egg-level-21.png/);
+    assert.match(admin.getPlayerPetImage({username: 'another', selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 22}), /goku-kid\/pet-level-22.png/);
     assert.doesNotMatch(admin.getPlayerPetImage({username: 'another', selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 20}), /goku-kid/);
     assert.equal(setupBattle(0).getPlayerPetImage({selectedPetKey: 'GOKU_KID', vocabularyExperienceLevel: 0, allPetsUnlocked: true}), expected);
 });
 
-test('the two Goku stages package transparent artwork and retain the existing level-21 game reward', () => {
-    for (const file of ['egg-level-21.png', 'pet-level-22.png']) {
+test('Goku stages and the separate aura package transparent artwork without changing game rewards', () => {
+    for (const file of ['egg-level-21.png', 'pet-level-22.png', 'pet-level-23.png', 'super-saiyan-aura.png']) {
         const png = fs.readFileSync(path.join(assets, 'goku-kid', file));
         assert.equal(png.subarray(1, 4).toString(), 'PNG');
         assert.equal(png.readUInt32BE(16), 1024);
@@ -746,7 +749,6 @@ test('the two Goku stages package transparent artwork and retain the existing le
         assert.equal(png[25], 6);
     }
     assert.equal(fs.existsSync(path.join(assets, 'goku-kid/egg-level-22.png')), false, 'cracked stage is removed');
-    assert.equal(fs.existsSync(path.join(assets, 'goku-kid/pet-level-23.png')), false, 'no extra level is required');
     const battle = setupBattle(22);
     assert.equal(battle.getGiftRewardImage(21), 'assets/images/learning-pets/perry/pet-level-4.png?v=pet-test');
     assert.equal(battle.getGiftRewardLabel(21), 'Perry');

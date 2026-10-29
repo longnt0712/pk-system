@@ -3,6 +3,9 @@ package com.globits.richy.security;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Date;
 import java.util.UUID;
 import java.lang.reflect.Proxy;
 import javax.sql.DataSource;
@@ -10,6 +13,8 @@ import javax.sql.DataSource;
 import com.globits.core.utils.SecurityUtils;
 import com.globits.security.CustomUserDetailsService;
 import com.globits.security.SessionTokenServices;
+import com.globits.security.ValidatingTokenServices;
+import com.globits.security.SessionAuthenticationKeyGenerator;
 import com.globits.security.config.TokenSecurityConfig;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
@@ -21,12 +26,16 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
+import org.springframework.security.oauth2.common.DefaultOAuth2AccessToken;
+import org.springframework.security.oauth2.common.ExpiringOAuth2RefreshToken;
+import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.common.exceptions.InvalidGrantException;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -88,7 +97,17 @@ public class JdbcTokenSecurityTest {
         current = new User(); current.setId(7L); current.setUsername("jdbc-student"); current.setActive(true);
         current.setPassword(SecurityUtils.getHashPassword("synthetic-jdbc-password"));
         Role role = new Role(); role.setName("ROLE_STUDENT"); current.getRoles().add(role);
-        context = new AnnotationConfigApplicationContext(Config.class);
+        startContext(false);
+    }
+
+    private void startContext(boolean persistent) {
+        if (context != null) { context.close(); }
+        context = new AnnotationConfigApplicationContext();
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("security.auth.persistent-sessions", persistent);
+        context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("session-policy-test", properties));
+        context.register(Config.class);
+        context.refresh();
         services = context.getBean(SessionTokenServices.class);
         store = context.getBean(TokenStore.class);
     }
@@ -125,6 +144,63 @@ public class JdbcTokenSecurityTest {
         denied(() -> services.loadAuthentication(access.getValue()));
         try { services.refreshAccessToken(access.getRefreshToken().getValue(), request()); fail("Stale JDBC authority must not refresh"); }
         catch (InvalidGrantException expected) { }
+    }
+
+    @Test public void persistentProductionSessionsSurviveJdbcReloadAndExpiredAccessWithoutOutlivingRevocation() {
+        startContext(true);
+        OAuth2AccessToken first = services.createAccessToken(authentication());
+        OAuth2AccessToken otherDevice = services.createAccessToken(authentication());
+        assertEquals(Boolean.TRUE, first.getAdditionalInformation().get("persistent_session"));
+        assertFalse(first.getAdditionalInformation().containsKey("refresh_token_expires_at"));
+        assertFalse(first.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+        assertFalse(store.readRefreshToken(first.getRefreshToken().getValue()) instanceof ExpiringOAuth2RefreshToken);
+        assertTrue(first.getExpiresIn() > 85 && first.getExpiresIn() <= 90);
+
+        // Reload the serialized JDBC rows through an independent service/store,
+        // as a restarted backend would, without rewriting the refresh row.
+        JdbcTokenStore restartedStore = new JdbcTokenStore(context.getBean(DataSource.class));
+        restartedStore.setAuthenticationKeyGenerator(new SessionAuthenticationKeyGenerator());
+        ValidatingTokenServices restarted = new ValidatingTokenServices(restartedStore,
+                (UserDetailsService) context.getBean("userService"), context.getBean(ClientDetailsService.class));
+        restarted.setPersistentSessions(true);
+        assertNotNull(restarted.loadAuthentication(first.getValue()));
+        DefaultOAuth2AccessToken expired = new DefaultOAuth2AccessToken(first);
+        expired.setExpiration(new Date(System.currentTimeMillis() - 1000));
+        restartedStore.storeAccessToken(expired, restartedStore.readAuthentication(first));
+        denied(() -> restarted.loadAuthentication(first.getValue()));
+        OAuth2AccessToken renewed = restarted.refreshAccessToken(first.getRefreshToken().getValue(), request());
+        assertEquals(first.getRefreshToken().getValue(), renewed.getRefreshToken().getValue());
+        assertEquals(Boolean.TRUE, renewed.getAdditionalInformation().get("persistent_session"));
+        assertFalse(renewed.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+        assertTrue(renewed.getExpiresIn() > 85 && renewed.getExpiresIn() <= 90);
+        assertNotNull(restarted.loadAuthentication(renewed.getValue()));
+        assertEquals(2, new JdbcTemplate(context.getBean(DataSource.class))
+                .queryForObject("select count(*) from oauth_refresh_token", Integer.class).intValue());
+        assertTrue(restarted.revokeForClient(renewed.getRefreshToken().getValue(), "jdbc-test-client"));
+        denied(() -> services.loadAuthentication(renewed.getValue()));
+        assertNotNull(services.loadAuthentication(otherDevice.getValue()));
+    }
+
+    @Test public void callerCannotOptIntoPersistenceWhenServerFeatureIsDisabled() {
+        OAuth2Authentication supplied = authentication();
+        supplied.getOAuth2Request().getExtensions().put("auth_persistent", Boolean.TRUE);
+        OAuth2AccessToken finite = services.createAccessToken(supplied);
+        assertTrue(finite.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+        assertFalse(finite.getAdditionalInformation().containsKey("persistent_session"));
+        assertFalse(store.readAuthentication(finite).getOAuth2Request().getExtensions().containsKey("auth_persistent"));
+    }
+
+    @Test public void enablingPersistenceDoesNotRewriteOrExtendAnExistingFiniteRefresh() {
+        OAuth2AccessToken finite = services.createAccessToken(authentication());
+        long expiry = ((Number) finite.getAdditionalInformation().get("refresh_token_expires_at")).longValue();
+        ValidatingTokenServices enabled = new ValidatingTokenServices(store,
+                (UserDetailsService) context.getBean("userService"), context.getBean(ClientDetailsService.class));
+        enabled.setPersistentSessions(true);
+        OAuth2AccessToken renewed = enabled.refreshAccessToken(finite.getRefreshToken().getValue(), request());
+        assertEquals(finite.getRefreshToken().getValue(), renewed.getRefreshToken().getValue());
+        assertTrue(renewed.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
+        assertEquals(expiry, ((Number) renewed.getAdditionalInformation().get("refresh_token_expires_at")).longValue());
+        assertFalse(renewed.getAdditionalInformation().containsKey("persistent_session"));
     }
 
     @Test public void accessNeverOutlivesRefreshDeadline() {

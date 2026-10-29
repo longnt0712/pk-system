@@ -1,0 +1,12 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+JUnit version 4.12
+.......................19:06:58.316 [main] DEBUG org.springframework.security.authentication.dao.DaoAuthenticationProvider - User account is disabled
+19:06:58.419 [main] DEBUG org.springframework.security.authentication.dao.DaoAuthenticationProvider - User account is locked
+19:06:58.529 [main] DEBUG org.springframework.security.authentication.dao.DaoAuthenticationProvider - User account is expired
+19:06:58.741 [main] DEBUG org.springframework.security.authentication.dao.DaoAuthenticationProvider - User account credentials have expired
+............................
+Time: 36.345
+
+OK (51 tests)
+

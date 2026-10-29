@@ -25,8 +25,8 @@
                             name: 'Core.Common',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'common/controllers/LoginController.js?v=20261028-auth-1',
-                                'common/business/LoginService.js?v=20261028-auth-1',
+                                'common/controllers/LoginController.js?v=20261029-auth-2',
+                                'common/business/LoginService.js?v=20261029-auth-2',
                                 'assets/css/login.min.css'
                             ]
                         });

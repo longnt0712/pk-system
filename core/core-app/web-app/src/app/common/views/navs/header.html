@@ -180,6 +180,9 @@
                             <label for="_frm_change_password.new_password_rep" class="bold">Nhập lại mật khẩu mới</label>
                             <input type="password" class="form-control" id="_frm_change_password.new_password_rep" ng-model="changePasswordObj.newPasswordRep" />
                         </div>
+                        <div class="col-xs-12 margin-top-20">
+                            <label><input type="checkbox" ng-model="changePasswordObj.logoutAllDevices" ng-disabled="changePasswordObj.isSaving" /> Đăng xuất khỏi tất cả thiết bị</label>
+                        </div>
                     </div>
                 </div>
             </div>

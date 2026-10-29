@@ -1435,7 +1435,7 @@
             var ownAdminPet = player && player.username &&
                 player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
             if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
-                level = Math.max(level, 22);
+                level = Math.max(level, 23);
             }
             if (petKey === 'HALLOWEEN_PUMPKIN' &&
                     (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
@@ -1453,8 +1453,8 @@
                 return 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png' + suffix;
             }
             if (petKey === 'GOKU_KID' && level >= 21) {
-                return 'assets/images/learning-pets/goku-kid/' + (level >= 22
-                    ? 'pet-level-22.png' : 'egg-level-21.png') + suffix;
+                return 'assets/images/learning-pets/goku-kid/' + (level >= 23
+                    ? 'pet-level-23.png' : (level >= 22 ? 'pet-level-22.png' : 'egg-level-21.png')) + suffix;
             }
 
             if (petKey === 'CUTE_PIKACHU' && level >= 18) {
@@ -1540,7 +1540,7 @@
             var adminAccess = (me && me.allPetsUnlocked === true) || hasAdminPetAccess();
             var halloweenAvailable = !!adminAccess || isHalloweenPetSeason();
             if (adminAccess) {
-                level = Math.max(level, 22);
+                level = Math.max(level, 23);
             }
 
             /*
@@ -1622,7 +1622,7 @@
             if (level >= 21) {
                 battlePetOptions.push({
                     key: 'GOKU_KID',
-                    label: level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí'
+                    label: level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí')
                 });
             }
             for (var stars = 1; stars <= 7; stars++) {

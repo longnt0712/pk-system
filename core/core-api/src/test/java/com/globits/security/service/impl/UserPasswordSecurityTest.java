@@ -94,6 +94,44 @@ public class UserPasswordSecurityTest {
         assertEquals(1, saves);
     }
 
+    @Test public void selfChangeRetainsExistingDeviceGenerationOnlyWhenExplicitlyRequested() {
+        User user = users.get(11L);
+        String previousGeneration = user.getAuthVersion();
+        UserDto payload = password("old-password"); payload.setLogoutAllDevices(false);
+        service.changeMyPassword(payload);
+        assertEquals(previousGeneration, user.getAuthVersion());
+        assertTrue(SecurityUtils.passwordsMatch(user.getPassword(), "new-password"));
+    }
+
+    @Test public void retainingDeviceSessionsAlsoPreservesLegacyNullGeneration() {
+        User user = users.get(11L); user.setAuthVersion(null);
+        UserDto payload = password("old-password"); payload.setLogoutAllDevices(false);
+        service.changeMyPassword(payload);
+        assertNull(user.getAuthVersion());
+        assertTrue(SecurityUtils.passwordsMatch(user.getPassword(), "new-password"));
+    }
+
+    @Test public void defaultCheckedAndNullLogoutOptionsInvalidateAllDeviceGenerations() {
+        for (Boolean option : new Boolean[]{null, Boolean.TRUE}) {
+            User user = user(11L, "student", "old-password"); users.put(11L, user);
+            String previousGeneration = user.getAuthVersion();
+            UserDto payload = password("old-password"); payload.setLogoutAllDevices(option);
+            service.changeMyPassword(payload);
+            assertNotEquals(previousGeneration, user.getAuthVersion());
+        }
+        User user = user(11L, "student", "old-password"); users.put(11L, user);
+        String previousGeneration = user.getAuthVersion();
+        service.changeMyPassword(password("old-password"));
+        assertNotEquals(previousGeneration, user.getAuthVersion());
+    }
+
+    @Test public void retainingDeviceOptionDoesNotBypassCurrentPasswordVerification() {
+        String previousGeneration = users.get(11L).getAuthVersion();
+        UserDto payload = password("wrong-password"); payload.setLogoutAllDevices(false);
+        expectDenied(() -> service.changeMyPassword(payload));
+        assertEquals(previousGeneration, users.get(11L).getAuthVersion()); assertEquals(0, saves);
+    }
+
     @Test public void disabledLockedExpiredAndCredentialExpiredUsersCannotChangePassword() {
         User current = users.get(11L);
         current.setActive(false);
@@ -136,10 +174,12 @@ public class UserPasswordSecurityTest {
         User admin = user(99L, "admin", "admin-password");
         Role role = new Role(); role.setName("ROLE_ADMIN"); admin.getRoles().add(role);
         SecurityUtils.setCurrentUser(admin);
-        UserDto payload = password(null); payload.setId(22L);
+        UserDto payload = password(null); payload.setId(22L); payload.setLogoutAllDevices(false);
+        String previousGeneration = users.get(22L).getAuthVersion();
         assertEquals(Long.valueOf(22L), service.changePassword(payload).getId());
         assertTrue(SecurityUtils.passwordsMatch(users.get(22L).getPassword(), "new-password"));
         assertEquals(LockModeType.PESSIMISTIC_WRITE, lastLock);
+        assertNotEquals(previousGeneration, users.get(22L).getAuthVersion());
     }
 
     private static UserDto password(String current) {
