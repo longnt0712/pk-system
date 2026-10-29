@@ -297,7 +297,7 @@ public class BattleOnlinePetSelectionTest {
     }
 
     @Test
-    public void persistsGokuKidAtAllThreeEvolutionLevelsAndLater() {
+    public void persistsGokuKidAtBothEvolutionLevelsAndLater() {
         for (int level : new int[] {21, 22, 23, 50}) {
             BattleOnlinePetSelectionDto result = choose(" goku_kid ", level);
             assertEquals("GOKU_KID", result.getSelectedPetKey());

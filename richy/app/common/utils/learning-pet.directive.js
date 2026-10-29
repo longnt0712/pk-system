@@ -67,8 +67,7 @@
             var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
             var halloweenPumpkinUrl = 'assets/images/learning-pets/halloween-pumpkin/pet.png?v=' + version;
             var gokuKidEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-21.png?v=' + version;
-            var gokuKidCrackedEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-22.png?v=' + version;
-            var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
+            var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -146,7 +145,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 23); }
+                if (admin) { level = Math.max(level, 22); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
@@ -336,9 +335,9 @@
                 if (level >= 21) {
                     vm.availablePets.push({
                         key: 'GOKU_KID',
-                        name: level >= 23 ? 'Goku nhí' : 'Trứng Goku nhí',
-                        description: level >= 23 ? 'Đã nở hoàn chỉnh' : (level === 22 ? 'Trứng đang nứt' : 'Mở khóa ở level 21'),
-                        image: level >= 23 ? gokuKidPetUrl : (level === 22 ? gokuKidCrackedEggUrl : gokuKidEggUrl),
+                        name: level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí',
+                        description: level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21',
+                        image: level >= 22 ? gokuKidPetUrl : gokuKidEggUrl,
                         isNew: vm.hasNewGokuKidEgg
                     });
                 }
@@ -364,8 +363,8 @@
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {
-                    vm.petForm = level >= 23 ? 'goku-kid-hatched' : 'goku-kid-egg';
-                    vm.petImage = level >= 23 ? gokuKidPetUrl : (level === 22 ? gokuKidCrackedEggUrl : gokuKidEggUrl);
+                    vm.petForm = level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg';
+                    vm.petImage = level >= 22 ? gokuKidPetUrl : gokuKidEggUrl;
                     return;
                 }
                 if (selectedPet === 'CUTE_PERRY') {
@@ -1047,7 +1046,7 @@
                         (vm.hasNewGokuKidEgg ? 1 : 0);
                 if (vm.hasNewGokuKidEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Goku nhí mới!';
-                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 trứng sẽ nứt và level 23 sẽ nở.';
+                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí.';
                 } else if (vm.hasNewSparklingLightning) {
                     vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
                     vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';

@@ -1,4 +1,4 @@
-/* Rebuild the provided-image cutout and native SVG egg stages. */
+/* Rebuild the provided-image cutout and the two native SVG evolution stages. */
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -77,9 +77,7 @@ async function main() {
         <linearGradient id="hair" x1="0" y1="0" x2=".6" y2="1"><stop stop-color="#303238"/><stop offset=".4" stop-color="#111216"/><stop offset="1" stop-color="#07080a"/></linearGradient>
         <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff6d7" stop-opacity=".9"/><stop offset="1" stop-color="#ffc6a6" stop-opacity=".1"/></linearGradient>
         <clipPath id="shellClip"><path d="M506 321C622 321 730 492 759 659C791 851 704 948 511 948C318 948 228 849 259 659C286 490 393 321 506 321Z"/></clipPath>
-        <clipPath id="headClip"><path d="M119 3 166 33 191 91 230 128 282 98 254 154 266 184 251 217 231 249 203 271 161 278 119 261 91 245 53 231 81 209 38 194 3 174 43 142 80 129 48 93 16 56 70 42 99 51 136 78Z"/></clipPath>
         <clipPath id="badgeClip"><circle cx="509" cy="708" r="71"/></clipPath>
-        <clipPath id="crackedBadgeClip"><circle cx="510" cy="775" r="53"/></clipPath>
     </defs>`;
     const start = (title, description) => `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc"><title id="title">${title}</title><desc id="desc">${description}</desc>${definitions}`;
     const tail = `<path d="M701 833C804 858 866 826 863 763C861 711 823 691 803 713C784 733 802 758 825 748" fill="none" stroke="#281b17" stroke-width="52" stroke-linecap="round"/><path d="M701 833C804 858 866 826 863 763C861 711 823 691 803 713C784 733 802 758 825 748" fill="none" stroke="url(#tail)" stroke-width="35" stroke-linecap="round"/>`;
@@ -95,21 +93,8 @@ async function main() {
         <path d="M330 404 346 350 287 341 363 301 325 262 407 280 410 215 482 274 520 185 553 280 621 241 618 312 699 291 652 355 684 398 599 375 541 418 472 382 404 421Z" fill="url(#hair)" stroke="#1b1c21" stroke-width="10" stroke-linejoin="round"/>
         <path d="m342 334 57-31-29-22 57 19 8-40 46 49 38-73-5 75 49 10 37-30-7 37 48-7" fill="none" stroke="#55575c" stroke-width="10" stroke-linecap="round" opacity=".7"/>
         </svg>`;
-    const crackedShell = 'M261 646 306 682 352 652 397 689 445 650 492 693 539 652 586 688 633 651 681 684 750 641C794 817 712 948 511 948C308 948 224 817 261 646Z';
-    const cracked = start('Trứng Goku nhí đang nứt — level 22', 'Goku nhí trong chính ảnh tham chiếu ló tóc và khuôn mặt qua vỏ trứng đỏ đang nứt.') + tail + staff +
-        `<g transform="translate(113 47) scale(2.22)"><image href="${art}" width="378" height="529" clip-path="url(#headClip)"/></g>
-        <path d="${crackedShell}" fill="url(#shell)" stroke="#2a1a20" stroke-width="12" stroke-linejoin="round"/>
-        <path d="M709 680C738 802 674 901 548 927C657 931 742 870 762 782Z" fill="#a80f23" opacity=".4"/>
-        <path d="M289 730C302 702 316 696 332 697L322 741Z" fill="#ffb284" opacity=".8"/>
-        <path d="M262 821C384 853 634 855 761 811L747 857C618 893 394 888 273 869Z" fill="#17191f"/>
-        <circle cx="510" cy="775" r="67" fill="#ffce32" stroke="#331d20" stroke-width="9"/><image href="${badgeArt}" x="457" y="719" width="106" height="111" clip-path="url(#crackedBadgeClip)"/>
-        <path d="m397 689 27 57-26 38 29 39" fill="none" stroke="#81202b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="m681 684-18 34 17 29" fill="none" stroke="#81202b" stroke-width="7" stroke-linecap="round"/>
-        <path d="m287 575 31-24 31 39-39 10Z" fill="#ff7950" stroke="#2a1a20" stroke-width="8" stroke-linejoin="round"/>
-        <path d="m721 563 34 24-28 30-32-16Z" fill="#ff7950" stroke="#2a1a20" stroke-width="8" stroke-linejoin="round"/>
-        </svg>`;
-    const pet = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc"><title id="title">Goku nhí — level 23</title><desc id="desc">Dùng chính ảnh Goku nhí người dùng chọn: tóc đen, võ phục đỏ, đuôi khỉ và tư thế nhảy giơ tay. Giữ nguyên khuôn mặt, màu sắc và dấu watermark nằm trên nhân vật.</desc><image href="${art}" x="169" y="29" width="686" height="960"/></svg>`;
-    for (const [name, source] of [['egg-level-21', intact], ['egg-level-22', cracked], ['pet-level-23', pet]]) {
+    const pet = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc"><title id="title">Son Goku — level 22</title><desc id="desc">Dùng chính ảnh Goku nhí người dùng chọn: tóc đen, võ phục đỏ, đuôi khỉ và tư thế nhảy giơ tay. Giữ nguyên khuôn mặt, màu sắc và dấu watermark nằm trên nhân vật.</desc><image href="${art}" x="169" y="29" width="686" height="960"/></svg>`;
+    for (const [name, source] of [['egg-level-21', intact], ['pet-level-22', pet]]) {
         fs.writeFileSync(path.join(directory, name + '.svg'), source);
         await sharp(Buffer.from(source)).png().toFile(path.join(directory, name + '.png'));
     }
