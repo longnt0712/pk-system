@@ -114,6 +114,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_CUTE_TUFFY_MOUSE = "CUTE_TUFFY_MOUSE";
     private static final String PET_CUTE_PIKACHU = "CUTE_PIKACHU";
     private static final String PET_SPARKLING_LIGHTNING = "SPARKLING_LIGHTNING";
+    private static final String PET_GOKU_KID = "GOKU_KID";
     private static final String PET_HALLOWEEN_PUMPKIN = "HALLOWEEN_PUMPKIN";
     private static final ZoneId PET_SEASON_ZONE = ZoneId.of("Asia/Bangkok");
     private Clock petSeasonClock = Clock.systemUTC();
@@ -125,6 +126,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final int CUTE_TUFFY_MOUSE_UNLOCK_LEVEL = 15;
     private static final int CUTE_PIKACHU_UNLOCK_LEVEL = 18;
     private static final int SPARKLING_LIGHTNING_UNLOCK_LEVEL = 20;
+    private static final int GOKU_KID_UNLOCK_LEVEL = 21;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -465,6 +467,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
                     "Tia sét lấp lánh được mở khóa khi đạt level 20.");
         }
+        if (!allPetsUnlocked && PET_GOKU_KID.equals(selectedPet) && level < GOKU_KID_UNLOCK_LEVEL) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
+                    "Trứng Goku nhí được mở khóa khi đạt level 21.");
+        }
 
         int dragonBallUnlockLevel = dragonBallUnlockLevel(selectedPet);
         if (!allPetsUnlocked && level < dragonBallUnlockLevel) {
@@ -537,6 +543,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || level >= SPARKLING_LIGHTNING_UNLOCK_LEVEL) {
             unlocked.add(PET_SPARKLING_LIGHTNING);
         }
+        if (allPetsUnlocked || level >= GOKU_KID_UNLOCK_LEVEL) {
+            unlocked.add(PET_GOKU_KID);
+        }
         for (int stars = 1; stars <= 7; stars++) {
             if (allPetsUnlocked || level >= 5 + stars) { unlocked.add("DRAGON_BALL_" + stars); }
         }
@@ -582,6 +591,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
         if (PET_SPARKLING_LIGHTNING.equals(normalized)) {
             return PET_SPARKLING_LIGHTNING;
+        }
+        if (PET_GOKU_KID.equals(normalized)) {
+            return PET_GOKU_KID;
         }
         if (PET_HALLOWEEN_PUMPKIN.equals(normalized)) {
             return PET_HALLOWEEN_PUMPKIN;
@@ -8824,6 +8836,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (!identity.allPetsUnlocked && PET_SPARKLING_LIGHTNING.equals(identity.selectedPetKey) &&
                 identity.vocabularyExperienceLevel < SPARKLING_LIGHTNING_UNLOCK_LEVEL) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
+        if (!identity.allPetsUnlocked && PET_GOKU_KID.equals(identity.selectedPetKey) &&
+                identity.vocabularyExperienceLevel < GOKU_KID_UNLOCK_LEVEL) {
             identity.selectedPetKey = PET_MAM_HOC;
         }
 

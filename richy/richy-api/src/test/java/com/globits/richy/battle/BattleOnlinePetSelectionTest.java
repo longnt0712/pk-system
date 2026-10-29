@@ -123,16 +123,16 @@ public class BattleOnlinePetSelectionTest {
         Role admin = new Role();
         admin.setName("ROLE_ADMIN");
         student.getRoles().add(admin);
-        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING", "HALLOWEEN_PUMPKIN"}) {
+        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING", "GOKU_KID", "HALLOWEEN_PUMPKIN"}) {
             BattleOnlinePetSelectionDto result = choose(key, 0);
             assertEquals(key, student.getSelectedLearningPet());
             assertEquals(key, result.getSelectedPetKey());
             assertTrue(result.isAllPetsUnlocked());
-            assertEquals(17, result.getUnlockedPetKeys().size());
+            assertEquals(18, result.getUnlockedPetKeys().size());
             assertEquals(0, result.getVocabularyExperienceLevel());
             assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
         }
-        verify(users, times(10)).save(student);
+        verify(users, times(11)).save(student);
     }
 
     @Test
@@ -227,7 +227,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("CUTE_PIKACHU", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
             assertFalse(result.isAllPetsUnlocked());
-            assertEquals(level >= 20 ? 16 : 15, result.getUnlockedPetKeys().size());
+            assertEquals(level >= 21 ? 17 : (level >= 20 ? 16 : 15), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_TUFFY_MOUSE"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
         }
@@ -260,7 +260,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("SPARKLING_LIGHTNING", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
             assertFalse(result.isAllPetsUnlocked());
-            assertEquals(16, result.getUnlockedPetKeys().size());
+            assertEquals(level >= 21 ? 17 : 16, result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
             assertTrue(result.getUnlockedPetKeys().contains("DRAGON_BALL_7"));
             assertTrue(result.getUnlockedPetKeys().contains("SPARKLING_LIGHTNING"));
@@ -272,6 +272,79 @@ public class BattleOnlinePetSelectionTest {
     public void unknownLightningKeysStillNormalizeToTheDefaultPet() {
         for (String key : new String[] {"SPARKLING_LIGHTNING_EXTRA", "LIGHTNING", "UNKNOWN_PET"}) {
             assertEquals("MAM_HOC", choose(key, 20).getSelectedPetKey());
+            assertEquals("MAM_HOC", student.getSelectedLearningPet());
+        }
+        verify(users, times(3)).save(student);
+    }
+
+    @Test
+    public void rejectsGokuKidBeforeLevelTwentyOneEvenWithForgedClientUnlocks() {
+        student.setTotalVocabularyWordsLearned(20L * User.VOCABULARY_WORDS_PER_LEVEL);
+        BattleOnlinePetSelectionDto request = new BattleOnlinePetSelectionDto();
+        request.setPetKey("GOKU_KID");
+        request.setAllPetsUnlocked(true);
+        request.setVocabularyExperienceLevel(100);
+        try {
+            service.selectPet("student", request);
+            fail("Goku must stay locked until the student's real level reaches 21");
+        } catch (BattleOnlineException error) {
+            assertEquals(HttpStatus.BAD_REQUEST, error.getStatus());
+            assertTrue(error.getMessage().contains("level 21"));
+        }
+        assertEquals("CUTE_TOM_CAT", student.getSelectedLearningPet());
+        verify(users, never()).save(any(User.class));
+        assertFalse(choose("CUTE_PIKACHU", 20).getUnlockedPetKeys().contains("GOKU_KID"));
+    }
+
+    @Test
+    public void persistsGokuKidAtAllThreeEvolutionLevelsAndLater() {
+        for (int level : new int[] {21, 22, 23, 50}) {
+            BattleOnlinePetSelectionDto result = choose(" goku_kid ", level);
+            assertEquals("GOKU_KID", result.getSelectedPetKey());
+            assertEquals("GOKU_KID", student.getSelectedLearningPet());
+            assertEquals(level, result.getVocabularyExperienceLevel());
+            assertEquals(Long.valueOf(level * User.VOCABULARY_WORDS_PER_LEVEL), student.getTotalVocabularyWordsLearned());
+            assertFalse(result.isAllPetsUnlocked());
+            assertEquals(17, result.getUnlockedPetKeys().size());
+            assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
+            assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
+            assertTrue(result.getUnlockedPetKeys().contains("SPARKLING_LIGHTNING"));
+            assertTrue(result.getUnlockedPetKeys().contains("GOKU_KID"));
+        }
+        verify(users, times(4)).save(student);
+    }
+
+    @Test
+    public void rejoiningKeepsGokuKidOnlyWhenTheRealLevelOrAdminRoleUnlocksIt() {
+        EntityManager entity = mock(EntityManager.class);
+        Query account = mock(Query.class), roles = mock(Query.class);
+        ReflectionTestUtils.setField(service, "entityManager", entity);
+        when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
+        when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
+        when(roles.getResultList()).thenReturn(Collections.emptyList());
+        for (int level : new int[] {0, 20, 21, 22, 23, 50}) {
+            when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {
+                    7L, "", "", "Student", level * User.VOCABULARY_WORDS_PER_LEVEL, "GOKU_KID"
+            }));
+            Object identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+            assertEquals(level >= 21 ? "GOKU_KID" : "MAM_HOC", ReflectionTestUtils.getField(identity, "selectedPetKey"));
+            assertEquals(level, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
+            assertEquals(Boolean.FALSE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
+        }
+        when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {
+                7L, "", "", "Admin", 0L, "GOKU_KID"
+        }));
+        when(roles.getResultList()).thenReturn(Collections.singletonList(1L));
+        Object identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+        assertEquals("GOKU_KID", ReflectionTestUtils.getField(identity, "selectedPetKey"));
+        assertEquals(Boolean.TRUE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
+        assertEquals(0, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
+    }
+
+    @Test
+    public void unknownGokuKeysStillNormalizeToTheDefaultPet() {
+        for (String key : new String[] {"GOKU", "GOKU_KID_EXTRA", "KID_GOKU"}) {
+            assertEquals("MAM_HOC", choose(key, 23).getSelectedPetKey());
             assertEquals("MAM_HOC", student.getSelectedLearningPet());
         }
         verify(users, times(3)).save(student);
@@ -449,7 +522,7 @@ public class BattleOnlinePetSelectionTest {
             assertFalse(result.isAllPetsUnlocked());
             assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
             assertTrue(result.getUnlockedPetKeys().contains("HALLOWEEN_PUMPKIN"));
-            assertEquals(level >= 20 ? 17 : 2, result.getUnlockedPetKeys().size());
+            assertEquals(level >= 21 ? 18 : (level >= 20 ? 17 : 2), result.getUnlockedPetKeys().size());
         }
         verify(users, times(4)).save(student);
     }

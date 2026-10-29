@@ -66,6 +66,9 @@
             var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
             var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
             var halloweenPumpkinUrl = 'assets/images/learning-pets/halloween-pumpkin/pet.png?v=' + version;
+            var gokuKidEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-21.png?v=' + version;
+            var gokuKidCrackedEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-22.png?v=' + version;
+            var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -110,6 +113,7 @@
             vm.hasNewTuffyMouseEgg = false;
             vm.hasNewPikachuEgg = false;
             vm.hasNewSparklingLightning = false;
+            vm.hasNewGokuKidEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -142,7 +146,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 20); }
+                if (admin) { level = Math.max(level, 23); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
@@ -170,6 +174,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'SPARKLING_LIGHTNING' && level < 20) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'GOKU_KID' && level < 21) {
                     selectedPet = 'MAM_HOC';
                 }
                 var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(selectedPet);
@@ -325,6 +332,17 @@
                     });
                 }
 
+                vm.hasNewGokuKidEgg = level >= 21 && !admin && hasUnseenGokuKidEgg(user);
+                if (level >= 21) {
+                    vm.availablePets.push({
+                        key: 'GOKU_KID',
+                        name: level >= 23 ? 'Goku nhí' : 'Trứng Goku nhí',
+                        description: level >= 23 ? 'Đã nở hoàn chỉnh' : (level === 22 ? 'Trứng đang nứt' : 'Mở khóa ở level 21'),
+                        image: level >= 23 ? gokuKidPetUrl : (level === 22 ? gokuKidCrackedEggUrl : gokuKidEggUrl),
+                        isNew: vm.hasNewGokuKidEgg
+                    });
+                }
+
                 for (var stars = 1; stars <= 7; stars++) {
                     if (level >= 5 + stars) {
                         vm.availablePets.push({
@@ -343,6 +361,11 @@
                 if (selectedPet === 'HALLOWEEN_PUMPKIN') {
                     vm.petForm = 'halloween-pumpkin';
                     vm.petImage = halloweenPumpkinUrl;
+                    return;
+                }
+                if (selectedPet === 'GOKU_KID') {
+                    vm.petForm = level >= 23 ? 'goku-kid-hatched' : 'goku-kid-egg';
+                    vm.petImage = level >= 23 ? gokuKidPetUrl : (level === 22 ? gokuKidCrackedEggUrl : gokuKidEggUrl);
                     return;
                 }
                 if (selectedPet === 'CUTE_PERRY') {
@@ -590,6 +613,24 @@
                 });
             }
 
+            function gokuKidSeenKey(user) {
+                return 'learning-pet:goku-kid-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenGokuKidEgg(user) {
+                try {
+                    return $window.localStorage.getItem(gokuKidSeenKey(user)) !== '1';
+                } catch (ignoreStorage) { return true; }
+            }
+
+            function markGokuKidEggSeen(user) {
+                try { $window.localStorage.setItem(gokuKidSeenKey(user), '1'); } catch (ignoreStorage) {}
+                vm.hasNewGokuKidEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'GOKU_KID') { item.isNew = false; }
+                });
+            }
+
             vm.selectedPet = function () {
                 for (var i = 0; i < vm.availablePets.length; i++) {
                     if (vm.availablePets[i].key === vm.selectedPetKey) { return vm.availablePets[i]; }
@@ -664,6 +705,9 @@
                         }
                         if (user.selectedLearningPet === 'SPARKLING_LIGHTNING') {
                             markSparklingLightningSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'GOKU_KID') {
+                            markGokuKidEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -999,8 +1043,12 @@
                         (vm.hasNewJerryMouseEgg ? 1 : 0) +
                         (vm.hasNewTuffyMouseEgg ? 1 : 0) +
                         (vm.hasNewPikachuEgg ? 1 : 0) +
-                        (vm.hasNewSparklingLightning ? 1 : 0);
-                if (vm.hasNewSparklingLightning) {
+                        (vm.hasNewSparklingLightning ? 1 : 0) +
+                        (vm.hasNewGokuKidEgg ? 1 : 0);
+                if (vm.hasNewGokuKidEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Goku nhí mới!';
+                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 trứng sẽ nứt và level 23 sẽ nở.';
+                } else if (vm.hasNewSparklingLightning) {
                     vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
                     vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';
                 } else if (vm.hasNewPikachuEgg) {
@@ -1385,6 +1433,9 @@
                 }
                 if (vm.hasNewSparklingLightning) {
                     markSparklingLightningSeen(readCurrentUser());
+                }
+                if (vm.hasNewGokuKidEgg) {
+                    markGokuKidEggSeen(readCurrentUser());
                 }
                 updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';

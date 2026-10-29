@@ -24,7 +24,8 @@
 .learning-pet-egg.is-tuffy-mouse-pet,
 .learning-pet-egg.is-pikachu-pet,
 .learning-pet-egg.is-perry-pet,
-.learning-pet-egg.is-halloween-pumpkin {
+.learning-pet-egg.is-halloween-pumpkin,
+.learning-pet-egg.is-goku-kid-pet {
     width: 104px;
     height: 108px;
 }
@@ -240,6 +241,7 @@ img[src*="assets/images/learning-pets/tuffy-mouse/"],
 img[src*="assets/images/learning-pets/pikachu/"],
 img[src*="assets/images/learning-pets/perry/"],
 img[src*="assets/images/learning-pets/halloween-pumpkin/"],
+img[src*="assets/images/learning-pets/goku-kid/"],
 img[src*="assets/images/learning-pets/dragon-ball-"] {
     image-rendering: auto !important;
 }

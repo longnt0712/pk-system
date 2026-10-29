@@ -70,6 +70,7 @@
                     'is-pikachu-pet': pet.petForm === 'pikachu-hatched',
                     'is-perry-pet': pet.petForm === 'perry-hatched',
                     'is-halloween-pumpkin': pet.petForm === 'halloween-pumpkin',
+                    'is-goku-kid-pet': pet.petForm === 'goku-kid-hatched',
                     'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'
                  }"
                  ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched' && pet.petForm !== 'sparkling-lightning'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
