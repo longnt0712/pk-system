@@ -382,6 +382,7 @@
                             'question/speaking.css?v=' + window.APP_VERSION,
                             'question/business/SpeakingService.js?v=' + window.APP_VERSION,
                             'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,
+                            'question/business/speaking-student-answer-editor.js?v=' + window.APP_VERSION,
                             'question/controllers/SpeakingController.js?v=' + window.APP_VERSION
                         ]});
                     }]

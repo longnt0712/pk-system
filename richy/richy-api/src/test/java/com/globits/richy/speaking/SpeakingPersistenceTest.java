@@ -103,6 +103,17 @@ public class SpeakingPersistenceTest {
         Long home=((Number)bank(second).stream().filter(q->Integer.valueOf(1).equals(q.get("part"))).findFirst().get().get("id")).longValue();service.markPass(second,pass(home));assertEquals(true,bank(setId).stream().filter(q->Integer.valueOf(1).equals(q.get("part"))).findFirst().get().get("passed"));
         as(student);PracticeRequest p=request();p.setIds=Arrays.asList(second,setId);Map<String,Object> practice=service.startPractice(p);List<Map<String,Object>> qs=questions(practice);assertEquals(3,qs.size());assertEquals(3,qs.stream().map(q->q.get("id")).distinct().count());Long cue=((Number)qs.stream().filter(q->Integer.valueOf(2).equals(q.get("part"))).findFirst().get().get("id")).longValue();assertEquals(cue.longValue(),((Number)qs.stream().filter(q->Integer.valueOf(3).equals(q.get("part"))).findFirst().get().get("linkedPart2Id")).longValue());
     }
+    @Test public void anExistingAdminBankBecomesCommonWithoutCopyingQuestionsOrStudentHistory()throws Exception{
+        seed();List<Map<String,Object>> before=bank(setId);Long home=((Number)before.stream().filter(q->Integer.valueOf(1).equals(q.get("part"))).findFirst().get().get("id")).longValue();
+        service.markPass(setId,pass(home));as(student);Map<String,Object> existingPractice=service.startPractice(request());Long existingId=((Number)existingPractice.get("id")).longValue();
+        as(teacher);SpeakingSet set=em.find(SpeakingSet.class,setId);set.setClassIdsJson("[]");set.setStudentIdsJson("[]");
+        com.globits.security.domain.Role adminRole=new com.globits.security.domain.Role();adminRole.setName("ROLE_ADMIN");em.persist(adminRole);teacher.getRoles().add(adminRole);em.flush();
+        as(stranger);Map<String,Object> loaded=service.bank(setId,null);Map<?,?> info=(Map<?,?>)loaded.get("set");assertEquals(true,info.get("sharedForEveryone"));assertEquals(false,info.get("canManage"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> visible=(List<Map<String,Object>>)loaded.get("questions");assertEquals(before.size(),visible.size());for(int index=0;index<before.size();index++)assertEquals(before.get(index).get("id"),visible.get(index).get("id"));
+        assertEquals(3,questions(service.startPractice(request())).size());try{service.getPractice(existingId);fail();}catch(AccessDeniedException expected){}
+        try{service.preview(setId,file("forged","",false));fail();}catch(AccessDeniedException expected){}
+        as(student);@SuppressWarnings("unchecked") List<Map<String,Object>> mine=(List<Map<String,Object>>)service.bank(setId,null).get("questions");assertEquals(true,mine.stream().filter(q->home.equals(((Number)q.get("id")).longValue())).findFirst().get().get("passed"));assertEquals(existingId,service.getPractice(existingId).get("id"));
+    }
     @Test public void retriesAreIdempotentCompletionIsTerminalAndNeverMarksPass()throws Exception{
         seed();as(student);PracticeRequest req=request();Map<String,Object> p=service.startPractice(req);Long id=((Number)p.get("id")).longValue();assertEquals(id,service.startPractice(req).get("id"));
         req.part1Count=3;try{service.startPractice(req);fail();}catch(IllegalArgumentException expected){}

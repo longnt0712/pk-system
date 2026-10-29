@@ -26,7 +26,15 @@
             },
             finishRecording: function (id, count) { return post('/recordings/' + id + '/finish', {chunkCount: count}); },
             audio: function (id) { return $http.get(base + '/recordings/' + id + '/audio', {responseType: 'blob', timeout: 60000}).then(function (r) { return r.data; }); },
-            exportSet: function (id) { return $http.get(base + '/sets/' + id + '/export', {responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); }
+            exportSet: function (id) { return $http.get(base + '/sets/' + id + '/export', {responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
+            studentAnswers: function (setId, studentId, questionId) { return get('/student-answers', {setId: setId, studentId: studentId, questionId: questionId}); },
+            saveStudentAnswer: function (data) { return $http.put(base + '/student-answers', data, {timeout: 45000}).then(function (r) { return r.data; }); },
+            studentAnswerTemplate: function (setId, studentId) { return $http.get(base + '/student-answers/template', {params: {setId: setId, studentId: studentId}, responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
+            previewStudentAnswers: function (setId, studentId, file) {
+                var body = new FormData(); body.append('setId', setId); body.append('studentId', studentId); body.append('file', file);
+                return $http.post(base + '/student-answers/preview', body, {timeout: 120000, transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
+            },
+            confirmStudentAnswers: function (data) { return post('/student-answers/confirm', data); }
         };
     }]);
 })();
