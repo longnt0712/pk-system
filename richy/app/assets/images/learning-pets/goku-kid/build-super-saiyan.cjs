@@ -8,7 +8,7 @@ catch (_) { sharp = require(path.join(os.homedir(), '.cache/codex-runtimes/codex
 
 async function main() {
     const directory = __dirname;
-    const source = fs.readFileSync(path.join(directory, 'reference-super-saiyan-generated.png'));
+    const source = fs.readFileSync(path.join(directory, 'reference-super-saiyan-completed.png'));
     const original = await sharp(source).metadata();
     if (original.width !== 1254 || original.height !== 1254 || !original.hasAlpha) {
         throw new Error('The aura mask is aligned to the selected 1254-square transparent source.');
@@ -39,7 +39,7 @@ async function main() {
         + '<defs><mask id="aura-only" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">'
         + '<rect width="1024" height="1024" fill="white"/>'
         + `<path d="${character}" transform="translate(40 40) scale(${944 / 1254})" fill="black" stroke="black" stroke-width="12" stroke-linejoin="round"/>`
-        + `<path d="M310 80 580 25 780 80 858 200 880 470 720 535 480 555 285 370 280 195Z" transform="translate(40 40) scale(${944 / 1254})" fill="black"/>`
+        + `<path d="M330 110 600 60 820 150 910 560 780 675 520 665 300 440 280 240Z" transform="translate(40 40) scale(${944 / 1254})" fill="black"/>`
         + '</mask></defs>'
         + `<image href="${art}" width="1024" height="1024" mask="url(#aura-only)"/></svg>`;
     fs.writeFileSync(path.join(directory, 'super-saiyan-aura.svg'), aura);
