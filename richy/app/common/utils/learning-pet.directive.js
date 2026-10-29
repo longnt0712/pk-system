@@ -71,6 +71,11 @@
             var gokuSuperSaiyanUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
             var gokuSuperSaiyan2Url = 'assets/images/learning-pets/goku-kid/pet-level-24.svg?v=' + version;
             var gokuSuperSaiyan4Url = 'assets/images/learning-pets/goku-kid/pet-level-25.png?v=' + version;
+            var gokuForms = [
+                {key: 'GOKU_SSJ1', level: 23, name: 'Son Goku Siêu Saiyan', form: 'goku-super-saiyan', image: gokuSuperSaiyanUrl, superSaiyan: true},
+                {key: 'GOKU_SSJ2', level: 24, name: 'Son Goku Siêu Saiyan cấp 2', form: 'goku-super-saiyan-2', image: gokuSuperSaiyan2Url, superSaiyan2: true},
+                {key: 'GOKU_SSJ4', level: 25, name: 'Son Goku Siêu Saiyan 4', form: 'goku-super-saiyan-4', image: gokuSuperSaiyan4Url, superSaiyan4: true}
+            ];
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -182,6 +187,9 @@
                 if (selectedPet === 'GOKU_KID' && level < 21) {
                     selectedPet = 'MAM_HOC';
                 }
+                gokuForms.forEach(function (form) {
+                    if (selectedPet === form.key && level < form.level) { selectedPet = 'MAM_HOC'; }
+                });
                 var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(selectedPet);
                 if (dragonBall && level < 5 + Number(dragonBall[1])) {
                     selectedPet = 'MAM_HOC';
@@ -339,15 +347,28 @@
                 if (level >= 21) {
                     vm.availablePets.push({
                         key: 'GOKU_KID',
-                        name: level >= 25 ? 'Son Goku Siêu Saiyan 4' : (level >= 24 ? 'Son Goku Siêu Saiyan cấp 2' : (level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí'))),
-                        description: level >= 25 ? 'Son Goku Siêu Saiyan 4 · Level 25' : (level >= 24 ? 'Hào quang và điện quang · Level 24' : (level >= 23 ? 'Hào quang rực sáng · Level 23' : (level >= 22 ? 'Đã nở hoàn chỉnh' : 'Mở khóa ở level 21'))),
-                        image: level >= 25 ? gokuSuperSaiyan4Url : (level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl))),
-                        superSaiyan: level === 23,
-                        superSaiyan2: level === 24,
-                        superSaiyan4: level >= 25,
+                        name: level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí',
+                        description: level >= 22 ? 'Đã nở hoàn chỉnh · Level 22' : 'Mở khóa ở level 21',
+                        image: level >= 22 ? gokuKidPetUrl : gokuKidEggUrl,
+                        superSaiyan: false,
+                        superSaiyan2: false,
+                        superSaiyan4: false,
                         isNew: vm.hasNewGokuKidEgg
                     });
                 }
+                gokuForms.forEach(function (form) {
+                    if (level < form.level) { return; }
+                    vm.availablePets.push({
+                        key: form.key,
+                        name: form.name,
+                        description: 'Mở khóa ở level ' + form.level,
+                        image: form.image,
+                        superSaiyan: !!form.superSaiyan,
+                        superSaiyan2: !!form.superSaiyan2,
+                        superSaiyan4: !!form.superSaiyan4,
+                        isNew: false
+                    });
+                });
 
                 for (var stars = 1; stars <= 7; stars++) {
                     if (level >= 5 + stars) {
@@ -370,9 +391,16 @@
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {
-                    vm.petForm = level >= 25 ? 'goku-super-saiyan-4' : (level >= 24 ? 'goku-super-saiyan-2' : (level >= 23 ? 'goku-super-saiyan' : (level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg')));
-                    vm.petImage = level >= 25 ? gokuSuperSaiyan4Url : (level >= 24 ? gokuSuperSaiyan2Url : (level >= 23 ? gokuSuperSaiyanUrl : (level >= 22 ? gokuKidPetUrl : gokuKidEggUrl)));
+                    vm.petForm = level >= 22 ? 'goku-kid-hatched' : 'goku-kid-egg';
+                    vm.petImage = level >= 22 ? gokuKidPetUrl : gokuKidEggUrl;
                     return;
+                }
+                for (var gokuIndex = 0; gokuIndex < gokuForms.length; gokuIndex += 1) {
+                    if (selectedPet === gokuForms[gokuIndex].key) {
+                        vm.petForm = gokuForms[gokuIndex].form;
+                        vm.petImage = gokuForms[gokuIndex].image;
+                        return;
+                    }
                 }
                 if (selectedPet === 'CUTE_PERRY') {
                     vm.petForm = 'perry-hatched';
@@ -1053,7 +1081,7 @@
                         (vm.hasNewGokuKidEgg ? 1 : 0);
                 if (vm.hasNewGokuKidEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Goku nhí mới!';
-                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí, level 23 biến thành Siêu Saiyan, level 24 lên cấp 2 và level 25 thành Siêu Saiyan 4.';
+                    vm.message = 'Level 21 đã mở khóa trứng Goku nhí. Level 22 sẽ nở thành Goku nhí. Các pet Siêu Saiyan, Siêu Saiyan cấp 2 và Siêu Saiyan 4 mở riêng ở level 23, 24 và 25; bạn có thể chọn từng dạng trong bộ sưu tập.';
                 } else if (vm.hasNewSparklingLightning) {
                     vm.summaryTitle = 'Bạn đã mở khóa Tia sét lấp lánh!';
                     vm.message = 'Level 20 đã mở khóa Tia sét lấp lánh cùng Pikachu. Chọn pet mới trong bộ sưu tập nhé!';

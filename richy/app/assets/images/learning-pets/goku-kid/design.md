@@ -10,7 +10,7 @@ The selection key is `GOKU_KID`. At vocabulary level 21, the intact red egg hint
 
 ## Level 23: Super Saiyan
 
-The existing `GOKU_KID` selection transforms automatically into **Son Goku Siêu Saiyan** at vocabulary level 23. Levels 21 (intact egg) and 22 (ordinary Goku) retain their current artwork. Admins may preview the final form at level 0. This is a frontend evolution of the existing key; it requires no new backend pet key, catalog entry, or egg reward.
+**Son Goku Siêu Saiyan** unlocks as the independent `GOKU_SSJ1` pet at vocabulary level 23. The ordinary `GOKU_KID` remains selectable: level 21 is its intact egg and level 22 onward is ordinary Goku. Admins may choose every Goku pet at level 0. Each form now has its own saved key so unlocking a later form does not replace the user's selection.
 
 `reference-super-saiyan-original.png` preserves the user's second upload. Built-in Imagegen extracted/reconstructed the character and golden aura onto transparency; that output is retained as `reference-super-saiyan-generated.png`. The exact edit specification is in `super-saiyan-prompt.txt`. `build-super-saiyan.cjs` pads the extraction into a 1024-square `pet-level-23.png` and self-contained SVG, then masks the character out of a separate `super-saiyan-aura.png`/SVG. The supplied source remains unchanged; generated details may differ from it.
 
@@ -32,6 +32,15 @@ Both golden forms are rebuilt by `build-super-saiyan.cjs` from the original uplo
 
 ## Level 25: Super Saiyan 4
 
-The user's magenta-haired and magenta-furred Goku with a tail becomes the next form at vocabulary level 25. `reference-super-saiyan-4-original.png` preserves that upload, and `pet-level-25.svg` embeds the same source pixels without redrawing the subject. The runtime uses the transparent 1024-square `pet-level-25.png`, retaining the original purple glow rather than adding the level-23/24 golden aura or lightning. The extraction and rebuild details are in `design-level25.md` and `build-super-saiyan-4.cjs`.
+The user's magenta-haired and magenta-furred Goku with a tail unlocks as the independent `GOKU_SSJ4` pet at vocabulary level 25. `reference-super-saiyan-4-original.png` preserves that upload, and `pet-level-25.svg` embeds the same source pixels without redrawing the subject. The runtime uses the transparent 1024-square `pet-level-25.png`, retaining the original purple glow rather than adding the level-23/24 golden aura or lightning. Its floating pet and clickable target are enlarged by 10 pixels to 114 × 118 pixels. The extraction and rebuild details are in `design-level25.md` and `build-super-saiyan-4.cjs`.
 
-The existing key remains `GOKU_KID`, with no backend or reward-catalog change: level 21 is an egg, level 22 is ordinary Goku, level 23 is Super Saiyan, level 24 is Super Saiyan 2 and level 25 is Super Saiyan 4. Evolution preserves the selected family without another save request. Admins preview the level-25 form without changing their experience, while other players retain the form for their actual level.
+## Independent selection
+
+| Saved key | Pet | Unlock level |
+| --- | --- | --- |
+| `GOKU_KID` | Ordinary Goku (egg at level 21) | 21 |
+| `GOKU_SSJ1` | Super Saiyan | 23 |
+| `GOKU_SSJ2` | Super Saiyan 2 | 24 |
+| `GOKU_SSJ4` | Super Saiyan 4 | 25 |
+
+Unlocks are cumulative. Users at level 25 may select any of the four pets, and their explicit selection remains after reload or further level gains. Admins choose all four without changing their experience. An existing `GOKU_KID` selection now denotes the ordinary Goku pet; users select the new Saiyan keys when they want those forms. All keys use the existing selected-learning-pet field, without a schema migration or new random egg rewards. The backend whitelist, catalog, level validation and Battle identity preserve the separate keys, so deploy the updated JAR together with the frontend.

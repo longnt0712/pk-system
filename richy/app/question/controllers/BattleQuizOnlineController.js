@@ -1453,8 +1453,16 @@
                 return 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png' + suffix;
             }
             if (petKey === 'GOKU_KID' && level >= 21) {
-                return 'assets/images/learning-pets/goku-kid/' + (level >= 25
-                    ? 'pet-level-25.png' : (level >= 24 ? 'pet-level-24.svg' : (level >= 23 ? 'pet-level-23.png' : (level >= 22 ? 'pet-level-22.png' : 'egg-level-21.png')))) + suffix;
+                return 'assets/images/learning-pets/goku-kid/' + (level >= 22 ? 'pet-level-22.png' : 'egg-level-21.png') + suffix;
+            }
+            if (petKey === 'GOKU_SSJ1' && level >= 23) {
+                return 'assets/images/learning-pets/goku-kid/pet-level-23.png' + suffix;
+            }
+            if (petKey === 'GOKU_SSJ2' && level >= 24) {
+                return 'assets/images/learning-pets/goku-kid/pet-level-24.svg' + suffix;
+            }
+            if (petKey === 'GOKU_SSJ4' && level >= 25) {
+                return 'assets/images/learning-pets/goku-kid/pet-level-25.png' + suffix;
             }
 
             if (petKey === 'CUTE_PIKACHU' && level >= 18) {
@@ -1622,8 +1630,17 @@
             if (level >= 21) {
                 battlePetOptions.push({
                     key: 'GOKU_KID',
-                    label: level >= 25 ? 'Son Goku Siêu Saiyan 4' : (level >= 24 ? 'Son Goku Siêu Saiyan cấp 2' : (level >= 23 ? 'Son Goku Siêu Saiyan' : (level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí')))
+                    label: level >= 22 ? 'Goku nhí' : 'Trứng Goku nhí'
                 });
+            }
+            if (level >= 23) {
+                battlePetOptions.push({key: 'GOKU_SSJ1', label: 'Son Goku Siêu Saiyan'});
+            }
+            if (level >= 24) {
+                battlePetOptions.push({key: 'GOKU_SSJ2', label: 'Son Goku Siêu Saiyan cấp 2'});
+            }
+            if (level >= 25) {
+                battlePetOptions.push({key: 'GOKU_SSJ4', label: 'Son Goku Siêu Saiyan 4'});
             }
             for (var stars = 1; stars <= 7; stars++) {
                 if (level >= 5 + stars) {

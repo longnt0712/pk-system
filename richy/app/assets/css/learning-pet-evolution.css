@@ -76,6 +76,12 @@
     user-select: none;
 }
 
+.learning-pet-character.is-goku-ssj4,
+.learning-pet-super-saiyan.learning-pet-super-saiyan--four {
+    width: 114px;
+    height: 118px;
+}
+
 .learning-pet-super-saiyan img {
     display: block;
     width: 100%;
