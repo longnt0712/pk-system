@@ -92,6 +92,38 @@ test('mixed-boundary packages hide their other-part questions without mutating t
   assert.equal(reading.vm.listeningPackageVisible(pack),true);assert.equal(reading.vm.listeningQuestionVisible({ordinalNumber:31}),true);
 });
 
+test('Part 3 and Part 4 transcripts follow navigation while retaining both annotation targets',()=>{
+  for(const mode of['STUDY','SERIOUS'])for(const assigned of[undefined,[3,4],[4]]){
+    const f=fixture({modern:true,mode,assigned}),workspace=f.vm.ieltsReadingActualTest.subQuestions[2];
+    const html=workspace.question;
+    const transcripts=[...html.matchAll(/<div data-listening-transcript-part="([34])" ng-show="([^"]+)">([\s\S]*?)<\/div>/g)];
+    assert.equal(transcripts.length,2);
+    for(const part of[3,4]){
+      f.select((part-1)*10+1);
+      const visible=transcripts.filter(match=>nodeVm.runInContext(match[2],f.c));
+      assert.deepEqual(visible.map(match=>Number(match[1])),[part]);
+      assert.equal(visible[0][3].replace(/<hr>/g,''),'Part '+part);
+      assert.equal(workspace.question,html,'navigation must not rebuild the transcript or erase highlights');
+    }
+    assert.equal(html.replace(/<[^>]+>/g,''),'Part 3Part 4','annotation text offsets remain stable');
+    assert.equal(f.all().length,40);assert.equal(f.mediaReads(),0);
+    f.c.normalizeListeningCandidateParts(f.vm.ieltsReadingActualTest);
+    assert.equal(workspace.question,html,'normalization is idempotent');
+  }
+});
+
+test('empty Part 3 transcript does not display Part 4 text and Reading content stays unchanged',()=>{
+  const f=fixture(),third=f.vm.ieltsReadingActualTest.subQuestions[2];
+  third.question='';
+  f.vm.ieltsReadingActualTest.subQuestions.push({id:4,question:'<p>Fourth transcript</p>',subQuestions:[]});
+  f.c.normalizeListeningCandidateParts(f.vm.ieltsReadingActualTest);
+  assert.match(third.question,/<div data-listening-transcript-part="3" ng-show="vm.activeIeltsNavigationPart\(\) === 3"><\/div>/);
+  assert.match(third.question,/<div data-listening-transcript-part="4" ng-show="vm.activeIeltsNavigationPart\(\) === 4"><p>Fourth transcript<\/p><\/div>/);
+  const reading=fixture({listening:false}),before=reading.vm.ieltsReadingActualTest.subQuestions.map(p=>p.question);
+  reading.c.normalizeListeningCandidateParts(reading.vm.ieltsReadingActualTest);
+  assert.deepEqual(reading.vm.ieltsReadingActualTest.subQuestions.map(p=>p.question),before);
+});
+
 test('all three rendered workspaces hide packages and rows in place rather than filtering indices or rebuilding answers',()=>{
   const liveView=view.replace(/<!--[\s\S]*?-->/g,'');
   const tags=[...liveView.matchAll(/<(?:div|span|tr)\b[^>]*\bng-repeat="[^"]+"[^>]*>/g)].map(m=>m[0]);

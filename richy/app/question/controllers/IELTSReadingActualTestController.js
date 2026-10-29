@@ -3023,15 +3023,23 @@
             var thirdWorkspace = data.subQuestions[2];
             if (!thirdWorkspace) { return data; }
             thirdWorkspace.subQuestions = thirdWorkspace.subQuestions || [];
+            // Both logical Parts share the legacy third workspace. Keep their
+            // transcript nodes mounted so switching Part preserves annotations,
+            // but show only the transcript belonging to the selected Part.
+            var transcripts = '<div data-listening-transcript-part="3" ng-show="vm.activeIeltsNavigationPart() === 3">' +
+                String(thirdWorkspace.question || '') + '</div>';
 
-            angular.forEach(data.subQuestions.slice(3), function (extraPart) {
+            angular.forEach(data.subQuestions.slice(3), function (extraPart, extraIndex) {
                 if (extraPart && extraPart.question) {
-                    thirdWorkspace.question = String(thirdWorkspace.question || '') +
-                        (thirdWorkspace.question ? '<hr>' : '') + String(extraPart.question);
+                    var partNumber = extraIndex + 4;
+                    transcripts += '<div data-listening-transcript-part="' + partNumber +
+                        '" ng-show="vm.activeIeltsNavigationPart() === ' + partNumber + '">' +
+                        (thirdWorkspace.question ? '<hr>' : '') + String(extraPart.question) + '</div>';
                 }
                 Array.prototype.push.apply(thirdWorkspace.subQuestions,
                     (extraPart && extraPart.subQuestions) || []);
             });
+            thirdWorkspace.question = transcripts;
             angular.forEach(thirdWorkspace.subQuestions, function (questionPackage, packageIndex) {
                 questionPackage.ordinalNumber = packageIndex + 1;
                 questionPackage.parent = {id: thirdWorkspace.id, ordinalNumber: thirdWorkspace.ordinalNumber || 3,
