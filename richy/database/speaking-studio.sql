@@ -1,4 +1,5 @@
--- Speaking studio. SQL Server 2012+, run in the existing application database.
+-- Speaking studio. SQL Server 2008 R2 (10.50) and later.
+-- Run the entire script in the existing application database.
 -- Adds six new tables only. Does not change old tests, results or assignments.
 SET XACT_ABORT ON;
 BEGIN TRY
@@ -91,8 +92,11 @@ BEGIN TRY
     IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.tbl_speaking_set_entry') AND name=N'ix_speaking_entry_question')
         CREATE INDEX ix_speaking_entry_question ON dbo.tbl_speaking_set_entry(question_id);
     COMMIT TRANSACTION;
+    PRINT 'Speaking studio: schema is ready (6 tables).';
 END TRY
 BEGIN CATCH
+    DECLARE @SpeakingErrorMessage NVARCHAR(2048);
+    SET @SpeakingErrorMessage = ERROR_MESSAGE();
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-    THROW;
+    RAISERROR(N'%s', 16, 1, @SpeakingErrorMessage);
 END CATCH;

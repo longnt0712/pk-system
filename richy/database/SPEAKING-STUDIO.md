@@ -2,7 +2,7 @@
 
 Module mới dùng 6 bảng `tbl_speaking_*`, không sửa kết quả cũ hoặc cách tính bài tập đã giao.
 
-1. Sao lưu database theo quy trình hiện tại. Chạy `speaking-studio.sql` trong database ứng dụng bằng SQL Server Management Studio (SQL Server 2012 trở lên). Script có thể chạy lại; không xoá dữ liệu.
+1. Sao lưu database theo quy trình hiện tại. Chạy **toàn bộ** `speaking-studio.sql` trong database ứng dụng bằng SQL Server Management Studio. Script hỗ trợ SQL Server 2008 R2 (10.50) trở lên, có thể chạy lại và không xoá dữ liệu. Bản này đã thay cú pháp báo lỗi không tương thích ở file trước; chạy thành công sẽ hiện `Speaking studio: schema is ready (6 tables).`
 2. Dừng dịch vụ backend và thay JAR bằng bản `richy-wine-exec.jar` đi kèm bản phát hành này. Giữ cấu hình kết nối và thư mục upload hiện có.
 3. Chọn thư mục ghi âm riêng, ví dụ thêm `speaking.storage.directory=C:/pk-data/speaking-recordings` vào cấu hình ngoài JAR. Cấp quyền đọc/ghi cho tài khoản chạy dịch vụ; không trỏ vào webroot. Nếu bỏ trống, mặc định là `<user.home>/.ieltsroom/speaking-recordings` của tài khoản dịch vụ.
 4. Khởi động backend, sau đó cập nhật frontend. Vào **TEST ROOM → Speaking studio** (`/speaking`). Dùng HTTPS để trình duyệt xin quyền microphone.
