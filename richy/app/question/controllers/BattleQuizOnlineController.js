@@ -146,7 +146,7 @@
         vm.exercisePickerVersion = $window.APP_VERSION || '20261016_1';
         vm.exercisePickerOpen = false; vm.exerciseFolderId = null;
         vm.exerciseFolders = []; vm.visibleExerciseFolders = []; vm.exerciseBreadcrumbs = [];
-        var exerciseFolderRequest = 0, exercisePickerTrigger = null;
+        var exerciseFolderRequest = 0, exercisePickerTrigger = null, exerciseFolderLoad = null, exerciseTestLoad = null;
         function rebuildExerciseFolders() {
             var byId = {}, query = String(vm.exerciseSearch || '').trim().toLocaleLowerCase();
             vm.exerciseFolders.forEach(function (folder) { byId[String(folder.id)] = folder; });
@@ -160,19 +160,38 @@
                 seen[String(current.id)] = true; vm.exerciseBreadcrumbs.unshift(current); current = byId[String(current.parentId)];
             }
         }
-        vm.openExercisePicker = function (event) {
-            vm.exercisePickerOpen = true; exercisePickerTrigger = (event && event.currentTarget) || exercisePickerTrigger;
+        vm.loadExerciseFolders = function () {
+            var request = ++exerciseFolderRequest;
+            if (exerciseFolderLoad && exerciseFolderLoad.cancel) { exerciseFolderLoad.cancel(); }
             vm.exerciseFolderError = ''; vm.loadingExerciseFolders = true;
-            var request = ++exerciseFolderRequest, promise = battleService.getExerciseFolders ? battleService.getExerciseFolders() : null;
+            var promise = battleService.getExerciseFolders ? battleService.getExerciseFolders() : null;
+            exerciseFolderLoad = promise;
             if (promise) {
-                promise.then(function (folders) {
-                    if (request !== exerciseFolderRequest) { return; }
+                return promise.then(function (folders) {
+                    if (destroyed || request !== exerciseFolderRequest) { return; }
+                    exerciseFolderLoad = null;
                     vm.exerciseFolders = folders || []; vm.loadingExerciseFolders = false; rebuildExerciseFolders();
-                }, function () {
-                    if (request !== exerciseFolderRequest) { return; }
-                    vm.loadingExerciseFolders = false; vm.exerciseFolderError = 'Không tải được thư mục. Bấm để thử lại.';
+                }, function (error) {
+                    if (destroyed || request !== exerciseFolderRequest) { return; }
+                    exerciseFolderLoad = null; vm.loadingExerciseFolders = false;
+                    vm.exerciseFolderError = error && error.battleCatalogTimeout
+                        ? 'Tải thư mục quá 15 giây. Bấm để thử lại.' : 'Không tải được thư mục. Bấm để thử lại.';
                 });
             } else { vm.loadingExerciseFolders = false; }
+        };
+        function cancelExerciseCatalogRequests() {
+            exerciseFolderRequest++; exerciseRequestId++; exerciseTopicRequestId++;
+            if (exerciseFolderLoad && exerciseFolderLoad.cancel) { exerciseFolderLoad.cancel(); }
+            if (exerciseTestLoad && exerciseTestLoad.cancel) { exerciseTestLoad.cancel(); }
+            exerciseFolderLoad = null; exerciseTestLoad = null;
+            vm.loadingExerciseFolders = false; vm.loadingExercises = false; vm.loadingExerciseTopics = false;
+        }
+        vm.openExercisePicker = function (event) {
+            vm.exercisePickerOpen = true; exercisePickerTrigger = (event && event.currentTarget) || exercisePickerTrigger;
+            vm.loadExerciseFolders();
+            if (vm.exerciseFilterMode === 'TOPIC' && (exerciseTopicsOwnerId !== vm.exerciseTopicOwnerId || !exerciseTopicsLoaded)) {
+                vm.loadExerciseTopicSource();
+            }
             $window.document.body.classList.add('battle-exercise-picker-open');
             $timeout(vm.focusExercisePicker, 0);
             rebuildExerciseFolders(); return vm.loadExerciseTests(1);
@@ -182,7 +201,7 @@
             if (input && input.focus) { input.focus(); }
         };
         vm.closeExercisePicker = function () {
-            vm.exercisePickerOpen = false; exerciseFolderRequest++; exerciseRequestId++;
+            vm.exercisePickerOpen = false; cancelExerciseCatalogRequests();
             $window.document.body.classList.remove('battle-exercise-picker-open');
             if (exercisePickerTrigger && exercisePickerTrigger.focus) { exercisePickerTrigger.focus(); }
             exercisePickerTrigger = null;
@@ -196,15 +215,17 @@
         vm.exerciseTopicCategories = [];
         vm.exerciseSourceTopics = [];
         vm.exerciseTopics = [];
-        var exerciseRequestId = 0, exerciseTopicRequestId = 0, exerciseTopicsOwnerId = null;
+        var exerciseRequestId = 0, exerciseTopicRequestId = 0, exerciseTopicsOwnerId = null, exerciseTopicsLoaded = false;
         vm.loadExerciseTopicSource = function () {
             var requestId = ++exerciseTopicRequestId;
+            exerciseTopicsLoaded = false;
             vm.exerciseTopicCategoryId = null; vm.exerciseTopicId = null;
             vm.exerciseTopicCategories = []; vm.exerciseSourceTopics = []; vm.exerciseTopics = [];
             vm.loadingExerciseTopics = true; vm.exerciseTopicError = '';
             return questionService.getTopicsForGames({userId: vm.exerciseTopicOwnerId}, 1, 10000000).then(function (data) {
                 if (requestId !== exerciseTopicRequestId) { return; }
                 exerciseTopicsOwnerId = vm.exerciseTopicOwnerId;
+                exerciseTopicsLoaded = true;
                 vm.exerciseSourceTopics = (data && data.content) || [];
                 vm.exerciseTopics = vm.exerciseSourceTopics;
                 var seen = {};
@@ -235,10 +256,11 @@
         };
         vm.loadExerciseTests = function (page) {
             var requestId = ++exerciseRequestId, filterByTopics = vm.exerciseFilterMode === 'TOPIC';
+            if (exerciseTestLoad && exerciseTestLoad.cancel) { exerciseTestLoad.cancel(); }
             vm.loadingExercises = true; vm.exerciseLoadError = '';
             vm.exercisePage = page || 1;
             var searchingFolders = vm.exercisePickerOpen && String(vm.exerciseSearch || '').trim().length > 0;
-            return questionService.getPageForTests({questionType: {id: 11}, type: 100, status: 7, lower: 0, upper: 100,
+            var request = battleService.getExerciseTests({questionType: {id: 11}, type: 100, status: 7, lower: 0, upper: 100,
                 testFolderId: vm.exercisePickerOpen && !searchingFolders ? vm.exerciseFolderId : null,
                 withoutTestFolder: vm.exercisePickerOpen && !searchingFolders && vm.exerciseFolderId == null,
                 includeSubfolders: searchingFolders || !vm.exercisePickerOpen,
@@ -246,18 +268,25 @@
                 topicOwnerUserId: filterByTopics ? vm.exerciseTopicOwnerId : null,
                 topicCategoryId: filterByTopics ? vm.exerciseTopicCategoryId : null,
                 topicId: filterByTopics ? vm.exerciseTopicId : null,
-                testFormat: 'COMPREHENSIVE', textSearch: vm.exerciseSearch, findExactWord: false}, vm.exercisePage, 12).then(function (data) {
-                if (requestId !== exerciseRequestId) { return; }
+                testFormat: 'COMPREHENSIVE', textSearch: vm.exerciseSearch, findExactWord: false}, vm.exercisePage, 12);
+            exerciseTestLoad = request;
+            return request.then(function (data) {
+                if (destroyed || requestId !== exerciseRequestId) { return; }
+                exerciseTestLoad = null;
                 vm.exerciseTests = (data && data.content) || [];
                 vm.exerciseTotalPages = Math.max(1, Math.ceil(Number(data && data.totalElements || 0) / 12));
                 vm.loadingExercises = false;
-            }, function () {
-                if (requestId !== exerciseRequestId) { return; }
-                vm.loadingExercises = false; vm.exerciseTests = []; vm.exerciseLoadError = 'Không tải được danh sách đề.';
+            }, function (error) {
+                if (destroyed || requestId !== exerciseRequestId) { return; }
+                exerciseTestLoad = null; vm.loadingExercises = false; vm.exerciseTests = [];
+                vm.exerciseLoadError = error && error.battleCatalogTimeout
+                    ? 'Tải đề quá 15 giây. Bấm Thử lại hoặc chọn thư mục khác.' : 'Không tải được danh sách đề. Bấm Thử lại.';
             });
         };
         vm.changeQuestionSource = function (event) {
             if (vm.questionSource === 'COMPREHENSIVE') { vm.openExercisePicker(event); }
+            else if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }
+            else { cancelExerciseCatalogRequests(); }
         };
         vm.addExerciseTest = function (test) {
             if (!test || vm.selectedExerciseTests.some(function (item) { return item.id === test.id; })) { return; }
@@ -8426,6 +8455,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                cancelExerciseCatalogRequests();
                 closeTeamManager();
                 $window.document.body.classList.remove('battle-dragon-celebrating');
                 if (vm.exercisePickerOpen) { vm.closeExercisePicker(); }

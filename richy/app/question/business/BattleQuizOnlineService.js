@@ -9,7 +9,8 @@
         '$q',
         '$document',
         '$rootScope',
-        'settings'
+        'settings',
+        '$timeout'
     ];
 
     function BattleQuizOnlineService(
@@ -17,7 +18,8 @@
         $q,
         $document,
         $rootScope,
-        settings
+        settings,
+        $timeout
     ) {
         var self = this;
         self.setClassicAutoAdvance = function (roomCode, enabled, sequence, videoRound) {
@@ -109,9 +111,32 @@
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode)
             ).then(function (response) { return response.data; });
         };
+        function exerciseCatalogRequest(method, url, data, params) {
+            var abort = $q.defer(), reason = '', settled = false;
+            var timeout = $timeout(function () { reason = 'timeout'; abort.resolve(); }, 15000);
+            var options = {timeout: abort.promise, cache: false};
+            if (params) { options.params = params; }
+            var request = (method === 'GET' ? $http.get(url, options) : $http.post(url, data, options))
+                .then(function (response) { return response.data; }, function (error) {
+                    if (reason) { return $q.reject({status: -1, battleCatalogTimeout: reason === 'timeout', battleCatalogCancelled: reason === 'cancelled'}); }
+                    return $q.reject(error);
+                }).finally(function () { settled = true; $timeout.cancel(timeout); });
+            request.cancel = function () {
+                if (settled || reason) { return; }
+                reason = 'cancelled'; $timeout.cancel(timeout); abort.resolve();
+            };
+            return request;
+        }
+
+        self.getExerciseTests = function (filter, page, size) {
+            page = Math.max(1, Math.floor(Number(page) || 1));
+            size = Math.max(1, Math.min(50, Math.floor(Number(size) || 12)));
+            return exerciseCatalogRequest('POST', apiUrl + '/exercise-tests/' + page + '/' + size, filter || {});
+        };
+
         self.getExerciseFolders = function () {
-            return $http.get(apiUrl.replace(/battle-online$/, 'test_folder'), {params: {allTeachers: true, testMode: 'COMPREHENSIVE'}})
-                .then(function (response) { return response.data; });
+            return exerciseCatalogRequest('GET', apiUrl.replace(/battle-online$/, 'test_folder'), null,
+                {allTeachers: true, testMode: 'COMPREHENSIVE'});
         };
 
         self.extendMatchTime = function (roomCode) {

@@ -19,11 +19,11 @@ function setup(username='alice') {
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
- const service={getExerciseFolders(){return new Promise((resolve,reject)=>folderCalls.push({resolve,reject}));},answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
+ const service={getExerciseTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},getExerciseFolders(){return new Promise((resolve,reject)=>folderCalls.push({resolve,reject}));},answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
   getVideoQuestions(...args){return new Promise((resolve,reject)=>listCalls.push({args,resolve,reject}));},
   reopenVideoQuestion(...args){return new Promise((resolve,reject)=>reopenCalls.push({args,resolve,reject}));},
   videoEvent(...args){return new Promise((resolve,reject)=>videoCalls.push({args,resolve,reject}));}};
- const questions={getOne(){return Promise.resolve({});},getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},
+ const questions={getOne(){return Promise.resolve({});},getPageForTests(){throw Error('Battle picker must use the lightweight catalog');},
   getTopicsForGames(){return Promise.resolve({content:[{id:8,name:'Animals',topicCategory:{id:6,name:'Grade 6'}},{id:9,name:'Food',topicCategory:{id:7,name:'Grade 7'}}]});}};
  const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service);
  function room(mode='CLASSIC',seq=1) {

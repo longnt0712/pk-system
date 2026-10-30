@@ -21,11 +21,22 @@ async function open(browser,width,username='host') {
  await page.setContent('<html><head><base href="http://battle.test/"><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;background:#f4f5ff}'+css+'</style></head><body><div id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm"><select aria-label="Nguồn nội dung" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()"><option value="VOCABULARY">Từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option></select>'+picker+layers+lobbyEditor+'</div></body></html>');
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.evaluate(({username,modal,picker,pickerUrl})=>{
-  window.APP_VERSION='qa';window.requests=[];
+  window.APP_VERSION='qa';window.requests=[];window.catalogRequests=[];
   angular.module('Hrm.Question',[]).value('$state',{go(){}}).value('$stateParams',{}).value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{})
-   .factory('QuestionService',function($q){return {getPageForTests(dto){window.requests.push(dto);const files=[{id:100,title:'Grammar revision',folder:2},{id:101,title:'Video practice',folder:null}];return $q.when({content:files.filter(t=>dto.textSearch?t.title.toLowerCase().includes(dto.textSearch.toLowerCase()):dto.withoutTestFolder?t.folder==null:t.folder===dto.testFolderId),totalElements:1});}};})
-   .factory('BattleQuizOnlineService',function($q){return {updateSettings(code,settings){window.savedSettings=settings;return $q.when(Object.assign({},window.qaScope.vm.room,{settings}));},getExerciseFolders(){return $q.when([{id:1,name:'Grade 8',parentId:null},{id:2,name:'Grammar',parentId:1},{id:3,name:'Video lessons',parentId:null}]);}};})
+   .value('QuestionService',{})
+   .factory('BattleQuizOnlineService',function($q){return {
+    getExerciseTests(dto){
+     window.requests.push(dto);const files=[{id:100,title:'Grammar revision',folder:2},{id:101,title:'Video practice',folder:null}];
+     const result={content:files.filter(t=>dto.textSearch?t.title.toLowerCase().includes(dto.textSearch.toLowerCase()):dto.withoutTestFolder?t.folder==null:t.folder===dto.testFolderId),totalElements:1};
+     if(window.nextCatalogTimeout){window.nextCatalogTimeout=false;return $q.reject({battleCatalogTimeout:true});}
+     if(window.holdCatalogRequests){const pending=$q.defer(),record={dto,result,cancelled:false,resolve(){pending.resolve(result);}};
+      window.catalogRequests.push(record);pending.promise.cancel=()=>{record.cancelled=true;pending.reject({battleCatalogCancelled:true});};return pending.promise;}
+     return $q.when(result);
+    },
+    updateSettings(code,settings){window.savedSettings=settings;return $q.when(Object.assign({},window.qaScope.vm.room,{settings}));},
+    getExerciseFolders(){return $q.when([{id:1,name:'Grade 8',parentId:null},{id:2,name:'Grammar',parentId:1},{id:3,name:'Video lessons',parentId:null}]);}
+   };})
    .run(function($templateCache){$templateCache.put('question/views/battle_online_exercise_folder_modal.html?v=qa',modal);$templateCache.put(pickerUrl,picker);});
  },{username,modal,picker,pickerUrl});
  const source=fs.readFileSync(path.join(app,'question/controllers/BattleQuizOnlineController.js'),'utf8').replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.battleHooks={applyRoom};');
@@ -126,6 +137,42 @@ test('folder picker stays clickable above the actual lobby editor and returns se
    assert.deepEqual(errors,[]);await page.close();
   }
  } finally {await browser.close();}
+});
+
+test('create and lobby pickers allow replacing a slow query, show timeout recovery and abort work on close',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try{
+  for(const width of [1280,390])for(const lobbyMode of [false,true]){
+   const {page,errors}=await open(browser,width);
+   try{
+    if(lobbyMode)await page.evaluate(()=>window.qaScope.$apply(()=>{
+     window.battleHooks.applyRoom({code:'LOBBY1',hostUsername:'host',status:'LOBBY',settings:{mode:'CLASSIC',questionSource:'COMPREHENSIVE',exerciseTestIds:[],topicNames:[]},players:[{username:'host',spectator:true}],recentEvents:[]},false);
+     window.qaScope.vm.openLobbyTopicEditor();
+    }));
+    else await page.getByRole('combobox',{name:'Nguồn nội dung'}).selectOption('COMPREHENSIVE');
+    const dialog=page.locator('#battle-exercise-folder-modal');await dialog.waitFor();
+    await dialog.getByRole('button',{name:'Grade 8',exact:true}).waitFor();
+    await page.evaluate(()=>{window.holdCatalogRequests=true;});
+    await dialog.getByRole('button',{name:'Grade 8',exact:true}).click();await dialog.getByText('Đang tải đề…',{exact:true}).waitFor();
+    assert.equal(await dialog.getByRole('button',{name:'Tìm kiếm',exact:true}).isDisabled(),false,'a slow request never locks the next search');
+    await dialog.getByRole('searchbox').fill('Video');await dialog.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.catalogRequests[0].cancelled),true,'search aborts the previous folder request');
+    await page.evaluate(()=>window.qaScope.$apply(()=>window.catalogRequests[1].resolve()));
+    await dialog.getByRole('button',{name:/Video practice/}).waitFor();
+    assert.equal(await dialog.getByText('Đang tải đề…',{exact:true}).count(),0);
+    await page.evaluate(()=>{window.holdCatalogRequests=false;window.nextCatalogTimeout=true;});
+    await dialog.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
+    await dialog.getByText('Tải đề quá 15 giây. Bấm Thử lại hoặc chọn thư mục khác.',{exact:true}).waitFor();
+    await dialog.getByRole('button',{name:'Thử lại',exact:true}).click();await dialog.getByRole('button',{name:/Video practice/}).waitFor();
+    assert.equal(await dialog.getByRole('button',{name:'Thử lại',exact:true}).count(),0);
+    await page.evaluate(()=>{window.holdCatalogRequests=true;});await dialog.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
+    await dialog.getByRole('button',{name:/Xong/}).click();await dialog.waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>window.catalogRequests[2].cancelled),true,'closing releases an in-flight search');
+    assert.equal(await page.evaluate(()=>window.qaScope.vm.loadingExercises),false);assert.deepEqual(errors,[]);
+   }finally{await page.close();}
+  }
+ }finally{await browser.close();}
 });
 
 test('Halloween pumpkin and lightning use their real artwork with faint host/player overlays and leave controls clickable',async()=>{
