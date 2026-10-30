@@ -148,4 +148,22 @@ public class PetRewardCatalogTest {
         }
     }
 
+    @Test public void seasonalManifestsValidateTheSeasonAndAllowDistinctEvolutionNames() throws Exception {
+        Resource original = pet("original","Original",stage("20","hatched","pet.png"));
+        String pumpkin = "{\"id\":\"pumpkin\",\"name\":\"Pumpkin\",\"battleRewardSeason\":\"HALLOWEEN\",\"evolution\":["
+                + stage("0","hatched","pet.png").replace("\"form\"","\"battleRewardLevel\":28,\"battleRewardReferenceLevel\":20,\"form\"") + "]}";
+        List<PetRewardCatalog.Reward> seasonal = PetRewardCatalog.read(new Resource[]{original,json(pumpkin)});
+        assertEquals("HALLOWEEN",seasonal.get(1).season);
+        assertFalse(seasonal.get(1).isAvailableAt(java.time.Instant.parse("2026-09-30T16:59:59.999Z").toEpochMilli()));
+        assertTrue(seasonal.get(1).isAvailableAt(java.time.Instant.parse("2026-09-30T17:00:00Z").toEpochMilli()));
+        for (String invalid : Arrays.asList("\"CHRISTMAS\"","\"\"","null","12")) {
+            rejected(original,json(pumpkin.replace("\"HALLOWEEN\"",invalid)));
+        }
+        Resource named = pet("evolving","Base",stage("25","hatched","pet.png").replace("\"form\"","\"name\":\"Final form\",\"form\""));
+        assertEquals("Final form",PetRewardCatalog.read(new Resource[]{named}).get(0).label);
+        for (String invalid : Arrays.asList("\" \"","null","12")) {
+            rejected(pet("evolving","Base",stage("25","hatched","pet.png").replace("\"form\"","\"name\":" + invalid + ",\"form\"")));
+        }
+    }
+
 }

@@ -1,0 +1,10 @@
+{
+  "id": "halloween-pumpkin",
+  "name": "Bí ngô Halloween",
+  "selectionKey": "HALLOWEEN_PUMPKIN",
+  "unlockVocabularyExperienceLevel": 0,
+  "battleRewardSeason": "HALLOWEEN",
+  "evolution": [
+    {"minimumVocabularyExperienceLevel": 0, "battleRewardLevel": 28, "battleRewardReferenceLevel": 20, "form": "hatched", "file": "pet.png"}
+  ]
+}

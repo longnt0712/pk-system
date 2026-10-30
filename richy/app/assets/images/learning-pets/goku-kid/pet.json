@@ -1,0 +1,13 @@
+{
+  "id": "goku-kid",
+  "name": "Son Goku",
+  "selectionKey": "GOKU_KID",
+  "unlockVocabularyExperienceLevel": 21,
+  "evolution": [
+    {"minimumVocabularyExperienceLevel": 21, "maximumVocabularyExperienceLevel": 21, "battleRewardLevel": 23, "form": "egg-intact", "file": "egg-level-21.png"},
+    {"minimumVocabularyExperienceLevel": 22, "maximumVocabularyExperienceLevel": 22, "battleRewardLevel": 24, "form": "hatched", "file": "pet-level-22.png"},
+    {"minimumVocabularyExperienceLevel": 23, "maximumVocabularyExperienceLevel": 23, "battleRewardLevel": 25, "name": "Son Goku Siêu Saiyan 1", "form": "hatched", "file": "pet-level-23.png"},
+    {"minimumVocabularyExperienceLevel": 24, "maximumVocabularyExperienceLevel": 24, "battleRewardLevel": 26, "name": "Son Goku Siêu Saiyan 2", "form": "hatched", "file": "pet-level-24.svg"},
+    {"minimumVocabularyExperienceLevel": 25, "battleRewardLevel": 27, "name": "Son Goku Siêu Saiyan 4", "form": "hatched", "file": "pet-level-25.png"}
+  ]
+}

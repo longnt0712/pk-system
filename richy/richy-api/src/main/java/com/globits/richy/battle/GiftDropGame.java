@@ -84,7 +84,8 @@ public class GiftDropGame {
             DragonBallBoost boost = username == null ? null : game.dragonBallBoosts.get(username);
             dragonBallBoostStars = boost == null ? 0 : boost.stars;
             dragonBallBoostEndsAt = boost == null ? 0L : boost.endsAt;
-            dragonBallBoostPetLabel = boost == null || game.highestPetIndex < 0 ? null : game.rewards.get(game.highestPetIndex).label;
+            int highest = game.highestPetIndexAt(System.currentTimeMillis());
+            dragonBallBoostPetLabel = boost == null || highest < 0 ? null : game.rewards.get(highest).label;
             DragonBallCollection collection = username == null ? null : game.dragonBallCollections.get(username);
             collectedDragonBalls = username == null ? null : new ArrayList<Integer>();
             if (collection != null) { collectedDragonBalls.addAll(collection.stars); }
@@ -134,7 +135,7 @@ public class GiftDropGame {
     private final int[] rewardWeights;
     private final int[] skillWeights;
     private final int rottenWeight, perryHatWeight;
-    private final int[] normalDrawWeights, lightningDrawWeights;
+    private final int[] normalDrawWeights, lightningDrawWeights, outOfSeasonDrawWeights, outOfSeasonLightningDrawWeights;
     private final int highestPetIndex;
     private final Map<String, int[]> effectDrawWeights = new HashMap<String, int[]>();
     private final Random random;
@@ -296,7 +297,18 @@ public class GiftDropGame {
                 normalDrawWeights[skillWeights.length + 2 + i] += DRAW_RESOLUTION - total; break;
             }
         }
-        lightningDrawWeights = boostedWeights();
+        lightningDrawWeights = boostedWeights(normalDrawWeights);
+        int[] withoutSeasonal = normalDrawWeights.clone();
+        boolean[] unavailable = new boolean[withoutSeasonal.length];
+        boolean hasSeasonal = false;
+        for (int i = 0; i < rewards.size(); i++) {
+            if (!rewards.get(i).season.isEmpty()) {
+                int index = skillWeights.length + 2 + i;
+                withoutSeasonal[index] = 0; unavailable[index] = true; hasSeasonal = true;
+            }
+        }
+        outOfSeasonDrawWeights = hasSeasonal ? rebalance(normalDrawWeights, withoutSeasonal, unavailable) : normalDrawWeights;
+        outOfSeasonLightningDrawWeights = hasSeasonal ? boostedWeights(outOfSeasonDrawWeights) : lightningDrawWeights;
     }
     private boolean isDragonBallIndex(int index) {
         int rewardIndex = index - skillWeights.length - 2;
@@ -319,23 +331,38 @@ public class GiftDropGame {
         }
         return after;
     }
-    private int[] boostedWeights() {
-        int[] boosted = normalDrawWeights.clone();
+    private int[] boostedWeights(int[] original) {
+        int[] boosted = original.clone();
         boolean[] target = new boolean[boosted.length];
         for (int i = 0; i < rewards.size(); i++) {
-            if (rewards.get(i).dragonBallStars > 0 || rewards.get(i).referenceLevel < 9 || rewards.get(i).referenceLevel > 20) { continue; }
+            if (rewards.get(i).dragonBallStars > 0 || rewards.get(i).referenceLevel < 9) { continue; }
             int index = skillWeights.length + 2 + i;
             target[index] = true;
-            boosted[index] = (int) Math.round(normalDrawWeights[index] * 1.10D);
+            boosted[index] = (int) Math.round(original[index] * 1.10D);
         }
-        return rebalance(normalDrawWeights, boosted, target);
+        return rebalance(original, boosted, target);
     }
-    private int[] weightsForEffects(boolean lightning, boolean protectedFromRotten, int stars) {
-        if (!protectedFromRotten && stars == 0) { return lightning ? lightningDrawWeights : normalDrawWeights; }
-        String key = lightning + ":" + protectedFromRotten + ":" + stars;
+    private int highestPetIndexAt(long now) {
+        if (highestPetIndex >= 0 && rewards.get(highestPetIndex).isAvailableAt(now)) { return highestPetIndex; }
+        int highest = -1;
+        for (int i = 0; i < rewards.size(); i++) {
+            PetRewardCatalog.Reward reward = rewards.get(i);
+            if (reward.dragonBallStars == 0 && reward.isAvailableAt(now) &&
+                    (highest < 0 || pointsForReward(reward) > pointsForReward(rewards.get(highest)))) { highest = i; }
+        }
+        return highest;
+    }
+    private int[] weightsForEffects(boolean lightning, boolean protectedFromRotten, int stars, long now) {
+        boolean seasonalAvailable = true;
+        for (PetRewardCatalog.Reward reward : rewards) {
+            if (!reward.isAvailableAt(now)) { seasonalAvailable = false; break; }
+        }
+        int[] weights = seasonalAvailable ? (lightning ? lightningDrawWeights : normalDrawWeights)
+                : (lightning ? outOfSeasonLightningDrawWeights : outOfSeasonDrawWeights);
+        if (!protectedFromRotten && stars == 0) { return weights; }
+        String key = seasonalAvailable + ":" + lightning + ":" + protectedFromRotten + ":" + stars;
         int[] cached = effectDrawWeights.get(key);
         if (cached != null) { return cached; }
-        int[] weights = lightning ? lightningDrawWeights : normalDrawWeights;
         if (protectedFromRotten) {
             int[] protectedWeights = weights.clone();
             boolean[] changed = new boolean[weights.length];
@@ -343,8 +370,9 @@ public class GiftDropGame {
             changed[skillWeights.length] = true;
             weights = rebalance(weights, protectedWeights, changed);
         }
-        if (stars > 0 && highestPetIndex >= 0) {
-            int index = skillWeights.length + 2 + highestPetIndex;
+        int highest = highestPetIndexAt(now);
+        if (stars > 0 && highest >= 0) {
+            int index = skillWeights.length + 2 + highest;
             int[] boosted = weights.clone();
             boolean[] changed = new boolean[weights.length];
             int fixedBalls = 0;
@@ -380,7 +408,10 @@ public class GiftDropGame {
         return giftForTicket(id, ticket, lightning, protectedFromRotten, 0);
     }
     private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars) {
-        int[] weights = weightsForEffects(lightning, protectedFromRotten, stars);
+        return giftForTicket(id, ticket, lightning, protectedFromRotten, stars, System.currentTimeMillis());
+    }
+    private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars, long now) {
+        int[] weights = weightsForEffects(lightning, protectedFromRotten, stars, now);
         int index = 0, remaining = ticket;
         // Reuse each egg's private ticket for the active effects; refreshing never rerolls it.
         while (index < weights.length - 1) {
@@ -401,9 +432,9 @@ public class GiftDropGame {
     }
     public static Gift lightningGift(String id, String appearance) {
         if ("PUMPKIN".equals(appearance)) {
-            return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-pumpkin.svg", "Bí ngô may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
+            return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-pumpkin.svg", "Bí ngô may mắn — cả phòng +10% tỉ lệ pet từ Mèo Tom trở lên trong 30 giây");
         }
-        return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-lightning.svg", "Sét may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây");
+        return new Gift(id, LIGHTNING_LEVEL, 0D, null, "assets/images/battle-lightning.svg", "Sét may mắn — cả phòng +10% tỉ lệ pet từ Mèo Tom trở lên trong 30 giây");
     }
     private Gift petGift(String id, PetRewardCatalog.Reward reward) {
         return new Gift(id, reward.level, pointsForReward(reward), null, reward.image, reward.label);
@@ -436,8 +467,9 @@ public class GiftDropGame {
         boolean protectedFromRotten = protectionEndsAt(username) > now;
         DragonBallBoost boost = dragonBallBoosts.get(username);
         int stars = boost != null && boost.endsAt > now ? boost.stars : 0;
-        return gift != null && (lightning || protectedFromRotten || stars > 0) && gift.drawTicket >= 0
-                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars) : gift;
+        // Resolve the same hidden ticket at claim time, including season transitions in final pools.
+        return gift != null && gift.drawTicket >= 0
+                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars, now) : gift;
     }
     private long protectionEndsAt(String username) {
         Long endsAt = perryHatProtection.get(username);

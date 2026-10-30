@@ -12,7 +12,9 @@ public final class DemonDefenseGame {
     public static final long WAVE_MS = 30000L;
     public static final double DANGER_PROGRESS = 0.75D;
     public static final int BREAK_STREAK_DEDUCTION = 5;
-    public static final long BASE_SPAWN_INTERVAL_MS = 8000L;
+    // Spawn pressure is about 70% of the previous rate (intervals divided by 0.7).
+    public static final long BASE_SPAWN_INTERVAL_MS = 11430L;
+    private static final long MIN_SPAWN_INTERVAL_MS = 515L;
     private static final int[] LEVEL_TARGETS = {20, 40, 60, 90, 120, 160, 200, 250, 300, 360};
     private final long startedAt;
     private long stoppedAt;
@@ -104,7 +106,7 @@ public final class DemonDefenseGame {
                     continue;
                 }
                 spawnBatch(team, at);
-                team.nextSpawnAt = at + Math.max(360L, interval);
+                team.nextSpawnAt = at + Math.max(MIN_SPAWN_INTERVAL_MS, interval);
                 if (phase < 23000L) {
                     team.nextSpawnAt = Math.min(team.nextSpawnAt,
                             startedAt + (offset / WAVE_MS) * WAVE_MS + 23000L);
@@ -124,9 +126,9 @@ public final class DemonDefenseGame {
     }
 
     private long spawnInterval(TeamState team, long at) {
-        long interval = Math.max(360L, BASE_SPAWN_INTERVAL_MS / Math.max(1, team.memberCount));
+        long interval = Math.max(MIN_SPAWN_INTERVAL_MS, BASE_SPAWN_INTERVAL_MS / Math.max(1, team.memberCount));
         long phase = Math.max(0L, at - startedAt) % WAVE_MS;
-        return phase >= 23000L && phase < 27000L ? Math.max(360L, interval / 2L) : interval;
+        return phase >= 23000L && phase < 27000L ? Math.max(MIN_SPAWN_INTERVAL_MS, interval / 2L) : interval;
     }
 
     /** Every batch spends exactly this level's point budget, mixing one-, two-, and three-point enemies. */

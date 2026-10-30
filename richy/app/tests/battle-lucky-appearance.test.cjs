@@ -62,3 +62,12 @@ test('lucky reward reveal and collection history keep server artwork and labels 
  const pumpkin={rewardImage:'assets/images/battle-pumpkin.svg',rewardLabel:'Bí ngô may mắn — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây'};
  h.hooks.applyRoom(h.room('LIGHTNING'),false);assert.equal(h.vm.getGiftRewardImage(-4,null,pumpkin),'assets/images/battle-pumpkin.svg?v=qa');assert.equal(h.vm.getGiftRewardLabel(-4,null,pumpkin),pumpkin.rewardLabel);
 });
+
+test('lucky descriptions include pets beyond Pikachu without changing the ten-percent thirty-second bonus',()=>{
+ const h=game();
+ assert.match(h.vm.getGiftRewardLabel(-4),/\+10% tỉ lệ pet từ Mèo Tom trở lên trong 30 giây/);
+ for(const file of ['question/views/battle_quiz_online.html','question/views/battle_music_config.html']) {
+  const source=read(file);assert.ok(source.includes('+10% tỉ lệ pet từ Mèo Tom trở lên'),file);
+  assert.ok(!source.includes('tỉ lệ Tom đến Pikachu'),file+' should not imply that the boost stops at Pikachu');
+ }
+});

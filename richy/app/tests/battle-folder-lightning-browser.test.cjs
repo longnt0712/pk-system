@@ -67,7 +67,7 @@ test('folder picker fits desktop/mobile and lightning overlays show host text, a
    const style=await effect.locator('img').evaluate(el=>({opacity:+getComputedStyle(el).opacity,animation:getComputedStyle(el).animationName}));
    assert.ok(style.opacity>=.25&&style.opacity<=.31);assert.equal(style.animation,'battle-lightning-glow');
    assert.equal(await effect.evaluate(el=>getComputedStyle(el).pointerEvents),'none');
-   assert.match(await effect.locator('.battle-lightning-caption').innerText(),/Alice nhặt được Sét may mắn![\s\S]*\+10%[\s\S]*30s/);
+   assert.match(await effect.locator('.battle-lightning-caption').innerText(),/Alice nhặt được Sét may mắn![\s\S]*\+10% tỉ lệ pet từ Mèo Tom trở lên[\s\S]*30s/);
    assert.equal(await effect.locator('.battle-lightning-caption').evaluate(el=>+getComputedStyle(el).opacity),.45);
    assert.equal(await effect.evaluate(el=>getComputedStyle(el).position),'fixed','effect never pushes the game layout down');
    assert.equal(await page.locator('.battle-lightning-notice').count(),0,'there is no opaque top banner');

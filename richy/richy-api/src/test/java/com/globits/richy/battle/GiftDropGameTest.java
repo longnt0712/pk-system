@@ -395,17 +395,17 @@ public class GiftDropGameTest {
         for (boolean lightning : new boolean[] {false,true}) for (boolean protectedFromRotten : new boolean[] {false,true}) {
             TicketRandom random = new TicketRandom();
             GiftDropGame game = new GiftDropGame(10,random,GiftDropGame.SKILL_TYPES,ballsCatalog());
-            int base = effectTickets(game,random,20,0,lightning,protectedFromRotten,1001L);
+            int base = effectTickets(game,random,27,0,lightning,protectedFromRotten,1001L);
             for (int stars = 1; stars <= 7; stars++) {
-                assertEquals(base + stars * 10000,effectTickets(game,random,20,stars,lightning,protectedFromRotten,20999L));
-                assertEquals(base,effectTickets(game,random,20,stars,lightning,protectedFromRotten,21000L));
+                assertEquals(base + stars * 10000,effectTickets(game,random,27,stars,lightning,protectedFromRotten,20999L));
+                assertEquals(base,effectTickets(game,random,27,stars,lightning,protectedFromRotten,21000L));
             }
         }
         List<PetRewardCatalog.Reward> future = ballsCatalog();
-        future.add(new PetRewardCatalog.Reward(22,"future.png","Future winner","future","hatched"));
+        future.add(new PetRewardCatalog.Reward(29,"future.png","Future winner","future","hatched"));
         TicketRandom random = new TicketRandom(); GiftDropGame game = new GiftDropGame(10,random,Collections.<String>emptyList(),future);
-        int base = effectTickets(game,random,22,0,false,false,1001L);
-        assertEquals(base + 70000,effectTickets(game,random,22,7,false,false,1001L));
+        int base = effectTickets(game,random,29,0,false,false,1001L);
+        assertEquals(base + 70000,effectTickets(game,random,29,7,false,false,1001L));
         assertTrue(effectTickets(game,random,20,7,false,false,1001L) < effectTickets(game,random,20,0,false,false,1001L));
     }
 
@@ -417,7 +417,7 @@ public class GiftDropGameTest {
         game.recordClaim(new GiftDropGame.Gift("one",1001,10D),"alice","Alice",10D,6000L);
         assertEquals(1,game.snapshot("alice").dragonBallBoostStars);
         assertEquals(26000L,game.snapshot("alice").dragonBallBoostEndsAt);
-        assertEquals("Pikachu",game.snapshot("alice").dragonBallBoostPetLabel);
+        assertEquals("Son Goku Siêu Saiyan 4",game.snapshot("alice").dragonBallBoostPetLabel);
         assertEquals(0,game.snapshot("bob").dragonBallBoostStars);
         assertEquals(0L,game.snapshot().dragonBallBoostEndsAt);
         assertNull(game.snapshot().dragonBallBoostPetLabel);

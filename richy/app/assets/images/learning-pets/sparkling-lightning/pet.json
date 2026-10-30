@@ -1,0 +1,9 @@
+{
+  "id": "sparkling-lightning",
+  "name": "Tia sét lấp lánh",
+  "selectionKey": "SPARKLING_LIGHTNING",
+  "unlockVocabularyExperienceLevel": 20,
+  "evolution": [
+    {"minimumVocabularyExperienceLevel": 20, "battleRewardLevel": 22, "form": "hatched", "file": "pet-level-20.png"}
+  ]
+}

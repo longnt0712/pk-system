@@ -39,6 +39,14 @@ public class BattleOnlineGiftDropTest {
     }
     @After public void cleanup() { service.destroy(); }
     private BattleOnlineGiftClaimDto request(String id) { BattleOnlineGiftClaimDto d=new BattleOnlineGiftClaimDto(); d.setGiftId(id); return d; }
+    @SuppressWarnings("unchecked") private int firstTicketForReward(int level) {
+        GiftDropGame probability = new GiftDropGame(10,new Random(1));
+        int[] weights = ReflectionTestUtils.invokeMethod(probability,"weightsForEffects",false,false,0,System.currentTimeMillis());
+        List<PetRewardCatalog.Reward> catalog = (List<PetRewardCatalog.Reward>)get(probability,"rewards");
+        int ticket = weights[0] + weights[1];
+        for (int i = 0; i < catalog.size(); i++) { if (catalog.get(i).level == level) { return ticket; } ticket += weights[2 + i]; }
+        throw new AssertionError("Missing reward " + level);
+    }
     private void rejected(String username, String id) {
         try { service.claimGift("GIFTS1",username,request(id)); fail("Claim must be rejected"); } catch(BattleOnlineException expected) {}
     }
@@ -60,6 +68,21 @@ public class BattleOnlineGiftDropTest {
         BattleOnlineAnswerDto wrong=answerRequest(); wrong.setAnswerKey("B");
         service.answer("GIFTS1","alice",wrong);
         assertEquals(7.5D,(Double)get(alice,"score"),0D); assertEquals(0,get(alice,"streak")); assertEquals(1,get(alice,"giftCredits"));
+    }
+
+    @Test public void newSelectablePetFormsAreAwardedByTheServerWithoutUnlockingTheProfilePet() {
+        for (final PetRewardCatalog.Reward reward : PetRewardCatalog.rewards()) {
+            if (reward.level < 22 || reward.level > 28 || !reward.isAvailableAt(System.currentTimeMillis())) { continue; }
+            final int selectedTicket = firstTicketForReward(reward.level);
+            pool = new GiftDropGame(10,new Random(){@Override public int nextInt(int bound){return selectedTicket;}});
+            set(room,"giftDrop",pool);set(room,"giftOpening",true);set(alice,"giftCredits",2);set(alice,"score",0D);
+            Object profileLevel = get(alice,"vocabularyExperienceLevel"), selectedPet = get(alice,"selectedPetKey");
+            BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1","alice",request(pool.snapshot("alice").gifts.get(0).id));
+            assertEquals(reward.level,result.getRewardLevel());assertEquals(reward.image,result.getRewardImage());assertEquals(reward.label,result.getRewardLabel());
+            assertEquals(10D * (reward.referenceLevel + 1),result.getPoints(),0D);
+            assertEquals(profileLevel,get(alice,"vocabularyExperienceLevel"));assertEquals(selectedPet,get(alice,"selectedPetKey"));
+            assertEquals(reward.image,result.getRoom().getGiftDrop().claims.get(0).rewardImage);
+        }
     }
 
     @Test public void eachSkillEggGrantsItsSkillAndUsingItPreservesTheUnansweredQuestion() throws Exception {
@@ -149,7 +172,8 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void claimingPerryUsesMamHocPointsAndPublishesPerrysOwnImageAndLabel() throws Exception {
-        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return 941668; } });
+        final int perryTicket = firstTicketForReward(21);
+        pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return perryTicket; } });
         set(room,"giftDrop",pool);
         BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(before.getGiftDrop());
@@ -360,7 +384,7 @@ public class BattleOnlineGiftDropTest {
         assertEquals(1007,result.getRewardLevel()); assertEquals(70D,result.getPoints(),0D);
         assertEquals(70D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
         GiftDropGame.Snapshot effect = result.getRoom().getGiftDrop();
-        assertEquals(7,effect.dragonBallBoostStars); assertEquals("Pikachu",effect.dragonBallBoostPetLabel);
+        assertEquals(7,effect.dragonBallBoostStars); assertEquals("Son Goku Siêu Saiyan 4",effect.dragonBallBoostPetLabel);
         long duration = effect.dragonBallBoostEndsAt - result.getRoom().getServerTime();
         assertTrue(duration >= 19000L && duration <= 20000L);
         assertEquals(effect.dragonBallBoostEndsAt,service.getRoom("GIFTS1","alice").getGiftDrop().dragonBallBoostEndsAt);

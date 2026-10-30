@@ -660,13 +660,19 @@ test('only a real admin or an explicitly unlocked player keeps pumpkin access ou
     assert.equal(h.user().vocabularyExperienceLevel, 0);
 });
 
-test('pumpkin art is transparent and its seasonal pet never becomes a random game reward', () => {
+test('pumpkin art is transparent and its egg reward manifest carries the Halloween season', () => {
     const png = fs.readFileSync(path.join(assets, 'halloween-pumpkin/pet.png'));
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
     assert.equal(png.readUInt32BE(16), 1024);
     assert.equal(png.readUInt32BE(20), 1024);
     assert.equal(png[25], 6);
-    assert.equal(fs.existsSync(path.join(assets, 'halloween-pumpkin/pet.json')), false);
+    const manifest = JSON.parse(fs.readFileSync(path.join(assets, 'halloween-pumpkin/pet.json'), 'utf8'));
+    assert.equal(manifest.selectionKey, 'HALLOWEEN_PUMPKIN');
+    assert.equal(manifest.battleRewardSeason, 'HALLOWEEN');
+    assert.equal(manifest.evolution.length, 1);
+    assert.equal(manifest.evolution[0].battleRewardLevel, 28);
+    assert.equal(manifest.evolution[0].file, 'pet.png');
+    assert.equal(manifest.evolution[0].form, 'hatched');
 });
 
 test('ordinary Goku hatches at level 22 and remains available after all Saiyan pets unlock', () => {

@@ -88,6 +88,33 @@ test('legacy and special egg rewards keep safe fallback artwork and labels',()=>
  assert.equal(h.vm.getGiftRewardImage(20,null,{rewardImage:' '}),h.vm.getGiftRewardImage(20));
  assert.equal(h.vm.getGiftRewardLabel(20,null,{rewardLabel:' '}),'Pikachu');
 });
+
+test('every new catalog pet keeps its actual artwork and label in the reward reveal and host history',async()=>{
+ const rewards=[];
+ for(const folder of ['sparkling-lightning','goku-kid','halloween-pumpkin']) {
+  const manifest=JSON.parse(fs.readFileSync(path.join(__dirname,'../assets/images/learning-pets',folder,'pet.json'),'utf8'));
+  for(const stage of manifest.evolution) {
+   const name=stage.name||manifest.name;
+   rewards.push({level:stage.battleRewardLevel,rewardImage:'assets/images/learning-pets/'+folder+'/'+stage.file,
+    rewardLabel:(stage.form==='egg-intact'?'Trứng ':stage.form==='egg-cracked'?'Trứng vỡ ':'')+name});
+  }
+ }
+ assert.equal(rewards.length,7);
+ assert.equal(new Set(rewards.map(reward=>reward.level)).size,7,'new reward IDs are unique');
+ assert.ok(rewards.some(reward=>reward.rewardImage.endsWith('/pet-level-24.svg')),'Super Saiyan 2 keeps its animated artwork');
+ for(const reward of rewards) {
+  assert.ok(fs.existsSync(path.join(__dirname,'..',reward.rewardImage)),reward.rewardImage);
+  const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+  const next=h.room(0,2);next.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:reward.level,points:280,...reward}];
+  h.resolve({room:next,rewardLevel:reward.level,points:280,rewardImage:reward.rewardImage,rewardLabel:reward.rewardLabel});await pending;
+  assert.equal(h.vm.getGiftRewardImage(reward.level,null,h.vm.lastGiftReward),reward.rewardImage+'?v=qa');
+  assert.equal(h.vm.getGiftRewardLabel(reward.level,null,h.vm.lastGiftReward),reward.rewardLabel);
+  assert.notEqual(h.vm.getGiftRewardImage(reward.level,null,h.vm.lastGiftReward),h.vm.getGiftRewardImage(0),'metadata prevents legacy fallback');
+  const host=setup('host');host.hooks.applyRoom(next,true);const history=host.vm.room.giftDrop.claims[0];
+  assert.equal(host.vm.getGiftRewardImage(history.rewardLevel,history.skillType,history),reward.rewardImage+'?v=qa');
+  assert.equal(host.vm.getGiftRewardLabel(history.rewardLevel,history.skillType,history),reward.rewardLabel);
+ }
+});
 test('Perry reveals immediately as the full pet and keeps its artwork in host history',async()=>{
  const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
  const reward={rewardImage:'assets/images/learning-pets/perry/pet-level-4.png',rewardLabel:'Perry'};

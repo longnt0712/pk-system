@@ -916,7 +916,7 @@
         vm.getGiftRewardLabel = function (level, skillType, reward) {
             if (Number(level) === -4) {
                 return reward && typeof reward.rewardLabel === 'string' && reward.rewardLabel.trim()
-                    ? reward.rewardLabel.trim() : vm.giftLuckyName() + ' — cả phòng +10% tỉ lệ Tom đến Pikachu trong 30 giây';
+                    ? reward.rewardLabel.trim() : vm.giftLuckyName() + ' — cả phòng +10% tỉ lệ pet từ Mèo Tom trở lên trong 30 giây';
             }
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }

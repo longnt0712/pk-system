@@ -10,6 +10,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
@@ -22,6 +25,7 @@ public final class PetRewardCatalog {
         public final String petId, form;
         public final int stageIndex;
         public final int dragonBallStars;
+        public final String season;
 
         public Reward(int level, String image, String label) {
             this(level, image, label, "level-family-" + (level / 3),
@@ -37,7 +41,15 @@ public final class PetRewardCatalog {
         }
 
         public Reward(int level, String image, String label, String petId, String form, int referenceLevel, int dragonBallStars) {
+            this(level, image, label, petId, form, referenceLevel, dragonBallStars, "");
+        }
+
+        public Reward(int level, String image, String label, String petId, String form, int referenceLevel, int dragonBallStars, String season) {
             if (dragonBallStars < 0 || dragonBallStars > 7) { throw new IllegalArgumentException("Invalid Dragon Ball stars"); }
+            if (season == null || !(season.isEmpty() || "HALLOWEEN".equals(season)) || (dragonBallStars > 0 && !season.isEmpty())) {
+                throw new IllegalArgumentException("Invalid pet reward season");
+            }
+            this.season = season;
             this.dragonBallStars = dragonBallStars;
             if (level < 0 || referenceLevel < 0 || image == null || label == null || petId == null || petId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Pet reward requires a level, image and label");
@@ -48,6 +60,12 @@ public final class PetRewardCatalog {
             else { throw new IllegalArgumentException("Unknown pet reward form"); }
             this.level = level; this.referenceLevel = referenceLevel; this.image = image; this.label = label;
             this.petId = petId; this.form = form;
+        }
+
+        public boolean isAvailableAt(long now) {
+            if (season.isEmpty()) { return true; }
+            LocalDate date = Instant.ofEpochMilli(now).atZone(ZoneId.of("Asia/Bangkok")).toLocalDate();
+            return date.getMonthValue() == 10 || (date.getMonthValue() == 11 && date.getDayOfMonth() <= 5);
         }
     }
 
@@ -84,12 +102,17 @@ public final class PetRewardCatalog {
                 throw new IOException("Invalid pet reward manifest: " + manifest.getDescription());
             }
             int dragonBallStars = 0;
+            String season = pet.path("battleRewardSeason").asText("");
+            if (pet.has("battleRewardSeason") && (!pet.path("battleRewardSeason").isTextual() || !"HALLOWEEN".equals(season))) {
+                throw new IOException("Invalid Battle reward season: " + manifest.getDescription());
+            }
             if (pet.has("dragonBallStars")) {
                 JsonNode stars = pet.path("dragonBallStars");
                 if (!stars.isIntegralNumber() || !stars.canConvertToInt() || stars.asInt() < 1 || stars.asInt() > 7) {
                     throw new IOException("Invalid Dragon Ball stars: " + manifest.getDescription());
                 }
                 dragonBallStars = stars.asInt();
+                if (!season.isEmpty()) { throw new IOException("Dragon Ball rewards cannot be seasonal"); }
             }
             for (JsonNode stage : pet.path("evolution")) {
                 JsonNode minimum = stage.path("minimumVocabularyExperienceLevel");
@@ -97,6 +120,10 @@ public final class PetRewardCatalog {
                 JsonNode reference = stage.has("battleRewardReferenceLevel") ? stage.path("battleRewardReferenceLevel") : rewardLevel;
                 int level = rewardLevel.asInt(-1), referenceLevel = reference.asInt(-1);
                 String form = stage.path("form").asText();
+                String stageName = stage.has("name") ? stage.path("name").asText("").trim() : name;
+                if (stageName.isEmpty() || stageName.length() > 200 || (stage.has("name") && !stage.path("name").isTextual())) {
+                    throw new IOException("Invalid pet reward stage name: " + manifest.getDescription());
+                }
                 String file = stage.path("file").asText();
                 JsonNode atlas = pet.path("atlas");
                 if (file.equals(atlas.path("file").asText()) || file.equals(atlas.path("optimizedFile").asText())) {
@@ -113,7 +140,7 @@ public final class PetRewardCatalog {
                         || !file.matches("[a-zA-Z0-9_-]+\\.(png|webp|svg|avif|jpg|jpeg)")) {
                     throw new IOException("Invalid or duplicate pet reward level/image: " + manifest.getDescription());
                 }
-                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form, referenceLevel, dragonBallStars));
+                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + stageName, id, form, referenceLevel, dragonBallStars, season));
             }
         }
         if (rewards.isEmpty()) { throw new IOException("No pet reward manifests were packaged"); }
