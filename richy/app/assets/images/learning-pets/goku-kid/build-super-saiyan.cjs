@@ -61,7 +61,7 @@ function arcLayer(index, staticArt = false) {
     return `<g class="arc arc-${index}"${opacity}><path d="${arcs[index]}" fill="#c4edff" stroke="#bce7ff" stroke-width="5" filter="url(#arc-glow)"/>`
         + `<path d="${arcs[index]}" fill="white" stroke="#e1f6ff" stroke-width=".8" stroke-linejoin="miter"/></g>`;
 }
-const animation = '<style>.arc-0{animation:ssj2-arc-a 1.25s steps(1,end) infinite}.arc-1{animation:ssj2-arc-b 1.5s steps(1,end) infinite}'
+const animation = '<style>.arc-0{animation:ssj2-arc-a 2.5s steps(1,end) infinite}.arc-1{animation:ssj2-arc-b 3s steps(1,end) infinite}'
     + '@keyframes ssj2-arc-a{0%,18%,39%,61%,84%{opacity:1}9%,31%,48%,72%,94%,100%{opacity:0}}'
     + '@keyframes ssj2-arc-b{0%,23%,48%,71%,94%{opacity:0}11%,34%,58%,83%,100%{opacity:1}}'
     + '@media(prefers-reduced-motion:reduce){.arc{animation:none!important;opacity:.65}}</style>';
