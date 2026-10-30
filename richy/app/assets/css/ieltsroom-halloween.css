@@ -40,6 +40,9 @@ html.ieltsroom-halloween.ieltsroom-halloween body {
 }
 
 html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper,
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-top > .page-header,
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-top > .page-header::before,
+html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-top > .page-header::after,
 html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-middle,
 html.ieltsroom-halloween.ieltsroom-halloween .page-content,
 html.ieltsroom-halloween.ieltsroom-halloween .page-container,

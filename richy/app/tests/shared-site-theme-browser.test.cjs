@@ -141,6 +141,45 @@ async function choose(page, theme) {
     return dialog;
 }
 
+test('Halloween header surroundings reveal the page background and Normal restores the original shell', async () => {
+    for (const guest of [false,true]) for (const dark of [false,true]) {
+        const shared = {theme:'NORMAL'};
+        const fixture = await open(shared, {admin:!guest,guest,dark,viewport:{width:1920,height:1080}});
+        try {
+            await loaded(fixture.page);
+            const background = () => fixture.page.evaluate(async () => {
+                await new Promise(requestAnimationFrame);
+                const header = document.querySelector('.page-wrapper-top > .page-header');
+                await Promise.all(header.getAnimations().map(animation => animation.finished.catch(() => {})));
+                return [null,'::before','::after'].map(pseudo => {
+                    const css = getComputedStyle(header,pseudo);
+                    return {color:css.backgroundColor,image:css.backgroundImage};
+                });
+            });
+            const original = await background();
+            shared.theme = 'HALLOWEEN';
+            await poll(fixture.page);
+            await fixture.page.waitForFunction(() => siteTheme.state.theme === 'HALLOWEEN');
+            for (const width of [1920,820,390]) {
+                await fixture.page.setViewportSize({width,height:1080});
+                const detail = JSON.stringify({guest,dark,width});
+                assert.deepEqual(await background(), Array(3).fill({color:'rgba(0, 0, 0, 0)',image:'none'}),
+                    'header margins expose the Halloween page instead of a white or personal dark strip: ' + detail);
+                if (process.env.SITE_THEME_SCREENSHOT_DIR && width === 1920 && !guest && !dark) {
+                    fs.mkdirSync(process.env.SITE_THEME_SCREENSHOT_DIR, {recursive:true});
+                    await fixture.page.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'halloween-header-background.png')});
+                }
+            }
+            await fixture.page.setViewportSize({width:1920,height:1080});
+            shared.theme = 'NORMAL';
+            await poll(fixture.page);
+            await fixture.page.waitForFunction(() => siteTheme.state.theme === 'NORMAL');
+            assert.deepEqual(await background(), original, 'Normal restores the original header shell: ' + JSON.stringify({guest,dark}));
+            assert.deepEqual(fixture.errors, []);
+        } finally { await fixture.context.close(); }
+    }
+});
+
 test('admin header controls stay vertically aligned on desktop and tablets in both shared themes', async () => {
     const fixture = await open({theme:'HALLOWEEN'}, {admin:true, viewport:{width:1920,height:1080}});
     try {
