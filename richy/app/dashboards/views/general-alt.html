@@ -488,6 +488,18 @@
             </a>
         </div>
 
+        <!-- SPEAKING STUDIO -->
+        <div class="learning-tile-wrap" ng-if="settings.ieltsRoom == true">
+            <a ui-sref="application.speaking" href="speaking" class="learning-tile learning-tile-flashcards">
+                <span class="learning-tile-icon"><i class="fa fa-microphone"></i></span>
+                <span class="learning-tile-title">SPEAKING STUDIO</span>
+                <span class="learning-tile-desc">Câu trả lời của bạn và luyện nói theo bộ đề</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
         <!-- BÀI TẬP TỔNG HỢP -->
         <div class="learning-tile-wrap"
              ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">

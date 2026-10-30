@@ -1,26 +1,26 @@
 <main class="speaking-page" id="speaking-page" aria-busy="{{vm.loading}}">
     <header class="sp-hero">
-        <div><span class="sp-eyebrow"><i class="fa fa-microphone"></i> YOUR SPEAKING SPACE</span><h1>Speaking studio</h1><p>Câu hỏi, ý tưởng và từng bước tiến bộ của bạn.</p></div>
-        <button class="sp-button sp-primary" ng-if="vm.canManage" ng-click="vm.openModal('create')"><i class="fa fa-plus"></i> Tạo bộ đề</button>
+        <div><span class="sp-eyebrow"><i class="fa fa-microphone"></i> {{vm.managementMode ? 'SPEAKING WORKSPACE' : 'YOUR SPEAKING SPACE'}}</span><h1>{{vm.managementMode ? 'Tạo test Speaking' : 'Speaking Studio'}}</h1><p>{{vm.managementMode ? 'Quản lý bộ đề, import và câu trả lời theo học sinh.' : 'Câu trả lời, ghi chú và từng bước tiến bộ của riêng bạn.'}}</p></div>
+        <div class="sp-hero-actions"><a class="sp-button" ng-if="vm.managementMode" ui-sref="application.speaking({set:vm.selectedSetId,part:vm.part,practice:null})"><i class="fa fa-microphone"></i> Bài Speaking của tôi</a><a class="sp-button" ng-if="!vm.managementMode && vm.canManage" ui-sref="application.create_speaking_test({set:vm.selectedSetId,part:vm.part})"><i class="fa fa-sliders"></i> Tạo test Speaking</a><button class="sp-button sp-primary" ng-if="vm.managementMode && vm.canManage" ng-click="vm.openModal('create')"><i class="fa fa-plus"></i> Tạo bộ đề</button></div>
     </header>
     <div class="sp-alert sp-error" role="alert" ng-if="vm.error">{{vm.error}}</div>
     <div class="sp-alert" role="status" ng-if="vm.notice">{{vm.notice}} <button class="sp-link" ng-click="vm.notice=''">Đóng</button></div>
     <p ng-if="vm.loading" role="status">Đang mở kho Speaking…</p>
-    <section class="sp-empty sp-panel" ng-if="!vm.loading && !vm.sets.length"><i class="fa fa-comments-o"></i><h2>Khởi đầu một cuộc trò chuyện</h2><p>{{vm.canManage ? 'Tạo bộ đề theo năm, rồi nhập câu hỏi và sample bằng file Excel.' : 'Các bộ Speaking dùng chung và bộ được giáo viên chia sẻ sẽ xuất hiện tại đây.'}}</p></section>
+    <section class="sp-empty sp-panel" ng-if="!vm.loading && !vm.sets.length"><i class="fa fa-comments-o"></i><h2>Khởi đầu một cuộc trò chuyện</h2><p>{{vm.managementMode && vm.canManage ? 'Tạo bộ đề theo năm, rồi nhập câu hỏi và sample bằng file Excel.' : 'Các bộ Speaking dùng chung và bộ được giáo viên chia sẻ sẽ xuất hiện tại đây.'}}</p></section>
 
     <div ng-if="vm.sets.length && !vm.practice">
         <section class="sp-panel sp-filters">
             <label>Năm<select ng-model="vm.yearFilter" ng-change="vm.changeYear()" ng-options="year as year for year in vm.years"><option value="">Tất cả năm</option></select></label>
             <label class="sp-grow">Bộ đề<select ng-model="vm.selectedSetId" ng-change="vm.selectSet()" ng-options="set.id as (set.name + ' · Tháng ' + set.fromMonth + '–' + set.toMonth + (set.sharedForEveryone ? ' · Dùng chung' : ' · ' + set.ownerName)) for set in vm.availableSets()"></select></label>
             <span class="sp-badge" ng-if="vm.selectedSet.sharedForEveryone"><i class="fa fa-globe"></i> Bộ dùng chung</span>
-            <button class="sp-button" ng-if="vm.selectedSet.canManage && !vm.selectedSet.sharedForEveryone" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
-            <button class="sp-button" ng-if="vm.isAdmin && vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
-            <button class="sp-button sp-primary" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
+            <button class="sp-button" ng-if="vm.managementMode && vm.selectedSet.canManage && !vm.selectedSet.sharedForEveryone" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
+            <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
+            <button class="sp-button sp-primary" ng-if="!vm.managementMode" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
         </section>
-        <section class="sp-panel sp-admin-students" ng-if="vm.isAdmin && vm.selectedSet" aria-label="Câu trả lời Speaking theo lớp">
+        <section class="sp-panel sp-admin-students" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet" aria-label="Câu trả lời Speaking theo lớp">
             <div class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">QUẢN LÝ CÂU TRẢ LỜI</span><h2>Học sinh theo lớp</h2><p class="sp-muted">Chọn lớp, import cho từng em hoặc bấm View để xem câu trả lời riêng. Chỉ admin được import.</p></div></div>
             <div class="sp-toolbar sp-admin-filters">
-                <label class="sp-grow">Lớp học<select ng-model="vm.adminClassId" ng-change="vm.changeAdminClass()" ng-options="class.id as (class.name + (class.code ? ' · ' + class.code : '')) for class in vm.classes" ng-disabled="vm.busy"><option value="">Chọn lớp học…</option></select></label>
+                <div class="sp-grow sp-class-field"><label>Lớp học</label><class-tree-picker classes="vm.classes" ng-model="vm.adminClassId" school-id="vm.directorySchoolId" disabled="vm.busy" loading="vm.loading" on-change="vm.changeAdminClass()" placeholder="Chọn lớp học…" label="Chọn lớp học IELTSRoom"></class-tree-picker></div>
                 <label class="sp-grow">Tìm học sinh<input type="search" placeholder="Tên hoặc tài khoản trong lớp" ng-model="vm.adminStudentQuery" ng-change="vm.searchAdminStudents()" ng-model-options="{debounce:300}" ng-disabled="!vm.adminClassId || vm.busy"></label>
                 <button type="button" class="sp-button" ng-click="vm.loadAdminStudents(vm.adminPage)" ng-disabled="!vm.adminClassId || vm.adminRosterLoading || vm.busy"><i class="fa fa-refresh"></i> Làm mới</button>
             </div>
@@ -48,10 +48,10 @@
                 <label>Tìm học sinh<input type="search" placeholder="Tên hoặc tài khoản chính xác" ng-model="vm.studentQuery" ng-change="vm.loadStudents(vm.studentQuery)" ng-model-options="{debounce:400}"></label>
                 <span>Hoàn thành luyện tập không tự đánh dấu Pass.</span>
             </div>
-            <div class="sp-answer-context sp-toolbar" ng-if="!vm.isAdmin || vm.adminViewedStudent">
-                <div class="sp-grow"><strong><span ng-if="vm.isAdmin">Đang xem: </span>{{vm.answerStudentLabel()}}</strong><small>Câu trả lời và ghi chú riêng, không thay đổi sample chung.</small><small ng-if="vm.isAdmin && vm.adminViewEmpty">Chưa có câu trả lời đã lưu. Bạn vẫn có thể mở từng câu bên dưới để xem và sửa.</small></div>
-                <button class="sp-button" ng-if="vm.isAdmin" ng-click="vm.openAnswerImport(vm.adminViewedStudent)" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import cho em này</button>
-                <button class="sp-button" ng-if="vm.isAdmin" ng-click="vm.backToAdminClass()" ng-disabled="vm.busy"><i class="fa fa-arrow-left"></i> Danh sách lớp</button>
+            <div class="sp-answer-context sp-toolbar" ng-if="vm.canOpenAnswer()">
+                <div class="sp-grow"><strong><span ng-if="vm.managementMode">Đang xem: </span>{{vm.answerStudentLabel()}}</strong><small>Câu trả lời và ghi chú riêng, không thay đổi sample chung.</small><small ng-if="vm.managementMode && vm.isAdmin && vm.adminViewEmpty">Chưa có câu trả lời đã lưu. Bạn vẫn có thể mở từng câu bên dưới để xem và sửa.</small></div>
+                <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin" ng-click="vm.openAnswerImport(vm.adminViewedStudent)" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import cho em này</button>
+                <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin" ng-click="vm.backToAdminClass()" ng-disabled="vm.busy"><i class="fa fa-arrow-left"></i> Danh sách lớp</button>
             </div>
             <p ng-if="vm.loadingBank" role="status">Đang tải câu hỏi…</p>
             <p class="sp-muted" ng-if="!vm.loadingBank && !vm.groups.length">Chưa có câu phù hợp ở Part {{vm.part}}.</p>
@@ -66,7 +66,7 @@
                         <span class="sp-badge" ng-if="(!vm.canReviewStudents() || !vm.studentId) && question.passed"><i class="fa fa-check"></i> Pass</span>
                     </div>
                     <details ng-if="question.sample"><summary>Sample trả lời</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
-                    <button type="button" class="sp-button sp-answer-toggle" ng-if="!vm.isAdmin || vm.adminViewedStudent" ng-class="{'is-active':vm.answerQuestionId===question.id}" aria-expanded="{{vm.answerQuestionId===question.id}}" ng-click="vm.toggleAnswer(question)"><i class="fa fa-pencil-square-o"></i> {{vm.answerQuestionId===question.id ? 'Đóng câu trả lời riêng' : 'Câu trả lời riêng'}}</button>
+                    <button type="button" class="sp-button sp-answer-toggle" ng-if="vm.canOpenAnswer()" ng-class="{'is-active':vm.answerQuestionId===question.id}" aria-expanded="{{vm.answerQuestionId===question.id}}" ng-click="vm.toggleAnswer(question)"><i class="fa fa-pencil-square-o"></i> {{vm.answerQuestionId===question.id ? 'Đóng câu trả lời riêng' : 'Câu trả lời riêng'}}</button>
                     <speaking-student-answer-editor ng-if="vm.answerQuestionId===question.id" set-id="vm.selectedSetId" student-id="vm.answerStudentId()" question-id="question.id" user-id="vm.userId" student-label="{{vm.answerStudentLabel()}}"></speaking-student-answer-editor>
                 </div>
             </article>

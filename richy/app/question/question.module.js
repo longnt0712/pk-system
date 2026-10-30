@@ -374,11 +374,31 @@
                 url: '/speaking?set&part&practice',
                 reloadOnSearch: false,
                 templateUrl: 'question/views/speaking.html?v=' + window.APP_VERSION,
-                data: {pageTitle: 'Speaking studio'},
+                data: {pageTitle: 'Speaking Studio', speakingManagement: false},
                 controller: 'SpeakingController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                         return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'question/speaking.css?v=' + window.APP_VERSION,
+                            'question/business/SpeakingService.js?v=' + window.APP_VERSION,
+                            'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,
+                            'question/business/speaking-student-answer-editor.js?v=' + window.APP_VERSION,
+                            'question/controllers/SpeakingController.js?v=' + window.APP_VERSION
+                        ]});
+                    }]
+                }
+            })
+            .state('application.create_speaking_test', {
+                url: '/create_speaking_test?set&part',
+                reloadOnSearch: false,
+                templateUrl: 'question/views/speaking.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Tạo test Speaking', speakingManagement: true},
+                controller: 'SpeakingController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'common/class-tree-picker.css?v=' + window.APP_VERSION,
+                            'common/directives/ClassTreePicker.js?v=' + window.APP_VERSION,
                             'question/speaking.css?v=' + window.APP_VERSION,
                             'question/business/SpeakingService.js?v=' + window.APP_VERSION,
                             'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,

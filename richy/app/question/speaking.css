@@ -5,6 +5,9 @@
 .speaking-page h3 { font-size:17px; font-weight:700; }
 .speaking-page p { line-height:1.65; }
 .speaking-page .sp-hero { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:32px; border-radius:24px; background:linear-gradient(115deg,#eeeaff,#e8f5fc); margin-bottom:18px; }
+.speaking-page .sp-hero-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+.speaking-page .sp-class-field>label { display:block; margin-bottom:5px; }
+.speaking-page .sp-class-field .class-tree-trigger { min-height:40px; border-color:var(--sp-line); border-radius:10px; font-size:13px; }
 .speaking-page .sp-eyebrow { color:#6f55c4; font-size:11px; font-weight:800; letter-spacing:1.4px; }
 .speaking-page .sp-panel { border:1px solid var(--sp-line); background:#fff; border-radius:18px; padding:22px; margin-bottom:18px; box-shadow:0 7px 28px rgba(49,65,104,.04); }
 .speaking-page .sp-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid #dce2f0; background:#fff; border-radius:11px; padding:10px 14px; line-height:1.3; color:#4a5d7a; font-size:13px; font-weight:650; text-decoration:none; cursor:pointer; }

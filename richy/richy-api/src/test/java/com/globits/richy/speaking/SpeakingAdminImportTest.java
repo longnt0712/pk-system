@@ -55,7 +55,10 @@ public class SpeakingAdminImportTest {
         user.setEnrollmentClassIds(new HashSet<Long>(Arrays.asList(classes)));em.persist(user);return user;
     }
     private EnrolmentClass clazz(String name,EnrolmentClass parent) {
-        EnrolmentClass value=new EnrolmentClass();value.setName(name);value.setSchoolId(1);value.setParent(parent);em.persist(value);return value;
+        return clazz(name,parent,1);
+    }
+    private EnrolmentClass clazz(String name,EnrolmentClass parent,Integer schoolId) {
+        EnrolmentClass value=new EnrolmentClass();value.setName(name);value.setSchoolId(schoolId);value.setParent(parent);em.persist(value);return value;
     }
     private void as(User actor){SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(actor,"",Collections.emptyList()));}
     private SpeakingQuestion question(int part) {
@@ -79,7 +82,34 @@ public class SpeakingAdminImportTest {
     }
     @After public void cleanup(){SecurityContextHolder.clearContext();if(em!=null){if(em.getTransaction().isActive())em.getTransaction().rollback();em.close();}}
     @SuppressWarnings("unchecked") private List<Map<String,Object>> students(Map<String,Object> result){return(List<Map<String,Object>>)result.get("students");}
+    @SuppressWarnings("unchecked") private List<Map<String,Object>> classOptions(){return(List<Map<String,Object>>)speaking.bootstrap().get("classes");}
+    private Map<String,Object> option(List<Map<String,Object>> rows,Long id){for(Map<String,Object> row:rows)if(id.equals(row.get("id")))return row;throw new AssertionError("Missing class "+id);}
     private Set<Long> ids(List<Map<String,Object>> rows){Set<Long> result=new HashSet<Long>();for(Map<String,Object> row:rows)result.add(((Number)row.get("id")).longValue());return result;}
+    @Test public void bootstrapOnlyOffersIeltsRoomClassesWithVisibleTreeParents() {
+        parent.setCode("IELTS-ROOT");EnrolmentClass foreign=clazz("Foreign",parent,2),unknown=clazz("Unknown",parent,null),orphan=clazz("IELTS below foreign",foreign);
+        em.flush();List<Map<String,Object>> options=classOptions();
+        assertEquals(new HashSet<Long>(Arrays.asList(parent.getId(),child.getId(),otherClass.getId(),orphan.getId())),ids(options));
+        assertNull(option(options,parent.getId()).get("parentId"));assertEquals("IELTS-ROOT",option(options,parent.getId()).get("code"));
+        assertEquals(parent.getId(),option(options,child.getId()).get("parentId"));assertNull(option(options,orphan.getId()).get("parentId"));
+        for(Map<String,Object> row:options)assertEquals(1,row.get("schoolId"));assertFalse(ids(options).contains(unknown.getId()));
+    }
+    @Test public void bootstrapRetainsTeacherClassAuthorizationAndRootsClassesWhoseParentIsHidden() {
+        EnrolmentClass foreign=clazz("Foreign managed branch",parent,2),orphan=clazz("Managed IELTS below foreign",foreign);
+        EnrolmentClass separatelyManaged=clazz("Separately managed",otherClass);separatelyManaged.getTeachers().add(teacher);
+        em.flush();as(teacher);List<Map<String,Object>> options=classOptions();
+        assertEquals(new HashSet<Long>(Arrays.asList(parent.getId(),child.getId(),orphan.getId(),separatelyManaged.getId())),ids(options));
+        assertEquals(parent.getId(),option(options,child.getId()).get("parentId"));assertNull(option(options,orphan.getId()).get("parentId"));assertNull(option(options,separatelyManaged.getId()).get("parentId"));
+        as(collectionOnly);assertTrue(classOptions().isEmpty());
+    }
+    @Test public void rosterRejectsForeignOrUnknownSchoolsAndStopsAtForeignDescendantBranches() {
+        EnrolmentClass foreign=clazz("Foreign branch",parent,2),unknown=clazz("Unknown branch",parent,null);
+        EnrolmentClass behindForeign=clazz("IELTS behind foreign",foreign),behindUnknown=clazz("IELTS behind unknown",unknown),validChild=clazz("Valid independent child",behindForeign);
+        user("Foreign member",foreign.getId());user("Unknown member",unknown.getId());User independent=user("Independent",behindForeign.getId()),independentChild=user("Independent child",validChild.getId());user("Hidden through unknown",behindUnknown.getId());
+        User legacyForeign=user("Legacy foreign");Person person=new Person();person.setDisplayName("Legacy foreign");person.setEnrollmentClassId(foreign.getId().intValue());person.setUser(legacyForeign);legacyForeign.setPerson(person);em.persist(person);em.flush();
+        for(Long id:Arrays.asList(foreign.getId(),unknown.getId()))try{speaking.adminStudents(set.getId(),id,"",0,25);fail("Non-IELTSRoom class accepted");}catch(IllegalArgumentException expected){}
+        assertEquals(new HashSet<Long>(Arrays.asList(collectionOnly.getId(),legacyOnly.getId(),duplicate.getId())),ids(students(speaking.adminStudents(set.getId(),parent.getId(),"",0,25))));
+        assertEquals(new HashSet<Long>(Arrays.asList(independent.getId(),independentChild.getId())),ids(students(speaking.adminStudents(set.getId(),behindForeign.getId(),"",0,25))));
+    }
     @Test public void rosterIncludesBothMembershipFormsDescendantsAndDeduplicatesBeforePaging() {
         Map<String,Object> roster=speaking.adminStudents(set.getId(),parent.getId(),"",0,25);
         assertEquals(3,roster.get("total"));assertEquals(new HashSet<Long>(Arrays.asList(collectionOnly.getId(),legacyOnly.getId(),duplicate.getId())),ids(students(roster)));

@@ -60,7 +60,7 @@ function controllerFixture(options={}){
  const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},URL:{revokeObjectURL(){},createObjectURL:()=>''},document:{hidden:false,addEventListener:(n,fn)=>handlers[n]=fn,removeEventListener(){}},addEventListener(){},removeEventListener(){},setTimeout};
  const scope={$on(n,fn){handlers[n]=fn;},$watch(){return()=>{};}};let interval;const intervals=fn=>{interval=fn;};intervals.cancel=()=>{};
  const recorder={state:{pending:[]},stop:()=>Promise.resolve(),loadPending:()=>Promise.resolve(),retry:()=>Promise.resolve()};
- const vm={};register('question/controllers/SpeakingController.js').controller.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},intervals,q,{},api,recorder,{trustAsResourceUrl:url=>url});
+ const vm={};register('question/controllers/SpeakingController.js').controller.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},intervals,q,{},api,recorder,{trustAsResourceUrl:url=>url},{current:{data:{speakingManagement:options.managementMode===true}}});
  return{vm,storage,calls,handlers,api,practice,setProgressAck(v){progressAck=v;},setStartFailure(v){startFailure=v;},tick:()=>interval()};
 }
 test('practice start retries keep the same request and client key even after a reload or changed form',async()=>{
@@ -72,5 +72,15 @@ test('malformed progress ACK keeps the draft and active practice, then a confirm
  f.setProgressAck(true);f.vm.finishPractice();await settle();assert.equal(f.vm.practice.status,'DONE');assert.equal(f.storage.has('speaking-practice:v1:7:21'),false);
 });
 test('Pass remains teacher-controlled and only changes locally after the exact server confirmation',async()=>{
- const f=controllerFixture();await settle();f.vm.studentId=7;f.setProgressAck(false);await f.vm.markPass(f.vm.questions,true);assert.equal(f.vm.questions[0].passed,false);assert.match(f.vm.error,/Chưa xác nhận/);f.setProgressAck(true);await f.vm.markPass(f.vm.questions,true);assert.equal(f.vm.questions[0].passed,true);f.vm.studentId=null;f.vm.markPass(f.vm.questions,false);assert.equal(f.calls.pass.length,2);
+ const f=controllerFixture({managementMode:true});await settle();f.vm.studentId=7;f.setProgressAck(false);await f.vm.markPass(f.vm.questions,true);assert.equal(f.vm.questions[0].passed,false);assert.match(f.vm.error,/Chưa xác nhận/);f.setProgressAck(true);await f.vm.markPass(f.vm.questions,true);assert.equal(f.vm.questions[0].passed,true);f.vm.studentId=null;f.vm.markPass(f.vm.questions,false);assert.equal(f.calls.pass.length,2);
+});
+
+test('personal Studio refuses a different student practice returned for a direct URL or history click',async()=>{
+ const f=controllerFixture();await settle();f.api.practice=()=>Promise.resolve({...structuredClone(f.practice),studentId:8});f.vm.openPractice(21);await settle();assert.equal(f.vm.practice,undefined);assert.match(f.vm.error,/không khớp/);assert.equal(f.storage.has('speaking-practice:v1:7:21'),false);
+ f.api.practice=()=>Promise.resolve({...structuredClone(f.practice),id:22});f.vm.openPractice(21);await settle();assert.equal(f.vm.practice,undefined);assert.match(f.vm.error,/không khớp/);
+});
+
+test('management can review a selected students practice without recording or updating its progress',async()=>{
+ const f=controllerFixture({managementMode:true});await settle();f.vm.openPracticeSetup();assert.equal(f.vm.modal,undefined);await f.vm.startPractice();assert.equal(f.calls.start.length,0);
+ f.vm.studentId=7;f.vm.openPractice(21);await settle();assert.equal(f.vm.practice.id,21);assert.equal(f.vm.ownPractice(),false);f.vm.finishPractice();f.tick();await settle();assert.equal(f.calls.progress.length,0);
 });

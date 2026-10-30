@@ -59,14 +59,14 @@ test('shared banks expose review separately from content management and answer e
  const directive=editor.speakingStudentAnswerEditor({document:{}},{},{});assert.match(directive.template,/Take note/);assert.match(directive.template,/Highlight/);assert.match(directive.template,/ng-model="ed.activeNote.text"/);assert.match(directive.template,/ng-click="ed.closeNote\(\)"/);
 });
 function controllerFixture(options={}){
- const calls={history:[],confirm:[],preview:[],pass:[],roster:[],bank:[],template:[],import:[]},storage=new Map(),location={};let ack=payload=>({...payload,saved:payload.rows.length,answers:payload.rows.map(row=>({...row,setId:payload.setId,studentId:payload.studentId,revision:row.revision+1}))});
+ const calls={history:[],confirm:[],preview:[],pass:[],roster:[],bank:[],template:[],import:[],create:[],share:[],students:[]},storage=new Map(),location={};let ack=payload=>({...payload,saved:payload.rows.length,answers:payload.rows.map(row=>({...row,setId:payload.setId,studentId:payload.studentId,revision:row.revision+1}))});
  const set={id:11,ownerId:1,canManage:false,canReviewStudents:true,sharedForEveryone:true,name:'Bộ chung',year:2026,number:1},rows=[{rowId:'r1',questionId:42,html:'New answer',revision:0,status:'NEW'},{rowId:'r2',questionId:43,html:'Changed answer',revision:2,status:'CHANGED'},{rowId:'r3',questionId:44,html:'Same',revision:1,status:'UNCHANGED'},{rowId:'r4',questionId:45,revision:0,status:'INVALID'}];
  const student={id:7,name:'Student',username:'s7',canAccess:true,answerCount:1,firstAnswerQuestionId:42,firstAnswerPart:1};
- const api={bootstrap:()=>Promise.resolve({userId:9,canManage:true,isAdmin:options.isAdmin!==false,sets:[set],classes:[{id:21,name:'Class 21'},{id:22,name:'Class 22'}]}),bank(id,studentId){calls.bank.push([id,studentId]);return Promise.resolve({set,studentId:studentId||9,questions:[{id:42,entryId:101,part:1,topic:'Home',prompt:'Question',passed:false}]});},students:()=>Promise.resolve([student]),adminStudents(...args){calls.roster.push(args);return Promise.resolve({setId:args[0],classId:args[1],page:args[3],pageSize:args[4],total:1,students:[student]});},studentAnswerTemplate(...args){calls.template.push(args);return Promise.resolve(new ArrayBuffer(1));},preview(id,file){calls.import.push([id,file]);return Promise.resolve({rows:[]});},confirm(id,payload){calls.import.push([id,payload]);return Promise.resolve({imported:0});},history(...args){calls.history.push(args);return Promise.resolve([]);},previewStudentAnswers(...args){calls.preview.push(args);return Promise.resolve({setId:11,studentId:7,rows:structuredClone(rows)});},confirmStudentAnswers(payload){calls.confirm.push(plain(payload));return Promise.resolve(ack(payload));},markPass(id,payload){calls.pass.push(payload);return Promise.resolve({updated:payload.questionIds.length,studentId:payload.studentId,passed:payload.passed});}};
+ const api={bootstrap:()=>Promise.resolve({userId:9,canManage:options.canManage!==false,isAdmin:options.isAdmin!==false,sets:[set],classes:options.classes||[{id:21,name:'Class 21',schoolId:1,parentId:null},{id:22,name:'Class 22',schoolId:1,parentId:21}]}),bank(id,studentId){calls.bank.push([id,studentId]);return Promise.resolve({set,studentId:studentId||9,questions:[{id:42,entryId:101,part:1,topic:'Home',prompt:'Question',passed:false}]});},students(...args){calls.students.push(args);return Promise.resolve([student]);},createSet(payload){calls.create.push(payload);return Promise.resolve(set);},share(...args){calls.share.push(args);return Promise.resolve({id:set.id});},adminStudents(...args){calls.roster.push(args);return Promise.resolve({setId:args[0],classId:args[1],page:args[3],pageSize:args[4],total:1,students:[student]});},studentAnswerTemplate(...args){calls.template.push(args);return Promise.resolve(new ArrayBuffer(1));},preview(id,file){calls.import.push([id,file]);return Promise.resolve({rows:[]});},confirm(id,payload){calls.import.push([id,payload]);return Promise.resolve({imported:0});},history(...args){calls.history.push(args);return Promise.resolve([]);},previewStudentAnswers(...args){calls.preview.push(args);return Promise.resolve({setId:11,studentId:7,rows:structuredClone(rows)});},confirmStudentAnswers(payload){calls.confirm.push(plain(payload));return Promise.resolve(ack(payload));},markPass(id,payload){calls.pass.push(payload);return Promise.resolve({updated:payload.questionIds.length,studentId:payload.studentId,passed:payload.passed});}};
  const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Blob,URL:{revokeObjectURL(){},createObjectURL(){return 'blob:test';}},document:{hidden:false,addEventListener(){},removeEventListener(){},createElement(){return {click(){},parentNode:{removeChild(){}}};},body:{appendChild(){}}},addEventListener(){},removeEventListener(){},setTimeout};
  const scope={$on(){},$watch(){return()=>{};}};const interval=()=>{};interval.cancel=()=>{};
- const vm={};registered('question/controllers/SpeakingController.js').SpeakingController.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},interval,q,{},api,{state:{pending:[]},loadPending:()=>Promise.resolve(),stop:()=>Promise.resolve()},{trustAsResourceUrl:v=>v});
- return{vm,calls,api,student,setAck(fn){ack=fn;}};
+ const vm={};registered('question/controllers/SpeakingController.js').SpeakingController.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},interval,q,{},api,{state:{pending:[]},loadPending:()=>Promise.resolve(),stop:()=>Promise.resolve()},{trustAsResourceUrl:v=>v},{current:{data:{speakingManagement:options.managementMode!==false}}});
+ return{vm,calls,api,student,set,location,setAck(fn){ack=fn;}};
 }
 test('a teacher on a shared bank can review their selected student without requesting another student history',async()=>{
  const f=controllerFixture({isAdmin:false});await settle();assert.equal(f.vm.canReviewStudents(),true);f.vm.studentId=7;const before=f.calls.history.length;await f.vm.loadBank();assert.equal(f.calls.history.length,before);await f.vm.markPass(f.vm.questions,true);assert.equal(f.calls.pass.length,1);assert.equal(f.calls.pass[0].studentId,7);assert.equal(f.vm.questions[0].passed,true);
@@ -89,7 +89,7 @@ test('non-admins retain manual review but cannot call any Speaking import or imp
  f.vm.openModal('import');assert.equal(f.vm.modal,undefined);f.vm.chooseFile({name:'set.xlsx',size:100});f.vm.importFile={name:'forged.xlsx'};await f.vm.previewFile();await f.vm.confirmImport();
  f.vm.openAnswerImport(f.student);assert.equal(f.vm.answerImportContext,undefined);f.vm.answerImportContext={setId:11,studentId:7};f.vm.answerImportFile={name:'forged.xlsx'};await f.vm.previewAnswers();await f.vm.confirmAnswers();await f.vm.downloadAnswerTemplate(f.student);await f.vm.loadAdminStudents(0);
  assert.equal(f.calls.import.length,0);assert.equal(f.calls.preview.length,0);assert.equal(f.calls.confirm.length,0);assert.equal(f.calls.template.length,0);assert.equal(f.calls.roster.length,0);
- const html=fs.readFileSync(path.join(app,'question/views/speaking.html'),'utf8');assert.match(html,/ng-if="vm.isAdmin && vm.selectedSet.canManage"/);assert.match(html,/vm.openAnswerImport\(student\)/);assert.match(html,/vm.viewAdminStudent\(student\)/);assert.match(html,/Học sinh theo lớp/);
+ const html=fs.readFileSync(path.join(app,'question/views/speaking.html'),'utf8');assert.match(html,/ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet.canManage"/);assert.match(html,/vm.openAnswerImport\(student\)/);assert.match(html,/vm.viewAdminStudent\(student\)/);assert.match(html,/Học sinh theo lớp/);
 });
 
 test('admin roster requires a class and sends pagination and search to the server without truncating its students',async()=>{
@@ -135,4 +135,46 @@ test('a mismatched roster receipt cannot populate a student list from another cl
 
 test('View rejects a bank without an exact student identity instead of opening an unverified editor',async()=>{
  for(const studentId of [undefined,null,8]){const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();f.api.bank=()=>Promise.resolve({set:{...f.vm.selectedSet},studentId,questions:[{id:42,entryId:101,part:1,topic:'Home',passed:true}]});await f.vm.viewAdminStudent(f.student);assert.equal(f.vm.questions.length,0);assert.equal(f.vm.answerQuestionId,null);assert.match(f.vm.error,/không khớp/);}
+});
+
+test('Speaking Studio opens personal answers for students, teachers and admins and discards a selected student context',async()=>{
+ for(const role of [{isAdmin:true},{isAdmin:false},{isAdmin:false,canManage:false}]){
+  const f=controllerFixture({managementMode:false,...role});await settle();
+  assert.equal(f.vm.managementMode,false);assert.equal(f.vm.canReviewStudents(),false);assert.equal(f.calls.roster.length,0);assert.equal(f.calls.students.length,0);
+  assert.deepEqual(f.calls.bank[0],[11,null]);assert.deepEqual(f.calls.history[0],[null,null]);
+  f.vm.toggleAnswer(f.vm.questions[0]);assert.equal(f.vm.answerQuestionId,42);assert.equal(f.vm.answerStudentId(),9);assert.equal(f.vm.answerStudentLabel(),'Câu trả lời của tôi');
+  f.vm.studentId=7;f.vm.adminViewedStudent=f.student;await f.vm.loadBank();assert.equal(f.vm.studentId,null);assert.equal(f.vm.adminViewedStudent,null);assert.deepEqual(f.calls.bank.at(-1),[11,null]);assert.deepEqual(f.calls.history.at(-1),[null,null]);
+  f.vm.studentId=7;await f.vm.markPass(f.vm.questions,true);assert.equal(f.calls.pass.length,0);
+ }
+});
+
+test('Speaking Studio never invokes management APIs even for an admin bank owner',async()=>{
+ const f=controllerFixture({managementMode:false});await settle();f.set.canManage=true;f.vm.adminClassId=21;f.vm.studentId=7;
+ for(const name of ['create','share','import','answers']){f.vm.openModal(name);assert.equal(f.vm.modal,undefined);}
+ await f.vm.createSet();await f.vm.saveShare();f.vm.chooseFile({name:'bank.xlsx',size:10});f.vm.importFile={name:'bank.xlsx'};await f.vm.previewFile();await f.vm.confirmImport();await f.vm.exportSet();
+ await f.vm.loadAdminStudents(0);await f.vm.loadStudents('');await f.vm.viewAdminStudent(f.student);f.vm.openAnswerImport(f.student);await f.vm.downloadAnswerTemplate(f.student);
+ f.vm.answerImportContext={setId:11,classId:21,studentId:7};f.vm.answerImportFile={name:'answers.xlsx'};f.vm.answerImportRows=[{selected:true,status:'NEW',questionId:42,html:'Text',revision:0}];await f.vm.previewAnswers();await f.vm.confirmAnswers();
+ for(const action of ['create','share','import','roster','students','template','preview','confirm'])assert.equal(f.calls[action].length,0,action);
+});
+
+test('management routes reject students while a shared teacher bank still permits manual review',async()=>{
+ const f=controllerFixture({canManage:false,isAdmin:false});await settle();assert.equal(f.vm.sets.length,0);assert.equal(f.calls.bank.length,0);assert.match(f.vm.error,/Chỉ giáo viên và admin/);await f.vm.createSet();assert.equal(f.calls.create.length,0);
+ const g=controllerFixture({isAdmin:false});await settle();g.vm.studentId=7;await g.vm.loadBank();assert.equal(g.vm.canOpenAnswer(),true);assert.equal(g.vm.answerStudentId(),7);g.vm.toggleAnswer(g.vm.questions[0]);assert.equal(g.vm.answerQuestionId,42);
+});
+
+test('admin class trees retain only school one and reject forged, removed or foreign selections',async()=>{
+ const classes=[{id:21,name:'IELTSRoom',schoolId:1,parentId:null},{id:22,name:'Child',schoolId:1,parentId:21},{id:23,name:'Other',schoolId:2,parentId:null},{id:24,name:'Unknown',schoolId:null}],f=controllerFixture({classes});await settle();
+ assert.deepEqual(plain(f.vm.classes).map(c=>c.id),[21,22]);assert.equal(f.vm.classes[1].parentId,21);assert.equal(f.vm.directorySchoolId,1);
+ for(const id of [23,24,99,'bad']){f.vm.adminClassId=id;await f.vm.changeAdminClass();assert.equal(f.vm.adminClassId,null);assert.equal(f.calls.roster.length,0);}
+ f.vm.adminClassId=21;await f.vm.changeAdminClass();await f.vm.viewAdminStudent(f.student);f.vm.openAnswerImport(f.student);assert.equal(f.vm.studentId,7);assert.equal(f.vm.modal,'answers');
+ f.vm.adminClassId=23;await f.vm.loadAdminStudents(0);assert.equal(f.vm.adminClassId,null);assert.equal(f.vm.studentId,null);assert.equal(f.vm.answerImportContext,null);assert.equal(f.vm.modal,null);assert.equal(f.vm.adminStudentRows.length,0);
+ f.vm.adminClassId=22;await f.vm.changeAdminClass();await f.vm.viewAdminStudent(f.student);classes[1].schoolId=2;await f.vm.createSet();await settle();assert.equal(f.vm.adminClassId,null);assert.equal(f.vm.studentId,null);assert.equal(f.vm.adminStudentRows.length,0);assert.deepEqual(plain(f.vm.classes).map(c=>c.id),[21]);
+});
+
+test('separate Speaking routes keep imports in management and reuse the school-scoped tree picker',()=>{
+ const html=fs.readFileSync(path.join(app,'question/views/speaking.html'),'utf8'),route=fs.readFileSync(path.join(app,'question/question.module.js'),'utf8');
+ assert.match(route,/state\('application\.speaking',[\s\S]*?speakingManagement: false/);assert.match(route,/state\('application\.create_speaking_test',[\s\S]*?url: '\/create_speaking_test\?set&part'[\s\S]*?speakingManagement: true/);
+ assert.match(route,/common\/directives\/ClassTreePicker\.js/);assert.match(route,/common\/class-tree-picker\.css/);assert.match(html,/<class-tree-picker[^>]+ng-model="vm.adminClassId"[^>]+school-id="vm.directorySchoolId"/);assert.doesNotMatch(html,/<select[^>]+ng-model="vm.adminClassId"/);
+ assert.match(html,/ui-sref="application\.speaking\(\{set:vm.selectedSetId,part:vm.part,practice:null\}\)"/);assert.match(html,/ui-sref="application\.create_speaking_test\(\{set:vm.selectedSetId,part:vm.part\}\)"/);
+ assert.match(html,/ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet"/);assert.match(html,/ng-if="!vm.managementMode"[^>]+ng-click="vm.openPracticeSetup\(\)"/);
 });

@@ -75,6 +75,7 @@ public class SpeakingServiceImpl {
         }
         return false;
     }
+    private boolean ieltsRoomClass(EnrolmentClass value) { return value != null && Integer.valueOf(1).equals(value.getSchoolId()); }
     private boolean sharedForEveryone(SpeakingSet set) {
         return set != null && set.getOwnerId() != null && role(users.findOne(set.getOwnerId()),"ROLE_ADMIN");
     }
@@ -139,7 +140,14 @@ public class SpeakingServiceImpl {
     public Map<String,Object> bootstrap() {
         User user = currentUser(); List<Map<String,Object>> sets = new ArrayList<Map<String,Object>>(), classOptions = new ArrayList<Map<String,Object>>();
         for (SpeakingSet set : em.createQuery("select s from SpeakingSet s order by s.seasonYear desc,s.setNumber,s.id",SpeakingSet.class).getResultList()) if (canRead(set,user)) sets.add(setDto(set,user));
-        if (teacher(user)) for (EnrolmentClass c : classes.findAll()) if (managesClass(user,c)) classOptions.add(map("id",c.getId(),"name",c.getName(),"code",c.getCode()));
+        if (teacher(user)) {
+            List<EnrolmentClass> visible = new ArrayList<EnrolmentClass>(); Set<Long> visibleIds = new HashSet<Long>();
+            for (EnrolmentClass c : classes.findAll()) if (ieltsRoomClass(c) && managesClass(user,c)) { visible.add(c); visibleIds.add(c.getId()); }
+            for (EnrolmentClass c : visible) {
+                Long parentId = c.getParent() == null ? null : c.getParent().getId();
+                classOptions.add(map("id",c.getId(),"name",c.getName(),"code",c.getCode(),"parentId",visibleIds.contains(parentId)?parentId:null,"schoolId",c.getSchoolId()));
+            }
+        }
         return map("userId",user.getId(),"isAdmin",role(user,"ROLE_ADMIN"),"canManage",teacher(user),"aiEnabled",false,"sets",sets,"classes",classOptions);
     }
     public Map<String,Object> createSet(SetRequest request) {
@@ -174,12 +182,15 @@ public class SpeakingServiceImpl {
     public Map<String,Object> adminStudents(Long setId,Long classId,String query,int page,int pageSize) {
         User actor=requireAdmin(); SpeakingSet set=readableSet(setId);
         if(!canReviewStudents(set,actor))throw new AccessDeniedException("Bạn chưa được theo dõi học sinh trong bộ Speaking này.");
-        if(classId==null||classId<=0||classes.findOne(classId)==null)throw new IllegalArgumentException("Chọn lớp học hợp lệ trước khi mở danh sách học sinh.");
+        EnrolmentClass selectedClass=classId==null||classId<=0?null:classes.findOne(classId);
+        if(!ieltsRoomClass(selectedClass))throw new IllegalArgumentException("Chọn lớp học IELTSRoom hợp lệ trước khi mở danh sách học sinh.");
         if(page<0||page>1000000||pageSize<1||pageSize>100)throw new IllegalArgumentException("Trang hoặc số học sinh mỗi trang không hợp lệ.");
         Set<Long> family=new LinkedHashSet<Long>();family.add(classId);
         for(EnrolmentClass candidate:classes.findAll()) {
             EnrolmentClass current=candidate;Set<Long> seen=new HashSet<Long>();
-            while(current!=null&&seen.add(current.getId())) {
+            // A foreign-school branch is not part of this class, even when a
+            // descendant later points back to school 1.
+            while(ieltsRoomClass(current)&&seen.add(current.getId())) {
                 if(classId.equals(current.getId())){family.add(candidate.getId());break;}current=current.getParent();
             }
         }

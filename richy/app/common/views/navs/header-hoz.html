@@ -138,7 +138,7 @@
 
 
                 <li class="dropdown test-room-nav"
-                    ng-class="{'is-route-active': $state.includes('application.speaking') || $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_listening_tests') || $state.includes('application.ielts_writing_tests') || $state.includes('application.comprehensive_tests') || $state.includes('application.create_ielts_reading_test') || $state.includes('application.create_ielts_listening_test') || $state.includes('application.create_ielts_writing_test') || $state.includes('application.create_comprehensive_test') || $state.includes('application.daily_listening_tests') || $state.includes('application.create_daily_listening_test') || $state.includes('application.daily_listening_actual_test') || $state.includes('application.ielts_reading_actual_test') || $state.includes('application.ielts_listening_actual_test') || $state.includes('application.ielts_writing_actual_test') || $state.includes('application.comprehensive_actual_test') || $state.includes('application.test_results')}"
+                    ng-class="{'is-route-active': $state.includes('application.speaking') || $state.includes('application.create_speaking_test') || $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_listening_tests') || $state.includes('application.ielts_writing_tests') || $state.includes('application.comprehensive_tests') || $state.includes('application.create_ielts_reading_test') || $state.includes('application.create_ielts_listening_test') || $state.includes('application.create_ielts_writing_test') || $state.includes('application.create_comprehensive_test') || $state.includes('application.daily_listening_tests') || $state.includes('application.create_daily_listening_test') || $state.includes('application.daily_listening_actual_test') || $state.includes('application.ielts_reading_actual_test') || $state.includes('application.ielts_listening_actual_test') || $state.includes('application.ielts_writing_actual_test') || $state.includes('application.comprehensive_actual_test') || $state.includes('application.test_results')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         TEST <span class="caret"></span>
@@ -165,7 +165,7 @@
                             </a>
                         </li>
                         <li ng-class="{'active': $state.includes('application.speaking')}">
-                            <a href="speaking"><i class="fa fa-microphone"></i> Speaking studio</a>
+                            <a ui-sref="application.speaking" href="speaking"><i class="fa fa-microphone"></i> Speaking Studio</a>
                         </li>
                         <li ng-class="{'active': $state.includes('application.daily_listening_tests') || $state.includes('application.daily_listening_actual_test')}">
                             <a href="daily_listening_tests"><i class="fa fa-headphones"></i> Daily Listening</a>
@@ -179,6 +179,9 @@
                         </li>
                         <li ng-class="{'active': $state.includes('application.create_ielts_writing_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_ielts_writing_test"><i class="fa fa-cog"></i> Tạo đề Writing</a>
+                        </li>
+                        <li ng-class="{'active': $state.includes('application.create_speaking_test')}" ng-if="settings.isAdmin == true">
+                            <a ui-sref="application.create_speaking_test" href="create_speaking_test"><i class="fa fa-microphone"></i> Tạo test Speaking</a>
                         </li>
                         <li ng-class="{'active': $state.includes('application.create_comprehensive_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_comprehensive_test"><i class="fa fa-cog"></i> Tạo bài tập tổng hợp</a>
