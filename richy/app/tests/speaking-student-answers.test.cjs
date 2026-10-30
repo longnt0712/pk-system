@@ -11,7 +11,7 @@ function fixture(){
  const api={studentAnswers(...args){return get(...args);},saveStudentAnswer(payload){calls.push(plain(payload));return save(payload);}};
  const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
  const store=editor.SpeakingStudentAnswerStore(q,win,api),clean=(html,notes)=>({html:String(html||''),notes:plain(notes||[])});
- return{store,storage,calls,session:()=>store.open(context,clean),setSave(fn){save=fn;},setGet(fn){get=fn;},setRemote(row){remote=row;},remote:()=>remote};
+ return{store,storage,calls,api,session:()=>store.open(context,clean),setSave(fn){save=fn;},setGet(fn){get=fn;},setRemote(row){remote=row;},remote:()=>remote};
 }
 test('answer saves preserve formatting, anchored notes and exact student/question context before clearing the backup',async()=>{
  const f=fixture(),s=f.session();await s.load();const html='<p><b>Answer</b> <span class="ielts-annotation has-note" data-note-id="note-1">word</span></p>',notes=[{id:'note-1',text:'Remember this'}];s.change(html,notes);assert.equal(f.storage.size,1);await s.save();assert.equal(s.state.dirty,false);assert.equal(s.state.revision,2);assert.equal(f.storage.size,0);assert.deepEqual(f.calls[0],{setId:11,studentId:7,questionId:42,revision:1,html,notes});
@@ -177,4 +177,83 @@ test('separate Speaking routes keep imports in management and reuse the school-s
  assert.match(route,/common\/directives\/ClassTreePicker\.js/);assert.match(route,/common\/class-tree-picker\.css/);assert.match(html,/<class-tree-picker[^>]+ng-model="vm.adminClassId"[^>]+school-id="vm.directorySchoolId"/);assert.doesNotMatch(html,/<select[^>]+ng-model="vm.adminClassId"/);
  assert.match(html,/ui-sref="application\.speaking\(\{set:vm.selectedSetId,part:vm.part,practice:null\}\)"/);assert.match(html,/ui-sref="application\.create_speaking_test\(\{set:vm.selectedSetId,part:vm.part\}\)"/);
  assert.match(html,/ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet"/);assert.match(html,/ng-if="!vm.managementMode"[^>]+ng-click="vm.openPracticeSetup\(\)"/);
+});
+
+test('live synchronization applies rich text, notes and highlights to a clean viewing session',async()=>{
+ const f=fixture(),s=f.session();await s.load();const remote={...context,revision:2,html:'<span class="ielts-annotation has-note is-highlighted" data-note-id="n1"><b>Corrected</b></span>',notes:[{id:'n1',text:'Teacher note'}]};
+ f.api.studentAnswerSync=(...args)=>{assert.deepEqual(args,[11,7,42,1]);return Promise.resolve({...context,revision:2,changed:true,answer:remote});};
+ assert.equal(await s.refresh(),true);assert.equal(s.state.html,remote.html);assert.deepEqual(plain(s.state.notes),remote.notes);assert.equal(s.state.revision,2);assert.equal(s.state.dirty,false);assert.equal(f.calls.length,0);
+});
+
+test('a live remote correction preserves an unsaved local draft and asks to compare instead of overwriting it',async()=>{
+ const f=fixture(),s=f.session();await s.load();s.change('<u>Student draft</u>',[]);f.api.studentAnswerSync=()=>Promise.resolve({...context,revision:2,changed:true,answer:{...context,html:'Teacher version',notes:[],revision:2}});await s.refresh();
+ assert.equal(s.state.html,'<u>Student draft</u>');assert.equal(s.state.conflict,true);assert.equal(s.state.remote.html,'Teacher version');assert.equal(s.state.revision,1);assert.equal(f.storage.size,1);await s.save();assert.equal(f.calls.length,0);
+});
+
+test('a notebook-only revision change rebases a pending text edit without a false conflict',async()=>{
+ const f=fixture(),s=f.session();await s.load();s.change('Still typing',[]);f.api.studentAnswerSync=()=>Promise.resolve({...context,revision:2,changed:true,answer:{...f.remote(),revision:2}});await s.refresh();
+ assert.equal(s.state.html,'Still typing');assert.equal(s.state.revision,2);assert.equal(s.state.conflict,false);assert.equal(s.state.dirty,true);await s.save();assert.equal(f.calls[0].revision,2);assert.equal(f.calls[0].html,'Still typing');
+});
+
+test('live refresh rejects another answer, does not interrupt composition and ignores an older receipt after a save',async()=>{
+ const f=fixture(),s=f.session();await s.load();f.api.studentAnswerSync=()=>Promise.resolve({...context,studentId:99,revision:2,changed:true,answer:{...f.remote(),revision:2}});await s.refresh();assert.match(s.state.syncError,/không khớp/);assert.equal(s.state.revision,1);
+ f.api.studentAnswerSync=()=>Promise.resolve({...context,revision:2,changed:true,answer:{...f.remote(),html:'New text',revision:2}});await s.refresh(()=>false);assert.equal(s.state.html,'<p>Original</p>');assert.equal(s.state.revision,1);await s.refresh(()=>true);assert.equal(s.state.html,'New text');
+ const wait=deferred();f.api.studentAnswerSync=()=>wait.promise;const first=s.refresh(),second=s.refresh();assert.equal(first,second);s.change('Local edit',[]);await s.save();wait.resolve({...context,revision:2,changed:false});await first;assert.equal(s.state.html,'Local edit');assert.equal(s.state.revision,3);
+});
+
+test('late synchronization and history responses cannot update a closed session',async()=>{
+ const f=fixture(),s=f.session();await s.load();const wait=deferred(),history=deferred();f.api.studentAnswerSync=()=>wait.promise;f.api.studentAnswerHistory=()=>history.promise;const refresh=s.refresh(),load=s.loadHistory();s.destroy();
+ wait.resolve({...context,revision:9,changed:true,answer:{...f.remote(),html:'Late response',revision:9}});history.resolve({...context,currentRevision:9,versions:[{id:1,revision:9}]});await Promise.all([refresh,load]);assert.equal(s.state.html,'<p>Original</p>');assert.equal(s.state.history.versions.length,0);
+});
+
+test('history preview is scoped and restoration pins the viewed checkpoint and current answer revisions',async()=>{
+ const f=fixture(),s=f.session();await s.load();let restored;
+ f.api.studentAnswerHistory=()=>Promise.resolve({...context,currentRevision:1,checkpointMinutes:10,retainedLimit:5,retentionDays:14,versions:[{id:17,revision:4,editorId:9,source:'EDIT'}]});
+ f.api.studentAnswerVersion=()=>Promise.resolve({...context,version:{id:17,revision:4,html:'<b>Old answer</b>',notes:[{id:'n1',text:'Old note'}],notebook:{text:'Old sketch',orientation:'portrait',pattern:'lined',strokes:[]}}});
+ f.api.restoreStudentAnswer=payload=>{restored=plain(payload);return Promise.resolve({...context,html:'<b>Old answer</b>',notes:[{id:'n1',text:'Old note'}],revision:2,restoredVersionId:17});};
+ await s.loadHistory();await s.previewVersion(17);assert.equal(s.state.history.preview.notebook.text,'Old sketch');await s.restoreVersion();assert.deepEqual(restored,{setId:11,studentId:7,questionId:42,versionId:17,versionRevision:4,revision:1});assert.equal(s.state.html,'<b>Old answer</b>');assert.equal(s.state.revision,2);assert.equal(s.state.dirty,false);
+ f.api.studentAnswerVersion=()=>Promise.resolve({...context,studentId:99,version:{id:17,revision:4,html:'Private',notes:[]}});await s.previewVersion(17);assert.equal(s.state.history.preview,null);assert.match(s.state.history.error,/không khớp/);
+});
+
+test('restoring a history checkpoint never discards a dirty draft, a later edit or an unacknowledged server restore',async()=>{
+ const f=fixture(),s=f.session();await s.load();s.state.history.preview={id:17,revision:1,html:'Old',notes:[]};let calls=0;const wait=deferred();f.api.restoreStudentAnswer=()=>{calls++;return wait.promise;};
+ s.change('Not saved',[]);await s.restoreVersion();assert.equal(calls,0);assert.equal(s.state.html,'Not saved');await s.save();const restore=s.restoreVersion();s.change('A newer draft',[]);wait.resolve({...context,html:'Old',notes:[],revision:3,restoredVersionId:17});await restore;assert.equal(s.state.html,'A newer draft');assert.equal(s.state.conflict,true);assert.equal(f.storage.size,1);
+ const g=fixture(),t=g.session();await t.load();t.state.history.preview={id:17,revision:1};g.api.restoreStudentAnswer=()=>Promise.resolve({...context,html:'Wrong acknowledgement',notes:[],revision:2,restoredVersionId:99});await t.restoreVersion();assert.equal(t.state.html,'<p>Original</p>');assert.match(t.state.history.error,/Chưa nhận đúng/);
+});
+
+test('inline note deletion preserves highlighted text and autosave has no manual save button',async()=>{
+ const listeners={},timers=new Map();let nextTimer=0,identity,destroy,changed;
+ const classes=new Set(['ielts-annotation','has-note','is-highlighted']);const attrs={'data-note-id':'n1','data-annotation-group':'g1'};
+ const marker={classList:{remove:name=>classes.delete(name),contains:name=>classes.has(name)},getAttribute:name=>attrs[name]||null,removeAttribute:name=>delete attrs[name],get className(){return[...classes].join(' ');}};
+ const editable={innerHTML:'<span class="ielts-annotation has-note is-highlighted" data-note-id="n1"><b>Keep me</b></span>',setAttribute(){},querySelectorAll:()=>[marker],addEventListener:(name,fn)=>listeners[name]=fn,removeEventListener(){},contains:()=>false};
+ const root={querySelector:()=>editable,contains:()=>false},doc={hidden:false,addEventListener(){},removeEventListener(){},activeElement:null};
+ const state={ready:true,loading:false,dirty:false,html:editable.innerHTML,notes:[{id:'n1',text:'Delete this'}],revision:1,history:{versions:[]}};
+ const session={state,load:()=>Promise.resolve(),change(html,notes){changed={html,notes:plain(notes)};state.dirty=true;},save:()=>Promise.resolve(),refresh:()=>Promise.resolve(),destroy(){},backup(){}};
+ const timeout=(fn,delay)=>{const id=++nextTimer;timers.set(id,{fn,delay});return id;};timeout.cancel=id=>timers.delete(id);
+ const win={document:doc,addEventListener(){},removeEventListener(){},getSelection:()=>({rangeCount:0})},scope={$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
+ const directive=editor.speakingStudentAnswerEditor(win,timeout,{open:()=>session});directive.link(scope,[root]);identity([11,7,42,9]);await settle();scope.ed.activeNote=state.notes[0];scope.ed.deleteNote();
+ assert.equal(attrs['data-note-id'],undefined);assert.equal(classes.has('has-note'),false);assert.equal(classes.has('is-highlighted'),true);assert.equal(classes.has('ielts-annotation'),true);assert.deepEqual(changed.notes,[]);assert.match(changed.html,/<b>Keep me<\/b>/);assert.ok([...timers.values()].some(timer=>timer.delay===1300));
+ assert.match(directive.template,/Xóa ghi chú/);assert.doesNotMatch(directive.template,/Lưu câu trả lời/);assert.match(directive.template,/Thử đồng bộ lại/);destroy();assert.equal(timers.size,0);
+});
+
+test('history enforces five recent checkpoints and an expired restore preserves the current answer',async()=>{
+ const f=fixture(),s=f.session();await s.load();const valid={...context,currentRevision:1,checkpointMinutes:10,retainedLimit:5,retentionDays:14,versions:[{id:17,revision:1}]};
+ f.api.studentAnswerHistory=()=>Promise.resolve(valid);await s.loadHistory();assert.equal(s.state.history.versions.length,1);
+ for(const wrong of [{...valid,retainedLimit:20},{...valid,retentionDays:30},{...valid,versions:Array.from({length:6},(_,i)=>({id:i+1,revision:i+1}))}]){f.api.studentAnswerHistory=()=>Promise.resolve(wrong);await s.loadHistory();assert.match(s.state.history.error,/không khớp/);}
+ s.state.history.preview={id:17,revision:1,html:'An expired answer',notes:[]};f.api.restoreStudentAnswer=()=>Promise.reject({status:404,data:{message:'Phiên bản đã hết hạn hoặc không còn được lưu.'}});await s.restoreVersion();assert.equal(s.state.html,'<p>Original</p>');assert.equal(s.state.revision,1);assert.match(s.state.history.error,/hết hạn/);assert.equal(s.state.dirty,false);
+ const directive=editor.speakingStudentAnswerEditor({document:{}},{},{});assert.match(directive.template,/tối đa 5 mốc trong 14 ngày gần nhất/);assert.doesNotMatch(directive.template,/Giữ 20 mốc/);
+});
+
+test('history notebook previews include ink below the first A4 page and all wrapped text at canonical scale',()=>{
+ const paper={orientation:'portrait',pattern:'lined',text:'Long notes',strokes:[{points:[[15,1600,.5],[25,2400,.7]]}]},before=plain(paper),geometry=fixture().store.previewGeometry(paper,397,0,2);
+ assert.equal(geometry.logicalWidth,794);assert.equal(geometry.logicalHeight,2424);assert.equal(geometry.scale,.5);assert.equal(geometry.cssHeight,1212);assert.ok(2400*geometry.scale<geometry.cssHeight);assert.ok(2400*geometry.rasterScale<geometry.pixelsHigh);assert.deepEqual(paper,before);
+ const fullText=fixture().store.previewGeometry(paper,397,4000,2);assert.ok(fullText.cssHeight>=4000);assert.ok(fullText.logicalHeight>=8000);
+ const directive=editor.speakingStudentAnswerEditor({document:{}},{},{});assert.match(directive.template,/sp-version-paper-scroll/);const css=fs.readFileSync(path.join(app,'question/speaking.css'),'utf8');assert.match(css,/\.sp-version-paper-scroll\s*\{[^}]*overflow:auto/);
+});
+
+test('extreme notebook history coordinates stay visible while raster memory and dimensions remain bounded',()=>{
+ const geometry=fixture().store.previewGeometry({orientation:'portrait',strokes:[{points:[[10,100000,.5]]}]},794,0,4);
+ assert.ok(geometry.logicalHeight>100000);assert.ok(100000*geometry.rasterScale<geometry.pixelsHigh);assert.ok(geometry.pixelsWide*geometry.pixelsHigh<=4000000);assert.ok(Math.max(geometry.pixelsWide,geometry.pixelsHigh)<=8192);
+ const longText=fixture().store.previewGeometry({orientation:'landscape',strokes:[]},1123,500000,3);assert.ok(longText.cssHeight>=500000);assert.ok(longText.pixelsWide*longText.pixelsHigh<=4000000);assert.ok(Math.max(longText.pixelsWide,longText.pixelsHigh)<=8192);
+ const invalid=fixture().store.previewGeometry({orientation:'portrait',strokes:[{points:[[0,Infinity],[1,100001],[-1,3]]}]},397,0,2);assert.equal(invalid.logicalHeight,1123);
 });

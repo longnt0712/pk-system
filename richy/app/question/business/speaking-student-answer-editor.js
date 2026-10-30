@@ -1,5 +1,23 @@
 (function () {
     'use strict';
+    function historyNotebookGeometry(paper, availableWidth, textHeight, devicePixelRatio) {
+        var width = paper.orientation === 'landscape' ? 1123 : 794, height = paper.orientation === 'landscape' ? 794 : 1123;
+        (Array.isArray(paper.strokes) ? paper.strokes : []).forEach(function (stroke) {
+            (stroke && Array.isArray(stroke.points) ? stroke.points : []).forEach(function (point) {
+                if (!Array.isArray(point) || point.length < 2 || typeof point[0] !== 'number' || typeof point[1] !== 'number'
+                        || !isFinite(point[0]) || !isFinite(point[1]) || point[0] < 0 || point[1] < 0 || point[0] > 100000 || point[1] > 100000) { return; }
+                width = Math.max(width, point[0] + 24); height = Math.max(height, point[1] + 24);
+            });
+        });
+        var cssWidth = Math.max(1, Math.min(width, Number(availableWidth) || width)), scale = cssWidth / width;
+        if (isFinite(textHeight) && textHeight > 0) { height = Math.max(height, Math.min(32000100, textHeight / scale + 4)); }
+        var cssHeight = Math.max(1, Math.ceil(height * scale));
+        // The entire document remains scrollable at canonical coordinates. Only
+        // its bitmap is uniformly reduced, matching the study notebook limits.
+        var dpr = Math.min(2, Math.max(1, Number(devicePixelRatio) || 1), Math.sqrt(4000000 / (cssWidth * cssHeight)), 8192 / Math.max(cssWidth, cssHeight));
+        return {logicalWidth: width, logicalHeight: height, cssWidth: cssWidth, cssHeight: cssHeight, scale: scale, rasterScale: scale * dpr,
+            pixelsWide: Math.max(1, Math.floor(cssWidth * dpr)), pixelsHigh: Math.max(1, Math.floor(cssHeight * dpr))};
+    }
     angular.module('Hrm.Question').factory('SpeakingStudentAnswerStore', ['$q', '$window', 'SpeakingService', function ($q, $window, api) {
         function copy(value) { return JSON.parse(JSON.stringify(value)); }
         function valueOf(row) { return JSON.stringify({html: row.html || '', notes: row.notes || []}); }
@@ -8,7 +26,8 @@
             context = copy(context);
             var key = 'speaking-answer:v1:' + context.userId + ':' + context.setId + ':' + context.studentId + ':' + context.questionId;
             var state = {context: context, loading: true, ready: false, saving: false, dirty: false, revision: 0, html: '', notes: [], error: '', status: 'Đang tải câu trả lời…'};
-            var baseline = valueOf(state), pending = null, inFlightPayload = null, destroyed = false, lastBackup;
+            var baseline = valueOf(state), pending = null, inFlightPayload = null, syncing = null, restoring = null, historyGeneration = 0, destroyed = false, lastBackup;
+            state.history = {loading: false, versions: [], error: '', preview: null};
             function readBackup() { try { return JSON.parse($window.localStorage.getItem(key) || 'null'); } catch (ignore) { return null; } }
             function backup() {
                 if (!state.dirty) { return; }
@@ -27,6 +46,34 @@
             }
             function validRow(row) { return sameContext(row, context) && typeof row.revision === 'number' && Number.isInteger(row.revision) && row.revision >= 0 && typeof row.html === 'string' && Array.isArray(row.notes); }
             function apply(row) { var data = normalized(row); state.html = data.html; state.notes = data.notes; state.revision = data.revision; baseline = valueOf(state); state.dirty = false; state.conflict = false; state.remote = null; state.invalid = false; }
+            function receive(row) {
+                if (!validRow(row) || row.revision < state.revision) { return false; }
+                var remote = normalized(row), content = valueOf(remote), local = valueOf(state);
+                if (!state.dirty || content === local) {
+                    clearMatchingBackup({revision: state.revision, html: state.html, notes: state.notes}); apply(row); state.error = ''; state.status = 'Đã đồng bộ'; return true;
+                }
+                if (content === baseline) {
+                    // A separate A4-notebook edit bumps the answer revision without
+                    // changing this editor. Rebase its pending text safely.
+                    state.revision = remote.revision; state.remote = null; state.conflict = false; state.error = ''; backup(); return false;
+                }
+                state.remote = copy(row); state.conflict = true; state.status = 'Có bản mới; bản đang sửa được giữ để đối chiếu.'; backup(); return false;
+            }
+            function refresh(canApply) {
+                if (destroyed || !state.ready || state.loading || pending || restoring || typeof api.studentAnswerSync !== 'function') { return $q.when(false); }
+                if (syncing) { return syncing; }
+                var revision = state.revision;
+                syncing = api.studentAnswerSync(context.setId, context.studentId, context.questionId, revision).then(function (data) {
+                    if (destroyed || state.revision !== revision || pending || restoring || (canApply && !canApply())) { return false; }
+                    if (!sameContext(data, context) || typeof data.changed !== 'boolean' || !Number.isInteger(data.revision) || data.revision < revision
+                            || (!data.changed && data.revision !== revision) || (data.changed && (data.revision <= revision || !validRow(data.answer) || data.answer.revision !== data.revision))) {
+                        throw new Error('Bản đồng bộ không khớp học sinh, câu hỏi hoặc phiên bản.');
+                    }
+                    state.syncError = ''; return data.changed ? receive(data.answer) : false;
+                }).catch(function (error) { if (!destroyed) { state.syncError = (error.data && error.data.message) || error.message || 'Chưa kiểm tra được thay đổi mới. Bản đang xem vẫn được giữ.'; } return false; })
+                    .finally(function () { syncing = null; });
+                return syncing;
+            }
             function load() {
                 state.loading = true; state.ready = false; state.error = '';
                 if (typeof api.studentAnswers !== 'function') { state.loading = false; state.error = 'Cần cập nhật backend để mở câu trả lời riêng.'; state.status = 'Chưa tải được'; return $q.when(); }
@@ -56,6 +103,7 @@
                 backup();
             }
             function save() {
+                if (restoring) { return restoring; }
                 if (!state.ready || state.loading || state.conflict || state.invalid || !state.dirty) { return $q.when(); }
                 if (pending) { return pending; }
                 var payload = {setId: context.setId, studentId: context.studentId, questionId: context.questionId, revision: state.revision, html: state.html, notes: copy(state.notes)};
@@ -74,7 +122,7 @@
                         if (error.status === 409) {
                             state.conflict = true;
                             api.studentAnswers(context.setId, context.studentId, context.questionId).then(function (data) {
-                                if (!destroyed && data && Number(data.setId) === context.setId && Number(data.studentId) === context.studentId && Array.isArray(data.answers) && data.answers.length === 1 && validRow(data.answers[0])) { state.remote = data.answers[0]; }
+                                if (!destroyed && data && Number(data.setId) === context.setId && Number(data.studentId) === context.studentId && Array.isArray(data.answers) && data.answers.length === 1 && validRow(data.answers[0])) { receive(data.answers[0]); }
                             }, angular.noop);
                         }
                     }
@@ -87,23 +135,70 @@
                 try { var saved = readBackup(); if (saved) { $window.localStorage.setItem(key + ':previous:' + Date.now(), JSON.stringify(saved)); } $window.localStorage.removeItem(key); } catch (ignore) {}
                 apply(state.remote); state.conflict = false; state.error = ''; state.status = 'Đang xem bản đã lưu trên server';
             }
-            return {state: state, load: load, change: change, save: save, backup: backup, overwriteReviewed: overwriteReviewed, useServer: useServer, destroy: function () { backup(); destroyed = true; }};
+            function historyError(error) { state.history.error = (error.data && error.data.message) || error.message || 'Chưa tải được lịch sử. Bản đang sửa vẫn được giữ.'; }
+            function loadHistory() {
+                var generation = ++historyGeneration; state.history.loading = true; state.history.error = ''; state.history.preview = null;
+                if (typeof api.studentAnswerHistory !== 'function') { state.history.loading = false; state.history.error = 'Cần cập nhật backend để xem lịch sử phiên bản.'; return $q.when(); }
+                return api.studentAnswerHistory(context.setId, context.studentId, context.questionId).then(function (data) {
+                    if (destroyed || generation !== historyGeneration) { return; }
+                    var seen = {};
+                    if (!sameContext(data, context) || !Number.isInteger(data.currentRevision) || data.currentRevision < 0
+                            || data.retainedLimit !== 5 || data.retentionDays !== 14 || data.checkpointMinutes !== 10
+                            || !Array.isArray(data.versions) || data.versions.length > 5 || data.versions.some(function (version) {
+                        if (!version || !Number.isInteger(version.id) || version.id <= 0 || !Number.isInteger(version.revision) || version.revision < 1 || seen[version.id]) { return true; } seen[version.id] = true; return false;
+                    })) { throw new Error('Lịch sử không khớp câu trả lời đang mở.'); }
+                    state.history.versions = data.versions; state.history.currentRevision = data.currentRevision;
+                }).catch(function (error) { if (!destroyed && generation === historyGeneration) { historyError(error); } })
+                    .finally(function () { if (!destroyed && generation === historyGeneration) { state.history.loading = false; } });
+            }
+            function previewVersion(id) {
+                var generation = ++historyGeneration; state.history.loading = true; state.history.error = ''; state.history.preview = null;
+                return api.studentAnswerVersion(context.setId, context.studentId, context.questionId, id).then(function (data) {
+                    if (destroyed || generation !== historyGeneration) { return; }
+                    if (!sameContext(data, context) || !data.version || data.version.id !== id || !Number.isInteger(data.version.revision) || data.version.revision < 1
+                            || typeof data.version.html !== 'string' || !Array.isArray(data.version.notes)) { throw new Error('Phiên bản nhận được không khớp câu trả lời.'); }
+                    var value = clean(data.version.html, data.version.notes); state.history.preview = copy(data.version); state.history.preview.html = value.html; state.history.preview.notes = value.notes;
+                }).catch(function (error) { if (!destroyed && generation === historyGeneration) { historyError(error); } })
+                    .finally(function () { if (!destroyed && generation === historyGeneration) { state.history.loading = false; } });
+            }
+            function restoreVersion() {
+                var preview = state.history.preview;
+                if (destroyed || restoring || !preview || !state.ready || state.dirty || state.saving || pending || state.conflict || state.invalid) {
+                    state.history.error = 'Cần đồng bộ bản đang sửa trước khi khôi phục phiên bản.'; return $q.when();
+                }
+                var request = {setId: context.setId, studentId: context.studentId, questionId: context.questionId, versionId: preview.id, versionRevision: preview.revision, revision: state.revision};
+                state.history.restoring = true; state.history.error = '';
+                restoring = api.restoreStudentAnswer(request).then(function (ack) {
+                    if (destroyed) { return; }
+                    if (!validRow(ack) || ack.revision < request.revision || ack.restoredVersionId !== request.versionId) { throw new Error('Chưa nhận đúng xác nhận khôi phục. Hãy kiểm tra bản đã đồng bộ trước khi thử lại.'); }
+                    // A user may continue typing while restoration is in flight.
+                    // Keep that newer draft rather than replace it with the receipt.
+                    receive(ack); if (!state.dirty && !state.conflict) { state.status = 'Đã khôi phục và đồng bộ'; }
+                    return ack;
+                }).catch(function (error) {
+                    if (!destroyed) { historyError(error); if (error.status === 409) { state.history.error = 'Câu trả lời hoặc mốc lịch sử đã thay đổi. Tải lại lịch sử và đối chiếu trước khi khôi phục.'; } }
+                }).finally(function () { restoring = null; if (!destroyed) { state.history.restoring = false; } });
+                return restoring;
+            }
+            return {state: state, load: load, change: change, save: save, refresh: refresh, loadHistory: loadHistory, previewVersion: previewVersion, restoreVersion: restoreVersion,
+                backup: backup, overwriteReviewed: overwriteReviewed, useServer: useServer, destroy: function () { backup(); destroyed = true; historyGeneration++; }};
         }
-        return {open: session};
+        return {open: session, previewGeometry: historyNotebookGeometry};
     }]);
 
     angular.module('Hrm.Question').directive('speakingStudentAnswerEditor', ['$window', '$timeout', 'SpeakingStudentAnswerStore', function ($window, $timeout, store) {
         return {
             restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@'},
-            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button sp-primary" ng-click="ed.save()" ng-disabled="ed.state.loading || ed.state.saving || ed.state.conflict || !ed.state.dirty">{{ed.state.saving ? \'Đang lưu…\' : \'Lưu câu trả lời\'}}</button></header>' +
+            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
                 '<div class="sp-answer-format" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
-                '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở và bấm lưu để đồng bộ lên server.</p>' +
+                '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
                 '<div class="sp-answer-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
                 '<div class="sp-answer-selection" ng-if="ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Đánh dấu đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
-                '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small></aside>' +
-                '<div class="sp-answer-conflict" ng-if="ed.state.conflict"><strong>Bản mới vừa được lưu ở nơi khác</strong><p>Bản bạn đang sửa vẫn được giữ. Đối chiếu trước khi thay nội dung trên server.</p><details ng-if="ed.state.remote"><summary>Xem bản mới trên server</summary><p class="sp-preserve">{{ed.remoteText()}}</p></details><div class="sp-toolbar"><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.useServer()">Dùng bản máy chủ, giữ nháp cũ trên thiết bị</button><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.overwrite()">Lưu bản đang sửa thay bản máy chủ</button></div></div><small class="sp-muted">Chọn đoạn chữ để ghi chú hoặc đánh dấu. Giáo viên và học sinh cùng chỉnh sửa câu trả lời này.</small></section>',
+                '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
+                '<div class="sp-answer-conflict" ng-if="ed.state.conflict"><strong>Bản mới vừa được lưu ở nơi khác</strong><p>Bản bạn đang sửa vẫn được giữ. Đối chiếu trước khi thay nội dung trên server.</p><details ng-if="ed.state.remote"><summary>Xem bản mới trên server</summary><p class="sp-preserve">{{ed.remoteText()}}</p></details><div class="sp-toolbar"><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.useServer()">Dùng bản máy chủ, giữ nháp cũ trên thiết bị</button><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.overwrite()">Lưu bản đang sửa thay bản máy chủ</button></div></div><small class="sp-muted">Tự lưu chữ, định dạng, ghi chú và highlight. Thay đổi từ người cùng xem được cập nhật sau vài giây.</small>' +
+                '<div class="sp-overlay sp-version-overlay" ng-if="ed.historyOpen" ng-click="ed.closeHistory()"><section class="sp-modal sp-version-dialog" role="dialog" aria-modal="true" aria-label="Lịch sử câu trả lời" ng-click="$event.stopPropagation()"><header><div><h2>Lịch sử phiên bản</h2><small>Giữ tối đa 5 mốc trong 14 ngày gần nhất; gộp sửa liên tiếp khoảng 10 phút. Bài hiện tại vẫn được giữ và tự lưu ngay khi sửa.</small></div><button type="button" class="sp-close" ng-click="ed.closeHistory()" aria-label="Đóng lịch sử" ng-disabled="ed.state.history.restoring">×</button></header><div class="sp-modal-body"><p class="sp-error-text" role="alert" ng-if="ed.state.history.error">{{ed.state.history.error}}</p><p role="status" ng-if="ed.state.history.loading">Đang tải phiên bản…</p><div class="sp-version-layout"><nav class="sp-version-list" aria-label="Các phiên bản đã lưu"><button type="button" class="sp-button" ng-repeat="version in ed.state.history.versions track by version.id" ng-click="ed.previewVersion(version)" ng-disabled="ed.state.history.restoring" ng-class="{\'is-active\':ed.state.history.preview.id===version.id}"><strong>{{version.updatedAt | date:\'dd/MM/yyyy HH:mm\'}}</strong><small>{{version.editorName || (\'Tài khoản #\'+version.editorId)}} · {{ed.versionSource(version.source)}}</small></button><p class="sp-muted" ng-if="!ed.state.history.loading && !ed.state.history.versions.length">Chưa có phiên bản. Lịch sử bắt đầu được giữ sau khi cập nhật tính năng.</p></nav><article class="sp-version-preview" ng-if="ed.state.history.preview"><h3>Bản xem trước · {{ed.state.history.preview.updatedAt | date:\'dd/MM/yyyy HH:mm\'}}</h3><div class="sp-version-answer" ng-bind-html="ed.state.history.preview.html"></div><div ng-if="ed.state.history.preview.notes.length"><h3>Ghi chú trong đoạn chữ</h3><p class="sp-preserve" ng-repeat="note in ed.state.history.preview.notes track by note.id">{{note.text || \'(Ghi chú trống)\'}}</p></div><div ng-if="ed.state.history.preview.notebook"><h3>Sổ ghi chú A4</h3><div class="sp-version-paper-scroll"><div class="sp-version-paper" ng-class="\'is-\'+ed.state.history.preview.notebook.orientation"><pre>{{ed.state.history.preview.notebook.text}}</pre><canvas aria-label="Nét vẽ trong phiên bản ghi chú" class="sp-version-drawing"></canvas></div></div></div></article><p class="sp-muted" ng-if="!ed.state.history.preview && ed.state.history.versions.length">Chọn một mốc để xem nội dung, ghi chú và nét vẽ.</p></div></div><footer><button type="button" class="sp-button" ng-click="ed.refreshHistory()" ng-disabled="ed.state.history.loading || ed.state.history.restoring">Làm mới lịch sử</button><button type="button" class="sp-button sp-primary" ng-click="ed.restoreVersion()" ng-disabled="!ed.state.history.preview || ed.state.history.loading || ed.state.history.restoring">{{ed.state.history.restoring ? \'Đang khôi phục…\' : \'Khôi phục thành phiên bản mới\'}}</button></footer></section></div></section>',
             link: function (scope, element) {
-                var doc = $window.document, root = element[0], editable = root.querySelector('.sp-answer-editable'), current, timer, selectedRange, composing = false, destroyed = false, generation = 0;
+                var doc = $window.document, root = element[0], editable = root.querySelector('.sp-answer-editable'), current, timer, pollTimer, previewTimer, selectedRange, composing = false, destroyed = false, generation = 0;
                 var ed = scope.ed = {state: {loading: true, status: 'Đang tải câu trả lời…'}, hasSelection: false};
                 var tags = {B: 1, STRONG: 1, I: 1, EM: 1, U: 1, P: 1, DIV: 1, BR: 1, UL: 1, OL: 1, LI: 1, SPAN: 1}, forbidden = {SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, SVG: 1, MATH: 1, TEMPLATE: 1};
                 function clean(html, notes) {
@@ -132,6 +227,20 @@
                     scrub(container); var serialized = doc.createElement('div'); serialized.appendChild(container.cloneNode(true)); return {html: serialized.innerHTML, notes: result};
                 }
                 function render() { editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
+                function renderIncoming() {
+                    var noteId = ed.activeNote && ed.activeNote.id, selection = $window.getSelection(), offsets = null;
+                    if (selection && selection.rangeCount && editable.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+                        var range = selection.getRangeAt(0), prefix = range.cloneRange(); prefix.selectNodeContents(editable); prefix.setEnd(range.startContainer, range.startOffset);
+                        offsets = [prefix.toString().length, prefix.toString().length + range.toString().length];
+                    }
+                    render(); selectedRange = null; ed.hasSelection = false; ed.marker = null;
+                    if (offsets) {
+                        var walker = doc.createTreeWalker(editable, 4, null, false), text, index = 0, start = null, end = null;
+                        while ((text = walker.nextNode())) { if (!start && offsets[0] <= index + text.nodeValue.length) { start = [text, Math.max(0, offsets[0] - index)]; } if (offsets[1] <= index + text.nodeValue.length) { end = [text, Math.max(0, offsets[1] - index)]; break; } index += text.nodeValue.length; }
+                        if (start && end) { var restored = doc.createRange(); restored.setStart(start[0], start[1]); restored.setEnd(end[0], end[1]); selection.removeAllRanges(); selection.addRange(restored); selectedRange = restored.cloneRange(); }
+                    }
+                    if (noteId) { var marker = editable.querySelector('[data-note-id="' + noteId + '"]'), note = ed.state.notes.filter(function (item) { return item.id === noteId; })[0]; if (marker && note) { openNote(note, marker); } else { ed.activeNote = null; } }
+                }
                 function cancelTimer() { if (timer) { $timeout.cancel(timer); timer = null; } }
                 function schedule() { cancelTimer(); if (current && ed.state.dirty && !ed.state.conflict && !composing) { timer = $timeout(function () { timer = null; ed.save(); }, 1300); } }
                 function changed() { if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
@@ -153,6 +262,19 @@
                 }
                 ed.closeNote = function () { ed.activeNote = null; };
                 ed.noteChanged = function () { changed(); };
+                ed.deleteNote = function () {
+                    if (!current || !ed.state.ready || !ed.activeNote) { return; }
+                    var id = ed.activeNote.id;
+                    Array.prototype.slice.call(editable.querySelectorAll('span[data-note-id]')).forEach(function (span) {
+                        if (span.getAttribute('data-note-id') !== id) { return; }
+                        span.removeAttribute('data-note-id'); span.classList.remove('has-note');
+                        if (!span.classList.contains('is-highlighted')) {
+                            span.classList.remove('ielts-annotation'); span.removeAttribute('data-annotation-group');
+                            if (!span.className) { while (span.firstChild) { span.parentNode.insertBefore(span.firstChild, span); } span.parentNode.removeChild(span); }
+                        }
+                    });
+                    ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== id; }); ed.activeNote = null; ed.marker = null; changed();
+                };
                 ed.format = function (command) { if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
                 ed.annotate = function (withNote) {
                     if (!ed.state.ready || !ed.hasSelection || !restoreSelection()) { return; }
@@ -183,6 +305,69 @@
                 ed.remoteText = function () { var div = doc.createElement('div'); div.innerHTML = clean(ed.state.remote && ed.state.remote.html, ed.state.remote && ed.state.remote.notes).html; return div.textContent || ''; };
                 ed.overwrite = function () { if (!$window.confirm('Thay câu trả lời vừa được lưu trên server bằng bản bạn đang sửa?')) { return; } return current.overwriteReviewed().then(function () { if (!destroyed) { render(); } }); };
                 ed.useServer = function () { if (!$window.confirm('Dùng bản máy chủ? Bản nháp đang sửa sẽ được giữ riêng trên thiết bị.')) { return; } current.useServer(); ed.activeNote = null; render(); };
+                ed.versionSource = function (source) { return {EDIT:'Chỉnh sửa', IMPORT:'Import', RESTORE:'Khôi phục', BASELINE:'Bản trước khi sửa', NOTEBOOK:'Sổ ghi chú'}[source] || 'Đã lưu'; };
+                ed.openHistory = function () { if (!current || !ed.state.ready) { return; } ed.activeNote = null; ed.historyOpen = true; return current.loadHistory(); };
+                ed.closeHistory = function () { if (ed.state.history && ed.state.history.restoring) { return; } ed.historyOpen = false; };
+                ed.refreshHistory = function () { if (!current) { return; } return current.loadHistory(); };
+                function drawHistoryNotebook() {
+                    var preview = ed.state.history.preview, canvas = root.querySelector('.sp-version-drawing'), paper = preview && preview.notebook;
+                    if (!canvas || !paper || !Array.isArray(paper.strokes)) { return; }
+                    var frame = canvas.parentNode, scroller = frame.parentNode, text = frame.querySelector('pre');
+                    var available = scroller.clientWidth || scroller.getBoundingClientRect().width || 500;
+                    var geometry = store.previewGeometry(paper, available, 0, $window.devicePixelRatio);
+                    frame.style.width = geometry.cssWidth + 'px';
+                    if (text) {
+                        var lineHeight = paper.pattern === 'grid' ? 20 : paper.pattern === 'squares' ? 64 : 28;
+                        text.style.fontSize = (17 * geometry.scale) + 'px'; text.style.lineHeight = (lineHeight * geometry.scale) + 'px'; text.style.padding = (40 * geometry.scale) + 'px';
+                        geometry = store.previewGeometry(paper, available, text.scrollHeight, $window.devicePixelRatio);
+                    }
+                    frame.style.height = geometry.cssHeight + 'px'; canvas.style.width = geometry.cssWidth + 'px'; canvas.style.height = geometry.cssHeight + 'px';
+                    canvas.width = geometry.pixelsWide; canvas.height = geometry.pixelsHigh; var context = canvas.getContext('2d'); if (!context) { return; }
+                    context.setTransform(geometry.rasterScale, 0, 0, geometry.rasterScale, 0, 0);
+                    paper.strokes.forEach(function (stroke) {
+                        if (!stroke || !/^#[0-9a-f]{6}$/i.test(stroke.color || '') || !Array.isArray(stroke.points) || !stroke.points.length || !isFinite(stroke.width)) { return; }
+                        context.beginPath(); context.strokeStyle = stroke.color; context.lineWidth = Math.max(.1, Math.min(100, stroke.width)); context.lineJoin = context.lineCap = 'round'; context.globalAlpha = stroke.tool === 'highlighter' ? .28 : 1;
+                        stroke.points.forEach(function (point, index) { if (!Array.isArray(point) || !isFinite(point[0]) || !isFinite(point[1])) { return; } if (!index) { context.moveTo(point[0], point[1]); } else { context.lineTo(point[0], point[1]); } });
+                        if (stroke.points.length === 1) { var point = stroke.points[0]; context.arc(point[0], point[1], context.lineWidth / 2, 0, Math.PI * 2); context.fillStyle = stroke.color; context.fill(); } else { context.stroke(); }
+                    });
+                }
+                ed.previewVersion = function (version) {
+                    if (!current || ed.state.history.restoring) { return; } var session = current;
+                    return session.previewVersion(version.id).then(function () { if (!destroyed && session === current) { $timeout.cancel(previewTimer); previewTimer = $timeout(drawHistoryNotebook, 0); } });
+                };
+                function resizeHistory() { if (ed.historyOpen && ed.state.history.preview) { $timeout.cancel(previewTimer); previewTimer = $timeout(drawHistoryNotebook, 0); } }
+                ed.restoreVersion = function () {
+                    if (!current || composing || !ed.state.history.preview || ed.state.history.restoring) { return; }
+                    if (!$window.confirm('Khôi phục toàn bộ chữ, ghi chú, highlight và sổ A4 của mốc này? Bản hiện tại vẫn được giữ trong lịch sử.')) { return; }
+                    var session = current; changed(); cancelTimer();
+                    return session.save().then(function () { if (!destroyed && session === current) { return session.restoreVersion(); } }).then(function (ack) {
+                        if (destroyed || session !== current) { return; }
+                        if (ack && !ed.state.dirty && !ed.state.conflict) { renderIncoming(); ed.historyOpen = false; }
+                        if (ed.state.dirty && !ed.state.conflict && !ed.state.error) { schedule(); }
+                    });
+                };
+                function stopPolling() { $timeout.cancel(pollTimer); pollTimer = null; }
+                function poll() {
+                    stopPolling(); if (destroyed || !current) { return; }
+                    pollTimer = $timeout(function () { pollTimer = null; checkRemote(); }, 3000);
+                }
+                function checkRemote() {
+                    if (destroyed || !current) { return; }
+                    if (doc.hidden || composing || ed.state.history && ed.state.history.restoring) { poll(); return; }
+                    var session = current, before = ed.state.html, beforeNotes = JSON.stringify(ed.state.notes || []);
+                    return session.refresh(function () {
+                        if (destroyed || session !== current || composing) { return false; }
+                        // A browser input event may still be queued for Angular.
+                        // Capture it before deciding whether a remote copy is safe.
+                        if (editable.innerHTML !== ed.state.html) { changed(); }
+                        return true;
+                    }).then(function () {
+                        if (destroyed || session !== current) { return; }
+                        if (!composing && !ed.state.dirty && !ed.state.conflict && (before !== ed.state.html || beforeNotes !== JSON.stringify(ed.state.notes || []))) { renderIncoming(); }
+                        if (ed.state.dirty && !ed.state.error && !ed.state.conflict) { schedule(); }
+                    }).finally(function () { if (!destroyed && session === current) { poll(); } });
+                }
+                function visible() { if (!doc.hidden) { scope.$evalAsync(checkRemote); } }
                 function click(event) { var marker = markerAt(event.target); scope.$evalAsync(function () { ed.marker = marker; var id = marker && marker.getAttribute('data-note-id'), note = id && ed.state.notes.filter(function (item) { return item.id === id; })[0]; if (note && (!ed.activeNote || ed.activeNote.id !== id)) { openNote(note, marker); } else { ed.activeNote = null; } }); }
                 function outside(event) { if (!root.contains(event.target)) { scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; ed.hasSelection = false; }); } else if (!editable.contains(event.target) && !event.target.closest('.sp-answer-note, .sp-answer-format, .sp-answer-selection')) { scope.$evalAsync(function () { ed.activeNote = null; }); } }
                 function input() { scope.$evalAsync(function () { changed(); capture(); }); }
@@ -191,16 +376,16 @@
                 function compositionEnd() { composing = false; input(); }
                 function paste(event) { event.preventDefault(); var text = event.clipboardData ? event.clipboardData.getData('text/plain') : ''; doc.execCommand('insertText', false, text); input(); }
                 function drop(event) { event.preventDefault(); }
-                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { ed.activeNote = null; }); } }
+                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { ed.activeNote = null; ed.closeHistory(); }); } }
                 function leaving() { if (current) { current.backup(); } }
-                editable.addEventListener('input', input); editable.addEventListener('click', click); editable.addEventListener('mouseup', selectionChanged); editable.addEventListener('touchend', selectionChanged); editable.addEventListener('keyup', selectionChanged); editable.addEventListener('compositionstart', compositionStart); editable.addEventListener('compositionend', compositionEnd); editable.addEventListener('paste', paste); editable.addEventListener('drop', drop); doc.addEventListener('pointerdown', outside); doc.addEventListener('selectionchange', selectionChanged); doc.addEventListener('keydown', escape); $window.addEventListener('pagehide', leaving);
+                editable.addEventListener('input', input); editable.addEventListener('click', click); editable.addEventListener('mouseup', selectionChanged); editable.addEventListener('touchend', selectionChanged); editable.addEventListener('keyup', selectionChanged); editable.addEventListener('compositionstart', compositionStart); editable.addEventListener('compositionend', compositionEnd); editable.addEventListener('paste', paste); editable.addEventListener('drop', drop); doc.addEventListener('pointerdown', outside); doc.addEventListener('selectionchange', selectionChanged); doc.addEventListener('keydown', escape); doc.addEventListener('visibilitychange', visible); $window.addEventListener('focus', visible); $window.addEventListener('resize', resizeHistory); $window.addEventListener('pagehide', leaving);
                 scope.$watchGroup(['setId', 'studentId', 'questionId', 'userId'], function (values) {
-                    var next = ++generation; cancelTimer(); if (current) { current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; selectedRange = null;
+                    var next = ++generation; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
                     if (!values.every(function (id) { return Number.isInteger(Number(id)) && Number(id) > 0; })) { return; }
                     current = store.open({setId: Number(values[0]), studentId: Number(values[1]), questionId: Number(values[2]), userId: Number(values[3])}, clean); ed.state = current.state; render();
-                    current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } } });
+                    current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } poll(); } });
                 });
-                scope.$on('$destroy', function () { destroyed = true; generation++; cancelTimer(); if (current) { current.destroy(); } editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); $window.removeEventListener('pagehide', leaving); });
+                scope.$on('$destroy', function () { destroyed = true; generation++; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving); });
             }
         };
     }]);

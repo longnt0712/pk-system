@@ -25,6 +25,18 @@ public class RestSpeakingStudentAnswerController {
     public ResponseEntity<Map<String,Object>> list(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam(value="questionId",required=false)Long questionId){return response(service.list(setId,studentId,questionId),HttpStatus.OK);}
     @RequestMapping(method=RequestMethod.PUT)
     public ResponseEntity<Map<String,Object>> save(@RequestBody WriteRequest request){return response(service.save(request),HttpStatus.OK);}
+    @RequestMapping(value="/sync",method=RequestMethod.GET)
+    public ResponseEntity<Map<String,Object>> sync(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("questionId")Long questionId,@RequestParam("revision")Long revision){return response(service.sync(setId,studentId,questionId,revision),HttpStatus.OK);}
+    @RequestMapping(value="/history",method=RequestMethod.GET)
+    public ResponseEntity<Map<String,Object>> history(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("questionId")Long questionId){return response(service.history(setId,studentId,questionId),HttpStatus.OK);}
+    @RequestMapping(value="/history/{versionId}",method=RequestMethod.GET)
+    public ResponseEntity<Map<String,Object>> historyVersion(@PathVariable("versionId")Long versionId,@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("questionId")Long questionId){return response(service.historyVersion(setId,studentId,questionId,versionId),HttpStatus.OK);}
+    @RequestMapping(value="/history/restore",method=RequestMethod.POST)
+    public ResponseEntity<Map<String,Object>> restore(@RequestBody RestoreRequest request){return response(service.restore(request),HttpStatus.OK);}
+    @RequestMapping(value="/notebook",method=RequestMethod.GET)
+    public ResponseEntity<Map<String,Object>> notebook(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("questionId")Long questionId,@RequestParam(value="revision",required=false)Long revision){return response(service.notebook(setId,studentId,questionId,revision),HttpStatus.OK);}
+    @RequestMapping(value="/notebook",method=RequestMethod.PUT)
+    public ResponseEntity<Map<String,Object>> saveNotebook(@RequestBody NotebookRequest request){return response(service.saveNotebook(request),HttpStatus.OK);}
     @RequestMapping(value="/template",method=RequestMethod.GET)
     @Secured("ROLE_ADMIN")
     public ResponseEntity<byte[]> template(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId)throws IOException{

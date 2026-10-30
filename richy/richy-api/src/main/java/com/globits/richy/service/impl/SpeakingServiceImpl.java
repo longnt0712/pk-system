@@ -129,7 +129,17 @@ public class SpeakingServiceImpl {
         for (SpeakingQuestion q : em.createQuery("select q from SpeakingQuestion q where q.ownerId=:id order by q.id",SpeakingQuestion.class).setParameter("id",ownerId).getResultList()) out.put(q.getId(),q);
         return out;
     }
-    private String displayName(User user) { return user.getPerson() != null && user.getPerson().getDisplayName() != null ? user.getPerson().getDisplayName() : user.getUsername(); }
+    public String displayName(User user) {
+        if (user == null) return "";
+        // The student directory displays lastName + firstName. The legacy
+        // displayName column may still name a previous owner of a reused login.
+        if (user.getPerson() != null) {
+            String name = (SpeakingImportSupport.text(user.getPerson().getLastName()) + " "
+                + SpeakingImportSupport.text(user.getPerson().getFirstName())).trim();
+            if (!name.isEmpty()) return name;
+        }
+        return user.getUsername();
+    }
     private Map<String,Object> setDto(SpeakingSet set, User user) {
         User owner = users.findOne(set.getOwnerId());
         return map("id",set.getId(),"ownerId",set.getOwnerId(),"ownerName",owner == null ? "Giáo viên" : displayName(owner),
@@ -173,7 +183,7 @@ public class SpeakingServiceImpl {
         String term = SpeakingImportSupport.normalized(query);
         if (term.length() >= 2) { User exact=users.findByUsernameAndPerson(SpeakingImportSupport.text(query)); if(exact!=null)candidates.put(exact.getId(),exact); }
         List<Map<String,Object>> result = new ArrayList<Map<String,Object>>();
-        for(User user:candidates.values()) if((!common || reviewsStudentClass(owner,user))
+        for(User user:candidates.values()) if(Boolean.TRUE.equals(user.getActive()) && (!common || reviewsStudentClass(owner,user))
                 && (term.isEmpty() || SpeakingImportSupport.normalized(user.getUsername()+" "+displayName(user)).contains(term))) {
             result.add(map("id",user.getId(),"name",displayName(user),"username",user.getUsername(),"canAccess",canRead(set,user))); if(result.size()>=200)break;
         }

@@ -85,6 +85,25 @@ public class SpeakingAdminImportTest {
     @SuppressWarnings("unchecked") private List<Map<String,Object>> classOptions(){return(List<Map<String,Object>>)speaking.bootstrap().get("classes");}
     private Map<String,Object> option(List<Map<String,Object>> rows,Long id){for(Map<String,Object> row:rows)if(id.equals(row.get("id")))return row;throw new AssertionError("Missing class "+id);}
     private Set<Long> ids(List<Map<String,Object>> rows){Set<Long> result=new HashSet<Long>();for(Map<String,Object> row:rows)result.add(((Number)row.get("id")).longValue());return result;}
+    @Test public void rosterUsesCurrentDirectoryNameAndSearchInsteadOfStaleDisplayName() {
+        Person person=legacyOnly.getPerson();person.setLastName("Thái");person.setFirstName("Hà");person.setDisplayName("Minh Châu | Grade 11");em.flush();
+        Map<String,Object> row=students(speaking.adminStudents(set.getId(),parent.getId(),legacyOnly.getUsername(),0,25)).get(0);
+        assertEquals("Thái Hà",row.get("name"));
+        assertEquals(Collections.singleton(legacyOnly.getId()),ids(students(speaking.adminStudents(set.getId(),parent.getId(),"THÁI HÀ",0,25))));
+        assertTrue(students(speaking.adminStudents(set.getId(),parent.getId(),"Minh Châu",0,25)).isEmpty());
+        person.setLastName(null);person.setFirstName("  Hà  ");assertEquals("Hà",speaking.displayName(legacyOnly));
+        person.setFirstName(" ");assertEquals(legacyOnly.getUsername(),speaking.displayName(legacyOnly));assertEquals(collectionOnly.getUsername(),speaking.displayName(collectionOnly));
+    }
+    @Test public void inactiveAccountsAreExcludedFromBothLegacyAndAdditionalClassMemberships() {
+        legacyOnly.setActive(false);collectionOnly.setActive(false);em.flush();
+        assertEquals(Collections.singleton(duplicate.getId()),ids(students(speaking.adminStudents(set.getId(),parent.getId(),"",0,25))));
+        assertTrue(students(speaking.adminStudents(set.getId(),parent.getId(),inactive.getUsername(),0,25)).isEmpty());
+        assertTrue(students(speaking.adminStudents(set.getId(),parent.getId(),legacyOnly.getUsername(),0,25)).isEmpty());
+        assertTrue(students(speaking.adminStudents(set.getId(),parent.getId(),collectionOnly.getUsername(),0,25)).isEmpty());
+        set.setStudentIdsJson("["+inactive.getId()+","+legacyOnly.getId()+"]");
+        assertTrue(speaking.students(set.getId(),inactive.getUsername()).isEmpty());
+        assertTrue(speaking.students(set.getId(),legacyOnly.getUsername()).isEmpty());
+    }
     @Test public void bootstrapOnlyOffersIeltsRoomClassesWithVisibleTreeParents() {
         parent.setCode("IELTS-ROOT");EnrolmentClass foreign=clazz("Foreign",parent,2),unknown=clazz("Unknown",parent,null),orphan=clazz("IELTS below foreign",foreign);
         em.flush();List<Map<String,Object>> options=classOptions();

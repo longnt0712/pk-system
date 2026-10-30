@@ -35,7 +35,9 @@ public class SpeakingStudentAnswerTest {
         org.h2.jdbcx.JdbcDataSource ds=new org.h2.jdbcx.JdbcDataSource();ds.setURL("jdbc:h2:mem:speaking_answers;MODE=MSSQLServer;DB_CLOSE_DELAY=-1");try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()){s.execute("CREATE SCHEMA dbo");}
         Configuration cfg=new Configuration().setProperty("hibernate.default_schema","dbo").setProperty("hibernate.dialect","org.hibernate.dialect.H2Dialect").setProperty("hibernate.hbm2ddl.auto","create-drop").setProperty("hibernate.show_sql","false").setProperty("hibernate.temp.use_jdbc_metadata_defaults","false").setProperty("hibernate.hbm2ddl.halt_on_error","true");cfg.getProperties().put("hibernate.connection.datasource",ds);
         register(cfg,Topic.class,"com.globits.richy.domain");register(cfg,com.globits.core.domain.Organization.class,"com.globits.core.domain");register(cfg,User.class,"com.globits.security.domain");cfg.addAnnotatedClass(SpeakingStudentAnswer.class);factory=cfg.buildSessionFactory();
-        String sql=new String(Files.readAllBytes(Paths.get("richy/database/speaking-student-answers.sql")),StandardCharsets.UTF_8);java.util.regex.Matcher ddl=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_student_answer \\(.*?\\n    \\);").matcher(sql);assertTrue(ddl.find());try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()){s.execute("DROP TABLE dbo.tbl_speaking_student_answer");s.execute(ddl.group());}
+        String sql=new String(Files.readAllBytes(Paths.get("richy/database/speaking-student-answers.sql")),StandardCharsets.UTF_8);java.util.regex.Matcher ddl=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_student_answer \\(.*?\\n    \\);").matcher(sql);assertTrue(ddl.find());
+        String historySql=new String(Files.readAllBytes(Paths.get("richy/database/speaking-answer-history.sql")),StandardCharsets.UTF_8);java.util.regex.Matcher historyDdl=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_answer_version \\(.*?\\n    \\);").matcher(historySql);assertTrue(historyDdl.find());
+        try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()){s.execute("DROP TABLE dbo.tbl_speaking_answer_version");s.execute("DROP TABLE dbo.tbl_speaking_student_answer");s.execute(ddl.group());s.execute(historyDdl.group());}
     }
     @AfterClass public static void close(){if(factory!=null)factory.close();}
     private User user(String name){User u=new User();u.setUsername(name+UUID.randomUUID());u.setPassword("unused");u.setEmail(u.getUsername()+"@example.invalid");em.persist(u);return u;}
@@ -53,6 +55,11 @@ public class SpeakingStudentAnswerTest {
     @SuppressWarnings("unchecked") private List<Map<String,Object>> rows(Map<String,Object> data){return (List<Map<String,Object>>)data.get("answers");}
     @SuppressWarnings("unchecked") private List<Map<String,Object>> previewRows(Map<String,Object> data){return (List<Map<String,Object>>)data.get("rows");}
     private long revision(Map<String,Object> data){return ((Number)data.get("revision")).longValue();}
+    @SuppressWarnings("unchecked") private List<Map<String,Object>> history(Long question){return(List<Map<String,Object>>)answers.history(set.getId(),student.getId(),question).get("versions");}
+    private void minute(long minute){ReflectionTestUtils.setField(answers,"historyClock",java.time.Clock.fixed(java.time.Instant.ofEpochMilli(1700000000000L+minute*60000),java.time.ZoneOffset.UTC));}
+    private Map<String,Object> paper(String text){return SpeakingServiceImpl.map("text",text,"orientation","landscape","pattern","grid","strokes",Collections.singletonList(SpeakingServiceImpl.map("id","stroke-1","tool","pen","color","#315bbe","width",4,"points",Arrays.asList(Arrays.asList(10,20,0.5),Arrays.asList(30,40,0.8)))));}
+    private NotebookRequest notebookRequest(Long question,String text,long revision){NotebookRequest r=new NotebookRequest();r.setId=set.getId();r.studentId=student.getId();r.questionId=question;r.document=paper(text);r.revision=revision;return r;}
+    private RestoreRequest restoreRequest(Long question,Map<String,Object> target,long revision){RestoreRequest r=new RestoreRequest();r.setId=set.getId();r.studentId=student.getId();r.questionId=question;r.versionId=((Number)target.get("id")).longValue();r.versionRevision=((Number)target.get("revision")).longValue();r.revision=revision;return r;}
     private byte[] workbook(String one,String two)throws Exception{
         byte[] template=answers.template(set.getId(),student.getId());try(XSSFWorkbook b=new XSSFWorkbook(new ByteArrayInputStream(template));ByteArrayOutputStream out=new ByteArrayOutputStream()){b.getSheet("CAU_TRA_LOI").getRow(1).getCell(5).setCellValue(one);if(two!=null)b.getSheet("CAU_TRA_LOI").getRow(2).getCell(5).setCellValue(two);b.write(out);return out.toByteArray();}
     }
@@ -99,6 +106,96 @@ public class SpeakingStudentAnswerTest {
         byte[] bytes=workbook("One","Two");try(XSSFWorkbook b=new XSSFWorkbook(new ByteArrayInputStream(bytes));ByteArrayOutputStream out=new ByteArrayOutputStream()){b.getSheet("CAU_TRA_LOI").getRow(2).getCell(0).setCellValue(String.valueOf(first.getId()));b.getSheet("CAU_TRA_LOI").getRow(2).getCell(1).setCellValue("HOME_1");b.write(out);bytes=out.toByteArray();}
         List<Map<String,Object>> preview=previewRows(answers.preview(set.getId(),student.getId(),bytes));assertEquals("INVALID",preview.get(0).get("status"));assertEquals("INVALID",preview.get(1).get("status"));ImportRequest duplicate=new ImportRequest();duplicate.setId=set.getId();duplicate.studentId=student.getId();duplicate.rows=Arrays.asList(request(first.getId(),"one",0),request(first.getId(),"two",0));try{answers.confirm(duplicate);fail();}catch(IllegalArgumentException expected){}
         assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());
+    }
+    @Test public void checkpointsUseFixedTenMinuteWindowsAndNoOpRetriesDoNotCreateVersions(){
+        minute(0);answers.save(request(first.getId(),"First",0));long start=((Number)history(first.getId()).get(0).get("startedAt")).longValue();
+        minute(9);answers.save(request(first.getId(),"At nine",1));assertEquals(1,history(first.getId()).size());assertEquals(start,history(first.getId()).get(0).get("startedAt"));assertEquals(2L,history(first.getId()).get(0).get("revision"));
+        minute(11);WriteRequest latest=request(first.getId(),"After fixed window",2);Map<String,Object> saved=answers.save(latest);assertEquals(3L,revision(saved));assertEquals(2,history(first.getId()).size());
+        answers.save(latest);answers.save(request(first.getId(),"After fixed window",3));assertEquals(3L,revision(rows(answers.list(set.getId(),null,first.getId())).get(0)));assertEquals(2,history(first.getId()).size());
+        assertFalse(history(first.getId()).get(0).containsKey("html"));assertFalse(history(first.getId()).get(0).containsKey("notebook"));
+        assertEquals(10,answers.history(set.getId(),null,first.getId()).get("checkpointMinutes"));assertEquals(5,answers.history(set.getId(),null,first.getId()).get("retainedLimit"));assertEquals(14,answers.history(set.getId(),null,first.getId()).get("retentionDays"));
+    }
+    @Test public void preexistingResponsesAndEditorChangesArePreservedAndImportsStartBoundaries(){
+        SpeakingStudentAnswer legacy=new SpeakingStudentAnswer();legacy.setStudentId(student.getId());legacy.setQuestionId(first.getId());legacy.setHtml("Legacy original");legacy.setNotesJson("[]");legacy.setEditorId(student.getId());em.persist(legacy);em.flush();minute(0);
+        answers.save(request(first.getId(),"Student edit",1));assertEquals(2,history(first.getId()).size());assertEquals("BASELINE",history(first.getId()).get(1).get("source"));
+        actor=teacher;answers.save(request(first.getId(),"Teacher edit",2));assertEquals(3,history(first.getId()).size());
+        ImportRequest imported=new ImportRequest();imported.setId=set.getId();imported.studentId=student.getId();imported.rows=Collections.singletonList(request(first.getId(),"Imported replacement",3));answers.confirm(imported);assertEquals(4,history(first.getId()).size());assertEquals("IMPORT",history(first.getId()).get(0).get("source"));
+        answers.confirm(imported);assertEquals(4,history(first.getId()).size());answers.save(request(first.getId(),"After import",4));assertEquals(5,history(first.getId()).size());assertEquals("IMPORT",history(first.getId()).get(1).get("source"));
+    }
+    @Test public void sharedNotebookAndInlineEditsCoalesceTogetherAndNeverClearEachOther(){
+        first.setPart(2);em.flush();
+        minute(0);WriteRequest typed=request(first.getId(),"<b>Hello</b> <span class='ielts-annotation has-note is-highlighted' data-note-id='n1'>world</span>",0);typed.notes=Collections.singletonList(new Note("n1","Teacher note"));answers.save(typed);
+        NotebookRequest paper=notebookRequest(first.getId(),"A4 notes",0);answers.saveNotebook(paper);assertEquals(1,history(first.getId()).size());assertEquals("NOTEBOOK",history(first.getId()).get(0).get("source"));
+        Map<String,Object> response=rows(answers.list(set.getId(),null,first.getId())).get(0);assertTrue(String.valueOf(response.get("html")).contains("<b>Hello</b>"));assertEquals(1,((List<?>)response.get("notes")).size());assertEquals(2L,revision(response));
+        answers.saveNotebook(paper);assertEquals(2L,revision(rows(answers.list(set.getId(),null,first.getId())).get(0)));assertEquals(1,history(first.getId()).size());
+        WriteRequest updated=request(first.getId(),"<u>Typed again</u>",2);answers.save(updated);assertEquals(1L,answers.notebook(set.getId(),null,first.getId(),null).get("revision"));assertEquals(paper.document,answers.notebook(set.getId(),null,first.getId(),null).get("document"));assertEquals(1,history(first.getId()).size());
+        actor=teacher;answers.saveNotebook(notebookRequest(first.getId(),"Teacher pen",1));assertEquals(2,history(first.getId()).size());assertEquals(student.getId(),history(first.getId()).get(1).get("editorId"));
+    }
+    @Test public void restoreRecoversFormattingNotesHighlightAndDrawingAsANewVersion(){
+        first.setPart(2);em.flush();
+        minute(0);WriteRequest typed=request(first.getId(),"<u>Original</u> <span class='ielts-annotation has-note is-highlighted' data-note-id='n1'>word</span>",0);typed.notes=Collections.singletonList(new Note("n1","Original note"));answers.save(typed);answers.saveNotebook(notebookRequest(first.getId(),"Original paper",0));Map<String,Object> original=history(first.getId()).get(0);
+        minute(11);answers.save(request(first.getId(),"Changed answer",2));answers.saveNotebook(notebookRequest(first.getId(),"Changed paper",1));long current=revision(rows(answers.list(set.getId(),null,first.getId())).get(0));RestoreRequest restore=restoreRequest(first.getId(),original,current);
+        Map<String,Object> restored=answers.restore(restore);assertEquals(current+1,revision(restored));assertEquals(original.get("id"),restored.get("restoredVersionId"));assertTrue(String.valueOf(restored.get("html")).contains("has-note is-highlighted"));assertEquals(1,((List<?>)restored.get("notes")).size());assertEquals(paper("Original paper"),answers.notebook(set.getId(),null,first.getId(),null).get("document"));assertEquals(3L,answers.notebook(set.getId(),null,first.getId(),null).get("revision"));assertEquals("RESTORE",history(first.getId()).get(0).get("source"));
+        answers.restore(restore);assertEquals(3,history(first.getId()).size());assertEquals(current+1,revision(rows(answers.list(set.getId(),null,first.getId())).get(0)));assertEquals("Shared sample unchanged",first.getSample());
+    }
+    @Test public void retentionKeepsFiveAndRestoringTheOldestSupportsLostAckAfterSourcePruning(){
+        long revision=0;for(int i=0;i<25;i++){minute(i*11);revision=revision(answers.save(request(first.getId(),"State "+i,revision)));}List<Map<String,Object>> versions=history(first.getId());assertEquals(5,versions.size());Map<String,Object> oldest=versions.get(4);RestoreRequest restore=restoreRequest(first.getId(),oldest,revision);
+        Map<String,Object> saved=answers.restore(restore);assertEquals("State 20",saved.get("html"));assertEquals(5,history(first.getId()).size());assertEquals(revision+1,revision(saved));
+        try{answers.historyVersion(set.getId(),student.getId(),first.getId(),restore.versionId);fail("Pruned checkpoint still exposed");}catch(AccessDeniedException expected){}
+        Map<String,Object> retried=answers.restore(restore);assertEquals(revision(saved),revision(retried));assertEquals(5,history(first.getId()).size());
+    }
+    @Test public void expiredCheckpointsDisappearAtFourteenDaysButTheCurrentAnswerAndPaperSurviveCleanup(){
+        first.setPart(2);em.flush();
+        minute(0);answers.save(request(first.getId(),"Current answer survives",0));answers.saveNotebook(notebookRequest(first.getId(),"Current paper survives",0));Map<String,Object> old=history(first.getId()).get(0);Long id=((Number)old.get("id")).longValue();
+        SpeakingAnswerHistoryCleanup cleanup=new SpeakingAnswerHistoryCleanup();ReflectionTestUtils.setField(cleanup,"em",em);
+        minute(14L*24*60);ReflectionTestUtils.setField(cleanup,"historyClock",java.time.Clock.fixed(java.time.Instant.ofEpochMilli(1700000000000L+14L*24*60*60000),java.time.ZoneOffset.UTC));
+        assertEquals(1,history(first.getId()).size());assertNotNull(answers.historyVersion(set.getId(),student.getId(),first.getId(),id));assertEquals(0,cleanup.purgeExpired());
+        minute(14L*24*60+1);assertTrue(history(first.getId()).isEmpty());try{answers.historyVersion(set.getId(),student.getId(),first.getId(),id);fail("Expired detail exposed");}catch(AccessDeniedException expected){}
+        try{answers.restore(restoreRequest(first.getId(),old,2));fail("Expired checkpoint restored");}catch(AccessDeniedException expected){}
+        ReflectionTestUtils.setField(cleanup,"historyClock",java.time.Clock.fixed(java.time.Instant.ofEpochMilli(1700000000000L+(14L*24*60+1)*60000),java.time.ZoneOffset.UTC));assertEquals(1,cleanup.purgeExpired());
+        assertEquals("Current answer survives",rows(answers.list(set.getId(),null,first.getId())).get(0).get("html"));assertEquals(paper("Current paper survives"),answers.notebook(set.getId(),null,first.getId(),null).get("document"));assertEquals("Shared sample unchanged",first.getSample());assertEquals(0L,(long)em.createQuery("select count(p) from SpeakingPass p",Long.class).getSingleResult());
+    }
+    @Test public void editingAfterExpiryPrunesOnlyHistoryAndCapturesTheExistingAnswerAsANewBaseline(){
+        minute(0);answers.save(request(first.getId(),"Old but current",0));minute(14L*24*60+1);answers.save(request(first.getId(),"New edit",1));List<Map<String,Object>> snapshots=history(first.getId());assertEquals(2,snapshots.size());assertEquals("EDIT",snapshots.get(0).get("source"));assertEquals("BASELINE",snapshots.get(1).get("source"));
+        Long baselineId=((Number)snapshots.get(1).get("id")).longValue();@SuppressWarnings("unchecked") Map<String,Object> baseline=(Map<String,Object>)answers.historyVersion(set.getId(),null,first.getId(),baselineId).get("version");assertEquals("Old but current",baseline.get("html"));
+        assertEquals(2L,(long)em.createQuery("select count(v) from SpeakingStudentAnswerVersion v where v.answerId in (select a.id from SpeakingStudentAnswer a where a.studentId=:student)",Long.class).setParameter("student",student.getId()).getSingleResult());
+    }
+    @Test public void historyCleanupIsScheduledAndTransactional()throws Exception{
+        java.lang.reflect.Method method=SpeakingAnswerHistoryCleanup.class.getMethod("purgeExpired");org.springframework.scheduling.annotation.Scheduled schedule=method.getAnnotation(org.springframework.scheduling.annotation.Scheduled.class);assertNotNull(schedule);assertEquals(3600000L,schedule.fixedDelay());assertNotNull(method.getAnnotation(org.springframework.transaction.annotation.Transactional.class));
+        assertNotNull(com.globits.richy.config.SpeakingAnswerHistorySchedulingConfiguration.class.getAnnotation(org.springframework.scheduling.annotation.EnableScheduling.class));
+    }
+    @Test public void historyAndPaperEnforceStudentQuestionAndSnapshotOwnership(){
+        minute(0);answers.save(request(first.getId(),"Private answer",0));Map<String,Object> version=history(first.getId()).get(0);Long id=((Number)version.get("id")).longValue();
+        try{answers.historyVersion(set.getId(),student.getId(),second.getId(),id);fail();}catch(AccessDeniedException expected){}
+        try{answers.history(set.getId(),student.getId(),999999L);fail();}catch(AccessDeniedException expected){}
+        actor=other;try{answers.history(set.getId(),student.getId(),first.getId());fail();}catch(AccessDeniedException expected){}try{answers.sync(set.getId(),student.getId(),first.getId(),0L);fail();}catch(AccessDeniedException expected){}try{answers.notebook(set.getId(),student.getId(),first.getId(),null);fail();}catch(AccessDeniedException expected){}try{answers.saveNotebook(notebookRequest(first.getId(),"Forged",0));fail();}catch(AccessDeniedException expected){}try{answers.restore(restoreRequest(first.getId(),version,1));fail();}catch(AccessDeniedException expected){}
+    }
+    @Test public void staleRestoreOrChangedPreviewCannotOverwriteAnotherEditorsNewerContent(){
+        minute(0);answers.save(request(first.getId(),"Original",0));Map<String,Object> selected=history(first.getId()).get(0);RestoreRequest stalePreview=restoreRequest(first.getId(),selected,1);
+        answers.save(request(first.getId(),"Same checkpoint changed",1));try{answers.restore(stalePreview);fail();}catch(SpeakingStudentAnswerService.Conflict expected){}
+        Map<String,Object> latest=history(first.getId()).get(0);minute(11);answers.save(request(first.getId(),"Later checkpoint",2));RestoreRequest staleCurrent=restoreRequest(first.getId(),latest,2);try{answers.restore(staleCurrent);fail();}catch(SpeakingStudentAnswerService.Conflict expected){}
+        assertEquals("Later checkpoint",rows(answers.list(set.getId(),null,first.getId())).get(0).get("html"));
+    }
+    @Test public void incrementalSyncOnlyReturnsBodiesForChangedRevisionsAndPreservesNotebookConflicts(){
+        first.setPart(2);em.flush();
+        Map<String,Object> empty=answers.sync(set.getId(),null,first.getId(),0L);assertEquals(false,empty.get("changed"));assertFalse(empty.containsKey("answer"));
+        answers.save(request(first.getId(),"Typed",0));Map<String,Object> changed=answers.sync(set.getId(),null,first.getId(),0L);assertEquals(true,changed.get("changed"));assertEquals(1L,changed.get("revision"));assertTrue(changed.containsKey("answer"));assertFalse(answers.sync(set.getId(),null,first.getId(),1L).containsKey("answer"));
+        assertFalse(answers.notebook(set.getId(),null,first.getId(),0L).containsKey("document"));NotebookRequest saved=notebookRequest(first.getId(),"First paper",0);answers.saveNotebook(saved);assertEquals(true,answers.notebook(set.getId(),null,first.getId(),0L).get("changed"));assertFalse(answers.notebook(set.getId(),null,first.getId(),1L).containsKey("document"));
+        try{answers.saveNotebook(notebookRequest(first.getId(),"Stale paper",0));fail();}catch(SpeakingStudentAnswerService.Conflict expected){}assertEquals(paper("First paper"),answers.notebook(set.getId(),null,first.getId(),null).get("document"));
+        ImportRequest imported=new ImportRequest();actor=teacher;imported.setId=set.getId();imported.studentId=student.getId();imported.rows=Collections.singletonList(request(first.getId(),"Import preserves paper",2));answers.confirm(imported);assertEquals(paper("First paper"),answers.notebook(set.getId(),student.getId(),first.getId(),null).get("document"));
+    }
+    @Test public void notebookValidationRejectsBadPaperCoordinatesAndOversizedTextWithoutSaving(){
+        first.setPart(2);em.flush();
+        for(Map<String,Object> bad:Arrays.asList(SpeakingServiceImpl.map("text","Bad","orientation","round","pattern","grid","strokes",Collections.emptyList()),SpeakingServiceImpl.map("text",new String(new char[500001]),"orientation","portrait","pattern","grid","strokes",Collections.emptyList()),SpeakingServiceImpl.map("text","Bad","orientation","portrait","pattern","grid","strokes",Collections.singletonList(SpeakingServiceImpl.map("id","bad","tool","pen","color","#123456","width",4,"points",Collections.singletonList(Arrays.asList(1,2,1.5))))))){NotebookRequest request=notebookRequest(first.getId(),"",0);request.document=bad;try{answers.saveNotebook(request);fail();}catch(IllegalArgumentException expected){}}
+        assertEquals(0L,answers.notebook(set.getId(),null,first.getId(),null).get("revision"));assertTrue(history(first.getId()).isEmpty());
+    }
+    @Test public void a4NotebookAndInlineNotesWorkForEverySpeakingPartAndRemainQuestionScoped(){
+        second.setPart(3);SpeakingQuestion partTwo=question("NOTEBOOK_PART_2");partTwo.setPart(2);em.flush();
+        for(SpeakingQuestion question:Arrays.asList(first,partTwo,second)){
+            String text="Paper for Part "+question.getPart();assertEquals(0L,answers.notebook(set.getId(),null,question.getId(),null).get("revision"));assertEquals(1L,answers.saveNotebook(notebookRequest(question.getId(),text,0)).get("revision"));
+            WriteRequest inline=request(question.getId(),"<span class='ielts-annotation has-note is-highlighted' data-note-id='n1'>Part "+question.getPart()+" text</span>",1);inline.notes=Collections.singletonList(new Note("n1","Inline note remains available"));assertEquals(2L,revision(answers.save(inline)));assertEquals(paper(text),answers.notebook(set.getId(),null,question.getId(),null).get("document"));
+        }
+        assertEquals(paper("Paper for Part 1"),answers.notebook(set.getId(),null,first.getId(),null).get("document"));assertEquals(paper("Paper for Part 3"),answers.notebook(set.getId(),null,second.getId(),null).get("document"));
     }
     @Test public void concurrentFirstSavesCreateOneRowAndRejectTheDifferentStaleResponse()throws Exception{
         final Long setId=set.getId(),studentId=student.getId(),teacherId=teacher.getId(),questionId=first.getId();em.getTransaction().commit();

@@ -27,6 +27,12 @@
             vm.answerStudentLabel = function () { return vm.managementMode && vm.studentId ? vm.studentLabel(vm.studentId) : 'Câu trả lời của tôi'; };
             vm.canOpenAnswer = function () { return !vm.managementMode || (vm.studentId && (!vm.isAdmin || vm.adminViewedStudent)); };
             vm.toggleAnswer = function (question) { if (vm.loadingBank || !vm.canOpenAnswer()) { return; } vm.answerQuestionId = vm.answerQuestionId === question.id ? null : question.id; };
+            vm.toggleNotebook = function (question) {
+                if (vm.loadingBank || !vm.canOpenAnswer() || !question ||
+                    !vm.questions.some(function (item) { return item.id === question.id; })) { return; }
+                vm.notebookQuestionId = vm.notebookQuestionId === question.id ? null : question.id;
+            };
+            vm.closeNotebook = function () { vm.notebookQuestionId = null; };
             function ownPractice() { return !vm.managementMode && vm.practice && Number(vm.practice.studentId) === Number(vm.userId); }
             vm.ownPractice = ownPractice;
             function normalize(text) { return String(text || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim(); }
@@ -46,7 +52,7 @@
             vm.availableSets = function () { return vm.sets.filter(function (set) { return !vm.yearFilter || set.year === Number(vm.yearFilter); }); };
             vm.studentLabel = function (id) { var student = vm.studentCache[id]; return student ? student.name + ' (' + student.username + ')' : 'Học sinh #' + id; };
             function resetAdminView() {
-                studentViewGeneration++; bankGeneration++; vm.studentId = null; vm.adminViewedStudent = null; vm.answerQuestionId = null;
+                studentViewGeneration++; bankGeneration++; vm.studentId = null; vm.adminViewedStudent = null; vm.answerQuestionId = null; vm.notebookQuestionId = null;
                 vm.adminViewEmpty = false; vm.questions = []; vm.groups = []; vm.history = []; vm.loadingBank = false;
             }
             function eligibleAdminClass(value) { var id = Number(value); return Number.isInteger(id) && id > 0 && vm.classes.some(function (item) { return Number(item.id) === id && Number(item.schoolId) === vm.directorySchoolId; }); }
@@ -108,7 +114,7 @@
                 });
             };
             vm.rebuildGroups = function () {
-                var grouped = {}, groups = [], term = normalize(vm.query); vm.groupPage = 0;
+                var grouped = {}, groups = [], term = normalize(vm.query); vm.groupPage = 0; vm.notebookQuestionId = null;
                 vm.questions.forEach(function (question) {
                     if (question.part !== Number(vm.part)) { return; }
                     var key = question.part + ':' + question.topic + ':' + (question.linkedPart2Id || '');
@@ -135,7 +141,7 @@
             vm.loadBank = function () {
                 if (!vm.managementMode) { vm.studentId = null; vm.adminViewedStudent = null; }
                 var generation = ++bankGeneration, id = Number(vm.selectedSetId), student = vm.studentId || null;
-                vm.answerQuestionId = null;
+                vm.answerQuestionId = null; vm.notebookQuestionId = null;
                 vm.selectedSet = vm.sets.filter(function (set) { return set.id === id; })[0]; if (!vm.selectedSet) { vm.questions = []; vm.groups = []; return $q.when(); }
                 vm.loadingBank = true; vm.error = ''; vm.questions = []; vm.groups = []; saveView();
                 return api.bank(id, student).then(function (data) {

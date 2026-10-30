@@ -13,6 +13,8 @@ BEGIN TRY
         uuid_key VARCHAR(36) NULL, voided BIT NULL,
         student_id BIGINT NOT NULL, question_id BIGINT NOT NULL, editor_id BIGINT NOT NULL,
         answer_html NVARCHAR(MAX) NULL, notes_json NVARCHAR(MAX) NULL, revision BIGINT NOT NULL,
+        notebook_json NVARCHAR(MAX) NULL,
+        notebook_revision BIGINT DEFAULT(0) NOT NULL,
         CONSTRAINT uk_speaking_answer_student_question UNIQUE(student_id,question_id),
         CONSTRAINT fk_speaking_answer_question FOREIGN KEY(question_id) REFERENCES dbo.tbl_speaking_question(id)
     );

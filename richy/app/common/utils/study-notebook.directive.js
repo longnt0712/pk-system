@@ -2,20 +2,21 @@
     'use strict';
 
     var notebookSerial = 0, openNotebooks = 0;
-    angular.module('Hrm.Common').directive('studyNotebook', ['$window', '$timeout', 'StudyNotebookStore',
-        function ($window, $timeout, store) {
+    angular.module('Hrm.Common').directive('studyNotebook', ['$window', '$timeout', '$injector',
+        function ($window, $timeout, $injector) {
             return {
                 restrict: 'E',
-                scope: { testId: '=', testMode: '@', userId: '=', enabled: '=' },
+                scope: { testId: '=', testMode: '@', userId: '=', enabled: '=', sessionOpener: '&?', sessionKey: '@?',
+                    hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?' },
                 bindToController: true, controllerAs: 'notebook', controller: function () {}, require: 'studyNotebook',
                 template: [
-                    '<button type="button" class="study-notebook-toggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
+                    '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
                     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5L20 7v13.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M16 3.5V8h4M8 11h8M8 15h6M7 3.5v17"/></svg></button>',
                     '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
                     '<section class="study-notebook-dialog" role="dialog" aria-modal="true" ng-attr-id="{{notebook.dialogId}}" ng-attr-aria-labelledby="{{notebook.dialogId}}-title">',
                     '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">Sổ tay học tập</h2></div>',
                     '<div class="study-notebook-heading__actions"><span class="study-notebook-status" ng-class="\'is-\'+notebook.session.status" role="status" aria-live="polite">{{notebook.statusText()}}</span>',
-                    '<button type="button" class="study-notebook-action" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
+                    '<button type="button" class="study-notebook-action" ng-if="!notebook.hideSave" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
@@ -35,7 +36,7 @@
                     '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\' : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
                     '</div></div></div>',
-                    '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> Ghi chú riêng của bạn trong đề này</span><label><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
+                    '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
                     '</section></div>'
                 ].join(''),
                 link: function (scope, element, attrs, ui) {
@@ -47,7 +48,7 @@
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
                     var cacheDirty = true, inkBounds = [];
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
-                    var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null;
+                    var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null, composing = false;
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null;
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
@@ -95,7 +96,7 @@
                         if (!ui.canOpen() || !alive) { return; }
                         restoreFocus = document.activeElement;
                         if (!ui.session) {
-                            try { ui.session = store.open({ userId: ui.userId, testId: ui.testId, testMode: ui.testMode }); }
+                            try { ui.session = ui.sessionOpener ? ui.sessionOpener() : $injector.get('StudyNotebookStore').open({ userId: ui.userId, testId: ui.testId, testMode: ui.testMode }); }
                             catch (error) { return; }
                             knownStrokes = strokes();
                             if (ui.session.ready && ui.session.ready.then) {
@@ -103,6 +104,7 @@
                             }
                         }
                         ui.isOpen = true; openNotebooks++;
+                        if (ui.session.setVisible) { ui.session.setVisible(true); }
                         document.body.classList.add('study-notebook-open'); positionOverlay(); scheduleLayout();
                         $timeout.cancel(layoutTimer);
                         layoutTimer = $timeout(function () {
@@ -112,7 +114,8 @@
                     }
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
-                        flushText(); finishStroke(true); saveNow(); ui.isOpen = false;
+                        flushText(); finishStroke(true); compositionEnd(); saveNow(); ui.isOpen = false;
+                        if (ui.session && ui.session.setVisible) { ui.session.setVisible(false); }
                         openNotebooks = Math.max(0, openNotebooks - 1);
                         if (!openNotebooks) { document.body.classList.remove('study-notebook-open'); }
                         $timeout.cancel(layoutTimer); layoutTimer = null;
@@ -120,6 +123,7 @@
                         canvas.width = canvas.height = inkCache.width = inkCache.height = 0; cacheDirty = true;
                         var target = restoreFocus && document.documentElement.contains(restoreFocus) ? restoreFocus : button;
                         if (alive && target && target.focus) { try { target.focus({ preventScroll: true }); } catch (ignore) { target.focus(); } }
+                        if (ui.onClose) { digest(function () { ui.onClose(); }); }
                     };
                     ui.toggle = function () { if (ui.isOpen) { ui.close(); } else { open(); } };
                     ui.save = function () { flushText(); finishStroke(true); saveNow(); };
@@ -328,6 +332,7 @@
                         if (!visible() || ui.tool === 'text' || ui.isLocked() || !context || pointer !== null ||
                             (event.pointerType === 'touch' && !ui.touchDrawing) || (event.button !== undefined && event.button !== 0)) { return; }
                         event.preventDefault(); event.stopPropagation(); pointer = event.pointerId;
+                        if (ui.session.setInteraction) { ui.session.setInteraction(true, 'pen'); }
                         if (ui.tool === 'eraser') { erasing = {}; erasePrevious = null; }
                         else { drawing = { id: 'ink-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9), tool: ui.tool,
                             color: ui.inkColor, width: Number(ui.inkWidth) * (ui.tool === 'highlighter' ? 4 : 1), points: [] }; }
@@ -352,6 +357,7 @@
                         drawing = null; erasing = null; erasePrevious = null;
                         try { if (canvas.hasPointerCapture && canvas.hasPointerCapture(pointerId)) { canvas.releasePointerCapture(pointerId); } } catch (ignoreRelease) {}
                         if (next) { replaceStrokes(next, true); } else { scheduleDraw(); }
+                        if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(false, 'pen'); }
                     }
                     function pointerUp(event) { if (pointer !== null && event.pointerId === pointer) { addPoint(event, true); finishStroke(true); } }
                     function pointerCancel(event) { if (pointer !== null && event.pointerId === pointer) { finishStroke(true); } }
@@ -379,20 +385,24 @@
                             var target = dialog.querySelector('.study-notebook-close'); if (target) { target.focus(); }
                         }
                     }
-                    function flushBeforeLeave() { if (ui.session) { flushText(); finishStroke(true); saveNow(); } }
+                    function flushBeforeLeave() { if (ui.session) { flushText(); finishStroke(true); compositionEnd(); saveNow(); } }
                     function visibilityChanged() { if (document.visibilityState === 'hidden') { flushBeforeLeave(); } }
+                    function compositionStart() { composing = true; if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(true, 'text'); } }
+                    function compositionEnd() { if (!composing) { return; } flushText(); composing = false; if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(false, 'text'); } }
                     function identityChanged() {
-                        var next = [ui.userId, ui.testMode, ui.testId, !!ui.enabled].join(':');
+                        var next = [ui.userId, ui.testMode, ui.testId, !!ui.enabled, ui.sessionKey || ''].join(':');
                         if (identity === next) { return; }
                         identity = next; ui.close();
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
                         undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
+                        if (ui.autoOpen && ui.canOpen()) { digest(open); }
                     }
-                    var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled'], identityChanged);
+                    var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled', 'notebook.sessionKey'], identityChanged);
                     var unwatchStrokes = scope.$watchCollection(function () { return strokes(); }, function (value) {
                         if (value !== knownStrokes) { knownStrokes = value; cacheDirty = true; undo = []; redo = []; scheduleLayout(); }
                     });
                     var unwatchStatus = scope.$watch(function () { return ui.session && ui.session.status; }, function () { scheduleLayout(); });
+                    textarea.addEventListener('compositionstart', compositionStart); textarea.addEventListener('compositionend', compositionEnd);
                     canvas.addEventListener('pointerdown', pointerDown); canvas.addEventListener('pointermove', pointerMove);
                     canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerCancel);
                     canvas.addEventListener('lostpointercapture', pointerCancel);
@@ -408,6 +418,7 @@
                         $timeout.cancel(layoutTimer); if (raf) { cancelFrame.call($window, raf); raf = null; }
                         if (observer) { observer.disconnect(); }
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
+                        textarea.removeEventListener('compositionstart', compositionStart); textarea.removeEventListener('compositionend', compositionEnd);
                         canvas.removeEventListener('pointerdown', pointerDown); canvas.removeEventListener('pointermove', pointerMove);
                         canvas.removeEventListener('pointerup', pointerUp); canvas.removeEventListener('pointercancel', pointerCancel);
                         canvas.removeEventListener('lostpointercapture', pointerCancel);

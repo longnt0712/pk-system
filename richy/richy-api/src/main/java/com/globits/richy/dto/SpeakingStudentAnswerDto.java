@@ -2,6 +2,7 @@ package com.globits.richy.dto;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SpeakingStudentAnswerDto {
     public static class Note {
@@ -23,5 +24,12 @@ public class SpeakingStudentAnswerDto {
         public Long setId;
         public Long studentId;
         public List<WriteRequest> rows=new ArrayList<WriteRequest>();
+    }
+    public static class RestoreRequest {
+        public Long setId,studentId,questionId,versionId,revision,versionRevision;
+    }
+    public static class NotebookRequest {
+        public Long setId,studentId,questionId,revision;
+        public Map<String,Object> document;
     }
 }

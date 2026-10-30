@@ -12,11 +12,15 @@ public class SpeakingStudentAnswer extends BaseObject {
     @Column(name="editor_id",nullable=false) private Long editorId;
     @Lob @Column(name="answer_html",columnDefinition="nvarchar(max)") private String html;
     @Lob @Column(name="notes_json",columnDefinition="nvarchar(max)") private String notesJson;
+    @Lob @Column(name="notebook_json",columnDefinition="nvarchar(max)") private String notebookJson;
+    @Column(name="notebook_revision",nullable=false) private Long notebookRevision=0L;
     @Version @Column(name="revision",nullable=false) private Long revision;
     public Long getStudentId(){return studentId;} public void setStudentId(Long v){studentId=v;}
     public Long getQuestionId(){return questionId;} public void setQuestionId(Long v){questionId=v;}
     public Long getEditorId(){return editorId;} public void setEditorId(Long v){editorId=v;}
     public String getHtml(){return html;} public void setHtml(String v){html=v;}
     public String getNotesJson(){return notesJson;} public void setNotesJson(String v){notesJson=v;}
+    public String getNotebookJson(){return notebookJson;} public void setNotebookJson(String v){notebookJson=v;}
+    public Long getNotebookRevision(){return notebookRevision;} public void setNotebookRevision(Long v){notebookRevision=v;}
     public Long getRevision(){return revision;} public void setRevision(Long v){revision=v;}
 }

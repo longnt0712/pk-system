@@ -4,7 +4,7 @@
 
 Phần này có thay đổi backend. Chạy toàn bộ `speaking-student-answers.sql` trong đúng database ứng dụng **trước khi thay JAR**, rồi cập nhật frontend cùng phiên bản trên `main`. Script dùng cú pháp SQL Server 2008 R2 trở lên và có thể chạy lại. Nó chỉ bổ sung nơi lưu câu trả lời, không thay đổi các câu hỏi, sample, dấu Pass, lượt luyện hay bản ghi âm hiện có. Các bảng Speaking từ `speaking-studio.sql` vẫn là điều kiện tiên quyết.
 
-Bản giới hạn import cho admin và danh sách học sinh theo lớp không đổi schema. Nếu đã chạy SQL Speaking và SQL câu trả lời riêng ở bản trước, chỉ cần cập nhật JAR và frontend; không có SQL bổ sung cho lần sửa này.
+Bản lịch sử phiên bản và sổ ghi chú chung cần chạy thêm **`speaking-answer-history.sql` trước khi thay JAR**, kể cả khi đã chạy hai script Speaking trước đó. Script bổ sung cột sổ ghi chú vào câu trả lời hiện có và bảng lưu phiên bản, dùng cú pháp SQL Server 2008 R2, có thể chạy lại. Cập nhật frontend cùng bản backend. Bản cũ chỉ có giới hạn import/chọn lớp không cần script mới; bản có lịch sử và sổ chung cần script này.
 
 ## Hai lối vào Speaking
 
@@ -34,6 +34,32 @@ Quyền sửa trực tiếp không thay đổi: học sinh sửa câu trả lờ
 
 Câu trả lời và note được lưu theo học sinh và mã câu hỏi. Sample chung được lưu riêng. Khi cách hỏi được import thành biến thể mới, câu hỏi mới có vùng trả lời riêng, không ghi đè câu trả lời của câu cũ.
 
+## Tự lưu, phiên bản và cập nhật khi cùng xem
+
+Chữ, định dạng, highlight và ghi chú gắn vào chữ tự đồng bộ sau khi sửa; không phải chờ tới mốc lịch sử. Giao diện hiển thị trạng thái đồng bộ và chỉ đưa ra thao tác thử lại khi cần. **Xóa ghi chú** trong ô note gỡ nội dung note và liên kết note, giữ nguyên chữ, định dạng và highlight còn lại.
+
+Lịch sử của từng câu trả lời giữ tối đa **5 mốc trong 14 ngày gần nhất**. Các lần sửa tương tác liên tiếp của cùng một người được gộp trong cửa sổ 10 phút tính từ lúc bắt đầu mốc, không kéo dài cửa sổ mỗi lần gõ. Đổi người sửa, import hoặc khôi phục tạo mốc riêng. Mốc lưu cả câu trả lời, note/highlight và tài liệu sổ A4. Khi cập nhật câu trả lời đã có từ bản cũ, hệ thống giữ bản hiện tại làm mốc đầu; không thể tạo lại những bản trước đây chưa từng được lưu lịch sử.
+
+Mốc quá 14 ngày không xuất hiện/khôi phục được; tác vụ nền quét mỗi giờ để xóa vật lý các mốc hết hạn kể cả bài lâu không mở. Lúc lưu cũng dọn các mốc hết hạn và giới hạn số lượng. Mốc thứ 6 sẽ loại mốc cũ nhất kể cả khi tất cả mới được tạo trong cùng một ngày; 14 ngày là tuổi tối đa, không phải cam kết luôn có lịch sử đủ hai tuần. Bài hiện tại, sample, dấu Pass và kết quả không bị tác vụ dọn lịch sử xóa.
+
+Người có quyền sửa có thể xem lịch sử và khôi phục bản đã xem. Khôi phục nội dung khác bản hiện tại sẽ tạo mốc mới, không xóa các mốc cũ ngoài giới hạn lưu trữ. Giao diện và backend kiểm tra phiên bản hiện tại lẫn phiên bản bản xem trước để không khôi phục đè lên thay đổi chưa được đối chiếu.
+
+Khi hai bên đang mở cùng câu trả lời, giao diện kiểm tra cập nhật khoảng mỗi 3 giây khi trang đang hiện. Nếu không có thay đổi cục bộ, chữ và ghi chú mới tự hiện. Nếu đang gõ, viết bút hoặc còn bản nháp chưa đồng bộ, bản trên máy được giữ và thay đổi đồng thời được đưa ra để đối chiếu. Đây không phải cơ chế tự trộn hai người đang gõ cùng một đoạn.
+
+## Sổ ghi chú riêng theo học sinh và câu hỏi
+
+Nút **Xem ghi chú** cạnh **Câu trả lời riêng** có ở cả **Part 1, Part 2 và Part 3**, mở sổ A4 có gõ chữ, bút/vẽ, highlight, tẩy, kiểu giấy, hướng giấy và zoom như trong màn hình học test. Mỗi câu có sổ riêng theo học sinh. Sổ tự lưu và dùng chung giữa học sinh đó với giáo viên/admin có quyền xem bài của em. Quyền truy cập vẫn kiểm tra theo bộ đề, học sinh và câu hỏi; không dùng kho bản nháp cá nhân của test để chia sẻ sổ.
+
+Sửa sổ giữ nguyên phần trả lời và note trên chữ; sửa/import phần trả lời giữ nguyên sổ. Nháp trên thiết bị tách theo tài khoản đang thao tác, học sinh, bộ và câu để tránh lẫn giữa các em khi chuyển View.
+
+## Tên và tài khoản đang hoạt động
+
+Danh sách Speaking dùng họ và tên hiện tại (`lastName` + `firstName`) như danh sách học sinh, thay vì cột `displayName` cũ có thể còn tên của người từng dùng tài khoản. Tìm kiếm và sắp xếp dùng cùng tên hiện tại; thiếu tên thì hiện username. Không đổi ID tài khoản, câu trả lời hay lịch sử.
+
+Danh sách học sinh theo lớp luôn lọc `active = true`. Các lựa chọn học sinh/chia sẻ cũng bỏ tài khoản không hoạt động, kể cả khi tài khoản xuất hiện trong danh sách chia sẻ cũ hoặc tìm trực tiếp theo username.
+
 Chỉ báo lưu thành công khi backend xác nhận đúng bộ, học sinh, câu hỏi và phiên bản. Nếu giáo viên và học sinh cùng sửa một bản cũ, hệ thống báo xung đột và giữ nội dung đang sửa để đối chiếu; không tự ghi đè bản mới của người kia. Bản nháp trên trình duyệt là phương án khôi phục khi chưa đồng bộ, không phải xác nhận đã lưu lên server.
 
 Kiểm tra bằng code và database H2 cô lập; không dùng Chrome và không truy cập dữ liệu production. Script SQL cần được chạy và kiểm tra trên database triển khai thực tế.
+
+Để đo dung lượng thực tế thay vì dự đoán theo số chữ/nét bút, có thể chạy `speaking-storage-report.sql` trong database ứng dụng. Đây là báo cáo chỉ đọc, trả số lượng và kích thước tổng hợp, không trả tên học sinh hoặc nội dung câu trả lời. Con số nội dung không bao gồm index, phần phụ của database và backup/log.

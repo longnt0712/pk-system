@@ -67,6 +67,8 @@
                     </div>
                     <details ng-if="question.sample"><summary>Sample trả lời</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
                     <button type="button" class="sp-button sp-answer-toggle" ng-if="vm.canOpenAnswer()" ng-class="{'is-active':vm.answerQuestionId===question.id}" aria-expanded="{{vm.answerQuestionId===question.id}}" ng-click="vm.toggleAnswer(question)"><i class="fa fa-pencil-square-o"></i> {{vm.answerQuestionId===question.id ? 'Đóng câu trả lời riêng' : 'Câu trả lời riêng'}}</button>
+                    <button type="button" class="sp-button sp-answer-toggle" ng-if="vm.canOpenAnswer()" ng-class="{'is-active':vm.notebookQuestionId===question.id}" aria-haspopup="dialog" aria-expanded="{{vm.notebookQuestionId===question.id}}" ng-click="vm.toggleNotebook(question)"><i class="fa fa-sticky-note-o"></i> Xem ghi chú</button>
+                    <speaking-question-notebook ng-if="vm.notebookQuestionId===question.id" set-id="vm.selectedSetId" student-id="vm.answerStudentId()" question-id="question.id" user-id="vm.userId" student-label="{{vm.answerStudentLabel()}}" on-close="vm.closeNotebook()"></speaking-question-notebook>
                     <speaking-student-answer-editor ng-if="vm.answerQuestionId===question.id" set-id="vm.selectedSetId" student-id="vm.answerStudentId()" question-id="question.id" user-id="vm.userId" student-label="{{vm.answerStudentLabel()}}"></speaking-student-answer-editor>
                 </div>
             </article>

@@ -95,7 +95,7 @@ function harness(options = {}) {
         digest() {
             for (const watcher of watchers) {
                 if (watcher.disabled) continue;
-                const value = watcher.kind === 'identity' ? [ui.userId, ui.testMode, ui.testId, !!ui.enabled].join(':') : watcher.expression();
+                const value = watcher.kind === 'identity' ? [ui.userId, ui.testMode, ui.testId, !!ui.enabled, ui.sessionKey || ''].join(':') : watcher.expression();
                 if (value !== watcher.last) { watcher.last = value; watcher.callback(value); }
             }
             if (ui.session && textModel.$modelValue !== ui.session.document.text) {
@@ -120,7 +120,7 @@ function harness(options = {}) {
     const angular = {module() { return {directive(name, value) { assert.equal(name, 'studyNotebook'); definition = value; }}; },
         element(node) { assert.equal(node, textarea); return {controller: () => textModel}; }, noop() {}};
     nodeVm.runInNewContext(read('common/utils/study-notebook.directive.js'), {angular, Date, Math, console});
-    const dependencies = {$window: window, $timeout: timeout, StudyNotebookStore: store};
+    const dependencies = {$window: window, $timeout: timeout, $injector: {get(name) { assert.equal(name, 'StudyNotebookStore'); return store; }}};
     const directive = definition.at(-1)(...definition.slice(0, -1).map(name => dependencies[name]));
     const ui = {enabled: true, userId: 7, testId: 42, testMode: 'READING', ...(options.identity || {})};
     textarea.value = '';
@@ -149,6 +149,22 @@ test('the icon opens the notebook lazily, lights only while open, and saves when
     session.document.text = 'My note'; h.ui.changed(); h.ui.toggle();
     assert.equal(h.ui.isOpen, false); assert.ok(!h.document.body.classList.contains('study-notebook-open'));
     assert.equal(session.saved.at(-1).text, 'My note'); await h.open(); assert.equal(h.opened.length, 1);
+});
+
+test('a Speaking adapter auto-opens the same A4 modal and pauses incoming sync during pen and IME input', async () => {
+    const visible = [], interactions = [], closed = [];
+    const session = {document: {text: '', orientation: 'portrait', pattern: 'grid', strokes: []}, status: 'ready',
+        ready: Promise.resolve(), changed() {}, save() { return Promise.resolve(this); }, destroy() {},
+        setVisible(value) { visible.push(value); }, setInteraction(value, kind) { interactions.push([value,kind]); }};
+    const h = harness({identity: {testMode: 'SPEAKING', sessionKey: 'set:student:question', autoOpen: true, hideSave: true,
+        sessionOpener: () => session, onClose: () => closed.push(true)}});
+    await h.flush(); assert.equal(h.ui.isOpen,true); assert.equal(h.opened.length,0); assert.equal(h.ui.session,session);
+    assert.match(h.directive.template,/ng-if="!notebook.hideSave"/); assert.equal(visible[0],true);
+    h.ui.setTool('pen'); h.pointer('pointerdown'); h.pointer('pointerup');
+    h.textarea.fire('compositionstart'); h.textarea.value = 'Nội dung dùng bộ gõ'; h.textarea.fire('compositionend');
+    assert.deepEqual(interactions,[[true,'pen'],[false,'pen'],[true,'text'],[false,'text']]);
+    assert.equal(session.document.text,'Nội dung dùng bộ gõ'); assert.equal(session.document.strokes.length,1);
+    h.ui.close(); assert.equal(visible.at(-1),false); assert.equal(closed.length,1);
 });
 
 test('disabled or missing test identities cannot open a notebook and loading/conflict states lock edits', async () => {

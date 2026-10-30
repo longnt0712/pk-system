@@ -6,6 +6,7 @@ import com.globits.richy.domain.*;
 import com.globits.richy.dto.SpeakingStudentAnswerDto.*;
 import com.globits.security.domain.User;
 import java.io.*;
+import java.time.Clock;
 import java.util.*;
 import javax.persistence.*;
 import javax.swing.text.MutableAttributeSet;
@@ -25,8 +26,12 @@ public class SpeakingStudentAnswerService {
     @PersistenceContext private EntityManager em;
     @Autowired private SpeakingServiceImpl speaking;
     private final ObjectMapper json=new ObjectMapper();
+    private Clock historyClock=Clock.systemUTC();
     private static final TypeReference<List<Note>> NOTES=new TypeReference<List<Note>>(){};
     private static final int MAX_HTML=100000, MAX_ROWS=1000;
+    private static final int HISTORY_LIMIT=5, RETENTION_DAYS=14;
+    private static final long CHECKPOINT_MILLIS=10L*60*1000;
+    private static final TypeReference<Map<String,Object>> DOCUMENT=new TypeReference<Map<String,Object>>(){};
     private static final Set<String> TAGS=new HashSet<String>(Arrays.asList("b","strong","i","em","u","p","div","br","ul","ol","li","span"));
     private static final Set<String> BLOCKED=new HashSet<String>(Arrays.asList("script","style","iframe","object","svg","math"));
     private static final Set<String> CLASSES=new HashSet<String>(Arrays.asList("ielts-annotation","has-note","is-highlighted"));
@@ -35,19 +40,32 @@ public class SpeakingStudentAnswerService {
     private static class Context {
         Long setId; User student; Map<Long,Map<String,Object>> questions=new LinkedHashMap<Long,Map<String,Object>>();
     }
-    private Context context(Long setId,Long studentId) {
+    private Context identityContext(Long setId,Long studentId) {
         if(setId==null||setId<=0)throw new IllegalArgumentException("Chọn bộ Speaking.");
         SpeakingSet set=speaking.readableSet(setId);Context c=new Context();c.setId=setId;c.student=speaking.reviewableStudent(set,studentId);
+        return c;
+    }
+    private Context context(Long setId,Long studentId) {
+        Context c=identityContext(setId,studentId);SpeakingSet set=speaking.readableSet(setId);
         for(Object[] pair:em.createQuery("select e,q from SpeakingSetEntry e, SpeakingQuestion q where e.setId=:id and q.id=e.questionId and q.ownerId=:owner order by e.id",Object[].class).setParameter("id",setId).setParameter("owner",set.getOwnerId()).getResultList()){
             SpeakingSetEntry entry=(SpeakingSetEntry)pair[0];SpeakingQuestion question=(SpeakingQuestion)pair[1];
             if(!c.questions.containsKey(question.getId()))
                 c.questions.put(question.getId(),SpeakingServiceImpl.map("questionId",question.getId(),"code",entry.getImportCode(),"part",question.getPart(),"topic",question.getTopic(),"prompt",question.getPrompt()));
         }return c;
     }
+    /** Polling one open editor must not enumerate the entire imported question bank. */
+    private Context questionContext(Long setId,Long studentId,Long questionId) {
+        Context c=identityContext(setId,studentId);if(questionId==null||questionId<=0)throw new AccessDeniedException("Câu hỏi không thuộc bộ Speaking được chọn.");
+        SpeakingSet set=speaking.readableSet(setId);
+        List<Integer> parts=em.createQuery("select distinct q.part from SpeakingSetEntry e, SpeakingQuestion q where e.setId=:set and e.questionId=:question and q.id=e.questionId and q.ownerId=:owner",Integer.class)
+            .setParameter("set",setId).setParameter("question",questionId).setParameter("owner",set.getOwnerId()).getResultList();
+        if(parts.isEmpty())throw new AccessDeniedException("Câu hỏi không thuộc bộ Speaking được chọn.");c.questions.put(questionId,SpeakingServiceImpl.map("part",parts.get(0)));return c;
+    }
     private void requireQuestion(Context c,Long id){if(id==null||!c.questions.containsKey(id))throw new AccessDeniedException("Câu hỏi không thuộc bộ Speaking được chọn.");}
     private List<Note> notes(String value){try{return value==null?new ArrayList<Note>():json.readValue(value,NOTES);}catch(IOException error){throw new IllegalStateException("Không đọc được ghi chú đã lưu.",error);}}
     private String encode(Object value){try{return json.writeValueAsString(value);}catch(IOException error){throw new IllegalStateException("Không mã hóa được ghi chú.",error);}}
     private long version(SpeakingStudentAnswer answer){return answer==null?0:(answer.getRevision()==null?0:answer.getRevision())+1;}
+    private long historyCutoff(){return historyClock.millis()-RETENTION_DAYS*24L*60*60*1000;}
     private Map<String,Object> dto(Context c,Long questionId,SpeakingStudentAnswer answer){return SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"questionId",questionId,
         "html",answer==null||answer.getHtml()==null?"":answer.getHtml(),"notes",answer==null?new ArrayList<Note>():notes(answer.getNotesJson()),"revision",version(answer),
         "updatedAt",answer==null?null:(answer.getModifyDate()!=null?answer.getModifyDate().toString():(answer.getCreateDate()==null?null:answer.getCreateDate().toString())),"editorId",answer==null?null:answer.getEditorId());}
@@ -56,12 +74,62 @@ public class SpeakingStudentAnswerService {
             .setParameter("student",studentId).setParameter("question",questionId).getResultList();
         SpeakingStudentAnswer answer=found.isEmpty()?null:found.get(0);if(answer!=null&&refresh)em.refresh(answer,LockModeType.PESSIMISTIC_WRITE);return answer;
     }
+    private long[] currentRevisions(Long studentId,Long questionId){
+        List<Object[]> rows=em.createQuery("select a.revision,a.notebookRevision from SpeakingStudentAnswer a where a.studentId=:student and a.questionId=:question",Object[].class).setParameter("student",studentId).setParameter("question",questionId).getResultList();
+        if(rows.isEmpty())return new long[]{0,0};Object[] row=rows.get(0);return new long[]{(row[0]==null?0:((Number)row[0]).longValue())+1,row[1]==null?0:((Number)row[1]).longValue()};
+    }
     private List<SpeakingStudentAnswer> savedForSet(Context c){return em.createQuery("select a from SpeakingStudentAnswer a where a.studentId=:student and a.questionId in (select e.questionId from SpeakingSetEntry e where e.setId=:set) order by a.id",SpeakingStudentAnswer.class).setParameter("student",c.student.getId()).setParameter("set",c.setId).getResultList();}
     public Map<String,Object> list(Long setId,Long studentId,Long questionId){
-        Context c=context(setId,studentId);List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();
+        Context c=questionId==null?context(setId,studentId):questionContext(setId,studentId,questionId);List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();
         if(questionId!=null){requireQuestion(c,questionId);rows.add(dto(c,questionId,find(c.student.getId(),questionId,false)));}
         else for(SpeakingStudentAnswer answer:savedForSet(c))rows.add(dto(c,answer.getQuestionId(),answer));
         return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"canEdit",true,"answers",rows);
+    }
+    public Map<String,Object> sync(Long setId,Long studentId,Long questionId,Long revision){
+        if(revision==null||revision<0)throw new IllegalArgumentException("Thiếu phiên bản đang xem.");Context c=questionContext(setId,studentId,questionId);long current=currentRevisions(c.student.getId(),questionId)[0];
+        Map<String,Object> out=SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"questionId",questionId,"revision",current,"changed",current!=revision);
+        if(current!=revision){SpeakingStudentAnswer answer=find(c.student.getId(),questionId,false);out.put("revision",version(answer));out.put("answer",dto(c,questionId,answer));}return out;
+    }
+    private SpeakingStudentAnswerVersion latestVersion(SpeakingStudentAnswer answer){
+        if(answer==null)return null;
+        List<SpeakingStudentAnswerVersion> values=em.createQuery("select v from SpeakingStudentAnswerVersion v where v.answerId=:answer and v.updatedAt>=:cutoff order by v.id desc",SpeakingStudentAnswerVersion.class).setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).setMaxResults(1).getResultList();return values.isEmpty()?null:values.get(0);
+    }
+    private boolean snapshotMatches(SpeakingStudentAnswerVersion saved,SpeakingStudentAnswer answer){return saved!=null&&Objects.equals(saved.getHtml(),answer.getHtml())&&Objects.equals(saved.getNotesJson(),answer.getNotesJson())&&Objects.equals(saved.getNotebookJson(),answer.getNotebookJson());}
+    private boolean interactive(String source){return "EDIT".equals(source)||"NOTEBOOK".equals(source);}
+    private SpeakingStudentAnswerVersion checkpoint(SpeakingStudentAnswer answer,String source,boolean group){
+        SpeakingStudentAnswerVersion latest=latestVersion(answer);long now=historyClock.millis();
+        boolean merge=group&&latest!=null&&interactive(source)&&interactive(latest.getSource())&&Objects.equals(latest.getEditorId(),answer.getEditorId())&&now>=latest.getStartedAt()&&now-latest.getStartedAt()<CHECKPOINT_MILLIS;
+        SpeakingStudentAnswerVersion value=merge?latest:new SpeakingStudentAnswerVersion();
+        if(!merge){value.setAnswerId(answer.getId());value.setStartedAt(now);}
+        value.setAnswerRevision(version(answer));value.setEditorId(answer.getEditorId());value.setSource(source);value.setUpdatedAt(now);value.setHtml(answer.getHtml());value.setNotesJson(answer.getNotesJson());value.setNotebookJson(answer.getNotebookJson());
+        if(!merge)em.persist(value);em.flush();
+        em.createQuery("delete from SpeakingStudentAnswerVersion v where v.answerId=:answer and v.updatedAt<:cutoff").setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).executeUpdate();
+        List<Long> expired=em.createQuery("select v.id from SpeakingStudentAnswerVersion v where v.answerId=:answer order by v.id desc",Long.class).setParameter("answer",answer.getId()).setFirstResult(HISTORY_LIMIT).getResultList();
+        if(!expired.isEmpty())em.createQuery("delete from SpeakingStudentAnswerVersion v where v.id in :ids").setParameter("ids",expired).executeUpdate();return value;
+    }
+    private void preserveCurrent(SpeakingStudentAnswer answer){
+        if(answer==null)return;SpeakingStudentAnswerVersion latest=latestVersion(answer);if(!snapshotMatches(latest,answer))checkpoint(answer,"BASELINE",false);
+    }
+    private String editorName(Long id){User user=id==null?null:em.find(User.class,id);return user==null?"Người dùng":speaking.displayName(user);}
+    private Map<String,Object> versionDto(SpeakingStudentAnswerVersion value,boolean body){
+        Map<String,Object> out=SpeakingServiceImpl.map("id",value.getId(),"revision",value.getAnswerRevision(),"editorId",value.getEditorId(),"editorName",editorName(value.getEditorId()),"source",value.getSource(),"startedAt",value.getStartedAt(),"updatedAt",value.getUpdatedAt());
+        if(body){out.put("html",value.getHtml()==null?"":value.getHtml());out.put("notes",notes(value.getNotesJson()));out.put("notebook",document(value.getNotebookJson()));}return out;
+    }
+    public Map<String,Object> history(Long setId,Long studentId,Long questionId){
+        Context c=questionContext(setId,studentId,questionId);SpeakingStudentAnswer answer=find(c.student.getId(),questionId,false);List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();
+        // The picker needs metadata only; A4 snapshots can contain large drawings.
+        if(answer!=null)for(Object[] value:em.createQuery("select v.id,v.answerRevision,v.editorId,v.source,v.startedAt,v.updatedAt from SpeakingStudentAnswerVersion v where v.answerId=:answer and v.updatedAt>=:cutoff order by v.id desc",Object[].class).setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).setMaxResults(HISTORY_LIMIT).getResultList())
+            rows.add(SpeakingServiceImpl.map("id",value[0],"revision",value[1],"editorId",value[2],"editorName",editorName((Long)value[2]),"source",value[3],"startedAt",value[4],"updatedAt",value[5]));
+        return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"questionId",questionId,"currentRevision",version(answer),"checkpointMinutes",10,"retainedLimit",HISTORY_LIMIT,"retentionDays",RETENTION_DAYS,"versions",rows);
+    }
+    private SpeakingStudentAnswerVersion ownedVersion(SpeakingStudentAnswer answer,Long id){
+        if(answer==null||id==null)throw new AccessDeniedException("Phiên bản không thuộc câu trả lời đang mở.");
+        List<SpeakingStudentAnswerVersion> values=em.createQuery("select v from SpeakingStudentAnswerVersion v where v.id=:id and v.answerId=:answer and v.updatedAt>=:cutoff",SpeakingStudentAnswerVersion.class).setParameter("id",id).setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).getResultList();
+        if(values.isEmpty())throw new AccessDeniedException("Phiên bản không thuộc câu trả lời đang mở.");return values.get(0);
+    }
+    public Map<String,Object> historyVersion(Long setId,Long studentId,Long questionId,Long versionId){
+        Context c=questionContext(setId,studentId,questionId);SpeakingStudentAnswer answer=find(c.student.getId(),questionId,false);
+        return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"questionId",questionId,"version",versionDto(ownedVersion(answer,versionId),true));
     }
     private void lockStudent(Context c){em.find(User.class,c.student.getId(),LockModeType.PESSIMISTIC_WRITE);}
     private static String escape(String text){return text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;");}
@@ -98,17 +166,67 @@ public class SpeakingStudentAnswerService {
         Set<String> ids=new HashSet<String>();List<Note> result=new ArrayList<Note>();for(Note note:input){if(note==null||!noteId(note.id)||!ids.add(note.id)||note.text==null||note.text.length()>2000)throw new IllegalArgumentException("Ghi chú bị trùng mã hoặc vượt 2.000 ký tự.");result.add(new Note(note.id,note.text));}
         if(!ids.equals(markers))throw new IllegalArgumentException("Đoạn chữ gắn ghi chú không khớp danh sách ghi chú. Bản đang sửa vẫn được giữ; hãy kiểm tra lại.");return result;
     }
-    private SpeakingStudentAnswer write(Context c,WriteRequest request,SpeakingStudentAnswer answer,CleanHtml content,List<Note> notes){
+    private SpeakingStudentAnswer write(Context c,WriteRequest request,SpeakingStudentAnswer answer,CleanHtml content,List<Note> notes,String source){
         if(request.revision==null||request.revision<0)throw new IllegalArgumentException("Thiếu phiên bản câu trả lời. Hãy tải câu trước khi sửa.");if(version(answer)!=request.revision.longValue()){
             if(answer!=null&&Objects.equals(answer.getHtml(),content.html)&&Objects.equals(answer.getNotesJson(),encode(notes)))return answer;
             throw new Conflict();
         }
+        if(answer!=null&&Objects.equals(answer.getHtml(),content.html)&&Objects.equals(answer.getNotesJson(),encode(notes)))return answer;
+        preserveCurrent(answer);
         if(answer==null){answer=new SpeakingStudentAnswer();answer.setStudentId(c.student.getId());answer.setQuestionId(request.questionId);}
-        answer.setHtml(content.html);answer.setNotesJson(encode(notes));answer.setEditorId(speaking.currentUser().getId());if(answer.getId()==null)em.persist(answer);return answer;
+        answer.setHtml(content.html);answer.setNotesJson(encode(notes));answer.setEditorId(speaking.currentUser().getId());if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,source,true);return answer;
     }
     public Map<String,Object> save(WriteRequest request){
-        if(request==null)throw new IllegalArgumentException("Thiếu câu trả lời.");Context c=context(request.setId,request.studentId);requireQuestion(c,request.questionId);
-        CleanHtml html=clean(request.html);List<Note> notes=validateNotes(request.notes,html.markers);lockStudent(c);SpeakingStudentAnswer saved=write(c,request,find(c.student.getId(),request.questionId,true),html,notes);em.flush();return dto(c,request.questionId,saved);
+        if(request==null)throw new IllegalArgumentException("Thiếu câu trả lời.");Context c=questionContext(request.setId,request.studentId,request.questionId);
+        CleanHtml html=clean(request.html);List<Note> notes=validateNotes(request.notes,html.markers);lockStudent(c);SpeakingStudentAnswer saved=write(c,request,find(c.student.getId(),request.questionId,true),html,notes,"EDIT");em.flush();return dto(c,request.questionId,saved);
+    }
+    private Map<String,Object> document(String value){try{return value==null?null:json.readValue(value,DOCUMENT);}catch(IOException error){throw new IllegalStateException("Không đọc được sổ ghi chú đã lưu.",error);}}
+    private Map<String,Object> blankDocument(){return SpeakingServiceImpl.map("text","","orientation","portrait","pattern","lined","strokes",new ArrayList<Object>());}
+    private boolean number(Object value,double min,double max){if(!(value instanceof Number))return false;double n=((Number)value).doubleValue();return !Double.isNaN(n)&&!Double.isInfinite(n)&&n>=min&&n<=max;}
+    @SuppressWarnings("unchecked") private Map<String,Object> validateDocument(Map<String,Object> input){
+        if(input==null||!(input.get("text") instanceof String)||((String)input.get("text")).length()>500000||!Arrays.asList("portrait","landscape").contains(input.get("orientation"))||!Arrays.asList("blank","lined","vertical","grid","squares","sketch").contains(input.get("pattern"))||!(input.get("strokes") instanceof List))throw new IllegalArgumentException("Nội dung sổ ghi chú không hợp lệ.");
+        List<?> strokes=(List<?>)input.get("strokes");if(strokes.size()>10000)throw new IllegalArgumentException("Sổ ghi chú tối đa 10.000 nét vẽ.");List<Map<String,Object>> clean=new ArrayList<Map<String,Object>>();Set<String> ids=new HashSet<String>();long pointCount=0;
+        for(Object raw:strokes){
+            if(!(raw instanceof Map))throw new IllegalArgumentException("Nét vẽ không hợp lệ.");Map<?,?> stroke=(Map<?,?>)raw;
+            Object id=stroke.get("id"),color=stroke.get("color");if(!(id instanceof String)||((String)id).isEmpty()||((String)id).length()>100||!ids.add((String)id)||!Arrays.asList("pen","highlighter").contains(stroke.get("tool"))||!(color instanceof String)||!((String)color).matches("#[0-9a-fA-F]{6}")||!number(stroke.get("width"),Double.MIN_VALUE,100)||!(stroke.get("points") instanceof List))throw new IllegalArgumentException("Nét vẽ không hợp lệ.");
+            List<?> points=(List<?>)stroke.get("points");pointCount+=points.size();if(points.isEmpty()||pointCount>200000)throw new IllegalArgumentException("Sổ ghi chú tối đa 200.000 điểm vẽ.");List<List<Number>> copied=new ArrayList<List<Number>>();
+            for(Object rawPoint:points){if(!(rawPoint instanceof List))throw new IllegalArgumentException("Tọa độ nét vẽ không hợp lệ.");List<?> point=(List<?>)rawPoint;if(point.size()<2||point.size()>3||!number(point.get(0),0,100000)||!number(point.get(1),0,100000)||(point.size()==3&&!number(point.get(2),0,1)))throw new IllegalArgumentException("Tọa độ nét vẽ không hợp lệ.");List<Number> copy=new ArrayList<Number>();for(Object n:point)copy.add((Number)n);copied.add(copy);}
+            clean.add(SpeakingServiceImpl.map("id",id,"tool",stroke.get("tool"),"color",color,"width",stroke.get("width"),"points",copied));
+        }
+        Map<String,Object> out=SpeakingServiceImpl.map("text",input.get("text"),"orientation",input.get("orientation"),"pattern",input.get("pattern"),"strokes",clean);
+        if(encode(out).getBytes(java.nio.charset.StandardCharsets.UTF_8).length>8*1024*1024)throw new IllegalArgumentException("Sổ ghi chú vượt dung lượng 8 MB.");return out;
+    }
+    private long notebookRevision(SpeakingStudentAnswer answer){return answer==null||answer.getNotebookRevision()==null?0:answer.getNotebookRevision();}
+    private Map<String,Object> notebookDto(Context c,Long questionId,SpeakingStudentAnswer answer,Long known){
+        long revision=notebookRevision(answer);boolean changed=known==null||known!=revision;Map<String,Object> out=SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"questionId",questionId,"revision",revision,"changed",changed);
+        if(changed){Map<String,Object> value=answer==null?null:document(answer.getNotebookJson());out.put("document",value==null?blankDocument():value);}return out;
+    }
+    public Map<String,Object> notebook(Long setId,Long studentId,Long questionId,Long known){
+        if(known!=null&&known<0)throw new IllegalArgumentException("Phiên bản ghi chú không hợp lệ.");Context c=questionContext(setId,studentId,questionId);
+        if(known!=null&&currentRevisions(c.student.getId(),questionId)[1]==known)return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"questionId",questionId,"revision",known,"changed",false);
+        return notebookDto(c,questionId,find(c.student.getId(),questionId,false),known);
+    }
+    public Map<String,Object> saveNotebook(NotebookRequest request){
+        if(request==null||request.revision==null||request.revision<0)throw new IllegalArgumentException("Thiếu phiên bản sổ ghi chú.");Context c=questionContext(request.setId,request.studentId,request.questionId);String data=encode(validateDocument(request.document));lockStudent(c);SpeakingStudentAnswer answer=find(c.student.getId(),request.questionId,true);
+        if(notebookRevision(answer)!=request.revision){if(answer!=null&&Objects.equals(answer.getNotebookJson(),data))return notebookDto(c,request.questionId,answer,null);throw new Conflict();}
+        if(answer!=null&&Objects.equals(answer.getNotebookJson(),data))return notebookDto(c,request.questionId,answer,null);
+        preserveCurrent(answer);if(answer==null){answer=new SpeakingStudentAnswer();answer.setStudentId(c.student.getId());answer.setQuestionId(request.questionId);answer.setHtml("");answer.setNotesJson("[]");}
+        answer.setNotebookJson(data);answer.setNotebookRevision(notebookRevision(answer)+1);answer.setEditorId(speaking.currentUser().getId());if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,"NOTEBOOK",true);return notebookDto(c,request.questionId,answer,null);
+    }
+    public Map<String,Object> restore(RestoreRequest request){
+        if(request==null||request.revision==null||request.revision<0||request.versionRevision==null||request.versionRevision<1)throw new IllegalArgumentException("Thiếu phiên bản hiện tại hoặc phiên bản đã xem trước.");Context c=questionContext(request.setId,request.studentId,request.questionId);lockStudent(c);SpeakingStudentAnswer answer=find(c.student.getId(),request.questionId,true);
+        SpeakingStudentAnswerVersion latest=latestVersion(answer);
+        if(version(answer)!=request.revision&&latest!=null&&"RESTORE".equals(latest.getSource())&&Objects.equals(latest.getSourceVersionId(),request.versionId)&&Objects.equals(latest.getSourceVersionRevision(),request.versionRevision)&&snapshotMatches(latest,answer)){
+            Map<String,Object> out=dto(c,request.questionId,answer);out.put("restoredVersionId",request.versionId);return out;
+        }
+        SpeakingStudentAnswerVersion selected=ownedVersion(answer,request.versionId);em.refresh(selected);
+        if(!request.versionRevision.equals(selected.getAnswerRevision()))throw new Conflict();
+        // Retried, already applied restores are safe even if their ACK was lost.
+        boolean same=snapshotMatches(selected,answer);if(version(answer)!=request.revision&&!same)throw new Conflict();
+        if(!same){String html=selected.getHtml(),noteData=selected.getNotesJson(),notebookData=selected.getNotebookJson();preserveCurrent(answer);
+            answer.setHtml(html);answer.setNotesJson(noteData);if(!Objects.equals(answer.getNotebookJson(),notebookData))answer.setNotebookRevision(notebookRevision(answer)+1);answer.setNotebookJson(notebookData);answer.setEditorId(speaking.currentUser().getId());em.flush();SpeakingStudentAnswerVersion restored=checkpoint(answer,"RESTORE",false);restored.setSourceVersionId(request.versionId);restored.setSourceVersionRevision(request.versionRevision);em.flush();
+        }
+        Map<String,Object> out=dto(c,request.questionId,answer);out.put("restoredVersionId",request.versionId);return out;
     }
     private static void row(Sheet sheet,int index,Object...values){Row row=sheet.createRow(index);for(int col=0;col<values.length;col++)row.createCell(col).setCellValue(values[col]==null?"":String.valueOf(values[col]));}
     public byte[] template(Long setId,Long studentId)throws IOException{
@@ -158,7 +276,7 @@ public class SpeakingStudentAnswerService {
         for(WriteRequest row:request.rows){if(row==null)throw new IllegalArgumentException("Dòng import không hợp lệ.");requireQuestion(c,row.questionId);if(!seen.add(row.questionId))throw new IllegalArgumentException("Không nhập trùng câu hỏi.");if(row.setId!=null&&!row.setId.equals(request.setId)||row.studentId!=null&&!row.studentId.equals(c.student.getId()))throw new IllegalArgumentException("Dòng import thuộc học sinh hoặc bộ đề khác.");CleanHtml html=clean(row.html);contents.add(html);noteLists.add(validateNotes(row.notes,html.markers));}
         lockStudent(c);List<SpeakingStudentAnswer> old=new ArrayList<SpeakingStudentAnswer>();
         for(int i=0;i<request.rows.size();i++){WriteRequest row=request.rows.get(i);SpeakingStudentAnswer answer=find(c.student.getId(),row.questionId,true);if(row.revision==null||row.revision<0)throw new IllegalArgumentException("Thiếu phiên bản câu trả lời.");if(version(answer)!=row.revision.longValue()&&(answer==null||!Objects.equals(answer.getHtml(),contents.get(i).html)||!Objects.equals(answer.getNotesJson(),encode(noteLists.get(i)))))throw new Conflict();old.add(answer);}
-        List<SpeakingStudentAnswer> saved=new ArrayList<SpeakingStudentAnswer>();for(int i=0;i<request.rows.size();i++)saved.add(write(c,request.rows.get(i),old.get(i),contents.get(i),noteLists.get(i)));em.flush();List<Map<String,Object>> answers=new ArrayList<Map<String,Object>>();for(SpeakingStudentAnswer answer:saved)answers.add(dto(c,answer.getQuestionId(),answer));
+        List<SpeakingStudentAnswer> saved=new ArrayList<SpeakingStudentAnswer>();for(int i=0;i<request.rows.size();i++)saved.add(write(c,request.rows.get(i),old.get(i),contents.get(i),noteLists.get(i),"IMPORT"));em.flush();List<Map<String,Object>> answers=new ArrayList<Map<String,Object>>();for(SpeakingStudentAnswer answer:saved)answers.add(dto(c,answer.getQuestionId(),answer));
         return SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"saved",saved.size(),"answers",answers);
     }
 }
