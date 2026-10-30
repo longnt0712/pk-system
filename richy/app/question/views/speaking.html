@@ -56,7 +56,7 @@
             </div>
             <p ng-if="vm.loadingBank" role="status">Đang tải câu hỏi…</p>
             <p class="sp-muted" ng-if="!vm.loadingBank && !vm.groups.length">Chưa có câu phù hợp ở Part {{vm.part}}.</p>
-            <article class="sp-topic" ng-repeat="group in vm.groups | limitTo:6:vm.groupPage*6 track by group.key">
+            <article class="sp-topic" id="{{group.anchorId}}" tabindex="-1" ng-class="{'is-jump-target':vm.activeTopicKey===group.key}" ng-repeat="group in vm.groups | limitTo:6:vm.groupPage*6 track by group.key">
                 <header class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2><small ng-if="group.linkedTitle">Đi cùng cue card: {{group.linkedTitle}}</small></div>
                     <span class="sp-badge">{{group.passed}}/{{group.questions.length}} Pass</span>
                     <button class="sp-button" ng-if="vm.canReviewStudents() && vm.studentId" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass(group.questions,group.passed !== group.questions.length)">{{group.passed === group.questions.length ? 'Bỏ Pass cả bài' : 'Pass cả bài'}}</button>
@@ -101,6 +101,18 @@
         <p role="status">{{vm.recorder.state.message}}</p><p class="sp-error-text" role="alert" ng-if="vm.recorder.state.error">{{vm.recorder.state.error}}</p>
         <div class="sp-history" ng-repeat="job in vm.recorder.state.pending track by job.key"><span class="sp-grow">Lượt #{{job.practiceId}} · Câu {{job.questionIndex+1}} · {{job.uploaded}}/{{job.parts.length}} đoạn đã gửi<br><small>{{job.stopped ? 'Đang chờ xác nhận lưu đủ' : 'Bản thu đang mở hoặc bị gián đoạn'}}</small></span><button class="sp-button" ng-if="job.stopped" ng-click="vm.recorder.retry()">Thử đồng bộ</button><button class="sp-button" ng-if="!job.stopped && !vm.recorder.state.active && !vm.recorder.state.starting" ng-click="vm.recoverRecording(job)">Khôi phục bản thu</button></div>
         <small ng-if="vm.recorder.state.pending.length">Chỉ khôi phục khi bản thu đã dừng ở tab khác. Khi ghi âm, giữ trang mở và tránh khoá màn hình.</small>
+    </aside>
+
+    <aside class="sp-topic-locator" id="sp-topic-locator" ng-if="vm.selectedSet && !vm.practice && !vm.loadingBank && !vm.modal && !vm.notebookQuestionId && vm.topicLinks.length" aria-label="Định vị topic Speaking">
+        <section class="sp-topic-locator-panel" id="sp-topic-locator-panel" ng-if="vm.topicLocatorOpen" aria-label="Danh sách topic">
+            <header><strong>Đi tới topic</strong><button type="button" class="sp-close" ng-click="vm.closeTopicLocator(true)" aria-label="Đóng danh sách topic">×</button></header>
+            <label class="sp-topic-locator-search"><i class="fa fa-search" aria-hidden="true"></i><input id="sp-topic-locator-search" type="search" ng-model="vm.topicQuery" ng-change="vm.filterTopics()" placeholder="Tìm tên topic…" aria-label="Tìm theo tên topic"></label>
+            <nav class="sp-topic-locator-list" aria-label="Topics trong bộ đề">
+                <button type="button" ng-repeat="topic in vm.topicResults track by topic.key" ng-click="vm.jumpToTopic(topic)" ng-class="{'is-active':vm.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
+                <p ng-if="!vm.topicResults.length" role="status">Không có topic phù hợp.</p>
+            </nav>
+        </section>
+        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="vm.toggleTopicLocator()" ng-class="{'is-active':vm.topicLocatorOpen}" aria-expanded="{{vm.topicLocatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
     </aside>
 
     <div class="sp-overlay" ng-if="vm.modal" ng-click="vm.closeModal()">

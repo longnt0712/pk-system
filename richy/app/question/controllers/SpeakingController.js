@@ -9,11 +9,12 @@
     }]);
     angular.module('Hrm.Question').controller('SpeakingController', ['$scope', '$rootScope', '$window', '$location', '$interval', '$q', 'settings', 'SpeakingService', 'SpeakingRecorder', '$sce', '$state',
         function ($scope, $rootScope, $window, $location, $interval, $q, settings, api, recorder, $sce, $state) {
-            var vm = this, alive = true, bankGeneration = 0, practiceGeneration = 0, rosterGeneration = 0, studentViewGeneration = 0, progressQueue = $q.when(), lastTick = Date.now(), tickCount = 0, audioUrl = null;
+            var vm = this, alive = true, bankGeneration = 0, practiceGeneration = 0, rosterGeneration = 0, studentViewGeneration = 0, topicJumpGeneration = 0, progressQueue = $q.when(), lastTick = Date.now(), tickCount = 0, audioUrl = null;
             vm.managementMode = !!($state && $state.current && $state.current.data && $state.current.data.speakingManagement === true);
             vm.directorySchoolId = 1;
             vm.loading = true; vm.error = ''; vm.sets = []; vm.classes = []; vm.importClasses = []; vm.classOptions = []; vm.canImportStudentAnswers = false; vm.students = []; vm.studentCache = {}; vm.groups = []; vm.questions = [];
             vm.part = 1; vm.query = ''; vm.groupPage = 0; vm.recorder = recorder; vm.importRows = []; vm.importPage = 1;
+            vm.topicLinks = []; vm.topicResults = []; vm.topicQuery = ''; vm.topicLocatorOpen = false;
             vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminPage = 0; vm.adminPageSize = 25; vm.adminTotal = 0; vm.adminStudentQuery = '';
             vm.importLabels = {NEW: 'Chưa import', UNCHANGED: 'Đã import', UPDATE_SAMPLE: 'Sample / liên kết thay đổi', CHANGED: 'Cách hỏi thay đổi', INVALID: 'Cần sửa'};
             vm.newSet = {year: new Date().getFullYear(), number: 1};
@@ -31,11 +32,44 @@
                 if (vm.loadingBank || !vm.canOpenAnswer() || !question ||
                     !vm.questions.some(function (item) { return item.id === question.id; })) { return; }
                 vm.notebookQuestionId = vm.notebookQuestionId === question.id ? null : question.id;
+                if (vm.notebookQuestionId) { vm.closeTopicLocator(false); topicJumpGeneration++; }
             };
             vm.closeNotebook = function () { vm.notebookQuestionId = null; };
             function ownPractice() { return !vm.managementMode && vm.practice && Number(vm.practice.studentId) === Number(vm.userId); }
             vm.ownPractice = ownPractice;
             function normalize(text) { return String(text || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim(); }
+            function topicKey(question) { return question.part + ':' + question.topic + ':' + (question.linkedPart2Id || ''); }
+            function topicAnchor(key) { return 'sp-topic-' + encodeURIComponent(key); }
+            function resetTopicLocator() { topicJumpGeneration++; vm.topicLocatorOpen = false; vm.topicLinks = []; vm.topicResults = []; vm.activeTopicKey = null; }
+            vm.filterTopics = function () {
+                var term = normalize(vm.topicQuery);
+                vm.topicResults = vm.topicLinks.filter(function (topic) { return !term || normalize(topic.title).indexOf(term) >= 0; });
+            };
+            vm.closeTopicLocator = function (restoreFocus) {
+                vm.topicLocatorOpen = false;
+                if (restoreFocus && $window.document.getElementById) { var button = $window.document.getElementById('sp-topic-locator-toggle'); if (button) { button.focus(); } }
+            };
+            vm.toggleTopicLocator = function () {
+                if (vm.loadingBank || vm.practice || vm.modal || vm.notebookQuestionId || !vm.topicLinks.length) { return; }
+                if (vm.topicLocatorOpen) { vm.closeTopicLocator(false); return; }
+                vm.topicQuery = ''; vm.filterTopics(); vm.topicLocatorOpen = true;
+                $window.setTimeout(function () { if (!alive || !vm.topicLocatorOpen || !$window.document.getElementById) { return; } var input = $window.document.getElementById('sp-topic-locator-search'); if (input) { input.focus(); } }, 0);
+            };
+            vm.jumpToTopic = function (topic) {
+                if (!alive || vm.loadingBank || vm.practice || vm.modal || vm.notebookQuestionId || !topic) { return; }
+                var current = vm.topicLinks.filter(function (item) { return item.key === topic.key; })[0]; if (!current) { return; }
+                vm.query = ''; vm.part = current.part; vm.rebuildGroups();
+                var index = vm.groups.findIndex(function (group) { return group.key === current.key; }); if (index < 0) { return; }
+                vm.groupPage = Math.floor(index / 6); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
+                var generation = ++topicJumpGeneration, bank = bankGeneration, setId = vm.selectedSetId, studentId = vm.answerStudentId(), part = vm.part, page = vm.groupPage;
+                $window.setTimeout(function () {
+                    if (!alive || generation !== topicJumpGeneration || bank !== bankGeneration || vm.selectedSetId !== setId || vm.answerStudentId() !== studentId || vm.part !== part || vm.groupPage !== page || vm.practice || vm.modal || vm.notebookQuestionId || !$window.document.getElementById) { return; }
+                    var target = $window.document.getElementById(topicAnchor(current.key)); if (!target) { return; }
+                    var reducedMotion = $window.matchMedia && $window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    target.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
+                    if (target.focus) { target.focus({preventScroll: true}); }
+                }, 0);
+            };
             function preferenceKey() { return 'speaking-view:v1:' + vm.userId + (vm.managementMode ? ':manage' : ''); }
             function backupKey(id) { return 'speaking-practice:v1:' + vm.userId + ':' + id; }
             function startBackupKey() { return 'speaking-start:v1:' + vm.userId; }
@@ -53,6 +87,7 @@
             vm.studentLabel = function (id) { var student = vm.studentCache[id]; return student ? student.name + ' (' + student.username + ')' : 'Học sinh #' + id; };
             function resetAdminView() {
                 studentViewGeneration++; bankGeneration++; vm.studentId = null; vm.adminViewedStudent = null; vm.answerQuestionId = null; vm.notebookQuestionId = null;
+                resetTopicLocator();
                 vm.adminViewEmpty = false; vm.questions = []; vm.groups = []; vm.history = []; vm.loadingBank = false;
             }
             vm.canUseClassRoster = function () { return vm.managementMode && (vm.isAdmin === true || vm.canImportStudentAnswers === true); };
@@ -128,16 +163,18 @@
                 });
             };
             vm.rebuildGroups = function () {
-                var grouped = {}, groups = [], term = normalize(vm.query); vm.groupPage = 0; vm.notebookQuestionId = null;
+                var grouped = {}, groups = [], topics = {}, topicLinks = [], term = normalize(vm.query); vm.groupPage = 0; vm.notebookQuestionId = null; topicJumpGeneration++;
                 vm.questions.forEach(function (question) {
+                    var key = topicKey(question);
+                    if (!topics[key]) { topics[key] = true; topicLinks.push({key: key, part: question.part, title: question.topic}); }
                     if (question.part !== Number(vm.part)) { return; }
-                    var key = question.part + ':' + question.topic + ':' + (question.linkedPart2Id || '');
-                    if (!grouped[key]) { grouped[key] = {key: key, part: question.part, title: question.topic, questions: [], passed: 0, linkedTitle: ''}; groups.push(grouped[key]); }
+                    if (!grouped[key]) { grouped[key] = {key: key, anchorId: topicAnchor(key), part: question.part, title: question.topic, questions: [], passed: 0, linkedTitle: ''}; groups.push(grouped[key]); }
                     var group = grouped[key]; group.questions.push(question); if (question.passed) { group.passed++; }
                     if (question.linkedPart2Id) { var cue = vm.questions.filter(function (q) { return q.id === question.linkedPart2Id; })[0]; group.linkedTitle = cue ? cue.topic : 'Part 2 đã liên kết'; }
                 });
                 groups.forEach(function (group) { group.visible = group.questions.filter(function (q) { return !term || normalize(q.topic + ' ' + q.prompt).indexOf(term) >= 0; }); });
                 vm.groups = groups.filter(function (group) { return group.visible.length; });
+                vm.topicLinks = topicLinks.sort(function (left, right) { return left.part - right.part; }); vm.filterTopics();
             };
             vm.changePart = function (part) { vm.part = part; vm.rebuildGroups(); saveView(); $location.search('part', part); };
             vm.loadStudents = function (query) {
@@ -156,6 +193,7 @@
                 if (!vm.managementMode) { vm.studentId = null; vm.adminViewedStudent = null; }
                 else if (!vm.isAdmin && vm.adminViewedStudent && vm.adminViewedStudent.id !== Number(vm.studentId)) { vm.adminViewedStudent = null; }
                 var generation = ++bankGeneration, id = Number(vm.selectedSetId), student = vm.studentId || null;
+                resetTopicLocator();
                 vm.answerQuestionId = null; vm.notebookQuestionId = null;
                 vm.selectedSet = vm.sets.filter(function (set) { return set.id === id; })[0]; if (!vm.selectedSet) { vm.questions = []; vm.groups = []; return $q.when(); }
                 vm.loadingBank = true; vm.error = ''; vm.questions = []; vm.groups = []; saveView();
@@ -366,9 +404,18 @@
             var timer = $interval(function () { updateClock(); if (++tickCount % 5 === 0) { backupPractice(); saveProgress(false).catch(angular.noop); } }, 1000);
             function visibility() { updateClock(); if ($window.document.hidden) { recorder.stop(); backupPractice(); saveProgress(false).catch(angular.noop); } lastTick = Date.now(); }
             function leaving() { updateClock(); backupPractice(); recorder.stop(); saveProgress(false).catch(angular.noop); }
+            function closeTopicOutside(event) {
+                if (!vm.topicLocatorOpen || !$window.document.getElementById) { return; }
+                var locator = $window.document.getElementById('sp-topic-locator');
+                if (!locator || !locator.contains(event.target)) { $scope.$evalAsync(function () { if (alive) { vm.closeTopicLocator(false); } }); }
+            }
+            function closeTopicOnEscape(event) {
+                if (vm.topicLocatorOpen && event.key === 'Escape') { event.preventDefault(); $scope.$evalAsync(function () { if (alive) { vm.closeTopicLocator(true); } }); }
+            }
             $window.document.addEventListener('visibilitychange', visibility); $window.addEventListener('pagehide', leaving);
+            $window.document.addEventListener('click', closeTopicOutside); $window.document.addEventListener('keydown', closeTopicOnEscape);
             var unwatchPending = $scope.$watch(function () { return recorder.state.pending.length; }, function (value, old) { if (value < old && vm.practice) { vm.refreshPractice(); } });
             refresh().then(function () { var id = Number($location.search().practice); if (id > 0 && !vm.managementMode) { vm.openPractice(id); } }).catch(fail).finally(function () { vm.loading = false; });
-            $scope.$on('$destroy', function () { leaving(); alive = false; bankGeneration++; practiceGeneration++; rosterGeneration++; studentViewGeneration++; $interval.cancel(timer); clearAudio(); unwatchPending(); $window.document.removeEventListener('visibilitychange', visibility); $window.removeEventListener('pagehide', leaving); });
+            $scope.$on('$destroy', function () { leaving(); alive = false; bankGeneration++; practiceGeneration++; rosterGeneration++; studentViewGeneration++; topicJumpGeneration++; $interval.cancel(timer); clearAudio(); unwatchPending(); $window.document.removeEventListener('visibilitychange', visibility); $window.document.removeEventListener('click', closeTopicOutside); $window.document.removeEventListener('keydown', closeTopicOnEscape); $window.removeEventListener('pagehide', leaving); });
         }]);
 })();

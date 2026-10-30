@@ -8,6 +8,7 @@
     var warmUpUtterance = null;
     var pendingTimer = null;
     var requestToken = 0;
+    var activeOwner = null;
     var warmedUp = false;
 
     function supported() {
@@ -62,8 +63,8 @@
             .trim();
     }
 
-    function speechText(value) {
-        var text = plainText(value);
+    function speechText(value, isPlainText) {
+        var text = isPlainText ? String(value == null ? '' : value).replace(/\s+/g, ' ').trim() : plainText(value);
         var wordCount;
         if (!text) { return ''; }
         wordCount = text.split(/\s+/).length;
@@ -81,15 +82,21 @@
         }
     }
 
-    function cancel() {
+    function cancel(owner) {
+        // Selection tools may unmount while another tool is speaking. Scoped
+        // cancellation must leave that newer request alone; cancel() remains
+        // the existing global stop operation for all legacy callers.
+        if (arguments.length && activeOwner !== owner) { return false; }
         requestToken += 1;
         clearPending();
         activeUtterance = null;
+        activeOwner = null;
         try {
             if (synthesis) { synthesis.cancel(); }
         } catch (ignoreCancelError) {
             // Speech failure must never interrupt a lesson or a game.
         }
+        return true;
     }
 
     function speak(value, options) {
@@ -99,12 +106,13 @@
         var delay;
         options = options || {};
         if (!supported()) { return false; }
-        text = speechText(value);
+        text = speechText(value, options.plainText === true);
         if (!text) { return false; }
 
         requestToken += 1;
         token = requestToken;
         clearPending();
+        activeOwner = options.owner || null;
         hadQueuedSpeech = synthesis.speaking || synthesis.pending || !!activeUtterance;
 
         if (options.interrupt !== false && hadQueuedSpeech) {
@@ -127,11 +135,11 @@
             selectedVoice = selectVoice(utterance.lang, options.voiceName);
             if (selectedVoice) { utterance.voice = selectedVoice; }
             utterance.onend = function (event) {
-                if (activeUtterance === utterance) { activeUtterance = null; }
+                if (activeUtterance === utterance) { activeUtterance = null; if (token === requestToken) { activeOwner = null; } }
                 if (typeof options.onend === 'function') { options.onend(event); }
             };
             utterance.onerror = function (event) {
-                if (activeUtterance === utterance) { activeUtterance = null; }
+                if (activeUtterance === utterance) { activeUtterance = null; if (token === requestToken) { activeOwner = null; } }
                 if (typeof options.onerror === 'function') { options.onerror(event); }
             };
             activeUtterance = utterance;
@@ -140,6 +148,8 @@
                 synthesis.speak(utterance);
             } catch (ignoreSpeakError) {
                 activeUtterance = null;
+                if (token === requestToken) { activeOwner = null; }
+                if (typeof options.onerror === 'function') { options.onerror({error: 'synthesis-failed'}); }
                 return false;
             }
             return true;
