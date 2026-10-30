@@ -81,6 +81,40 @@
         $compileProvider.debugInfoEnabled(false);
     }]);
 
+    /* Route views and ng-includes must share the asset release version. Apply
+       it before Angular checks $templateCache, so a cached bare view cannot
+       hide a newer release. Inline modal/UI Bootstrap template IDs stay local. */
+    Hrm.config(['$provide', function ($provide) {
+        $provide.decorator('$templateRequest', ['$delegate', '$window',
+            function ($delegate, $window) {
+                function templateUrl(url) {
+                    if (typeof url !== 'string' || typeof $window.versionedAppUrl !== 'function') { return url; }
+                    try {
+                        var document = $window.document;
+                        var inline = document.getElementById(url);
+                        if (inline && String(inline.tagName).toLowerCase() === 'script' && inline.type === 'text/ng-template') { return url; }
+                        var parsed = new $window.URL(url, document.baseURI || $window.location.href);
+                        if (!/^https?:$/.test(parsed.protocol) || parsed.origin !== $window.location.origin ||
+                            /^\/(?:service|api|oauth|public)(?:\/|$)/i.test(parsed.pathname) ||
+                            !/\/views\/.+\.html$/i.test(parsed.pathname)) { return url; }
+                        return $window.versionedAppUrl(url);
+                    } catch (ignore) { return url; }
+                }
+                function request() {
+                    var args = Array.prototype.slice.call(arguments);
+                    args[0] = templateUrl(args[0]);
+                    return $delegate.apply(this, args);
+                }
+                angular.extend(request, $delegate);
+                Object.defineProperty(request, 'totalPendingRequests', {
+                    get: function () { return $delegate.totalPendingRequests; },
+                    set: function (value) { $delegate.totalPendingRequests = value; }
+                });
+                return request;
+            }
+        ]);
+    }]);
+
     /* Block UI configuration */
     Hrm.config(['blockUIConfig', function(blockUIConfig) {
 

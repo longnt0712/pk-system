@@ -142,14 +142,29 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261030-speaking-self-pass-lazy-1-ui-cache-1';
+        window.APP_VERSION = '20261030-ui-cache-2';
 
                 function versionedUrl(url) {
-                    var separator = url.indexOf('?') >= 0 ? '&' : '?';
-
-                    return url + separator + 'v=' +
-                        encodeURIComponent(window.APP_VERSION);
+                    if (typeof url !== 'string' || !window.APP_VERSION) { return url; }
+                    var hashAt = url.indexOf('#');
+                    var hash = hashAt >= 0 ? url.slice(hashAt) : '';
+                    var address = hashAt >= 0 ? url.slice(0, hashAt) : url;
+                    var queryAt = address.indexOf('?');
+                    var pathname = queryAt >= 0 ? address.slice(0, queryAt) : address;
+                    var query = queryAt >= 0 ? address.slice(queryAt + 1).split('&') : [];
+                    var version = 'v=' + encodeURIComponent(window.APP_VERSION);
+                    var parts = [];
+                    var found = false;
+                    query.forEach(function (part) {
+                        if (/^v(?:=|$)/.test(part)) {
+                            if (!found) { parts.push(version); found = true; }
+                        } else if (part) { parts.push(part); }
+                    });
+                    if (!found) { parts.push(version); }
+                    return pathname + '?' + parts.join('&') + hash;
                 }
+
+                window.versionedAppUrl = versionedUrl;
 
                 window.writeVersionedStylesheet = function (href) {
                     document.write(
