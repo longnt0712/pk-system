@@ -83,31 +83,50 @@ for (const [width, height] of [[390,844],[768,1024],[1180,820],[1920,1080]]) {
     });
 }
 
-test('pet yields to a library CTA without changing a saved drag anchor or hiding valid notifications', async () => {
+test('pet keeps its default and manually placed anchor through scrolling and changing page controls', async () => {
     const {page, errors} = await open(768, 1024, false);
     try {
-        await page.waitForFunction(() => {
-            const p = document.querySelector('.learning-pet-shell').getBoundingClientRect();
-            const b = document.querySelector('#library-cta').getBoundingClientRect();
-            return p.bottom <= b.top - 4 || p.top >= b.bottom + 4 || p.right <= b.left - 4 || p.left >= b.right + 4;
+        const anchor = await page.locator('.learning-pet-shell').evaluate(el => {
+            const rect = el.getBoundingClientRect(); return {left: rect.left, top: rect.top};
         });
         assert.equal(await page.locator('.learning-pet-message').count(), 0, 'an empty reminder does not obscure content');
         assert.equal(await page.locator('.learning-pet-shell').isVisible(), true);
-        await page.locator('#library-cta').click();
+        await page.locator('#last-field').scrollIntoViewIfNeeded();
+        await page.evaluate(() => {
+            const bar = document.createElement('div');
+            bar.className = 'reading-builder-actionbar';
+            bar.innerHTML = '<button>Changing page action</button>';
+            document.body.appendChild(bar);
+            window.dispatchEvent(new Event('resize'));
+        });
+        await page.waitForFunction(() => parseFloat(document.documentElement.style.getPropertyValue('--builder-actionbar-height')) > 0);
+        const afterLayout = await page.locator('.learning-pet-shell').evaluate(el => {
+            const rect = el.getBoundingClientRect(); return {left: rect.left, top: rect.top, transform: getComputedStyle(el).transform};
+        });
+        assert.ok(Math.abs(afterLayout.left - anchor.left) < 1 && Math.abs(afterLayout.top - anchor.top) < 1,
+            'scrolling and a new actionbar must not move the pet');
+        assert.equal(afterLayout.transform, 'none');
         await page.evaluate(() => fixtureScope.$apply(() => { fixtureScope.pet.notificationCount = 2; }));
         await page.locator('.learning-pet-message').waitFor();
         await page.evaluate(() => {
             const shell = document.querySelector('.learning-pet-shell');
             shell.style.left = '400px'; shell.style.top = '850px'; shell.style.right = 'auto'; shell.style.bottom = 'auto';
+            shell.style.setProperty('--pet-clearance-x', '-180px');
+            shell.style.setProperty('--pet-clearance-y', '-480px');
+            shell.classList.add('is-ui-obstructed');
             window.dispatchEvent(new Event('resize'));
         });
         await page.waitForFunction(() => {
-            const p = document.querySelector('.learning-pet-shell').getBoundingClientRect();
-            const b = document.querySelector('#library-cta').getBoundingClientRect();
-            return p.bottom <= b.top - 4 || p.top >= b.bottom + 4 || p.right <= b.left - 4 || p.left >= b.right + 4;
+            const shell = document.querySelector('.learning-pet-shell');
+            return !shell.style.getPropertyValue('--pet-clearance-x') && !shell.style.getPropertyValue('--pet-clearance-y') &&
+                !shell.classList.contains('is-ui-obstructed');
         });
         assert.equal(await page.locator('.learning-pet-shell').evaluate(el => el.style.left), '400px');
         assert.equal(await page.locator('.learning-pet-shell').evaluate(el => el.style.top), '850px');
+        const manual = await page.locator('.learning-pet-shell').evaluate(el => {
+            const rect = el.getBoundingClientRect(); return {left: rect.left, top: rect.top};
+        });
+        assert.equal(manual.left, 400); assert.equal(manual.top, 850);
         assert.equal(await page.locator('.learning-pet-message').isVisible(), true);
         assert.deepEqual(errors, []);
     } finally { await page.close(); }
@@ -143,7 +162,7 @@ test('native and custom dialogs cover background actionbar and widgets, leaving 
     } finally { await page.close(); }
 });
 
-test('mobile pet panel remains viewport-fixed after the mascot has yielded to a CTA', async () => {
+test('mobile pet panel remains viewport-fixed with a stationary mascot', async () => {
     const {page, errors} = await open(390, 844, false);
     try {
         await page.locator('.learning-pet-character').click();

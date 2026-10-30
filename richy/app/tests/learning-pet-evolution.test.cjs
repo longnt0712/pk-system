@@ -814,8 +814,8 @@ test('students can switch among all unlocked Goku pets and reload the specific s
     assert.equal(h.requests.length, choices.length);
 });
 
-test('Goku stages and the separate aura package transparent artwork without changing game rewards', () => {
-    for (const file of ['egg-level-21.png', 'pet-level-22.png', 'pet-level-23.png', 'pet-level-24.png', 'pet-level-25.png', 'super-saiyan-aura.png', 'super-saiyan-2-aura.png']) {
+test('Goku stages package transparent artwork without changing game rewards', () => {
+    for (const file of ['egg-level-21.png', 'pet-level-22.png', 'pet-level-23.png', 'pet-level-24.png', 'pet-level-25.png']) {
         const png = fs.readFileSync(path.join(assets, 'goku-kid', file));
         assert.equal(png.subarray(1, 4).toString(), 'PNG');
         assert.equal(png.readUInt32BE(16), 1024);
@@ -841,11 +841,15 @@ test('Super Saiyan 2 carries self-contained alternating lightning and reduced-mo
     }
 });
 
-test('all new Goku forms retain the uploaded illustrations and preserve the approved aura asset', () => {
+test('all Goku illustrations remain unchanged and SSJ1 and SSJ2 omit the golden aura', () => {
     for (const [level, original] of [[23, 'reference-super-saiyan-punch-original.png'], [24, 'reference-super-saiyan-2-original.png'], [25, 'reference-super-saiyan-4-original.png']]) {
         const svg = fs.readFileSync(path.join(assets, 'goku-kid', 'pet-level-' + level + '.svg'), 'utf8');
         assert.ok(svg.includes(fs.readFileSync(path.join(assets, 'goku-kid', original)).toString('base64')),
             'the source illustration is embedded unchanged at level ' + level);
     }
-    assert.ok(fs.readFileSync(path.join(assets, 'goku-kid/energy-closed-level-24.png')).length > 1000);
+    for (const level of [23, 24]) {
+        const svg = fs.readFileSync(path.join(assets, 'goku-kid', 'pet-level-' + level + '.svg'), 'utf8');
+        assert.doesNotMatch(svg, /id="aura-(?:core|envelope)"/);
+        assert.doesNotMatch(svg, /ssj2-energy/);
+    }
 });

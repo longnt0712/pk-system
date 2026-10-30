@@ -23,8 +23,6 @@
 
 .learning-pet-shell {
     z-index: 1025;
-    bottom: calc(18px + var(--builder-actionbar-height, 0px));
-    transform: translate(var(--pet-clearance-x, 0px), var(--pet-clearance-y, 0px));
 }
 
 body .student-scroll-top {
@@ -40,8 +38,7 @@ body.ui-dialog-open {
 body.modal-open .learning-pet-shell,
 body.modal-open .student-scroll-top,
 body.ui-dialog-open .learning-pet-shell,
-body.ui-dialog-open .student-scroll-top,
-.learning-pet-shell.is-ui-obstructed {
+body.ui-dialog-open .student-scroll-top {
     visibility: hidden !important;
     pointer-events: none !important;
 }
@@ -95,11 +92,6 @@ body.ui-dialog-open .student-scroll-top,
 }
 
 @media (max-width: 767px) {
-    /* The mobile panel is viewport-fixed; a transformed shell would become its containing block. */
-    .learning-pet-shell.is-open {
-        transform: none;
-    }
-
     .reading-builder-actionbar {
         padding: 8px;
     }
