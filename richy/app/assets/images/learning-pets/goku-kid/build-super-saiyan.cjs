@@ -56,10 +56,23 @@ const arcs = [
         + 'M674 773 694 790 690 811 703 826 695 841 703 854 697 873 717 890 708 914 700 930 703 909 708 893 685 875 693 856 683 843 693 827 680 813 683 794Z '
         + 'M362 850 355 875 366 893 359 914 344 928 353 908 355 894 346 875Z'
 ];
+// Tilt the upright branches inward so they cut diagonally across the outline;
+// the existing diagonal waist arc stays in the foreground, clear of the face.
+const arcPlacements = [
+    ['translate(35 10) rotate(-35 350 230)', 'translate(35 10) rotate(-35 350 230)',
+        'translate(-30 30) rotate(35 727 220)', '', ''],
+    ['translate(35 -5) rotate(-40 282 523)', 'translate(-35 5) rotate(40 746 425)',
+        'translate(65 -25) rotate(-40 297 781)', 'translate(-15 -18) rotate(40 696 850)',
+        'translate(35 -40) rotate(-45 355 890)']
+];
 function arcLayer(index, staticArt = false) {
     const opacity = staticArt ? ' opacity=".9"' : '';
-    return `<g class="arc arc-${index}"${opacity}><path d="${arcs[index]}" fill="#c4edff" stroke="#bce7ff" stroke-width="5" filter="url(#arc-glow)"/>`
-        + `<path d="${arcs[index]}" fill="white" stroke="#e1f6ff" stroke-width=".8" stroke-linejoin="miter"/></g>`;
+    const branches = arcs[index].split(/(?=M)/).filter(Boolean).map(function (branch, branchIndex) {
+        const placement = arcPlacements[index][branchIndex];
+        return `<g class="arc-branch"${placement ? ` transform="${placement}"` : ''}><path d="${branch}" fill="#c4edff" stroke="#bce7ff" stroke-width="5" filter="url(#arc-glow)"/>`
+            + `<path d="${branch}" fill="white" stroke="#e1f6ff" stroke-width=".8" stroke-linejoin="miter"/></g>`;
+    }).join('');
+    return `<g class="arc arc-${index}"${opacity}>${branches}</g>`;
 }
 const animation = '<style>.arc-0{animation:ssj2-arc-a 2.5s steps(1,end) infinite}.arc-1{animation:ssj2-arc-b 3s steps(1,end) infinite}'
     + '@keyframes ssj2-arc-a{0%,18%,39%,61%,84%{opacity:1}9%,31%,48%,72%,94%,100%{opacity:0}}'
