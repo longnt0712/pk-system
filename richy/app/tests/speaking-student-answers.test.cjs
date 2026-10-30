@@ -228,6 +228,27 @@ test('Speaking Studio never invokes management APIs even for an admin bank owner
  for(const action of ['create','share','import','roster','students','template','preview','confirm'])assert.equal(f.calls[action].length,0,action);
 });
 
+test('staff can mark their own Pass only with the explicit capability and never use a forged student context in Studio',async()=>{
+ for(const isAdmin of [true,false]){
+  const f=controllerFixture({managementMode:false,isAdmin});await settle();assert.equal(f.vm.canMarkPass(),false);
+  f.set.canMarkOwnPass=true;assert.equal(f.vm.canMarkPass(),true);assert.equal(f.vm.canReviewStudents(),false);
+  const group=f.vm.groups[0];group.lazyLoaded=true;f.vm.answerQuestionId=42;f.vm.notebookQuestionId=42;f.vm.studentId=77;
+  await f.vm.markPass(f.vm.questions,true);assert.equal(f.calls.pass[0].studentId,9);assert.equal(f.vm.questions[0].passed,true);assert.equal(group.passed,1);
+  assert.equal(f.vm.groups[0],group);assert.equal(group.lazyLoaded,true);assert.equal(f.vm.answerQuestionId,42);assert.equal(f.vm.notebookQuestionId,42);
+  await f.vm.markPass(f.vm.questions,false);assert.equal(f.vm.questions[0].passed,false);assert.equal(group.passed,0);
+  await f.vm.markPass([{id:42},{id:999}],true);assert.equal(f.calls.pass.length,2);
+ }
+ const student=controllerFixture({managementMode:false,isAdmin:false,canManage:false});await settle();student.set.canMarkOwnPass=true;
+ assert.equal(student.vm.canMarkPass(),false);await student.vm.markPass(student.vm.questions,true);assert.equal(student.calls.pass.length,0);
+});
+
+test('self Pass waits for an exact acknowledgement and an old bank receipt cannot update newly loaded questions',async()=>{
+ const f=controllerFixture({managementMode:false});await settle();f.set.canMarkOwnPass=true;
+ f.api.markPass=()=>Promise.resolve({updated:1,studentId:7,passed:true});await f.vm.markPass(f.vm.questions,true);assert.equal(f.vm.questions[0].passed,false);assert.match(f.vm.error,/Chưa xác nhận/);
+ const wait=deferred();f.api.markPass=()=>wait.promise;const pending=f.vm.markPass(f.vm.questions,true);
+ await f.vm.loadBank();wait.resolve({updated:1,studentId:9,passed:true});await pending;assert.equal(f.vm.questions[0].passed,false);assert.equal(f.vm.groups[0].passed,0);
+});
+
 test('management routes reject students while a shared teacher bank still permits manual review',async()=>{
  const f=controllerFixture({canManage:false,isAdmin:false});await settle();assert.equal(f.vm.sets.length,0);assert.equal(f.calls.bank.length,0);assert.match(f.vm.error,/Chỉ giáo viên và admin/);await f.vm.createSet();assert.equal(f.calls.create.length,0);
  const g=controllerFixture({isAdmin:false});await settle();g.vm.studentId=7;await g.vm.loadBank();assert.equal(g.vm.canOpenAnswer(),true);assert.equal(g.vm.answerStudentId(),7);g.vm.toggleAnswer(g.vm.questions[0]);assert.equal(g.vm.answerQuestionId,42);

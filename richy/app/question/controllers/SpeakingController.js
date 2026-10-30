@@ -24,6 +24,11 @@
             function fail(error) { if (alive) { vm.error = message(error); } }
             function owner() { return vm.selectedSet && vm.selectedSet.canManage; }
             vm.canReviewStudents = function () { return vm.managementMode && vm.selectedSet && (vm.selectedSet.canReviewStudents === true || (vm.selectedSet.canReviewStudents == null && vm.selectedSet.canManage)); };
+            vm.canMarkPass = function () {
+                if (!vm.selectedSet) { return false; }
+                return vm.managementMode ? !!(vm.canReviewStudents() && vm.studentId)
+                    : vm.canManage === true && vm.selectedSet.canMarkOwnPass === true && Number(vm.userId) > 0;
+            };
             vm.answerStudentId = function () { return Number((vm.managementMode && vm.studentId) || vm.userId); };
             vm.answerStudentLabel = function () { return vm.managementMode && vm.studentId ? vm.studentLabel(vm.studentId) : 'Câu trả lời của tôi'; };
             vm.canOpenAnswer = function () { return !vm.managementMode || (vm.studentId && (!vm.isAdmin || vm.adminViewedStudent)); };
@@ -40,6 +45,12 @@
             function normalize(text) { return String(text || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim(); }
             function topicKey(question) { return question.part + ':' + question.topic + ':' + (question.linkedPart2Id || ''); }
             function topicAnchor(key) { return 'sp-topic-' + encodeURIComponent(key); }
+            function showTopicPageThrough(index) {
+                vm.groupPage = Math.floor(index / 6);
+                // Mount preceding topics before a deliberate jump so their
+                // later expansion cannot move the target while scrolling.
+                for (var position = vm.groupPage * 6; position <= index; position++) { vm.groups[position].lazyLoaded = true; }
+            }
             function resetTopicLocator() { topicJumpGeneration++; vm.topicLocatorOpen = false; vm.topicLinks = []; vm.topicResults = []; vm.activeTopicKey = null; }
             vm.filterTopics = function () {
                 var term = normalize(vm.topicQuery);
@@ -60,7 +71,7 @@
                 var current = vm.topicLinks.filter(function (item) { return item.key === topic.key; })[0]; if (!current) { return; }
                 vm.query = ''; vm.part = current.part; vm.rebuildGroups();
                 var index = vm.groups.findIndex(function (group) { return group.key === current.key; }); if (index < 0) { return; }
-                vm.groupPage = Math.floor(index / 6); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
+                showTopicPageThrough(index); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
                 var generation = ++topicJumpGeneration, bank = bankGeneration, setId = vm.selectedSetId, studentId = vm.answerStudentId(), part = vm.part, page = vm.groupPage;
                 $window.setTimeout(function () {
                     if (!alive || generation !== topicJumpGeneration || bank !== bankGeneration || vm.selectedSetId !== setId || vm.answerStudentId() !== studentId || vm.part !== part || vm.groupPage !== page || vm.practice || vm.modal || vm.notebookQuestionId || !$window.document.getElementById) { return; }
@@ -156,7 +167,7 @@
                     if (first) {
                         vm.part = first.part; vm.rebuildGroups();
                         var groupIndex = vm.groups.findIndex(function (group) { return group.questions.some(function (question) { return question.id === first.id; }); });
-                        if (groupIndex >= 0) { vm.groupPage = Math.floor(groupIndex / 6); }
+                        if (groupIndex >= 0) { showTopicPageThrough(groupIndex); }
                         vm.answerQuestionId = first.id;
                         if ($window.document.getElementById) { $window.setTimeout(function () { var target = $window.document.getElementById('sp-answer-question-' + first.id); if (alive && generation === studentViewGeneration && target) { target.scrollIntoView({behavior: 'smooth', block: 'center'}); } }, 0); }
                     } else if (Number(student.answerCount) > 0) { vm.error = 'Câu trả lời đã thay đổi sau khi tải danh sách. Bấm Làm mới ở danh sách lớp rồi chọn View lại.'; }
@@ -207,13 +218,17 @@
             vm.selectSet = function () { resetAdminView(); rosterGeneration++; vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminTotal = 0; vm.adminRosterLoading = false; vm.answerImportContext = null; if (vm.modal === 'answers') { vm.modal = null; } vm.loadBank().then(function () { return vm.loadAdminStudents(0); }).then(function () { return vm.loadStudents(''); }); $location.search('set', vm.selectedSetId); };
             vm.changeYear = function () { var available = vm.availableSets(); if (!available.some(function (s) { return s.id === vm.selectedSetId; })) { vm.selectedSetId = available.length ? available[0].id : null; vm.selectSet(); } };
             vm.markPass = function (questions, value) {
-                if (!vm.canReviewStudents() || !vm.studentId || vm.passSaving || vm.loadingBank) { return; }
+                if (!vm.canMarkPass() || vm.passSaving || vm.loadingBank || !Array.isArray(questions) || typeof value !== 'boolean') { return; }
+                if (!questions.length || questions.some(function (q) { return !q || !vm.questions.some(function (item) { return item.id === q.id; }); })) { return; }
                 var ids = []; questions.forEach(function (q) { if (ids.indexOf(q.id) < 0) { ids.push(q.id); } });
-                var setId = vm.selectedSetId, student = vm.studentId; vm.passSaving = true; vm.error = '';
+                var setId = vm.selectedSetId, student = vm.answerStudentId(), actor = vm.userId, generation = bankGeneration; vm.passSaving = true; vm.error = '';
                 return api.markPass(setId, {studentId: student, questionIds: ids, passed: value}).then(function (ack) {
                     if (!ack || ack.updated !== ids.length || ack.studentId !== student || ack.passed !== value) { throw new Error('Chưa xác nhận được dấu Pass. Hãy tải lại để đối chiếu.'); }
-                    if (setId === vm.selectedSetId && student === vm.studentId) { vm.questions.forEach(function (q) { if (ids.indexOf(q.id) >= 0) { q.passed = value; } }); vm.rebuildGroups(); }
-                }).catch(fail).finally(function () { vm.passSaving = false; });
+                    if (alive && generation === bankGeneration && actor === vm.userId && setId === vm.selectedSetId && student === vm.answerStudentId()) {
+                        vm.questions.forEach(function (q) { if (ids.indexOf(q.id) >= 0) { q.passed = value; } });
+                        vm.groups.forEach(function (group) { group.passed = group.questions.filter(function (q) { return q.passed; }).length; });
+                    }
+                }).catch(function (error) { if (alive && generation === bankGeneration && actor === vm.userId && student === vm.answerStudentId()) { fail(error); } }).finally(function () { vm.passSaving = false; });
             };
             vm.openModal = function (name) {
                 if (name === 'practice' ? vm.managementMode : (!vm.managementMode || !vm.canManage)) { return; }

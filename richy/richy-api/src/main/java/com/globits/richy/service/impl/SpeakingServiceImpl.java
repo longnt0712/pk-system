@@ -114,6 +114,10 @@ public class SpeakingServiceImpl {
         // common bank. Actual teacher assignment defines the review scope.
         return hasPrimaryClass(actor) || classes.findAll().stream().anyMatch(c -> managesClass(actor,c));
     }
+    public boolean canMarkOwnPass(SpeakingSet set, User actor) {
+        // Self assessment must not grant access to the student review scope.
+        return canRead(set,actor) && teacher(actor);
+    }
     private boolean reviewsStudentClass(User actor, User student) {
         if (role(actor,"ROLE_ADMIN")) return true;
         if (primaryStudent(actor,student)) return true;
@@ -163,7 +167,7 @@ public class SpeakingServiceImpl {
         User owner = users.findOne(set.getOwnerId());
         return map("id",set.getId(),"ownerId",set.getOwnerId(),"ownerName",owner == null ? "Giáo viên" : displayName(owner),
             "year",set.getSeasonYear(),"number",set.getSetNumber(),"fromMonth",(set.getSetNumber()-1)*4+1,"toMonth",set.getSetNumber()*4,
-            "name",set.getName(),"sharedForEveryone",role(owner,"ROLE_ADMIN"),"canManage",set.getOwnerId().equals(user.getId()),"canReviewStudents",canReviewStudents(set,user),"classIds",set.getOwnerId().equals(user.getId())?decode(set.getClassIdsJson(),IDS,new ArrayList<Long>()):Collections.emptyList(),
+            "name",set.getName(),"sharedForEveryone",role(owner,"ROLE_ADMIN"),"canManage",set.getOwnerId().equals(user.getId()),"canReviewStudents",canReviewStudents(set,user),"canMarkOwnPass",canMarkOwnPass(set,user),"classIds",set.getOwnerId().equals(user.getId())?decode(set.getClassIdsJson(),IDS,new ArrayList<Long>()):Collections.emptyList(),
             "studentIds",set.getOwnerId().equals(user.getId())?decode(set.getStudentIdsJson(),IDS,new ArrayList<Long>()):Collections.emptyList(),"questionCount",entries(set.getId()).size());
     }
     public Map<String,Object> bootstrap() {
@@ -289,8 +293,10 @@ public class SpeakingServiceImpl {
     }
     public Map<String,Object> markPass(Long setId,PassRequest request) {
         SpeakingSet set=readableSet(setId);User actor=currentUser();
-        if (!canReviewStudents(set,actor)) throw new AccessDeniedException("Chỉ giáo viên phụ trách được xác nhận Pass.");
         if(request==null||request.studentId==null||request.passed==null)throw new IllegalArgumentException("Chọn học sinh và trạng thái Pass.");
+        if(request.studentId.equals(actor.getId())) {
+            if(!canMarkOwnPass(set,actor))throw new AccessDeniedException("Chỉ admin hoặc giáo viên được tự xác nhận Pass.");
+        } else if (!canReviewStudents(set,actor)) throw new AccessDeniedException("Chỉ giáo viên phụ trách được xác nhận Pass.");
         User student=reviewableStudent(set,request.studentId);
         List<Long> ids=uniqueIds(request.questionIds,500);if(ids.isEmpty())throw new IllegalArgumentException("Chưa chọn câu hỏi.");
         Set<Long> allowed=new HashSet<Long>();for(SpeakingSetEntry e:entries(setId))allowed.add(e.getQuestionId());if(!allowed.containsAll(ids))throw new AccessDeniedException("Câu hỏi không thuộc bộ đã chọn.");

@@ -153,6 +153,7 @@
 .speaking-page .sp-topic { scroll-margin-top:100px; }
 .speaking-page .sp-topic.is-jump-target { border-color:#bca5ed; box-shadow:0 0 0 3px #a48ce914; }
 .speaking-page .sp-topic:focus { outline:none; }
+.speaking-page .sp-lazy-placeholder { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; min-height:88px; color:var(--sp-muted); font-size:12px; }
 .speaking-page .sp-topic-locator { position:fixed; z-index:1030; left:15px; bottom:calc(84px + var(--builder-actionbar-height,0px)); }
 body.study-notebook-open .speaking-page .sp-topic-locator,body.modal-open .speaking-page .sp-topic-locator,body.ui-dialog-open .speaking-page .sp-topic-locator { display:none; }
 .speaking-page .sp-topic-locator-toggle { display:flex; align-items:center; justify-content:center; width:46px; height:46px; padding:0; border:3px solid #fff; border-radius:50%; color:#fff; background:linear-gradient(140deg,#557cf2,#8b56df); box-shadow:0 6px 20px #6652c449; font-size:21px; cursor:pointer; touch-action:manipulation; }

@@ -56,21 +56,24 @@
             </div>
             <p ng-if="vm.loadingBank" role="status">Đang tải câu hỏi…</p>
             <p class="sp-muted" ng-if="!vm.loadingBank && !vm.groups.length">Chưa có câu phù hợp ở Part {{vm.part}}.</p>
-            <article class="sp-topic" id="{{group.anchorId}}" tabindex="-1" ng-class="{'is-jump-target':vm.activeTopicKey===group.key}" ng-repeat="group in vm.groups | limitTo:6:vm.groupPage*6 track by group.key">
+            <article class="sp-topic" id="{{group.anchorId}}" tabindex="-1" ng-class="{'is-jump-target':vm.activeTopicKey===group.key}" ng-repeat="group in vm.groups | limitTo:6:vm.groupPage*6 track by group.key" speaking-lazy-topic="group" speaking-lazy-eager="$first">
                 <header class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2><small ng-if="group.linkedTitle">Đi cùng cue card: {{group.linkedTitle}}</small></div>
                     <span class="sp-badge">{{group.passed}}/{{group.questions.length}} Pass</span>
-                    <button class="sp-button" ng-if="vm.canReviewStudents() && vm.studentId" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass(group.questions,group.passed !== group.questions.length)">{{group.passed === group.questions.length ? 'Bỏ Pass cả bài' : 'Pass cả bài'}}</button>
+                    <button class="sp-button" ng-if="vm.canMarkPass()" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass(group.questions,group.passed !== group.questions.length)">{{group.passed === group.questions.length ? 'Bỏ Pass cả bài' : 'Pass cả bài'}}</button>
                 </header>
+                <div class="sp-lazy-placeholder" ng-if="!group.lazyLoaded"><span>{{group.visible.length}} câu hỏi · Tải khi bạn cuộn tới topic này.</span><button type="button" class="sp-button" ng-click="group.lazyLoaded=true">Hiện câu hỏi</button></div>
+                <div ng-if="group.lazyLoaded">
                 <div class="sp-question" id="sp-answer-question-{{question.id}}" ng-repeat="question in group.visible track by question.entryId" ng-class="{'is-passed': question.passed}">
                     <div class="sp-question-heading"><span class="sp-number">{{$index+1}}</span><p class="sp-preserve sp-grow">{{question.prompt}}</p>
-                        <button class="sp-pass" ng-if="vm.canReviewStudents() && vm.studentId" role="checkbox" aria-checked="{{question.passed}}" aria-label="Đánh dấu Pass câu {{$index+1}}" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass([question],!question.passed)"><i class="fa" ng-class="question.passed ? 'fa-check-square' : 'fa-square-o'"></i> Pass</button>
-                        <span class="sp-badge" ng-if="(!vm.canReviewStudents() || !vm.studentId) && question.passed"><i class="fa fa-check"></i> Pass</span>
+                        <button class="sp-pass" ng-if="vm.canMarkPass()" role="checkbox" aria-checked="{{question.passed}}" aria-label="Đánh dấu Pass câu {{$index+1}}" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass([question],!question.passed)"><i class="fa" ng-class="question.passed ? 'fa-check-square' : 'fa-square-o'"></i> Pass</button>
+                        <span class="sp-badge" ng-if="!vm.canMarkPass() && question.passed"><i class="fa fa-check"></i> Pass</span>
                     </div>
-                    <details ng-if="question.sample"><summary>Sample trả lời</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
+                    <details ng-if="question.sample" speaking-lazy-sample><summary>Sample trả lời</summary><p ng-if="spSampleOpen" class="sp-preserve sp-sample">{{question.sample}}</p></details>
                     <button type="button" class="sp-button sp-answer-toggle" ng-if="vm.canOpenAnswer()" ng-class="{'is-active':vm.answerQuestionId===question.id}" aria-expanded="{{vm.answerQuestionId===question.id}}" ng-click="vm.toggleAnswer(question)"><i class="fa fa-pencil-square-o"></i> {{vm.answerQuestionId===question.id ? 'Đóng câu trả lời riêng' : 'Câu trả lời riêng'}}</button>
                     <button type="button" class="sp-button sp-answer-toggle" ng-if="vm.canOpenAnswer()" ng-class="{'is-active':vm.notebookQuestionId===question.id}" aria-haspopup="dialog" aria-expanded="{{vm.notebookQuestionId===question.id}}" ng-click="vm.toggleNotebook(question)"><i class="fa fa-sticky-note-o"></i> Xem ghi chú</button>
                     <speaking-question-notebook ng-if="vm.notebookQuestionId===question.id" set-id="vm.selectedSetId" student-id="vm.answerStudentId()" question-id="question.id" user-id="vm.userId" student-label="{{vm.answerStudentLabel()}}" on-close="vm.closeNotebook()"></speaking-question-notebook>
                     <speaking-student-answer-editor ng-if="vm.answerQuestionId===question.id" set-id="vm.selectedSetId" student-id="vm.answerStudentId()" question-id="question.id" user-id="vm.userId" student-label="{{vm.answerStudentLabel()}}"></speaking-student-answer-editor>
+                </div>
                 </div>
             </article>
             <nav class="sp-toolbar sp-pagination" ng-if="vm.groups.length>6" aria-label="Trang topic"><button class="sp-button" ng-disabled="vm.groupPage===0" ng-click="vm.groupPage=vm.groupPage-1">← Trước</button><span>Trang {{vm.groupPage+1}}</span><button class="sp-button" ng-disabled="(vm.groupPage+1)*6>=vm.groups.length" ng-click="vm.groupPage=vm.groupPage+1">Sau →</button></nav>

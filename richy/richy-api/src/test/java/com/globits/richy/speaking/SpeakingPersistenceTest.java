@@ -87,6 +87,35 @@ public class SpeakingPersistenceTest {
     private PracticeRequest request(){PracticeRequest req=new PracticeRequest();req.clientKey="attempt_12345678";req.setIds=Collections.singletonList(setId);req.parts=Arrays.asList(1,2,3);req.part1Count=10;req.part3Count=10;return req;}
     @SuppressWarnings("unchecked") private List<Map<String,Object>> questions(Map<String,Object> practice){return(List<Map<String,Object>>)((Map<String,Object>)practice.get("snapshot")).get("questions");}
     private PassRequest pass(Long question){PassRequest p=new PassRequest();p.studentId=student.getId();p.questionIds=Collections.singletonList(question);p.passed=true;return p;}
+    private void grantRole(User user,String name){
+        List<com.globits.security.domain.Role> found=em.createQuery("select r from Role r where r.name=:name",com.globits.security.domain.Role.class).setParameter("name",name).getResultList();
+        com.globits.security.domain.Role role=found.isEmpty()?new com.globits.security.domain.Role():found.get(0);if(role.getId()==null){role.setName(name);em.persist(role);}user.getRoles().add(role);em.flush();
+    }
+    @Test public void adminCanMarkOwnPassWithoutChangingStudentPassAndStudentsCannotSelfApprove()throws Exception{
+        seed();Long question=((Number)bank(setId).get(0).get("id")).longValue();
+        Map<String,Object> mine=service.bank(setId,null);assertEquals(true,((Map<?,?>)mine.get("set")).get("canMarkOwnPass"));
+        PassRequest request=pass(question);request.studentId=teacher.getId();Map<String,Object> receipt=service.markPass(setId,request);
+        assertEquals(teacher.getId(),receipt.get("studentId"));assertEquals(1,receipt.get("updated"));assertEquals(true,receipt.get("passed"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> own=(List<Map<String,Object>>)service.bank(setId,null).get("questions");assertEquals(true,own.get(0).get("passed"));assertEquals(false,bank(setId).get(0).get("passed"));
+        as(student);assertEquals(false,((Map<?,?>)service.bank(setId,null).get("set")).get("canMarkOwnPass"));
+        try{service.markPass(setId,pass(question));fail("Students cannot approve their own answers");}catch(AccessDeniedException expected){}
+        assertEquals(0L,(long)em.createQuery("select count(p) from SpeakingPass p where p.studentId=:student",Long.class).setParameter("student",student.getId()).getSingleResult());
+    }
+    @Test public void unassignedTeacherCanMarkAndClearOwnPassWithoutGainingStudentReview()throws Exception{
+        seed();Long question=((Number)bank(setId).get(0).get("id")).longValue();User staff=user("unassignedTeacher");grantRole(staff,"ROLE_USER");as(staff);
+        SpeakingSet set=em.find(SpeakingSet.class,setId);assertFalse(service.canReviewStudents(set,staff));assertTrue(service.canMarkOwnPass(set,staff));
+        assertEquals(true,((Map<?,?>)service.bank(setId,null).get("set")).get("canMarkOwnPass"));PassRequest own=pass(question);own.studentId=staff.getId();
+        assertEquals(staff.getId(),service.markPass(setId,own).get("studentId"));own.passed=false;assertEquals(false,service.markPass(setId,own).get("passed"));
+        List<SpeakingPass> saved=em.createQuery("select p from SpeakingPass p where p.studentId=:student and p.questionId=:question",SpeakingPass.class).setParameter("student",staff.getId()).setParameter("question",question).getResultList();
+        assertEquals(1,saved.size());assertEquals(false,saved.get(0).getPassed());assertEquals(staff.getId(),saved.get(0).getTeacherId());
+        try{service.markPass(setId,pass(question));fail("Self approval must not grant review of another student");}catch(AccessDeniedException expected){}
+        own.questionIds=Collections.singletonList(Long.MAX_VALUE);try{service.markPass(setId,own);fail("Self approval still requires a question in this set");}catch(AccessDeniedException expected){}
+    }
+    @Test public void ownPassStillRequiresReadingThePrivateBank()throws Exception{
+        seed();SpeakingSet set=em.find(SpeakingSet.class,setId);User owner=user("privateOwner"),staff=user("privateUnassignedTeacher");grantRole(owner,"ROLE_USER");grantRole(staff,"ROLE_USER");set.setOwnerId(owner.getId());set.setClassIdsJson("[]");set.setStudentIdsJson("[]");em.flush();as(staff);
+        assertFalse(service.canMarkOwnPass(set,staff));PassRequest own=new PassRequest();own.studentId=staff.getId();own.passed=true;own.questionIds=Collections.singletonList(Long.MAX_VALUE);
+        try{service.markPass(setId,own);fail("Staff still need bank access before approving their own work");}catch(AccessDeniedException expected){}
+    }
     @Test public void importVariantsPreserveOldPassHistoryAndSetSpecificSamples()throws Exception{
         seed();Long original=((Number)bank(setId).get(1).get("id")).longValue();
         // Find by Part, since import resolves cue cards before the other Parts.
