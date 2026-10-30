@@ -6,11 +6,13 @@ Phần này có thay đổi backend. Chạy toàn bộ `speaking-student-answers
 
 Bản lịch sử phiên bản và sổ ghi chú chung cần chạy thêm **`speaking-answer-history.sql` trước khi thay JAR**, kể cả khi đã chạy hai script Speaking trước đó. Script bổ sung cột sổ ghi chú vào câu trả lời hiện có và bảng lưu phiên bản, dùng cú pháp SQL Server 2008 R2, có thể chạy lại. Cập nhật frontend cùng bản backend. Bản cũ chỉ có giới hạn import/chọn lớp không cần script mới; bản có lịch sử và sổ chung cần script này.
 
+Bổ sung nút import bài của bản thân và quyền giáo viên tự import cần cập nhật JAR cùng frontend, không thay schema. Nếu đã chạy script lịch sử ở bản trước thì đợt bổ sung import bản thân không cần SQL mới.
+
 ## Hai lối vào Speaking
 
 **Speaking Studio** trên Dashboard và trong Test Room mở `/speaking`. Đây là không gian cá nhân cho mọi tài khoản, kể cả giáo viên và admin: chọn bộ, xem/sửa câu trả lời của chính mình, xem dấu Pass và luyện tập. Không có công cụ import, tạo bộ hay chọn học sinh ở màn hình này. Lịch sử luyện tập ở Studio luôn là của tài khoản đang đăng nhập.
 
-**Tạo test Speaking** mở `/create_speaking_test` và tập trung công cụ quản lý bộ đề, import, chọn lớp và View bài của từng học sinh. Quyền tạo/quản lý bộ và xác nhận Pass được giữ như trước; các thao tác import chỉ dành cho admin. Chuyển về Studio luôn trở lại câu trả lời của chính tài khoản, không mang lựa chọn học sinh từ màn hình quản lý sang.
+**Tạo test Speaking** mở `/create_speaking_test` và tập trung công cụ quản lý bộ đề, import, chọn lớp và View bài của từng học sinh. Admin và giáo viên được import câu trả lời của chính mình. Giáo viên chủ nhiệm được import cho học sinh thuộc lớp mình; admin giữ phạm vi quản lý hiện có. Import câu hỏi/sample chung vẫn chỉ dành cho admin. Chuyển về Studio luôn trở lại câu trả lời của chính tài khoản, không mang lựa chọn học sinh từ màn hình quản lý sang.
 
 ## Bộ dùng chung
 
@@ -20,9 +22,15 @@ Giáo viên được xem câu trả lời và xác nhận Pass cho học sinh th
 
 ## Import và sửa câu trả lời
 
-1. Admin mở **Tạo test Speaking**, chọn bộ đề rồi chọn lớp bằng cây lớp/đội trong danh sách học sinh. Cây chỉ hiển thị các lớp có `schoolId = 1` của IELTSRoom, có thể mở/thu gọn nhánh và tìm theo tên hoặc mã. Có thể tìm tên/tài khoản và chuyển trang học sinh trong đúng lớp đã chọn, gồm các lớp con thuộc cùng trường.
+Để admin hoặc giáo viên nhập bài của chính mình, mở **Tạo test Speaking**, chọn bộ rồi bấm **Import bài của tôi**. Tải mẫu ở hộp thoại này, điền cột câu trả lời, đọc đối chiếu và chọn các dòng muốn lưu. Không cần gán tài khoản vào lớp; thông tin trong mẫu và đích lưu luôn là tài khoản đang đăng nhập. Sau khi nhập, mở **Bài Speaking của tôi** để xem trong Studio. Thao tác này không phụ thuộc học sinh đang được View ở danh sách lớp.
+
+API import bản thân lấy người nhận từ tài khoản đăng nhập và kiểm tra quyền giáo viên/admin. Không thể đổi ID trong file hoặc payload để biến thao tác này thành nhập bài cho người khác. Học sinh thường không được dùng công cụ import bản thân.
+
+Import cho lớp của giáo viên dùng API riêng, kiểm tra **Giáo viên chủ nhiệm** (`primaryTeacherId`) đang gán tại lớp. Học sinh phải đang hoạt động và có lớp chính hoặc lớp bổ sung khớp một lớp `schoolId = 1` mà người thao tác là chủ nhiệm; cả giáo viên lẫn học sinh cần được đọc bộ Speaking. Không suy quyền chỉ từ vai trò giáo viên hoặc quyền sở hữu bộ đề. Lớp con chỉ nằm trong phạm vi import khi cũng gán cùng giáo viên chủ nhiệm; không tự lấy quyền từ lớp cha. Tải mẫu, xem trước và xác nhận đều kiểm tra lại quyền hiện tại, nên thay người chủ nhiệm sau khi đọc file cũng không cho phép lưu bằng quyền cũ.
+
+1. Admin hoặc giáo viên chủ nhiệm mở **Tạo test Speaking**, chọn bộ đề rồi chọn lớp bằng cây lớp/đội trong danh sách học sinh. Cây import của giáo viên chỉ hiện lớp mình chủ nhiệm; admin giữ danh sách lớp IELTSRoom. Cây chỉ hiển thị các lớp có `schoolId = 1`, có thể mở/thu gọn nhánh và tìm theo tên hoặc mã. Có thể tìm tên/tài khoản và chuyển trang học sinh trong đúng phạm vi lớp đã chọn.
 2. Bấm **Import** ở dòng của học sinh cần nhập. Tải mẫu của đúng em đó, điền hoặc dán câu trả lời vào cột tương ứng, giữ các mã và thông tin nhận dạng.
-3. Import file để xem trước. Kiểm tra các dòng mới, có thay đổi, giữ nguyên hoặc lỗi. Chỉ chọn những dòng muốn lưu; dòng lỗi không được nhập. Dòng không có trong file không bị xóa. Backend kiểm tra quyền admin trên cả tải mẫu, xem trước và xác nhận; giáo viên/học sinh không thể import bằng cách gọi API trực tiếp.
+3. Import file để xem trước. Kiểm tra các dòng mới, có thay đổi, giữ nguyên hoặc lỗi. Chỉ chọn những dòng muốn lưu; dòng lỗi không được nhập. Dòng không có trong file không bị xóa. Backend kiểm tra quyền admin hoặc đúng giáo viên chủ nhiệm trên cả tải mẫu, xem trước và xác nhận import cho học sinh; đổi ID hoặc nội dung file không mở quyền nhập ngoài lớp.
 4. Việc thay thế một câu trả lời đã có chỉ áp dụng cho các dòng được chọn, kèm ghi chú gắn trong câu trả lời đó. Không tác động sample dùng chung hoặc câu trả lời của học sinh khác.
 5. Mở câu trả lời để sửa nội dung, chữ đậm, nghiêng hoặc gạch chân. Bôi chọn đoạn chữ để thêm note hoặc highlight; bấm vào đoạn có note để mở/đóng, bấm ra ngoài để đóng note.
 
@@ -30,7 +38,7 @@ Bấm **View** ở từng học sinh để xem đúng bài của em đó. Khi c�
 
 Backend cũng kiểm tra `schoolId = 1` khi mở danh sách học sinh; không thể chọn lớp trường khác bằng cách gọi API trực tiếp. Nhánh con thuộc trường khác hoặc thiếu `schoolId` không được nhập vào kết quả của lớp IELTSRoom. Lớp IELTSRoom có cha không nằm trong danh sách hợp lệ vẫn có thể xuất hiện như một gốc độc lập trên cây. Thay đổi bộ chọn cây/phạm vi trường cần cập nhật backend và frontend, không cần thêm SQL.
 
-Quyền sửa trực tiếp không thay đổi: học sinh sửa câu trả lời của mình; giáo viên sửa/xác nhận Pass cho học sinh trong phạm vi phụ trách. Giới hạn admin áp dụng cho công cụ import, không mở quyền giáo viên hoặc học sinh xem bài của người khác.
+Học sinh sửa câu trả lời của mình; giáo viên sửa/xác nhận Pass cho học sinh trong phạm vi phụ trách. Quyền import cho lớp được giới hạn theo chủ nhiệm và học sinh hợp lệ, không mở quyền nhập hoặc xem bài của người khác ngoài phạm vi. Các bộ riêng vẫn yêu cầu cả hai bên được truy cập bộ đó.
 
 Câu trả lời và note được lưu theo học sinh và mã câu hỏi. Sample chung được lưu riêng. Khi cách hỏi được import thành biến thể mới, câu hỏi mới có vùng trả lời riêng, không ghi đè câu trả lời của câu cũ.
 

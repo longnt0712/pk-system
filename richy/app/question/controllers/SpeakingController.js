@@ -12,9 +12,9 @@
             var vm = this, alive = true, bankGeneration = 0, practiceGeneration = 0, rosterGeneration = 0, studentViewGeneration = 0, progressQueue = $q.when(), lastTick = Date.now(), tickCount = 0, audioUrl = null;
             vm.managementMode = !!($state && $state.current && $state.current.data && $state.current.data.speakingManagement === true);
             vm.directorySchoolId = 1;
-            vm.loading = true; vm.error = ''; vm.sets = []; vm.classes = []; vm.students = []; vm.studentCache = {}; vm.groups = []; vm.questions = [];
+            vm.loading = true; vm.error = ''; vm.sets = []; vm.classes = []; vm.importClasses = []; vm.classOptions = []; vm.canImportStudentAnswers = false; vm.students = []; vm.studentCache = {}; vm.groups = []; vm.questions = [];
             vm.part = 1; vm.query = ''; vm.groupPage = 0; vm.recorder = recorder; vm.importRows = []; vm.importPage = 1;
-            vm.adminStudentRows = []; vm.adminPage = 0; vm.adminPageSize = 25; vm.adminTotal = 0; vm.adminStudentQuery = '';
+            vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminPage = 0; vm.adminPageSize = 25; vm.adminTotal = 0; vm.adminStudentQuery = '';
             vm.importLabels = {NEW: 'Chưa import', UNCHANGED: 'Đã import', UPDATE_SAMPLE: 'Sample / liên kết thay đổi', CHANGED: 'Cách hỏi thay đổi', INVALID: 'Cần sửa'};
             vm.newSet = {year: new Date().getFullYear(), number: 1};
             vm.practiceConfig = {parts: {1: true, 2: true, 3: true}, setIds: [], part1Count: 5, part3Count: 4, onlyUnpassed: false};
@@ -55,48 +55,62 @@
                 studentViewGeneration++; bankGeneration++; vm.studentId = null; vm.adminViewedStudent = null; vm.answerQuestionId = null; vm.notebookQuestionId = null;
                 vm.adminViewEmpty = false; vm.questions = []; vm.groups = []; vm.history = []; vm.loadingBank = false;
             }
-            function eligibleAdminClass(value) { var id = Number(value); return Number.isInteger(id) && id > 0 && vm.classes.some(function (item) { return Number(item.id) === id && Number(item.schoolId) === vm.directorySchoolId; }); }
+            vm.canUseClassRoster = function () { return vm.managementMode && (vm.isAdmin === true || vm.canImportStudentAnswers === true); };
+            function eligibleAdminClass(value) { var id = Number(value); return Number.isInteger(id) && id > 0 && vm.classOptions.some(function (item) { return Number(item.id) === id && Number(item.schoolId) === vm.directorySchoolId; }); }
+            function verifiedRosterStudent(id) {
+                var context = vm.adminRosterContext;
+                if (!context || context.actorId !== Number(vm.userId) || context.setId !== Number(vm.selectedSetId) || context.classId !== Number(vm.adminClassId)) { return null; }
+                return vm.adminStudentRows.filter(function (row) { return row.id === Number(id); })[0];
+            }
+            function classImportAllowed(id) {
+                if (!vm.canUseClassRoster() || !eligibleAdminClass(vm.adminClassId)) { return false; }
+                if (vm.isAdmin) { return true; }
+                var row = verifiedRosterStudent(id); return !!row && row.canAccess === true && row.canImport === true;
+            }
+            vm.canImportStudent = function (student) { return !!student && Number.isInteger(student.id) && student.id > 0 && student.canAccess === true && student.canImport !== false && classImportAllowed(student.id); };
+            vm.canImportViewedStudent = function () { return vm.adminViewedStudent && vm.adminViewedStudent.id === Number(vm.studentId) && vm.canImportStudent(vm.adminViewedStudent); };
             function clearInvalidClass() {
-                vm.adminClassId = null; vm.adminStudentRows = []; vm.adminTotal = 0; vm.adminRosterLoading = false;
+                vm.adminClassId = null; vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminTotal = 0; vm.adminRosterLoading = false;
                 vm.answerImportContext = null; if (vm.modal === 'answers') { vm.modal = null; } resetAdminView();
             }
             function rosterMatches(context, generation) {
-                return alive && generation === rosterGeneration && context.setId === Number(vm.selectedSetId)
+                return alive && generation === rosterGeneration && context.actorId === Number(vm.userId) && context.setId === Number(vm.selectedSetId)
                     && context.classId === Number(vm.adminClassId) && eligibleAdminClass(context.classId) && context.query === String(vm.adminStudentQuery || '').trim();
             }
             vm.loadAdminStudents = function (page) {
-                var generation = ++rosterGeneration, context = {setId: Number(vm.selectedSetId), classId: Number(vm.adminClassId), query: String(vm.adminStudentQuery || '').trim(), page: Number(page) || 0};
+                var generation = ++rosterGeneration, context = {actorId: Number(vm.userId), setId: Number(vm.selectedSetId), classId: Number(vm.adminClassId), query: String(vm.adminStudentQuery || '').trim(), page: Number(page) || 0};
                 vm.adminRosterError = ''; vm.adminPage = Math.max(0, Math.floor(context.page)); context.page = vm.adminPage;
-                if (!vm.managementMode || !vm.isAdmin || !Number.isInteger(context.setId) || context.setId <= 0 || !eligibleAdminClass(context.classId)) {
+                if (!vm.canUseClassRoster() || !Number.isInteger(context.setId) || context.setId <= 0 || !eligibleAdminClass(context.classId)) {
                     if (vm.adminClassId && !eligibleAdminClass(context.classId)) { clearInvalidClass(); }
-                    vm.adminStudentRows = []; vm.adminTotal = 0; vm.adminRosterLoading = false; return $q.when();
+                    vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminTotal = 0; vm.adminRosterLoading = false; return $q.when();
                 }
-                vm.adminRosterLoading = true; vm.adminStudentRows = [];
-                if (typeof api.adminStudents !== 'function') { vm.adminRosterLoading = false; vm.adminRosterError = 'Cần cập nhật backend để mở danh sách học sinh theo lớp.'; return $q.when(); }
-                return api.adminStudents(context.setId, context.classId, context.query, context.page, vm.adminPageSize).then(function (data) {
+                vm.adminRosterLoading = true; vm.adminStudentRows = []; vm.adminRosterContext = null;
+                var loadRoster = vm.isAdmin ? api.adminStudents : api.classStudents;
+                if (typeof loadRoster !== 'function') { vm.adminRosterLoading = false; vm.adminRosterError = 'Cần cập nhật backend để mở danh sách học sinh theo lớp.'; return $q.when(); }
+                return loadRoster(context.setId, context.classId, context.query, context.page, vm.adminPageSize).then(function (data) {
                     if (!rosterMatches(context, generation)) { return; }
                     var seen = {};
                     if (!data || Number(data.setId) !== context.setId || Number(data.classId) !== context.classId || Number(data.page) !== context.page
                             || Number(data.pageSize) !== vm.adminPageSize || !Number.isInteger(data.total) || data.total < 0 || !Array.isArray(data.students)
                             || data.students.length > vm.adminPageSize || data.students.some(function (student) {
-                                if (!student || !Number.isInteger(student.id) || student.id <= 0 || typeof student.canAccess !== 'boolean' || seen[student.id]) { return true; }
+                                if (!student || !Number.isInteger(student.id) || student.id <= 0 || typeof student.canAccess !== 'boolean' || (!vm.isAdmin && typeof student.canImport !== 'boolean') || seen[student.id]) { return true; }
                                 seen[student.id] = true; return false;
                             })) { throw new Error('Danh sách học sinh không khớp lớp hoặc trang đang chọn. Hãy tải lại.'); }
-                    vm.adminStudentRows = data.students; vm.adminTotal = data.total;
+                    vm.adminStudentRows = data.students; vm.adminRosterContext = context; vm.adminTotal = data.total;
                     data.students.forEach(function (student) { vm.studentCache[student.id] = student; });
                 }).catch(function (error) { if (rosterMatches(context, generation)) { vm.adminRosterError = message(error); vm.adminStudentRows = []; vm.adminTotal = 0; } })
                     .finally(function () { if (rosterMatches(context, generation)) { vm.adminRosterLoading = false; } });
             };
             vm.changeAdminClass = function () {
-                if (!vm.managementMode || !vm.isAdmin) { return $q.when(); } resetAdminView(); vm.adminStudentQuery = ''; vm.adminPage = 0;
+                if (!vm.canUseClassRoster()) { return $q.when(); } resetAdminView(); vm.adminStudentQuery = ''; vm.adminPage = 0;
                 if (!eligibleAdminClass(vm.adminClassId)) { vm.adminClassId = null; }
                 vm.answerImportContext = null; if (vm.modal === 'answers') { vm.modal = null; }
                 vm.loadBank(); return vm.loadAdminStudents(0);
             };
-            vm.searchAdminStudents = function () { if (!vm.managementMode || !vm.isAdmin) { return $q.when(); } resetAdminView(); vm.loadBank(); return vm.loadAdminStudents(0); };
+            vm.searchAdminStudents = function () { if (!vm.canUseClassRoster()) { return $q.when(); } resetAdminView(); vm.loadBank(); return vm.loadAdminStudents(0); };
             vm.backToAdminClass = function () { if (!vm.managementMode) { return $q.when(); } resetAdminView(); return vm.loadBank(); };
             vm.viewAdminStudent = function (student) {
-                if (!vm.managementMode || !vm.isAdmin || !eligibleAdminClass(vm.adminClassId) || !student || student.canAccess !== true || vm.busy || vm.adminRosterLoading) { return $q.when(); }
+                if (!vm.canUseClassRoster() || !eligibleAdminClass(vm.adminClassId) || !student || student.canAccess !== true || (!vm.isAdmin && !verifiedRosterStudent(student.id)) || vm.busy || vm.adminRosterLoading) { return $q.when(); }
                 var generation = ++studentViewGeneration, context = {setId: Number(vm.selectedSetId), classId: Number(vm.adminClassId), studentId: student.id};
                 vm.studentCache[student.id] = student; vm.studentId = student.id; vm.adminViewedStudent = student;
                 vm.adminViewEmpty = !(Number(student.answerCount) > 0); vm.query = ''; vm.answerQuestionId = null;
@@ -140,6 +154,7 @@
             };
             vm.loadBank = function () {
                 if (!vm.managementMode) { vm.studentId = null; vm.adminViewedStudent = null; }
+                else if (!vm.isAdmin && vm.adminViewedStudent && vm.adminViewedStudent.id !== Number(vm.studentId)) { vm.adminViewedStudent = null; }
                 var generation = ++bankGeneration, id = Number(vm.selectedSetId), student = vm.studentId || null;
                 vm.answerQuestionId = null; vm.notebookQuestionId = null;
                 vm.selectedSet = vm.sets.filter(function (set) { return set.id === id; })[0]; if (!vm.selectedSet) { vm.questions = []; vm.groups = []; return $q.when(); }
@@ -151,7 +166,7 @@
                     vm.rebuildGroups(); vm.loadHistory(); return true;
                 }).catch(function (error) { if (alive && generation === bankGeneration) { fail(error); } return false; }).finally(function () { if (alive && generation === bankGeneration) { vm.loadingBank = false; } });
             };
-            vm.selectSet = function () { resetAdminView(); rosterGeneration++; vm.adminStudentRows = []; vm.adminTotal = 0; vm.adminRosterLoading = false; vm.answerImportContext = null; if (vm.modal === 'answers') { vm.modal = null; } vm.loadBank().then(function () { return vm.isAdmin ? vm.loadAdminStudents(0) : vm.loadStudents(''); }); $location.search('set', vm.selectedSetId); };
+            vm.selectSet = function () { resetAdminView(); rosterGeneration++; vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminTotal = 0; vm.adminRosterLoading = false; vm.answerImportContext = null; if (vm.modal === 'answers') { vm.modal = null; } vm.loadBank().then(function () { return vm.loadAdminStudents(0); }).then(function () { return vm.loadStudents(''); }); $location.search('set', vm.selectedSetId); };
             vm.changeYear = function () { var available = vm.availableSets(); if (!available.some(function (s) { return s.id === vm.selectedSetId; })) { vm.selectedSetId = available.length ? available[0].id : null; vm.selectSet(); } };
             vm.markPass = function (questions, value) {
                 if (!vm.canReviewStudents() || !vm.studentId || vm.passSaving || vm.loadingBank) { return; }
@@ -164,7 +179,8 @@
             };
             vm.openModal = function (name) {
                 if (name === 'practice' ? vm.managementMode : (!vm.managementMode || !vm.canManage)) { return; }
-                if ((name === 'import' || name === 'answers') && !vm.isAdmin) { return; }
+                if (name === 'import' && !vm.isAdmin) { return; }
+                if (name === 'answers' && !currentImportContext(vm.answerImportContext)) { return; }
                 if ((name === 'import' || name === 'share') && !owner()) { return; }
                 vm.modal = name; vm.error = ''; if (name === 'share') { vm.shareForm = {classIds: (vm.selectedSet.classIds || []).slice(), studentIds: (vm.selectedSet.studentIds || []).slice()}; vm.loadStudents(''); } if (name === 'import' && vm.preview) { setPreview(vm.preview); }
             };
@@ -208,48 +224,59 @@
                 $window.document.body.appendChild(anchor); anchor.click(); anchor.parentNode.removeChild(anchor); $window.setTimeout(function () { $window.URL.revokeObjectURL(url); }, 1000);
             }
             vm.exportSet = function () { if (!vm.managementMode || !owner()) { return $q.when(); } vm.busy = true; return api.exportSet(vm.selectedSetId).then(function (data) { download(data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'speaking-' + vm.selectedSet.year + '-bo-' + vm.selectedSet.number + '.xlsx'); }).catch(fail).finally(function () { vm.busy = false; }); };
+            vm.canImportOwnAnswers = function () { return vm.managementMode && vm.canManage === true; };
             function importTarget(student) {
-                if (!vm.managementMode || !vm.isAdmin || !vm.selectedSetId || !eligibleAdminClass(vm.adminClassId)) { return null; }
-                if (!student && vm.modal === 'answers' && vm.answerImportContext) { return vm.answerImportContext; }
+                if (!vm.managementMode || !vm.selectedSetId) { return null; }
+                if (!student && vm.modal === 'answers') { return currentImportContext(vm.answerImportContext) ? vm.answerImportContext : null; }
+                if (!vm.canUseClassRoster() || !eligibleAdminClass(vm.adminClassId)) { return null; }
                 student = student || vm.adminViewedStudent;
-                if (!student || !Number.isInteger(student.id) || student.id <= 0 || student.canAccess !== true) { return null; }
-                return {setId: Number(vm.selectedSetId), classId: Number(vm.adminClassId), studentId: student.id, label: student.name + ' (' + student.username + ')'};
+                if (!vm.canImportStudent(student)) { return null; }
+                return {kind: 'CLASS', actorId: Number(vm.userId), setId: Number(vm.selectedSetId), classId: Number(vm.adminClassId), studentId: student.id, label: student.name + ' (' + student.username + ')'};
             }
-            function currentImportContext(context) { return context && eligibleAdminClass(context.classId) && context.classId === Number(vm.adminClassId) && context.setId === Number(vm.selectedSetId); }
+            function currentImportContext(context) {
+                if (!context || !vm.managementMode || context.actorId !== Number(vm.userId) || context.setId !== Number(vm.selectedSetId)) { return false; }
+                if (context.kind === 'SELF') { return vm.canImportOwnAnswers() && context.studentId === Number(vm.userId) && context.classId === null; }
+                return context.kind === 'CLASS' && eligibleAdminClass(context.classId) && context.classId === Number(vm.adminClassId) && classImportAllowed(context.studentId);
+            }
             vm.downloadAnswerTemplate = function (student) {
                 var context = importTarget(student); if (!context || vm.busy) { return $q.when(); }
                 var id = context.setId; student = context.studentId; vm.busy = true; vm.error = '';
-                return api.studentAnswerTemplate(id, student).then(function (data) { download(data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'speaking-cau-tra-loi-' + student + '-bo-' + id + '.xlsx'); }).catch(fail).finally(function () { vm.busy = false; });
+                return (context.kind === 'SELF' ? api.ownAnswerTemplate(id) : vm.isAdmin ? api.studentAnswerTemplate(id, student) : api.classAnswerTemplate(id, student)).then(function (data) { download(data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'speaking-cau-tra-loi-' + student + '-bo-' + id + '.xlsx'); }).catch(fail).finally(function () { vm.busy = false; });
             };
             vm.openAnswerImport = function (student) {
                 var context = importTarget(student); if (!context || vm.busy) { return; }
                 vm.answerImportContext = context;
                 vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportPage = 1; vm.openModal('answers');
             };
+            vm.openOwnAnswerImport = function () {
+                if (!vm.canImportOwnAnswers() || vm.busy || vm.loadingBank || !vm.selectedSet || Number(vm.selectedSet.id) !== Number(vm.selectedSetId) || !Number.isInteger(Number(vm.userId)) || Number(vm.userId) <= 0) { return; }
+                vm.answerImportContext = {kind: 'SELF', actorId: Number(vm.userId), setId: Number(vm.selectedSetId), classId: null, studentId: Number(vm.userId), label: 'Câu trả lời của tôi'};
+                vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportPage = 1; vm.openModal('answers');
+            };
             vm.chooseAnswerFile = function (file) {
-                if (!vm.managementMode || !vm.isAdmin || !file) { return; } if (!/\.xlsx$/i.test(file.name) || file.size > 8 * 1024 * 1024) { vm.error = 'Chọn file .xlsx nhỏ hơn 8 MB.'; return; }
+                if (!currentImportContext(vm.answerImportContext) || vm.modal !== 'answers' || !file) { return; } if (!/\.xlsx$/i.test(file.name) || file.size > 8 * 1024 * 1024) { vm.error = 'Chọn file .xlsx nhỏ hơn 8 MB.'; return; }
                 vm.answerImportFile = file; vm.answerImportRows = []; vm.answerImportSelected = 0;
             };
             vm.countAnswerImports = function () { vm.answerImportSelected = vm.answerImportRows.filter(function (row) { return row.selected && (row.status === 'NEW' || row.status === 'CHANGED'); }).length; };
             vm.previewAnswers = function () {
-                if (!vm.managementMode || !vm.isAdmin || !vm.answerImportFile || vm.busy || !currentImportContext(vm.answerImportContext)) { return; } var context = vm.answerImportContext; vm.busy = true; vm.error = '';
-                return api.previewStudentAnswers(context.setId, context.studentId, vm.answerImportFile).then(function (data) {
+                if (!vm.answerImportFile || vm.busy || !currentImportContext(vm.answerImportContext)) { return; } var context = vm.answerImportContext; vm.busy = true; vm.error = '';
+                return (context.kind === 'SELF' ? api.previewOwnAnswers(context.setId, vm.answerImportFile) : vm.isAdmin ? api.previewStudentAnswers(context.setId, context.studentId, vm.answerImportFile) : api.previewClassAnswers(context.setId, context.studentId, vm.answerImportFile)).then(function (data) {
                     if (!data || Number(data.setId) !== context.setId || Number(data.studentId) !== context.studentId || !Array.isArray(data.rows)) { throw new Error('File đối chiếu không khớp bộ đề hoặc học sinh. Chưa nhập dữ liệu.'); }
                     if (!alive || context !== vm.answerImportContext || !currentImportContext(context) || vm.modal !== 'answers') { return; }
                     vm.answerImportRows = data.rows.map(function (row) { row.selected = row.status === 'NEW'; return row; }); vm.answerImportPage = 1; vm.countAnswerImports();
                 }).catch(fail).finally(function () { vm.busy = false; });
             };
             vm.confirmAnswers = function () {
-                if (!vm.managementMode || !vm.isAdmin || vm.busy || !currentImportContext(vm.answerImportContext)) { return; } var context = vm.answerImportContext, rows = vm.answerImportRows.filter(function (row) { return row.selected && (row.status === 'NEW' || row.status === 'CHANGED'); }).map(function (row) { return {questionId: row.questionId, html: row.html, notes: [], revision: row.revision}; });
+                if (vm.busy || !currentImportContext(vm.answerImportContext)) { return; } var context = vm.answerImportContext, rows = vm.answerImportRows.filter(function (row) { return row.selected && (row.status === 'NEW' || row.status === 'CHANGED'); }).map(function (row) { return {questionId: row.questionId, html: row.html, notes: [], revision: row.revision}; });
                 if (!rows.length) { vm.error = 'Chọn câu trả lời cần nhập; câu đã có chỉ ghi đè khi được tích chọn.'; return; } vm.busy = true; vm.error = '';
-                return api.confirmStudentAnswers({setId: context.setId, studentId: context.studentId, rows: rows}).then(function (ack) {
+                return (context.kind === 'SELF' ? api.confirmOwnAnswers({setId: context.setId, rows: rows}) : vm.isAdmin ? api.confirmStudentAnswers({setId: context.setId, studentId: context.studentId, rows: rows}) : api.confirmClassAnswers({setId: context.setId, studentId: context.studentId, rows: rows})).then(function (ack) {
                     if (!ack || Number(ack.setId) !== context.setId || Number(ack.studentId) !== context.studentId || ack.saved !== rows.length || !Array.isArray(ack.answers) || ack.answers.length !== rows.length) { throw new Error('Chưa xác nhận đủ câu trả lời đã nhập. Giữ file và đối chiếu lại trước khi thử tiếp.'); }
                     var expected = rows.map(function (row) { return String(row.questionId); }).sort().join(',');
                     if (ack.answers.map(function (row) { return String(row.questionId); }).sort().join(',') !== expected || ack.answers.some(function (row) { return Number(row.setId) !== context.setId || Number(row.studentId) !== context.studentId || !(Number(row.revision) > 0); })) { throw new Error('Biên nhận nhập câu trả lời không khớp học sinh hoặc câu hỏi. Hãy đối chiếu lại.'); }
                     if (alive && context === vm.answerImportContext && currentImportContext(context)) {
-                        vm.notice = 'Đã lưu ' + ack.saved + ' câu trả lời riêng của ' + context.label + '.'; if (vm.modal === 'answers') { vm.modal = null; }
+                        vm.notice = context.kind === 'SELF' ? 'Đã lưu ' + ack.saved + ' câu trả lời của bạn.' : 'Đã lưu ' + ack.saved + ' câu trả lời riêng của ' + context.label + '.'; if (vm.modal === 'answers') { vm.modal = null; }
                         if (Number(vm.studentId) === context.studentId) { vm.answerQuestionId = null; }
-                        if (Number(vm.selectedSetId) === context.setId && Number(vm.adminClassId) === context.classId) { vm.loadAdminStudents(vm.adminPage); }
+                        if (context.kind === 'CLASS' && Number(vm.selectedSetId) === context.setId && Number(vm.adminClassId) === context.classId) { vm.loadAdminStudents(vm.adminPage); }
                     }
                 }).catch(fail).finally(function () { vm.busy = false; });
             };
@@ -323,15 +350,17 @@
             function refresh(preferred) {
                 return api.bootstrap().then(function (data) {
                     if (!alive) { return; } vm.userId = data.userId; vm.canManage = data.canManage; vm.isAdmin = data.isAdmin === true; vm.sets = data.sets || [];
-                    vm.classes = (data.classes || []).filter(function (item) { return item && Number(item.schoolId) === vm.directorySchoolId && Number.isInteger(Number(item.id)) && Number(item.id) > 0; });
-                    if (vm.adminClassId && !eligibleAdminClass(vm.adminClassId)) { rosterGeneration++; clearInvalidClass(); }
+                    function eligibleClassOption(item) { return item && Number(item.schoolId) === vm.directorySchoolId && Number.isInteger(Number(item.id)) && Number(item.id) > 0; }
+                    vm.classes = (data.classes || []).filter(eligibleClassOption); vm.importClasses = (data.importClasses || []).filter(eligibleClassOption);
+                    vm.canImportStudentAnswers = data.canImportStudentAnswers === true; vm.classOptions = vm.isAdmin ? vm.classes : vm.importClasses;
+                    if (vm.adminClassId && (!vm.canUseClassRoster() || !eligibleAdminClass(vm.adminClassId))) { rosterGeneration++; clearInvalidClass(); }
                     if (vm.managementMode && !vm.canManage) { vm.sets = []; vm.error = 'Chỉ giáo viên và admin được quản lý Speaking. Vào Speaking Studio để mở bài của bạn.'; return; }
                     vm.years = []; vm.sets.forEach(function (set) { if (vm.years.indexOf(set.year) < 0) { vm.years.push(set.year); } });
                     var saved; try { saved = JSON.parse($window.localStorage.getItem(preferenceKey()) || '{}'); } catch (ignore) { saved = {}; }
                     vm.part = Number($location.search().part || saved.part) || 1;
                     vm.selectedSetId = Number(preferred || $location.search().set || saved.setId) || (vm.sets[0] && vm.sets[0].id);
                     if (!vm.sets.some(function (set) { return set.id === vm.selectedSetId; })) { vm.selectedSetId = vm.sets.length ? vm.sets[0].id : null; }
-                    recorder.loadPending(); return vm.loadBank().then(function () { return vm.isAdmin ? vm.loadAdminStudents(0) : vm.loadStudents(''); });
+                    recorder.loadPending(); return vm.loadBank().then(function () { return vm.loadAdminStudents(0); }).then(function () { return vm.loadStudents(''); });
                 });
             }
             var timer = $interval(function () { updateClock(); if (++tickCount % 5 === 0) { backupPractice(); saveProgress(false).catch(angular.noop); } }, 1000);

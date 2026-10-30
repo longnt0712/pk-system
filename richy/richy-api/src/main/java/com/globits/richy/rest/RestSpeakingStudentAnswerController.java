@@ -37,6 +37,31 @@ public class RestSpeakingStudentAnswerController {
     public ResponseEntity<Map<String,Object>> notebook(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId,@RequestParam("questionId")Long questionId,@RequestParam(value="revision",required=false)Long revision){return response(service.notebook(setId,studentId,questionId,revision),HttpStatus.OK);}
     @RequestMapping(value="/notebook",method=RequestMethod.PUT)
     public ResponseEntity<Map<String,Object>> saveNotebook(@RequestBody NotebookRequest request){return response(service.saveNotebook(request),HttpStatus.OK);}
+    // These routes derive the recipient from authentication. The service checks
+    // real Speaking teacher/admin permissions. CLASS routes separately check
+    // primaryTeacherId; the legacy student-import routes remain admin-only.
+    @RequestMapping(value="/self/template",method=RequestMethod.GET)
+    public ResponseEntity<byte[]> selfTemplate(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long suppliedStudentId)throws IOException{
+        byte[] bytes=service.selfTemplate(setId,suppliedStudentId);HttpHeaders headers=new HttpHeaders();headers.set("Cache-Control","private, no-store");headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));headers.set("Content-Disposition","attachment; filename=\"speaking-my-answers.xlsx\"");return new ResponseEntity<byte[]>(bytes,headers,HttpStatus.OK);
+    }
+    @RequestMapping(value="/self/preview",method=RequestMethod.POST)
+    public ResponseEntity<Map<String,Object>> selfPreview(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long suppliedStudentId,@RequestParam("file")MultipartFile file)throws IOException{
+        if(file==null||file.isEmpty()||file.getSize()>8L*1024*1024)throw new IllegalArgumentException("Chọn file .xlsx nhỏ hơn 8 MB.");return response(service.selfPreview(setId,suppliedStudentId,file.getBytes()),HttpStatus.OK);
+    }
+    @RequestMapping(value="/self/confirm",method=RequestMethod.POST)
+    public ResponseEntity<Map<String,Object>> selfConfirm(@RequestBody ImportRequest request){return response(service.selfConfirm(request),HttpStatus.OK);}
+    @RequestMapping(value="/class/students",method=RequestMethod.GET)
+    public ResponseEntity<Map<String,Object>> classStudents(@RequestParam("setId")Long setId,@RequestParam("classId")Long classId,@RequestParam(value="query",defaultValue="")String query,@RequestParam(value="page",defaultValue="0")int page,@RequestParam(value="pageSize",defaultValue="25")int pageSize){return response(service.classStudents(setId,classId,query,page,pageSize),HttpStatus.OK);}
+    @RequestMapping(value="/class/template",method=RequestMethod.GET)
+    public ResponseEntity<byte[]> classTemplate(@RequestParam("setId")Long setId,@RequestParam("studentId")Long studentId)throws IOException{
+        byte[] bytes=service.classTemplate(setId,studentId);HttpHeaders headers=new HttpHeaders();headers.set("Cache-Control","private, no-store");headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));headers.set("Content-Disposition","attachment; filename=\"speaking-class-answers.xlsx\"");return new ResponseEntity<byte[]>(bytes,headers,HttpStatus.OK);
+    }
+    @RequestMapping(value="/class/preview",method=RequestMethod.POST)
+    public ResponseEntity<Map<String,Object>> classPreview(@RequestParam("setId")Long setId,@RequestParam("studentId")Long studentId,@RequestParam("file")MultipartFile file)throws IOException{
+        if(file==null||file.isEmpty()||file.getSize()>8L*1024*1024)throw new IllegalArgumentException("Chọn file .xlsx nhỏ hơn 8 MB.");return response(service.classPreview(setId,studentId,file.getBytes()),HttpStatus.OK);
+    }
+    @RequestMapping(value="/class/confirm",method=RequestMethod.POST)
+    public ResponseEntity<Map<String,Object>> classConfirm(@RequestBody ImportRequest request){return response(service.classConfirm(request),HttpStatus.OK);}
     @RequestMapping(value="/template",method=RequestMethod.GET)
     @Secured("ROLE_ADMIN")
     public ResponseEntity<byte[]> template(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId)throws IOException{

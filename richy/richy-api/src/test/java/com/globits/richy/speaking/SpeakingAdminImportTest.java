@@ -10,11 +10,12 @@ import com.globits.richy.service.impl.*;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
 import com.globits.security.repository.UserRepository;
-import java.io.File;
+import java.io.*;
 import java.util.*;
 import javax.persistence.*;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.annotation.Secured;
@@ -85,6 +86,171 @@ public class SpeakingAdminImportTest {
     @SuppressWarnings("unchecked") private List<Map<String,Object>> classOptions(){return(List<Map<String,Object>>)speaking.bootstrap().get("classes");}
     private Map<String,Object> option(List<Map<String,Object>> rows,Long id){for(Map<String,Object> row:rows)if(id.equals(row.get("id")))return row;throw new AssertionError("Missing class "+id);}
     private Set<Long> ids(List<Map<String,Object>> rows){Set<Long> result=new HashSet<Long>();for(Map<String,Object> row:rows)result.add(((Number)row.get("id")).longValue());return result;}
+    private void viewer(User user){Role role=new Role();role.setName("ROLE_VIEWER");em.persist(role);user.getRoles().add(role);em.flush();}
+    private byte[] ownWorkbook(String response)throws Exception{
+        try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(answers.selfTemplate(set.getId(),null)));ByteArrayOutputStream out=new ByteArrayOutputStream()){
+            book.getSheet("CAU_TRA_LOI").getRow(1).getCell(5).setCellValue(response);book.write(out);return out.toByteArray();
+        }
+    }
+    private WriteRequest ownRow(Long questionId,String html,long revision){WriteRequest row=new WriteRequest();row.questionId=questionId;row.html=html;row.revision=revision;return row;}
+    private ImportRequest ownImport(WriteRequest...rows){ImportRequest request=new ImportRequest();request.setId=set.getId();request.rows=Arrays.asList(rows);return request;}
+    private ImportRequest classImport(User student,WriteRequest...rows){ImportRequest request=ownImport(rows);request.studentId=student.getId();return request;}
+    private byte[] classWorkbook(User student,String response)throws Exception{
+        try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(answers.classTemplate(set.getId(),student.getId())));ByteArrayOutputStream out=new ByteArrayOutputStream()){
+            book.getSheet("CAU_TRA_LOI").getRow(1).getCell(5).setCellValue(response);book.write(out);return out.toByteArray();
+        }
+    }
+    @SuppressWarnings("unchecked") private List<Map<String,Object>> importRows(Map<String,Object> value){return(List<Map<String,Object>>)value.get("rows");}
+    @SuppressWarnings("unchecked") private List<Map<String,Object>> answerRows(Map<String,Object> value){return(List<Map<String,Object>>)value.get("answers");}
+    @Test public void adminAndClassAssignedViewerTeacherCanImportOwnAnswersWithoutStudentEnrollment()throws Exception {
+        viewer(teacher);assertTrue(speaking.teacher(teacher));assertTrue(teacher.getRoles().stream().noneMatch(role->"ROLE_USER".equals(role.getName())));
+        for(User actor:Arrays.asList(admin,teacher)) {
+            as(actor);assertTrue(actor.getEnrollmentClassIds().isEmpty());
+            byte[] bytes=ownWorkbook("My own response");
+            try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(bytes))){
+                assertEquals(String.valueOf(actor.getId()),book.getSheet("THONG_TIN").getRow(2).getCell(1).getStringCellValue());
+                assertEquals(actor.getUsername(),book.getSheet("THONG_TIN").getRow(3).getCell(1).getStringCellValue());
+            }
+            Map<String,Object> preview=answers.selfPreview(set.getId(),null,bytes);assertEquals(actor.getId(),preview.get("studentId"));
+            Map<String,Object> row=importRows(preview).get(0);assertEquals("NEW",row.get("status"));
+            ImportRequest request=ownImport(ownRow(cue.getId(),(String)row.get("html"),((Number)row.get("revision")).longValue()));
+            Map<String,Object> ack=answers.selfConfirm(request);assertEquals(actor.getId(),ack.get("studentId"));assertEquals(1,ack.get("saved"));assertEquals(actor.getId(),answerRows(ack).get(0).get("studentId"));
+            assertEquals("My own response",answerRows(answers.list(set.getId(),null,cue.getId())).get(0).get("html"));
+        }
+        assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a where a.studentId=:student",Long.class).setParameter("student",collectionOnly.getId()).getSingleResult());
+    }
+    @Test public void selfImportRejectsForeignTargetsRowsAndWorkbookMetadataBeforeSaving()throws Exception {
+        for(User actor:Arrays.asList(admin,teacher)) {
+            as(actor);
+            try{answers.selfTemplate(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+            try{answers.selfPreview(set.getId(),collectionOnly.getId(),new byte[]{1});fail();}catch(AccessDeniedException expected){}
+            ImportRequest forged=ownImport(ownRow(cue.getId(),"Do not save",0));forged.studentId=collectionOnly.getId();
+            try{answers.selfConfirm(forged);fail();}catch(AccessDeniedException expected){}
+            forged.studentId=null;forged.rows.get(0).studentId=collectionOnly.getId();
+            try{answers.selfConfirm(forged);fail();}catch(IllegalArgumentException expected){}
+            forged.rows.get(0).studentId=null;forged.rows.get(0).setId=set.getId()+100000;
+            try{answers.selfConfirm(forged);fail();}catch(IllegalArgumentException expected){}
+            byte[] own=ownWorkbook("Mine");
+            for(int identityRow:new int[]{1,2,3})try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(own));ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                book.getSheet("THONG_TIN").getRow(identityRow).getCell(1).setCellValue(identityRow==1?String.valueOf(set.getId()+100000):identityRow==2?String.valueOf(collectionOnly.getId()):collectionOnly.getUsername());book.write(out);
+                try{answers.selfPreview(set.getId(),null,out.toByteArray());fail();}catch(IllegalArgumentException expected){}
+            }
+        }
+        assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a",Long.class).getSingleResult());
+    }
+    @Test public void ordinaryStudentsCannotUseAnySelfImportRouteButCanStillEditTheirAnswers()throws Exception {
+        viewer(collectionOnly);as(collectionOnly);assertFalse(speaking.teacher(collectionOnly));
+        try{answers.selfTemplate(set.getId(),null);fail();}catch(AccessDeniedException expected){}
+        try{answers.selfPreview(set.getId(),null,new byte[]{1});fail();}catch(AccessDeniedException expected){}
+        try{answers.selfConfirm(null);fail();}catch(AccessDeniedException expected){}
+        WriteRequest write=ownRow(cue.getId(),"I can edit manually",0);write.setId=set.getId();write.studentId=collectionOnly.getId();assertEquals(collectionOnly.getId(),answers.save(write).get("studentId"));
+    }
+    @Test public void teacherSelfImportPreflightsAllRevisionsAndRetriesWithoutDuplicateHistory()throws Exception {
+        as(teacher);answers.selfConfirm(ownImport(ownRow(cue.getId(),"Original",0),ownRow(followup.getId(),"Existing",0)));
+        ImportRequest stale=ownImport(ownRow(cue.getId(),"Do not partly save",1),ownRow(followup.getId(),"Stale",0));
+        try{answers.selfConfirm(stale);fail();}catch(SpeakingStudentAnswerService.Conflict expected){}
+        assertEquals("Original",answerRows(answers.list(set.getId(),null,cue.getId())).get(0).get("html"));
+        ImportRequest good=ownImport(ownRow(cue.getId(),"Updated",1),ownRow(followup.getId(),"Updated followup",1));good.studentId=teacher.getId();
+        Map<String,Object> ack=answers.selfConfirm(good);assertEquals(teacher.getId(),ack.get("studentId"));assertEquals(2,ack.get("saved"));
+        long history=em.createQuery("select count(v) from SpeakingStudentAnswerVersion v",Long.class).getSingleResult();
+        assertEquals(2,answers.selfConfirm(good).get("saved"));assertEquals(history,(long)em.createQuery("select count(v) from SpeakingStudentAnswerVersion v",Long.class).getSingleResult());
+        assertEquals(2L,answerRows(answers.list(set.getId(),null,cue.getId())).get(0).get("revision"));
+    }
+    @Test public void selfImportPreservesNotebookSamplesAndPassAndRecordsImportCheckpoint()throws Exception {
+        as(teacher);NotebookRequest paper=new NotebookRequest();paper.setId=set.getId();paper.studentId=teacher.getId();paper.questionId=cue.getId();paper.revision=0L;
+        paper.document=SpeakingServiceImpl.map("text","My paper notes","orientation","portrait","pattern","lined","strokes",new ArrayList<Object>());answers.saveNotebook(paper);
+        Map<String,Object> row=importRows(answers.selfPreview(set.getId(),null,ownWorkbook("New own text"))).get(0);
+        ImportRequest request=ownImport(ownRow(cue.getId(),(String)row.get("html"),((Number)row.get("revision")).longValue()));answers.selfConfirm(request);
+        assertEquals(paper.document,answers.notebook(set.getId(),null,cue.getId(),null).get("document"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> history=(List<Map<String,Object>>)answers.history(set.getId(),null,cue.getId()).get("versions");assertEquals("IMPORT",history.get(0).get("source"));
+        assertEquals(0L,(long)em.createQuery("select count(p) from SpeakingPass p",Long.class).getSingleResult());assertNull(em.find(SpeakingQuestion.class,cue.getId()).getSample());
+    }
+    @Test public void primaryTeacherIdAloneEnablesOwnClassImportAndViewForBothStudentMembershipForms()throws Exception {
+        parent.getTeachers().clear();parent.setPrimaryTeacherId(teacher.getId());child.setPrimaryTeacherId(teacher.getId());viewer(teacher);as(teacher);
+        assertTrue(speaking.teacher(teacher));assertEquals(true,speaking.bootstrap().get("canManage"));assertEquals(true,speaking.bootstrap().get("canImportStudentAnswers"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> importClasses=(List<Map<String,Object>>)speaking.bootstrap().get("importClasses");assertEquals(new HashSet<Long>(Arrays.asList(parent.getId(),child.getId())),ids(importClasses));
+        for(User target:Arrays.asList(collectionOnly,legacyOnly)) {
+            Map<String,Object> preview=answers.classPreview(set.getId(),target.getId(),classWorkbook(target,"Primary teacher import"));assertEquals(target.getId(),preview.get("studentId"));
+            Map<String,Object> row=importRows(preview).get(0);Map<String,Object> ack=answers.classConfirm(classImport(target,ownRow(cue.getId(),(String)row.get("html"),((Number)row.get("revision")).longValue())));
+            assertEquals(target.getId(),ack.get("studentId"));assertEquals("Primary teacher import",answerRows(answers.list(set.getId(),target.getId(),cue.getId())).get(0).get("html"));
+        }
+        for(Map<String,Object> row:students(answers.classStudents(set.getId(),parent.getId(),"",0,25)))assertEquals(true,row.get("canImport"));
+    }
+    @Test public void secondaryTeachersAndOrdinaryStudentsCannotImportClassAnswers()throws Exception {
+        User primary=user("Primary");parent.setPrimaryTeacherId(primary.getId());child.setPrimaryTeacherId(primary.getId());as(teacher);
+        assertTrue(speaking.teacher(teacher));assertTrue(speaking.canReviewStudents(set,teacher));assertEquals(collectionOnly.getId(),speaking.reviewableStudent(set,collectionOnly.getId()).getId());
+        @SuppressWarnings("unchecked") List<Map<String,Object>> options=(List<Map<String,Object>>)speaking.bootstrap().get("importClasses");assertTrue(options.isEmpty());assertEquals(false,speaking.bootstrap().get("canImportStudentAnswers"));
+        for(User actor:Arrays.asList(teacher,collectionOnly)) {
+            as(actor);try{answers.classStudents(set.getId(),parent.getId(),"",0,25);fail();}catch(AccessDeniedException expected){}
+            try{answers.classTemplate(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+            try{answers.classPreview(set.getId(),collectionOnly.getId(),new byte[]{1});fail();}catch(AccessDeniedException expected){}
+            try{answers.classConfirm(classImport(collectionOnly,ownRow(cue.getId(),"Forbidden",0)));fail();}catch(AccessDeniedException expected){}
+        }
+        assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a",Long.class).getSingleResult());
+    }
+    @Test public void classImportRequiresActiveDirectMembershipInSchoolOneNotAnAncestorOrForeignBridge()throws Exception {
+        parent.setPrimaryTeacherId(teacher.getId());EnrolmentClass foreign=clazz("Foreign",parent,2),unknown=clazz("Unknown",parent,null);foreign.setPrimaryTeacherId(teacher.getId());unknown.setPrimaryTeacherId(teacher.getId());
+        User foreignStudent=user("Foreign",foreign.getId()),unknownStudent=user("Unknown",unknown.getId());as(teacher);
+        for(User target:Arrays.asList(collectionOnly,legacyOnly,outside,inactive,foreignStudent,unknownStudent))try{answers.classTemplate(set.getId(),target.getId());fail();}catch(AccessDeniedException expected){}
+        // A direct extra class is sufficient; no Person association is required.
+        assertNotNull(answers.classTemplate(set.getId(),duplicate.getId()));
+        EnrolmentClass ownedChild=clazz("Owned child",parent);ownedChild.setPrimaryTeacherId(teacher.getId());User valid=user("Valid child",ownedChild.getId());
+        EnrolmentClass bridge=clazz("Other primary bridge",parent);bridge.setPrimaryTeacherId(admin.getId());EnrolmentClass behind=clazz("Owned behind bridge",bridge);behind.setPrimaryTeacherId(teacher.getId());User independent=user("Independent",behind.getId());em.flush();
+        assertEquals(new HashSet<Long>(Arrays.asList(duplicate.getId(),valid.getId())),ids(students(answers.classStudents(set.getId(),parent.getId(),"",0,25))));
+        assertEquals(Collections.singleton(independent.getId()),ids(students(answers.classStudents(set.getId(),behind.getId(),"",0,25))));
+        assertNotNull(answers.classTemplate(set.getId(),independent.getId()));
+        try{answers.classStudents(set.getId(),child.getId(),"",0,25);fail();}catch(AccessDeniedException expected){}
+        try{answers.classStudents(set.getId(),foreign.getId(),"",0,25);fail();}catch(AccessDeniedException expected){}
+        try{answers.classStudents(set.getId(),parent.getId(),"",-1,25);fail();}catch(IllegalArgumentException expected){}
+    }
+    @Test public void classImportRechecksPrimaryAssignmentAndStudentMembershipAfterPreview()throws Exception {
+        parent.setPrimaryTeacherId(teacher.getId());child.setPrimaryTeacherId(teacher.getId());as(teacher);
+        Map<String,Object> row=importRows(answers.classPreview(set.getId(),collectionOnly.getId(),classWorkbook(collectionOnly,"Pending"))).get(0);
+        ImportRequest request=classImport(collectionOnly,ownRow(cue.getId(),(String)row.get("html"),((Number)row.get("revision")).longValue()));
+        child.setPrimaryTeacherId(admin.getId());em.flush();try{answers.classConfirm(request);fail();}catch(AccessDeniedException expected){}
+        child.setPrimaryTeacherId(teacher.getId());collectionOnly.getEnrollmentClassIds().clear();collectionOnly.getEnrollmentClassIds().add(otherClass.getId());em.flush();
+        try{answers.classConfirm(request);fail();}catch(AccessDeniedException expected){}
+        assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a",Long.class).getSingleResult());
+    }
+    @Test public void classImportCannotSmuggleAnotherStudentThroughWorkbookOrNestedRows()throws Exception {
+        byte[] foreign;
+        as(admin);try(XSSFWorkbook book=new XSSFWorkbook(new ByteArrayInputStream(answers.template(set.getId(),outside.getId())));ByteArrayOutputStream out=new ByteArrayOutputStream()){
+            book.getSheet("CAU_TRA_LOI").getRow(1).getCell(5).setCellValue("Someone else's answer");book.write(out);foreign=out.toByteArray();
+        }
+        parent.setPrimaryTeacherId(teacher.getId());child.setPrimaryTeacherId(teacher.getId());as(teacher);
+        try{answers.classPreview(set.getId(),collectionOnly.getId(),foreign);fail();}catch(IllegalArgumentException expected){}
+        ImportRequest forged=classImport(collectionOnly,ownRow(cue.getId(),"Forged",0));forged.rows.get(0).studentId=outside.getId();
+        try{answers.classConfirm(forged);fail();}catch(IllegalArgumentException expected){}
+        forged.rows.get(0).studentId=null;forged.rows.get(0).setId=set.getId()+100000;
+        try{answers.classConfirm(forged);fail();}catch(IllegalArgumentException expected){}
+        assertEquals(0L,(long)em.createQuery("select count(a) from SpeakingStudentAnswer a",Long.class).getSingleResult());
+    }
+    @Test public void primaryIdOnlyDoesNotInheritChildViewRightsWhileLegacyTeacherReviewStaysUnchanged()throws Exception {
+        parent.getTeachers().clear();parent.setPrimaryTeacherId(teacher.getId());child.setPrimaryTeacherId(admin.getId());viewer(teacher);as(teacher);
+        assertTrue(speaking.teacher(teacher));assertTrue(speaking.canReviewStudents(set,teacher));
+        try{speaking.bank(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+        try{answers.list(set.getId(),collectionOnly.getId(),cue.getId());fail();}catch(AccessDeniedException expected){}
+        assertTrue(speaking.students(set.getId(),collectionOnly.getUsername()).isEmpty());
+        assertNotNull(speaking.bank(set.getId(),duplicate.getId()));
+        assertEquals(Collections.singleton(parent.getId()),ids(classOptions()));
+        // Existing teachers-set assignment retains the previous ancestor review
+        // authority, but never grants the new primary-only import permission.
+        parent.getTeachers().add(teacher);em.flush();assertNotNull(speaking.bank(set.getId(),collectionOnly.getId()));
+        try{answers.classTemplate(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+    }
+    @Test public void privateBankAccessAndPrimaryClassScopeAreBothRequiredWithoutLeakingOtherLearners()throws Exception {
+        parent.setPrimaryTeacherId(teacher.getId());child.setPrimaryTeacherId(teacher.getId());set.setOwnerId(outside.getId());cue.setOwnerId(outside.getId());followup.setOwnerId(outside.getId());
+        set.setStudentIdsJson("["+teacher.getId()+","+collectionOnly.getId()+","+outside.getId()+"]");em.flush();as(teacher);
+        assertTrue(speaking.canReviewStudents(set,teacher));assertNotNull(answers.classTemplate(set.getId(),collectionOnly.getId()));assertEquals(collectionOnly.getId(),speaking.reviewableStudent(set,collectionOnly.getId()).getId());
+        try{answers.list(set.getId(),outside.getId(),cue.getId());fail();}catch(AccessDeniedException expected){}
+        try{answers.classTemplate(set.getId(),outside.getId());fail();}catch(AccessDeniedException expected){}
+        assertTrue(speaking.students(set.getId(),outside.getUsername()).isEmpty());
+        set.setStudentIdsJson("["+teacher.getId()+"]");em.flush();try{answers.classTemplate(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+        set.setStudentIdsJson("["+collectionOnly.getId()+"]");em.flush();try{answers.classTemplate(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
+        // Owning the question bank does not permit importing a learner outside the teacher's primary classes.
+        set.setOwnerId(teacher.getId());cue.setOwnerId(teacher.getId());followup.setOwnerId(teacher.getId());set.setStudentIdsJson("["+outside.getId()+"]");em.flush();
+        assertEquals(outside.getId(),speaking.reviewableStudent(set,outside.getId()).getId());try{answers.classTemplate(set.getId(),outside.getId());fail();}catch(AccessDeniedException expected){}
+    }
     @Test public void rosterUsesCurrentDirectoryNameAndSearchInsteadOfStaleDisplayName() {
         Person person=legacyOnly.getPerson();person.setLastName("Thái");person.setFirstName("Hà");person.setDisplayName("Minh Châu | Grade 11");em.flush();
         Map<String,Object> row=students(speaking.adminStudents(set.getId(),parent.getId(),legacyOnly.getUsername(),0,25)).get(0);
@@ -148,7 +314,7 @@ public class SpeakingAdminImportTest {
         assertEquals(2L,row.get("answerCount"));assertEquals(cue.getId(),row.get("firstAnswerQuestionId"));assertEquals(2,row.get("firstAnswerPart"));assertEquals(true,row.get("canAccess"));
         row=students(speaking.adminStudents(set.getId(),parent.getId(),legacyOnly.getUsername(),0,25)).get(0);assertEquals(0L,row.get("answerCount"));assertNull(row.get("firstAnswerQuestionId"));assertNull(row.get("firstAnswerPart"));
     }
-    @Test public void nonAdminsCannotImportEvenIntoTheirOwnAnswersButCanStillEditDirectly()throws Exception {
+    @Test public void studentImportRoutesRemainAdminOnlyAndManualEditingRemainsAvailable()throws Exception {
         for(User actor:Arrays.asList(collectionOnly,teacher)) {
             as(actor);try{answers.template(set.getId(),collectionOnly.getId());fail();}catch(AccessDeniedException expected){}
             try{answers.preview(set.getId(),collectionOnly.getId(),new byte[]{1});fail();}catch(AccessDeniedException expected){}
@@ -171,6 +337,13 @@ public class SpeakingAdminImportTest {
         assertArrayEquals(new String[]{"ROLE_ADMIN"},RestSpeakingStudentAnswerController.class.getMethod("template",Long.class,Long.class).getAnnotation(Secured.class).value());
         assertArrayEquals(new String[]{"ROLE_ADMIN"},RestSpeakingStudentAnswerController.class.getMethod("preview",Long.class,Long.class,MultipartFile.class).getAnnotation(Secured.class).value());
         assertArrayEquals(new String[]{"ROLE_ADMIN"},RestSpeakingStudentAnswerController.class.getMethod("confirm",ImportRequest.class).getAnnotation(Secured.class).value());
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("selfTemplate",Long.class,Long.class).getAnnotation(Secured.class));
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("selfPreview",Long.class,Long.class,MultipartFile.class).getAnnotation(Secured.class));
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("selfConfirm",ImportRequest.class).getAnnotation(Secured.class));
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("classTemplate",Long.class,Long.class).getAnnotation(Secured.class));
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("classPreview",Long.class,Long.class,MultipartFile.class).getAnnotation(Secured.class));
+        assertNull(RestSpeakingStudentAnswerController.class.getMethod("classConfirm",ImportRequest.class).getAnnotation(Secured.class));
+        assertTrue(Arrays.asList(RestSpeakingStudentAnswerController.class.getAnnotation(Secured.class).value()).contains("ROLE_VIEWER"));
         assertNull(RestSpeakingStudentAnswerController.class.getMethod("save",WriteRequest.class).getAnnotation(Secured.class));
     }
 }

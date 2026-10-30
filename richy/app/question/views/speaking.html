@@ -15,12 +15,13 @@
             <span class="sp-badge" ng-if="vm.selectedSet.sharedForEveryone"><i class="fa fa-globe"></i> Bộ dùng chung</span>
             <button class="sp-button" ng-if="vm.managementMode && vm.selectedSet.canManage && !vm.selectedSet.sharedForEveryone" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
             <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
+            <button class="sp-button" ng-if="vm.canImportOwnAnswers() && vm.selectedSet" ng-click="vm.openOwnAnswerImport()" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import bài của tôi</button>
             <button class="sp-button sp-primary" ng-if="!vm.managementMode" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
         </section>
-        <section class="sp-panel sp-admin-students" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet" aria-label="Câu trả lời Speaking theo lớp">
-            <div class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">QUẢN LÝ CÂU TRẢ LỜI</span><h2>Học sinh theo lớp</h2><p class="sp-muted">Chọn lớp, import cho từng em hoặc bấm View để xem câu trả lời riêng. Chỉ admin được import.</p></div></div>
+        <section class="sp-panel sp-admin-students" ng-if="vm.canUseClassRoster() && vm.selectedSet" aria-label="Câu trả lời Speaking theo lớp">
+            <div class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">QUẢN LÝ CÂU TRẢ LỜI</span><h2>Học sinh theo lớp</h2><p class="sp-muted">Chọn lớp, import cho từng em hoặc bấm View để xem câu trả lời riêng. Giáo viên chỉ import cho học sinh thuộc lớp mình chủ nhiệm; admin quản lý toàn bộ.</p></div></div>
             <div class="sp-toolbar sp-admin-filters">
-                <div class="sp-grow sp-class-field"><label>Lớp học</label><class-tree-picker classes="vm.classes" ng-model="vm.adminClassId" school-id="vm.directorySchoolId" disabled="vm.busy" loading="vm.loading" on-change="vm.changeAdminClass()" placeholder="Chọn lớp học…" label="Chọn lớp học IELTSRoom"></class-tree-picker></div>
+                <div class="sp-grow sp-class-field"><label>Lớp học</label><class-tree-picker classes="vm.classOptions" ng-model="vm.adminClassId" school-id="vm.directorySchoolId" disabled="vm.busy" loading="vm.loading" on-change="vm.changeAdminClass()" placeholder="Chọn lớp học…" label="Chọn lớp học IELTSRoom"></class-tree-picker></div>
                 <label class="sp-grow">Tìm học sinh<input type="search" placeholder="Tên hoặc tài khoản trong lớp" ng-model="vm.adminStudentQuery" ng-change="vm.searchAdminStudents()" ng-model-options="{debounce:300}" ng-disabled="!vm.adminClassId || vm.busy"></label>
                 <button type="button" class="sp-button" ng-click="vm.loadAdminStudents(vm.adminPage)" ng-disabled="!vm.adminClassId || vm.adminRosterLoading || vm.busy"><i class="fa fa-refresh"></i> Làm mới</button>
             </div>
@@ -31,7 +32,7 @@
                 <table class="sp-admin-table"><thead><tr><th>Học sinh</th><th>Tài khoản</th><th>Câu đã lưu</th><th>Thao tác</th></tr></thead><tbody>
                     <tr ng-repeat="student in vm.adminStudentRows track by student.id" ng-class="{'is-viewed':vm.studentId===student.id}">
                         <td><strong>{{student.name}}</strong><small ng-if="!student.canAccess">Chưa được truy cập bộ riêng này; hãy chia sẻ bộ trước.</small></td><td>{{student.username}}</td><td><span class="sp-badge">{{student.answerCount || 0}} câu</span></td>
-                        <td><div class="sp-admin-row-actions"><button type="button" class="sp-button" ng-click="vm.openAnswerImport(student)" ng-disabled="!student.canAccess || vm.busy"><i class="fa fa-file-excel-o"></i> Import</button><button type="button" class="sp-button sp-primary" ng-click="vm.viewAdminStudent(student)" ng-disabled="!student.canAccess || vm.busy || vm.loadingBank"><i class="fa fa-eye"></i> View</button></div></td>
+                        <td><div class="sp-admin-row-actions"><button type="button" class="sp-button" ng-click="vm.openAnswerImport(student)" ng-disabled="!vm.canImportStudent(student) || vm.busy"><i class="fa fa-file-excel-o"></i> Import</button><button type="button" class="sp-button sp-primary" ng-click="vm.viewAdminStudent(student)" ng-disabled="!student.canAccess || vm.busy || vm.loadingBank"><i class="fa fa-eye"></i> View</button></div></td>
                     </tr>
                     <tr ng-if="!vm.adminStudentRows.length"><td colspan="4" class="sp-muted">Không có học sinh phù hợp trong lớp này.</td></tr>
                 </tbody></table>
@@ -49,9 +50,9 @@
                 <span>Hoàn thành luyện tập không tự đánh dấu Pass.</span>
             </div>
             <div class="sp-answer-context sp-toolbar" ng-if="vm.canOpenAnswer()">
-                <div class="sp-grow"><strong><span ng-if="vm.managementMode">Đang xem: </span>{{vm.answerStudentLabel()}}</strong><small>Câu trả lời và ghi chú riêng, không thay đổi sample chung.</small><small ng-if="vm.managementMode && vm.isAdmin && vm.adminViewEmpty">Chưa có câu trả lời đã lưu. Bạn vẫn có thể mở từng câu bên dưới để xem và sửa.</small></div>
-                <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin" ng-click="vm.openAnswerImport(vm.adminViewedStudent)" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import cho em này</button>
-                <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin" ng-click="vm.backToAdminClass()" ng-disabled="vm.busy"><i class="fa fa-arrow-left"></i> Danh sách lớp</button>
+                <div class="sp-grow"><strong><span ng-if="vm.managementMode">Đang xem: </span>{{vm.answerStudentLabel()}}</strong><small>Câu trả lời và ghi chú riêng, không thay đổi sample chung.</small><small ng-if="vm.managementMode && vm.adminViewedStudent && vm.adminViewEmpty">Chưa có câu trả lời đã lưu. Bạn vẫn có thể mở từng câu bên dưới để xem và sửa.</small></div>
+                <button class="sp-button" ng-if="vm.canImportViewedStudent()" ng-click="vm.openAnswerImport(vm.adminViewedStudent)" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import cho em này</button>
+                <button class="sp-button" ng-if="vm.canUseClassRoster() && vm.adminViewedStudent" ng-click="vm.backToAdminClass()" ng-disabled="vm.busy"><i class="fa fa-arrow-left"></i> Danh sách lớp</button>
             </div>
             <p ng-if="vm.loadingBank" role="status">Đang tải câu hỏi…</p>
             <p class="sp-muted" ng-if="!vm.loadingBank && !vm.groups.length">Chưa có câu phù hợp ở Part {{vm.part}}.</p>
@@ -117,9 +118,10 @@
                         <nav class="sp-toolbar sp-pagination" ng-if="vm.importRows.length>50"><button class="sp-button" ng-disabled="vm.importPage<=1" ng-click="vm.importPage=vm.importPage-1">← Trước</button><span>Trang {{vm.importPage}}</span><button class="sp-button" ng-disabled="vm.importPage*50>=vm.importRows.length" ng-click="vm.importPage=vm.importPage+1">Sau →</button></nav>
                     </div>
                 </div>
-                <div ng-if="vm.modal==='answers' && vm.isAdmin">
+                <div ng-if="vm.modal==='answers' && (vm.canUseClassRoster() || (vm.canImportOwnAnswers() && vm.answerImportContext.kind==='SELF'))">
                     <p><strong>{{vm.answerImportContext.label}}</strong> · {{vm.selectedSet.name}}</p>
-                    <p>Tải mẫu câu trả lời cho đúng học sinh và bộ đề, rồi điền cột câu trả lời. Giữ nguyên mã câu và thông tin học sinh trong file.</p>
+                    <p>{{vm.answerImportContext.kind==='SELF' ? 'File này thuộc tài khoản đang đăng nhập của bạn. Không cần chọn lớp hoặc học sinh.' : 'Tải mẫu câu trả lời cho đúng học sinh và bộ đề.'}} Điền cột câu trả lời, giữ nguyên mã câu và thông tin tài khoản trong file.</p>
+                    <a class="sp-button" ng-if="vm.answerImportContext.kind==='SELF'" ui-sref="application.speaking({set:vm.selectedSetId,part:vm.part,practice:null})"><i class="fa fa-user"></i> Xem bài Speaking của tôi</a>
                     <button type="button" class="sp-button" ng-click="vm.downloadAnswerTemplate()" ng-disabled="vm.busy"><i class="fa fa-download"></i> Tải mẫu cho {{vm.answerImportContext.label}}</button>
                     <label class="sp-file">File câu trả lời .xlsx (tối đa 8 MB)<input type="file" accept=".xlsx" speaking-file="vm.chooseAnswerFile(file)" ng-disabled="vm.busy"></label>
                     <div class="sp-toolbar"><span class="sp-grow">{{vm.answerImportFile.name}}</span><button class="sp-button sp-primary" ng-disabled="!vm.answerImportFile || vm.busy" ng-click="vm.previewAnswers()">{{vm.busy ? 'Đang đối chiếu…' : 'Đọc và đối chiếu'}}</button></div>

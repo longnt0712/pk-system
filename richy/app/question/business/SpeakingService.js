@@ -41,7 +41,20 @@
                 var body = new FormData(); body.append('setId', setId); body.append('studentId', studentId); body.append('file', file);
                 return $http.post(base + '/student-answers/preview', body, {timeout: 120000, transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
             },
-            confirmStudentAnswers: function (data) { return post('/student-answers/confirm', data); }
+            confirmStudentAnswers: function (data) { return post('/student-answers/confirm', data); },
+            ownAnswerTemplate: function (setId) { return $http.get(base + '/student-answers/self/template', {params: {setId: setId}, responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
+            previewOwnAnswers: function (setId, file) {
+                var body = new FormData(); body.append('setId', setId); body.append('file', file);
+                return $http.post(base + '/student-answers/self/preview', body, {timeout: 120000, transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
+            },
+            confirmOwnAnswers: function (data) { return post('/student-answers/self/confirm', data); },
+            classStudents: function (setId, classId, query, page, pageSize) { return get('/student-answers/class/students', {setId: setId, classId: classId, query: query || '', page: page || 0, pageSize: pageSize || 25}); },
+            classAnswerTemplate: function (setId, studentId) { return $http.get(base + '/student-answers/class/template', {params: {setId: setId, studentId: studentId}, responseType: 'arraybuffer', timeout: 60000}).then(function (r) { return r.data; }); },
+            previewClassAnswers: function (setId, studentId, file) {
+                var body = new FormData(); body.append('setId', setId); body.append('studentId', studentId); body.append('file', file);
+                return $http.post(base + '/student-answers/class/preview', body, {timeout: 120000, transformRequest: angular.identity, headers: {'Content-Type': undefined}}).then(function (r) { return r.data; });
+            },
+            confirmClassAnswers: function (data) { return post('/student-answers/class/confirm', data); }
         };
     }]);
 })();
