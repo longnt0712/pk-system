@@ -21,7 +21,6 @@
                 ng-click="pet.selectPet(item.key)" ng-disabled="pet.selectingPet || item.locked">
             <span class="learning-pet-picker-art" ng-class="{'pet-lightning-sparkles': item.key === 'SPARKLING_LIGHTNING'}">
                 <img ng-src="{{item.image}}" alt="" aria-hidden="true">
-                <img class="learning-pet-super-saiyan__aura" ng-if="item.superSaiyan" ng-src="{{pet.gokuSuperSaiyanAuraImage}}" alt="" aria-hidden="true">
                 <b ng-if="item.isNew">MỚI</b>
             </span>
             <strong>{{item.name}}</strong>

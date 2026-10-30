@@ -56,7 +56,7 @@
     </section>
     <button type="button" class="learning-pet-message" ng-if="!pet.panelOpen && !pet.minimized && pet.message && pet.notificationCount > 0" ng-click="pet.openPanel($event)">{{pet.message}}</button>
     <div class="learning-pet-stage">
-        <button type="button" class="learning-pet-character" ng-class="{'is-goku-ssj4': pet.petForm === 'goku-super-saiyan-4'}" ng-click="pet.togglePanel($event)" ng-attr-aria-grabbed="{{pet.dragging}}" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở hoặc kéo trợ lý Mầm Học'}}">
+        <button type="button" class="learning-pet-character" ng-class="{'is-goku-saiyan': pet.petForm === 'goku-super-saiyan' || pet.petForm === 'goku-super-saiyan-2' || pet.petForm === 'goku-super-saiyan-4'}" ng-click="pet.togglePanel($event)" ng-attr-aria-grabbed="{{pet.dragging}}" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở hoặc kéo trợ lý Mầm Học'}}">
             <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched' && pet.spriteReady" ng-style="pet.spriteStyle"></span>
             <img class="learning-pet-hatched-fallback" ng-if="pet.petForm === 'hatched' && !pet.spriteReady"
                  ng-src="{{pet.hatchedFallbackImage}}" draggable="false" alt="" aria-hidden="true" />
@@ -74,9 +74,8 @@
                     'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE' || pet.selectedPetKey === 'CUTE_PIKACHU' || pet.selectedPetKey === 'CUTE_PERRY'
                  }"
                  ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched' && pet.petForm !== 'sparkling-lightning' && pet.petForm !== 'goku-super-saiyan' && pet.petForm !== 'goku-super-saiyan-2' && pet.petForm !== 'goku-super-saiyan-4'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
-            <span class="learning-pet-super-saiyan" ng-class="{'learning-pet-super-saiyan--four': pet.petForm === 'goku-super-saiyan-4'}" ng-if="pet.petForm === 'goku-super-saiyan' || pet.petForm === 'goku-super-saiyan-2' || pet.petForm === 'goku-super-saiyan-4'" aria-hidden="true">
+            <span class="learning-pet-super-saiyan" ng-if="pet.petForm === 'goku-super-saiyan' || pet.petForm === 'goku-super-saiyan-2' || pet.petForm === 'goku-super-saiyan-4'" aria-hidden="true">
                 <img class="learning-pet-super-saiyan__body" ng-src="{{pet.petImage}}" draggable="false" alt="" />
-                <img class="learning-pet-super-saiyan__aura" ng-if="pet.petForm === 'goku-super-saiyan'" ng-src="{{pet.gokuSuperSaiyanAuraImage}}" draggable="false" alt="" />
             </span>
             <span class="learning-pet-lightning pet-lightning-sparkles" ng-if="pet.petForm === 'sparkling-lightning'" aria-hidden="true">
                 <img ng-src="{{pet.petImage}}" draggable="false" alt="" />

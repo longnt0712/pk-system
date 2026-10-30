@@ -1,4 +1,4 @@
-/* Render the user's unchanged artwork through native SVG masks and energy layers. */
+/* Render the user's unchanged artwork; only SSJ2 adds animated lightning. */
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -41,12 +41,7 @@ async function whiteBackgroundClip(file) {
     return runs.join('');
 }
 
-const defs = '<defs><filter id="arc-glow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="3"/></filter><filter id="core-soft" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><feGaussianBlur stdDeviation="6"/></filter></defs>';
-let goldenAura;
-function haloArtwork(level) {
-    const placement = level === 23 ? ' transform="rotate(12 512 512)"' : '';
-    return `<g id="aura-envelope"${placement}><image href="data:image/png;base64,${goldenAura}" width="1024" height="1024"/></g>`;
-}
+const defs = '<defs><filter id="arc-glow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="3"/></filter></defs>';
 const arcs = [
     // Filled ribbons vary in thickness and finish in sharp, tapered tips. A few
     // broad angular junctions join thin curved filaments like the anime reference.
@@ -66,37 +61,23 @@ function arcLayer(index, staticArt = false) {
     return `<g class="arc arc-${index}"${opacity}><path d="${arcs[index]}" fill="#c4edff" stroke="#bce7ff" stroke-width="5" filter="url(#arc-glow)"/>`
         + `<path d="${arcs[index]}" fill="white" stroke="#e1f6ff" stroke-width=".8" stroke-linejoin="miter"/></g>`;
 }
-const animation = '<style>.aura{transform-box:view-box;transform-origin:512px 930px;animation:ssj2-energy 1.5s ease-in-out infinite}.arc-0{animation:ssj2-arc-a .92s steps(1,end) infinite}.arc-1{animation:ssj2-arc-b 1.12s steps(1,end) infinite}'
-    + '@keyframes ssj2-energy{0%,100%{opacity:.72;transform:scale(1)}50%{opacity:1;transform:scale(1.02,1.025)}}'
+const animation = '<style>.arc-0{animation:ssj2-arc-a .92s steps(1,end) infinite}.arc-1{animation:ssj2-arc-b 1.12s steps(1,end) infinite}'
     + '@keyframes ssj2-arc-a{0%,18%,39%,61%,84%{opacity:1}9%,31%,48%,72%,94%,100%{opacity:0}}'
     + '@keyframes ssj2-arc-b{0%,23%,48%,71%,94%{opacity:0}11%,34%,58%,83%,100%{opacity:1}}'
-    + '@media(prefers-reduced-motion:reduce){.aura,.arc{animation:none!important}.arc{opacity:.65}}</style>';
+    + '@media(prefers-reduced-motion:reduce){.arc{animation:none!important;opacity:.65}}</style>';
 
 async function buildStage(level, filename, clip, transform, title) {
     const original = fs.readFileSync(path.join(directory, filename));
     const metadata = await sharp(original).metadata();
     const art = 'data:image/png;base64,' + original.toString('base64');
-    const auraFile = 'energy-closed-level-24.png';
-    goldenAura = (await sharp(path.join(directory, auraFile))
-        .resize(920, 920, {fit: 'contain', background: {r: 0, g: 0, b: 0, alpha: 0}})
-        .extend({top: 52, bottom: 52, left: 52, right: 52, background: {r: 0, g: 0, b: 0, alpha: 0}})
-        .ensureAlpha().png().toBuffer()).toString('base64');
-    const clipDefs = `<defs><clipPath id="character"><path d="${clip}"/></clipPath><path id="body-silhouette" d="${clip}" transform="${transform}" vector-effect="non-scaling-stroke"/><mask id="aura-only" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><rect width="1024" height="1024" fill="white"/><use href="#body-silhouette" fill="black" stroke="black" stroke-width="4"/></mask></defs>`;
+    const clipDefs = `<defs><clipPath id="character"><path d="${clip}"/></clipPath></defs>`;
     const character = `<g id="character-art" transform="${transform}"><image href="${art}" width="${metadata.width}" height="${metadata.height}" clip-path="url(#character)"/></g>`;
-    // The filled core and exclusion mask stay fixed to Goku while only the outer
-    // energy moves. This prevents dark gaps or energy painted over his outline.
-    const core = '<g id="aura-core" filter="url(#core-soft)" opacity=".25"><use href="#body-silhouette" fill="#eed45e" stroke="#eed45e" stroke-width="36" stroke-linejoin="round"/></g>';
-    const aura = `<g mask="url(#aura-only)"><g class="aura">${haloArtwork(level)}</g></g>`;
-    const description = '<desc id="desc">Ảnh Goku gốc với hào quang vàng ôm theo toàn bộ mép tóc, tay và chân.</desc>';
+    const description = '<desc id="desc">Giữ nguyên ảnh Goku, không có hào quang vàng. Siêu Saiyan cấp 2 giữ sét trắng xanh.</desc>';
     const content = svgStart + `<title id="title">${title}</title>` + description + defs + clipDefs;
-    const still = content + core + aura + character + (level === 24 ? arcLayer(0, true) + arcLayer(1, true) : '') + '</svg>';
-    const svg = level === 24 ? content + animation + core + aura + character + arcLayer(0) + arcLayer(1) + '</svg>' : still;
+    const still = content + character + (level === 24 ? arcLayer(0, true) + arcLayer(1, true) : '') + '</svg>';
+    const svg = level === 24 ? content + animation + character + arcLayer(0) + arcLayer(1) + '</svg>' : still;
     fs.writeFileSync(path.join(directory, `pet-level-${level}.svg`), svg);
     fs.writeFileSync(path.join(directory, `pet-level-${level}.png`), await sharp(Buffer.from(still)).ensureAlpha().png().toBuffer());
-    const auraOnly = content + aura + '</svg>';
-    const auraName = level === 23 ? 'super-saiyan-aura' : 'super-saiyan-2-aura';
-    fs.writeFileSync(path.join(directory, auraName + '.svg'), auraOnly);
-    fs.writeFileSync(path.join(directory, auraName + '.png'), await sharp(Buffer.from(auraOnly)).ensureAlpha().png().toBuffer());
 }
 
 async function main() {
@@ -113,6 +94,6 @@ async function main() {
         await buildStage(24, 'reference-super-saiyan-2-original.png', stage2,
             'translate(250 98) scale(.7)', 'Son Goku Siêu Saiyan cấp 2 — level 24');
     }
-    console.log('Rendered Goku level ' + (requestedLevel || '23 and 24') + ' with the original artwork and energy layers.');
+    console.log('Rendered Goku level ' + (requestedLevel || '23 and 24') + ' without golden aura; level24 retains lightning.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

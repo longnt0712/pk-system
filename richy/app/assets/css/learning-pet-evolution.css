@@ -65,19 +65,18 @@
     animation: learning-pet-pikachu-lightning 7.2s ease-in-out infinite;
 }
 
-/* Keep Goku still while the energy follows his silhouette and shimmers. */
+/* Saiyan pets share the larger artwork and click target; SSJ2 animates its own lightning. */
 .learning-pet-super-saiyan {
     position: relative;
     display: block;
-    width: 104px;
-    height: 108px;
+    width: 114px;
+    height: 118px;
     isolation: isolate;
     pointer-events: none;
     user-select: none;
 }
 
-.learning-pet-character.is-goku-ssj4,
-.learning-pet-super-saiyan.learning-pet-super-saiyan--four {
+.learning-pet-character.is-goku-saiyan {
     width: 114px;
     height: 118px;
 }
@@ -89,51 +88,6 @@
     object-fit: contain;
     image-rendering: auto;
     pointer-events: none;
-}
-
-img[src*="goku-kid/pet-level-23.png"] {
-    animation: pet-super-saiyan-glow 1.8s ease-in-out infinite;
-}
-
-.learning-pet-super-saiyan img.learning-pet-super-saiyan__aura,
-.learning-pet-picker-art img.learning-pet-super-saiyan__aura {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    image-rendering: auto;
-    pointer-events: none;
-    transform-origin: 50% 85%;
-    opacity: .48;
-    animation: pet-super-saiyan-aura 1.3s ease-in-out infinite;
-}
-
-@keyframes pet-super-saiyan-glow {
-    0%, 100% { filter: drop-shadow(0 0 2px #ffc92899); }
-    48% { filter: drop-shadow(0 0 5px #ffcb28cc) drop-shadow(0 0 10px #ffec6e77); }
-    72% { filter: drop-shadow(0 0 3px #ffcf3699); }
-}
-
-@keyframes pet-super-saiyan-aura {
-    0%, 100% { opacity: .28; filter: brightness(1.05); }
-    34% { opacity: .7; filter: brightness(1.2) drop-shadow(0 0 3px #ffe65daa); }
-    57% { opacity: .42; filter: brightness(1.08); }
-    79% { opacity: .64; filter: brightness(1.16); }
-}
-
-.learning-pet-shell.is-dragging .learning-pet-super-saiyan img {
-    animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    img[src*="goku-kid/pet-level-23.png"],
-    .learning-pet-super-saiyan img.learning-pet-super-saiyan__aura,
-    .learning-pet-picker-art img.learning-pet-super-saiyan__aura {
-        animation: none !important;
-    }
-    .learning-pet-super-saiyan img.learning-pet-super-saiyan__aura,
-    .learning-pet-picker-art img.learning-pet-super-saiyan__aura { opacity: .22; }
 }
 
 /* The level-20 collectible keeps the Lụm Trứng bolt and adds quiet gold glints. */
