@@ -435,6 +435,110 @@ html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page:not(.idp-contrast
 html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page.idp-contrast-white-black :is(.table, .table > thead > tr > th, .table > tbody > tr > td, .form-control) { color: #fff !important; border-color: #6b6b6b !important; background: #050505 !important; }
 html.ieltsroom-halloween.ieltsroom-halloween .idp-reading-page.idp-contrast-yellow-black :is(.table, .table > thead > tr > th, .table > tbody > tr > td, .form-control) { color: #ffe600 !important; border-color: #6b6b6b !important; background: #050505 !important; }
 
+/* Speaking has its own lazy-loaded controls rather than Bootstrap surfaces. */
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page {
+    --edu-ink: #fff0dc;
+    --sp-ink: #fff0dc;
+    --sp-muted: #cfb9ce;
+    --sp-line: #795572;
+    --sp-purple: #f4aa56;
+    --sp-surface: #302139;
+    --sp-soft: #402b49;
+    --sp-field: #24192f;
+    color: var(--sp-ink) !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-hero {
+    color: var(--sp-ink) !important;
+    border: 1px solid #936047;
+    background: radial-gradient(ellipse at top right, #ad592733, transparent 60%), linear-gradient(115deg, #33203f, #57305b) #33203f !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-panel, .sp-modal, .sp-answer-editor) {
+    color: var(--sp-ink) !important;
+    border-color: var(--sp-line) !important;
+    background: var(--sp-surface) !important;
+    box-shadow: 0 8px 28px #09051133 !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-topic, .sp-question, .sp-history, .sp-import-row, .sp-admin-table-scroll) { border-color: var(--sp-line) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-topic > header, .sp-answer-editor > header, .sp-answer-note > header) { background: transparent !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-eyebrow, summary, .sp-empty > i) { color: #ffc780 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page label { color: var(--sp-ink) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-muted, small, .sp-version-preview h3) { color: var(--sp-muted) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(input:not([type="checkbox"]):not([type="radio"]), select, .class-tree-trigger.form-control) {
+    color-scheme: dark;
+    color: var(--sp-ink) !important;
+    border-color: var(--sp-line) !important;
+    background: var(--sp-field) !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page input::placeholder { color: #bca5bd !important; opacity: 1; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.class-tree-placeholder, .class-tree-clear) { color: #cfb9ce !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-button {
+    color: #ffe4bd !important;
+    border-color: var(--sp-line) !important;
+    background: #49304e !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-button:hover:not(:disabled) { color: #fff3df !important; border-color: #c58a62 !important; background: #65405d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-primary,
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-primary:hover:not(:disabled) {
+    color: #2e1c26 !important;
+    border-color: #efaa63 !important;
+    background: linear-gradient(135deg, #ed923f, #f4b15d) !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-tabs, .sp-answer-format, .sp-answer-context, .sp-clock, .sp-cue, .sp-sample, .sp-check-grid label, .sp-modal > header, .sp-modal > footer) {
+    color: var(--sp-ink) !important;
+    border-color: var(--sp-line) !important;
+    background: var(--sp-soft) !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-tabs .sp-button { background: transparent !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-tabs .is-active, .sp-answer-toggle.is-active, .sp-version-list .is-active),
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-tabs .is-active, .sp-answer-toggle.is-active, .sp-version-list .is-active):hover:not(:disabled) {
+    color: #2e1c26 !important;
+    border-color: #efaa63 !important;
+    background: #f4aa56 !important;
+    box-shadow: none !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-number { color: #ffe4bd !important; background: #6b4038 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-pass { color: #cfb9ce !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .is-passed :is(.sp-pass, .sp-number) { color: #b1e9ba !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-badge:not([class*="sp-status-"]) { color: #e0edbd !important; background: #384a34 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-status-NEW { color: #7050c4 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-admin-table { color: var(--sp-ink) !important; background: var(--sp-surface) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-admin-table th { color: #ffdbac !important; background: #4b304b !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-admin-table td { border-color: var(--sp-line) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-admin-table .is-viewed td { background: #543651 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-admin-table td small { color: #ffd293 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-close { color: #ffe4bd !important; background: #684459 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-overlay { background: #100a1bbd !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-format button, .sp-answer-selection button) { color: #ffe4bd !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-format button:hover:not(:disabled), .sp-answer-selection button:hover) { border-color: var(--sp-line) !important; background: #65405d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-selection { border-color: var(--sp-line) !important; background: var(--sp-soft) !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-sync { color: #b1e9ba !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-sync.is-error, .sp-error-text) { color: #ffb7a8 !important; }
+/* Keep status meaning and authored ink readable on their light paper surfaces. */
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-editable, .sp-version-answer, .sp-answer-import-compare > div, .sp-answer-conflict .sp-preserve) {
+    --edu-ink: #33263c;
+    color: #33263c !important;
+    border-color: #d7bf9f !important;
+    background: #fff8e8 !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-editable:focus { box-shadow: inset 0 0 0 2px #c5823d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-editable:empty::before { color: #78697c !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-import-compare small { color: #76677d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-note, .sp-answer-conflict, .sp-import-warning) { --edu-ink: #65501e; color: #65501e !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-note small { color: #796329 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-answer-note .sp-close { color: #65501e !important; background: #f2e9c6 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-version-paper { --edu-ink: #33263c; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-version-paper pre { color: #33263c !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-invalid { --edu-ink: #4b2530; color: #4b2530 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-invalid label { color: #4b2530 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-invalid small, .sp-invalid .sp-muted) { color: #76677d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-conflict small, .sp-import-warning small) { color: #796329 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-version-list .is-active small { color: #56301f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-answer-conflict summary, .sp-invalid summary) { color: #82501e !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(.sp-invalid .sp-error-text, .sp-alert .sp-error-text) { color: #a74441 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-record-start { color: #ffc1d0 !important; border-color: #bc4968 !important; background: #583044 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page .sp-record-stop { color: #fff !important; border-color: #bc4968 !important; background: #a33654 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .speaking-page :is(button, input, select, summary):focus-visible { outline: 3px solid #f4aa56 !important; outline-offset: 2px; }
+
 /* Footer, pet popovers and previews share the same seasonal surfaces. */
 html.ieltsroom-halloween.ieltsroom-halloween .page-wrapper-bottom,
 html.ieltsroom-halloween.ieltsroom-halloween .student-footer-board,
