@@ -95,10 +95,10 @@
                 <button type="button" class="is-continue" ng-click="vm.resumeDraft(draft)">
                     <i class="fa" ng-class="draft.pendingSave ? 'fa-refresh' : 'fa-play'"></i> {{draft.pendingSave ? 'Lưu kết quả đang chờ' : 'Có, làm tiếp'}}
                 </button>
-                <button type="button" class="is-cancel" ng-if="vm.isReadingOrListeningDraft(draft)" ng-click="vm.hideDraft(draft)" title="Chỉ ẩn khỏi trang chủ, không xóa tiến trình">
+                <button type="button" class="is-cancel" ng-if="vm.isStudyDraft(draft)" ng-click="vm.hideDraft(draft)" title="Chỉ ẩn lời nhắc, không xóa tiến trình">
                     <i class="fa fa-eye-slash"></i> Ẩn bài
                 </button>
-                <button type="button" class="is-cancel" ng-if="!vm.isReadingOrListeningDraft(draft)" ng-click="vm.cancelDraft(draft)">
+                <button type="button" class="is-cancel" ng-if="!vm.isStudyDraft(draft)" ng-click="vm.cancelDraft(draft)">
                     {{draft.pendingSave ? 'Bỏ kết quả' : 'Không, hủy bài'}}
                 </button>
             </div>

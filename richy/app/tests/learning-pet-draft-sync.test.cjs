@@ -153,7 +153,8 @@ test('dismissal removes only that draft and preserves the other draft and assign
 
 for (const kind of ['IELTS_READING', 'IELTS_LISTENING']) {
     test('hiding ' + kind + ' also dismisses the pet reminder while preserving progress', async () => {
-        const item = draft(kind), h = await setup([item], {saveFails: true});
+        const item = draft(kind); item.payload=JSON.stringify({...JSON.parse(item.payload),sessionMode:'STUDY'});
+        const h = await setup([item], {saveFails: true});
         h.dashboard.hideDraft(h.dashboard.resumeDrafts[0]);
         assert.equal(h.dashboard.resumeDrafts.length, 0);
         assert.equal(h.pet.drafts.length, 0, 'the pet updates before the cloud save completes');
@@ -220,17 +221,38 @@ function savedResult(extra={}) {
 }
 
 for (const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']) {
-    test(mode+' Study progress is preserved but never appears on Dashboard or in pet reminders',async()=>{
+    test(mode+' Study stays visible with a non-destructive Hide action until the learner chooses to hide it',async()=>{
         const item=ieltsItem(mode,{sessionMode:'STUDY',assignmentTaskId:null,annotationNotes:[{id:'n1',text:'Keep this note'}],annotations:[{highlight:true}],audioPosition:300});
-        const h=await setup([item]);assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.pet.drafts.length,0);assert.equal(h.pet.notificationCount,0);
+        const h=await setup([item]);assert.equal(h.dashboard.resumeDrafts.length,1);assert.equal(h.pet.drafts.length,1);assert.equal(h.pet.notificationCount,1);
+        assert.equal(h.dashboard.isStudyDraft(h.dashboard.resumeDrafts[0]),true);
         assert.equal(h.storage.get(item.draftKey),item.payload);assert.equal(h.cloud.length,1);assert.equal(h.requests.some(r=>r.method==='POST'),false);
+        h.dashboard.hideDraft(h.dashboard.resumeDrafts[0]);await tick();await h.pet.refresh();
+        assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.pet.drafts.length,0);
+        const hidden=JSON.parse(h.storage.get(item.draftKey));assert.equal(hidden.audioPosition,300);assert.deepEqual(hidden.annotationNotes,[{id:'n1',text:'Keep this note'}]);assert.deepEqual(hidden.annotations,[{highlight:true}]);
+        assert.equal(h.requests.some(r=>r.url.endsWith('draft/delete')),false);
     });
 }
-test('legacy Study keys are hidden and a real assignment remains Serious even with an old Study flag',async()=>{
+test('legacy Study keys offer Hide and a real assignment remains Serious even with an old Study flag',async()=>{
     const legacy=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY',assignmentTaskId:null}),payload=JSON.parse(legacy.payload);delete payload.sessionMode;legacy.payload=JSON.stringify(payload);
     const assigned=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY'});const h=await setup([legacy,assigned]);
-    assert.equal(h.dashboard.resumeDrafts.length,1);assert.equal(h.pet.drafts.length,1);assert.equal(h.dashboard.resumeDrafts[0].sessionMode,'SERIOUS');
+    assert.equal(h.dashboard.resumeDrafts.length,2);assert.equal(h.pet.drafts.length,2);
+    assert.equal(h.dashboard.isStudyDraft(h.dashboard.resumeDrafts.find(d=>d.storageKey===legacy.draftKey)),true);
+    const test=h.dashboard.resumeDrafts.find(d=>d.storageKey===assigned.draftKey);assert.equal(test.sessionMode,'SERIOUS');assert.equal(h.dashboard.isStudyDraft(test),false);
     assert.equal(h.storage.get(legacy.draftKey),legacy.payload);
+});
+test('Study never deletes progress through the cancel handler; Serious tests still support confirmed cancellation',async()=>{
+    const study=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY',assignmentTaskId:null});let h=await setup([study]);
+    await h.dashboard.cancelDraft(h.dashboard.resumeDrafts[0]);await tick();assert.equal(JSON.parse(h.storage.get(study.draftKey)).hiddenFromDashboard,true);
+    assert.equal(h.requests.some(r=>r.url.endsWith('draft/delete')),false);
+    for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+        const item=ieltsItem(mode);h=await setup([item]);const draft=h.dashboard.resumeDrafts[0];assert.equal(h.dashboard.isStudyDraft(draft),false);
+        h.dashboard.hideDraft(draft);assert.equal(h.requests.some(r=>r.method==='POST'),false);assert.equal(h.dashboard.resumeDrafts.length,1);
+        await h.dashboard.cancelDraft(draft);await tick();assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.storage.has(item.draftKey),false);assert.ok(h.requests.some(r=>r.url.endsWith('draft/delete')));
+    }
+    const view=fs.readFileSync(path.join(__dirname,'../dashboards/views/general-alt.html'),'utf8');
+    assert.match(view,/ng-if="vm\.isStudyDraft\(draft\)" ng-click="vm\.hideDraft\(draft\)"/);
+    assert.match(view,/ng-if="!vm\.isStudyDraft\(draft\)" ng-click="vm\.cancelDraft\(draft\)"/);
+    assert.match(view,/vm\.resumeDrafts\.length/);assert.match(view,/Có, làm tiếp/);
 });
 test('database-confirmed saved attempts suppress stale local and cloud reminders without deleting answers',async()=>{
     const item=ieltsItem();item.savedResult=savedResult();const local={...item,payload:JSON.stringify({...JSON.parse(item.payload),savedAt:'2026-10-31T07:00:00Z',answeredCount:36})};

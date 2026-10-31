@@ -411,7 +411,6 @@
                 if (!draft || !draft.testId || String(draft.userId) !== userId
                         || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
                 var info = ieltsReminderInfo(key, draft, savedResult);
-                if (String(info.sessionMode).toUpperCase() === 'STUDY') { return; }
                 if (info.confirmed) {
                     vm.resumeDrafts = vm.resumeDrafts.filter(function (item) { return item.ieltsContext !== info.context || item.ieltsAttemptKey !== info.attemptKey; });
                     return;
@@ -640,6 +639,7 @@
 
         vm.cancelDraft = function (draft) {
             if (!draft || !draft.storageKey) { return; }
+            if (vm.isStudyDraft(draft)) { return vm.hideDraft(draft); }
             if (!$window.confirm('Bạn có chắc muốn hủy bài đang làm dở? Toàn bộ tiến độ đã tự lưu của bài này sẽ bị xóa.')) { return; }
             var localKeys = matchingIeltsLocalKeys(draft);
             try { localKeys.forEach(function (key) { $window.localStorage.removeItem(key); }); }
@@ -664,12 +664,13 @@
             return request.catch(angular.noop).finally(function () { vm.loadResumeDrafts(); });
         };
 
-        vm.isReadingOrListeningDraft = function (draft) {
-            return !!draft && (draft.kind === 'IELTS_READING' || draft.kind === 'IELTS_LISTENING');
+        vm.isStudyDraft = function (draft) {
+            return !!draft && !draft.assignmentTaskId && String(draft.sessionMode || '').toUpperCase() === 'STUDY'
+                && ['IELTS_READING', 'IELTS_LISTENING', 'IELTS_WRITING', 'COMPREHENSIVE'].indexOf(draft.kind) >= 0;
         };
 
         vm.hideDraft = function (draft) {
-            if (!vm.isReadingOrListeningDraft(draft) || !draft.storageKey) { return; }
+            if (!vm.isStudyDraft(draft) || !draft.storageKey) { return; }
 
             var localKeys = matchingIeltsLocalKeys(draft);
             var storedDraft = null;

@@ -1237,7 +1237,7 @@
 
                 if (kind === 'IELTS') {
                     var info = ieltsReminderInfo(item.draftKey, payload, item.savedResult);
-                    if (info.confirmed || String(info.sessionMode).toUpperCase() === 'STUDY') { return null; }
+                    if (info.confirmed) { return null; }
                     draft.resumeIdentity = info.context + (info.pending ? ':pending:' + info.attemptKey : ':active');
                     draft.ieltsContext = info.context; draft.ieltsAttemptKey = info.attemptKey; draft.pendingSave = info.pending;
                     draft.assignmentTaskId = info.taskId; draft.assignmentParts = angular.copy(info.parts);

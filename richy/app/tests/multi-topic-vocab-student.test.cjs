@@ -633,10 +633,15 @@ test('saved legacy Listening through a Reading route is verified against its per
 });
 
 
-test('hiding pending Reading A keeps its frozen submission and leaves newer active B visible', async () => {
-    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = ieltsDraft(a, 'PENDING'), active = ieltsDraft(b, null, '2026-10-19T00:00:02Z');
-    first.testMode = 'READING'; first.submissionState.payload.testType = 4; active.testMode = 'READING';
-    const base = ieltsBase.replace(':writing:', ':reading:'), aKey = base + ':attempt:' + a, bKey = base + ':attempt:' + b;
+function studyReadingDraft(attempt, status, savedAt) {
+    const value=ieltsDraft(attempt,status,savedAt);value.testMode='READING';value.sessionMode='STUDY';value.assignmentTaskId=null;
+    if(value.submissionState){value.submissionState.payload.testType=4;value.submissionState.payload.assignmentTaskId=null;}
+    return value;
+}
+const studyReadingBase='ieltsReadingInProgress:7:reading:test:8123:study';
+test('hiding pending Study A keeps its frozen submission and leaves newer active B visible', async () => {
+    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = studyReadingDraft(a, 'PENDING'), active = studyReadingDraft(b, null, '2026-10-19T00:00:02Z');
+    const base = studyReadingBase, aKey = base + ':attempt:' + a, bKey = base + ':attempt:' + b;
     const h = await reminderSetup([draftItem('IELTS', aKey, first), draftItem('IELTS', bKey, active)], [draftItem('IELTS', base, active)]);
     h.dashboard.hideDraft(h.dashboard.resumeDrafts.find(draft => draft.ieltsAttemptKey === a)); await tick();
     assert.equal(JSON.parse(h.localStorage.getItem(base)).clientAttemptKey, b);
@@ -653,9 +658,8 @@ test('hiding pending Reading A keeps its frozen submission and leaves newer acti
 
 
 test('stale hide card A reads its matching per-attempt payload after the base slot has become B', async () => {
-    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = ieltsDraft(a, 'PENDING'), active = ieltsDraft(b, null, '2026-10-19T00:00:02Z');
-    first.testMode = 'READING'; first.submissionState.payload.testType = 4; active.testMode = 'READING';
-    const base = ieltsBase.replace(':writing:', ':reading:'), aKey = base + ':attempt:' + a, bKey = base + ':attempt:' + b;
+    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = studyReadingDraft(a, 'PENDING'), active = studyReadingDraft(b, null, '2026-10-19T00:00:02Z');
+    const base = studyReadingBase, aKey = base + ':attempt:' + a, bKey = base + ':attempt:' + b;
     const h = await reminderSetup([draftItem('IELTS', aKey, first)], [draftItem('IELTS', base, first)]);
     const stale = {...h.dashboard.resumeDrafts[0], storageKey: base};
     h.localStorage.setItem(base, JSON.stringify(active)); h.localStorage.setItem(bKey, JSON.stringify(active));
@@ -671,9 +675,8 @@ test('stale hide card A reads its matching per-attempt payload after the base sl
 });
 
 test('stale hide card A does nothing when only another attempt B remains in its old base slot', async () => {
-    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = ieltsDraft(a, 'PENDING'), active = ieltsDraft(b, null, '2026-10-19T00:00:02Z');
-    first.testMode = 'READING'; first.submissionState.payload.testType = 4; active.testMode = 'READING';
-    const base = ieltsBase.replace(':writing:', ':reading:');
+    const a = 'a'.repeat(32), b = 'b'.repeat(32), first = studyReadingDraft(a, 'PENDING'), active = studyReadingDraft(b, null, '2026-10-19T00:00:02Z');
+    const base = studyReadingBase;
     const h = await reminderSetup([], [draftItem('IELTS', base, first)]);
     const stale = h.dashboard.resumeDrafts[0];
     h.localStorage.setItem(base, JSON.stringify(active));
