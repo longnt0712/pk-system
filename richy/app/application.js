@@ -423,18 +423,33 @@
                 var event = $rootScope.$broadcast('session:reauthenticate');
                 return event && event.defaultPrevented;
             }
-            $rootScope.$on('session:restored', function (event, user) {
+            var sessionLoginModal = null;
+            function requestSessionLogin(user) {
+                if (requestInlineSessionLogin()) { return true; }
+                if ($state.current.name === 'login' || isPublicCampaignPage()) { return false; }
+                sessionLoginModal = $injector.get('SessionLoginModal');
+                sessionLoginModal.open(user);
+                return true;
+            }
+            $rootScope.$on('session:unverified', function (event, user) {
+                blockUI.stop();
+                requestSessionLogin(user);
+            });
+            $rootScope.$on('session:restored', function (event, user, source) {
                 applyRolesToSettings(user);
                 settings.permissionsLoaded = true;
                 $rootScope.$broadcast('permissionsLoaded');
                 $rootScope.$emit('$onCurrentUserData', user);
+                // Refresh the dashboard's failed reads. Other views keep their
+                // controller state and unsaved form input while auth is restored.
+                if (source && source.modal && $state.current.name === 'application.dashboard') { $state.reload(); }
             });
-            $rootScope.$on('session:expired', function () {
+            $rootScope.$on('session:expired', function (event, user) {
                 blockUI.stop();
                 $rootScope.sessionNotice = 'Thông tin đăng nhập trên thiết bị này đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại một lần để tiếp tục.';
                 resetPermissionSettings();
                 settings.permissionsLoaded = false;
-                if (requestInlineSessionLogin()) { return; }
+                if (requestSessionLogin(user)) { return; }
                 toastr.warning($rootScope.sessionNotice, 'Đăng nhập', {timeOut: 10000, closeButton: true});
                 if (isPublicCampaignPage()) { return; }
                 if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
@@ -453,6 +468,7 @@
             var lastUserCheckAt = 0;
             var lastUserCheckSession = null;
             function checkCurrentUser(attempt, force, reloadOnSuccess) {
+                if (sessionLoginModal && sessionLoginModal.isOpen()) { return; }
                 authSession.restore();
                 if (userCheckInFlight) { return; }
                 if (isPublicFairPage()) { return; }

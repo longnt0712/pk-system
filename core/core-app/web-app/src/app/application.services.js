@@ -14,6 +14,7 @@
             var refreshPromise = null;
             var refreshIdentity = null;
             var sessionGeneration = 0;
+            var passwordLoginIdentity = null;
             var expirationNotified = false;
             var lastRenewedAt = 0;
             var lastRenewedIdentity = null;
@@ -137,12 +138,16 @@
                 // Several dashboard requests can fail at once after the cookie
                 // disappears. Notify/navigate once, not once per request.
                 if (expirationNotified && !token.getToken()) { return; }
+                var previousUser = $rootScope.currentUser || $cookies.getObject(constants.cookies_user);
                 clear();
                 expirationNotified = true;
-                $rootScope.$emit('session:expired');
+                $rootScope.$emit('session:expired', previousUser);
             }
 
             function refresh(expectedHeader) {
+                // An old background 401 must not cancel a password login by
+                // expiring the old refresh grant while its replacement is pending.
+                if (isCurrent(passwordLoginIdentity)) { return $q.reject(changed()); }
                 if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) {
                     return $q.when();
                 }
@@ -223,6 +228,7 @@
                 var marker = advanceSession();
                 var identity = capture();
                 identity.marker = marker;
+                passwordLoginIdentity = identity;
                 var body = 'grant_type=password&client_id=' + encodeURIComponent(Core.API_CLIENT_ID) +
                     '&client_secret=' + encodeURIComponent(Core.API_CLIENT_KEY) +
                     '&username=' + encodeURIComponent(user.username) + '&password=' + encodeURIComponent(user.password);
@@ -243,6 +249,8 @@
                     return response;
                 }, function (error) {
                     return $q.reject(isCurrent(identity) ? error : changed());
+                }).finally(function () {
+                    if (passwordLoginIdentity === identity) { passwordLoginIdentity = null; }
                 });
             }
 
@@ -256,6 +264,7 @@
                     // grant was revoked. Keep it available for explicit recovery.
                     if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) { return; }
                     $rootScope.sessionRecoveryRequired = true;
+                    $rootScope.$emit('session:unverified', $rootScope.currentUser || $cookies.getObject(constants.cookies_user));
                 },
                 reauthenticate: function () {
                     // Only the user's explicit action revokes this device's grant.

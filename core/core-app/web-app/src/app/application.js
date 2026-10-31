@@ -67,9 +67,22 @@
             });
 
             authSession.restore();
-            $rootScope.$on('session:expired', function () {
+            var sessionLoginModal = null;
+            function requestSessionLogin(user) {
+                if ($state.current.name === 'login') { return false; }
+                sessionLoginModal = $injector.get('SessionLoginModal');
+                sessionLoginModal.open(user);
+                return true;
+            }
+            $rootScope.$on('session:unverified', function (event, user) { blockUI.stop(); requestSessionLogin(user); });
+            $rootScope.$on('session:restored', function (event, user, source) {
+                $rootScope.$emit('$onCurrentUserData', user);
+                if (source && source.modal && $state.current.name === 'application.dashboard') { $state.reload(); }
+            });
+            $rootScope.$on('session:expired', function (event, user) {
                 blockUI.stop();
                 $rootScope.sessionNotice = 'Thông tin đăng nhập trên thiết bị này đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại một lần để tiếp tục.';
+                if (requestSessionLogin(user)) { return; }
                 toastr.warning($rootScope.sessionNotice, 'Đăng nhập');
                 $rootScope.$emit('$unauthorized', function () {});
                 $state.go('login');
@@ -77,6 +90,7 @@
 
             var userCheckInFlight = false;
             function checkCurrentUser(reloadOnSuccess) {
+                if (sessionLoginModal && sessionLoginModal.isOpen()) { return; }
                 authSession.restore();
                 if (!authSession.hasCredentials()) {
                     if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user)) {

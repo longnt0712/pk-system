@@ -93,6 +93,164 @@ const api = 'https://example.test/service/api/users/getCurrentUser';
 const invalid = {status: 401, data: {error: 'invalid_token'}};
 const fresh = {data: {access_token: 'fresh', refresh_token: 'refresh-1', expires_in: 86400, token_type: 'bearer'}};
 
+async function modalHarness(transport, frontend = 'richy') {
+    const h = setup(transport, 'https:', frontend), popups = [], routes = [], focused = [];
+    h.context.angular.noop = () => {};
+    h.context.window.navigator = {onLine: true};
+    h.context.window.document = {getElementById(id) {return {focus() {focused.push(id);}};}};
+    h.deps.$http.get = (url, options) => h.http({...options, url, method: 'GET'});
+    const deps = {...h.deps, settings: {api: {baseUrl: h.Hrm.API_SERVER_URL}}, $window: h.context.window,
+        $state: {go(name) {routes.push(name);}}, $timeout: fn => fn(),
+        $uibModal: {open(config) {
+            const result = deferred();
+            const popup = {config, result: result.promise, opened: Promise.resolve(), closed: false,
+                close() {this.closed = true; result.resolve();}, dismiss() {result.reject();}};
+            popup.view = new config.controller(); popups.push(popup); return popup;
+        }}
+    };
+    vm.runInContext(fs.readFileSync(path.join(h.appRoot, 'common/business/SessionLoginModal.js'), 'utf8'), h.context);
+    const modal = invoke(h.factories.SessionLoginModal, deps);
+    modal.open({id: 7, username: 'alice'});
+    await new Promise(setImmediate);
+    return {...h, modal, popups, routes, focused, get view() {return popups[0].view;}};
+}
+
+test('login modal deduplicates simultaneous prompts, survives Escape/backdrop and releases secrets on leave', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = await modalHarness(() => ({}), frontend);
+        h.modal.open({id: 7, username: 'alice'}); h.modal.open({id: 7, username: 'alice'});
+        await new Promise(setImmediate);
+        assert.equal(h.popups.length, 1);
+        assert.equal(h.popups[0].config.backdrop, 'static');
+        assert.equal(h.popups[0].config.keyboard, false);
+        assert.equal(h.modal.isOpen(), true);
+        h.view.password = 'must-not-remain'; h.view.leave();
+        await new Promise(setImmediate);
+        assert.equal(h.modal.isOpen(), false);
+        assert.equal(h.view.password, '');
+        assert.deepEqual(h.routes, ['login']);
+    }
+});
+
+test('modal wrong-password retry can succeed, verifies the same account, and emits restoration once', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let attempts = 0, lookups = 0;
+        const h = await modalHarness(config => {
+            if (config.url.endsWith('/oauth/token')) {
+                attempts++;
+                if (attempts === 1) throw {status: 400, data: {error: 'invalid_grant'}};
+                return fresh;
+            }
+            lookups++; return {data: {id: 7, username: 'alice', roles: []}};
+        }, frontend);
+        h.view.password = 'wrong'; await h.view.submit();
+        assert.match(h.view.error, /không đúng/);
+        assert.equal(h.view.password, '');
+        assert.equal(h.popups[0].closed, false);
+        h.view.password = 'correct'; await h.view.submit();
+        assert.equal(attempts, 2);
+        assert.equal(lookups, 1);
+        assert.equal(h.cookies['education.user'].username, 'alice');
+        assert.equal(h.popups[0].closed, true);
+        assert.equal(h.events.filter(event => event === 'session:restored').length, 1);
+    }
+});
+
+test('modal offline/timeout failures keep it open and duplicate submissions issue only one password grant', async () => {
+    const gate = deferred(); let requests = 0;
+    const h = await modalHarness(() => {requests++; return gate.promise;});
+    h.context.window.navigator.onLine = false;
+    h.view.password = 'correct'; await h.view.submit();
+    assert.equal(requests, 0); assert.match(h.view.error, /Internet/);
+    h.context.window.navigator.onLine = true;
+    const task = h.view.submit(); h.view.submit();
+    await new Promise(setImmediate);
+    assert.equal(requests, 1); assert.equal(h.view.busy, true);
+    gate.reject({status: 0}); await task;
+    assert.equal(h.view.busy, false); assert.equal(h.popups[0].closed, false);
+    assert.equal(h.token.getRefreshToken(), 'refresh-1');
+});
+
+test('modal rejects an account ID mismatch without accepting it as the previous account', async () => {
+    const h = await modalHarness(config => config.url.endsWith('/oauth/token') ? fresh :
+        {data: {id: 99, username: 'alice', roles: []}});
+    h.view.password = 'correct'; await h.view.submit();
+    assert.equal(h.popups[0].closed, false); assert.match(h.view.error, /không trùng/);
+    assert.equal(h.cookies['education.user'], undefined);
+    assert.equal(h.session.hasCredentials(), false);
+    assert.equal(h.events.includes('session:restored'), false);
+});
+
+test('a tab account switch during modal verification cannot overwrite or revoke the newer account', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const lookup = deferred(), revocations = [];
+        const h = await modalHarness(config => {
+            if (config.url.endsWith('/oauth/token')) return fresh;
+            if (config.url.endsWith('/oauth/revoke')) {revocations.push(config.data); return {};}
+            return lookup.promise;
+        }, frontend);
+        h.view.password = 'correct'; const task = h.view.submit();
+        await new Promise(setImmediate);
+        h.token.setToken({...fresh.data, access_token: 'other-account', refresh_token: 'other-refresh'});
+        h.session.saveUser({id: 8, username: 'bob', roles: []});
+        lookup.resolve({data: {id: 7, username: 'alice', roles: []}}); await task;
+        assert.equal(h.cookies['education.user'].username, 'bob');
+        assert.equal(h.token.getRefreshToken(), 'other-refresh');
+        assert.equal(h.popups[0].closed, false);
+        assert.deepEqual(revocations, []);
+        assert.equal(h.events.includes('session:restored'), false);
+    }
+});
+
+test('global login exits fullscreen before opening its modal and deduplicates while waiting', async () => {
+    const h = await modalHarness(() => ({}));
+    h.view.leave(); await new Promise(setImmediate);
+    const gate = deferred(); let exits = 0;
+    h.context.window.document.fullscreenElement = {};
+    h.context.window.document.exitFullscreen = () => {exits++; return gate.promise;};
+    h.modal.open({id: 7, username: 'alice'}); h.modal.open({id: 7, username: 'alice'});
+    await new Promise(setImmediate);
+    assert.equal(exits, 1); assert.equal(h.popups.length, 1);
+    gate.resolve(); await new Promise(setImmediate);
+    assert.equal(h.popups.length, 2); assert.equal(h.modal.isOpen(), true);
+});
+
+test('an active Battle login handler owns reauthentication without a second global modal', () => {
+    const h = setup(() => ({})), app = startApp(h);
+    h.deps.$rootScope.$broadcast = name => ({defaultPrevented: name === 'session:reauthenticate'});
+    h.session.reportUnverified();
+    assert.equal(app.modals.length, 0); assert.deepEqual(app.navigations, []);
+});
+
+test('modal restoration reloads dashboard reads and keeps other views and unsaved inputs mounted', () => {
+    for (const stateName of ['application.dashboard', 'application.ielts_reading_actual_test', 'application.question']) {
+        const h = setup(() => ({})), app = startApp(h); let reloads = 0;
+        app.state.current.name = stateName; app.state.reload = () => {reloads++;};
+        app.listeners['session:restored']({}, {id: 7, username: 'alice', roles: []}, {modal: true});
+        assert.equal(reloads, stateName === 'application.dashboard' ? 1 : 0);
+        assert.deepEqual(app.navigations, []);
+    }
+});
+
+test('an old resource 401 cannot expire or cancel a pending password login', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const gate = deferred(); let refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) {
+                if (config.loginRequest) return gate.promise;
+                refreshes++; throw {status: 400, data: {error: 'invalid_grant'}};
+            }
+            throw invalid;
+        }, 'https:', frontend);
+        const task = h.session.login({username: 'alice', password: 'correct'});
+        await assert.rejects(h.http({url: api}), error => error.sessionChanged === true);
+        assert.equal(refreshes, 0);
+        assert.equal(h.events.includes('session:expired'), false);
+        gate.resolve(fresh); await task;
+        assert.equal(h.token.getAccessToken(), 'fresh');
+    }
+});
+
 test('concurrent expired requests share one refresh and retry with the new token', async () => {
     let refreshes = 0, retries = 0;
     const gate = deferred();
@@ -170,11 +328,11 @@ test('repeated resource 401s stop after two recoveries and preserve the refresh 
     await assert.rejects(h.http({url: api}));
     assert.equal(refreshes, 2);
     assert.equal(h.token.getRefreshToken(), 'refresh-1');
-    assert.deepEqual(h.events, []);
+    assert.deepEqual(h.events, ['session:unverified']);
     assert.equal(h.deps.$rootScope.sessionRecoveryRequired, true);
 });
 
-test('an old revoked session clears stale user data and opens login without reviving its grant', async () => {
+test('an old revoked session clears stale user data and requests a modal without reviving its grant', async () => {
     for (const frontend of ['richy', 'core']) {
         let refreshes = 0;
         const h = setup(config => {
@@ -186,13 +344,16 @@ test('an old revoked session clears stale user data and opens login without revi
         }, 'https:', frontend);
         h.session.saveUser({id: 7, roles: [{name: 'ROLE_ADMIN'}]});
         const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        h.deps.$rootScope.$state.current.name = 'application.dashboard';
         app.listeners.$locationChangeSuccess();
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(refreshes, 1);
         assert.equal(h.session.hasCredentials(), false);
         assert.equal(h.cookies['education.user'], undefined);
         assert.equal(h.deps.$rootScope.currentUser, null);
-        assert.deepEqual(app.navigations, ['login']);
+        assert.deepEqual(app.navigations, []);
+        assert.equal(app.modals.length, 1);
+        assert.equal(app.modals[0].id, 7);
         assert.match(h.deps.$rootScope.sessionNotice, /đăng nhập lại một lần/);
     }
 });
@@ -218,6 +379,10 @@ test('bounded 401 recovery offers an explicit way out and retry reloads data onl
         assert.equal(revocations, 0);
         assert.equal(reloads, 0);
         assert.deepEqual(app.navigations, []);
+        h.deps.$rootScope.retrySessionRecovery();
+        assert.equal(h.deps.$rootScope.sessionRecoveryChecking, false);
+        // The fallback recovery button works once no modal is mounted.
+        h.deps.SessionLoginModal.isOpen = () => false;
         fail = false;
         h.deps.$rootScope.retrySessionRecovery();
         assert.equal(h.deps.$rootScope.sessionRecoveryChecking, true);
@@ -241,9 +406,11 @@ test('choosing to sign in again revokes only the old browser grant and preserves
             removeItem() {throw Error('Learning drafts must not be removed');}, clear() {throw Error('Storage must not be cleared');}};
         h.session.saveUser({id: 7, roles: []});
         const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        h.deps.$rootScope.$state.current.name = 'application.dashboard';
         h.deps.$rootScope.sessionRecoveryRequired = true;
         h.deps.$rootScope.signInAgain();
-        assert.deepEqual(app.navigations, ['login']);
+        assert.deepEqual(app.navigations, []);
+        assert.equal(app.modals.length, 1);
         assert.equal(h.session.hasCredentials(), false);
         assert.equal(h.deps.$rootScope.sessionRecoveryRequired, false);
         assert.equal(h.cookies['education.user'], undefined);
@@ -733,7 +900,8 @@ test('core password login is cancelled by logout in another tab', async () => {
 });
 
 function startCoreApp(h) {
-    const listeners = {}, windowListeners = {}, documentListeners = {}, navigations = [], root = h.deps.$rootScope;
+    const listeners = {}, windowListeners = {}, documentListeners = {}, navigations = [], modals = [], root = h.deps.$rootScope;
+    h.deps.SessionLoginModal = {open(user) {modals.push(copy(user));}, isOpen() {return modals.length > 0;}};
     root.$evalAsync = fn => fn();
     h.context.window.navigator = {onLine: true};
     h.context.window.document = {
@@ -755,7 +923,7 @@ function startCoreApp(h) {
         $http: {get: (url, options) => h.http({...options, url, method: 'GET'})},
         blockUI: {start() {}, stop() {}}, toastr: {warning() {}}, Idle: {watch() {}}, Keepalive: {start() {}}
     });
-    return {listeners, navigations, windowListeners, documentListeners};
+    return {listeners, navigations, windowListeners, documentListeners, modals};
 }
 
 test('core route checks preserve the session during server/network failures and ignore stale successful users', async () => {
@@ -832,11 +1000,15 @@ test('tokens only attach to this API and explicit Authorization is respected', (
         'Basic custom');
 });
 
-test('configuration replaces the bundled OAuth interceptor', () => {
-    const h = setup(() => ({}));
-    const provider = {interceptors: ['oauthInterceptor']};
-    invoke(h.configs.find(def => def[0] === '$httpProvider'), {$httpProvider: provider});
-    assert.deepEqual(Array.from(provider.interceptors), ['SessionAuthInterceptor', 'ServerExceptionHandlerInterceptor']);
+test('HTTP configuration preserves the array captured by AngularJS while replacing the bundled OAuth interceptor', () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({}), 'https:', frontend);
+        const captured = ['blockUIHttpInterceptor', 'oauthInterceptor'];
+        const provider = {interceptors: captured};
+        invoke(h.configs.find(def => def[0] === '$httpProvider'), {$httpProvider: provider});
+        assert.equal(provider.interceptors, captured);
+        assert.deepEqual(Array.from(captured), ['blockUIHttpInterceptor', 'SessionAuthInterceptor', 'ServerExceptionHandlerInterceptor']);
+    }
 });
 
 test('retry preserves the body of POST/upload requests', async () => {
@@ -859,7 +1031,8 @@ test('retry preserves the body of POST/upload requests', async () => {
 
 function startApp(h, hostname = 'example.test') {
     const listeners = {}, windowListeners = {}, documentListeners = {}, timers = [], navigations = [];
-    const notices = [];
+    const notices = [], modals = [];
+    h.deps.SessionLoginModal = {open(user) {modals.push(copy(user));}, isOpen() {return modals.length > 0;}};
     const blockCalls = {start: 0, stop: 0};
     const root = h.deps.$rootScope;
     root.$on = (name, fn) => { listeners[name] = fn; };
@@ -902,7 +1075,7 @@ function startApp(h, hostname = 'example.test') {
     invoke(runDefinition, {...h.deps, settings, $http: http, $state: state, OAuth: {isAuthenticated: () => !!h.token.getToken()},
     blockUI: {start() { blockCalls.start++; }, stop() { blockCalls.stop++; }},
     toastr: {info() {}, warning(message) { notices.push(message); }}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
-    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices, state};
+    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices, state, modals};
 }
 
 test('background current-user checks never turn bounded resource 401s into a false logout', async () => {
@@ -978,7 +1151,7 @@ test('returning to the login homepage keeps signed-in users there; normal login 
     }
 });
 
-test('headerless 401 clears stale dashboard data and gives one visible login notice', async () => {
+test('headerless 401 clears stale dashboard data and requests one login modal', async () => {
     const h = setup(() => { throw invalid; });
     h.session.saveUser({id: 7, roles: []});
     h.token.removeToken();
@@ -986,8 +1159,8 @@ test('headerless 401 clears stale dashboard data and gives one visible login not
     await Promise.allSettled([h.http({url: api}), h.http({url: api + '?second=1'})]);
     assert.equal(h.cookies['education.user'], undefined);
     assert.equal(h.deps.$rootScope.currentUser, null);
-    assert.deepEqual(app.navigations, ['login']);
-    assert.equal(app.notices.length, 1);
+    assert.deepEqual(app.navigations, []);
+    assert.equal(app.modals.length, 1);
     assert.match(h.deps.$rootScope.sessionNotice, /đăng nhập lại/);
     assert.match(fs.readFileSync(path.join(__dirname, '../common/views/login/login.html'), 'utf8'), /ng-if="sessionNotice"/);
 });
@@ -1006,7 +1179,7 @@ test('a token missing its type can recover through its refresh token after a hea
     assert.equal(h.events.length, 0);
 });
 
-test('a refresh-only token can recover; rejected refresh 401 shows a notice and returns to login', async () => {
+test('a refresh-only token can recover; rejected refresh 401 requests a login modal', async () => {
     for (const rejected of [false, true]) {
         const h = setup(config => {
             if (config.url.endsWith('/oauth/token')) {
@@ -1020,8 +1193,8 @@ test('a refresh-only token can recover; rejected refresh 401 shows a notice and 
         const app = startApp(h);
         if (rejected) {
             await assert.rejects(h.http({url: api}));
-            assert.deepEqual(app.navigations, ['login']);
-            assert.equal(app.notices.length, 1);
+            assert.deepEqual(app.navigations, []);
+            assert.equal(app.modals.length, 1);
         } else {
             await h.http({url: api});
             assert.equal(h.token.getAccessToken(), 'fresh');
@@ -1055,8 +1228,8 @@ test('tab resume detects a vanished token or empty token cookie without waiting 
         if (malformed) h.cookies.token = {};
         app.documentListeners.visibilitychange();
         app.windowListeners.pageshow();
-        assert.deepEqual(app.navigations, ['login']);
-        assert.equal(app.notices.length, 1);
+        assert.deepEqual(app.navigations, []);
+        assert.equal(app.modals.length, 1);
         assert.equal(h.cookies['education.user'], undefined);
     }
 });
@@ -1096,8 +1269,8 @@ test('an unusable successful refresh response cannot leave a silent broken sessi
     const app = startApp(h);
     await assert.rejects(h.http({url: api}));
     assert.equal(h.cookies.token, undefined);
-    assert.equal(app.notices.length, 1);
-    assert.deepEqual(app.navigations, ['login']);
+    assert.equal(app.modals.length, 1);
+    assert.deepEqual(app.navigations, []);
 });
 
 test('the expiration latch resets for a new login and the persistent notice clears after success', async () => {
@@ -1110,7 +1283,7 @@ test('the expiration latch resets for a new login and the persistent notice clea
     assert.equal(h.deps.$rootScope.sessionNotice, '');
     h.token.removeToken();
     await assert.rejects(h.http({url: api}));
-    assert.equal(app.notices.length, 2);
+    assert.equal(app.modals.length, 2);
 });
 
 test('the real app preserves login on resume failure and retries when connectivity returns', async () => {

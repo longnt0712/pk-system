@@ -153,9 +153,13 @@
         // $httpProvider.interceptors.push('XSRFInterceptor');
         // The bundled interceptor emits an error before refresh completes and
         // does not retry the failed request. Replace it with our session flow.
-        $httpProvider.interceptors = $httpProvider.interceptors.filter(function (name) {
-            return name !== 'oauthInterceptor';
-        });
+        // AngularJS retains this array by reference. Replacing the property
+        // leaves $http using the old interceptors and silently skips ours.
+        for (var i = $httpProvider.interceptors.length - 1; i >= 0; i--) {
+            if ($httpProvider.interceptors[i] === 'oauthInterceptor') {
+                $httpProvider.interceptors.splice(i, 1);
+            }
+        }
         $httpProvider.interceptors.push('SessionAuthInterceptor');
         $httpProvider.interceptors.push('ServerExceptionHandlerInterceptor');
     }]);

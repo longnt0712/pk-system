@@ -58,6 +58,16 @@ Nếu refresh đã bị server từ chối hoặc cookie xác thực đã mất,
 
 Bản chỉnh giao diện này chỉ cần cập nhật frontend, không thay JAR, SQL hoặc auth policy. Các tab đã mở bằng JavaScript cũ cần tải lại trang để nhận bản sửa. Gói frontend IELTS Room và hướng dẫn tại `outputs/auth-session-recovery-20261031/`.
 
+### Modal đăng nhập lại và sửa cấu hình interceptor — 01/11/2026
+
+Phát hiện nguyên nhân 401 không chạy luồng phục hồi: AngularJS giữ tham chiếu tới mảng `$httpProvider.interceptors`, trong khi bản cũ gán một mảng `.filter()` mới vào thuộc tính đó. Các interceptor mới vì vậy không được `$http` sử dụng. Đã thay bằng `splice()` trên chính mảng gốc ở cả hai frontend; giữ các interceptor khác và loại interceptor OAuth cũ đúng cách.
+
+Trên trang yêu cầu đăng nhập, refresh bị từ chối hoặc resource vẫn trả 401 sau tối đa hai lần phục hồi sẽ tự mở **một modal đăng nhập lại**. Có thể nhập lại mật khẩu trong modal; không mở modal cho lỗi mạng, 403 hay 5xx. Sai mật khẩu được báo tại chỗ và cho thử lại. Xác minh lại `getCurrentUser`, ID/username của tài khoản cũ và danh tính phiên hiện hành trước khi lưu thông tin hoặc đóng modal; phản hồi cũ không được ghi đè tài khoản đã đổi ở tab khác. Nếu muốn đổi tài khoản, dùng nút về trang đăng nhập.
+
+Dashboard tải lại dữ liệu sau khi đăng nhập thành công. Các trang làm bài/form khác giữ controller đang mở và không tự phát lại POST bằng phiên đăng nhập mới. LocalStorage không bị xóa. Battle tiếp tục ưu tiên modal riêng để kết nối lại đúng người chơi/phòng. Modal dùng template inline, thoát fullscreen trước khi hiện và có style riêng cho màn hình nhỏ.
+
+`APP_VERSION` IELTS Room: `20261101-auth-login-modal-1`. Cần cập nhật cả `application.configs.js`, `application.js`, `application.services.js`, `index.html`, file mới `common/business/SessionLoginModal.js` và `assets/css/session-login-modal.css`; không thay JAR/SQL cho bản sửa này. Gói cập nhật tại `outputs/auth-login-modal-20261101.zip`. **99 kiểm thử đạt**: 87 auth frontend, 8 Battle và 4 trình duyệt Chromium. Kiểm thử trình duyệt lần này chạy đúng cấu hình HTTP/OAuth production với AngularJS, OAuthToken và UI Bootstrap thật, HTTP giả lập. Gulp build frontend core chưa chạy.
+
 ## Giới hạn cần giữ rõ
 
 - Mỗi request được xác thực thêm bằng dữ liệu tài khoản hiện hành, tạo thêm truy vấn DB. Kiểm thử cục bộ xác nhận chức năng và race; chưa đo tải trên database production.

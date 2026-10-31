@@ -142,7 +142,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261101-homework-export-contrast-1';
+        window.APP_VERSION = '20261101-auth-login-modal-1';
 
                 function versionedUrl(url) {
                     if (typeof url !== 'string' || !window.APP_VERSION) { return url; }
@@ -275,6 +275,7 @@
         <script>writeVersionedStylesheet('assets/css/learning-pet.css');</script>
         <script>writeVersionedStylesheet('assets/css/learning-pet-evolution.css');</script>
         <script>writeVersionedStylesheet('assets/css/ui-layer-safety.css');</script>
+        <script>writeVersionedStylesheet('assets/css/session-login-modal.css');</script>
         <script>writeVersionedStylesheet('assets/css/site-theme-control.css');</script>
         <script>writeVersionedStylesheet('assets/css/ieltsroom-halloween.css?theme=20261030-speaking');</script>
 
@@ -1104,6 +1105,7 @@
         <script>writeVersionedScript('/application.js?battleSessionLogin=20261031_1');</script>
         <script>writeVersionedScript('application.configs.js');</script>
         <script>writeVersionedScript('application.services.js');</script>
+        <script>writeVersionedScript('common/business/SessionLoginModal.js');</script>
         <script>writeVersionedScript('application.controllers.js');</script>
 
         <script>writeVersionedScript('common/common.module.js');</script>
