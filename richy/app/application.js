@@ -517,13 +517,9 @@
                         // the two-minute throttle applies to successful checks.
                         lastUserCheckAt = 0;
                         if (status === 401) {
-                            var current = $cookies.getObject(constants.oauth2_token);
-                            if ((!current && ($rootScope.currentUser || $cookies.getObject(constants.cookies_user))) ||
-                                (current && checkedToken &&
-                                current.refresh_token === checkedToken.refresh_token &&
-                                current.access_token === checkedToken.access_token)) {
-                                authSession.expire();
-                            }
+                            // SessionAuthInterceptor already handles missing or
+                            // rejected refresh credentials. A resource 401 alone
+                            // can be a concurrent tab replacing the access token.
                             return;
                         }
                         // A suspended Safari tab may resume before networking is

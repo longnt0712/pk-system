@@ -1,4 +1,4 @@
-# Bản vá auth/token — cập nhật 29/10/2026
+# Bản vá auth/token — cập nhật 31/10/2026
 
 Bản vá thay đổi backend dùng chung và cả hai frontend `richy/app`, `core/core-app/web-app`. Chưa triển khai lên máy chủ từ chat này.
 
@@ -45,6 +45,8 @@ Runner backend biên dịch source hiện hành bằng JDK 8, chạy JUnit với
 Kết quả đã chạy ngày 28/10/2026: **40/40 backend security tests**, **57/57 auth frontend tests**. Chạy thêm admin selection, TNTT profile, fair và campaign cùng auth đạt **143/143 frontend tests**. Maven offline/JDK 8 package thành công cả `core-api`, `core-app`, `richy-api`, `richy-app` trong một reactor; test được chạy riêng bằng các lệnh ở trên. Frontend core đã kiểm syntax và test source, chưa chạy Gulp build với toolchain cũ.
 
 Cập nhật ngày 29/10/2026: chế độ ghi nhớ phiên và lựa chọn đăng xuất khi đổi mật khẩu đạt **51/51 backend tests**, **64/64 auth frontend tests**; Maven offline/JDK 8 package lại cả core/richy thành công. Bao phủ refresh không hết hạn qua JDBC/reload, access vẫn hết hạn, thu hồi một thiết bị, refresh/logout đồng thời, cookie còn lại sau 100 ngày giả lập, và đổi mật khẩu giữ/thu hồi hai thiết bị. Log tại `outputs/auth-review-2026-10-29/`. Chưa triển khai production; frontend core chưa chạy Gulp build.
+
+Cập nhật ngày 31/10/2026: sửa mất phiên khi nhiều tab đồng thời refresh, đặc biệt lúc mở lại các tab sau một đêm. Backend dùng lại access token còn hợp lệ của đúng refresh token thay vì vô hiệu hóa token vừa cấp cho tab khác; không kéo dài TTL access. Frontend phối hợp refresh giữa các tab, bỏ qua phản hồi đã bị thay thế và phục hồi 401 có giới hạn. Chỉ refresh grant thực sự bị từ chối mới kết thúc phiên; request POST của tài khoản cũ không được phát lại bằng tài khoản mới. **55/55 backend tests và 73/73 auth frontend tests đạt**. Không có migration hoặc thay đổi auth policy mới cho lần sửa 31/10; cập nhật cả backend và frontend để nhận đủ bản sửa. Phiên đã bị thu hồi trước đó cần đăng nhập lại.
 
 Sau khi triển khai, kiểm tra đăng nhập tài khoản thường/admin, đổi mật khẩu đúng/sai, refresh, logout khi access hết hạn, khóa rồi mở lại user, đổi quyền, và đăng nhập hai thiết bị. Tài khoản thường phải bị từ chối ở `/tokens/**` và API admin reset; response user không có trường password/hash.
 

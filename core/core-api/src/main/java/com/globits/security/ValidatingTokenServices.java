@@ -124,6 +124,17 @@ public class ValidatingTokenServices extends DefaultTokenServices implements Ses
             }
             try {
                 validate(authentication);
+                // Several tabs can refresh the same browser session on resume.
+                // Reuse an access token already issued for this refresh token
+                // rather than invalidating the token another tab just received.
+                OAuth2AccessToken existing = store.getAccessToken(authentication);
+                if (!isExpired(refresh) && existing != null && !existing.isExpired()
+                        && existing.getRefreshToken() != null
+                        && value.equals(existing.getRefreshToken().getValue())
+                        && (request.getScope() == null || request.getScope().isEmpty()
+                            || Objects.equals(existing.getScope(), request.getScope()))) {
+                    return existing;
+                }
                 return super.refreshAccessToken(value, request);
             } catch (InvalidTokenException | InvalidGrantException ex) {
                 // A rejected security snapshot must not become usable again if

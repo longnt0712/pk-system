@@ -420,6 +420,20 @@ public class AuthSecurityRegressionTest {
         concurrentRefreshCannotRestoreRevokedSession(true);
     }
 
+    @Test public void overlappingTabRefreshResponsesKeepTheFirstNewBearerUsable() throws Exception {
+        startContext(true);
+        OAuth2AccessToken original = issue("student");
+        ((DefaultOAuth2AccessToken) original).setExpiration(new java.util.Date(System.currentTimeMillis() - 1000));
+        OAuth2AccessToken firstTab = successfulRefresh(original);
+        OAuth2AccessToken secondTab = successfulRefresh(original);
+        assertNotEquals(original.getValue(), firstTab.getValue());
+        assertEquals(firstTab.getValue(), secondTab.getValue());
+        assertEquals(firstTab.getExpiration().getTime(), secondTab.getExpiration().getTime());
+        assertEquals(Boolean.TRUE, firstTab.getAdditionalInformation().get("persistent_session"));
+        assertEquals(200, currentUser(firstTab).getResponse().getStatus());
+        assertEquals(200, currentUser(secondTab).getResponse().getStatus());
+    }
+
     private void concurrentRefreshCannotRestoreRevokedSession(boolean persistentSessions) throws Exception {
         BlockingTokenStore sharedStore = new BlockingTokenStore();
         sharedStore.setAuthenticationKeyGenerator(new SessionAuthenticationKeyGenerator());
@@ -432,6 +446,9 @@ public class AuthSecurityRegressionTest {
         revoker.setPersistentSessions(persistentSessions);
         OAuth2AccessToken original = refresher.createAccessToken(authentication("student"));
         assertEquals(persistentSessions, !(original.getRefreshToken() instanceof ExpiringOAuth2RefreshToken));
+        // Force issuance rather than the valid-access reuse shortcut so the
+        // controlled write still races a refresh-row revocation.
+        ((DefaultOAuth2AccessToken) original).setExpiration(new java.util.Date(System.currentTimeMillis() - 1000));
         sharedStore.blockWrites = true;
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<OAuth2AccessToken> pending = executor.submit(() -> refresher.refreshAccessToken(

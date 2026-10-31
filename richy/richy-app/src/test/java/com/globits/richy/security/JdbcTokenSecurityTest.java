@@ -34,6 +34,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.DefaultOAuth2AccessToken;
+import org.springframework.security.oauth2.common.DefaultExpiringOAuth2RefreshToken;
 import org.springframework.security.oauth2.common.ExpiringOAuth2RefreshToken;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.common.exceptions.InvalidGrantException;
@@ -188,6 +189,67 @@ public class JdbcTokenSecurityTest {
         assertTrue(finite.getRefreshToken() instanceof ExpiringOAuth2RefreshToken);
         assertFalse(finite.getAdditionalInformation().containsKey("persistent_session"));
         assertFalse(store.readAuthentication(finite).getOAuth2Request().getExtensions().containsKey("auth_persistent"));
+    }
+
+    @Test public void sequentialTabRefreshesReuseValidAccessWithoutRenewingItsDeadline() {
+        for (boolean persistent : Arrays.asList(false, true)) {
+            startContext(persistent);
+            OAuth2AccessToken original = services.createAccessToken(authentication());
+            long originalDeadline = original.getExpiration().getTime();
+            OAuth2AccessToken first = services.refreshAccessToken(original.getRefreshToken().getValue(), request());
+            OAuth2AccessToken second = services.refreshAccessToken(original.getRefreshToken().getValue(), request());
+            assertEquals(original.getValue(), first.getValue());
+            assertEquals(first.getValue(), second.getValue());
+            assertEquals(originalDeadline, second.getExpiration().getTime());
+            assertEquals(persistent, !(second.getRefreshToken() instanceof ExpiringOAuth2RefreshToken));
+            assertNotNull(services.loadAuthentication(first.getValue()));
+
+            TokenRequest sameScope = new TokenRequest(Collections.<String, String>emptyMap(), "jdbc-test-client",
+                    original.getScope(), "refresh_token");
+            assertEquals(original.getValue(), services.refreshAccessToken(original.getRefreshToken().getValue(), sameScope).getValue());
+
+            // Both tabs observed the old expired access. Only the first refresh
+            // should mint a new bearer; a later tab must not invalidate it.
+            OAuth2Authentication persisted = store.readAuthentication(original);
+            DefaultOAuth2AccessToken expired = new DefaultOAuth2AccessToken(original);
+            expired.setExpiration(new Date(System.currentTimeMillis() - 1000));
+            store.storeAccessToken(expired, persisted);
+            OAuth2AccessToken renewed = services.refreshAccessToken(original.getRefreshToken().getValue(), request());
+            OAuth2AccessToken laterTab = services.refreshAccessToken(original.getRefreshToken().getValue(), request());
+            assertNotEquals(original.getValue(), renewed.getValue());
+            assertEquals(renewed.getValue(), laterTab.getValue());
+            assertEquals(renewed.getExpiration().getTime(), laterTab.getExpiration().getTime());
+            assertNotNull(services.loadAuthentication(renewed.getValue()));
+            assertEquals(original.getRefreshToken().getValue(), laterTab.getRefreshToken().getValue());
+            JdbcTemplate sql = new JdbcTemplate(context.getBean(DataSource.class));
+            assertEquals(1, sql.queryForObject("select count(*) from oauth_access_token", Integer.class).intValue());
+            assertEquals(1, sql.queryForObject("select count(*) from oauth_refresh_token", Integer.class).intValue());
+        }
+    }
+
+    @Test public void narrowerRefreshScopeCannotReuseAnAccessWithWiderPrivileges() {
+        OAuth2AccessToken original = services.createAccessToken(authentication());
+        TokenRequest narrower = new TokenRequest(Collections.<String, String>emptyMap(), "jdbc-test-client",
+                Collections.singleton("read"), "refresh_token");
+        OAuth2AccessToken narrowed = services.refreshAccessToken(original.getRefreshToken().getValue(), narrower);
+        assertNotEquals(original.getValue(), narrowed.getValue());
+        assertEquals(Collections.singleton("read"), narrowed.getScope());
+    }
+
+    @Test public void expiredFiniteRefreshIsRejectedEvenIfItsAccessStillHasTimeRemaining() {
+        OAuth2AccessToken access = services.createAccessToken(authentication());
+        OAuth2Authentication persisted = store.readAuthentication(access);
+        String refresh = access.getRefreshToken().getValue();
+        store.removeRefreshToken(access.getRefreshToken());
+        store.storeRefreshToken(new DefaultExpiringOAuth2RefreshToken(refresh,
+                new Date(System.currentTimeMillis() - 1000)), persisted);
+        assertFalse(store.readAccessToken(access.getValue()).isExpired());
+        try {
+            services.refreshAccessToken(refresh, request());
+            fail("A valid access must not bypass expiry of the persisted refresh token");
+        } catch (InvalidGrantException expected) { }
+        assertNull(store.readRefreshToken(refresh));
+        assertNull(store.readAccessToken(access.getValue()));
     }
 
     @Test public void enablingPersistenceDoesNotRewriteOrExtendAnExistingFiniteRefresh() {

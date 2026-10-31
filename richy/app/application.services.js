@@ -156,31 +156,61 @@
                 var body = 'grant_type=refresh_token&client_id=' + encodeURIComponent(Hrm.API_CLIENT_ID) +
                     '&client_secret=' + encodeURIComponent(Hrm.API_CLIENT_KEY) +
                     '&refresh_token=' + encodeURIComponent(generation);
-                var pending = $injector.get('$http').post(
-                    Hrm.API_SERVER_URL.replace(/\/$/, '') + '/oauth/token', body,
-                    {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
-                        sessionRefreshRequest: true, timeout: 20000}
-                ).then(function (response) {
-                    if (!isCurrent(identity)) {
-                        discardIssuedToken(response.data);
-                        return $q.reject(changed());
-                    }
-                    if (!response.data || !response.data.access_token || !response.data.token_type) {
-                        expire();
-                        return $q.reject({status: 401, data: {error: 'invalid_token'}});
-                    }
-                    if (!installToken(response.data, identity)) { return $q.reject(changed()); }
-                    expirationNotified = false;
-                    return response;
-                }, function (error) {
+                function newerAccess() {
+                    var current = token.getToken() || {};
+                    return current.access_token && current.access_token !== oldToken.access_token ? current : null;
+                }
+                function performRefresh() {
                     if (!isCurrent(identity)) { return $q.reject(changed()); }
-                    if (error.status === 401 || (error.status === 400 && error.data &&
-                            (error.data.error === 'invalid_grant' || error.data.error === 'invalid_token'))) {
-                        expire();
-                    }
-                    // Network/server failures leave the token available for another attempt.
-                    return $q.reject(error);
-                }).finally(function () {
+                    var updated = newerAccess();
+                    if (updated) { return $q.when({data: updated}); }
+                    return $injector.get('$http').post(
+                        Hrm.API_SERVER_URL.replace(/\/$/, '') + '/oauth/token', body,
+                        {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
+                            sessionRefreshRequest: true, timeout: 20000}
+                    ).then(function (response) {
+                        if (!isCurrent(identity)) {
+                            discardIssuedToken(response.data);
+                            return $q.reject(changed());
+                        }
+                        // A response can arrive after another tab has refreshed
+                        // this same grant. Keep that tab's access token rather
+                        // than overwriting it or revoking their shared refresh.
+                        var current = newerAccess();
+                        if (current) { return {data: current}; }
+                        if (!response.data || !response.data.access_token || !response.data.token_type) {
+                            expire();
+                            return $q.reject({status: 401, data: {error: 'invalid_token'}});
+                        }
+                        if (!installToken(response.data, identity)) { return $q.reject(changed()); }
+                        expirationNotified = false;
+                        return response;
+                    }, function (error) {
+                        if (!isCurrent(identity)) { return $q.reject(changed()); }
+                        var current = newerAccess();
+                        if (current) { return {data: current}; }
+                        if (error.status === 401 || (error.status === 400 && error.data &&
+                                (error.data.error === 'invalid_grant' || error.data.error === 'invalid_token'))) {
+                            expire();
+                        }
+                        // Network/server failures leave the token available for another attempt.
+                        return $q.reject(error);
+                    });
+                }
+                var locks = window.navigator && window.navigator.locks;
+                var pending;
+                if (locks && typeof locks.request === 'function') {
+                    var started = false;
+                    try {
+                        pending = $q.when(locks.request('pk-system.oauth-refresh:' + Hrm.API_SERVER_URL + Hrm.API_CLIENT_ID,
+                            function () { started = true; return performRefresh(); })).catch(function (error) {
+                            // Older/restricted browsers can deny Web Locks. The
+                            // access comparison and bounded API recovery remain.
+                            return started ? $q.reject(error) : performRefresh();
+                        });
+                    } catch (ignore) { pending = performRefresh(); }
+                } else { pending = performRefresh(); }
+                pending = pending.finally(function () {
                     if (refreshPromise === pending) { refreshPromise = null; refreshIdentity = null; }
                 });
                 refreshPromise = pending;
@@ -274,7 +304,14 @@
                     return config.url.indexOf(apiRoot) === 0;
                 }
             }
+            function sameSession(config) {
+                return token.getRefreshToken() === config.sessionAuthRefresh &&
+                    (config.sessionAuthRefresh || token.getAccessToken() === config.sessionAuthAccess);
+            }
             function retry(config) {
+                if (!sameSession(config)) {
+                    return $q.reject({status: -1, sessionChanged: true});
+                }
                 if (!token.getAccessToken()) {
                     return $q.reject({status: 401, sessionChanged: true});
                 }
@@ -282,6 +319,7 @@
                 // the browser's native data. Only the headers need a new object.
                 var next = angular.extend({}, config, {headers: angular.extend({}, config.headers)});
                 next.sessionAuthRetried = true;
+                next.sessionAuthRecoveries = (config.sessionAuthRecoveries || 0) + 1;
                 Object.keys(next.headers).forEach(function (name) {
                     if (name.toLowerCase() === 'authorization') { delete next.headers[name]; }
                 });
@@ -291,6 +329,9 @@
                 request: function (config) {
                     config.headers = config.headers || {};
                     if (isApi(config)) {
+                        if (config.sessionAuthRetried && !sameSession(config)) {
+                            return $q.reject({status: -1, sessionChanged: true});
+                        }
                         var header = token.getAuthorizationHeader();
                         var explicitHeader;
                         Object.keys(config.headers).forEach(function (name) {
@@ -299,6 +340,9 @@
                         // Respect requests intentionally using a different identity.
                         if (explicitHeader && explicitHeader !== header) { return config; }
                         $injector.get('AuthSession').touch(false);
+                        if (config.sessionAuthRetried && !sameSession(config)) {
+                            return $q.reject({status: -1, sessionChanged: true});
+                        }
                         header = token.getAuthorizationHeader();
                         config.sessionAuthManaged = true;
                         config.sessionAuthHeader = header;
@@ -320,9 +364,14 @@
                         return $q.reject(error);
                     }
                     var session = $injector.get('AuthSession');
-                    if (config.sessionAuthRetried) {
-                        session.expire(config.sessionAuthHeader);
+                    if ((config.sessionAuthRecoveries || 0) >= 2) {
+                        // A resource 401 can belong to an access token replaced
+                        // by another tab. Only a rejected refresh grant proves
+                        // that this device session must end.
                         return $q.reject(error);
+                    }
+                    if (token.getAccessToken() && token.getAccessToken() !== config.sessionAuthAccess) {
+                        return retry(config);
                     }
                     return session.refresh(config.sessionAuthHeader).then(function () {
                         return retry(config);

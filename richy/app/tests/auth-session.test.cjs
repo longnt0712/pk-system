@@ -62,16 +62,32 @@ function setup(transport, protocol = 'https:', frontend = 'richy') {
     deps.$injector = {get(name) { return deps[name]; }};
     const interceptor = invoke(factories.SessionAuthInterceptor, deps);
     function http(config) {
-        const prepared = interceptor.request({...config, headers: {...config.headers}});
-        return Promise.resolve().then(() => transport(prepared)).catch(error =>
-            interceptor.responseError({...error, config: prepared}));
+        let prepared = interceptor.request({...config, headers: {...config.headers}});
+        return Promise.resolve(prepared).then(value => { prepared = value; return transport(value); }).catch(error =>
+            interceptor.responseError({...error, config: prepared && typeof prepared.then !== 'function' ? prepared : undefined}));
     }
     http.post = (url, data, options) => http({...options, url, data, method: 'POST'});
     http.delete = (url, options) => http({...options, url, method: 'DELETE'});
     deps.$http = http;
     const session = deps.AuthSession = invoke(factories.AuthSession, deps);
     token.setToken({access_token: 'old', refresh_token: 'refresh-1', expires_in: 86400, token_type: 'bearer'});
-    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories, appRoot, clock};
+    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories, appRoot, clock, transport};
+}
+
+function anotherTab(h) {
+    const events = [], deps = {...h.deps, $rootScope: {$emit(name) { events.push(name); }}};
+    deps.$injector = {get(name) { return deps[name]; }};
+    const interceptor = invoke(h.factories.SessionAuthInterceptor, deps);
+    function http(config) {
+        let prepared = interceptor.request({...config, headers: {...config.headers}});
+        return Promise.resolve(prepared).then(value => { prepared = value; return h.transport(value); }).catch(error =>
+            interceptor.responseError({...error, config: prepared && typeof prepared.then !== 'function' ? prepared : undefined}));
+    }
+    http.post = (url, data, options) => http({...options, url, data, method: 'POST'});
+    http.delete = (url, options) => http({...options, url, method: 'DELETE'});
+    deps.$http = http;
+    const session = deps.AuthSession = invoke(h.factories.AuthSession, deps);
+    return {http, session, events, deps};
 }
 const api = 'https://example.test/service/api/users/getCurrentUser';
 const invalid = {status: 401, data: {error: 'invalid_token'}};
@@ -144,15 +160,145 @@ test('invalid refresh grant clears token and user, emitting one expiration event
     assert.deepEqual(h.events, ['session:expired']);
 });
 
-test('a refreshed token rejected again ends the session without looping', async () => {
+test('repeated resource 401s stop after two recoveries and preserve the refresh session', async () => {
     let refreshes = 0;
     const h = setup(config => {
         if (config.url.endsWith('/oauth/token')) { refreshes++; return fresh; }
         throw invalid;
     });
     await assert.rejects(h.http({url: api}));
-    assert.equal(refreshes, 1);
-    assert.deepEqual(h.events, ['session:expired']);
+    assert.equal(refreshes, 2);
+    assert.equal(h.token.getRefreshToken(), 'refresh-1');
+    assert.deepEqual(h.events, []);
+});
+
+test('two tabs sharing a refresh token recover safely in both response orderings without Web Locks', async () => {
+    for (const frontend of ['richy', 'core']) {
+        for (const order of [[1, 2], [2, 1]]) {
+            const gates = [null, deferred(), deferred()];
+            let refreshes = 0, activeAccess = 'expired';
+            const revoked = [], attempts = [];
+            const data = number => ({access_token: 'access-' + number, refresh_token: 'shared-refresh',
+                token_type: 'bearer', persistent_session: true, expires_in: 3600});
+            const h = setup(config => {
+                if (config.url.endsWith('/oauth/revoke')) { revoked.push(config.data); return {}; }
+                if (config.url.endsWith('/oauth/token')) {
+                    const number = ++refreshes;
+                    activeAccess = 'access-' + number;
+                    return number <= 2 ? gates[number].promise : {data: data(number)};
+                }
+                attempts.push(config.sessionAuthRecoveries || 0);
+                if (config.headers.Authorization !== 'Bearer ' + activeAccess) throw invalid;
+                return {data: {id: 7}};
+            }, 'https:', frontend);
+            h.token.setToken({...data(0), access_token: 'old'});
+            const other = anotherTab(h);
+            const first = h.http({url: api});
+            await new Promise(resolve => setImmediate(resolve));
+            const second = other.http({url: api});
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(refreshes, 2);
+            gates[order[0]].resolve({data: data(order[0])});
+            await new Promise(resolve => setImmediate(resolve));
+            gates[order[1]].resolve({data: data(order[1])});
+            const responses = await Promise.all([first, second]);
+            assert.equal(responses.length, 2);
+            assert.equal(h.token.getAccessToken(), activeAccess);
+            assert.equal(h.token.getRefreshToken(), 'shared-refresh');
+            assert.ok(Math.max(...attempts) <= 2);
+            assert.ok(refreshes <= 3);
+            assert.deepEqual(h.events, []);
+            assert.deepEqual(other.events, []);
+            assert.deepEqual(revoked, []);
+        }
+    }
+});
+
+test('Web Locks serialize cross-tab refresh and the waiting tab reuses the installed access token', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const gate = deferred(), names = [];
+        let tail = Promise.resolve(), refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) { refreshes++; return gate.promise; }
+            if (config.headers.Authorization === 'Bearer old') throw invalid;
+            return {data: {id: 7}};
+        }, 'https:', frontend);
+        h.context.window.navigator = {locks: {request(name, callback) {
+            names.push(name);
+            const result = tail.then(callback);
+            tail = result.catch(() => {});
+            return result;
+        }}};
+        const other = anotherTab(h);
+        const pending = Promise.all([h.http({url: api}), other.http({url: api})]);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(refreshes, 1);
+        gate.resolve(fresh);
+        await pending;
+        assert.equal(refreshes, 1);
+        assert.equal(names.length, 2);
+        assert.equal(names[0], names[1]);
+        assert.ok(!names[0].includes('refresh-1'));
+        assert.deepEqual(h.events, []);
+        assert.deepEqual(other.events, []);
+    }
+});
+
+test('denied Web Locks fall back to normal refresh and a truly revoked refresh grant still expires', async () => {
+    for (const frontend of ['richy', 'core']) {
+        for (const revoked of [false, true]) {
+            let refreshes = 0;
+            const h = setup(config => {
+                if (config.url.endsWith('/oauth/token')) {
+                    refreshes++;
+                    if (revoked) throw {status: 400, data: {error: 'invalid_grant'}};
+                    return fresh;
+                }
+                if (config.headers.Authorization === 'Bearer old') throw invalid;
+                return {data: {id: 7}};
+            }, 'https:', frontend);
+            h.context.window.navigator = {locks: {request() { return Promise.reject(Error('Locks unavailable')); }}};
+            if (revoked) {
+                await assert.rejects(h.http({url: api}));
+                assert.equal(h.token.getToken(), undefined);
+                assert.deepEqual(h.events, ['session:expired']);
+            } else {
+                await h.http({url: api});
+                assert.equal(h.token.getAccessToken(), 'fresh');
+                assert.deepEqual(h.events, []);
+            }
+            assert.equal(refreshes, 1);
+        }
+    }
+});
+
+test('logout cancels a refresh queued behind another tab Web Lock without restoring credentials', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const gate = deferred();
+        let tail = Promise.resolve(), refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/revoke')) return {};
+            if (config.url.endsWith('/oauth/token')) { refreshes++; return gate.promise; }
+            throw invalid;
+        }, 'https:', frontend);
+        h.context.window.navigator = {locks: {request(name, callback) {
+            const result = tail.then(callback);
+            tail = result.catch(() => {});
+            return result;
+        }}};
+        const other = anotherTab(h);
+        const pending = Promise.allSettled([h.http({url: api}), other.http({url: api})]);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(refreshes, 1);
+        await h.session.logout();
+        gate.resolve(fresh);
+        const responses = await pending;
+        assert.equal(responses.every(response => response.status === 'rejected'), true);
+        assert.equal(refreshes, 1);
+        assert.equal(h.token.getToken(), undefined);
+        assert.deepEqual(h.events, []);
+        assert.deepEqual(other.events, []);
+    }
 });
 
 test('cookies survive restarts, use HTTPS Secure, and retain the original refresh expiry', () => {
@@ -528,6 +674,45 @@ test('responses from the previous user cannot retry as a new user', async () => 
     assert.equal(h.events.length, 0);
 });
 
+test('an account switch between refresh completion and replay cannot send an old POST as the new user', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let requests = 0;
+        const h = setup(() => { requests++; throw invalid; }, 'https:', frontend);
+        h.deps.AuthSession = {touch() {}, refresh() {
+            return Promise.resolve().then(() => {
+                h.token.setToken({...fresh.data, access_token: 'other-user', refresh_token: 'other-refresh'});
+            });
+        }};
+        await assert.rejects(h.http({url: api, method: 'POST', data: {owner: 'previous-user'}}),
+            error => error.sessionChanged === true);
+        assert.equal(requests, 1);
+        assert.equal(h.token.getAccessToken(), 'other-user');
+        assert.deepEqual(h.events, []);
+    }
+});
+
+test('a delayed replay request interceptor rejects an account switch before attaching the new user bearer', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let posts = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) return fresh;
+            posts++; throw invalid;
+        }, 'https:', frontend);
+        const request = h.interceptor.request;
+        h.interceptor.request = config => {
+            if (config.sessionAuthRetried) {
+                h.token.setToken({...fresh.data, access_token: 'other-user', refresh_token: 'other-refresh'});
+            }
+            return request(config);
+        };
+        await assert.rejects(h.http({url: api, method: 'POST', data: {owner: 'previous-user'}}),
+            error => error.sessionChanged === true);
+        assert.equal(posts, 1);
+        assert.equal(h.token.getAccessToken(), 'other-user');
+        assert.deepEqual(h.events, []);
+    }
+});
+
 test('tokens only attach to this API and explicit Authorization is respected', () => {
     const h = setup(() => ({}));
     assert.equal(h.interceptor.request({url: 'https://other.test/api/'}).headers.Authorization, undefined);
@@ -608,6 +793,26 @@ function startApp(h, hostname = 'example.test') {
     toastr: {info() {}, warning(message) { notices.push(message); }}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
     return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices, state};
 }
+
+test('background current-user checks never turn bounded resource 401s into a false logout', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) { refreshes++; return fresh; }
+            throw invalid;
+        }, 'https:', frontend);
+        h.token.setToken({...fresh.data, persistent_session: true});
+        h.session.saveUser({id: 7, roles: []});
+        const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        app.listeners.$locationChangeSuccess();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(refreshes, 2);
+        assert.equal(h.token.getAccessToken(), 'fresh');
+        assert.equal(h.cookies['education.user'].id, 7);
+        assert.equal(h.events.includes('session:expired'), false);
+        assert.deepEqual(app.navigations, []);
+    }
+});
 
 test('persistent login resumes after access expiry and restores a missing user cookie through one refresh', async () => {
     const day = 24 * 60 * 60 * 1000;

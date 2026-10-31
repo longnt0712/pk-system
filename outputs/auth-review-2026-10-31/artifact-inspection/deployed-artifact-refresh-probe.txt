@@ -1,0 +1,17 @@
+tokenServiceLoadedFrom=file:/C:/Users/Admin/git/pk-system/outputs/auth-review-2026-10-31/artifact-inspection/deployed-core-api.jar
+userLoadedFrom=file:/C:/Users/Admin/git/pk-system/outputs/auth-review-2026-10-31/artifact-inspection/deployed-core-api.jar
+persistent=true
+persistentMetadata=true
+accessHasFiniteExpiry=true
+separateDeviceHasIndependentAccess=true
+separateDeviceHasIndependentRefresh=true
+bothDevicesInitiallyAccepted=true
+firstRefreshInitiallyAccepted=true
+refreshesReturnDifferentAccess=true
+firstRefreshAcceptedAfterSecond=false
+secondRefreshAccepted=true
+sharedRefreshStillExists=true
+otherDeviceUnaffectedByBrowserRefreshes=true
+firstDeviceRevocationSucceeded=true
+firstDeviceRejectedAfterLogout=true
+otherDeviceAcceptedAfterFirstDeviceLogout=true

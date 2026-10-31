@@ -98,7 +98,8 @@
                             $state.go('application.dashboard');
                         }
                     }, function (error) {
-                        if (error.status === 401 && authSession.isCurrent(identity)) { authSession.expire(); }
+                        // The interceptor expires confirmed invalid refresh
+                        // grants; a resource 401 alone must not delete a session.
                     }).finally(function () {
                         userCheckInFlight = false;
                         blockUI.stop();
