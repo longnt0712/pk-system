@@ -149,6 +149,36 @@ html.ieltsroom-halloween.ieltsroom-halloween .learning-public-brand-icon { borde
 html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-desktop-login > li > a,
 html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-login-submit { color: #fffaf0 !important; background: linear-gradient(135deg, #a85018, #794597) !important; }
 
+/* Mobile credentials use a light field even though the surrounding nav is dark. */
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-mobile-login input.form-control,
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .learning-login-form input.form-control {
+    color: #33263c !important;
+    -webkit-text-fill-color: #33263c !important;
+    caret-color: #33263c;
+    border-color: #d7bf9f !important;
+    background: #fffdfa !important;
+    color-scheme: light;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .learning-public-nav .form-control::placeholder {
+    color: #76677d !important;
+    -webkit-text-fill-color: #76677d !important;
+    opacity: 1;
+}
+
+/* Image previews keep their own readable header above the exported paper. */
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-modal .class-image-preview-header {
+    color: #fff0dc !important;
+    background: linear-gradient(115deg, #33203f, #57305b) #33203f !important;
+}
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-header :is(h4, .close) { color: #fff0dc !important; opacity: 1; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-header :is(small, p) { color: #e8d6e8 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-body { color: #33263c !important; background: #fffaf0 !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-toolbar { color: #71491f !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-toolbar button { color: #71491f !important; border-color: #d7bf9f !important; background: #fff3df !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-toolbar output { color: #82451c !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-size { color: #76677d !important; }
+html.ieltsroom-halloween.ieltsroom-halloween .class-image-preview-canvas { border-color: #ddc6a9 !important; background: #e5d5c1 !important; }
+
 /* Battle setup panels share seasonal paint; team colors, answer states,
    animated game arenas and character artwork keep their game-specific rules. */
 html.ieltsroom-halloween.ieltsroom-halloween .quiz-battle-2-page {

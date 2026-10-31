@@ -1229,9 +1229,11 @@
 
         function prepareHomeworkImageElement(sourceTable) {
             var root = document.createElement('div');
-            root.className = 'class-homework-review-table';
+            // Export layout is independent of the interactive table's intrinsic
+            // widths and hidden comment measurements.
+            root.className = 'class-homework-image-export';
             root.style.cssText = 'position:fixed;left:0;top:0;z-index:-2147483647;overflow:visible;max-height:none;'
-                + 'width:max-content;padding:22px;background:#fff;border:0;border-radius:0;color:#25324b;pointer-events:none;';
+                + 'box-sizing:border-box;padding:22px;background:#fff;border:0;border-radius:0;color:#25324b;pointer-events:none;';
 
             var title = document.createElement('h2');
             title.textContent = 'TIẾN ĐỘ BÀI TẬP VỀ NHÀ';
@@ -1248,8 +1250,22 @@
             root.appendChild(subtitle);
 
             var table = sourceTable.cloneNode(true);
-            table.style.cssText = 'width:max-content;min-width:100%;margin:0;border-collapse:collapse;table-layout:auto;'
-                + 'background:#fff;color:#25324b;font-family:Arial,sans-serif;';
+            var columns = document.createElement('colgroup');
+            var tableWidth = 0;
+            angular.forEach(sourceTable.querySelectorAll('thead tr:first-child > th'), function (header) {
+                var width = header.classList.contains('class-homework-review-cell') ? 260
+                    : header.classList.contains('class-homework-review-name') ? 200
+                    : header.classList.contains('class-attendance-cell') ? 210
+                    : header.textContent.trim() === '#' ? 42 : 150;
+                var column = document.createElement('col');
+                column.style.width = width + 'px';
+                columns.appendChild(column);
+                tableWidth += width;
+            });
+            table.insertBefore(columns, table.firstChild);
+            root.style.width = (tableWidth + 44) + 'px';
+            table.style.cssText = 'width:' + tableWidth + 'px;min-width:0;max-width:none;margin:0;border-collapse:collapse;table-layout:fixed;'
+                + 'background:#fff;color:#25324b;font-family:Arial,sans-serif;font-size:14px;line-height:1.5;';
 
             var originalSelects = sourceTable.querySelectorAll('select.class-homework-progress-select');
             var clonedSelects = table.querySelectorAll('select.class-homework-progress-select');
@@ -1295,8 +1311,13 @@
                 if (element.parentNode) { element.parentNode.removeChild(element); }
             });
             angular.forEach(table.querySelectorAll('th,td'), function (cell) {
-                cell.style.position = 'static'; cell.style.backgroundColor = cell.tagName === 'TH' ? '#f1f4fc' : '#fff';
-                cell.style.color = '#25324b'; cell.style.border = '1px solid #dfe6f1';
+                cell.style.cssText = 'position:static;box-sizing:border-box;width:auto;min-width:0;max-width:none;'
+                    + 'padding:10px;vertical-align:top;white-space:normal;overflow-wrap:anywhere;word-break:normal;'
+                    + 'background:' + (cell.tagName === 'TH' ? '#f1f4fc' : '#fff') + ';color:#25324b;border:1px solid #dfe6f1;';
+            });
+            angular.forEach(table.querySelectorAll('.class-homework-task-title,.class-homework-review-note,.class-homework-review-name > strong'), function (text) {
+                text.style.cssText += ';display:block;width:auto;max-width:100%;white-space:normal;overflow:visible;'
+                    + 'text-overflow:clip;overflow-wrap:anywhere;word-break:normal;';
             });
             root.appendChild(table);
             return root;
