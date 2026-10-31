@@ -15,6 +15,21 @@ function section(start, end) {
 const exportCode = section('        vm.exportColumns = [', '        function exportImageEscapeHtml');
 const qrCode = section('        // URL logo', '        vm.photoPreviewUser =');
 
+function zipPartNames(bytes) {
+    // JSZip coalesces duplicate entries. Inspect the original central directory instead.
+    const end = bytes.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    assert.ok(end >= 0, 'ZIP central directory exists');
+    const count = bytes.readUInt16LE(end + 10), names = [];
+    let cursor = bytes.readUInt32LE(end + 16);
+    for (let i = 0; i < count; i++) {
+        assert.equal(bytes.readUInt32LE(cursor), 0x02014b50);
+        const length = bytes.readUInt16LE(cursor + 28);
+        names.push(bytes.subarray(cursor + 46, cursor + 46 + length).toString('utf8'));
+        cursor += 46 + length + bytes.readUInt16LE(cursor + 30) + bytes.readUInt16LE(cursor + 32);
+    }
+    return names;
+}
+
 function setup({ielts = false, users, fail = false} = {}) {
     const data = users || [{username: '000017', person: {firstName: 'An'}}, {username: 'gl20240034', person: {firstName: 'Bình'}}];
     const calls = {qr: [], workbook: [], download: [], warnings: [], errors: [], closed: 0, text: []};
@@ -159,6 +174,9 @@ test('real Excel downloads embed decodable student-code PNGs in separate cells l
             const download = await downloadEvent;
             assert.ok(download, 'The completed export must trigger a browser download');
             const bytes = fs.readFileSync(await download.path());
+            const parts = zipPartNames(bytes).map(name => name.toLowerCase());
+            assert.equal(parts.length, new Set(parts).size, 'Excel package must not contain duplicate part names');
+            assert.equal(parts.filter(name => name === 'xl/worksheets/sheet1.xml').length, 1);
             if (process.env.STUDENT_QR_QA_DIR && width === 1366) fs.writeFileSync(path.join(process.env.STUDENT_QR_QA_DIR, 'student-qr-check.xlsx'), bytes);
             const zip = await JSZip.loadAsync(bytes), drawing = await zip.file('xl/drawings/studentQr.xml').async('string');
             assert.equal((drawing.match(/oneCellAnchor>/g) || []).length, 4);

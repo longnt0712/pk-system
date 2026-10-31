@@ -13,7 +13,7 @@
 
     Hrm.User.config(['$stateProvider', function ($stateProvider) {
 
-        var version = (window.APP_VERSION || new Date().getTime()) + '-student-qr-20261031';
+        var version = (window.APP_VERSION || new Date().getTime()) + '-student-qr-20261031-2';
 
         $stateProvider
 

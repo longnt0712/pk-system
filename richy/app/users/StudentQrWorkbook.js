@@ -24,7 +24,9 @@
             if (xml.getElementsByTagName('parsererror').length) { throw new Error('Cấu trúc file Excel không hợp lệ.'); }
             return xml;
         }
-        function addXml(name, xml) { cfb.utils.cfb_add(zip, name, encoder.encode(serializer.serializeToString(xml))); }
+        // CFB requires absolute container paths to replace an existing entry.
+        // A relative multi-segment path appends a second sheet1.xml, which Excel rejects.
+        function addXml(name, xml) { cfb.utils.cfb_add(zip, '/' + name, encoder.encode(serializer.serializeToString(xml))); }
         function child(doc, parent, ns, name, attrs) {
             var node = doc.createElementNS(ns, name);
             Object.keys(attrs || {}).forEach(function (key) { node.setAttribute(key, attrs[key]); });
@@ -49,7 +51,7 @@
             var png = new Uint8Array(binary.length);
             for (var n = 0; n < binary.length; n++) { png[n] = binary.charCodeAt(n); }
             var id = index + 1, file = 'student-qr-' + id + '.png';
-            cfb.utils.cfb_add(zip, 'xl/media/' + file, png, {unsafe: true});
+            cfb.utils.cfb_add(zip, '/xl/media/' + file, png, {unsafe: true});
             relationships.push('<Relationship Id="qr' + id + '" Type="' + imageType + '" Target="../media/' + file + '"/>');
             // 90 px square, matching the template's 857250 EMU oneCellAnchor.
             anchors.push('<xdr:oneCellAnchor><xdr:from><xdr:col>' + image.col + '</xdr:col><xdr:colOff>0</xdr:colOff>' +
@@ -59,10 +61,10 @@
                 '<xdr:blipFill><a:blip r:embed="qr' + id + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>' +
                 '<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>');
         });
-        cfb.utils.cfb_add(zip, 'xl/drawings/studentQr.xml', encoder.encode(
+        cfb.utils.cfb_add(zip, '/xl/drawings/studentQr.xml', encoder.encode(
             '<?xml version="1.0" encoding="UTF-8"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"' +
             ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="' + relationshipNs + '">' + anchors.join('') + '</xdr:wsDr>'));
-        cfb.utils.cfb_add(zip, 'xl/drawings/_rels/studentQr.xml.rels', encoder.encode(
+        cfb.utils.cfb_add(zip, '/xl/drawings/_rels/studentQr.xml.rels', encoder.encode(
             '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="' + packageNs + '">' + relationships.join('') + '</Relationships>'));
         var types = readXml('[Content_Types].xml'), contentNs = types.documentElement.namespaceURI;
         if (!Array.prototype.some.call(types.getElementsByTagNameNS(contentNs, 'Default'), function (entry) { return entry.getAttribute('Extension') === 'png'; })) {
