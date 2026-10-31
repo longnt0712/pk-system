@@ -96,6 +96,15 @@ public class ComprehensiveSectionSubmissionTest {
     @Test public void fortyTwoOfFiftyFailsAndFortyThreePassesWithIndependentHistories() {
         TestResultDto failed=save(submission(0,42,50,"42/50")),passed=save(submission(0,43,50,"43/50"));assertEquals("FAILED",failed.getResultStatus());assertEquals("SUCCESS",passed.getResultStatus());assertNotEquals(failed.getId(),passed.getId());assertEquals(sections.get(0).getKey(),passed.getAssignmentSectionKey());assertEquals(task.getId(),passed.getAssignmentTaskId());assertEquals(2,resultCount());
     }
+    @Test public void savedResultReceiptsReconcileCloudDraftsUsingTheRealMetadataQuery() throws Exception {
+        TestResultDto result=save(submission(0,50,50,"draft-receipt"));
+        Map<String,Object> payload=new LinkedHashMap<String,Object>();payload.put("userId",student.getId());payload.put("testId",source.getId());payload.put("testMode","COMPREHENSIVE");
+        payload.put("sessionMode","SERIOUS");payload.put("assignmentTaskId",task.getId());payload.put("assignmentParts",Arrays.asList(1));payload.put("assignmentSectionKey",sections.get(0).getKey());payload.put("clientAttemptKey",result.getClientAttemptKey());
+        LearningDraft draft=new LearningDraft();draft.setUser(student);draft.setDraftType("IELTS");draft.setDraftKey("ieltsReadingInProgress:"+student.getId()+":comprehensive:test:"+source.getId()+":serious:task:"+task.getId()+":parts:1:section:"+sections.get(0).getKey());
+        draft.setPayload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload));
+        LearningDraftRepository repository=mock(LearningDraftRepository.class);when(repository.findByUser_IdOrderBySavedAtDesc(student.getId())).thenReturn(Arrays.asList(draft));ReflectionTestUtils.setField(saves,"learningDraftRepository",repository);
+        List<LearningDraftDto> drafts=saves.getLearningDrafts();assertEquals(1,drafts.size());assertEquals(result.getId(),drafts.get(0).getSavedResult().get("id"));assertEquals(draft.getPayload(),drafts.get(0).getPayload());assertEquals(1,resultCount());
+    }
     @Test public void unansweredQuestionsStayInTheFiftyQuestionDenominator() {
         assertEquals("FAILED",save(submission(0,42,42,"only42rows")).getResultStatus());assertEquals("SUCCESS",save(submission(0,43,43,"only43rows")).getResultStatus());assertEquals("FAILED",save(submission(0,0,0,"blanksection")).getResultStatus());
     }

@@ -12,6 +12,7 @@ public class LearningDraftDto implements Serializable {
     private String title;
     private String payload;
     private Long savedAt;
+    private java.util.Map<String,Object> savedResult;
 
     public LearningDraftDto() { }
 
@@ -37,4 +38,6 @@ public class LearningDraftDto implements Serializable {
     public void setPayload(String value) { payload = value; }
     public Long getSavedAt() { return savedAt; }
     public void setSavedAt(Long value) { savedAt = value; }
+    public java.util.Map<String,Object> getSavedResult() { return savedResult; }
+    public void setSavedResult(java.util.Map<String,Object> value) { savedResult = value; }
 }

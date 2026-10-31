@@ -1123,7 +1123,7 @@
             function ieltsReminderParts(parts) {
             return (angular.isArray(parts) ? parts : []).map(Number).sort(function (a, b) { return a - b; }).join(',');
         }
-            function ieltsReminderInfo(key, draft) {
+        function ieltsReminderInfo(key, draft, savedResult) {
             var base = String(key || '').replace(/:attempt:[a-f0-9]{32}$/, '');
             var taskMatch = /:task:(\d+)(?=:|$)/.exec(base);
             var taskId = draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null);
@@ -1154,9 +1154,20 @@
                 && String(result.assignmentTaskId || '') === String(taskId || '') && angular.isArray(result.completedParts)
                 && String(result.assignmentSectionKey || '') === String(sectionKey || '')
                 && ieltsReminderParts(result.completedParts) === ieltsReminderParts(parts);
-            var sessionMode = taskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS');
+            var sessionMode = taskId ? 'SERIOUS' : String(draft.sessionMode || (/:study(?=:|$)/i.test(base) ? 'STUDY' : 'SERIOUS')).toUpperCase();
+            var receiptParts = parts.length ? parts : (angular.isArray(draft.partNumbers) ? draft.partNumbers : []);
+            var serverConfirmed = coherentSection && !!attempt && savedResult && Number(savedResult.id) > 0
+                && savedResult.clientAttemptKey === attempt && savedResult.user && String(savedResult.user.id) === String(draft.userId)
+                && Number(savedResult.testType) === type && String(savedResult.sourceQuestionId) === String(draft.testId)
+                && Object.prototype.hasOwnProperty.call(savedResult, 'assignmentTaskId')
+                && String(savedResult.assignmentTaskId || '') === String(taskId || '')
+                && String(savedResult.assignmentSectionKey || '') === String(sectionKey || '')
+                && receiptParts.length && angular.isArray(savedResult.completedParts)
+                && ieltsReminderParts(savedResult.completedParts) === ieltsReminderParts(receiptParts)
+                && savedResult.ieltsSessionMode !== 'STUDY'
+                && (savedResult.resultStatus === 'SUCCESS' || (validState && state.status === 'PENDING' && savedResult.resultStatus === 'FAILED'));
             return {baseKey: base, attemptKey: attempt, taskId: taskId, parts: parts, sectionKey: sectionKey, sessionMode: sessionMode,
-                confirmed: !!confirmed, pending: !!(validState && state.status === 'PENDING'),
+                confirmed: !!(confirmed || serverConfirmed), pending: !!(validState && state.status === 'PENDING'),
                 context: 'IELTS:' + draft.userId + ':' + mode + ':' + draft.testId + ':' + sessionMode
                     + ':task:' + (taskId || '') + ':parts:' + ieltsReminderParts(parts) + (sectionKey ? ':section:' + sectionKey : '')};
         }
@@ -1225,8 +1236,8 @@
                 };
 
                 if (kind === 'IELTS') {
-                    var info = ieltsReminderInfo(item.draftKey, payload);
-                    if (info.confirmed) { return null; }
+                    var info = ieltsReminderInfo(item.draftKey, payload, item.savedResult);
+                    if (info.confirmed || String(info.sessionMode).toUpperCase() === 'STUDY') { return null; }
                     draft.resumeIdentity = info.context + (info.pending ? ':pending:' + info.attemptKey : ':active');
                     draft.ieltsContext = info.context; draft.ieltsAttemptKey = info.attemptKey; draft.pendingSave = info.pending;
                     draft.assignmentTaskId = info.taskId; draft.assignmentParts = angular.copy(info.parts);

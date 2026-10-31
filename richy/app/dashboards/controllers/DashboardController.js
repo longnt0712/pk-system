@@ -295,7 +295,7 @@
         function ieltsReminderParts(parts) {
             return (angular.isArray(parts) ? parts : []).map(Number).sort(function (a, b) { return a - b; }).join(',');
         }
-        function ieltsReminderInfo(key, draft) {
+        function ieltsReminderInfo(key, draft, savedResult) {
             var base = String(key || '').replace(/:attempt:[a-f0-9]{32}$/, '');
             var taskMatch = /:task:(\d+)(?=:|$)/.exec(base);
             var taskId = draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null);
@@ -326,9 +326,20 @@
                 && String(result.assignmentTaskId || '') === String(taskId || '') && angular.isArray(result.completedParts)
                 && String(result.assignmentSectionKey || '') === String(sectionKey || '')
                 && ieltsReminderParts(result.completedParts) === ieltsReminderParts(parts);
-            var sessionMode = taskId ? 'SERIOUS' : (draft.sessionMode || 'SERIOUS');
+            var sessionMode = taskId ? 'SERIOUS' : String(draft.sessionMode || (/:study(?=:|$)/i.test(base) ? 'STUDY' : 'SERIOUS')).toUpperCase();
+            var receiptParts = parts.length ? parts : (angular.isArray(draft.partNumbers) ? draft.partNumbers : []);
+            var serverConfirmed = coherentSection && !!attempt && savedResult && Number(savedResult.id) > 0
+                && savedResult.clientAttemptKey === attempt && savedResult.user && String(savedResult.user.id) === String(draft.userId)
+                && Number(savedResult.testType) === type && String(savedResult.sourceQuestionId) === String(draft.testId)
+                && Object.prototype.hasOwnProperty.call(savedResult, 'assignmentTaskId')
+                && String(savedResult.assignmentTaskId || '') === String(taskId || '')
+                && String(savedResult.assignmentSectionKey || '') === String(sectionKey || '')
+                && receiptParts.length && angular.isArray(savedResult.completedParts)
+                && ieltsReminderParts(savedResult.completedParts) === ieltsReminderParts(receiptParts)
+                && savedResult.ieltsSessionMode !== 'STUDY'
+                && (savedResult.resultStatus === 'SUCCESS' || (validState && state.status === 'PENDING' && savedResult.resultStatus === 'FAILED'));
             return {baseKey: base, attemptKey: attempt, taskId: taskId, parts: parts, sectionKey: sectionKey, sessionMode: sessionMode,
-                confirmed: !!confirmed, pending: !!(validState && state.status === 'PENDING'),
+                confirmed: !!(confirmed || serverConfirmed), pending: !!(validState && state.status === 'PENDING'),
                 context: 'IELTS:' + draft.userId + ':' + mode + ':' + draft.testId + ':' + sessionMode
                     + ':task:' + (taskId || '') + ':parts:' + ieltsReminderParts(parts) + (sectionKey ? ':section:' + sectionKey : '')};
         }
@@ -396,11 +407,15 @@
                 return storedPart || Number(draft.passageNumber) || null;
             }
 
-            function addIeltsDraft(key, draft) {
+            function addIeltsDraft(key, draft, savedResult) {
                 if (!draft || !draft.testId || String(draft.userId) !== userId
                         || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
-                var info = ieltsReminderInfo(key, draft);
-                if (info.confirmed) { return; }
+                var info = ieltsReminderInfo(key, draft, savedResult);
+                if (String(info.sessionMode).toUpperCase() === 'STUDY') { return; }
+                if (info.confirmed) {
+                    vm.resumeDrafts = vm.resumeDrafts.filter(function (item) { return item.ieltsContext !== info.context || item.ieltsAttemptKey !== info.attemptKey; });
+                    return;
+                }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
                     || key.indexOf(ieltsPrefix + ':comprehensive') === 0;
@@ -529,7 +544,7 @@
                             displayPayload = local;
                         }
                     } catch (ignoreServerCacheError) {}
-                    if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload); }
+                    if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload, item.savedResult); }
                     if (item.draftType === 'DAILY_VOCAB') { addDailyVocabDraft(item.draftKey, displayPayload); }
                     if (item.draftType === 'DAILY_VOCAB_PENDING') { addDailyVocabPending(item.draftKey, displayPayload); }
                     if (item.draftType === 'DAILY_LISTENING') { addDailyListeningDraft(item.draftKey, displayPayload); }

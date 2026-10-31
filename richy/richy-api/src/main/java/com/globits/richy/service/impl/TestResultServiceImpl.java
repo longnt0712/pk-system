@@ -1249,6 +1249,7 @@ public class TestResultServiceImpl implements TestResultService {
 		for (LearningDraft draft : learningDraftRepository.findByUser_IdOrderBySavedAtDesc(user.getId())) {
 			result.add(new LearningDraftDto(draft));
 		}
+		LearningDraftReceipts.attach(manager, user.getId(), result);
 		return result;
 	}
 

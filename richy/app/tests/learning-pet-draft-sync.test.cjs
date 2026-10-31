@@ -53,7 +53,7 @@ async function setup(items, options = {}) {
         nodeVm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context);
     }
     const user = {id: 7, vocabularyExperienceLevel: 0, roles: [{name: 'ROLE_STUDENT'}]};
-    const storage = new Map(items.map(item => [item.draftKey, item.payload]));
+    const storage = new Map((options.localItems || items).map(item => [item.draftKey, item.payload]));
     const root = scope(), petScope = scope();
     root.settings = {layout: {}};
     const cloud = clone(items), requests = [];
@@ -205,4 +205,51 @@ test('dismissals for another account are ignored and the pet releases its event 
     assert.equal(h.root.listeners('learningDraftDismissed'), 1);
     h.petScope.$broadcast('$destroy');
     assert.equal(h.root.listeners('learningDraftDismissed'), 0);
+});
+
+function ieltsItem(mode = 'COMPREHENSIVE', extra = {}) {
+    const payload = {userId:7,testId:54,testMode:mode,sessionMode:'SERIOUS',clientAttemptKey:'a'.repeat(32),
+        assignmentTaskId:19,assignmentParts:[1],assignmentPart:1,isPartAssignment:true,partNumbers:[1],
+        title:'An assigned test',answeredCount:22,totalQuestions:63,savedAt:'2026-10-31T06:54:09Z',...extra};
+    return {draftType:'IELTS',draftKey:'ieltsReadingInProgress:7:'+mode.toLowerCase()+':test:54:'+payload.sessionMode.toLowerCase()
+        +(payload.assignmentTaskId?':task:'+payload.assignmentTaskId+':parts:1':''),payload:JSON.stringify(payload),savedAt:Date.parse(payload.savedAt)};
+}
+function savedResult(extra={}) {
+    return {id:91,user:{id:7},clientAttemptKey:'a'.repeat(32),testType:6,sourceQuestionId:54,
+        assignmentTaskId:19,assignmentSectionKey:null,completedParts:[1],ieltsSessionMode:'SERIOUS',resultStatus:'SUCCESS',...extra};
+}
+
+for (const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']) {
+    test(mode+' Study progress is preserved but never appears on Dashboard or in pet reminders',async()=>{
+        const item=ieltsItem(mode,{sessionMode:'STUDY',assignmentTaskId:null,annotationNotes:[{id:'n1',text:'Keep this note'}],annotations:[{highlight:true}],audioPosition:300});
+        const h=await setup([item]);assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.pet.drafts.length,0);assert.equal(h.pet.notificationCount,0);
+        assert.equal(h.storage.get(item.draftKey),item.payload);assert.equal(h.cloud.length,1);assert.equal(h.requests.some(r=>r.method==='POST'),false);
+    });
+}
+test('legacy Study keys are hidden and a real assignment remains Serious even with an old Study flag',async()=>{
+    const legacy=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY',assignmentTaskId:null}),payload=JSON.parse(legacy.payload);delete payload.sessionMode;legacy.payload=JSON.stringify(payload);
+    const assigned=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY'});const h=await setup([legacy,assigned]);
+    assert.equal(h.dashboard.resumeDrafts.length,1);assert.equal(h.pet.drafts.length,1);assert.equal(h.dashboard.resumeDrafts[0].sessionMode,'SERIOUS');
+    assert.equal(h.storage.get(legacy.draftKey),legacy.payload);
+});
+test('database-confirmed saved attempts suppress stale local and cloud reminders without deleting answers',async()=>{
+    const item=ieltsItem();item.savedResult=savedResult();const local={...item,payload:JSON.stringify({...JSON.parse(item.payload),savedAt:'2026-10-31T07:00:00Z',answeredCount:36})};
+    const h=await setup([item],{localItems:[local]});assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.pet.notificationCount,0);
+    assert.equal(h.storage.get(item.draftKey),local.payload);assert.equal(h.cloud[0].payload,item.payload);assert.equal(h.requests.some(r=>r.method==='POST'),false);
+});
+test('a later attempt at the same test/task is retained when the older attempt is confirmed',async()=>{
+    const item=ieltsItem();item.savedResult=savedResult();const local={...item,payload:JSON.stringify({...JSON.parse(item.payload),clientAttemptKey:'b'.repeat(32),savedAt:'2026-10-31T07:00:00Z'})};
+    const h=await setup([item],{localItems:[local]});assert.equal(h.dashboard.resumeDrafts.length,1);assert.equal(h.pet.drafts.length,1);assert.equal(h.pet.drafts[0].ieltsAttemptKey,'b'.repeat(32));
+});
+test('a receipt for another owner, source, task, section, part, type, key or Study session never hides a draft',async()=>{
+    for(const change of [{user:{id:8}},{sourceQuestionId:55},{assignmentTaskId:20},{assignmentSectionKey:'another'},
+        {completedParts:[2]},{testType:7},{clientAttemptKey:'b'.repeat(32)},{id:0},{ieltsSessionMode:'STUDY'},{resultStatus:null}]){
+        const item=ieltsItem();item.savedResult=savedResult(change);const h=await setup([item]);
+        assert.equal(h.dashboard.resumeDrafts.length,1,JSON.stringify(change));assert.equal(h.pet.drafts.length,1,JSON.stringify(change));
+    }
+});
+test('failed active work stays available; a verified failed pending submission stops claiming it is unsaved',async()=>{
+    const active=ieltsItem();active.savedResult=savedResult({resultStatus:'FAILED'});let h=await setup([active]);assert.equal(h.dashboard.resumeDrafts.length,1);assert.equal(h.pet.drafts.length,1);
+    const pending=JSON.parse(active.payload);pending.submissionState={key:pending.clientAttemptKey,status:'PENDING',payload:{clientAttemptKey:pending.clientAttemptKey,user:{id:7},testType:6,sourceQuestionId:54,assignmentTaskId:19,completedParts:[1]}};
+    active.payload=JSON.stringify(pending);h=await setup([active]);assert.equal(h.dashboard.resumeDrafts.length,0);assert.equal(h.pet.drafts.length,0);
 });
