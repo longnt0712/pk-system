@@ -241,10 +241,14 @@
 .ielts-test-library-page .test-explorer-file .test-explorer-name { display: block; color: var(--library-ink); font-size: 16px; font-weight: 650; line-height: 1.45; letter-spacing: -.02em; }
 .ielts-test-library-page .library-test-title { display: block; min-height: 2.9em; overflow-wrap: anywhere; text-align: center; }
 .ielts-test-library-page .test-explorer-file .test-explorer-name small { color: var(--library-muted); font-size: 10px; font-weight: 400; }
-.ielts-test-library-page .library-test-in-progress .test-explorer-name > small:first-of-type { color: var(--library-accent); font-weight: 600; }
-.ielts-test-library-page .library-test-complete .test-explorer-name > small:first-of-type { color: #3d8b70; }
+.ielts-test-library-page .library-test-complete .library-test-progress-label { color: #3d8b70; }
 .ielts-test-library-page .test-explorer-file-details { padding: 0 18px 10px; color: var(--library-muted); font-size: 11px; line-height: 1.7; text-align: left; }
 .ielts-test-library-page .test-explorer-topic { padding: 2px 5px; border-radius: 5px; background: var(--library-tint); color: var(--library-accent); }
+.ielts-test-library-page .library-test-progress { padding: 0 18px 12px; color: var(--library-accent); font-size: 11px; line-height: 1.5; text-align: left; }
+.ielts-test-library-page .library-test-progress-label { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 3px 8px; }
+.ielts-test-library-page .library-test-progress-label strong { font-weight: 700; }
+.ielts-test-library-page .library-test-progress-label small,.ielts-test-library-page .library-test-progress-meta { color: var(--library-muted); font-size: 10px; }
+.ielts-test-library-page .library-test-progress-meta { display: block; }
 .ielts-test-library-page .library-learning-progress { display: block; width: 100%; height: 4px; margin: 5px 0 7px; overflow: hidden; border: 0; border-radius: 4px; appearance: none; color: var(--library-accent); background: var(--library-tint); }
 .ielts-test-library-page .library-learning-progress::-webkit-progress-bar { background: var(--library-tint); border-radius: 4px; }
 .ielts-test-library-page .library-learning-progress::-webkit-progress-value { background: var(--library-accent); border-radius: 4px; }
@@ -272,6 +276,7 @@
 .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-name { min-height: 0; font-size: 13px; }
 .ielts-test-library-page .test-folder-explorer.is-list .library-test-title { min-height: 0; text-align: left; }
 .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-details { flex: 0 1 240px; padding: 0; font-size: 10px; }
+.ielts-test-library-page .test-folder-explorer.is-list .library-test-progress { flex: 0 1 240px; min-width: 0; padding: 0; }
 .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-actions { flex: 0 0 150px; padding: 0; }
 .ielts-test-library-page .library-empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 50px 16px; text-align: center; color: var(--library-muted); }
 .ielts-test-library-page .library-empty-state > i { display: grid; place-items: center; width: 50px; height: 50px; margin-bottom: 4px; border-radius: 16px; color: var(--library-accent); background: var(--library-tint); font-size: 20px; }
@@ -362,6 +367,7 @@
     .ielts-test-library-page .test-explorer-file-content { min-height: 304px; }
     .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-content { gap: 10px; }
     .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-details { flex-basis: 100%; padding-left: 76px; }
+    .ielts-test-library-page .test-folder-explorer.is-list .library-test-progress { flex-basis: 100%; padding-left: 76px; }
     .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-actions { flex-basis: 100%; padding-left: 76px; }
     .ielts-test-library-page .test-folder-explorer.is-list .test-explorer-file-actions > a { width: auto; flex: 1; }
     .ielts-test-library-page .reading-test-pagination { gap: 12px; }
