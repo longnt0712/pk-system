@@ -17,7 +17,7 @@ async function open(browser,username,width,extra=null,options={}){
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-sanitize.min.js')});
  await page.evaluate(({username,template,controlsTemplate,answersTemplate,videoAnswersTemplate,privateSync})=>{
   window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];window.matchControlRequests=[];window.toastErrors=[];window.privateRoomRequests=[];
-  angular.module('Hrm.Question',['ngSanitize']).value('$state',{go(){}}).value('$stateParams',{})
+  angular.module('Hrm.Question',['ngSanitize']).value('BattleSessionLogin',{bind(){}}).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(...args){window.toastErrors.push(args);},success(){}}).value('blockUI',{}).value('QuestionService',{})
    .factory('BattleQuizOnlineService',function($q){const api={answer(...args){window.answerCalls.push(args);const request=$q.defer();window.answerRequests.push(request);return request.promise;},

@@ -33,7 +33,7 @@ async function open(width=1280,lobbyMode=false){
   window.qaCategories=[{id:6,name:'Grade 6'},{id:7,name:'Grade 7'},{id:8,name:'Empty category'}];
   window.qaTopics={6:[{id:11,name:'Tom Family'},{id:12,name:'House words'},{id:13,name:'A long vocabulary lesson about family members and their daily routines'}],7:[{id:21,name:'Travel plans'},{id:22,name:'Grammar review'}],8:[]};
   window.qaServerRoom={code:'TOPICQA',hostUsername:'host',status:'LOBBY',serverTime:Date.now(),settings:{mode:'CLASSIC',questionSource:'VOCABULARY',questionOwnerUserId:1,topicIds:['11'],topicNames:['QA OWNER — Grade 6 — Tom Family'],teamCount:2,guessLevels:[]},players:[{username:'host',displayName:'Teacher QA',spectator:true,connected:true,ready:true}],recentEvents:[]};
-  angular.module('Hrm.Question',['ngSanitize','ui.select'])
+  angular.module('Hrm.Question',['ngSanitize','ui.select']).value('BattleSessionLogin',{bind(){}})
    .value('$state',{go(name,params){window.qaNavigation={name,params};}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username:'host'});}}).value('blockUI',{start(){},stop(){}})
    .value('toastr',{success(){},warning(...args){window.qaNotices.push(args);},error(...args){window.qaNotices.push(args);}})

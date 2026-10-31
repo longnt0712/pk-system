@@ -42,7 +42,7 @@ async function open(width=1280,username='host',status='PLAYING',mode='CLASSIC'){
      shots:[],demons:[{id:1,progress:0.3,speed:0,health:3,maxHealth:3,points:3,tough:true},{id:2,progress:0.15,speed:0,health:1,maxHealth:2,points:2,tough:true}]},
      {number:2,memberCount:1,kills:4,points:5,levelPoints:3,rank:2,eliminatedAt:0,nearestDemonProgress:0.1,nearestDemonSpeed:0,shots:[],demons:[]}]};
   }
-  angular.module('Hrm.Question',['dndLists']).value('$state',{go(){}}).value('$stateParams',{})
+  angular.module('Hrm.Question',['dndLists']).value('BattleSessionLogin',{bind(){}}).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}}).value('QuestionService',{}).value('blockUI',{})
    .value('toastr',{success(){},warning(){},error(...args){window.qaErrors.push(args);}})
    .factory('BattleQuizOnlineService',function($q){return {
@@ -56,7 +56,7 @@ async function open(width=1280,username='host',status='PLAYING',mode='CLASSIC'){
      players.forEach((player,index)=>player.teamNumber=1+(index+turn)%window.qaServerRoom.settings.teamCount);
      window.qaServerRoom.serverTime=Date.now();return $q.when(angular.copy(window.qaServerRoom));},
     getRoom(){return $q.when(angular.copy(window.qaServerRoom));},connectRealtime(){return $q.when(true);},disconnectRealtime(){}};})
-   .run(function($templateCache){$templateCache.put('question/views/battle_online_demon_arena.html?v=qa',arena);$templateCache.put('question/views/battle_online_match_controls.html?matchControls=20261017_2',controls);$templateCache.put('question/views/battle_online_host_settings.html?v=qa',hostSettings);});
+   .run(function($templateCache){$templateCache.put('question/views/battle_online_demon_arena.html?v=qa',arena);$templateCache.put('question/views/battle_online_match_controls.html?matchControls=20261017_2',controls);$templateCache.put('question/views/battle_online_host_settings.html?v=qa&vocabPicker=20261028_1',hostSettings);});
  },{username,status,mode,arena:read('question/views/battle_online_demon_arena.html'),controls:read('question/views/battle_online_match_controls.html'),hostSettings:read('question/views/battle_online_host_settings.html')});
  await page.addScriptTag({content:read('question/controllers/BattleQuizOnlineController.js').replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.teamQaHooks={applyRoom,applyDemonArena};')});
  await page.evaluate(()=>{

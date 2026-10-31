@@ -19,7 +19,8 @@
         'toastr',
         'blockUI',
         'QuestionService',
-        'BattleQuizOnlineService'
+        'BattleQuizOnlineService',
+        'BattleSessionLogin'
     ];
 
     function BattleQuizOnlineController(
@@ -34,7 +35,8 @@
         toastr,
         blockUI,
         questionService,
-        battleService
+        battleService,
+        battleSessionLogin
     ) {
         var vm = this;
 
@@ -297,6 +299,7 @@
             vm.selectedExerciseTests = vm.selectedExerciseTests.filter(function (item) { return item.id !== test.id; });
         };
         vm.exerciseInputDisabled = function () {
+            if (vm.sessionLoginRequired) { return true; }
             return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen ||
                 !!vm.hostVideoReplay ||
                 (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
@@ -305,6 +308,7 @@
                 (isGuessWordMode() && vm.room.guessPhase && vm.room.guessPhase !== 'QUESTION');
         };
         vm.submitExercise = function (automatic) {
+            if (vm.sessionLoginRequired) { return; }
             if (!vm.room || !vm.room.currentQuestion || !vm.room.currentQuestion.exercise ||
                     (automatic && !isGuessWordMode()) ||
                     (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
@@ -620,6 +624,7 @@
         }
         function currentVideo() { return vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise; }
         function sendVideoEvent(event, seconds) {
+            if (vm.sessionLoginRequired) { return; }
             if (!isHost() || !vm.room || vm.room.status !== 'PLAYING' || !currentVideo() || !currentVideo().videoUrl) { return; }
             var code = vm.room.code, sequence = vm.room.currentQuestion.sequence;
             var key = code + ':' + sequence + ':' + event;
@@ -650,6 +655,7 @@
             });
         }
         function syncHostVideo(force) {
+            if (vm.sessionLoginRequired) { return; }
             var content = currentVideo();
             if (!isHost() || vm.hostVideoReplay || !vm.hostVideoApi.ready || !content || !content.videoUrl || hostVideoSourceId !== content.videoSourceId) { return; }
             var key = vm.room.code + ':' + content.videoSourceId + ':' + vm.room.currentQuestion.sequence + ':' + vm.room.videoPhase + ':' + (vm.room.videoQuestionRound || 0);
@@ -669,12 +675,14 @@
             vm.hostVideoSeconds = vm.room.videoPositionSeconds || 0; vm.hostVideoDuration = 0;
             syncHostVideo(true);
         };
-        vm.playHostVideo = function () { if (vm.hostVideoApi.ready && (vm.hostVideoReplay || vm.room.videoPhase !== 'ANSWERING')) { vm.hostVideoApi.play(); } };
+        vm.playHostVideo = function () { if (!vm.sessionLoginRequired && vm.hostVideoApi.ready && (vm.hostVideoReplay || vm.room.videoPhase !== 'ANSWERING')) { vm.hostVideoApi.play(); } };
         vm.hostVideoState = function (playing, sourceId) {
+            if (vm.sessionLoginRequired) { if (playing && vm.hostVideoApi.ready) { vm.hostVideoApi.pause(); } return; }
             if (sourceId != null && sourceId !== (currentVideo() || {}).videoSourceId) { return; }
             if (playing && !vm.hostVideoReplay && vm.room && vm.room.videoPhase === 'ANSWERING' && vm.hostVideoApi.ready) { vm.hostVideoApi.pause(); }
         };
         vm.hostVideoProgress = function (seconds, duration, sourceId) {
+            if (vm.sessionLoginRequired) { return; }
             if (sourceId != null && sourceId !== (currentVideo() || {}).videoSourceId) { return; }
             vm.hostVideoSeconds = seconds; vm.hostVideoDuration = duration;
             if (vm.hostVideoReplay && !vm.hostVideoReplayConfirmOpen) {
@@ -696,6 +704,7 @@
             }
         };
         vm.hostVideoEnded = function (sourceId) {
+            if (vm.sessionLoginRequired) { return; }
             if (vm.hostVideoReplay) { return; }
             if (sourceId != null && sourceId !== (currentVideo() || {}).videoSourceId) { return; }
             if (vm.room && vm.room.videoPhase === 'CONTINUING') { sendVideoEvent('ENDED', vm.hostVideoSeconds); }
@@ -907,6 +916,7 @@
             }
         }
         vm.giftClaimDisabled = function () {
+            if (vm.sessionLoginRequired) { return true; }
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
             if (vm.room.videoSynchronized) { return vm.room.giftOpening !== true; }
@@ -1073,6 +1083,7 @@
                 : vm.currentUser.id;
 
         var pollingTimer = null;
+        var realtimeGeneration = 0;
         var countdownTimer = null;
         var skillHitEffectTimer = null;
         var passwordGuessPhaseTimer = null;
@@ -1131,6 +1142,42 @@
         var qrZoomApplyTimer = null;
         var levelPreviewTimer = null;
         var destroyed = false;
+        var battleLoginGeneration = 0;
+        vm.sessionLoginRequired = false;
+        if (battleSessionLogin) {
+            battleSessionLogin.bind($scope, {
+                active: function () { return !destroyed && !!vm.room; },
+                user: function () { return vm.currentUser; },
+                roomCode: function () { return vm.room && vm.room.code; },
+                pause: function () {
+                    battleLoginGeneration++;
+                    vm.sessionLoginRequired = true;
+                    stopRealtimeAndPolling();
+                    resetPasswordGuessDisplay();
+                    passwordGuessExpiryRefreshPending = false; hostVideoReviewRefreshPending = false;
+                    $timeout.cancel(videoRetryTimer);
+                    hostVideoStateKey = '';
+                    if (vm.hostVideoApi && vm.hostVideoApi.ready) { vm.hostVideoApi.pause(); }
+                    if ($window.EnglishSpeech) { $window.EnglishSpeech.cancel(); }
+                },
+                resume: function (user, isCurrent) {
+                    var code = vm.room.code;
+                    return battleService.getRoom(code).then(function (room) {
+                        if (!isCurrent() || destroyed || !vm.room || vm.room.code !== code) { throw {sessionChanged: true}; }
+                        vm.currentUser = user; vm.currentUserDisplayName = getFullName(user);
+                        vm.answerLocked = false; vm.guessSubmitting = false; vm.refreshingPrivateState = false;
+                        vm.sessionLoginRequired = false;
+                        applyRoom(room, false);
+                        if (vm.room && vm.room.code === code) { connectRealtime(code); }
+                    }, function (error) {
+                        if (isCurrent() && (error.status === 403 || error.status === 404)) {
+                            vm.sessionLoginRequired = false; handleRoomAccessError(error); return;
+                        }
+                        throw error;
+                    });
+                }
+            });
+        }
 
         /*
          * Đồng bộ clock client/server.
@@ -2757,6 +2804,8 @@
            ===================================================== */
 
         function connectRealtime(code) {
+            if (destroyed || vm.sessionLoginRequired) { return; }
+            var generation = ++realtimeGeneration;
             vm.connectionMode =
                 'CONNECTING';
 
@@ -2770,6 +2819,7 @@
                     code,
 
                     function (room) {
+                        if (destroyed || vm.sessionLoginRequired || generation !== realtimeGeneration) { return; }
                         /*
                          * WebSocket COUNTDOWN là generic:
                          * không có câu private của từng account.
@@ -2781,6 +2831,7 @@
                     },
 
                     function (connected) {
+                        if (destroyed || vm.sessionLoginRequired || generation !== realtimeGeneration) { return; }
                         vm.realtimeConnected =
                             connected === true;
 
@@ -2800,6 +2851,7 @@
                 )
                 .then(
                     function (connected) {
+                        if (destroyed || vm.sessionLoginRequired || generation !== realtimeGeneration) { return; }
                         if (!connected) {
                             vm.connectionMode =
                                 'POLLING';
@@ -2812,6 +2864,7 @@
 
 
         function startPolling() {
+            if (vm.sessionLoginRequired) { return; }
             if (
                 pollingTimer ||
                 !vm.room ||
@@ -2838,18 +2891,21 @@
                             return;
                         }
 
+                        var generation = realtimeGeneration, roomCode = vm.room.code;
                         battleService
                             .getRoom(
-                                vm.room.code
+                                roomCode
                             )
                             .then(
                                 function (room) {
+                                    if (generation !== realtimeGeneration || !vm.room || vm.room.code !== roomCode) { return; }
                                     applyRoom(
                                         room,
                                         false
                                     );
                                 },
                                 function (error) {
+                                    if (generation !== realtimeGeneration || !vm.room || vm.room.code !== roomCode) { return; }
                                     handleRoomAccessError(error);
                                 }
                             );
@@ -2871,6 +2927,7 @@
 
 
         function stopRealtimeAndPolling() {
+            realtimeGeneration++;
             battleService
                 .disconnectRealtime();
 
@@ -2882,6 +2939,7 @@
 
 
         function refreshPrivateRoomState() {
+            if (vm.sessionLoginRequired) { return; }
             if (
                 !vm.room ||
                 vm.refreshingPrivateState ||
@@ -2891,6 +2949,7 @@
             }
 
             var privateRoomCode = vm.room.code;
+            var privateLoginGeneration = battleLoginGeneration;
             vm.refreshingPrivateState =
                 true;
 
@@ -2900,16 +2959,17 @@
                 )
                 .then(
                     function (room) {
-                        if (!destroyed && vm.room && vm.room.code === privateRoomCode) {
+                        if (!destroyed && privateLoginGeneration === battleLoginGeneration && vm.room && vm.room.code === privateRoomCode) {
                             applyRoom(room, false);
                         }
                     },
                     function (error) {
-                        if (!destroyed && vm.room && vm.room.code === privateRoomCode) { handleRoomAccessError(error); }
+                        if (!destroyed && privateLoginGeneration === battleLoginGeneration && vm.room && vm.room.code === privateRoomCode) { handleRoomAccessError(error); }
                     }
                 )
                 .finally(
                     function () {
+                        if (privateLoginGeneration !== battleLoginGeneration) { return; }
                         vm.refreshingPrivateState =
                             false;
                         if (passwordGuessExpiryRefreshPending) {
@@ -3013,6 +3073,7 @@
             incoming,
             fromGenericSocket
         ) {
+            if (destroyed || vm.sessionLoginRequired) { return; }
             if (
                 !incoming ||
                 !incoming.code
@@ -4811,6 +4872,7 @@
            ===================================================== */
 
         function answer(option) {
+            if (vm.sessionLoginRequired) { return; }
             if (
                 !vm.room ||
                 vm.room.status !==
@@ -4850,8 +4912,10 @@
             var videoAnswerRequest = vm.room.videoSynchronized === true;
             var submittedVideoMatchGeneration = videoMatchGeneration;
             var submittedRoomCode = vm.room.code;
+            var submittedLoginGeneration = battleLoginGeneration;
             var submittedGiftGameId = vm.isLumNgayMode() && vm.room.giftDrop && vm.room.giftDrop.gameId;
             function isCurrentAnswerRequest() {
+                if (vm.sessionLoginRequired || submittedLoginGeneration !== battleLoginGeneration) { return false; }
                 var current = vm.room && vm.room.currentQuestion;
                 if (submittedGiftGameId && (!vm.room || vm.room.code !== submittedRoomCode ||
                         vm.room.status !== 'PLAYING' || !vm.room.giftDrop || vm.room.giftDrop.gameId !== submittedGiftGameId)) { return false; }
@@ -4873,7 +4937,7 @@
                 )
                 .then(
                     function (result) {
-                        if (videoAnswerRequest && !destroyed && vm.room && vm.room.code === submittedRoomCode &&
+                        if (videoAnswerRequest && submittedLoginGeneration === battleLoginGeneration && !destroyed && vm.room && vm.room.code === submittedRoomCode &&
                                 submittedVideoMatchGeneration === videoMatchGeneration &&
                                 (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')) {
                             showVideoAnswerToast(result.correct === true, question.sequence);
@@ -5007,6 +5071,7 @@
 
 
         function submitGuessWord(autoSubmitted) {
+            if (vm.sessionLoginRequired) { return; }
             autoSubmitted = autoSubmitted === true;
             var text = String(vm.guessAnswerText || '').trim();
             if (!isGuessWordMode() || !text || !vm.room ||
@@ -7107,6 +7172,7 @@
         }
 
         function updateCountdown() {
+            if (vm.sessionLoginRequired) { return; }
             syncDragonBallCollection();
             syncDragonBallCelebration();
             expirePasswordGuessView();
@@ -8200,6 +8266,7 @@
 
 
         function showRequestError(error) {
+            if (vm.sessionLoginRequired || (error && (error.status === 401 || error.sessionChanged))) { return; }
             var message =
                 error &&
                 error.data &&
@@ -8219,6 +8286,7 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.sessionLoginRequired) { return; }
             if (vm.isDragonBallCelebrationActive()) {
                 event.preventDefault();
                 if (event.stopPropagation) { event.stopPropagation(); }

@@ -419,12 +419,23 @@
             });
             authSession.restore();
             var stopNetworkStatus = networkStatus.start();
+            function requestInlineSessionLogin() {
+                var event = $rootScope.$broadcast('session:reauthenticate');
+                return event && event.defaultPrevented;
+            }
+            $rootScope.$on('session:restored', function (event, user) {
+                applyRolesToSettings(user);
+                settings.permissionsLoaded = true;
+                $rootScope.$broadcast('permissionsLoaded');
+                $rootScope.$emit('$onCurrentUserData', user);
+            });
             $rootScope.$on('session:expired', function () {
                 blockUI.stop();
                 $rootScope.sessionNotice = 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.';
-                toastr.warning($rootScope.sessionNotice, 'Đăng nhập', {timeOut: 10000, closeButton: true});
                 resetPermissionSettings();
                 settings.permissionsLoaded = false;
+                if (requestInlineSessionLogin()) { return; }
+                toastr.warning($rootScope.sessionNotice, 'Đăng nhập', {timeOut: 10000, closeButton: true});
                 if (isPublicCampaignPage()) { return; }
                 if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
                     try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
@@ -455,6 +466,7 @@
                         return;
                     }
                     if (isPublicCampaignPage()) { return; }
+                    if (requestInlineSessionLogin()) { return; }
                     if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
                         try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
                     }
@@ -533,7 +545,8 @@
             function resumeSession(event) {
                 if (window.document.hidden || window.navigator.onLine === false ||
                     (!authSession.hasCredentials() && !$rootScope.currentUser &&
-                        !$cookies.getObject(constants.cookies_user) && !$cookies.getObject(constants.oauth2_token))) { return; }
+                        !$cookies.getObject(constants.cookies_user) && !$cookies.getObject(constants.oauth2_token) &&
+                        !getBattleRoomCodeFromCurrentUrl())) { return; }
                 $rootScope.$evalAsync(function () { checkCurrentUser(0, event && event.type === 'online'); });
             }
             window.addEventListener('pageshow', resumeSession);

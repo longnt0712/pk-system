@@ -12,11 +12,11 @@ function exerciseForm(scope) {
  factory(value=>value,{}).link(scope,[{ownerDocument:{},addEventListener(){},removeEventListener(){}}]);
  return scope;
 }
-function setup(username='alice') {
+function setup(username='alice',loginService) {
  let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[],listCalls=[],reopenCalls=[],folderCalls=[];
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(){},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
- nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler});'),{angular,expose(value){hooks=value;}});
+ nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler,updateCountdown});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
  const service={getExerciseTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},getExerciseFolders(){return new Promise((resolve,reject)=>folderCalls.push({resolve,reject}));},answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
@@ -25,14 +25,14 @@ function setup(username='alice') {
   videoEvent(...args){return new Promise((resolve,reject)=>videoCalls.push({args,resolve,reject}));}};
  const questions={getOne(){return Promise.resolve({});},getPageForTests(){throw Error('Battle picker must use the lightweight catalog');},
   getTopicsForGames(){return Promise.resolve({content:[{id:8,name:'Animals',topicCategory:{id:6,name:'Grade 6'}},{id:9,name:'Food',topicCategory:{id:7,name:'Grade 7'}}]});}};
- const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service);
+ const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service,loginService);
  function room(mode='CLASSIC',seq=1) {
   const now=Date.now();return {code:'GAME1',hostUsername:'host',status:'PLAYING',serverTime:now,questionEndsAt:now+60000,matchEndsAt:now+60000,
    settings:{mode,questionSource:'COMPREHENSIVE',exerciseTestIds:[100],topicNames:['Đề tổng hợp'],teamCount:2},guessPhase:'QUESTION',
    players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false,teamNumber:1},{username:'bob',connected:true,spectator:false,teamNumber:2}],recentEvents:[],
    currentQuestion:{id:102,sequence:seq,answers:[],exercise:{answerMode:'TEXT',type:11,items:[{id:'103',number:1},{id:'104',number:2}]}}};
  }
- return {vm,hooks,calls,warnings,videoCalls,listCalls,reopenCalls,folderCalls,window,room,resolve(result){resolveAnswer(result);}};
+ return {vm,hooks,calls,warnings,videoCalls,listCalls,reopenCalls,folderCalls,window,room,service,resolve(result){resolveAnswer(result);}};
 }
 function videoRoom(h,mode='CLASSIC',phase='WATCHING',seq=1,revision=1) {
  const room=h.room(mode,seq); Object.assign(room,{videoSynchronized:true,videoPhase:phase,videoRevision:revision,
@@ -40,6 +40,29 @@ function videoRoom(h,mode='CLASSIC',phase='WATCHING',seq=1,revision=1) {
  Object.assign(room.currentQuestion.exercise,{videoUrl:'https://school.test/clip.mp4',videoSourceId:'100:101',videoTimeSeconds:10,videoAnswerSeconds:20});
  return room;
 }
+
+test('session login pauses every Battle mode, resyncs the private question and rejects an old answer response after reconnect',async()=>{
+ for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']){
+  let binding;const h=setup('alice',{bind(scope,options){binding=options;}});let reconnects=0;
+  h.service.disconnectRealtime=()=>{};h.service.connectRealtime=()=>{reconnects++;return Promise.resolve(true);};
+  const old=h.room(mode,1),fresh=h.room(mode,2);h.hooks.applyRoom(old,false);h.vm.exerciseAnswers={'103':['one'],'104':['two']};
+  h.vm.submitExercise(false);assert.equal(h.calls.length,1,mode);binding.pause();
+  h.vm.submitExercise(false);h.vm.submitExercise(true);h.vm.submitGuessWord(true);h.hooks.updateCountdown();
+  h.hooks.keydownHandler({key:'1',keyCode:49,preventDefault(){throw Error('Battle must leave login input keys alone');}});
+  assert.equal(h.calls.length,1,mode);assert.equal(h.vm.exerciseInputDisabled(),true,mode);h.hooks.applyRoom(fresh,true);
+  assert.equal(h.vm.room.currentQuestion.sequence,1,mode);h.service.getRoom=()=>Promise.resolve(fresh);
+  await binding.resume({id:1,username:'alice'},()=>true);assert.equal(h.vm.sessionLoginRequired,false,mode);assert.equal(h.vm.room.currentQuestion.sequence,2,mode);assert.equal(reconnects,1,mode);
+  h.resolve({correct:true,room:old});await new Promise(setImmediate);
+  assert.equal(h.vm.room.currentQuestion.sequence,2,mode);assert.equal(h.vm.lastAnswerMessage,'',mode);
+ }
+});
+
+test('host video pauses for session login and resumes from the latest room without changing the route',async()=>{
+ let binding;const h=setup('host',{bind(scope,options){binding=options;}}),actions=[];h.service.disconnectRealtime=()=>{};h.service.connectRealtime=()=>Promise.resolve(true);
+ const snapshot=videoRoom(h);h.hooks.applyRoom(snapshot,false);h.vm.hostVideoReady({ready:true,play(){actions.push('play');},pause(){actions.push('pause');},seek(){}});
+ binding.pause();const paused=actions.length;h.vm.playHostVideo();h.vm.hostVideoProgress(10,60);assert.equal(actions.length,paused);assert.equal(h.videoCalls.length,0);
+ h.service.getRoom=()=>Promise.resolve(snapshot);await binding.resume({id:1,username:'host'},()=>true);assert.equal(actions.at(-1),'play');
+});
 test('video questions are preloaded but stay hidden and cannot submit before the host cue in all modes',()=>{
  for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']) {
   const h=setup(); h.hooks.applyRoom(videoRoom(h,mode),false);

@@ -24,7 +24,7 @@ async function open(browser,width,username='host') {
   window.APP_VERSION='qa';window.requests=[];window.catalogRequests=[];
   angular.module('Hrm.Question',[]).value('$state',{go(){}}).value('$stateParams',{}).value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{})
-   .value('QuestionService',{})
+   .value('QuestionService',{}).value('BattleSessionLogin',{bind(){}})
    .factory('BattleQuizOnlineService',function($q){return {
     getExerciseTests(dto){
      window.requests.push(dto);const files=[{id:100,title:'Grammar revision',folder:2},{id:101,title:'Video practice',folder:null}];
