@@ -2699,6 +2699,7 @@
         vm.logoUrl = '/assets/images/logo-xu-doan.png';
 
         vm.qrPreview = null;
+        var qrLogoPromise = null;
 
         // ===== Helpers =====
         function loadImage(url) {
@@ -2762,14 +2763,17 @@
         function generateQrPro(username, logoUrl, opts) {
             opts = opts || {};
             var qrSize = opts.qrSize || 260;
-            var paddingBottom = opts.paddingBottom || 72; // chỗ cho text
+            var paddingBottom = opts.paddingBottom != null ? opts.paddingBottom : 72;
             var logoRatio = opts.logoRatio || 0.22; // logo chiếm ~22% QR
             var margin = opts.margin != null ? opts.margin : 1;
 
             return $q(function (resolve, reject) {
+                // Short numeric codes need enough modules around the logo to remain readable.
+                var qrVersion = Math.max(4, QRCode.create(username, {errorCorrectionLevel: 'H'}).version);
                 QRCode.toCanvas(username, {
                     width: qrSize,
                     margin: margin,
+                    version: qrVersion,
                     errorCorrectionLevel: 'H'
                 }, function (err, qrCanvas) {
                     if (err) return reject(err);
@@ -2795,7 +2799,8 @@
                     ctx.font = '600 16px Arial';
 
                     // load logo rồi vẽ
-                    loadImage(logoUrl).then(function (logoImg) {
+                    if (!qrLogoPromise) { qrLogoPromise = loadImage(logoUrl); }
+                    qrLogoPromise.then(function (logoImg) {
                         var size = Math.floor(qrCanvas.width * logoRatio);
                         var x = Math.floor((qrCanvas.width - size) / 2);
                         var y = Math.floor((qrCanvas.height - size) / 2);
@@ -2863,16 +2868,15 @@
         vm.showStudentQr = function (user) {
             if (!settings.campaignsEnabled || !user || !user.username || vm.studentQrLoading) { return; }
             vm.studentQrLoading = true;
-            return service.getStudentQr(user.username).then(function (response) {
-                var link = window.location.origin + '/hoa-thieng#' + response.data.token;
-                return $q.when(window.QRCode.toDataURL(link, {width: 360, margin: 3, errorCorrectionLevel: 'M'}))
-                    .then(function (image) { vm.openQr(image, user.person, link); });
+            return generateQrPro(String(user.username), vm.logoUrl, {qrSize: 1024, paddingBottom: 0, logoRatio: 0.20, margin: 4})
+                .then(function (image) {
+                    vm.openQr(image, user.person, String(user.username));
             }).catch(function (error) {
-                toastr.error(error.data && error.data.message || 'Không tạo được QR học sinh. Vui lòng thử lại.');
+                toastr.error(error && error.data && error.data.message || 'Không tạo được QR học sinh. Vui lòng thử lại.');
             }).finally(function () { vm.studentQrLoading = false; });
         };
-        vm.openQr = function (dataUrl,person,link) {
-            vm.currentQrLink = link || '';
+        vm.openQr = function (dataUrl,person,studentCode) {
+            vm.currentQrCode = studentCode || '';
             vm.zoomPerson = person;
             vm.qrPreview = dataUrl;
             $('#qrModal').modal('show'); // Bootstrap 3/4
@@ -3382,6 +3386,10 @@
         ];
 
         if (!vm.isIeltsRoomDomain) {
+            vm.exportColumns.splice(5, 0, {
+                key: 'qrImage', title: 'ẢNH QR', checked: true, isImage: true, excelOnly: true,
+                getter: function (user) { return user && user.username ? String(user.username) : ''; }
+            });
             vm.exportColumns.push(
                 {key: 'tnttMemberType', title: 'THÀNH PHẦN TNTT', checked: true,
                     getter: function (user) { return vm.getTnttMemberTypeName((user || {}).person); }},
@@ -3393,15 +3401,17 @@
         }
 
         vm.exportPreviewRows = [];
+        var exportPreviewGeneration = 0;
 
         vm.getSelectedExportColumns = function () {
             return (vm.exportColumns || []).filter(function (col) {
-                return col.checked;
+                return col.checked && !(col.excelOnly && vm.exportMode === 'image');
             });
         };
 
         vm.buildExportPreviewRows = function () {
             var selectedColumns = vm.getSelectedExportColumns();
+            var generation = ++exportPreviewGeneration;
 
             /*
              * Preview theo đúng thứ tự đang hiển thị.
@@ -3417,6 +3427,14 @@
 
                 return row;
             });
+            if (selectedColumns.some(function (col) { return col.isImage; })) {
+                vm.exportPreviewRows.forEach(function (row) {
+                    if (!row.qrImage) { return; }
+                    generateQrPro(row.qrImage, vm.logoUrl, {qrSize: 1024, paddingBottom: 0, logoRatio: 0.20, margin: 4})
+                        .then(function (image) { if (generation === exportPreviewGeneration) { row.qrImageData = image; } })
+                        .catch(function () { if (generation === exportPreviewGeneration) { row.qrImageError = true; } });
+                });
+            }
         };
 
         vm.moveExportColumnUp = function (index) {
@@ -3486,6 +3504,7 @@
         };
 
         vm.exportStudentsToExcel = function () {
+            if (vm.exportExcelBusy) { return; }
             var selectedColumns = vm.getSelectedExportColumns();
 
             if (!selectedColumns.length) {
@@ -3496,13 +3515,13 @@
             /*
              * Lấy đúng danh sách đang được nhìn thấy trên bảng.
              */
-            var displayedUsers = vm.getDisplayedUsers();
+            var displayedUsers = vm.getDisplayedUsers().slice();
 
             var rows = displayedUsers.map(function (user, index) {
                 var row = {};
 
                 angular.forEach(selectedColumns, function (col) {
-                    row[col.title] = col.getter(user, index);
+                    row[col.title] = col.isImage ? '' : col.getter(user, index);
                 });
 
                 return row;
@@ -3514,23 +3533,43 @@
             }
 
             var worksheet = XLSX.utils.json_to_sheet(rows);
+            var qrColumn = selectedColumns.findIndex(function (col) { return col.isImage; });
 
             var columnWidths = selectedColumns.map(function (col) {
-                return { wch: Math.max(col.title.length + 2, 18) };
+                return col.isImage ? {wpx: 94} : { wch: Math.max(col.title.length + 2, 18) };
             });
             worksheet['!cols'] = columnWidths;
+            if (qrColumn >= 0) {
+                worksheet['!rows'] = [{}].concat(displayedUsers.map(function () { return {hpt: 70.5}; }));
+            }
 
             var workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách học sinh');
 
             var fileName = 'danh_sach_hoc_sinh_' + moment().format('YYYYMMDD_HHmmss') + '.xlsx';
-            XLSX.writeFile(workbook, fileName);
-
-            toastr.success('Xuất file Excel thành công.', 'Thông báo');
-
-            if (vm.modalInstance) {
-                vm.modalInstance.close();
+            var images = [], nextIndex = 0, missingCodes = 0;
+            vm.exportExcelBusy = true; vm.exportExcelCompleted = 0; vm.exportExcelTotal = displayedUsers.length;
+            function nextQr() {
+                if (qrColumn < 0 || nextIndex >= displayedUsers.length) { return $q.when(); }
+                var index = nextIndex++, code = displayedUsers[index] && displayedUsers[index].username;
+                if (!code) { missingCodes++; vm.exportExcelCompleted = nextIndex; return $timeout(nextQr, 0); }
+                return generateQrPro(String(code), vm.logoUrl, {qrSize: 1024, paddingBottom: 0, logoRatio: 0.20, margin: 4})
+                    .then(function (image) {
+                        images.push({row: index + 1, col: qrColumn, dataUrl: image});
+                        vm.exportExcelCompleted = nextIndex;
+                        return nextIndex % 10 === 0 ? $timeout(nextQr, 0) : nextQr();
+                    });
             }
+            return $q.when().then(nextQr).then(function () {
+                if (qrColumn >= 0) {
+                    window.StudentQrWorkbook.download(window.StudentQrWorkbook.withImages(XLSX, workbook, images), fileName);
+                } else { XLSX.writeFile(workbook, fileName); }
+                toastr.success('Xuất file Excel thành công.', 'Thông báo');
+                if (missingCodes) { toastr.warning(missingCodes + ' học sinh chưa có mã; ô ảnh QR được để trống.', 'Thông báo'); }
+                if (vm.modalInstance) { vm.modalInstance.close(); }
+            }).catch(function (error) {
+                toastr.error(error && error.message || 'Không xuất được file Excel. Vui lòng thử lại.', 'Thông báo');
+            }).finally(function () { vm.exportExcelBusy = false; });
         };
 
         function exportImageEscapeHtml(value) {

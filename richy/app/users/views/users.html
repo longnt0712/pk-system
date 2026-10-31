@@ -237,7 +237,7 @@
                                     <td ng-if="!vm.isIeltsRoomDomain">{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
                                     <td>
                                         {{user.username}}<br>
-                                        <button type="button" ng-if="$settings.campaignsEnabled && (vm.isRoleAdmin || vm.isRoleEducationManagerment || vm.isRoleStudentManagerment)" class="btn btn-xs btn-default" ng-click="vm.showStudentQr(user)" ng-disabled="vm.studentQrLoading" title="Mã QR học sinh mở phiếu hoa thiêng"><i class="fa fa-qrcode" aria-hidden="true"></i> QR học sinh</button>
+                                        <button type="button" ng-if="$settings.campaignsEnabled && (vm.isRoleAdmin || vm.isRoleEducationManagerment || vm.isRoleStudentManagerment)" class="btn btn-xs btn-default" ng-click="vm.showStudentQr(user)" ng-disabled="vm.studentQrLoading" title="Mã QR chứa mã học sinh"><i class="fa fa-qrcode" aria-hidden="true"></i> QR học sinh</button>
                                         <!--<img ng-if="user.qrcodeByUsername"-->
                                              <!--ng-src="{{user.qrcodeByUsername}}"-->
                                              <!--ng-click="vm.openQr(user.qrcodeByUsername,user.person)"-->
@@ -371,7 +371,7 @@
 
             <div class="modal-body text-center">
                 <img ng-src="{{vm.qrPreview}}" style="max-width:100%;height:auto" alt="QR Preview">
-                <div ng-if="$settings.campaignsEnabled && vm.currentQrLink"><p>Quét bằng camera điện thoại hoặc Zalo để mở phiếu hoa thiêng của học sinh.</p><a ng-href="{{vm.currentQrLink}}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Mở phiếu hoa thiêng</a><label style="display:block;margin-top:12px">Link cá nhân<input type="text" class="form-control" ng-value="vm.currentQrLink" readonly></label></div>
+                <div ng-if="vm.currentQrCode"><p>Mã QR chứa trực tiếp mã học sinh.</p><label style="display:block;margin-top:12px">Mã học sinh<input type="text" class="form-control" ng-value="vm.currentQrCode" readonly></label></div>
             </div>
         </div>
     </div>
@@ -1382,7 +1382,7 @@
 <script type="text/ng-template" id="export_excel_modal.html">
     <div modal-movable>
         <div class="modal-header">
-            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <button type="button" class="close" ng-click="!vm.exportExcelBusy && $dismiss()" ng-disabled="vm.exportExcelBusy" aria-label="Đóng"></button>
             <h4 class="modal-title">
                 <i class="fa" ng-class="vm.exportMode === 'image' ? 'fa-image' : 'fa-file-excel'"></i>
                 {{vm.exportMode === 'image' ? 'Xuất danh sách học sinh ra ảnh' : 'Xuất danh sách học sinh ra Excel'}}
@@ -1396,11 +1396,12 @@
 
                     <div class="export-column-item"
                          ng-repeat="col in vm.exportColumns track by col.key"
+                         ng-if="!col.excelOnly || vm.exportMode !== 'image'"
                          style="border:1px solid #ddd; padding:10px; margin-bottom:8px; border-radius:4px;">
                         <div class="row">
                             <div class="col-xs-7">
                                 <label style="font-weight: normal; margin-bottom: 0;">
-                                    <input type="checkbox" ng-model="col.checked" ng-disabled="col.disabled">
+                                    <input type="checkbox" ng-model="col.checked" ng-change="vm.buildExportPreviewRows()" ng-disabled="col.disabled || vm.exportExcelBusy">
                                     {{col.title}}
                                 </label>
                             </div>
@@ -1408,14 +1409,14 @@
                                 <button type="button"
                                         class="btn btn-xs btn-default"
                                         ng-click="vm.moveExportColumnUp($index)"
-                                        ng-disabled="col.key === 'stt' || $index === 0">
+                                        ng-disabled="vm.exportExcelBusy || col.key === 'stt' || $index === 0">
                                     <i class="fa fa-arrow-up"></i>
                                 </button>
 
                                 <button type="button"
                                         class="btn btn-xs btn-default"
                                         ng-click="vm.moveExportColumnDown($index)"
-                                        ng-disabled="col.key === 'stt'">
+                                        ng-disabled="vm.exportExcelBusy || col.key === 'stt'">
                                     <i class="fa fa-arrow-down"></i>
                                 </button>
                             </div>
@@ -1457,7 +1458,11 @@
                                 <tr ng-repeat="row in vm.exportPreviewRows track by $index">
                                     <td ng-repeat="col in vm.getSelectedExportColumns() track by col.key"
                                         style="vertical-align:middle;">
-                                        {{row[col.key]}}
+                                        <span ng-if="!col.isImage">{{row[col.key]}}</span>
+                                        <span ng-if="col.isImage && row[col.key]">
+                                            <img ng-if="row.qrImageData" ng-src="{{row.qrImageData}}" width="90" height="90" alt="QR mã học sinh {{row[col.key]}}">
+                                            <span ng-if="!row.qrImageData">{{row.qrImageError ? 'Chưa tạo được ảnh QR' : 'Đang tạo QR…'}}</span>
+                                        </span>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -1475,20 +1480,23 @@
                         Preview đang hiển thị 5 dòng đầu tiên của danh sách hiện tại.
                         Khi bấm xuất, hệ thống sẽ xuất toàn bộ danh sách hiện tại theo các cột đã chọn.
                     </p>
+                    <p ng-if="vm.exportMode === 'excel' && !vm.isIeltsRoomDomain" class="text-muted">Cột ẢNH QR chứa ảnh QR của mã học sinh, tách riêng cột MÃ HỌC SINH để dùng khi tạo hàng loạt trên Canva.</p>
+                    <p ng-if="vm.exportExcelBusy" role="status" aria-live="polite">Đang tạo file Excel: {{vm.exportExcelCompleted}} / {{vm.exportExcelTotal}} học sinh…</p>
                 </div>
             </div>
         </div>
 
         <div class="modal-footer">
-            <button type="button" ng-click="$dismiss()" class="btn btn-default">
+            <button type="button" ng-click="$dismiss()" ng-disabled="vm.exportExcelBusy" class="btn btn-default">
                 <i class="icon-close"></i> Đóng
             </button>
 
             <button type="button"
                     ng-if="vm.exportMode !== 'image'"
                     ng-click="vm.exportStudentsToExcel()"
+                    ng-disabled="vm.exportExcelBusy"
                     class="btn btn-success">
-                <i class="fa fa-file-excel"></i> Xuất file Excel
+                <i class="fa fa-file-excel"></i> {{vm.exportExcelBusy ? 'Đang tạo file…' : 'Xuất file Excel'}}
             </button>
 
             <button type="button"

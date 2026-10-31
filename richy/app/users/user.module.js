@@ -13,7 +13,7 @@
 
     Hrm.User.config(['$stateProvider', function ($stateProvider) {
 
-        var version = window.APP_VERSION || new Date().getTime();
+        var version = (window.APP_VERSION || new Date().getTime()) + '-student-qr-20261031';
 
         $stateProvider
 
@@ -35,6 +35,7 @@
                             files: [
                                 'common/class-tree-picker.css?v=' + version,
                                 'common/directives/ClassTreePicker.js?v=' + version,
+                                'users/StudentQrWorkbook.js?v=' + version,
                                 'users/controllers/UserController.js?v=' + version,
                             ]
                         });
