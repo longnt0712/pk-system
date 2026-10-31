@@ -17,7 +17,7 @@ function setup(overrides={}){
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
  const helpers={};nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/business/ComprehensiveListening.js'),'utf8'),{angular:{module(){return{factory(name,definition){helpers[name]=definition;return this;},directive(){return this;}};}}});
  const transcriptText=helpers.ComprehensiveListening.at(-1)({document},{}).transcriptText;
- const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},bindUrl(){return ()=>{};},contains:(id,selected)=>id===selected,...overrides.folders};
+ const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},bindUrl(){return ()=>{};},contains:(id,selected)=>id===selected,chooseImportedFolder(){return Promise.resolve(null);},...overrides.folders};
  definition.call(vm,{get(){return JSON.stringify({id:7,roles:[{name:overrides.role||'ROLE_ADMIN'}]});}},
   {path(value){redirects.push(value);}},{document},{},service,{transcriptText,parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)},folders);
  return {vm,old,requests,saves,redirects};
@@ -56,12 +56,14 @@ test('validation and HTTP failure retain a new lesson until retry succeeds and r
 });
 test('selected legacy records migrate by id, keep partial successes and retry only failures',async()=>{
  const records=[{id:1,question:'First',pronounce:'https://school.test/1.mp3',motherTongue:'First transcript'},{id:2,question:'Second',pronounce:'https://school.test/2.mp3',motherTongue:'Second transcript'}];
- let transfer,close,fail=true;const writes=[];
+ let transfer,close,fail=true;const writes=[],folderSelections=[];
  const modal={open(config){transfer={};const result=new Promise(resolve=>{close=resolve;});config.controller.at(-1).call(transfer,{$on(){}},{close});return{result};}};
  const {vm}=setup({modal,service:{getLegacyDailyListening(dto){assert.equal(dto.userId,undefined);return Promise.resolve({content:records,totalElements:2});},
-  migrateDailyListening(id){writes.push(id);return fail&&id===2?Promise.reject({data:{message:'Try again'}}):Promise.resolve({id,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7});}}});await tick();
- vm.importOldListening();await tick();transfer.selectAll();await transfer.save();assert.equal(transfer.moved,1);assert.equal(transfer.selected[2],true);assert.equal(vm.importDialogOpen,true);
+  migrateDailyListening(id){writes.push(id);return fail&&id===2?Promise.reject({data:{message:'Try again'}}):Promise.resolve({id,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7});}},
+  folders:{chooseImportedFolder(tests,mode,folder){folderSelections.push({tests,mode,folder});return Promise.resolve({folderId:6});}}});await tick();
+ vm.catalogTestFolderId=5;vm.importOldListening();await tick();transfer.selectAll();await transfer.save();assert.equal(transfer.moved,1);assert.equal(transfer.selected[2],true);assert.equal(vm.importDialogOpen,true);assert.equal(folderSelections.length,0);
  fail=false;await transfer.save();await tick();assert.deepEqual(writes,[1,2,2]);assert.equal(vm.importDialogOpen,false);
+ assert.equal(folderSelections.length,1);assert.deepEqual(Array.from(folderSelections[0].tests,test=>test.id),[1,2]);assert.equal(folderSelections[0].mode,'DAILY_LISTENING');assert.equal(folderSelections[0].folder,5);assert.equal(vm.catalogTestFolderId,6);assert.equal(vm.catalogMoveDialogOpen,false);
 });
 test('moving one row preserves unsaved editor text and fills only the vacant pagination slot',async()=>{
  let reads=0;const requests=[];const {vm}=setup({service:{getDailyListeningTests(dto,index,size){requests.push({dto:plain(dto),index,size});reads++;return Promise.resolve(reads===1?{content:[{id:21},{id:22}],totalElements:3}:{content:[{id:23}],totalElements:2});}}});await tick();

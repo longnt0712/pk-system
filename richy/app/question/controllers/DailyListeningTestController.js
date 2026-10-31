@@ -234,7 +234,7 @@
             vm.importOldListening = function () {
                 if (vm.isCatalogTitleSaving() || vm.saving || vm.editing || vm.importDialogOpen || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.importDialogOpen = true;
-                var importCount = 0;
+                var importCount = 0, importedTests = [], importedFolderId = vm.catalogTestFolderId || null;
                 var instance = modal.open({
                     templateUrl: 'question/views/daily_listening_import_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
                     controllerAs: 'transfer', size: 'lg',
@@ -273,6 +273,7 @@
                                         transfer.selected[item.id] = false;
                                         transfer.items = transfer.items.filter(function (row) { return String(row.id) !== String(item.id); });
                                         transfer.totalItems = Math.max(0, transfer.totalItems - 1); transfer.moved++; importCount++; succeeded++;
+                                        importedTests.push(saved);
                                     }).catch(function (response) {
                                         response = response || {};
                                         failed++; transfer.errors[item.id] = (response.data || {}).message || response.message || 'Không chuyển được bài, bạn có thể thử lại.';
@@ -291,10 +292,18 @@
                         transfer.load();
                     }]
                 });
-                instance.result.then(function (moved) {
+                function chooseImportedFolder() {
                     vm.importDialogOpen = false;
-                    if (moved) { vm.searchDto.textSearch = ''; vm.applyCatalogFolderFilter(null); }
-                }, function () { vm.importDialogOpen = false; if (importCount) { vm.searchDto.textSearch = ''; vm.applyCatalogFolderFilter(null); } });
+                    if (!importCount) { return; }
+                    vm.searchDto.textSearch = ''; vm.applyCatalogFolderFilter(null);
+                    vm.catalogMoveDialogOpen = true;
+                    try {
+                        return folders.chooseImportedFolder(importedTests, vm.folderTestMode, importedFolderId, vm.catalogTestMoved).then(function (result) {
+                            if (result) { vm.applyCatalogFolderFilter(result.folderId); toastr.success('Đã chọn folder cho bài vừa import.'); }
+                        }, angular.noop).finally(function () { vm.catalogMoveDialogOpen = false; });
+                    } catch (error) { vm.catalogMoveDialogOpen = false; toastr.warning('Bài đã import vẫn được giữ. Bạn có thể chọn folder bằng nút Di chuyển.'); }
+                }
+                instance.result.then(chooseImportedFolder, chooseImportedFolder);
             };
             vm.newTest();
             vm.initialized = true;

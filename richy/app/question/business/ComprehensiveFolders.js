@@ -8,7 +8,7 @@
             moveTest: function (testId, folderId) { return $http.post(baseUrl + '/move_test', {testId: testId, folderId: folderId == null ? null : folderId}).then(function (response) { return response.data; }); }
         };
     }]);
-    angular.module('Hrm.Question').factory('ComprehensiveFolders', ['TestFolderService', '$rootScope', '$q', function (service, $rootScope, $q) {
+    angular.module('Hrm.Question').factory('ComprehensiveFolders', ['TestFolderService', '$rootScope', '$q', '$uibModal', '$window', function (service, $rootScope, $q, modal, $window) {
         var cached = {}, pending = {};
         function options(items, allTeachers) {
             var byId = {}, children = {}, output = [], seen = {};
@@ -95,7 +95,64 @@
                 return saved;
             });
         }
-        return {options: options, load: load, save: save, applyFilter: applyFilter, bindUrl: bindUrl, contains: contains, moveTest: moveTest, moveFolder: moveFolder};
+        function chooseImportedFolder(tests, testMode, initialFolderId, onMoved) {
+            var seen = {}, pendingTests = (tests || []).filter(function (test) { return test && test.id && !seen[test.id] && (seen[test.id] = true); }).map(function (test) {
+                return {id: test.id, title: test.title || test.question || 'Bài test', testFolder: test.testFolder || null,
+                    testFolderId: test.testFolder ? test.testFolder.id : (test.testFolderId || null)};
+            });
+            if (!pendingTests.length) { return $q.when(null); }
+            return modal.open({templateUrl: 'question/views/comprehensive_move_test_folder_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
+                controllerAs: 'move', controller: ['$scope', '$uibModalInstance', function (scope, instance) {
+                    var dialog = this, moved = [];
+                    dialog.isImport = true; dialog.multiple = pendingTests.length > 1; dialog.testTitle = dialog.multiple ? pendingTests.length + ' bài đã import' : pendingTests[0].title;
+                    dialog.currentFolderId = pendingTests[0].testFolderId; dialog.selectedFolderId = initialFolderId || null;
+                    dialog.choices = []; dialog.collapsed = {}; dialog.failures = [];
+                    dialog.label = function (id) {
+                        if (id == null) { return 'Folder của tôi (cấp gốc)'; }
+                        var folder = dialog.choices.filter(function (item) { return String(item.id) === String(id); })[0];
+                        return folder ? folder.label : ((pendingTests[0].testFolder || {}).name || 'Folder hiện tại');
+                    };
+                    dialog.load = function () {
+                        dialog.loading = true; dialog.loadFailed = false; dialog.error = '';
+                        return load(false, true, testMode).then(function (items) {
+                            dialog.choices = options(items.filter(function (folder) { return folder.canManage; }), false);
+                            if (dialog.selectedFolderId != null && !dialog.choices.some(function (folder) { return String(folder.id) === String(dialog.selectedFolderId); })) { dialog.selectedFolderId = null; }
+                        }, function () { dialog.loadFailed = true; dialog.error = 'Không tải được folder. Bài đã import vẫn được giữ; bạn có thể thử lại hoặc chọn folder sau.'; }).finally(function () { dialog.loading = false; });
+                    };
+                    dialog.hasChildren = function (folder) { return dialog.choices.some(function (child) { return child.parentId === folder.id && child.id !== folder.id; }); };
+                    dialog.visible = function (folder) {
+                        var id = folder.parentId, visited = {};
+                        while (id != null && !visited[id]) { if (dialog.collapsed[id]) { return false; } visited[id] = true;
+                            var parent = dialog.choices.filter(function (item) { return item.id === id; })[0]; id = parent ? parent.parentId : null; }
+                        return true;
+                    };
+                    dialog.select = function (id) { if (!dialog.saving) { dialog.selectedFolderId = id; } };
+                    dialog.canMove = function () { return !dialog.loading && !dialog.loadFailed && !dialog.saving && pendingTests.length > 0 &&
+                        (dialog.selectedFolderId == null || dialog.choices.some(function (folder) { return String(folder.id) === String(dialog.selectedFolderId); })); };
+                    dialog.save = function () {
+                        if (!dialog.canMove()) { return; } dialog.saving = true; dialog.error = ''; dialog.failures = [];
+                        var selectedFolder = dialog.choices.filter(function (folder) { return String(folder.id) === String(dialog.selectedFolderId); })[0];
+                        var destination = selectedFolder ? selectedFolder.id : null, failed = [], queue = $q.when();
+                        pendingTests.forEach(function (test) {
+                            queue = queue.then(function () {
+                                return $q.when().then(function () { return String(test.testFolderId) === String(destination) ? test : moveTest(test.id, destination); }).then(function (saved) {
+                                    var folderId = saved && saved.testFolder ? saved.testFolder.id : (saved || {}).testFolderId;
+                                    if (!saved || String(saved.id) !== String(test.id) || folderId === undefined || String(folderId) !== String(destination)
+                                        || (Object.prototype.hasOwnProperty.call(saved, 'testFolderId') && String(saved.testFolderId) !== String(destination))) { throw new Error('Máy chủ chưa xác nhận đúng bài và folder. Bạn có thể thử lại.'); }
+                                    var confirmed = angular.extend({}, saved, {testFolder: selectedFolder ? angular.extend({}, selectedFolder) : null, testFolderId: destination});
+                                    moved.push(confirmed); dialog.completed = moved.length;
+                                    if (onMoved) { try { onMoved(confirmed); } catch (ignoreCatalogRefresh) { /* Confirmation still closes and the caller reloads the destination. */ } }
+                                }).catch(function (error) { error = error || {}; failed.push(test); dialog.failures.push({id: test.id, title: test.title, message: (error.data || {}).message || error.message || 'Chưa chuyển được bài. Thử lại sẽ không import thêm bản mới.'}); });
+                            });
+                        });
+                        return queue.finally(function () { pendingTests = failed; dialog.saving = false; if (!failed.length) { instance.close({folderId: destination, tests: moved}); } });
+                    };
+                    dialog.cancel = function () { if (!dialog.saving) { instance.dismiss('cancel'); } };
+                    scope.$on('modal.closing', function (event) { if (dialog.saving) { event.preventDefault(); } });
+                    dialog.load();
+                }]}).result;
+        }
+        return {options: options, load: load, save: save, applyFilter: applyFilter, bindUrl: bindUrl, contains: contains, moveTest: moveTest, moveFolder: moveFolder, chooseImportedFolder: chooseImportedFolder};
     }]);
 
     angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', '$timeout', function (folders, $timeout) {

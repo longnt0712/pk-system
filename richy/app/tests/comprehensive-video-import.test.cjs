@@ -49,7 +49,7 @@ function sheetJsBoundary() {
 }
 
 function harness({mode = 'comprehensive', videoMode = false, link = '', saveResponse, saveFailure, savePending} = {}) {
-    const definitions = {}, messages = [], saves = [];
+    const definitions = {}, messages = [], saves = [], folderSelections = [];
     const angular = {
         isObject: value => value !== null && typeof value === 'object',
         isArray: Array.isArray,
@@ -69,16 +69,17 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
     const video = definitions.ComprehensiveVideo.at(-1)({URL}, {});
     const XLSX = sheetJsBoundary();
     const state = {
-        isComprehensiveMode: mode === 'comprehensive', isFlexibleMode: mode === 'comprehensive',
-        isWritingMode: false, isListeningMode: mode === 'listening',
-        testModeName: mode === 'comprehensive' ? 'Tổng hợp' : mode === 'listening' ? 'Listening' : 'Reading',
+        isComprehensiveMode: mode === 'comprehensive', isFlexibleMode: mode === 'comprehensive' || mode === 'writing',
+        isWritingMode: mode === 'writing', isListeningMode: mode === 'listening', folderTestMode: mode.toUpperCase(),
+        testModeName: mode === 'comprehensive' ? 'Tổng hợp' : mode === 'listening' ? 'Listening' : mode === 'writing' ? 'Writing' : 'Reading',
         currentUser: {id: 7}, types: [], questionPackageTypes: [{id: 1, name: 'Multiple Choices'}, {id: 11, name: 'Filling Gaps New'}],
         isVideoBuilder() { return this.isComprehensiveMode && (videoMode || this.comprehensiveContentMode === 'VIDEO'); },
         ieltsReadingTest: {subQuestions: [{videoUrl: link}]},
         comprehensiveContentMode: 'TEXT', savedBuilderVideoLink: 'old link', builderVideoSeconds: 99, videoDuration: 999,
         getOrdinalNumber() {}, refreshBuilderValidation() {},
         syncTestTopics() {}, restoreBuilderTopicContext() {}, getPageCreateIELTSReadingTest() {},
-        matchingOptionLabel(index) { return String.fromCharCode(65 + index); }
+        matchingOptionLabel(index) { return String.fromCharCode(65 + index); },
+        chooseImportedTestFolder(test, folderId) { folderSelections.push({test: structuredClone(test), folderId, importing: state.importingReadingTest, saving: state.savingReadingTest}); }
     };
     const loading = {count: 0, start() { this.count++; }, stop() { this.count--; }};
     const context = {
@@ -102,7 +103,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
         section('        function readingTestSaveError(', '        var readingPartRules =') + '\n' +
         section('        function readingQuestionType(', '        vm.status = {id: 3, name: "Tất cả (no listening)"};'), context);
     return {
-        state, messages, saves, loading,
+        state, messages, saves, loading, folderSelections,
         download() { state.downloadReadingImportTemplate(); assert.ok(XLSX.download); return XLSX.download; },
         parse(book) { return context.readingTestFromExcel(book); },
         import(book) { state.importReadingTestFile({name: 'mau_import_bai_tap_tong_hop.xlsx', size: 1000, workbook: book}); }
@@ -161,6 +162,8 @@ test('a teacher fills video fields in the default template and uses the existing
     assert.equal(gaps.subQuestions[1].questionAnswers[0].correct, true);
     assert.ok(!qa.messages.some(message => message.type === 'error'));
     assert.equal(qa.loading.count, 0);
+    assert.equal(qa.folderSelections.length, 1);assert.equal(qa.folderSelections[0].test.id,42);
+    assert.equal(qa.folderSelections[0].importing,false);assert.equal(qa.folderSelections[0].saving,false);
     assert.equal(qa.state.ieltsReadingTest.id, 42);
 });
 
@@ -257,11 +260,50 @@ test('import waits for the save response, prevents duplicate saves and confirms 
     confirm(Object.assign(structuredClone(qa.saves[0].test), {id: 123}));
     await flush();
     assert.equal(qa.state.ieltsReadingTest.id, 123);
+    assert.equal(qa.folderSelections.length,1);assert.equal(qa.folderSelections[0].test.id,123);
     assert.equal(importedQuestions(qa).length, 50);
     assert.match(qa.messages.at(-1).message, /Đã import và lưu bản nháp 50 câu/);
     assert.equal(qa.state.importingReadingTest, false);
     assert.equal(qa.state.savingReadingTest, false);
     assert.equal(qa.loading.count, 0);
+});
+
+test('all Excel test modes save in the browsed folder before offering the folder picker',async()=>{
+    for(const mode of ['reading','listening','writing','comprehensive']){
+        const qa=harness({mode}),{book}=qa.download();qa.state.catalogTestFolderId=65;qa.state.selectedTestFolderId=9;
+        qa.import(book);await flush();assert.equal(qa.saves.length,1,mode+': '+JSON.stringify(qa.messages));assert.equal(qa.saves[0].test.testFolderId,65);
+        assert.equal(qa.folderSelections.length,1,mode);assert.equal(qa.folderSelections[0].folderId,65);
+        assert.equal(qa.folderSelections[0].importing,false);assert.equal(qa.folderSelections[0].saving,false);
+    }
+});
+
+test('Writing template round-trips both prompts and chart images into the canonical Task response markers',()=>{
+    const qa=harness({mode:'writing'}),{book,name}=qa.download();assert.equal(name,'mau_import_ielts_writing.xlsx');
+    const chart='<p>Summarise the chart.</p><p><img src="https://school.test/chart.png" alt="Travel chart"></p>';
+    book.Sheets.NOI_DUNG.rows[1][1]=chart;const model=qa.parse(book);
+    assert.equal(model.subQuestions.length,1);assert.equal(model.importedQuestionCount,2);assert.equal(model.status,6);
+    const packs=model.subQuestions[0].subQuestions;assert.deepEqual(Array.from(packs,pack=>pack.type),[16,17]);assert.equal(packs[0].question,chart);
+    packs.forEach((pack,index)=>{assert.equal(pack.subQuestions.length,1);assert.equal(pack.subQuestions[0].ordinalNumber,index+1);assert.equal(pack.subQuestions[0].questionAnswers.length,1);assert.equal(pack.subQuestions[0].questionAnswers[0].answer.answer,'WRITING_TASK_'+(index+1)+'_RESPONSE');assert.equal(pack.subQuestions[0].questionAnswers[0].correct,true);});
+    assert.ok(!book.Sheets.HUONG_DAN.rows.some(row=>row.some(cell=>String(cell).includes('40 câu'))));
+});
+test('Writing can import only Task 2 without inventing Task 1 or an answer key',async()=>{
+    const qa=harness({mode:'writing'}),{book}=qa.download();book.Sheets.NOI_DUNG.rows.splice(1,1);qa.import(book);await flush();
+    assert.equal(qa.saves.length,1);const packs=qa.saves[0].test.subQuestions[0].subQuestions;
+    assert.equal(packs.length,1);assert.equal(packs[0].type,17);assert.equal(packs[0].subQuestions[0].ordinalNumber,2);
+    assert.equal(qa.folderSelections.length,1);assert.match(qa.messages.at(-1).message,/1 Task/);
+});
+test('duplicate, blank or objective Writing rows and wrong-mode workbooks fail before replacing the editor',()=>{
+    for(const mutate of [book=>{book.Sheets.NOI_DUNG.rows[2][0]=1;},book=>{book.Sheets.NOI_DUNG.rows[1][1]='';},
+        book=>{book.Sheets.NOI_DUNG.rows[1][0]=5;},book=>{info(book,'Loại bài','READING');},
+        book=>{book.Sheets.THONG_TIN.rows.push(['Audio URL','https://school.test/a.mp3']);}]){
+        const qa=harness({mode:'writing'}),{book}=qa.download(),original=qa.state.ieltsReadingTest;mutate(book);qa.import(book);
+        assert.equal(qa.saves.length,0);assert.equal(qa.folderSelections.length,0);assert.equal(qa.state.ieltsReadingTest,original);assert.ok(qa.state.importError);
+    }
+});
+test('failed Writing persistence preserves both prompts and never opens the folder picker',async()=>{
+    const qa=harness({mode:'writing',saveFailure:{status:403}}),{book}=qa.download();qa.import(book);await flush();
+    assert.equal(qa.state.ieltsReadingTest.subQuestions[0].subQuestions.length,2);assert.equal(qa.state.ieltsReadingTest.id,undefined);
+    assert.equal(qa.folderSelections.length,0);assert.equal(qa.state.importingReadingTest,false);assert.match(qa.state.importError,/không có quyền/);
 });
 
 test('failed saves and responses without a saved id preserve 50 questions and clear both spinners without claiming success', async () => {
@@ -283,6 +325,7 @@ test('failed saves and responses without a saved id preserve 50 questions and cl
         assert.equal(qa.loading.count, 0);
         assert.match(qa.state.importError, scenario.expected);
         assert.ok(!qa.messages.some(message => message.type === 'success'));
+        assert.equal(qa.folderSelections.length,0);
     }
 });
 

@@ -642,6 +642,18 @@
             });
             instance.result.then(function () { vm.catalogMoveDialogOpen = false; }, function () { vm.catalogMoveDialogOpen = false; });
         };
+        vm.chooseImportedTestFolder = function (test, initialFolderId) {
+            if (!test || !test.id || vm.catalogMoveDialogOpen) { return; }
+            vm.catalogMoveDialogOpen = true;
+            try {
+                return folders.chooseImportedFolder([test], vm.folderTestMode, initialFolderId, vm.catalogTestMoved).then(function (result) {
+                    if (result) { vm.searchDto.textSearch = ''; vm.applyCatalogFolderFilter(result.folderId); toastr.success('Đã chọn folder cho bài vừa import.', 'Thông báo'); }
+                }, angular.noop).finally(function () { vm.catalogMoveDialogOpen = false; });
+            } catch (error) {
+                vm.catalogMoveDialogOpen = false;
+                toastr.warning('Bài đã import và lưu nháp. Bạn có thể chọn folder bằng nút Di chuyển.', 'Chọn folder sau');
+            }
+        };
 
         vm.ieltsReadingTest = {
             questionType: {
@@ -3289,7 +3301,7 @@
 
             var test;
             if (angular.isArray(source.parts)) {
-                var expectedPartCount = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
+                var expectedPartCount = vm.isComprehensiveMode || vm.isWritingMode ? 1 : (vm.isListeningMode ? 4 : 3);
                 if (source.parts.length !== expectedPartCount) {
                     throw new Error('File import phải có đúng ' + expectedPartCount + ' parts.');
                 }
@@ -3311,7 +3323,7 @@
             if (!test.title || !String(test.title).trim()) {
                 throw new Error('File import chưa có title.');
             }
-            var expectedTestPartCount = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
+            var expectedTestPartCount = vm.isComprehensiveMode || vm.isWritingMode ? 1 : (vm.isListeningMode ? 4 : 3);
             if (!angular.isArray(test.subQuestions) || test.subQuestions.length !== expectedTestPartCount) {
                 throw new Error('Bài test phải có đúng ' + expectedTestPartCount + ' parts.');
             }
@@ -3347,6 +3359,7 @@
                     group.questionType = readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package');
                     group.type = parseInt(group.type, 10) || 1;
                     group.subQuestions = group.subQuestions || [];
+                    if (vm.isWritingMode) { ensureWritingTaskPackage(group, Number(group.type) === 17 ? 2 : 1); }
                     group.isHaveChildren = group.subQuestions.length > 0;
                     angular.forEach(group.subQuestions, function (question) {
                         var questionNumber = parseInt(question.ordinalNumber, 10);
@@ -3656,6 +3669,54 @@
             part.type = 4;
         }
 
+        function writingTestFromExcel(info, contentSheet) {
+            var mode = normalizedExcelText(info['loai bai'] || info['test type'] || '');
+            if (mode && mode.indexOf('writing') < 0) { throw new Error('File này không phải mẫu Writing. Hãy import ở đúng loại test hoặc tải mẫu Writing mới.'); }
+            if (String(info['audio url'] || info.audio || info['video url'] || '').trim()) { throw new Error('Writing không dùng Audio URL hoặc Video URL.'); }
+            var headers = (XLSX.utils.sheet_to_json(contentSheet, {header: 1, defval: '', raw: false})[0] || []).map(normalizedExcelText), seenHeaders = {};
+            headers.forEach(function (header) { if (header && seenHeaders[header]) { throw new Error('NOI_DUNG có tiêu đề cột bị lặp. Hãy dùng mẫu Writing mới.'); } seenHeaders[header] = true; });
+            var taskHeaders = ['task', 'writing task', 'loai cau hoi', 'type'];
+            var promptHeaders = ['de bai html', 'de bai', 'prompt html', 'huong dan html', 'noi dung cau hoi'];
+            if (!headers.some(function (header) { return taskHeaders.indexOf(header) >= 0; }) || !headers.some(function (header) { return promptHeaders.indexOf(header) >= 0; })) {
+                throw new Error('NOI_DUNG cần cột Task và Đề bài HTML. Hãy tải mẫu Writing mới.');
+            }
+            var groups = [], seen = {};
+            XLSX.utils.sheet_to_json(contentSheet, {defval: '', raw: false}).forEach(function (row, index) {
+                var taskCell = excelRowValue(row, ['Task', 'Writing Task']), typeCell = excelRowValue(row, ['Loại câu hỏi', 'Type']);
+                var value = normalizedExcelText(taskCell || typeCell), task = /^(?:writing )?task 1$/.test(value) || value === '16' || (taskCell && value === '1') ? 1
+                    : /^(?:writing )?task 2$/.test(value) || value === '17' || (taskCell && value === '2') ? 2 : null;
+                if (!task) { throw new Error('Dòng ' + (index + 2) + ': Task phải là 1 hoặc 2 (mã loại câu hỏi cũ: 16 hoặc 17).'); }
+                if (seen[task]) { throw new Error('Dòng ' + (index + 2) + ': Writing Task ' + task + ' bị lặp. Mỗi Task chỉ có một đề bài.'); }
+                var prompt = excelRowValue(row, ['Đề bài HTML', 'Đề bài', 'Prompt HTML', 'Hướng dẫn HTML', 'Nội dung câu hỏi']);
+                if (!plainText(prompt)) { throw new Error('Dòng ' + (index + 2) + ': chưa có đề bài Writing Task ' + task + '.'); }
+                seen[task] = true; groups.push({type: task + 15, ordinalNumber: task, instructionHtml: String(prompt), questions: [{number: task, text: String(prompt), answers: []}]});
+            });
+            if (!groups.length) { throw new Error('NOI_DUNG chưa có đề Writing Task 1 hoặc Task 2.'); }
+            groups.sort(function (first, second) { return first.type - second.type; });
+            return normalizeImportedReadingTest({title: info['tieu de'] || info.title || '', parts: [{passageHtml: '', type: 1, groups: groups}]});
+        }
+
+        function downloadWritingImportTemplate() {
+            if (!$window.XLSX) { toastr.error('Thư viện tạo Excel chưa tải được. Vui lòng tải lại trang.', 'IELTS Writing'); return; }
+            var book = XLSX.utils.book_new();
+            var sheets = [
+                {name: 'HUONG_DAN', rows: [
+                    ['MẪU IMPORT IELTS WRITING', 'HƯỚNG DẪN'],
+                    ['THONG_TIN', 'Giữ Loại bài=WRITING và nhập Tiêu đề. Writing không dùng audio hoặc video.'],
+                    ['NOI_DUNG', 'Mỗi dòng là một Task. Cột Task nhập 1 hoặc 2; Đề bài HTML chứa toàn bộ đề và ảnh/biểu đồ nếu có.'],
+                    ['Số Task', 'Có thể nhập riêng Task 1, riêng Task 2 hoặc cả hai. Mỗi Task xuất hiện tối đa một lần.'],
+                    ['HTML', 'Dùng <p>, <strong>, <em>, <br>, <ul>, <li> và <img src="URL_ảnh">. Giữ nguyên đề gốc; không chèn script/iframe hoặc công thức Excel.'],
+                    ['Đáp án', 'Không nhập đáp án đúng hoặc bài viết học sinh. Hệ thống tự tạo vùng nhập bài đúng Task.'],
+                    ['Sau import', 'Bài được lưu nháp, sau đó chọn folder. Bạn có thể kiểm tra, sửa và xuất bản sau.']
+                ]},
+                {name: 'PROMPT_CHATGPT', rows: [['PROMPT TẠO FILE WRITING'], ['Giữ nguyên các sheet và tiêu đề cột của mẫu này. Điền Tiêu đề trong THONG_TIN, giữ WRITING. Trong NOI_DUNG chỉ dùng cột Task (1 hoặc 2) và Đề bài HTML; mỗi Task một dòng, không trùng. Giữ đủ yêu cầu đề, biểu đồ/ảnh và chữ gốc. Không tự bịa dữ liệu, ảnh, audio hoặc đáp án. Không thêm câu hỏi trắc nghiệm. Xóa các dòng ví dụ và chỉ tạo các Task được cung cấp. Xuất file .xlsx để import, không chèn công thức Excel.']]},
+                {name: 'THONG_TIN', rows: [['Trường', 'Giá trị'], ['Loại bài', 'WRITING'], ['Tiêu đề', 'IELTS Academic Writing Test 01']]},
+                {name: 'NOI_DUNG', rows: [['Task', 'Đề bài HTML'], [1, '<p>The chart below shows changes in travel distances.</p><p>Summarise the information by selecting and reporting the main features, and make comparisons where relevant.</p><p>Thay dòng này bằng biểu đồ/ảnh của đề thật.</p>'], [2, '<p>Some people believe that students should study alone, while others prefer studying in groups.</p><p>Discuss both views and give your own opinion.</p>']]}
+            ];
+            sheets.forEach(function (item) { var sheet = XLSX.utils.aoa_to_sheet(item.rows); sheet['!cols'] = [{wch: 32}, {wch: 130}]; XLSX.utils.book_append_sheet(book, sheet, item.name); });
+            XLSX.writeFile(book, 'mau_import_ielts_writing.xlsx'); toastr.success('Đã tải file Excel mẫu Writing.', 'IELTS Writing');
+        }
+
         function readingTestFromExcel(workbook) {
             var infoSheet = findExcelSheet(workbook, ['THONG_TIN', 'THÔNG TIN', 'INFO'], 1);
             var contentSheet = findExcelSheet(workbook, ['NOI_DUNG', 'NỘI DUNG', 'CONTENT'], 2);
@@ -3673,6 +3734,7 @@
                     info[key] = row[1];
                 }
             });
+            if (vm.isWritingMode) { return writingTestFromExcel(info, contentSheet); }
             var title = info['tieu de'] || info.title || '';
             var audioUrl = info['audio url'] || info.audio || '';
             var videoUrl = String(info['video url'] || info['link video'] || '').trim();
@@ -3907,7 +3969,7 @@
 
         vm.importReadingTestFile = function (file, invalidFiles) {
             var importTitle = vm.isComprehensiveMode ? 'Import bài tập Tổng hợp' : 'Import IELTS ' + vm.testModeName;
-            if (vm.importingReadingTest || vm.savingReadingTest || vm.catalogMovePending) { return; }
+            if (vm.importingReadingTest || vm.savingReadingTest || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
             if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
                 toastr.warning('File Excel không được lớn hơn 10 MB.', importTitle);
                 return;
@@ -3926,6 +3988,8 @@
 
             vm.importError = '';
             vm.importingReadingTest = true;
+            var importedFolderId = Number(vm.catalogTestFolderId) > 0 ? Number(vm.catalogTestFolderId) : null;
+            var savedImport = null;
             var reader = new FileReader();
             reader.onload = function (event) {
                 $scope.$applyAsync(function () {
@@ -3935,6 +3999,7 @@
                         var importedQuestionCount = importedTest.importedQuestionCount;
                         delete importedTest.importedQuestionCount;
                         vm.ieltsReadingTest = importedTest;
+                        vm.selectedTestFolderId = importedFolderId;
                         vm.comprehensiveContentMode = importedTest.subQuestions[0].videoUrl ? 'VIDEO' : 'TEXT';
                         vm.savedBuilderVideoLink = null;
                         vm.builderVideoSeconds = vm.videoDuration = 0;
@@ -3946,10 +4011,11 @@
                             if (!savedTest || !savedTest.id) {
                                 throw new Error(vm.lastSaveError || 'Máy chủ chưa xác nhận lưu bài.');
                             }
-                            if (!vm.isComprehensiveMode && importedQuestionCount < 40) {
+                            savedImport = savedTest;
+                            if (!vm.isComprehensiveMode && !vm.isWritingMode && importedQuestionCount < 40) {
                                 toastr.warning('Đã import và lưu ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', importTitle);
                             } else {
-                                toastr.success('Đã import và lưu bản nháp ' + importedQuestionCount + ' câu.', importTitle);
+                                toastr.success('Đã import và lưu bản nháp ' + importedQuestionCount + (vm.isWritingMode ? ' Task.' : ' câu.'), importTitle);
                             }
                         }).catch(function (error) {
                             vm.importError = (error.message || vm.lastSaveError || 'Không thể lưu bài sau import.') +
@@ -3957,6 +4023,7 @@
                             toastr.error(vm.importError, 'Import chưa lưu được');
                         }).finally(function () {
                             vm.importingReadingTest = false;
+                            if (savedImport) { vm.chooseImportedTestFolder(savedImport, importedFolderId); }
                         });
                     } catch (error) {
                         vm.importingReadingTest = false;
@@ -3976,6 +4043,7 @@
         };
 
         vm.downloadReadingImportTemplate = function () {
+            if (vm.isWritingMode) { return downloadWritingImportTemplate(); }
             var modeName = vm.testModeName;
             var modeUpper = String(modeName).toUpperCase();
             var videoTemplate = vm.isComprehensiveMode && vm.isVideoBuilder();
