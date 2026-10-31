@@ -16,6 +16,14 @@
                 <!-- BEGIN PAGE CONTENT -->
                 <div class="page-content">
                     <div class="container">
+                        <div class="alert alert-warning session-recovery-notice" ng-if="sessionRecoveryRequired" role="alert" aria-live="polite">
+                            <strong>Cần kiểm tra lại đăng nhập</strong>
+                            <p>Chưa xác nhận được phiên đăng nhập trên thiết bị này. Bạn có thể thử khôi phục phiên hoặc đăng nhập lại để tiếp tục.</p>
+                            <button type="button" class="btn btn-default" ng-click="retrySessionRecovery()" ng-disabled="sessionRecoveryChecking">
+                                {{sessionRecoveryChecking ? 'Đang kiểm tra…' : 'Thử khôi phục phiên'}}
+                            </button>
+                            <button type="button" class="btn btn-primary" ng-click="signInAgain()" ng-disabled="sessionRecoveryChecking">Đăng nhập lại</button>
+                        </div>
                         <!-- BEGIN ACTUAL CONTENT -->
                         <div ui-view class="fade-in-up"> </div>
                         <!-- END ACTUAL CONTENT -->

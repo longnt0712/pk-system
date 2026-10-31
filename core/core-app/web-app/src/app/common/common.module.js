@@ -16,7 +16,7 @@
             // Login page
             .state('login', {
                 url: '/login',
-                templateUrl: 'common/views/login/login.html',
+                templateUrl: 'common/views/login/login.html?v=20261031-auth-recovery',
                 data: {pageTitle: 'System login'},
                 controller: 'LoginController as vm',
                 resolve: {

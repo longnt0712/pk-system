@@ -8,6 +8,7 @@
     <!-- BEGIN LOGIN -->
     <div class="content">
         <!-- BEGIN LOGIN FORM -->
+        <div class="alert alert-warning" ng-if="sessionNotice" role="alert">{{sessionNotice}}</div>
         <form class="login-form" novalidate>
             <h3 class="form-title font-green">Đăng nhập</h3>
             <div class="form-group">

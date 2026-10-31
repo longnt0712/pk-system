@@ -69,13 +69,14 @@
             authSession.restore();
             $rootScope.$on('session:expired', function () {
                 blockUI.stop();
-                toastr.warning('Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại.', 'Đăng nhập');
+                $rootScope.sessionNotice = 'Thông tin đăng nhập trên thiết bị này đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại một lần để tiếp tục.';
+                toastr.warning($rootScope.sessionNotice, 'Đăng nhập');
                 $rootScope.$emit('$unauthorized', function () {});
                 $state.go('login');
             });
 
             var userCheckInFlight = false;
-            function checkCurrentUser() {
+            function checkCurrentUser(reloadOnSuccess) {
                 authSession.restore();
                 if (!authSession.hasCredentials()) {
                     if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user)) {
@@ -88,12 +89,17 @@
                 }
                 if (userCheckInFlight) { return; }
                 userCheckInFlight = true;
+                $rootScope.sessionRecoveryChecking = true;
                 var identity = authSession.capture();
                 blockUI.start();
                 $http.get(settings.api.baseUrl + 'api/users/getCurrentUser', {timeout: 15000})
                     .then(function (response) {
                         if (!authSession.saveUser(response.data, identity)) { return; }
                         $rootScope.$emit('$onCurrentUserData', response.data);
+                        if (reloadOnSuccess === true && $state.current.name !== 'login') {
+                            $state.reload();
+                            return;
+                        }
                         if ($state.current.name === 'login') {
                             $state.go('application.dashboard');
                         }
@@ -102,9 +108,12 @@
                         // grants; a resource 401 alone must not delete a session.
                     }).finally(function () {
                         userCheckInFlight = false;
+                        $rootScope.sessionRecoveryChecking = false;
                         blockUI.stop();
                     });
             }
+            $rootScope.retrySessionRecovery = function () { checkCurrentUser(true); };
+            $rootScope.signInAgain = function () { authSession.reauthenticate(); };
             $rootScope.$on('$locationChangeSuccess', checkCurrentUser);
             function resumeSession() {
                 if (window.document.hidden || window.navigator.onLine === false || !authSession.hasCredentials()) { return; }

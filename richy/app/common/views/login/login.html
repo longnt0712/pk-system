@@ -16,8 +16,22 @@
                 <!-- BEGIN PAGE CONTENT -->
                 <div class="page-content">
                     <div class="container">
-                        <div class="alert alert-warning" ng-if="sessionNotice" role="alert" aria-live="assertive">
+                        <div class="alert alert-warning session-login-notice" ng-if="sessionNotice" role="alert" aria-live="assertive">
+                            <strong>Cần đăng nhập lại</strong>
+                            <p>
                             {{sessionNotice}}
+                            </p>
+                            <form name="sessionRecoveryLogin" ng-submit="vm.login()" class="session-recovery-login" novalidate>
+                                <div class="form-group">
+                                    <label for="session-login-username">Tên đăng nhập</label>
+                                    <input id="session-login-username" name="username" class="form-control" type="text" autocomplete="username" ng-model="vm.user.username" ng-disabled="vm.isLoggingIn" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="session-login-password">Mật khẩu</label>
+                                    <input id="session-login-password" name="password" class="form-control" type="password" autocomplete="current-password" ng-model="vm.user.password" ng-disabled="vm.isLoggingIn" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary" ng-disabled="vm.isLoggingIn">{{vm.isLoggingIn ? 'Đang đăng nhập…' : 'Đăng nhập lại'}}</button>
+                            </form>
                         </div>
                         <div class="alert alert-danger" ng-if="vm.loginError" role="alert" aria-live="assertive">
                             {{vm.loginError}}
@@ -252,6 +266,10 @@
 
 
 <style>
+    .session-recovery-login { max-width: 420px; margin-top: 20px; }
+    .session-recovery-login label { display: block; }
+    .session-recovery-login .form-control { min-height: 44px; font-size: 16px; }
+    .session-recovery-login .btn { min-height: 44px; white-space: normal; }
     .for-media {
         display: none;
     }

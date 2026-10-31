@@ -124,6 +124,7 @@ test('network errors, 403 and 5xx leave the session intact', async () => {
         await assert.rejects(h.http({url: api}), error => error.status === status);
         assert.equal(h.token.getAccessToken(), 'old');
         assert.equal(h.events.length, 0);
+        assert.notEqual(h.deps.$rootScope.sessionRecoveryRequired, true);
     }
 });
 
@@ -170,6 +171,116 @@ test('repeated resource 401s stop after two recoveries and preserve the refresh 
     assert.equal(refreshes, 2);
     assert.equal(h.token.getRefreshToken(), 'refresh-1');
     assert.deepEqual(h.events, []);
+    assert.equal(h.deps.$rootScope.sessionRecoveryRequired, true);
+});
+
+test('an old revoked session clears stale user data and opens login without reviving its grant', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let refreshes = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) {
+                refreshes++;
+                throw {status: 400, data: {error: 'invalid_grant'}};
+            }
+            throw invalid;
+        }, 'https:', frontend);
+        h.session.saveUser({id: 7, roles: [{name: 'ROLE_ADMIN'}]});
+        const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        app.listeners.$locationChangeSuccess();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(refreshes, 1);
+        assert.equal(h.session.hasCredentials(), false);
+        assert.equal(h.cookies['education.user'], undefined);
+        assert.equal(h.deps.$rootScope.currentUser, null);
+        assert.deepEqual(app.navigations, ['login']);
+        assert.match(h.deps.$rootScope.sessionNotice, /đăng nhập lại một lần/);
+    }
+});
+
+test('bounded 401 recovery offers an explicit way out and retry reloads data only after verification', async () => {
+    for (const frontend of ['richy', 'core']) {
+        let fail = true, reloads = 0, revocations = 0;
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) return fresh;
+            if (config.url.endsWith('/oauth/revoke')) { revocations++; return {}; }
+            if (fail) throw invalid;
+            return {data: {id: 7, roles: []}};
+        }, 'https:', frontend);
+        h.session.saveUser({id: 7, roles: []});
+        const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        const state = frontend === 'richy' ? app.state : h.deps.$rootScope.$state;
+        state.current.name = 'application.dashboard';
+        state.reload = () => {reloads++;};
+        app.listeners.$locationChangeSuccess();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.deps.$rootScope.sessionRecoveryRequired, true);
+        assert.equal(h.session.hasCredentials(), true);
+        assert.equal(revocations, 0);
+        assert.equal(reloads, 0);
+        assert.deepEqual(app.navigations, []);
+        fail = false;
+        h.deps.$rootScope.retrySessionRecovery();
+        assert.equal(h.deps.$rootScope.sessionRecoveryChecking, true);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.deps.$rootScope.sessionRecoveryRequired, false);
+        assert.equal(h.deps.$rootScope.sessionRecoveryChecking, false);
+        assert.equal(h.session.hasCredentials(), true);
+        assert.equal(reloads, 1);
+        assert.equal(revocations, 0);
+    }
+});
+
+test('choosing to sign in again revokes only the old browser grant and preserves learning drafts', async () => {
+    for (const frontend of ['richy', 'core']) {
+        const revocations = [], drafts = {inProgress: 'saved-answer'};
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/revoke')) { revocations.push(config.data); return {}; }
+            throw invalid;
+        }, 'https:', frontend);
+        h.context.window.localStorage = {getItem: key => drafts[key], setItem(key, value) {drafts[key] = value;},
+            removeItem() {throw Error('Learning drafts must not be removed');}, clear() {throw Error('Storage must not be cleared');}};
+        h.session.saveUser({id: 7, roles: []});
+        const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+        h.deps.$rootScope.sessionRecoveryRequired = true;
+        h.deps.$rootScope.signInAgain();
+        assert.deepEqual(app.navigations, ['login']);
+        assert.equal(h.session.hasCredentials(), false);
+        assert.equal(h.deps.$rootScope.sessionRecoveryRequired, false);
+        assert.equal(h.cookies['education.user'], undefined);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(revocations.length, 1);
+        assert.match(revocations[0], /token=refresh-1&token_type_hint=refresh_token/);
+        assert.equal(drafts.inProgress, 'saved-answer');
+    }
+});
+
+test('stale authorization failures cannot raise a recovery notice over a newer login', () => {
+    for (const frontend of ['richy', 'core']) {
+        const h = setup(() => ({}), 'https:', frontend);
+        const oldHeader = h.token.getAuthorizationHeader();
+        h.token.setToken({...fresh.data, refresh_token: 'another-device-session'});
+        h.session.reportUnverified(oldHeader);
+        assert.notEqual(h.deps.$rootScope.sessionRecoveryRequired, true);
+    }
+});
+
+test('valid existing finite and persistent sessions remain signed in without a recovery prompt', async () => {
+    for (const frontend of ['richy', 'core']) {
+        for (const persistent of [false, true]) {
+            const h = setup(() => ({data: {id: 7, username: 'existing-user', roles: []}}), 'https:', frontend);
+            h.token.setToken({...fresh.data, persistent_session: persistent});
+            h.session.saveUser({id: 7, roles: []});
+            const app = frontend === 'richy' ? startApp(h) : startCoreApp(h);
+            if (frontend === 'core') h.deps.$rootScope.$state.current.name = 'application.dashboard';
+            app.listeners.$locationChangeSuccess();
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(h.token.getRefreshToken(), 'refresh-1');
+            assert.equal(h.cookies['education.user'].username, 'existing-user');
+            assert.equal(h.deps.$rootScope.sessionRecoveryRequired, false);
+            assert.equal(h.events.includes('session:expired'), false);
+            assert.deepEqual(app.navigations, []);
+        }
+    }
 });
 
 test('two tabs sharing a refresh token recover safely in both response orderings without Web Locks', async () => {

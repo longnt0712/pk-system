@@ -144,7 +144,7 @@
 
             // Member area
             $stateProvider.state('application', {
-                templateUrl: 'common/views/application.html',
+                templateUrl: 'common/views/application.html?v=20261031-auth-recovery',
                 abstract: true
             });
 

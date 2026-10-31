@@ -50,6 +50,14 @@ Cập nhật ngày 31/10/2026: sửa mất phiên khi nhiều tab đồng thời
 
 Sau khi triển khai, kiểm tra đăng nhập tài khoản thường/admin, đổi mật khẩu đúng/sai, refresh, logout khi access hết hạn, khóa rồi mở lại user, đổi quyền, và đăng nhập hai thiết bị. Tài khoản thường phải bị từ chối ở `/tokens/**` và API admin reset; response user không có trường password/hash.
 
+### Xử lý giao diện của phiên cũ sau cập nhật 31/10
+
+Frontend hiển thị thông báo cố định kèm nút **Thử khôi phục phiên** và **Đăng nhập lại** khi request vẫn nhận 401 sau hai lần phục hồi. Trường hợp này giữ refresh grant để người dùng có thể thử lại; không coi lỗi tài nguyên là bằng chứng để tự thu hồi phiên. Khôi phục thành công phải xác minh `getCurrentUser` trước khi tải lại dữ liệu trang. Thao tác **Đăng nhập lại** do người dùng chọn chỉ xóa cookie xác thực và thu hồi grant hiện tại của trình duyệt; không xóa bài làm lưu trong localStorage, không thu hồi các thiết bị đăng nhập độc lập.
+
+Nếu refresh đã bị server từ chối hoặc cookie xác thực đã mất, frontend dọn thông tin người dùng cũ và chuyển sang đăng nhập với thông báo rõ ràng. IELTS Room hiển thị sẵn biểu mẫu tài khoản/mật khẩu ngay dưới thông báo. Phiên theo policy cũ hoặc đã bị thu hồi vẫn cần đăng nhập lại một lần; không nới kiểm tra backend để khôi phục chúng. Phiên còn hợp lệ được giữ nguyên và lỗi mạng/403/5xx không tự mở luồng đăng nhập lại.
+
+Bản chỉnh giao diện này chỉ cần cập nhật frontend, không thay JAR, SQL hoặc auth policy. Các tab đã mở bằng JavaScript cũ cần tải lại trang để nhận bản sửa. Gói frontend IELTS Room và hướng dẫn tại `outputs/auth-session-recovery-20261031/`.
+
 ## Giới hạn cần giữ rõ
 
 - Mỗi request được xác thực thêm bằng dữ liệu tài khoản hiện hành, tạo thêm truy vấn DB. Kiểm thử cục bộ xác nhận chức năng và race; chưa đo tải trên database production.

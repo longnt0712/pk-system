@@ -431,7 +431,7 @@
             });
             $rootScope.$on('session:expired', function () {
                 blockUI.stop();
-                $rootScope.sessionNotice = 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.';
+                $rootScope.sessionNotice = 'Thông tin đăng nhập trên thiết bị này đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại một lần để tiếp tục.';
                 resetPermissionSettings();
                 settings.permissionsLoaded = false;
                 if (requestInlineSessionLogin()) { return; }
@@ -452,7 +452,7 @@
             var userCheckRetry = null;
             var lastUserCheckAt = 0;
             var lastUserCheckSession = null;
-            function checkCurrentUser(attempt, force) {
+            function checkCurrentUser(attempt, force, reloadOnSuccess) {
                 authSession.restore();
                 if (userCheckInFlight) { return; }
                 if (isPublicFairPage()) { return; }
@@ -488,6 +488,7 @@
                 lastUserCheckAt = Date.now();
                 lastUserCheckSession = sessionKey;
                 userCheckInFlight = true;
+                $rootScope.sessionRecoveryChecking = true;
 
                 $http.get(settings.api.baseUrl + 'api/users/getCurrentUser',
                     {backgroundSessionCheck: true, timeout: 15000})
@@ -507,6 +508,10 @@
                             settings.permissionsLoaded = true;
                             $rootScope.$broadcast('permissionsLoaded');
 
+                            if (reloadOnSuccess && $state.current.name !== 'login') {
+                                $state.reload();
+                                return;
+                            }
                             if ($state.current.name === 'login' && !($state.params && $state.params.showHome === true)) {
                                 $rootScope.navigateAfterLogin();
                             }
@@ -534,9 +539,16 @@
                         }
                     }).finally(function () {
                         userCheckInFlight = false;
+                        $rootScope.sessionRecoveryChecking = false;
                     });
             }
 
+            $rootScope.retrySessionRecovery = function () {
+                checkCurrentUser(0, true, true);
+            };
+            $rootScope.signInAgain = function () {
+                authSession.reauthenticate();
+            };
             $rootScope.$on('$locationChangeSuccess', function () { checkCurrentUser(0); });
             function resumeSession(event) {
                 if (window.document.hidden || window.navigator.onLine === false ||

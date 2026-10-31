@@ -128,6 +128,7 @@
                 token.removeToken();
                 $cookies.remove(constants.cookies_user, options);
                 $rootScope.currentUser = null;
+                $rootScope.sessionRecoveryRequired = false;
             }
 
             function expire(expectedHeader) {
@@ -250,6 +251,18 @@
                 login: login,
                 capture: capture,
                 isCurrent: isCurrent,
+                reportUnverified: function (expectedHeader) {
+                    // A bounded resource failure is not proof that the refresh
+                    // grant was revoked. Keep it available for explicit recovery.
+                    if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) { return; }
+                    $rootScope.sessionRecoveryRequired = true;
+                },
+                reauthenticate: function () {
+                    // Only the user's explicit action revokes this device's grant.
+                    var value = token.getToken();
+                    expire();
+                    return revoke(value);
+                },
                 isPersistent: function () { return token.isPersistentSession(token.getToken()); },
                 touch: touch,
                 expire: expire,
@@ -269,6 +282,7 @@
                     value = token.getToken();
                     expirationNotified = false;
                     $rootScope.sessionNotice = '';
+                    $rootScope.sessionRecoveryRequired = false;
                     $rootScope.currentUser = user;
                     var cachedUser = angular.extend({}, user, {_auth_session_id: value._browser_session_id});
                     $cookies.putObject(constants.cookies_user, cachedUser, angular.extend({}, options,
@@ -368,6 +382,7 @@
                         // A resource 401 can belong to an access token replaced
                         // by another tab. Only a rejected refresh grant proves
                         // that this device session must end.
+                        session.reportUnverified(config.sessionAuthHeader);
                         return $q.reject(error);
                     }
                     if (token.getAccessToken() && token.getAccessToken() !== config.sessionAuthAccess) {
@@ -555,7 +570,7 @@
                     if (rejection.status == 403 && !config.loginRequest) {
                         toastr.error('Bạn không có quyền thực hiện thao tác này.', 'Lỗi (403)');
                     }
-					
+
 					if (rejection.status == 409) {
                         toastr.error('Có lỗi xảy ra. Xin vui lòng thử lại sau.', 'Lỗi (409)');
                     }

@@ -1,0 +1,57 @@
+<div class="page-wrapper application-shell" >
+    <div class="page-wrapper-row">
+        <div class="page-wrapper-top">
+            <!-- BEGIN HEADER -->
+            <div data-ng-include="'common/views/navs/header-hoz.html?v=' + appVersion" data-ng-controller="HeaderController" class="page-header"> </div>
+            <!-- END HEADER -->
+        </div>
+    </div>
+    <div class="page-wrapper-row full-height" >
+        <div class="page-wrapper-middle" >
+            <!-- BEGIN CONTAINER -->
+            <div class="page-container" style="width: 98%;margin: auto">
+                <!-- BEGIN PAGE HEAD -->
+                <div data-ng-include="'common/views/navs/page-head.html'" data-ng-controller="PageHeadController" class="page-head"> </div>
+                <!-- END PAGE HEAD -->
+                <!-- BEGIN PAGE CONTENT -->
+                <div class="page-content">
+                    <div class="container">
+                        <div class="alert alert-warning session-recovery-notice" ng-if="sessionRecoveryRequired" role="alert" aria-live="polite">
+                            <strong>Cần kiểm tra lại đăng nhập</strong>
+                            <p>Chưa xác nhận được phiên đăng nhập trên thiết bị này. Bạn có thể thử khôi phục phiên hoặc đăng nhập lại để tiếp tục.</p>
+                            <button type="button" class="btn btn-default" ng-click="retrySessionRecovery()" ng-disabled="sessionRecoveryChecking">
+                                {{sessionRecoveryChecking ? 'Đang kiểm tra…' : 'Thử khôi phục phiên'}}
+                            </button>
+                            <button type="button" class="btn btn-primary" ng-click="signInAgain()" ng-disabled="sessionRecoveryChecking">Đăng nhập lại</button>
+                        </div>
+                        <!-- BEGIN ACTUAL CONTENT -->
+                        <div ui-view class="fade-in-up"> </div>
+                        <!-- END ACTUAL CONTENT -->
+                    </div>
+                </div>
+                <!-- END PAGE CONTENT -->
+                <!-- BEGIN QUICK SIDEBAR -->
+                <a href="javascript:;" class="page-quick-sidebar-toggler">
+                    <i class="icon-login"></i>
+                </a>
+                <div data-ng-include="'common/views/navs/quick-sidebar.html'" data-ng-controller="QuickSidebarController" class="page-quick-sidebar-wrapper"></div>
+                <!-- END QUICK SIDEBAR -->
+            </div>
+            <!-- END CONTAINER -->
+        </div>
+    </div>
+    <div class="page-wrapper-row"
+         ng-if="$state.current.name !== 'application.ielts_reading_actual_test'">
+        <div class="page-wrapper-bottom">
+            <!-- BEGIN FOOTER -->
+            <div data-ng-include="'common/views/navs/footer-hoz.html'" data-ng-controller="FooterController"> </div>
+            <!-- END FOOTER -->
+        </div>
+    </div>
+</div>
+
+<learning-pet></learning-pet>
+
+<style>
+
+</style>

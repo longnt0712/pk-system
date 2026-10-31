@@ -1,0 +1,573 @@
+﻿(function () {
+    'use strict';
+
+    /* Hrm App */
+    if (typeof window.Hrm == 'undefined') {
+        var Hrm = angular.module('Hrm', [
+            'ui.router',
+            'ui.bootstrap',
+            'oc.lazyLoad',
+            'ngSanitize',
+            'ngCookies',
+            'angular-oauth2',
+            'blockUI',
+            'ngFileUpload',
+            'uiCropper',
+            'toastr',
+            'ngIdle',
+            'dndLists',
+
+            // Sub modules
+            'Hrm.Common',
+            'Hrm.Dashboard',
+            'Hrm.Settings',
+            'Hrm.User',
+
+            // Sub modules
+            'Hrm.Account',
+            'Hrm.Calendar',
+            'Hrm.Answer',
+            'Hrm.Question',
+            'Hrm.ClassicalLearning',
+            'Hrm.Body',
+            'Hrm.BodyLearning',
+            'Hrm.QuestionType',
+            'Hrm.Item',
+            'Hrm.VoucherCrocs',
+            // 'Hrm.DefaultPrice',
+            'Hrm.Shop',
+            'Hrm.Topic',
+            'Hrm.TestResult',
+            'Hrm.Products',
+            'Hrm.PersonDate',
+            'Hrm.EducationProgram',
+            'Hrm.Campaign',
+            'Hrm.Fair',
+            'Hrm.Mark',
+            'Hrm.StudentMark',
+            'Hrm.TopicCategory',
+            'Hrm.EnrolmentClass',
+            // 'Hrm.Wine',
+            // 'Hrm.Church',
+            // 'Hrm.Folder',
+            // 'Hrm.Article'
+        ]);
+
+        window.Hrm = Hrm;
+    }
+
+    // Hrm.API_SERVER_URL = 'https://giaoxuphungkhoang.org:8085/service/';
+    // Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com/service/';
+    /*Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';*/
+    /*Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com:8443/service/';*/
+    var localApiHosts = ['localhost', '127.0.0.1', '::1', '[::1]'];
+    var isLocalFrontend = localApiHosts.indexOf(window.location.hostname) >= 0;
+
+    /*
+     * Production is proxied by IIS at /service. Local IIS only serves the
+     * frontend, while Spring Boot listens directly on 127.0.0.1:8085.
+     */
+    Hrm.API_SERVER_URL = isLocalFrontend
+        ? 'http://127.0.0.1:8085/service/'
+        : window.location.origin + '/service/';
+    //--------------------//
+
+    // Hrm.API_SERVER_URL = 'https://localhost:8085/service/'; // đoạn này mình call local
+    // Hrm.API_SERVER_URL = 'https://richywine.com:8085/service/'; // đoạn này mình call local
+    // Hrm.API_SERVER_URL = 'http://ieltsroom.com:8080/letter/'; // đoạn này mình call local
+    // Hrm.API_SERVER_URL = 'http://giaoxuphungkhoang.org:8081/letter/'; // đoạn này mình call local
+    // Hrm.API_SERVER_URL = 'http://sv313.tlu.edu.vn:8082/letter/'; //
+    //Hrm.API_SERVER_URL = 'http://150.95.113.209:8080/letter/'; //
+
+    Hrm.API_CLIENT_ID = 'education_client';
+    Hrm.API_CLIENT_KEY = 'password';
+    Hrm.API_PREFIX = 'api/';
+
+    /* Init global settings and run the app */
+    /* Init global settings and run the app */
+    Hrm.run([
+        '$rootScope',
+        'settings',
+        '$http',
+        '$cookies',
+        '$state',
+        '$injector',
+        'constants',
+        'OAuth',
+        'blockUI',
+        'toastr',
+        'Idle',
+        'Keepalive',
+        '$timeout',
+        'AuthSession',
+        'NetworkStatus',
+        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout, authSession, networkStatus) {
+            $rootScope.$state = $state;
+            settings.api.apiV1Url = Hrm.API_PREFIX;
+            $rootScope.$settings = settings;
+
+            $rootScope.appVersion = window.APP_VERSION || new Date().getTime();
+            $rootScope.islogOut = false;
+
+            /*
+             * Nếu người dùng mở link phòng Battle Online khi chưa đăng nhập,
+             * lưu mã phòng trong tab hiện tại để sau khi đăng nhập xong có thể
+             * quay lại đúng phòng. Chỉ lưu mã đã qua kiểm tra định dạng, không
+             * lưu URL tùy ý nên không tạo open redirect.
+             */
+            var pendingBattleRoomStorageKey =
+                'battleOnline.pendingRoomCode';
+            var postLoginNavigationStarted = false;
+            var lastLoginRequiredNoticeRoomCode = '';
+
+            function normalizeBattleRoomCode(value) {
+                var code = String(value || '')
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, '')
+                    .trim();
+
+                return /^[A-Z0-9]{4,12}$/.test(code)
+                    ? code
+                    : '';
+            }
+
+            function getBattleRoomCodeFromCurrentUrl() {
+                var pathname = String(
+                    window.location.pathname || ''
+                );
+                var matched = pathname.match(
+                    /\/battle-quiz-online\/([A-Z0-9]{4,12})\/?$/i
+                );
+
+                return matched
+                    ? normalizeBattleRoomCode(matched[1])
+                    : '';
+            }
+
+            function rememberPendingBattleRoomFromCurrentUrl() {
+                var code = getBattleRoomCodeFromCurrentUrl();
+
+                if (!code) {
+                    return '';
+                }
+
+                $rootScope.pendingBattleRoomCode = code;
+
+                try {
+                    window.sessionStorage.setItem(
+                        pendingBattleRoomStorageKey,
+                        code
+                    );
+                } catch (e) {
+                    // RootScope vẫn giữ mã phòng nếu trình duyệt chặn storage.
+                }
+
+                return code;
+            }
+
+            function prepareBattleRoomLoginRedirect() {
+                var code =
+                    rememberPendingBattleRoomFromCurrentUrl();
+
+                postLoginNavigationStarted = false;
+
+                if (
+                    code &&
+                    lastLoginRequiredNoticeRoomCode !== code
+                ) {
+                    lastLoginRequiredNoticeRoomCode = code;
+
+                    toastr.info(
+                        'Hãy đăng nhập trước để vào phòng ' +
+                            code +
+                            '. Sau khi đăng nhập, bạn sẽ tự động vào phòng.',
+                        'BATTLE ONLINE'
+                    );
+                }
+
+                return code;
+            }
+
+            function readPendingBattleRoomCode() {
+                var code = normalizeBattleRoomCode(
+                    $rootScope.pendingBattleRoomCode
+                );
+
+                if (code) {
+                    return code;
+                }
+
+                try {
+                    code = normalizeBattleRoomCode(
+                        window.sessionStorage.getItem(
+                            pendingBattleRoomStorageKey
+                        )
+                    );
+                } catch (e) {
+                    code = '';
+                }
+
+                return code;
+            }
+
+            function clearPendingBattleRoomCode() {
+                $rootScope.pendingBattleRoomCode = '';
+
+                try {
+                    window.sessionStorage.removeItem(
+                        pendingBattleRoomStorageKey
+                    );
+                } catch (e) {
+                    // Không ảnh hưởng điều hướng sau đăng nhập.
+                }
+            }
+
+            $rootScope.resetPostLoginNavigation = function () {
+                postLoginNavigationStarted = false;
+            };
+
+            $rootScope.navigateAfterLogin = function () {
+                if (postLoginNavigationStarted) {
+                    return;
+                }
+
+                postLoginNavigationStarted = true;
+
+                var roomCode = readPendingBattleRoomCode();
+
+                if (roomCode) {
+                    clearPendingBattleRoomCode();
+
+                    $state.go(
+                        'application.battle_quiz_online_room',
+                        {
+                            roomCode: roomCode
+                        }
+                    );
+
+                    return;
+                }
+
+                var signedInUser = $rootScope.currentUser || $cookies.getObject(constants.cookies_user);
+                if (signedInUser) { applyRolesToSettings(signedInUser); }
+                var fairPath;
+                try { fairPath = window.sessionStorage.getItem('fair.returnPath'); window.sessionStorage.removeItem('fair.returnPath'); } catch (ignore) {}
+                var fairRoute = /^\/hoi-cho\/(?:([1-9][0-9]*)\/)?(lam-viec|quan-tri)\/?$/.exec(fairPath || '');
+                if (settings.fairsEnabled && fairRoute) {
+                    $state.go('fair_' + (fairRoute[2] === 'quan-tri' ? 'admin' : 'work') + (fairRoute[1] ? '_event' : ''), {id: fairRoute[1] ? Number(fairRoute[1]) : null});
+                    return;
+                }
+                $state.go('application.dashboard');
+            };
+
+            // console.log("ver 1.0");
+
+            // =========================
+            // Init permission flags
+            // =========================
+            settings.permissionsLoaded = false;
+            settings.isAdmin = false;
+            settings.isViewer = false;
+            settings.isStaff = false;
+            settings.isStudentManagerment = false;
+            settings.isEducationManagerment = false;
+
+            function resetPermissionSettings() {
+                settings.isFairPlay = false;
+                settings.isFairGift = false;
+                settings.isAdmin = false;
+                settings.isViewer = false;
+                settings.isStaff = false;
+                settings.isStudentManagerment = false;
+                settings.isEducationManagerment = false;
+            }
+
+            function applyRolesToSettings(user) {
+                resetPermissionSettings();
+
+                if (!user || !user.roles || !user.roles.length) {
+                    return;
+                }
+
+                angular.forEach(user.roles, function (value) {
+                    if (value.name === 'ROLE_PLAY') { settings.isFairPlay = true; }
+                    if (value.name === 'ROLE_GIFT') { settings.isFairGift = true; }
+                    if (value.name === "ROLE_ADMIN") {
+                        settings.isAdmin = true;
+                        console.log("ADMIN");
+                    } else if (value.name === "ROLE_VIEWER") {
+                        settings.isViewer = true;
+                        console.log("VIEWER");
+                    } else if (value.name === "ROLE_STAFF" || value.name === "ROLE_STAFF_MANAGEMENT") {
+                        settings.isStaff = true;
+                        console.log("STAFF");
+                    } else if (value.name === "ROLE_STUDENT_MANAGERMENT") {
+                        settings.isStudentManagerment = true;
+                        console.log("isStudentManagerment");
+                    } else if (value.name === "ROLE_EDUCATION_MANAGERMENT") {
+                        settings.isEducationManagerment = true;
+                        console.log("isEducationManagerment");
+                    }
+                });
+            }
+
+            function loadPermissionsFromCookie(done) {
+                settings.permissionsLoaded = false;
+
+                var raw = $cookies.get("education.user");
+
+                if (raw) {
+                    try {
+                        var currentUser = JSON.parse(raw);
+                        applyRolesToSettings(currentUser);
+                    } catch (e) {
+                        console.error("Parse education.user failed:", e);
+                        resetPermissionSettings();
+                    }
+
+                    settings.permissionsLoaded = true;
+                    $rootScope.$broadcast('permissionsLoaded');
+                    if (done) {
+                        done();
+                    }
+                    return;
+                }
+
+                $timeout(function () {
+                    var retryRaw = $cookies.get("education.user");
+
+                    if (retryRaw) {
+                        try {
+                            var retryUser = JSON.parse(retryRaw);
+                            applyRolesToSettings(retryUser);
+                        } catch (e) {
+                            console.error("Retry parse education.user failed:", e);
+                            resetPermissionSettings();
+                        }
+                    } else {
+                        resetPermissionSettings();
+                    }
+
+                    settings.permissionsLoaded = true;
+                    $rootScope.$broadcast('permissionsLoaded');
+
+                    if (done) {
+                        done();
+                    }
+                }, 300);
+            }
+
+            loadPermissionsFromCookie();
+
+            // =========================
+            // Notranslate
+            // =========================
+            document.documentElement.setAttribute('translate', 'no');
+            document.documentElement.classList.add('notranslate');
+
+            document.querySelectorAll('[data-notranslate]').forEach(function (el) {
+                el.setAttribute('translate', 'no');
+                el.classList.add('notranslate');
+            });
+
+            // =========================
+            // Domain mode
+            // =========================
+            var hostname = (window.location.hostname || '')
+                .toLowerCase()
+                .replace(/^www\./, '');
+
+            // Chi tnttphungkhoang.com (va subdomain cua no) dung giao dien Chapter.
+            // ieltsroom.com, localhost va moi domain khac deu mac dinh Saint Paul Academy.
+            var isChapterDomain = hostname === 'tnttphungkhoang.com'
+                || /\.tnttphungkhoang\.com$/.test(hostname);
+
+            // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
+            settings.campaignsEnabled = /^(www\.)?tnttphungkhoang\.com$/i.test(window.location.hostname || '');
+            settings.fairsEnabled = settings.campaignsEnabled;
+            settings.chapter = isChapterDomain;
+            settings.ieltsRoom = !isChapterDomain;
+            settings.salesEnabled = hostname !== 'ieltsroom.com';
+            settings.englishClassesDomain = window.location.hostname.toLowerCase() === 'ieltsroom.com';
+
+            // =========================
+            // OAuth errors
+            // =========================
+            function isPublicFairPage() {
+                return settings.fairsEnabled === true && /^\/hoi-cho(?:\/[1-9][0-9]*\/tra-cuu)?\/?$/.test(window.location.pathname || '');
+            }
+            function isPublicCampaignPage() {
+                if (isPublicFairPage()) { return true; }
+                return settings.campaignsEnabled && (/^\/campaigns(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}(?:\/canh-dong-hoa)?))?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || ''));
+            }
+            $rootScope.$on('$stateChangeStart', function (event, nextState, nextParams) {
+                if (nextState.data && (nextState.data.publicFair || nextState.data.fairPrivate) && !settings.fairsEnabled) {
+                    event.preventDefault();
+                    $state.go('login', {showHome: true}, {location: 'replace'});
+                    return;
+                }
+                if (nextState.data && nextState.data.fairPrivate && !authSession.hasCredentials()) {
+                    var fairTarget = '/hoi-cho/' + (nextParams && nextParams.id ? nextParams.id + '/' : '')
+                        + (nextState.name && nextState.name.indexOf('fair_admin') === 0 ? 'quan-tri' : 'lam-viec');
+                    try { window.sessionStorage.setItem('fair.returnPath', fairTarget); } catch (ignore) {}
+                    event.preventDefault(); $state.go('login'); return;
+                }
+                if (nextState.data && nextState.data.publicCampaign && !settings.campaignsEnabled) {
+                    event.preventDefault();
+                    $state.go('login', {showHome: true}, {location: 'replace'});
+                }
+            });
+            authSession.restore();
+            var stopNetworkStatus = networkStatus.start();
+            function requestInlineSessionLogin() {
+                var event = $rootScope.$broadcast('session:reauthenticate');
+                return event && event.defaultPrevented;
+            }
+            $rootScope.$on('session:restored', function (event, user) {
+                applyRolesToSettings(user);
+                settings.permissionsLoaded = true;
+                $rootScope.$broadcast('permissionsLoaded');
+                $rootScope.$emit('$onCurrentUserData', user);
+            });
+            $rootScope.$on('session:expired', function () {
+                blockUI.stop();
+                $rootScope.sessionNotice = 'Thông tin đăng nhập trên thiết bị này đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại một lần để tiếp tục.';
+                resetPermissionSettings();
+                settings.permissionsLoaded = false;
+                if (requestInlineSessionLogin()) { return; }
+                toastr.warning($rootScope.sessionNotice, 'Đăng nhập', {timeOut: 10000, closeButton: true});
+                if (isPublicCampaignPage()) { return; }
+                if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
+                    try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
+                }
+                $rootScope.$emit('$unauthorized', function () {});
+                prepareBattleRoomLoginRedirect();
+                $state.go('login');
+            });
+
+            // =========================
+            // Route change / auth check
+            // =========================
+            var userCheckInFlight = false;
+            var userCheckRetry = null;
+            var lastUserCheckAt = 0;
+            var lastUserCheckSession = null;
+            function checkCurrentUser(attempt, force, reloadOnSuccess) {
+                authSession.restore();
+                if (userCheckInFlight) { return; }
+                if (isPublicFairPage()) { return; }
+
+                if (!authSession.hasCredentials()) {
+                    // A stale user cookie must not keep an unauthenticated
+                    // dashboard visible after Safari discards the token.
+                    if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user) ||
+                        $cookies.getObject(constants.oauth2_token)) {
+                        authSession.expire();
+                        return;
+                    }
+                    if (isPublicCampaignPage()) { return; }
+                    if (requestInlineSessionLogin()) { return; }
+                    if (settings.fairsEnabled && /^\/hoi-cho\//.test(window.location.pathname || '')) {
+                        try { window.sessionStorage.setItem('fair.returnPath', window.location.pathname); } catch (ignore) {}
+                    }
+                    prepareBattleRoomLoginRedirect();
+                    $rootScope.$emit('$unauthorized', function () {});
+                    $state.go('login');
+                    return;
+                }
+                if (window.navigator.onLine === false) { return; }
+
+                var checkedToken = $cookies.getObject(constants.oauth2_token);
+                var checkedIdentity = authSession.capture();
+                var sessionKey = checkedToken && (checkedToken.refresh_token || checkedToken.access_token);
+                // Brief tab switches share the most recent check. API 401s
+                // still refresh immediately through SessionAuthInterceptor.
+                if (!force && !attempt && sessionKey === lastUserCheckSession &&
+                    Date.now() - lastUserCheckAt < 120000) { return; }
+                $timeout.cancel(userCheckRetry);
+                lastUserCheckAt = Date.now();
+                lastUserCheckSession = sessionKey;
+                userCheckInFlight = true;
+                $rootScope.sessionRecoveryChecking = true;
+
+                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser',
+                    {backgroundSessionCheck: true, timeout: 15000})
+                    .success(function (response) {
+
+                        var currentToken = $cookies.getObject(constants.oauth2_token);
+                        if (!currentToken || !checkedToken ||
+                            currentToken.refresh_token !== checkedToken.refresh_token ||
+                            (!checkedToken.refresh_token && currentToken.access_token !== checkedToken.access_token)) { return; }
+
+                        if (response) {
+                            if (!authSession.saveUser(response, checkedIdentity)) { return; }
+                            $rootScope.$emit('$onCurrentUserData', response);
+
+                            // Ưu tiên update settings role theo response backend cho chắc ăn hơn cookie
+                            applyRolesToSettings(response);
+                            settings.permissionsLoaded = true;
+                            $rootScope.$broadcast('permissionsLoaded');
+
+                            if (reloadOnSuccess && $state.current.name !== 'login') {
+                                $state.reload();
+                                return;
+                            }
+                            if ($state.current.name === 'login' && !($state.params && $state.params.showHome === true)) {
+                                $rootScope.navigateAfterLogin();
+                            }
+                        }
+                    })
+                    .error(function (data, status) {
+                        // A failed/hidden check is retried on the next resume;
+                        // the two-minute throttle applies to successful checks.
+                        lastUserCheckAt = 0;
+                        if (status === 401) {
+                            // SessionAuthInterceptor already handles missing or
+                            // rejected refresh credentials. A resource 401 alone
+                            // can be a concurrent tab replacing the access token.
+                            return;
+                        }
+                        // A suspended Safari tab may resume before networking is
+                        // ready. Keep credentials and retry transient failures.
+                        if ((status <= 0 || status === 408 || status === 429 || status >= 500) &&
+                            OAuth.isAuthenticated() && (attempt || 0) < 2) {
+                            userCheckRetry = $timeout(function () {
+                                if (!window.document.hidden && window.navigator.onLine !== false) {
+                                    checkCurrentUser((attempt || 0) + 1);
+                                }
+                            }, 1500 * ((attempt || 0) + 1));
+                        }
+                    }).finally(function () {
+                        userCheckInFlight = false;
+                        $rootScope.sessionRecoveryChecking = false;
+                    });
+            }
+
+            $rootScope.retrySessionRecovery = function () {
+                checkCurrentUser(0, true, true);
+            };
+            $rootScope.signInAgain = function () {
+                authSession.reauthenticate();
+            };
+            $rootScope.$on('$locationChangeSuccess', function () { checkCurrentUser(0); });
+            function resumeSession(event) {
+                if (window.document.hidden || window.navigator.onLine === false ||
+                    (!authSession.hasCredentials() && !$rootScope.currentUser &&
+                        !$cookies.getObject(constants.cookies_user) && !$cookies.getObject(constants.oauth2_token) &&
+                        !getBattleRoomCodeFromCurrentUrl())) { return; }
+                $rootScope.$evalAsync(function () { checkCurrentUser(0, event && event.type === 'online'); });
+            }
+            window.addEventListener('pageshow', resumeSession);
+            window.addEventListener('online', resumeSession);
+            window.document.addEventListener('visibilitychange', resumeSession);
+            $rootScope.$on('$destroy', function () {
+                stopNetworkStatus();
+                $timeout.cancel(userCheckRetry);
+                window.removeEventListener('pageshow', resumeSession);
+                window.removeEventListener('online', resumeSession);
+                window.document.removeEventListener('visibilitychange', resumeSession);
+            });
+        }
+    ]);
+
+})(window);
