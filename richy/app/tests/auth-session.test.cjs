@@ -1761,3 +1761,16 @@ test('a disabled-domain fair route is rejected before creating a post-login dest
     app.listeners.$stateChangeStart({preventDefault() {prevented = true;}}, {name: 'fair_admin_event', data: {fairPrivate: true}}, {id: 7});
     assert.equal(prevented, true); assert.equal(saved['fair.returnPath'], undefined); assert.deepEqual(app.navigations, ['login']);
 });
+
+
+test('a document notice link resumes once after login only on the TNTT domain', () => {
+    for (const hostname of ['tnttphungkhoang.com','ieltsroom.com']) {
+        const h=setup(()=>({data:{}})), app=startApp(h,hostname), saved={'tntt.notice.return':'21'}, redirects=[];
+        h.context.window.sessionStorage.getItem=k=>saved[k]||null;
+        h.context.window.sessionStorage.removeItem=k=>delete saved[k];
+        app.state.go=(...args)=>redirects.push(copy(args));
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(redirects[0], hostname==='tnttphungkhoang.com'?['application.tntt_documents',{tab:'notices',notice:21}]:['application.dashboard']);
+        h.deps.$rootScope.resetPostLoginNavigation();h.deps.$rootScope.navigateAfterLogin();assert.deepEqual(redirects[1],['application.dashboard']);
+    }
+});

@@ -233,6 +233,20 @@
     .team-student-card.team-saving { opacity:.58; cursor:wait; }
     .team-student-name { font-weight:600; word-break:break-word; }
     .team-student-username { color:#7b8494; font-size:12px; overflow-wrap:anywhere; }
+    .team-gender-switch { display:flex; flex:0 0 auto; gap:3px; padding:7px 10px; background:#f8f9fd; border-bottom:1px solid #e0e5ef; }
+    .team-gender-switch button { flex:1; padding:5px 6px; border:1px solid transparent; border-radius:7px; background:transparent; color:#738097; font-size:11px; font-weight:600; }
+    .team-gender-switch button.is-selected { background:#fff; border-color:#c6d3f3; color:#4665b5; box-shadow:0 2px 5px #304c7b12; }
+    .team-gender-switch button.gender-F.is-selected { color:#a84d80; border-color:#edc8df; }
+    .team-leadership-actions { display:flex; gap:6px; margin-top:8px; }
+    .team-leadership-actions button { display:flex; align-items:center; gap:5px; padding:4px 7px; border:1px solid #e1e6ef; border-radius:14px; font-size:10px; font-weight:600; background:#f9fafc; color:#8a95a8; cursor:pointer; }
+    .team-leadership-actions button:hover { border-color:#aaa3e5; color:#6553ae; }
+    .team-leadership-actions button.is-captain { color:#926211; border-color:#efd084; background:#fff7db; }
+    .team-leadership-actions button.is-deputy { color:#6350b2; border-color:#d6cdf6; background:#f2edff; }
+    .team-student-card.has-leadership { border-left:3px solid #baa5ed; }
+    .team-student-gender { float:right; color:#8d9bb3; }
+    .team-board-gender-filter { display:flex; gap:5px; margin-top:7px; }
+    .team-board-gender-filter button { flex:1; padding:5px; font-size:11px; border:1px solid #dce2ee; background:#fff; color:#697991; border-radius:7px; }
+    .team-board-gender-filter button.is-selected { background:#ede8ff; color:#6652b5; border-color:#cabef2; }
     .team-board-empty { padding:18px 8px; color:#9aa4b2; text-align:center; }
     .team-mobile-picker { display:none; margin-top:8px; }
     .class-schedule-modal-window .modal-dialog,
@@ -923,6 +937,11 @@
                         <div>
                             <input type="text" class="form-control" data-ng-model="vm.teamSearchText"
                                    placeholder="Tìm tên hoặc tài khoản học sinh..." />
+                            <div class="team-board-gender-filter" data-ng-if="vm.schoolId===2" aria-label="Lọc học sinh theo giới tính">
+                                <button type="button" data-ng-click="vm.teamStudentGender=''" data-ng-class="{'is-selected':!vm.teamStudentGender}">Tất cả</button>
+                                <button type="button" data-ng-click="vm.teamStudentGender='M'" data-ng-class="{'is-selected':vm.teamStudentGender==='M'}">Nam</button>
+                                <button type="button" data-ng-click="vm.teamStudentGender='F'" data-ng-class="{'is-selected':vm.teamStudentGender==='F'}">Nữ</button>
+                            </div>
                         </div>
                         <div>
                             <strong>{{vm.teamBoard.totalStudents || 0}}</strong> học sinh
@@ -966,6 +985,14 @@
         <span class="badge">{{column.students.length}}</span>
     </header>
 
+    <div class="team-gender-switch" data-ng-if="!column.unassigned && vm.schoolId===2" aria-label="Loại đội, do người phân đội chọn">
+        <button type="button" data-ng-repeat="choice in vm.teamGenderOptions" data-ng-click="vm.chooseTeamGender(column,choice.id)"
+                data-ng-class="['gender-'+choice.id, {'is-selected':(column.gender || 'MIXED')===choice.id}]"
+                aria-pressed="{{(column.gender || 'MIXED')===choice.id}}" data-ng-disabled="vm.teamBoardSaving">
+            <i class="fa {{choice.icon}}"></i> {{choice.label}}
+        </button>
+    </div>
+
     <ul class="team-student-list" dnd-list="column.students"
         dnd-drop="vm.dropStudent(column, item)">
         <li class="team-student-card"
@@ -974,9 +1001,20 @@
             dnd-moved="vm.removeDraggedStudent(column, student)"
             dnd-effect-allowed="move"
             dnd-disable-if="vm.teamBoardSaving"
-            data-ng-class="{'team-saving': vm.teamBoardSaving}">
+            data-ng-class="{'team-saving': vm.teamBoardSaving, 'has-leadership':vm.isCaptain(column,student)||vm.isDeputy(column,student)}">
+            <span class="team-student-gender" title="{{student.person.gender==='M'?'Nam':student.person.gender==='F'?'Nữ':'Chưa có giới tính'}}"><i class="fa" data-ng-class="{'fa-mars':student.person.gender==='M','fa-venus':student.person.gender==='F'}"></i></span>
             <div class="team-student-name"><i class="fa fa-user"></i> {{vm.studentName(student)}}</div>
             <div class="team-student-username">{{student.username}}</div>
+            <div class="team-leadership-actions" dnd-nodrag data-ng-if="!column.unassigned && vm.schoolId===2">
+                <button type="button" data-ng-click="vm.chooseTeamLeader(column,student,'CAPTAIN')" data-ng-disabled="vm.teamBoardSaving"
+                        data-ng-class="{'is-captain':vm.isCaptain(column,student)}" aria-pressed="{{vm.isCaptain(column,student)}}">
+                    <i class="fa fa-star"></i> {{vm.isCaptain(column,student)?'Đội trưởng':'Chọn trưởng'}}
+                </button>
+                <button type="button" data-ng-click="vm.chooseTeamLeader(column,student,'DEPUTY')" data-ng-disabled="vm.teamBoardSaving"
+                        data-ng-class="{'is-deputy':vm.isDeputy(column,student)}" aria-pressed="{{vm.isDeputy(column,student)}}">
+                    <i class="fa fa-shield"></i> {{vm.isDeputy(column,student)?'Đội phó':'Chọn phó'}}
+                </button>
+            </div>
             <select class="form-control input-sm team-mobile-picker"
                     data-ng-model="student._targetTeamId"
                     data-ng-change="vm.moveStudentFromSelect(student)"

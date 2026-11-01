@@ -33,6 +33,7 @@ public interface EnrolmentClassService {
 	public List<UserDto> getResponsibleCandidates(Long parentClassId);
 	public List<UserDto> getResponsibleCandidates(Long parentClassId, Long classId);
 	public EnrolmentClassTeamBoardDto getTeamBoard(Long classId);
+	public EnrolmentClassTeamBoardDto updateTeamSettings(Long classId, Long teamId, com.globits.richy.dto.EnrolmentClassTeamSettingsDto request);
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(Long classId, EnrolmentClassMoveStudentDto moveDto);
 	public EnrolmentClassDto saveScheduleSettings(Long classId, EnrolmentClassDto dto);
 	public List<TopicCategoryDto> getScheduleTopicCategories();

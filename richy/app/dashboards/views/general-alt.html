@@ -774,6 +774,22 @@
             </a>
         </div>
 
+        <div class="learning-tile-wrap" ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)">
+            <a ui-sref="application.tntt_documents({tab:null,notice:null})" href="tai-lieu" class="learning-tile learning-tile-documents">
+                <span class="learning-tile-icon"><i class="fa fa-folder-open" aria-hidden="true"></i></span>
+                <span class="learning-tile-title">TÀI LIỆU</span><span class="learning-tile-desc">Thư mục và biên bản họp chung</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="learning-blob learning-blob-1"></span><span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+        <div class="learning-tile-wrap" ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)">
+            <a ui-sref="application.tntt_documents({tab:'notices',notice:null})" href="tai-lieu?tab=notices" class="learning-tile learning-tile-notifications">
+                <span class="learning-tile-icon"><i class="fa fa-bell" aria-hidden="true"></i></span>
+                <span class="learning-tile-title">THÔNG BÁO <span ng-if="settings.tnttUnreadCount">({{settings.tnttUnreadCount}})</span></span><span class="learning-tile-desc">Tin mới và thông báo đã đọc</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="learning-blob learning-blob-1"></span><span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
         <!-- HOA THIÊNG -->
         <div class="learning-tile-wrap" ng-if="settings.campaignsEnabled === true">
             <a ui-sref="campaigns" href="campaigns" class="learning-tile learning-tile-flower">

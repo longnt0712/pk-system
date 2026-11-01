@@ -159,7 +159,7 @@ test('a Speaking adapter auto-opens the same A4 modal and pauses incoming sync d
     const h = harness({identity: {testMode: 'SPEAKING', sessionKey: 'set:student:question', autoOpen: true, hideSave: true,
         sessionOpener: () => session, onClose: () => closed.push(true)}});
     await h.flush(); assert.equal(h.ui.isOpen,true); assert.equal(h.opened.length,0); assert.equal(h.ui.session,session);
-    assert.match(h.directive.template,/ng-if="!notebook.hideSave"/); assert.equal(visible[0],true);
+    assert.match(h.directive.template,/ng-if="!notebook.hideSave && !notebook.readOnly"/); assert.equal(visible[0],true);
     h.ui.setTool('pen'); h.pointer('pointerdown'); h.pointer('pointerup');
     h.textarea.fire('compositionstart'); h.textarea.value = 'Nội dung dùng bộ gõ'; h.textarea.fire('compositionend');
     assert.deepEqual(interactions,[[true,'pen'],[false,'pen'],[true,'text'],[false,'text']]);
@@ -444,4 +444,17 @@ test('the shared Study header mounts the notebook between the logo and title and
         const start = routes.indexOf(".state('application." + mode + "'");
         assert.ok(start >= 0); assert.match(routes.slice(start, routes.indexOf(".state('", start + 10)), /ielts_reading_actual_test_idp\.html/);
     }
+});
+
+
+test('published documents are read only for keyboard and pointer edits', async () => {
+    const f = harness({identity:{readOnly:true}, document:{text:'Published minutes'}});
+    await f.open(); f.scope.digest();
+    assert.equal(f.ui.isLocked(), true);
+    const before = clone(f.ui.session.document);
+    f.ui.setTool('pen');
+    f.canvas.fire('pointerdown'); f.canvas.fire('pointermove', {clientX:180}); f.canvas.fire('pointerup');
+    assert.deepEqual(clone(f.ui.session.document), before);
+    assert.match(f.directive.template, /ng-readonly="notebook.readOnly"/);
+    f.scope.destroy();
 });

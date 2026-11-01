@@ -10,7 +10,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 
 function setup(schoolId = 2, classes = []) {
     let Controller;
-    const calls = {candidates: [], modals: [], saves: [], trees: [], closed: 0, warnings: []};
+    const calls = {candidates: [], modals: [], saves: [], trees: [], closed: 0, warnings: [], teamSettings: []};
     const settings = {layout: {}, permissionsLoaded: true, isAdmin: true};
     const angular = {
         module: () => ({controller(name, value) { Controller = value; }, directive() {}}),
@@ -26,6 +26,7 @@ function setup(schoolId = 2, classes = []) {
     nodeVm.runInNewContext(source, {angular, window: {location: {hostname: schoolId === 1 ? 'ieltsroom.com' : 'tnttphungkhoang.com'}}});
     const rows = structuredClone(classes).map(item => ({schoolId, teachers: [], ...item}));
     const service = {
+        updateTeamSettings(...args) { calls.teamSettings.push(plain(args)); return Promise.resolve({classId:10,teams:[]}); },
         getResponsibleCandidates(...args) { calls.candidates.push(args); return Promise.resolve([]); },
         getOne(id) { return Promise.resolve(rows.find(item => String(item.id) === String(id))); },
         getTree(id) { calls.trees.push(id); return Promise.resolve(rows); },
@@ -173,4 +174,15 @@ test('editing an old nested team saves its unchanged legacy relationship without
     assert.equal(calls.saves[0].parentId, '11');
     assert.equal(calls.saves[0].name, 'Tổ 1 (a3)');
     assert.deepEqual(calls.saves[0].teacherIds, [2, 1]);
+});
+
+
+test('team gender is an explicit choice and leader chips send partial commands with the current team key', async()=>{
+    const {vm,calls}=setup();vm.decorateTeamBoard({classId:10,teams:[{id:11,gender:'MIXED',leadershipKey:'current',captainId:7,deputyIds:[8],students:[]}],unassignedStudents:[]});
+    const column=vm.teamBoard.teams[0];
+    vm.chooseTeamGender(column,'MIXED');assert.equal(calls.teamSettings.length,0);
+    await vm.chooseTeamGender(column,'F');assert.deepEqual(calls.teamSettings[0],[10,11,{gender:'F',expectedKey:'current'}]);
+    await vm.chooseTeamLeader(column,{id:7},'CAPTAIN');assert.deepEqual(calls.teamSettings[1],[10,11,{userId:7,role:'MEMBER',expectedKey:'current'}]);
+    await vm.chooseTeamLeader(column,{id:9},'CAPTAIN');assert.equal(calls.teamSettings[2][2].role,'CAPTAIN');
+    await vm.chooseTeamLeader(column,{id:8},'DEPUTY');assert.equal(calls.teamSettings[3][2].role,'MEMBER');
 });

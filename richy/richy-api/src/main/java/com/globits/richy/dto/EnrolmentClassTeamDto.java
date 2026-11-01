@@ -12,6 +12,18 @@ public class EnrolmentClassTeamDto implements Serializable {
     private Long id;
     private String name;
     private String code;
+    private String gender;
+    private String leadershipKey;
+    private Long captainId;
+    private List<Long> deputyIds = new ArrayList<Long>();
+    public String getGender() { return gender; }
+    public void setGender(String value) { gender = value; }
+    public String getLeadershipKey() { return leadershipKey; }
+    public void setLeadershipKey(String value) { leadershipKey = value; }
+    public Long getCaptainId() { return captainId; }
+    public void setCaptainId(Long value) { captainId = value; }
+    public List<Long> getDeputyIds() { return deputyIds; }
+    public void setDeputyIds(List<Long> value) { deputyIds = value; }
     private List<UserDto> students = new ArrayList<UserDto>();
 
     public Long getId() {

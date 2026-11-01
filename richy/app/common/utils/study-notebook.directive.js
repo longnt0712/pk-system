@@ -7,20 +7,20 @@
             return {
                 restrict: 'E',
                 scope: { testId: '=', testMode: '@', userId: '=', enabled: '=', sessionOpener: '&?', sessionKey: '@?',
-                    hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?' },
+                    hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?', readOnly: '<?', title: '@?', placeholder: '@?' },
                 bindToController: true, controllerAs: 'notebook', controller: function () {}, require: 'studyNotebook',
                 template: [
                     '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
                     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5L20 7v13.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M16 3.5V8h4M8 11h8M8 15h6M7 3.5v17"/></svg></button>',
                     '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
                     '<section class="study-notebook-dialog" role="dialog" aria-modal="true" ng-attr-id="{{notebook.dialogId}}" ng-attr-aria-labelledby="{{notebook.dialogId}}-title">',
-                    '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">Sổ tay học tập</h2></div>',
+                    '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">{{notebook.title || \'Sổ tay học tập\'}}</h2></div>',
                     '<div class="study-notebook-heading__actions"><span class="study-notebook-status" ng-class="\'is-\'+notebook.session.status" role="status" aria-live="polite">{{notebook.statusText()}}</span>',
-                    '<button type="button" class="study-notebook-action" ng-if="!notebook.hideSave" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
+                    '<button type="button" class="study-notebook-action" ng-if="!notebook.hideSave && !notebook.readOnly" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
-                    '<div class="study-notebook-tools"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
-                    '<div class="study-notebook-ink-options"><label class="study-notebook-color" title="Màu bút"><span>Màu</span><input type="color" ng-model="notebook.inkColor" aria-label="Màu bút"></label>',
+                    '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
+                    '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><label class="study-notebook-color" title="Màu bút"><span>Màu</span><input type="color" ng-model="notebook.inkColor" aria-label="Màu bút"></label>',
                     '<label class="study-notebook-stroke"><span>Nét bút</span><select ng-model="notebook.inkWidth" aria-label="Độ rộng nét bút"><option value="2">Mảnh</option><option value="4">Vừa</option><option value="7">Đậm</option></select></label>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
@@ -33,10 +33,10 @@
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'keepLocal\')">Giữ bản trên máy</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'useRemote\')">Dùng bản đồng bộ</button></div>',
                     '<div class="study-notebook-scroll"><div class="study-notebook-page-frame"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
-                    '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\' : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
+                    '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
                     '</div></div></div>',
-                    '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
+                    '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
                     '</section></div>'
                 ].join(''),
                 link: function (scope, element, attrs, ui) {
@@ -67,7 +67,7 @@
                     function strokes() { return (ui.session && ui.session.document && ui.session.document.strokes) || []; }
                     function visible() { return alive && ui.isOpen; }
                     ui.canOpen = function () { return !!ui.enabled && Number(ui.testId) > 0 && Number(ui.userId) > 0; };
-                    ui.isLocked = function () { return !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
+                    ui.isLocked = function () { return !!ui.readOnly || !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
                     ui.statusText = function () {
                         if (!ui.session) { return ''; }
                         return { loading: 'Đang tải ghi chú…', ready: 'Sẵn sàng ghi chú', saving: 'Đang đồng bộ…', saved: 'Đã đồng bộ', local: 'Chỉ lưu trên thiết bị · chưa đồng bộ',

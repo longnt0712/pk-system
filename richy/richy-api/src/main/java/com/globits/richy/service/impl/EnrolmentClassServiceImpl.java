@@ -77,6 +77,8 @@ import com.globits.security.repository.UserRepository;
 @Service
 @Transactional
 public class EnrolmentClassServiceImpl implements EnrolmentClassService {
+	@javax.persistence.PersistenceContext
+	private javax.persistence.EntityManager teamEntityManager;
 	@Autowired
 	EnrolmentClassRepository enrolmentClassRepository;
 	@Autowired
@@ -498,6 +500,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			teamDto.setId(team.getId());
 			teamDto.setName(team.getName());
 			teamDto.setCode(team.getCode());
+			teamDto.setGender(teamGender(team));
+			teamDto.setLeadershipKey(teamLeadershipKey(team));
+			teamDto.setCaptainId(team.getPrimaryTeacherId());
+			for (User responsible : team.getTeachers()) {
+				if (!responsible.getId().equals(team.getPrimaryTeacherId())) { teamDto.getDeputyIds().add(responsible.getId()); }
+			}
 			board.getTeams().add(teamDto);
 			teamsById.put(team.getId(), teamDto);
 		}
@@ -526,6 +534,62 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		return board;
 	}
 
+	private String teamGender(EnrolmentClass team) {
+		return Arrays.asList("M", "F").contains(team.getTeamGender()) ? team.getTeamGender() : "MIXED";
+	}
+
+	private String teamLeadershipKey(EnrolmentClass team) {
+		List<Long> ids = new ArrayList<Long>();
+		for (User u : team.getTeachers()) { ids.add(u.getId()); }
+		Collections.sort(ids);
+		return teamGender(team) + ":" + team.getPrimaryTeacherId() + ":" + ids.toString();
+	}
+
+	@Override
+	public EnrolmentClassTeamBoardDto updateTeamSettings(Long classId, Long teamId,
+			com.globits.richy.dto.EnrolmentClassTeamSettingsDto request) {
+		EnrolmentClass root = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		User actor = getCurrentUser();
+		if (root == null || !Integer.valueOf(2).equals(root.getSchoolId()) || root.getParent() != null || !canManageTeams(actor, root)) {
+			throw new AccessDeniedException("Bạn không được phân đội cho lớp này.");
+		}
+		teamEntityManager.refresh(root, javax.persistence.LockModeType.PESSIMISTIC_WRITE);
+		EnrolmentClass team = teamId == null ? null : enrolmentClassRepository.findOne(teamId);
+		if (team == null || team.getParent() == null || !classId.equals(team.getParent().getId()) || !root.getSchoolId().equals(team.getSchoolId())) {
+			throw new AccessDeniedException("Đội không thuộc lớp đang phân đội.");
+		}
+		teamEntityManager.refresh(team, javax.persistence.LockModeType.PESSIMISTIC_WRITE);
+		if (request == null || !teamLeadershipKey(team).equals(request.expectedKey)) {
+			throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Đội vừa được cập nhật. Danh sách sẽ được tải lại.");
+		}
+		if (request.gender != null) {
+			if (!Arrays.asList("M", "F", "MIXED").contains(request.gender)) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chọn đội Nam, Nữ hoặc Tổng hợp.");
+			}
+			team.setTeamGender(request.gender);
+		}
+		if (request.userId != null) {
+			User student = userRepository.findOne(request.userId);
+			if (!isClassStudent(student, root.getSchoolId()) || !userBelongsToClass(student, teamId)
+					|| !Arrays.asList("CAPTAIN", "DEPUTY", "MEMBER").contains(request.role)) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chỉ chọn trưởng/phó từ học sinh đang ở trong đội.");
+			}
+			if ("CAPTAIN".equals(request.role)) {
+				Long previous = team.getPrimaryTeacherId();
+				team.getTeachers().removeIf(u -> u.getId().equals(previous));
+				team.setPrimaryTeacherId(student.getId());
+				team.getTeachers().add(student);
+			} else {
+				if (student.getId().equals(team.getPrimaryTeacherId())) { team.setPrimaryTeacherId(null); }
+				team.getTeachers().removeIf(u -> u.getId().equals(student.getId()));
+				if ("DEPUTY".equals(request.role)) { team.getTeachers().add(student); }
+			}
+		}
+		team.setModifiedBy(actor.getUsername()); team.setModifyDate(LocalDateTime.now());
+		teamEntityManager.flush();
+		return getTeamBoard(classId);
+	}
+
 	@Override
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(
 			Long classId,
@@ -544,6 +608,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			throw new AccessDeniedException("Bạn không được phân đội cho lớp này.");
 		}
 
+		teamEntityManager.refresh(selectedClass, javax.persistence.LockModeType.PESSIMISTIC_WRITE);
 		List<EnrolmentClass> directTeams = new ArrayList<EnrolmentClass>();
 		for (EnrolmentClass team : enrolmentClassRepository.findByParentId(classId)) {
 			if (selectedClass.getSchoolId().equals(team.getSchoolId()) && canViewClass(currentUser, team)) {
@@ -564,6 +629,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (!isClassStudent(student, selectedClass.getSchoolId())) {
 			return null;
 		}
+		teamEntityManager.refresh(student, javax.persistence.LockModeType.PESSIMISTIC_WRITE);
 
 		boolean currentlyInClass = userBelongsToClass(student, classId);
 		if (!currentlyInClass) {

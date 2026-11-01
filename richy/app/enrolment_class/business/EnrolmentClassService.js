@@ -48,6 +48,11 @@
             return utils.resolve(baseUrl + '/team_board/' + classId, 'GET', angular.noop, angular.noop);
         };
 
+        self.updateTeamSettings = function (classId, teamId, payload) {
+            return utils.resolveAlt(baseUrl + '/team_board/' + classId + '/team/' + teamId,
+                'PUT', null, payload, {'Content-Type': 'application/json; charset=utf-8'});
+        };
+
         self.moveStudentToTeam = function (classId, moveDto) {
             if (!classId || !moveDto || !moveDto.userId) {
                 return $q.when(null);

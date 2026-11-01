@@ -108,6 +108,13 @@ public class RestEnrolmentClassController {
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@RequestMapping(value = "/team_board/{classId}/team/{teamId}", method = RequestMethod.PUT)
+	public EnrolmentClassTeamBoardDto updateTeamSettings(@PathVariable Long classId, @PathVariable Long teamId,
+			@RequestBody com.globits.richy.dto.EnrolmentClassTeamSettingsDto request) {
+		return service.updateTeamSettings(classId, teamId, request);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}/move", method = RequestMethod.POST)
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(
 			@PathVariable Long classId,

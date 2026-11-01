@@ -50,7 +50,7 @@
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
                 <li class="dropdown fair-nav"
-                    ng-if="settings.fairsEnabled === true && (settings.isAdmin || settings.isFairPlay || settings.isFairGift)"
+                    ng-if="settings.fairNavigationVisible === true && settings.fairsEnabled === true && (settings.isAdmin || settings.isFairPlay || settings.isFairGift)"
                     ng-class="{'is-route-active': $state.includes('fair_work') || $state.includes('fair_work_event') || $state.includes('fair_lookup') || $state.includes('fair_lookup_event') || $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         HỘI CHỢ <span class="caret"></span>
@@ -69,6 +69,12 @@
                 </li>
                 <li ng-if="settings.campaignsEnabled === true" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
                     <a ui-sref="campaigns" href="campaigns">CHIẾN DỊCH</a>
+                </li>
+                <li ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)" ng-class="{'is-route-active': $state.includes('application.tntt_documents') && $state.params.tab !== 'notices'}">
+                    <a ui-sref="application.tntt_documents({tab:null,notice:null})" href="tai-lieu">TÀI LIỆU</a>
+                </li>
+                <li ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)" ng-class="{'is-route-active': $state.includes('application.tntt_documents') && $state.params.tab === 'notices'}">
+                    <a ui-sref="application.tntt_documents({tab:'notices',notice:null})" href="tai-lieu?tab=notices">THÔNG BÁO <span class="badge" ng-if="settings.tnttUnreadCount">{{settings.tnttUnreadCount}}</span></a>
                 </li>
                 <li class="dropdown vocabulary-nav"
                     ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category')}"

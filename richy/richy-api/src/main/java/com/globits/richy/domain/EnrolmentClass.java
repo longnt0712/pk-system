@@ -46,6 +46,11 @@ public class EnrolmentClass extends BaseObject{
 	@Column(name = "primary_teacher_id")
 	private Long primaryTeacherId;
 
+	@Column(name = "team_gender", length = 8)
+	private String teamGender;
+	public String getTeamGender() { return teamGender; }
+	public void setTeamGender(String value) { teamGender = value; }
+
 	@Column(name = "start_time", length = 5)
 	private String startTime;
 

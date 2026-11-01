@@ -571,12 +571,39 @@
         };
 
         vm.teamStudentFilter = function (student) {
+            var gender = (student.person || {}).gender || student.gender || '';
+            if (vm.teamStudentGender && gender !== vm.teamStudentGender) { return false; }
             var query = (vm.teamSearchText || '').toLowerCase().trim();
             if (!query) {
                 return true;
             }
             var value = (vm.studentName(student) + ' ' + (student.username || '')).toLowerCase();
             return value.indexOf(query) >= 0;
+        };
+
+        vm.teamGenderOptions = [{id:'M',label:'Nam',icon:'fa-mars'},{id:'F',label:'Nữ',icon:'fa-venus'},{id:'MIXED',label:'Tổng hợp',icon:'fa-users'}];
+        vm.isCaptain = function (column, student) { return sameTeamId(column.captainId, student.id); };
+        vm.isDeputy = function (column, student) { return (column.deputyIds || []).some(function (id) { return sameTeamId(id, student.id); }); };
+        vm.changeTeamSettings = function (column, payload) {
+            if (!vm.teamBoard || !column || column.unassigned || vm.teamBoardSaving) { return; }
+            vm.teamBoardSaving = true;
+            payload.expectedKey = column.leadershipKey;
+            return service.updateTeamSettings(vm.teamBoard.classId, column.id, payload).then(function (data) {
+                if (!data) { throw new Error('Chưa lưu được đội.'); }
+                vm.decorateTeamBoard(data);
+                vm.teamBoardSaving = false;
+            }).catch(function (error) {
+                toastr.error(error && error.data && error.data.message || 'Chưa lưu được đội. Danh sách sẽ được tải lại.', 'Thông báo');
+                vm.reloadTeamBoard();
+            });
+        };
+        vm.chooseTeamGender = function (column, gender) {
+            if ((column.gender || 'MIXED') === gender) { return; }
+            return vm.changeTeamSettings(column, {gender:gender});
+        };
+        vm.chooseTeamLeader = function (column, student, role) {
+            var selected = role === 'CAPTAIN' ? vm.isCaptain(column,student) : vm.isDeputy(column,student);
+            return vm.changeTeamSettings(column, {userId:student.id,role:selected?'MEMBER':role});
         };
 
         vm.findTeamColumn = function (teamId) {

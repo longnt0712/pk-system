@@ -43,6 +43,7 @@
             'Hrm.EducationProgram',
             'Hrm.Campaign',
             'Hrm.Fair',
+            'Hrm.TnttDocuments',
             'Hrm.Mark',
             'Hrm.StudentMark',
             'Hrm.TopicCategory',
@@ -165,7 +166,17 @@
                 return code;
             }
 
+            function rememberTnttNotice() {
+                if (!settings.campaignsEnabled) { return; }
+                var location = window.location;
+                var match = /(?:^|[?&])notice=([1-9][0-9]*)(&|$)/.exec(location.search || '');
+                if (location.pathname === '/tai-lieu' && match && Number.isSafeInteger(Number(match[1]))) {
+                    try { window.sessionStorage.setItem('tntt.notice.return', match[1]); } catch (ignore) {}
+                }
+            }
+
             function prepareBattleRoomLoginRedirect() {
+                rememberTnttNotice();
                 var code =
                     rememberPendingBattleRoomFromCurrentUrl();
 
@@ -250,6 +261,12 @@
 
                 var signedInUser = $rootScope.currentUser || $cookies.getObject(constants.cookies_user);
                 if (signedInUser) { applyRolesToSettings(signedInUser); }
+                var pendingNotice;
+                try { pendingNotice = window.sessionStorage.getItem('tntt.notice.return'); window.sessionStorage.removeItem('tntt.notice.return'); } catch (ignore) {}
+                if (settings.campaignsEnabled && /^[1-9][0-9]*$/.test(pendingNotice || '') && Number.isSafeInteger(Number(pendingNotice))) {
+                    $state.go('application.tntt_documents', {tab:'notices', notice:Number(pendingNotice)});
+                    return;
+                }
                 var fairPath;
                 try { fairPath = window.sessionStorage.getItem('fair.returnPath'); window.sessionStorage.removeItem('fair.returnPath'); } catch (ignore) {}
                 var fairRoute = /^\/hoi-cho\/(?:([1-9][0-9]*)\/)?(lam-viec|quan-tri)\/?$/.exec(fairPath || '');
@@ -385,6 +402,7 @@
             // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
             settings.campaignsEnabled = /^(www\.)?tnttphungkhoang\.com$/i.test(window.location.hostname || '');
             settings.fairsEnabled = settings.campaignsEnabled;
+            settings.fairNavigationVisible = false;
             settings.chapter = isChapterDomain;
             settings.ieltsRoom = !isChapterDomain;
             settings.salesEnabled = hostname !== 'ieltsroom.com';
