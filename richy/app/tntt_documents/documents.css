@@ -4,3 +4,89 @@
 .global-dark-mode .td-dialog legend,.global-dark-mode .td-dialog summary{color:#e0d4eb}.global-dark-mode .td-dialog header p{color:#c0c5d5}
 
 .td-page .td-heading h1{color:#fff!important}
+
+/* Use the same folder-first explorer layout as the test library. */
+.td-explorer{min-width:0;overflow:hidden;border:1px solid #dce2ed;border-radius:10px;background:#fff}
+.td-explorer-bar{display:flex;align-items:center;gap:8px;padding:10px;background:#f5f7fa;border-bottom:1px solid #dce2ed}
+.td-explorer-up,.td-explorer-path button{border:1px solid transparent;border-radius:6px;background:transparent;color:#53617a;padding:7px 9px}
+.td-explorer-up{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center}
+.td-explorer-up:disabled{opacity:.35;cursor:default}
+.td-explorer-path{display:flex;flex:1;min-width:0;align-items:center;flex-wrap:wrap;gap:2px;font-size:12px}
+.td-explorer-path>span{display:inline-flex;min-width:0;max-width:100%;align-items:center;gap:2px;color:#94a0b5}
+.td-explorer-path button{text-align:left;overflow-wrap:anywhere}
+.td-explorer-path .is-current{color:#6143a4;font-weight:700}
+.td-explorer-path button:hover,.td-explorer-up:not(:disabled):hover{background:#e9edf7}
+.td-explorer-view{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;white-space:nowrap}
+.td-explorer-bar svg,.td-entry-actions svg,.td-folder-delete svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.td-explorer-path svg{fill:currentColor;stroke:none;margin-right:3px}
+.td-explorer-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px}
+.td-explorer-actions>span{font-size:12px;color:#79859a;margin-left:3px}
+.td-explorer-results{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 20px;color:#6e5a83;font-size:12px;overflow-wrap:anywhere}
+.td-explorer-body{padding:12px 18px 22px;min-height:190px}
+.td-folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));align-items:start;gap:12px;margin-bottom:20px}
+.td-folder-entry{min-width:0;text-align:center}
+.td-folder-open,.td-folder-archived{display:block;width:100%;min-width:0;padding:14px 8px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#35445d;text-align:center}
+.td-folder-open:hover,.td-folder-open:focus-visible{border-color:#c7d2fe;background:#eef2ff}
+.td-folder-icon{display:block;width:76px;height:67px;margin:0 auto 12px}
+.td-folder-name{display:block;line-height:1.5;font-size:13px;overflow-wrap:anywhere}
+.td-folder-open small{display:block;margin-top:5px;font-size:10px;color:#7b869b;overflow-wrap:anywhere}
+.td-folder-actions{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:2px}
+.td-folder-move{border:1px solid #ddd6fe;border-radius:7px;background:#f5f3ff;padding:6px 10px;color:#6d28d9;font-size:11px;box-shadow:0 2px 4px #4338ca12}
+.td-folder-move:hover{background:#ede9fe}
+.td-folder-delete{display:inline-flex;align-items:center;justify-content:center;padding:6px;border:1px solid transparent;border-radius:6px;color:#8b91a1;background:transparent}
+.td-folder-delete:hover{color:#b43d52;background:#fff0f2}
+.td-file-section{min-width:0}
+.td-section-label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding-top:8px;border-top:1px solid #edf0f5;color:#8490a1}
+.td-section-label h2{font-size:13px;font-weight:700;line-height:1.5;color:#64728b;margin:0}
+.td-section-label>span{font-size:11px}
+.td-document-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:stretch}
+.td-document-grid .td-entry{padding:17px;border-radius:9px;box-shadow:none}
+.td-document-icon{display:block;flex:0 0 auto;width:36px;height:42px}
+.td-entry-copy{min-width:0}
+.td-document-grid .td-entry h2{margin:12px 0 6px;font-size:15px}
+.td-entry-copy h2>button{border:0;background:none;padding:0;color:inherit;font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere}
+.td-entry-copy h2>button:not(:disabled):hover{color:#754365;text-decoration:underline}
+.td-entry-copy h2>button:disabled{opacity:1;cursor:default}
+.td-entry-copy .td-updated{margin:0;font-size:10px}
+.td-entry-location{font-size:10px;color:#8290a4;overflow-wrap:anywhere;margin:5px 0 0}
+.td-document-grid .td-entry-actions{margin-top:12px}
+.td-document-grid .tn-button{min-height:31px;padding:6px 10px;font-size:11px}
+.td-document-grid .td-manage{margin-top:12px;gap:12px}
+.td-document-grid .td-share{margin-top:12px;padding-top:12px;gap:10px}
+.td-document-grid .td-switch{max-width:100%}
+.td-document-grid .td-switch>span{flex:0 0 29px}
+.td-restore{margin-top:12px}
+.td-explorer button:focus-visible{outline:2px solid #8e79d6;outline-offset:3px}
+.td-explorer.is-list .td-folder-grid,.td-explorer.is-list .td-document-grid{grid-template-columns:1fr;gap:8px}
+.td-explorer.is-list .td-folder-entry{display:flex;align-items:center;gap:10px;border-bottom:1px solid #edf0f5;padding-bottom:6px}
+.td-explorer.is-list .td-folder-open,.td-explorer.is-list .td-folder-archived{display:flex;flex:1;min-width:0;align-items:center;gap:12px;padding:8px 10px;text-align:left}
+.td-explorer.is-list .td-folder-icon{width:39px;height:36px;flex:0 0 auto;margin:0}
+.td-explorer.is-list .td-folder-actions{flex:0 0 auto;margin:0}
+.td-explorer.is-list .td-document-grid .td-entry{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;grid-template-areas:'icon copy status actions' '. manage manage manage' 'share share share share';align-items:center;gap:8px 14px}
+.td-explorer.is-list .td-entry-top{display:contents}
+.td-explorer.is-list .td-document-icon{grid-area:icon}
+.td-explorer.is-list .td-state{grid-area:status;justify-self:start}
+.td-explorer.is-list .td-entry-copy{grid-area:copy}
+.td-explorer.is-list .td-entry h2{margin:0 0 5px}
+.td-explorer.is-list .td-entry-actions,.td-explorer.is-list .td-restore{grid-area:actions;margin:0}
+.td-explorer.is-list .td-manage{grid-area:manage;margin:0}
+.td-explorer.is-list .td-share{grid-area:share;margin:0}
+.global-dark-mode .td-explorer{background:#202d43;border-color:#40516c}
+.global-dark-mode .td-explorer-bar{background:#2a374d;border-color:#40516c}
+.global-dark-mode .td-explorer-path button,.global-dark-mode .td-explorer-up,.global-dark-mode .td-folder-open,.global-dark-mode .td-folder-archived{color:#d6e0ef}
+.global-dark-mode .td-explorer-path .is-current{color:#ddd0ff}
+.global-dark-mode .td-folder-open:hover,.global-dark-mode .td-explorer-path button:hover,.global-dark-mode .td-explorer-up:not(:disabled):hover{background:#3a4161;border-color:#6e6f9f}
+.global-dark-mode .td-folder-move{background:#3b365b;border-color:#625783;color:#e2d5ff}
+.global-dark-mode .td-section-label,.global-dark-mode .td-explorer.is-list .td-folder-entry,.global-dark-mode .td-document-grid .td-share{border-color:#40516c}
+.global-dark-mode .td-section-label h2,.global-dark-mode .td-explorer-actions>span,.global-dark-mode .td-explorer-results,.global-dark-mode .td-entry-location,.global-dark-mode .td-folder-open small,.global-dark-mode .td-updated{color:#bac6d9}
+.global-dark-mode .td-entry-copy h2>button{color:#e1e7f3}
+.global-dark-mode .td-document-grid .td-state{background:#37445c;color:#d5deed}
+.global-dark-mode .td-document-grid .td-state.is-shared{background:#254f43;color:#c1eddb}
+.global-dark-mode .td-document-grid .td-manage button,.global-dark-mode .td-document-grid .td-text-button,.global-dark-mode .td-switch{color:#d3c7e6}
+@media(max-width:650px){
+ .td-explorer-bar{gap:4px;padding:7px}.td-explorer-path button{padding:6px}.td-explorer-path{font-size:11px}.td-explorer-view{padding:6px 8px;font-size:11px}
+ .td-explorer-body{padding:10px 12px 16px}.td-explorer-actions{padding:12px;gap:6px}.td-explorer-actions>span{flex-basis:100%;margin:2px 0 0}
+ .td-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.td-folder-icon{width:67px;height:59px}.td-document-grid{grid-template-columns:1fr}
+ .td-explorer.is-list .td-folder-open small{display:none}.td-explorer.is-list .td-folder-entry{gap:3px}
+ .td-explorer.is-list .td-document-grid .td-entry{grid-template-columns:36px minmax(0,1fr);grid-template-areas:'icon copy' 'status status' 'actions actions' 'manage manage' 'share share';gap:10px}
+}

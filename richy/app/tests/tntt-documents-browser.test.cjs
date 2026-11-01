@@ -4,16 +4,16 @@ const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-pri
 const app=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(app,f),'utf8');
 let browser;before(async()=>{browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});});after(async()=>{if(browser)await browser.close();});
 const blank=()=>({text:'',orientation:'portrait',pattern:'lined',strokes:[]});
-async function fixture({width=1440,gender='M',student=false,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0}={}){
+async function fixture({width=1440,gender='M',student=false,editor=!student,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0}={}){
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
- const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:3,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:!student,document:blank()},notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
+ const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:null,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:editor,document:blank()},extraEntries:[],archivedEntries:[],notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
  const css=['assets/css/external/bootstrap.min.css','assets/css/study-notebook.css','tntt_documents/notices.css','tntt_documents/documents.css'].map(read).join('\n');
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());const reply=(obj,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(obj)});
   if(u.pathname==='/tai-lieu'||u.pathname==='/dashboard')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="vi"'+(dark?' class="global-dark-mode"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div ng-controller="TnttDocumentsController as vm">'+read('tntt_documents/documents.html')+'</div><tntt-notification-pet></tntt-notification-pet></body></html>'});
   if(u.pathname.startsWith('/assets/images/tntt-notices/'))return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(app,u.pathname.slice(1)))});
   server.calls.push({path:u.pathname,method:req.method(),body:req.postDataJSON()});
-  if(u.pathname.endsWith('/capabilities'))return reply({enabled:enabled,canEdit:!student,canReceive:!student,emailConfigured:false,userId:7,serverNow:Date.now()});
+  if(u.pathname.endsWith('/capabilities'))return reply({enabled:enabled,canEdit:editor,canReceive:!student,emailConfigured:false,userId:7,serverNow:Date.now()});
   if(u.pathname.endsWith('/notifications/21/read')){server.notice.readAt=Date.now();return reply({});}
   if(u.pathname.endsWith('/notifications/21'))return reply({...server.notice,canEdit:false,revision:21,document:{...blank(),text:'Nội dung đã công bố'}});
   if(u.pathname.endsWith('/notifications'))return reply(student?[]:(u.searchParams.get('unread')==='true'&&server.notice.readAt?[]:[server.notice]));
@@ -24,17 +24,22 @@ async function fixture({width=1440,gender='M',student=false,unread=true,expires=
    else if(notebookReadDelay && server.calls.filter(c=>c.path===u.pathname&&c.method==='GET').length>1)await new Promise(resolve=>setTimeout(resolve,notebookReadDelay));
    return reply(u.searchParams.get('revision')===String(server.entry.revision)?{id:12,revision:server.entry.revision,changed:false}:{...server.entry,changed:true});
   }
-  if(u.pathname.endsWith('/entries'))return reply([{id:3,title:'Biên bản họp',kind:'FOLDER',parentId:null,revision:0,updatedAt:Date.now()},server.entry]);
+  if(u.pathname.endsWith('/entries')){
+   let rows=u.searchParams.get('trash')==='true'?server.archivedEntries:[{id:3,title:'Biên bản họp',kind:'FOLDER',parentId:null,revision:0,updatedAt:Date.now()},...server.extraEntries,server.entry];
+   const term=(u.searchParams.get('q')||'').trim().toLowerCase();
+   if(term)rows=rows.filter(e=>e.kind==='FOLDER'||e.title.toLowerCase().includes(term));
+   return reply(rows);
+  }
   return reply({});
  });
  await page.goto('https://tnttphungkhoang.test/'+(dashboard?'dashboard':'tai-lieu'));
  for(const f of ['angular.min.js','angular-cookies.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',f)});
- await page.evaluate(({student,gender,dashboard})=>{
-  window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':'ROLE_ADMIN'}],person:{gender}};
+ await page.evaluate(({student,editor,gender,dashboard})=>{
+  window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGERMENT'}],person:{gender}};
   document.cookie='education.user='+encodeURIComponent(JSON.stringify(window.user))+';path=/';
   angular.module('ui.router',[]).provider('$state',function(){this.state=function(){return this;};this.$get=['$rootScope',function(root){return{current:{name:dashboard?'application.dashboard':'application.tntt_documents'},is(name){return this.current.name===name;},go(name,params){window.lastNavigation={name,params};this.current.name=name;root.$broadcast('$stateChangeSuccess');}};}];});
   angular.module('oc.lazyLoad',[]);angular.module('Hrm.Common',[]);
- },{student,gender,dashboard});
+ },{student,editor,gender,dashboard});
  for(const f of ['tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
  await page.addScriptTag({path:path.join(app,'common/utils/study-notebook.directive.js')});
  await page.evaluate(()=>{
@@ -93,6 +98,73 @@ test('saved pen and highlighter ink is visible on reopening before any zoom or t
     assert.equal(JSON.stringify(f.server.entry.document),saved,'Reopening does not mutate the saved text or ink');
    }
    await f.page.screenshot({path:path.join(app,`../../.tmp/tntt-notebook-reopen-${width}.png`)});
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
+});
+
+test('the document explorer navigates nested folders, toggles views and finds nested files without mixing root contents',async()=>{
+ const f=await fixture();try{
+  f.server.entry.parentId=4;
+  f.server.extraEntries=[{id:4,title:'Năm 2026',kind:'FOLDER',parentId:3,revision:0},
+   ...Array.from({length:9},(_,i)=>({id:30+i,title:'Sinh hoạt tháng '+(i+1),kind:'FOLDER',parentId:null,revision:0})),
+   {id:13,title:'Nội dung sinh hoạt chung',kind:'DOCUMENT',parentId:null,revision:0,updatedAt:Date.now()}];
+  await f.page.evaluate(()=>window.vm.reload());
+  assert.equal(await f.page.locator('.td-folder-open').count(),10);
+  assert.deepEqual(await f.page.locator('.td-entry h2').allTextContents(),['Nội dung sinh hoạt chung']);
+  assert.equal(await f.page.getByRole('button',{name:'Lên thư mục cha'}).isDisabled(),true);
+  await f.page.screenshot({path:path.join(app,'../../.tmp/tntt-document-explorer-grid.png')});
+  await f.page.getByRole('button',{name:'Chuyển sang dạng danh sách'}).click();
+  assert.equal(await f.page.locator('.td-folder-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),1);
+  await f.page.screenshot({path:path.join(app,'../../.tmp/tntt-document-explorer-list.png')});
+  await f.page.getByRole('button',{name:'Chuyển sang dạng biểu tượng'}).click();
+  await f.page.getByRole('button',{name:'Mở thư mục Biên bản họp',exact:true}).click();
+  assert.equal(await f.page.locator('.td-entry').count(),0);
+  await f.page.getByRole('button',{name:'Mở thư mục Năm 2026',exact:true}).click();
+  assert.deepEqual(await f.page.locator('.td-entry h2').allTextContents(),['Biên bản tháng 11']);
+  assert.deepEqual(await f.page.locator('.td-explorer-path button').allTextContents(),[' Tài liệu chung','Biên bản họp','Năm 2026']);
+  await f.page.getByRole('button',{name:'Lên thư mục cha'}).click();
+  assert.equal(await f.page.locator('.td-folder-open').count(),1);
+  await f.page.getByRole('navigation',{name:'Đường dẫn thư mục'}).getByRole('button',{name:'Tài liệu chung',exact:true}).click();
+  await f.page.getByRole('searchbox',{name:'Tìm tài liệu'}).fill('tháng 11');
+  await f.page.getByRole('searchbox',{name:'Tìm tài liệu'}).press('Enter');
+  await f.page.locator('.td-explorer-results').waitFor();
+  assert.deepEqual(await f.page.locator('.td-entry h2').allTextContents(),['Biên bản tháng 11']);
+  assert.equal(await f.page.locator('.td-entry-location').textContent(),'Biên bản họp / Năm 2026');
+  await f.page.getByRole('button',{name:'Mở thư mục Năm 2026',exact:true}).click();
+  await f.page.waitForFunction(()=>!window.vm.loading&&!window.vm.searchTerm);
+  assert.equal(await f.page.getByRole('searchbox',{name:'Tìm tài liệu'}).inputValue(),'');
+  await f.page.locator('.td-manage').getByRole('button',{name:'Tên / di chuyển'}).click();
+  await f.page.locator('.td-dialog').waitFor();
+  assert.equal(await f.page.locator('.td-dialog select option').count(),12,'All folders remain available as move destinations');
+  await f.page.getByRole('button',{name:'Hủy',exact:true}).click();
+  f.server.archivedEntries=[{id:70,title:'Tài liệu đã xóa',kind:'DOCUMENT',parentId:4,archived:true,revision:1}];
+  await f.page.getByRole('button',{name:'Thùng rác',exact:true}).click();
+  await f.page.getByRole('button',{name:'Khôi phục',exact:true}).waitFor();
+  assert.equal(await f.page.getByRole('switch').count(),0);
+  await f.page.getByRole('button',{name:'Quay lại tài liệu',exact:true}).click();
+  await f.page.waitForFunction(()=>!window.vm.loading&&!window.vm.trash);
+  assert.deepEqual(await f.page.locator('.td-entry h2').allTextContents(),['Nội dung sinh hoạt chung']);
+  assert.equal(f.server.calls.some(c=>c.method!=='GET'),false,'Browsing never changes documents or sharing');
+  assert.deepEqual(f.server.errors,[]);
+ }finally{await f.context.close();}
+});
+
+test('document folder and list views fit a phone and keep read-only viewers out of editing controls',async()=>{
+ for(const editor of [true,false]){
+  const f=await fixture({width:390,dark:!editor,editor});try{
+   f.server.extraEntries=Array.from({length:5},(_,i)=>({id:40+i,title:'Thư mục sinh hoạt và biên bản tháng '+(i+1),kind:'FOLDER',parentId:null,revision:0}));
+   await f.page.evaluate(()=>window.vm.reload());
+   for(const mode of ['grid','list']){
+    if(mode==='list')await f.page.getByRole('button',{name:'Chuyển sang dạng danh sách'}).click();
+    assert.equal(await f.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    assert.equal(await f.page.locator('.td-explorer').evaluate(e=>e.scrollWidth>e.clientWidth),false);
+    assert.equal(await f.page.getByRole('button',{name:'Tạo thư mục',exact:true}).count(),editor?1:0);
+    assert.equal(await f.page.getByRole('button',{name:'Tên / di chuyển',exact:true}).count(),editor?1:0);
+    assert.equal(await f.page.getByRole('switch').count(),editor?1:0);
+    assert.equal(await f.page.getByRole('button',{name:editor?'Soạn nội dung':'Xem tài liệu',exact:true}).count(),1);
+    await f.page.screenshot({path:path.join(app,`../../.tmp/tntt-document-explorer-${editor?'editor':'viewer'}-${mode}-390.png`)});
+   }
    assert.deepEqual(f.server.errors,[]);
   }finally{await f.context.close();}
  }

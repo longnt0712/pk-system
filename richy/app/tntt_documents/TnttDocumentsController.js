@@ -3,7 +3,8 @@
     angular.module('Hrm.TnttDocuments').controller('TnttDocumentsController', ['$scope', '$state', '$stateParams', '$q', '$uibModal', 'settings', 'TnttDocumentApi', 'TnttDocumentNotebookStore', 'TnttNoticeCenter', 'TnttDocumentPrint',
         function (scope, state, params, q, modal, settings, api, notebooks, center, printer) {
             var vm = this, alive = true, generation = 0, dialog = null;
-            vm.entries = []; vm.notices = []; vm.folderId = null; vm.tab = params.tab === 'notices' ? 'notices' : 'files'; vm.query = ''; vm.trash = false; vm.active = null;
+            vm.entries = []; vm.notices = []; vm.folderId = null; vm.tab = params.tab === 'notices' ? 'notices' : 'files'; vm.query = ''; vm.searchTerm = ''; vm.trash = false; vm.active = null;
+            vm.viewMode = 'grid'; vm.breadcrumbs = []; vm.folderById = {};
             vm.groups = [{id:'ADMIN',name:'Admin'},{id:'EDUCATION',name:'Quản lý đào tạo'},{id:'STUDENT_MANAGEMENT',name:'Quản lý học sinh'},{id:'LEADERS',name:'Giáo lý viên / Huynh trưởng'}];
             vm.statusLabels = {NOT_REQUESTED:'Không chọn email',MISSING:'Thiếu email hợp lệ',PENDING:'Đang chờ gửi',SENDING:'Đang gửi / cần đối soát',SENT:'Đã gửi',FAILED:'Chưa xác nhận gửi được',DUPLICATE:'Địa chỉ đã gửi trong đợt',CANCELLED:'Đã dừng'};
             function error(e) { vm.error = e && e.data && e.data.message || e && e.message || 'Chưa thực hiện được. Vui lòng thử lại.'; if (e && e.status === 409) { vm.reload(); } }
@@ -14,8 +15,8 @@
             function fresh(item) { return item.kind === 'DOCUMENT' && !item.archived ? api.read(item.id).then(function (row) { return angular.extend({},item,row); }) : q.when(item); }
             vm.switchTab = function (tab) { state.go('application.tntt_documents',{tab:tab==='notices'?'notices':null,notice:null}); };
             vm.reload = function () {
-                if (!alive || !vm.caps || !vm.caps.enabled) { return q.when(); } var requestId = ++generation; vm.loading = true;
-                return q.all([api.list(vm.trash,vm.query),api.notifications(false)]).then(function (rows) { if (!alive || requestId !== generation) { return; } vm.entries=rows[0];vm.notices=rows[1];vm.rebuildFolders(); })
+                if (!alive || !vm.caps || !vm.caps.enabled) { return q.when(); } var requestId = ++generation, term = vm.query.trim(); vm.loading = true;
+                return q.all([api.list(vm.trash,term),api.notifications(false)]).then(function (rows) { if (!alive || requestId !== generation) { return; } vm.entries=rows[0];vm.notices=rows[1];vm.searchTerm=term;vm.rebuildFolders(); })
                     .catch(function(e){if(alive&&requestId===generation){error(e);}}).finally(function(){if(alive&&requestId===generation){vm.loading=false;}});
             };
             vm.rebuildFolders = function () {
@@ -23,11 +24,20 @@
                 Object.keys(byId).forEach(function(id){var e=byId[id];if(children[e.parentId]){children[e.parentId].push(e);}else{roots.push(e);}});
                 function append(e,level,path){if(seen[e.id]){return;}seen[e.id]=true;e.level=level;e.path=path?path+' / '+e.title:e.title;flat.push(e);(children[e.id]||[]).sort(function(a,b){return a.title.localeCompare(b.title,'vi');}).forEach(function(c){append(c,level+1,e.path);});}
                 roots.sort(function(a,b){return a.title.localeCompare(b.title,'vi');}).forEach(function(e){append(e,0,'');});vm.folders=flat;
-                if(vm.folderId&&!byId[vm.folderId]){vm.folderId=null;}vm.folderName=vm.folderId?byId[vm.folderId].path:'Tất cả tài liệu';
+                vm.folderById=byId;if(vm.folderId&&!byId[vm.folderId]){vm.folderId=null;}vm.updateBreadcrumbs();
             };
-            vm.chooseFolder=function(folder){vm.folderId=folder?folder.id:null;vm.folderName=folder?folder.path:'Tất cả tài liệu';};
-            vm.visibleEntries=function(){return vm.entries.filter(function(e){return vm.query.trim()||vm.trash||vm.folderId===null?e.kind==='DOCUMENT'||e.parentId==null:e.parentId===vm.folderId;});};
-            vm.showTrash=function(){vm.trash=!vm.trash;vm.folderId=null;vm.reload();};
+            vm.updateBreadcrumbs=function(){var folder=vm.folderById[vm.folderId],seen={};vm.breadcrumbs=[];while(folder&&!seen[folder.id]){seen[folder.id]=true;vm.breadcrumbs.unshift(folder);folder=vm.folderById[folder.parentId];}vm.folderName=vm.folderId&&vm.folderById[vm.folderId]?vm.folderById[vm.folderId].path:'Tài liệu chung';};
+            vm.chooseFolder=function(folder){var reload=!!vm.searchTerm||!!vm.query.trim()||vm.trash;vm.folderId=folder?folder.id:null;vm.trash=false;vm.query='';vm.searchTerm='';vm.updateBreadcrumbs();if(reload){return vm.reload();}};
+            vm.goUp=function(){var current=vm.folderById[vm.folderId];return vm.chooseFolder(current?vm.folderById[current.parentId]:null);};
+            vm.toggleView=function(){vm.viewMode=vm.viewMode==='grid'?'list':'grid';};
+            vm.visibleEntries=function(kind){
+                return vm.entries.filter(function(e){
+                    var inFolder=vm.folderId===null?e.parentId==null:e.parentId===vm.folderId;
+                    return(!kind||e.kind===kind)&&(!!vm.searchTerm||vm.trash||inFolder);
+                }).sort(function(a,b){return a.kind===b.kind?a.title.localeCompare(b.title,'vi'):a.kind==='FOLDER'?-1:1;});
+            };
+            vm.entryLocation=function(item){return vm.folderById[item.parentId]?vm.folderById[item.parentId].path:'Tài liệu chung';};
+            vm.showTrash=function(){vm.trash=!vm.trash;vm.folderId=null;vm.query='';vm.searchTerm='';vm.updateBreadcrumbs();vm.reload();};
             vm.openCreate=function(kind,meeting){vm.form={kind:kind,title:meeting?'Biên bản họp':kind==='FOLDER'?'':'Tài liệu mới',parentId:vm.folderId,meeting:!!meeting};vm.error='';formDialog('tntt-entry-form.html');};
             vm.editMetadata=function(item){vm.error='';fresh(item).then(function(row){vm.form=angular.copy(row);formDialog('tntt-entry-form.html');}).catch(error);};
             vm.saveEntry=function(){return request(function(){var payload={title:vm.form.title,parentId:vm.form.parentId||null,kind:vm.form.kind,revision:vm.form.revision,archived:!!vm.form.archived};
