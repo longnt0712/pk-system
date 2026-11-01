@@ -17,6 +17,10 @@
 
 	<name>globits-richy</name>
 	<url>http://maven.apache.org</url>
+	<properties>
+		<!-- Keep the email library identical in richy-api and the packaged backend. -->
+		<javax-mail.version>1.6.2</javax-mail.version>
+	</properties>
 	<!-- <distributionManagement>
 		<snapshotRepository>
 			<id>maven-snapshots</id>

@@ -9,7 +9,6 @@ import com.globits.richy.domain.*;
 import com.globits.richy.dto.TnttDocumentRequest;
 import com.globits.richy.service.impl.*;
 import com.globits.security.domain.*;
-import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -31,13 +30,16 @@ public class TnttDocumentTest {
     private User admin, education, manager, leader, student, other;
     private long now = 1800000000000L;
 
-    private static void register(Configuration cfg, Class<?> type, String pkg) throws Exception {
-        File root = new File(type.getProtectionDomain().getCodeSource().getLocation().toURI());
-        for (File f : Objects.requireNonNull(new File(root, pkg.replace('.', '/')).listFiles()))
-            if (f.getName().endsWith(".class") && !f.getName().contains("$")) {
-                Class<?> c = Class.forName(pkg + "." + f.getName().replace(".class", ""));
-                if (c.isAnnotationPresent(Entity.class)) cfg.addAnnotatedClass(c);
-            }
+    private static void register(Configuration cfg, String pkg) throws Exception {
+        org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider scanner =
+                new org.springframework.context.annotation
+                        .ClassPathScanningCandidateComponentProvider(false);
+        scanner.addIncludeFilter(
+                new org.springframework.core.type.filter.AnnotationTypeFilter(Entity.class));
+        for (org.springframework.beans.factory.config.BeanDefinition bean :
+                scanner.findCandidateComponents(pkg)) {
+            cfg.addAnnotatedClass(Class.forName(bean.getBeanClassName()));
+        }
     }
 
     @BeforeClass
@@ -58,9 +60,9 @@ public class TnttDocumentTest {
                         .setProperty("hibernate.temp.use_jdbc_metadata_defaults", "false")
                         .setProperty("hibernate.hbm2ddl.halt_on_error", "true");
         cfg.getProperties().put("hibernate.connection.datasource", ds);
-        register(cfg, Topic.class, "com.globits.richy.domain");
-        register(cfg, com.globits.core.domain.Organization.class, "com.globits.core.domain");
-        register(cfg, User.class, "com.globits.security.domain");
+        register(cfg, "com.globits.richy.domain");
+        register(cfg, "com.globits.core.domain");
+        register(cfg, "com.globits.security.domain");
         for (Class<?> c :
                 Arrays.asList(
                         TnttDocumentEntry.class,
@@ -70,7 +72,14 @@ public class TnttDocumentTest {
         factory = cfg.buildSessionFactory();
         String sql =
                 new String(
-                        Files.readAllBytes(Paths.get("richy/database/tntt-documents.sql")),
+                        Files.readAllBytes(
+                                System.getProperty("basedir") == null
+                                        ? Paths.get("richy/database/tntt-documents.sql")
+                                        : Paths.get(
+                                                System.getProperty("basedir"),
+                                                "..",
+                                                "database",
+                                                "tntt-documents.sql")),
                         StandardCharsets.UTF_8);
         java.util.regex.Matcher m =
                 java.util.regex.Pattern.compile(
