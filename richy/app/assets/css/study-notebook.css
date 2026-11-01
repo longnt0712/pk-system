@@ -44,6 +44,28 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-toolbar label { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin: 0; color: #728099; font-size: 11px; font-weight: 400; white-space: nowrap; }
 .study-notebook-toolbar select { height: 25px; max-width: 155px; padding: 2px 20px 2px 6px; border: 1px solid #dce3f0; border-radius: 6px; color: #415370; background: #fff; font-family: inherit; font-size: 11px; }
 .study-notebook-toolbar input[type="color"] { width: 24px; height: 24px; padding: 1px; border: 1px solid #dce3f0; border-radius: 6px; background: #fff; cursor: pointer; }
+.study-notebook-color { display: inline-flex; align-items: center; gap: 6px; color: #728099; font: 11px Arial,sans-serif; }
+.study-notebook-color-toggle { display: inline-flex; align-items: center; gap: 4px; height: 25px; padding: 3px 4px; border: 1px solid #dce3f0; border-radius: 5px; background: #fff; color: #65758d; cursor: pointer; }
+.study-notebook-color-toggle > span { display: block; width: 17px; height: 17px; border: 1px solid #0002; }
+.study-notebook-color-toggle > svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.study-notebook-color-toggle[aria-expanded="true"] { border-color: #879bdf; box-shadow: 0 0 0 2px #dfe7ff; }
+.study-notebook-palette { position: absolute; z-index: 10; box-sizing: border-box; width: 252px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; padding: 12px; border: 1px solid #dce1ea; border-radius: 5px; background: #fff; color: #334155; box-shadow: 0 4px 18px #17243b38; font: 12px/1.4 Arial,sans-serif; text-align: left; }
+.study-notebook-palette-grid, .study-notebook-custom-colors { display: grid; grid-template-columns: repeat(10,minmax(0,1fr)); gap: 3px; }
+.study-notebook-palette .study-notebook-swatch { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 20px; min-width: 0; margin: 0; padding: 0; border: 1px solid #0002; border-radius: 50%; cursor: pointer; }
+.study-notebook-palette .study-notebook-swatch:hover { box-shadow: 0 0 0 2px #ced8ed; }
+.study-notebook-palette .study-notebook-swatch[aria-pressed="true"] { outline: 2px solid #8a9bc1; outline-offset: 1px; }
+.study-notebook-palette .study-notebook-swatch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.study-notebook-palette-label { margin: 10px 0 7px; color: #536175; font-size: 10px; letter-spacing: .9px; text-transform: uppercase; }
+.study-notebook-add-color { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 20px; border: 0; border-radius: 50%; background: transparent; padding: 0; color: #6a777e; cursor: pointer; }
+.study-notebook-add-color svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.study-notebook-custom-form { margin-top: 12px; padding-top: 10px; border-top: 1px solid #edf0f5; }
+.study-notebook-custom-form label { display: block; margin-bottom: 8px; font: 11px/1.5 Arial,sans-serif; color: #536175; }
+.study-notebook-custom-form input[type="text"] { display: block; box-sizing: border-box; width: 100%; margin-top: 4px; padding: 5px 7px; border: 1px solid #dce3f0; border-radius: 4px; background: #fff; color: #334155; font: 12px/18px Arial,sans-serif; }
+.study-notebook-custom-form > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.study-notebook-custom-form input[type="color"] { width: 32px; height: 28px; padding: 1px; border: 1px solid #dce3f0; border-radius: 4px; background: #fff; cursor: pointer; }
+.study-notebook-custom-form button { border: 1px solid #d4dff8; border-radius: 4px; padding: 5px 10px; background: #edf3ff; color: #315bbe; font: 11px/16px Arial,sans-serif; cursor: pointer; }
+.study-notebook-custom-form button:disabled { opacity: .45; cursor: default; }
+.study-notebook-palette button:focus-visible, .study-notebook-palette input:focus-visible { outline: 2px solid #5571d6; outline-offset: 2px; }
 .study-notebook-paper-options { margin-left: auto; gap: 8px; }
 .study-notebook-history { min-height: 25px; width: 25px; padding: 3px; background: #f7f9fd; }
 .study-notebook-zoom { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #e2e8f3; white-space: nowrap; }

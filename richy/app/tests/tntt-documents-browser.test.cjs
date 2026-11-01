@@ -65,8 +65,51 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
   await f.page.waitForFunction(()=>document.querySelector('.study-notebook-text')?.readOnly);
   assert.equal(await f.page.locator('.study-notebook-text').inputValue(),'Nội dung đã công bố');
   assert.equal(await f.page.locator('.study-notebook-tools').count(),0);
+  assert.equal(await f.page.getByRole('button',{name:'Màu bút',exact:true}).count(),0);
   assert.deepEqual(f.server.errors,[]);
  }finally{await f.context.close();}
+});
+
+test('the pen palette fits desktop and phone, supports preset and custom colors, and preserves existing ink',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width});try{
+   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status!=='loading');
+   await f.page.getByRole('button',{name:'Bút',exact:true}).click();
+   async function draw(offset){const box=await f.page.locator('.study-notebook-canvas').boundingBox();await f.page.mouse.move(box.x+40,box.y+70+offset);await f.page.mouse.down();await f.page.mouse.move(box.x+120,box.y+90+offset,{steps:5});await f.page.mouse.up();}
+   await draw(0);
+   const trigger=f.page.getByRole('button',{name:'Màu bút',exact:true}),palette=f.page.getByRole('dialog',{name:'Bảng màu bút',exact:true});
+   await trigger.click();await palette.waitFor({state:'visible'});
+   const bounds=await palette.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width&&bounds.y>=0&&bounds.y+bounds.height<=950);
+   assert.equal(await palette.locator('.study-notebook-palette-grid button').count(),80);
+   const unobscured=await palette.evaluate(e=>{const swatch=e.querySelector('button'),r=swatch.getBoundingClientRect();return swatch.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));});
+   assert.equal(unobscured,true,'The palette opens outside the scrolling toolbar without clipping');
+   await f.page.screenshot({path:path.join(app,`../../.tmp/notebook-palette-${width}.png`)});
+   await palette.getByRole('button',{name:'Màu #FF0000',exact:true}).click();
+   await palette.waitFor({state:'hidden'});await draw(35);
+   await trigger.click();
+   const red=palette.getByRole('button',{name:'Màu #FF0000',exact:true});
+   assert.equal(await red.getAttribute('aria-pressed'),'true');
+   await red.press('ArrowRight');await f.page.keyboard.press('Enter');
+   await palette.waitFor({state:'hidden'});
+   await trigger.click();await palette.getByRole('button',{name:'Thêm màu tùy chỉnh'}).click();
+   const hex=palette.getByRole('textbox',{name:'Mã màu HEX'});
+   await hex.fill('#ZZZZZZ');assert.equal(await palette.getByRole('button',{name:'Áp dụng',exact:true}).isDisabled(),true);
+   await hex.fill('#123ABC');await palette.getByRole('button',{name:'Áp dụng',exact:true}).click();
+   await palette.waitFor({state:'hidden'});await draw(70);
+   await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.deepEqual(f.server.entry.document.strokes.map(s=>s.color),['#315bbe','#ff0000','#123abc']);
+   await trigger.click();assert.equal(await palette.getByRole('button',{name:'Màu tùy chỉnh #123ABC',exact:true}).getAttribute('aria-pressed'),'true');
+   await f.page.keyboard.press('Escape');await palette.waitFor({state:'hidden'});
+   assert.equal(await f.page.locator('.study-notebook-overlay').isVisible(),true,'Escape first closes the palette and keeps the document open');
+   await trigger.click();await f.page.locator('.study-notebook-heading__copy').click();await palette.waitFor({state:'hidden'});
+   await f.page.locator('.study-notebook-close').click();await f.page.waitForFunction(()=>!window.vm.active);
+   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='saved');
+   assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document.strokes.map(s=>s.color)),['#315bbe','#ff0000','#123abc']);
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
 });
 
 test('saved pen and highlighter ink is visible on reopening before any zoom or tool change, including slow loads',async()=>{

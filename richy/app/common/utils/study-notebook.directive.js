@@ -20,7 +20,7 @@
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
-                    '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><label class="study-notebook-color" title="Màu bút"><span>Màu</span><input type="color" ng-model="notebook.inkColor" aria-label="Màu bút"></label>',
+                    '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette()" aria-label="Màu bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu bút"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
                     '<label class="study-notebook-stroke"><span>Nét bút</span><select ng-model="notebook.inkWidth" aria-label="Độ rộng nét bút"><option value="2">Mảnh</option><option value="4">Vừa</option><option value="7">Đậm</option></select></label>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
@@ -37,7 +37,12 @@
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
                     '</div></div></div>',
                     '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
-                    '</section></div>'
+                    '</section>',
+                    '<div class="study-notebook-palette ng-hide" ng-if="notebook.isOpen && !notebook.readOnly" ng-show="notebook.paletteOpen" role="dialog" aria-label="Bảng màu bút" ng-attr-id="{{notebook.dialogId}}-palette">',
+                    '<div class="study-notebook-palette-grid" role="group" aria-label="Màu có sẵn"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.paletteColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-keydown="notebook.paletteKey($event,$index)" ng-attr-tabindex="{{notebook.paletteFocusColor===color?0:-1}}" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button></div>',
+                    '<div class="study-notebook-palette-label">Tùy chỉnh</div><div class="study-notebook-custom-colors"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.customColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu tùy chỉnh {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button><button type="button" class="study-notebook-add-color" ng-click="notebook.openCustomColor()" aria-label="Thêm màu tùy chỉnh" ng-attr-aria-expanded="{{notebook.customColorOpen}}" title="Thêm màu tùy chỉnh"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v8M6 10h8"/></svg></button></div>',
+                    '<form class="study-notebook-custom-form" ng-if="notebook.customColorOpen" ng-submit="notebook.applyCustomColor()"><label>Mã màu HEX<input type="text" ng-model="notebook.customHex" ng-change="notebook.customHexChanged()" placeholder="#315BBE" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Mã màu HEX"></label><div><input type="color" ng-model="notebook.customColor" ng-change="notebook.customHex=notebook.customColor" aria-label="Chọn màu tùy chỉnh"><button type="submit" ng-disabled="!notebook.validCustomColor()">Áp dụng</button></div></form>',
+                    '</div></div>'
                 ].join(''),
                 link: function (scope, element, attrs, ui) {
                     var document = $window.document, host = element[0], button = host.querySelector('.study-notebook-toggle');
@@ -50,11 +55,22 @@
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
                     var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null, composing = false;
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
-                    var zoomAnchor = null;
+                    var zoomAnchor = null, palette = null, paletteTimer = null;
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
                     ui.tool = 'text'; ui.inkColor = '#315bbe'; ui.inkWidth = '4'; ui.touchDrawing = false;
+                    ui.paletteOpen = false; ui.customColorOpen = false; ui.customColors = [ui.inkColor];
+                    ui.paletteColors = [
+                        '#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#d9d9d9','#efefef','#f3f3f3','#ffffff',
+                        '#980000','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff',
+                        '#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3','#c9daf8','#cfe2f3','#d9d2e9','#ead1dc',
+                        '#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd',
+                        '#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#c27ba0',
+                        '#a61c00','#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3c78d8','#3d85c6','#674ea7','#a64d79',
+                        '#85200c','#990000','#b45f06','#bf9000','#38761d','#134f5c','#1155cc','#0b5394','#351c75','#741b47',
+                        '#5b0f00','#660000','#783f04','#7f6000','#274e13','#0c343d','#1c4587','#073763','#20124d','#4c1130'
+                    ];
                     ui.zoomPercent = 100;
                     ui.zoomSliderValue = 100;
                     ui.tools = [{ id: 'text', label: 'Gõ chữ', icon: 'fa-font' }, { id: 'pen', label: 'Bút', icon: 'fa-pencil' },
@@ -66,6 +82,59 @@
                     function preventPromiseNoise(result) { if (result && result.catch) { result.catch(angular.noop); } }
                     function strokes() { return (ui.session && ui.session.document && ui.session.document.strokes) || []; }
                     function visible() { return alive && ui.isOpen; }
+                    function colorTrigger() { return dialog.querySelector('.study-notebook-color-toggle'); }
+                    function normalizedColor(value) { var hex = String(value || '').trim().replace(/^#/, ''); return /^[0-9a-f]{6}$/i.test(hex) ? '#' + hex.toLowerCase() : null; }
+                    ui.colorContrast = function (color) { var hex = color.slice(1); return parseInt(hex.slice(0, 2), 16) * 299 + parseInt(hex.slice(2, 4), 16) * 587 + parseInt(hex.slice(4, 6), 16) * 114 > 150000 ? '#26344d' : '#ffffff'; };
+                    ui.closePalette = function (restore) {
+                        if (!ui.paletteOpen) { return; } ui.paletteOpen = false; ui.customColorOpen = false;
+                        $timeout.cancel(paletteTimer); paletteTimer = null;
+                        var trigger = colorTrigger(); if (restore !== false && trigger) { trigger.focus(); }
+                    };
+                    function positionPalette() {
+                        var trigger = colorTrigger();
+                        if (!ui.paletteOpen || !palette || !trigger) { return; }
+                        var anchor = trigger.getBoundingClientRect(), origin = overlay.getBoundingClientRect();
+                        var toolbar = dialog.querySelector('.study-notebook-toolbar'), toolbarBounds = toolbar.getBoundingClientRect();
+                        if (anchor.right <= toolbarBounds.left || anchor.left >= toolbarBounds.right) { digest(function () { ui.closePalette(false); }); return; }
+                        var viewportWidth = $window.innerWidth || document.documentElement.clientWidth, viewportHeight = $window.innerHeight;
+                        var width = Math.min(252, viewportWidth - 16); palette.style.width = width + 'px';
+                        var height = palette.getBoundingClientRect().height;
+                        var left = Math.max(8, Math.min(anchor.left - 12, viewportWidth - width - 8));
+                        var top = anchor.bottom + 7; if (top + height > viewportHeight - 8) { top = Math.max(8, anchor.top - height - 7); }
+                        palette.style.left = (left - origin.left) + 'px'; palette.style.top = (top - origin.top) + 'px';
+                    }
+                    function schedulePalette(focusSelector) {
+                        $timeout.cancel(paletteTimer);
+                        paletteTimer = $timeout(function () {
+                            paletteTimer = null; if (!visible() || !ui.paletteOpen) { return; } positionPalette();
+                            var target = focusSelector && palette && (palette.querySelector(focusSelector) || palette.querySelector('.study-notebook-swatch[tabindex="0"]')); if (target) { target.focus(); }
+                        }, 0, false);
+                    }
+                    ui.togglePalette = function () {
+                        if (ui.readOnly) { return; } if (ui.paletteOpen) { ui.closePalette(); return; }
+                        finishStroke(true); palette = overlay.querySelector('.study-notebook-palette');
+                        if (!palette) { return; } ui.paletteOpen = true; ui.customColorOpen = false;
+                        ui.paletteFocusColor = ui.paletteColors.indexOf(ui.inkColor) >= 0 ? ui.inkColor : ui.paletteColors[0];
+                        schedulePalette('.study-notebook-swatch[aria-pressed="true"]');
+                    };
+                    ui.selectInkColor = function (color) {
+                        color = normalizedColor(color); if (!color || ui.readOnly) { return; } finishStroke(true); ui.inkColor = color;
+                        if (ui.paletteColors.indexOf(color) < 0 && ui.customColors.indexOf(color) < 0) { ui.customColors.unshift(color); ui.customColors = ui.customColors.slice(0, 8); }
+                        ui.closePalette();
+                    };
+                    ui.paletteKey = function (event, index) {
+                        var next = index;
+                        if (event.key === 'ArrowLeft') { next--; } else if (event.key === 'ArrowRight') { next++; }
+                        else if (event.key === 'ArrowUp') { next -= 10; } else if (event.key === 'ArrowDown') { next += 10; }
+                        else if (event.key === 'Home') { next = event.ctrlKey ? 0 : Math.floor(index / 10) * 10; }
+                        else if (event.key === 'End') { next = event.ctrlKey ? ui.paletteColors.length - 1 : Math.floor(index / 10) * 10 + 9; } else { return; }
+                        event.preventDefault(); event.stopPropagation(); next = Math.max(0, Math.min(ui.paletteColors.length - 1, next)); ui.paletteFocusColor = ui.paletteColors[next];
+                        var choices = palette && palette.querySelectorAll('.study-notebook-palette-grid .study-notebook-swatch'); if (choices && choices[next]) { choices[next].focus(); }
+                    };
+                    ui.openCustomColor = function () { ui.customColorOpen = true; ui.customColor = ui.inkColor; ui.customHex = ui.inkColor; schedulePalette('input[type="text"]'); };
+                    ui.validCustomColor = function () { return !!normalizedColor(ui.customHex); };
+                    ui.customHexChanged = function () { var color = normalizedColor(ui.customHex); if (color) { ui.customColor = color; } };
+                    ui.applyCustomColor = function () { if (ui.validCustomColor()) { ui.selectInkColor(ui.customHex); } };
                     ui.canOpen = function () { return !!ui.enabled && Number(ui.testId) > 0 && Number(ui.userId) > 0; };
                     ui.isLocked = function () { return !!ui.readOnly || !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
                     ui.statusText = function () {
@@ -121,6 +190,7 @@
                     }
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
+                        ui.closePalette(false);
                         flushText(); finishStroke(true); compositionEnd(); saveNow(); ui.isOpen = false;
                         if (ui.session && ui.session.setVisible) { ui.session.setVisible(false); }
                         openNotebooks = Math.max(0, openNotebooks - 1);
@@ -142,7 +212,7 @@
                         }
                     };
                     ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); markChanged(); scheduleLayout(); } };
-                    ui.setTool = function (tool) { finishStroke(true); ui.tool = tool; scheduleDraw(); };
+                    ui.setTool = function (tool) { ui.closePalette(false); finishStroke(true); ui.tool = tool; scheduleDraw(); };
                     function captureZoomAnchor() {
                         if (!visible() || !scale) { return null; }
                         var viewport = scroller.getBoundingClientRect(), bounds = paper.getBoundingClientRect();
@@ -239,6 +309,7 @@
                             scroller.scrollTop += updatedPaper.top + anchor.y * scale - updatedViewport.top - (scroller.clientTop || 0) - anchor.viewportY;
                         }
                         scheduleDraw();
+                        if (ui.paletteOpen) { positionPalette(); }
                     }
                     function scheduleLayout() {
                         if (!visible()) { return; }
@@ -372,10 +443,11 @@
                     function keydown(event) {
                         if (!visible()) { return; }
                         event.stopPropagation();
-                        if ((event.key === 'Escape' || event.keyCode === 27) && !event.isComposing) { event.preventDefault(); digest(ui.close); return; }
+                        if ((event.key === 'Escape' || event.keyCode === 27) && !event.isComposing) { event.preventDefault(); digest(ui.paletteOpen ? ui.closePalette : ui.close); return; }
                         if ((event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 's') { event.preventDefault(); digest(ui.save); return; }
                         if (event.key !== 'Tab' && event.keyCode !== 9) { return; }
                         var controls = Array.prototype.slice.call(dialog.querySelectorAll('button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex="0"]'));
+                        if (ui.paletteOpen && palette) { controls = controls.concat(Array.prototype.slice.call(palette.querySelectorAll('button:not([disabled]):not([tabindex="-1"]),input:not([disabled])'))); }
                         controls = controls.filter(function (node) { return node.getClientRects().length > 0; });
                         if (!controls.length) { event.preventDefault(); return; }
                         var first = controls[0], last = controls[controls.length - 1];
@@ -385,6 +457,8 @@
                     function stopKeys(event) { if (visible()) { event.stopPropagation(); } }
                     function backdrop(event) { if (event.target === overlay) { digest(ui.close); } }
                     function blockBackground(event) {
+                        var trigger = ui.paletteOpen && colorTrigger();
+                        if (ui.paletteOpen && palette && !palette.contains(event.target) && !(trigger && trigger.contains(event.target))) { digest(function () { ui.closePalette(false); }); }
                         if (visible() && !overlay.contains(event.target) && !button.contains(event.target)) { event.preventDefault(); event.stopPropagation(); }
                     }
                     function keepFocus(event) {
@@ -419,10 +493,12 @@
                     document.addEventListener('focusin', keepFocus, true);
                     $window.addEventListener('pagehide', flushBeforeLeave); document.addEventListener('visibilitychange', visibilityChanged);
                     $window.addEventListener('resize', scheduleLayout);
+                    var toolbar = dialog.querySelector('.study-notebook-toolbar'); if (toolbar) { toolbar.addEventListener('scroll', positionPalette); }
                     if ($window.ResizeObserver) { observer = new $window.ResizeObserver(scheduleLayout); observer.observe(paper); }
                     scope.$on('$destroy', function () {
                         ui.close(); alive = false; unwatchIdentity(); unwatchStrokes(); unwatchStatus();
                         $timeout.cancel(layoutTimer); if (raf) { cancelFrame.call($window, raf); raf = null; }
+                        $timeout.cancel(paletteTimer); if (toolbar) { toolbar.removeEventListener('scroll', positionPalette); }
                         if (observer) { observer.disconnect(); }
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
                         textarea.removeEventListener('compositionstart', compositionStart); textarea.removeEventListener('compositionend', compositionEnd);
