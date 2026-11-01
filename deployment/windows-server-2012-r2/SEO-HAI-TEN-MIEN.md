@@ -11,9 +11,18 @@
 
 ## Search Console
 
+Đã triển khai và xác nhận ngày 01/11/2026 bằng tài khoản Google TNTT Phùng Khoang đang đăng nhập:
+
+| URL-prefix | Quyền sở hữu | Sitemap |
+| --- | --- | --- |
+| `https://tnttphungkhoang.com/` | Đã xác minh bằng tệp HTML | Google đã xử lý thành công, khám phá 2 trang |
+| `https://ieltsroom.com/` | Đã xác minh bằng tệp HTML | Google đã xử lý thành công, khám phá 2 trang |
+
+Mở [Search Console TNTT](https://search.google.com/search-console?resource_id=https%3A%2F%2Ftnttphungkhoang.com%2F) hoặc [Search Console IELTS Room](https://search.google.com/search-console?resource_id=https%3A%2F%2Fieltsroom.com%2F) bằng tài khoản trên. Hai trang được khám phá ở mỗi website là `/` và `/gioi-thieu`; khám phá URL chưa đồng nghĩa với được lập chỉ mục.
+
 Thiết lập hai sản phẩm URL-prefix chính xác `https://tnttphungkhoang.com/` và `https://ieltsroom.com/`, xác minh bằng tệp HTML do tài khoản Google cung cấp. Không thay đổi DNS trong đợt này. URL-prefix chỉ bao phủ giao thức/hostname tương ứng; có thể bổ sung Domain property qua DNS sau nếu muốn gộp HTTP/HTTPS và mọi subdomain.
 
-Sau khi xác minh, gửi `sitemap.xml` cho từng sản phẩm. Dùng URL Inspection kiểm tra trang chủ và `/gioi-thieu`, kiểm tra khả năng truy cập và yêu cầu lập chỉ mục. Không gửi yêu cầu hàng loạt hoặc cam kết vị trí trên Google.
+Sitemap đã gửi là `sitemap.xml` của từng sản phẩm. URL Inspection xác nhận cả hai trang chủ đã nằm trong chỉ mục Google. Đã gửi yêu cầu lập chỉ mục lại cho cả hai trang chủ; Google xác nhận đã thêm URL vào hàng đợi ưu tiên thu thập dữ liệu. Dùng công cụ này kiểm tra lại sau các thay đổi nội dung; trang giới thiệu mới đã được Google khám phá qua sitemap. Không gửi yêu cầu hàng loạt hoặc cam kết vị trí trên Google.
 
 ## Nhóm từ khóa ban đầu
 
