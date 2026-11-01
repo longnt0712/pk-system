@@ -4,7 +4,7 @@
 
 - Mỗi domain có title, description, canonical, favicon và dữ liệu WebSite/Organization riêng ngay trong HTML máy chủ trả về.
 - `/gioi-thieu` là trang HTML công khai, không cần JavaScript hoặc đăng nhập để đọc.
-- Trang đăng nhập có giới thiệu bằng văn bản và liên kết tới trang công khai.
+- Header trang đăng nhập có mục Giới thiệu gọn, mở trang giới thiệu công khai riêng.
 - `/robots.txt` và `/sitemap.xml` được IIS chọn theo domain. Sitemap chỉ chứa trang chủ và trang giới thiệu; không đưa lớp học, bài làm, danh sách học sinh hoặc đường dẫn chia sẻ cá nhân vào sitemap.
 - Các đường dẫn ứng dụng ngoài trang chủ/login có `X-Robots-Tag: noindex, nofollow` và meta robots tương ứng. Điều này kiểm soát lập chỉ mục, không thay thế đăng nhập hay phân quyền.
 - Giữ `googlee681f7a21f5f3fd4.html` tại thư mục gốc website để duy trì quyền sở hữu Search Console.

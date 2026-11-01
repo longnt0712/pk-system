@@ -1,16 +1,4 @@
-.public-intro { --intro-ink:#2c2943; --intro-muted:#655f78; margin:0 auto 22px; padding:26px 30px; border:1px solid #e1d9ed; border-radius:20px; color:var(--intro-ink); background:#fffaf5; }
-.public-intro h1 { margin:7px 0 12px; color:var(--intro-ink); font-size:30px; line-height:1.25; }
-.public-intro p { max-width:850px; margin:0 0 16px; color:var(--intro-muted); font-size:16px; line-height:1.8; }
 .public-intro-kicker { color:#875525; font-size:12px; font-weight:800; letter-spacing:1px; }
-.public-intro-links { display:flex; flex-wrap:wrap; gap:10px 22px; }
-.public-intro-links a { color:#754318; font-size:15px; font-weight:700; text-decoration:underline; text-underline-offset:4px; }
-.public-intro-links a:focus-visible { outline:3px solid #b57a36; outline-offset:4px; }
-html.global-dark-mode .public-intro,
-html.ieltsroom-halloween .public-intro { --intro-ink:#fff0dc; --intro-muted:#d9c5da; border-color:#795572; background:#302139; }
-html.global-dark-mode .public-intro .public-intro-kicker,
-html.ieltsroom-halloween .public-intro .public-intro-kicker,
-html.global-dark-mode .public-intro-links a,
-html.ieltsroom-halloween .public-intro-links a { color:#ffc780; }
 .public-info { margin:0; background:#f5f2fa; color:#2c2943; font:16px/1.8 system-ui,-apple-system,"Segoe UI",sans-serif; }
 .public-info * { box-sizing:border-box; }
 .public-info-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; max-width:1040px; padding:20px; margin:auto; }
@@ -28,8 +16,6 @@ html.ieltsroom-halloween .public-intro-links a { color:#ffc780; }
 .public-info-cta { display:inline-block; margin-top:12px; padding:10px 22px; border-radius:10px; background:#654191; color:#fff !important; text-decoration:none; font-weight:700; }
 .public-info footer { max-width:1000px; margin:20px auto; padding:0 20px; color:#655f78; font-size:14px; }
 @media(max-width:600px) {
-    .public-intro { padding:20px 16px; }
-    .public-intro h1 { font-size:24px; }
     .public-info main { margin:0 10px 24px; padding:22px 18px; }
     .public-info h1 { font-size:28px; }
     .public-info-grid { grid-template-columns:1fr; }

@@ -10,7 +10,7 @@ function source(relative) {
 }
 const header = source('common/views/navs/header-hoz-for-login.html');
 const login = source('common/views/login/login.html');
-const styles = [header, login].flatMap(html => [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(match => match[1])).join('\n');
+const styles = [source('index.html'), header, login].flatMap(html => [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(match => match[1])).join('\n');
 const css = ['external/bootstrap.min.css', 'external/font-awesome.min.css', 'components-md.min.css', 'plugins-md.min.css',
     'layout-hoz.min.css', 'default.min.css', 'custom.css'].map(name => source('assets/css/' + name)).join('\n') + styles;
 const executablePath = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -27,6 +27,9 @@ async function fixture(viewport, chapter = true) {
     page.on('pageerror', error => errors.push(error.stack));
     await page.route('**/*', route => {
         const url = route.request().url();
+        const pathname = new URL(url).pathname;
+        if (pathname === '/gioi-thieu') return route.fulfill({contentType:'text/html; charset=utf-8', body:source('seo/' + (chapter ? 'tntt' : 'ieltsroom') + '-about.html')});
+        if (pathname === '/assets/css/public-intro.css') return route.fulfill({contentType:'text/css', body:source('assets/css/public-intro.css')});
         if (/\/troop(?:-1)?\.jpg$/.test(url)) return route.fulfill({contentType:'image/jpeg', body:fs.readFileSync(path.join(app, 'assets/images', url.endsWith('troop-1.jpg') ? 'troop-1.jpg' : 'troop.jpg'))});
         if (/\/fontawesome-webfont\.woff2(?:\?.*)?$/.test(url)) return route.fulfill({contentType:'font/woff2', body:fs.readFileSync(path.join(app, 'assets/fonts/fontawesome-webfont.woff2'))});
         return route.fulfill({contentType:'text/html', body:'<!doctype html><html><body></body></html>'});
@@ -70,7 +73,7 @@ async function assertFlow(page) {
         const rect = node => { const r = node.getBoundingClientRect(); return {left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height}; };
         const nav = document.querySelector('.learning-public-nav');
         return {header:rect(document.querySelector('.page-header')), nav:rect(nav), content:rect(document.querySelector('#content-probe')),
-            controls:[...nav.querySelectorAll('.learning-public-brand,.learning-public-theme-toggle,.navbar-toggle,.learning-desktop-login > li > a,.for-media')]
+            controls:[...nav.querySelectorAll('.learning-public-brand,.learning-public-about-link,.learning-public-theme-toggle,.navbar-toggle,.learning-desktop-login > li > a,.for-media')]
                 .filter(node => node.getClientRects().length && getComputedStyle(node).display !== 'none').map(rect),
             width:innerWidth, scrollWidth:document.documentElement.scrollWidth};
     });
@@ -81,6 +84,14 @@ async function assertFlow(page) {
         assert.ok(item.left >= geometry.nav.left - 1 && item.right <= geometry.nav.right + 1, 'control stays within navbar: ' + JSON.stringify({item, geometry}));
         assert.ok(item.top >= geometry.nav.top - 1 && item.bottom <= geometry.nav.bottom + 1, 'control contributes to header height: ' + JSON.stringify({item, geometry}));
     }
+    const about = page.locator('.learning-public-about-link');
+    assert.equal(await about.isVisible(), true, 'introduction is directly available in the header');
+    assert.equal(await about.evaluate(node => {
+        const link = node.getBoundingClientRect();
+        const brand = document.querySelector('.learning-public-brand').getBoundingClientRect();
+        return link.left >= brand.right - 1 && Math.abs((link.top + link.bottom - brand.top - brand.bottom) / 2) <= 2
+            && node.contains(document.elementFromPoint(link.left + link.width / 2, link.top + link.height / 2));
+    }), true, 'introduction shares the brand row and is not covered by another control');
     return geometry;
 }
 
@@ -134,9 +145,21 @@ for (const viewport of [{width:320,height:568}, {width:390,height:844}, {width:7
                     await page.evaluate(() => new Promise(requestAnimationFrame));
                     await assertFlow(page);
                 }
-                if (process.env.PUBLIC_HEADER_SCREENSHOT) await page.screenshot({path:process.env.PUBLIC_HEADER_SCREENSHOT, clip:{x:0,y:0,width:1180,height:400}});
+                if (process.env.PUBLIC_HEADER_SCREENSHOT) {
+                    await page.evaluate(() => {
+                        document.documentElement.classList.remove('global-dark-mode');
+                        document.body.classList.remove('global-dark-mode');
+                    });
+                    await page.screenshot({path:process.env.PUBLIC_HEADER_SCREENSHOT, animations:'disabled', clip:{x:0,y:0,width:1180,height:400}});
+                }
             }
             assert.deepEqual(errors, []);
+            if (viewport.width === 390 || viewport.width === 1180) {
+                await page.locator('.learning-public-about-link').click();
+                await page.waitForURL('**/gioi-thieu');
+                assert.match(await page.locator('h1').innerText(), /TNTT Phùng Khoang/);
+                assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://tnttphungkhoang.com/gioi-thieu');
+            }
         } finally { await page.close(); }
     });
 }
@@ -146,6 +169,10 @@ test('IELTS public branding uses the same bounded header shell', async () => {
     try {
         await assertFlow(page);
         assert.equal(await page.locator('.learning-public-brand-text').innerText(), 'IELTS ROOM');
+        await page.locator('.learning-public-about-link').click();
+        await page.waitForURL('**/gioi-thieu');
+        assert.match(await page.locator('h1').innerText(), /IELTS Room/);
+        assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://ieltsroom.com/gioi-thieu');
         assert.deepEqual(errors, []);
     } finally { await page.close(); }
 });
