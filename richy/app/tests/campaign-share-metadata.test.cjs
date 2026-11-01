@@ -23,7 +23,7 @@ test('IIS returns TNTT share metadata to non-JavaScript crawlers only on the all
         const response = await fetch(host, path); assert.equal(response.status, 200);
         const tntt = /^(www\.)?tnttphungkhoang\.com$/.test(host);
         assert.equal(meta(response.body, 'og:title'), tntt ? 'TNTT PHÙNG KHOANG' : 'IELTS ROOM');
-        assert.equal(meta(response.body, 'og:url'), tntt ? 'https://tnttphungkhoang.com'+path : 'https://www.ieltsroom.com/');
+        assert.equal(meta(response.body, 'og:url'), tntt ? 'https://tnttphungkhoang.com'+path : 'https://ieltsroom.com/');
         assert.equal(meta(response.body, 'og:image'), tntt ? 'https://tnttphungkhoang.com/assets/images/troop-1.jpg' : 'https://ieltsroom.com/assets/images/troop.jpg');
     }
 });

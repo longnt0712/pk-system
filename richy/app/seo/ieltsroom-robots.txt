@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /service/
+Disallow: /api/
+Disallow: /oauth/
+Disallow: /public/
+
+Sitemap: https://ieltsroom.com/sitemap.xml

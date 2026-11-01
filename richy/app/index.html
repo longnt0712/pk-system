@@ -2,9 +2,10 @@
 <!--[if IE 8]> <html lang="en" class="ie8 no-js" data-ng-app="Hrm"> <![endif]-->
 <!--[if IE 9]> <html lang="en" class="ie9 no-js" data-ng-app="Hrm"> <![endif]-->
 <!--[if !IE]><!-->
-<html lang="en" data-ng-app="Hrm" translate="no">
+<html lang="vi" data-ng-app="Hrm" translate="no">
 <!--<![endif]-->
     <head>
+        <meta charset="utf-8" />
 
         <!-- =====================================================
              GLOBAL DARK MODE V9 - ROBUST GLOBAL RUNTIME
@@ -142,7 +143,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261101-tntt-documents-2';
+        window.APP_VERSION = '20261101-seo-foundation-1';
 
                 function versionedUrl(url) {
                     if (typeof url !== 'string' || !window.APP_VERSION) { return url; }
@@ -183,17 +184,17 @@
         </script>
 
 
-        <title ng-if="settings.ieltsRoom == true" data-ng-bind="'IELTS ROOM | ' + $state.current.data.pageTitle"></title>
-        <title ng-if="settings.chapter == true" data-ng-bind="'TNTT PK | ' + $state.current.data.pageTitle"></title>
+        <title id="site-title">IELTS Room | Luyện IELTS và tiếng Anh online</title>
 
         <base href="/">
-        <meta charset="utf-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1">
-        <meta content="" name="description" />
+        <meta name="description" content="IELTS Room của Saint Paul Academy: luyện Reading, Listening, Writing, Speaking, học từ vựng và theo dõi bài tập tiếng Anh online." />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link id="site-canonical" rel="canonical" href="https://ieltsroom.com/" />
         <meta content="" name="author" />
 
-        <meta property="og:url"           content="https://www.ieltsroom.com/" />
+        <meta property="og:url"           content="https://ieltsroom.com/" />
         <meta property="og:type"          content="website" />
         <meta property="og:title"         content="IELTS ROOM" />
         <meta property="og:description"   content="LEARN STUDY PLAY WITH IELTS" />
@@ -201,6 +202,7 @@
         <meta property="og:image" content="https://ieltsroom.com/assets/images/troop.jpg">
         <!-- IIS selects the TNTT icon before browsers and crawlers parse this page. -->
         <link id="site-favicon" rel="icon" type="image/jpeg" href="/assets/images/troop.jpg" />
+        <script type="application/ld+json" id="site-structured-data">{"@context":"https://schema.org","@type":"WebSite","name":"IELTS Room","alternateName":"IELTS Room - Saint Paul Academy","url":"https://ieltsroom.com/","inLanguage":"vi","publisher":{"@type":"Organization","name":"Saint Paul Academy","url":"https://ieltsroom.com/","logo":"https://ieltsroom.com/assets/images/troop.jpg","sameAs":["https://www.facebook.com/saint.paul.academy.pk"]}}</script>
 
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
         <meta http-equiv="Pragma" content="no-cache">
@@ -264,6 +266,7 @@
         <script>writeVersionedStylesheet('assets/css/layout-hoz.min.css');</script>
         <script>writeVersionedStylesheet('assets/css/default.min.css');</script>
         <script>writeVersionedStylesheet('assets/css/custom.css');</script>
+        <script>writeVersionedStylesheet('assets/css/public-intro.css');</script>
         <script>writeVersionedStylesheet('assets/css/ielts-test-library.css');</script>
         <script>writeVersionedStylesheet('assets/css/question-drag-drop.css');</script>
         <script>writeVersionedStylesheet('assets/css/battle-exercise-form.css');</script>
@@ -1163,6 +1166,7 @@
         <script>writeVersionedScript('common/utils/floating-ui-layout.js');</script>
         <script>writeVersionedScript('common/utils/audio-seek.js');</script>
         <script>writeVersionedScript('common/utils/site-theme.js');</script>
+        <script>writeVersionedScript('common/utils/site-seo.js');</script>
         <script>writeVersionedScript('common/utils/english-speech.js');</script>
         <script>writeVersionedScript('common/utils/learning-pet.directive.js');</script>
         <script>writeVersionedScript('common/utils/utilities.js');</script>
