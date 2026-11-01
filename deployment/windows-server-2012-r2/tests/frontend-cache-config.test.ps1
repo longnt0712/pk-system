@@ -85,7 +85,7 @@ foreach ($case in $cases) {
 
 $service = @($rewrite.rules.rule | Where-Object { [string]$_.name -eq 'Backend service' })
 Assert-Test ($service.Count -eq 1 -and [string]$service[0].action.url -eq 'http://127.0.0.1:8085/service/{R:1}') 'Backend proxy routing changed.'
-Assert-Test (@($rewrite.outboundRules.rule | Where-Object { [string]$_.preCondition -eq 'TnttHtmlResponse' }).Count -eq 4) 'Domain metadata rules changed.'
+Assert-Test (@($rewrite.outboundRules.rule | Where-Object { [string]$_.name -like 'TNTT share *' -and [string]$_.preCondition -eq 'TnttHtmlResponse' }).Count -eq 4) 'Domain metadata rules changed.'
 $entryLocation = @($config.configuration.location | Where-Object { [string]$_.path -eq 'index.html' })
 Assert-Test ($entryLocation.Count -eq 1 -and [string]$entryLocation[0].'system.webServer'.urlCompression.doStaticCompression -eq 'false' -and [string]$entryLocation[0].'system.webServer'.urlCompression.doDynamicCompression -eq 'false') 'Index metadata compression settings changed.'
 Write-Output ('PASS: real IIS XML, ' + $cases.Count + ' entry/asset/API cases, existing routing and metadata preserved.')

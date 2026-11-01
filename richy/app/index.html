@@ -142,7 +142,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261101-auth-login-modal-1';
+        window.APP_VERSION = '20261101-domain-favicon-1';
 
                 function versionedUrl(url) {
                     if (typeof url !== 'string' || !window.APP_VERSION) { return url; }
@@ -199,6 +199,8 @@
         <meta property="og:description"   content="LEARN STUDY PLAY WITH IELTS" />
         <!-- IIS rewrites these static Open Graph values for the TNTT domain before sending HTML. -->
         <meta property="og:image" content="https://ieltsroom.com/assets/images/troop.jpg">
+        <!-- IIS selects the TNTT icon before browsers and crawlers parse this page. -->
+        <link id="site-favicon" rel="icon" type="image/jpeg" href="/assets/images/troop.jpg" />
 
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
         <meta http-equiv="Pragma" content="no-cache">
@@ -784,8 +786,6 @@
 
         <!--endbuild-->
 
-        <link ng-if="settings.ieltsRoom == true" rel="shortcut icon" content="" href="assets/images/troop.jpg" />
-        <link ng-if="settings.chapter == true" rel="shortcut icon" content="" href="assets/images/troop-1.jpg" />
 
         <!--[if lt IE 9]>
         <script src="assets/scripts/external/respond.min.js" type="text/javascript"></script>
