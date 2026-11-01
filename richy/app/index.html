@@ -143,7 +143,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261101-aragonda-1-notebook-color-palette-1';
+        window.APP_VERSION = '20261101-aragonda-1-shared-text-color-1';
 
                 function versionedUrl(url) {
                     if (typeof url !== 'string' || !window.APP_VERSION) { return url; }
@@ -1073,6 +1073,7 @@
         <script src="assets/scripts/external/ngJsTree.min.js" type="text/javascript"></script>
         <script src="assets/scripts/external/angular-toastr.tpls.min.js" type="text/javascript"></script>
         <script src="assets/scripts/external/angular-block-ui.min.js" type="text/javascript"></script>
+        <script>writeVersionedScript('common/utils/color-palette.js');</script>
         <script>writeVersionedScript('common/utils/tinymce-viewport.js');</script>
         <script src="assets/scripts/external/ng-file-upload-shim.min.js" type="text/javascript"></script>
         <script src="assets/scripts/external/ng-file-upload.min.js" type="text/javascript"></script>

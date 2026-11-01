@@ -290,11 +290,13 @@ test('pen and highlighter vectors round-trip through the cloud without changing 
     {id: 'stroke-highlight', tool: 'highlighter', color: '#ffd166', width: 18,
         points: [[0.2, 0.3], [0.7, 0.3]]}];
     session.document.strokes = clone(strokes); session.document.pattern = 'grid'; session.document.orientation = 'landscape';
+    session.document.textColor = '#e06666';
     session.changed(); await session.save();
     assert.deepEqual(JSON.parse(h.posts[0].payload).document.strokes, strokes);
     const reopened = h.instantiate().open(identity); await reopened.ready;
     assert.deepEqual(clone(reopened.document.strokes), strokes); assert.equal(reopened.document.pattern, 'grid');
     assert.equal(reopened.document.orientation, 'landscape');
+    assert.equal(reopened.document.textColor, '#e06666');
 });
 
 test('a cloud record with another student or test in its payload cannot populate or overwrite this notebook', async () => {

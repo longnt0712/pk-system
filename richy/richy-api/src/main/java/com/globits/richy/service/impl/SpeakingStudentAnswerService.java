@@ -195,6 +195,7 @@ public class SpeakingStudentAnswerService {
             clean.add(SpeakingServiceImpl.map("id",id,"tool",stroke.get("tool"),"color",color,"width",stroke.get("width"),"points",copied));
         }
         Map<String,Object> out=SpeakingServiceImpl.map("text",input.get("text"),"orientation",input.get("orientation"),"pattern",input.get("pattern"),"strokes",clean);
+        if(input.containsKey("textColor")){Object textColor=input.get("textColor");if(!(textColor instanceof String)||!((String)textColor).matches("#[0-9a-fA-F]{6}"))throw new IllegalArgumentException("Màu chữ sổ ghi chú không hợp lệ.");out.put("textColor",textColor);}
         if(encode(out).getBytes(java.nio.charset.StandardCharsets.UTF_8).length>8*1024*1024)throw new IllegalArgumentException("Sổ ghi chú vượt dung lượng 8 MB.");return out;
     }
     private long notebookRevision(SpeakingStudentAnswer answer){return answer==null||answer.getNotebookRevision()==null?0:answer.getNotebookRevision();}

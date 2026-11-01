@@ -210,6 +210,12 @@
                                     instance.on('init', function () { instance.remove(); }); return;
                                 }
                                 editor = instance;
+                                if ($window.AppColorPalette) {
+                                    $window.AppColorPalette.attachTinyMce(instance, {
+                                        open: function () { dialogs++; },
+                                        close: function () { dialogs = Math.max(0, dialogs - 1); requestCheck(); }
+                                    });
+                                }
                                 instance.on('init', function () {
                                     if (token !== generation || record.destroyed || instance !== editor) { instance.remove(); return; }
                                     initializing = false; render(); disabled();

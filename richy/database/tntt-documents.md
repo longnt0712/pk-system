@@ -51,6 +51,12 @@ Zalo chưa tích hợp, không tạo hàng đợi Zalo và không có nút gửi
 - Bản nháp lỗi mạng lưu riêng theo tài khoản/tài liệu trên thiết bị. Sửa đồng thời được kiểm tra phiên bản; không âm thầm ghi đè. Có 30 mốc gần nhất, các lần sửa liên tiếp của cùng người được gộp khoảng 10 phút.
 - Không chạy migration hay gửi email thật trong các bài kiểm tra.
 
+## Bảng màu và màu chữ
+
+Ô **Màu** trong sổ tay dùng chung cho chữ gõ và các nét bút viết tiếp. Chọn màu sẽ đổi toàn bộ phần chữ gõ của tài liệu; những nét bút đã viết giữ màu cũ. Màu chữ được lưu bằng thuộc tính JSON tùy chọn `textColor` (`#RRGGBB`), đi cùng bản nháp, lịch sử, bản công bố và bản in/PDF. Tài liệu cũ không có thuộc tính này vẫn mở bình thường.
+
+Bản bổ sung màu chữ cần cập nhật **backend JAR và frontend**; không có migration SQL mới. Bảng 80 màu được dùng chung trong các sổ tay, TinyMCE (soạn nội dung) và Quill (nhận xét bài làm).
+
 ## Phân đội
 
 Loại đội Nam / Nữ / Tổng hợp do người phân đội chọn; không tự chuyển hay tự chia lại học sinh. Đội cũ chưa có loại được hiển thị là Tổng hợp. Trưởng/phó chọn ngay trên thẻ thành viên, có thể bấm lại để bỏ; mỗi đội một trưởng và có thể có nhiều phó. Chuyển đội sẽ gỡ vai trò ở đội cũ. Những vai trò này không cấp quyền quản trị tài khoản.

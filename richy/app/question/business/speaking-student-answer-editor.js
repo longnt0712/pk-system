@@ -362,6 +362,7 @@
                     var geometry = store.previewGeometry(paper, available, 0, $window.devicePixelRatio);
                     frame.style.width = geometry.cssWidth + 'px';
                     if (text) {
+                        text.style.color = /^#[0-9a-f]{6}$/i.test(paper.textColor || '') ? paper.textColor : '#27364d';
                         var lineHeight = paper.pattern === 'grid' ? 20 : paper.pattern === 'squares' ? 64 : 28;
                         text.style.fontSize = (17 * geometry.scale) + 'px'; text.style.lineHeight = (lineHeight * geometry.scale) + 'px'; text.style.padding = (40 * geometry.scale) + 'px';
                         geometry = store.previewGeometry(paper, available, text.scrollHeight, $window.devicePixelRatio);

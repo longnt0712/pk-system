@@ -66,6 +66,8 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-custom-form button { border: 1px solid #d4dff8; border-radius: 4px; padding: 5px 10px; background: #edf3ff; color: #315bbe; font: 11px/16px Arial,sans-serif; cursor: pointer; }
 .study-notebook-custom-form button:disabled { opacity: .45; cursor: default; }
 .study-notebook-palette button:focus-visible, .study-notebook-palette input:focus-visible { outline: 2px solid #5571d6; outline-offset: 2px; }
+.app-color-clear { display: block; width: 100%; margin-top: 10px; padding: 7px 8px; border: 1px solid #dce3f0; border-radius: 4px; background: #f7f9fd; color: #415370; font: 11px Arial,sans-serif; cursor: pointer; }
+.ql-picker.app-color-picker .ql-picker-options { display: none !important; }
 .study-notebook-paper-options { margin-left: auto; gap: 8px; }
 .study-notebook-history { min-height: 25px; width: 25px; padding: 3px; background: #f7f9fd; }
 .study-notebook-zoom { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #e2e8f3; white-space: nowrap; }

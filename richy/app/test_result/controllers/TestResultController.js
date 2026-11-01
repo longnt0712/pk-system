@@ -127,7 +127,7 @@
             restrict: 'A',
             require: 'ngModel',
             link: function (scope, element, attrs, ngModel) {
-                var quill;
+                var quill, removeColorPalette;
                 var changeHandler;
                 var rendering = false;
                 var tableContextMenu;
@@ -235,6 +235,7 @@
                             }
                         }
                     });
+                    if (window.AppColorPalette) { removeColorPalette = window.AppColorPalette.bindQuill(quill); }
                     ngModel.$render();
                     changeHandler = function () {
                         if (rendering) { return; }
@@ -273,6 +274,7 @@
                     rendering = false;
                 };
                 scope.$on('$destroy', function () {
+                    if (removeColorPalette) { removeColorPalette(); removeColorPalette = null; }
                     if (quill && changeHandler) { quill.off('text-change', changeHandler); }
                     if (quill && contextMenuHandler) {
                         quill.root.removeEventListener('contextmenu', contextMenuHandler);

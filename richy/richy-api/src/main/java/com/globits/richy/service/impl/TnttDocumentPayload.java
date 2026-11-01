@@ -110,8 +110,7 @@ public final class TnttDocumentPayload {
                             "points",
                             copy));
         }
-        String data =
-                encode(
+        Map<String, Object> document =
                         map(
                                 "text",
                                 value.get("text"),
@@ -120,7 +119,14 @@ public final class TnttDocumentPayload {
                                 "pattern",
                                 value.get("pattern"),
                                 "strokes",
-                                clean));
+                                clean);
+        if (value.containsKey("textColor")) {
+            Object textColor = value.get("textColor");
+            if (!(textColor instanceof String) || !((String) textColor).matches("#[0-9a-fA-F]{6}"))
+                throw new IllegalArgumentException("Màu chữ tài liệu không hợp lệ.");
+            document.put("textColor", textColor);
+        }
+        String data = encode(document);
         if (data.getBytes(StandardCharsets.UTF_8).length > 8 * 1024 * 1024)
             throw new IllegalArgumentException("Tài liệu vượt dung lượng 8 MB.");
         return data;

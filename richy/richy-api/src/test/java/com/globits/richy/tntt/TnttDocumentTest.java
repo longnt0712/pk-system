@@ -252,6 +252,7 @@ public class TnttDocumentTest {
         r.revision = revision(id);
         r.document = blank();
         r.document.put("text", "Biên bản tiếng Việt");
+        r.document.put("textColor", "#e06666");
         r.document.put(
                 "strokes",
                 Arrays.asList(
@@ -275,10 +276,12 @@ public class TnttDocumentTest {
         r.revision = revision(id);
         r.document = blank();
         r.document.put("text", "Bản soạn chưa công bố");
+        r.document.put("textColor", "#123abc");
         service.save(id, r);
         actor(manager);
         Map<?, ?> visible = (Map<?, ?>) service.read(id, null).get("document");
         assertEquals("Biên bản tiếng Việt", visible.get("text"));
+        assertEquals("#e06666", visible.get("textColor"));
         actor(admin);
         r.revision = 0L;
         r.document.put("text", "Nội dung khác");

@@ -40,7 +40,7 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
   angular.module('ui.router',[]).provider('$state',function(){this.state=function(){return this;};this.$get=['$rootScope',function(root){return{current:{name:dashboard?'application.dashboard':'application.tntt_documents'},is(name){return this.current.name===name;},go(name,params){window.lastNavigation={name,params};this.current.name=name;root.$broadcast('$stateChangeSuccess');}};}];});
   angular.module('oc.lazyLoad',[]);angular.module('Hrm.Common',[]);
  },{student,editor,gender,dashboard});
- for(const f of ['tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
+ for(const f of ['common/utils/color-palette.js','tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
  await page.addScriptTag({path:path.join(app,'common/utils/study-notebook.directive.js')});
  await page.evaluate(()=>{
   angular.module('Fixture',['Hrm.TnttDocuments','ngCookies']).value('settings',{campaignsEnabled:true,permissionsLoaded:true,api:{baseUrl:'/service/'}}).value('AuthSession',{hasCredentials:()=>!!window.user}).value('$stateParams',{});
@@ -65,7 +65,7 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
   await f.page.waitForFunction(()=>document.querySelector('.study-notebook-text')?.readOnly);
   assert.equal(await f.page.locator('.study-notebook-text').inputValue(),'Nội dung đã công bố');
   assert.equal(await f.page.locator('.study-notebook-tools').count(),0);
-  assert.equal(await f.page.getByRole('button',{name:'Màu bút',exact:true}).count(),0);
+  assert.equal(await f.page.getByRole('button',{name:'Màu chữ và bút',exact:true}).count(),0);
   assert.deepEqual(f.server.errors,[]);
  }finally{await f.context.close();}
 });
@@ -75,10 +75,12 @@ test('the pen palette fits desktop and phone, supports preset and custom colors,
   const f=await fixture({width});try{
    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status!=='loading');
+   await f.page.locator('.study-notebook-text').fill('abc · Chữ và bút cùng màu');
    await f.page.getByRole('button',{name:'Bút',exact:true}).click();
    async function draw(offset){const box=await f.page.locator('.study-notebook-canvas').boundingBox();await f.page.mouse.move(box.x+40,box.y+70+offset);await f.page.mouse.down();await f.page.mouse.move(box.x+120,box.y+90+offset,{steps:5});await f.page.mouse.up();}
    await draw(0);
-   const trigger=f.page.getByRole('button',{name:'Màu bút',exact:true}),palette=f.page.getByRole('dialog',{name:'Bảng màu bút',exact:true});
+   await f.page.getByRole('button',{name:'Gõ chữ',exact:true}).click();
+   const trigger=f.page.getByRole('button',{name:'Màu chữ và bút',exact:true}),palette=f.page.getByRole('dialog',{name:'Bảng màu chữ và bút',exact:true});
    await trigger.click();await palette.waitFor({state:'visible'});
    const bounds=await palette.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width&&bounds.y>=0&&bounds.y+bounds.height<=950);
    assert.equal(await palette.locator('.study-notebook-palette-grid button').count(),80);
@@ -86,7 +88,9 @@ test('the pen palette fits desktop and phone, supports preset and custom colors,
    assert.equal(unobscured,true,'The palette opens outside the scrolling toolbar without clipping');
    await f.page.screenshot({path:path.join(app,`../../.tmp/notebook-palette-${width}.png`)});
    await palette.getByRole('button',{name:'Màu #FF0000',exact:true}).click();
-   await palette.waitFor({state:'hidden'});await draw(35);
+   await palette.waitFor({state:'hidden'});
+   assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(255, 0, 0)');
+   await f.page.getByRole('button',{name:'Bút',exact:true}).click();await draw(35);
    await trigger.click();
    const red=palette.getByRole('button',{name:'Màu #FF0000',exact:true});
    assert.equal(await red.getAttribute('aria-pressed'),'true');
@@ -99,6 +103,7 @@ test('the pen palette fits desktop and phone, supports preset and custom colors,
    await palette.waitFor({state:'hidden'});await draw(70);
    await f.page.waitForFunction(()=>window.vm.session.status==='saved');
    assert.deepEqual(f.server.entry.document.strokes.map(s=>s.color),['#315bbe','#ff0000','#123abc']);
+   assert.equal(f.server.entry.document.textColor,'#123abc');assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
    await trigger.click();assert.equal(await palette.getByRole('button',{name:'Màu tùy chỉnh #123ABC',exact:true}).getAttribute('aria-pressed'),'true');
    await f.page.keyboard.press('Escape');await palette.waitFor({state:'hidden'});
    assert.equal(await f.page.locator('.study-notebook-overlay').isVisible(),true,'Escape first closes the palette and keeps the document open');
@@ -107,6 +112,7 @@ test('the pen palette fits desktop and phone, supports preset and custom colors,
    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='saved');
    assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document.strokes.map(s=>s.color)),['#315bbe','#ff0000','#123abc']);
+   assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
    assert.deepEqual(f.server.errors,[]);
   }finally{await f.context.close();}
  }
@@ -296,9 +302,9 @@ test('twelve teams scroll vertically beside the fixed unassigned list and leader
 test('printing preserves plain text and ink across a multipage A4 PDF and escapes markup',async()=>{
  const f=await fixture();try{
   const popupPromise=f.page.waitForEvent('popup');
-  await f.page.evaluate(()=>window.injector.get('TnttDocumentPrint').open('Biên bản <script>bad()</script>',{text:Array.from({length:110},(_,i)=>'Dòng '+i+': Nội dung họp tiếng Việt').join('\n'),orientation:'portrait',pattern:'lined',strokes:[{id:'ink',tool:'pen',color:'#315bbe',width:4,points:[[60,1500],[200,1560]]}]}));
+  await f.page.evaluate(()=>window.injector.get('TnttDocumentPrint').open('Biên bản <script>bad()</script>',{text:Array.from({length:110},(_,i)=>'Dòng '+i+': Nội dung họp tiếng Việt').join('\n'),textColor:'#123abc',orientation:'portrait',pattern:'lined',strokes:[{id:'ink',tool:'pen',color:'#315bbe',width:4,points:[[60,1500],[200,1560]]}]}));
   const popup=await popupPromise;await popup.locator('.paper').waitFor();assert.equal(await popup.locator('script').count(),0);
-  assert.match(await popup.locator('pre').innerText(),/Dòng 109/);assert.equal(await popup.locator('svg polyline').count(),1);
+  assert.match(await popup.locator('pre').innerText(),/Dòng 109/);assert.equal(await popup.locator('svg polyline').count(),1);assert.equal(await popup.locator('.text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
   const pdf=await popup.pdf({preferCSSPageSize:true,printBackground:true,path:path.join(app,'../../.tmp/tntt-document-print.pdf')});
   assert.ok((pdf.toString('latin1').match(/\/Type \/Page\b/g)||[]).length>=3);await popup.close();
  }finally{await f.context.close();}

@@ -18,7 +18,7 @@ function fixture(){
  return{store,wrapper,window,timers,storage,calls,listeners,docListeners,session(identity=context){return store.open(identity);},setActor(id){actor=id;},remote:()=>remote,setRemote(value){remote=plain(value);},setGet(fn){getOverride=fn;},setSave(fn){saveOverride=fn;},async run(ms){const batch=[...timers].filter(([,t])=>t.ms===ms);for(const[id,t]of batch){timers.delete(id);t.fn();}await tick();},async fire(name,doc=false){for(const fn of(doc?docListeners:listeners).get(name)||[])fn();await tick();}};
 }
 test('shared A4 notes autosave text and pen strokes together with exact identity and no sample fields',async()=>{
- const f=fixture(),s=f.session();await s.ready;s.document.text='Student ideas';s.document.strokes=[{id:'ink1',tool:'pen',color:'#315bbe',width:4,points:[[10,20,.5],[30,40,.8]]}];s.document.orientation='landscape';s.document.pattern='grid';s.changed();assert.equal(f.calls.save.length,0);assert.equal(f.storage.size,1);await f.run(900);
+ const f=fixture(),s=f.session();await s.ready;s.document.text='Student ideas';s.document.textColor='#e06666';s.document.strokes=[{id:'ink1',tool:'pen',color:'#315bbe',width:4,points:[[10,20,.5],[30,40,.8]]}];s.document.orientation='landscape';s.document.pattern='grid';s.changed();assert.equal(f.calls.save.length,0);assert.equal(f.storage.size,1);await f.run(900);
  assert.equal(f.calls.save.length,1);assert.deepEqual(f.calls.save[0],{setId:11,studentId:7,questionId:42,revision:0,document:plain(s.document)});assert.equal(s.status,'saved');assert.equal(f.storage.size,0);
 });
 test('visible notebooks receive teacher changes automatically while closed and hidden notebooks do not poll',async()=>{

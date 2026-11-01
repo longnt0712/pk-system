@@ -16,6 +16,7 @@
                         ['portrait', 'landscape'].indexOf(value.orientation) < 0 || patterns.indexOf(value.pattern) < 0 ||
                         !Array.isArray(value.strokes) || (!local && value.strokes.length > 10000)) { throw new Error('Invalid notebook document'); }
                 var points = 0;
+                if (value.textColor !== undefined && (typeof value.textColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.textColor))) { throw new Error('Invalid notebook text color'); }
                 value.strokes.forEach(function (stroke) {
                     if (!stroke || typeof stroke.id !== 'string' || ['pen', 'highlighter'].indexOf(stroke.tool) < 0 ||
                             !/^#[0-9a-f]{6}$/i.test(stroke.color) || !(stroke.width > 0 && stroke.width <= 100) ||

@@ -22,9 +22,11 @@
                     });
                 });
                 if (points > 200000 || JSON.stringify(value).length > 8000000) { throw new Error('Ghi chú vượt dung lượng đồng bộ. Bản đang viết vẫn được giữ.'); }
-                return {text: value.text, orientation: value.orientation, pattern: value.pattern, strokes: value.strokes.map(function (stroke) {
+                if (value.textColor !== undefined && (typeof value.textColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.textColor))) { throw new Error('Màu chữ tài liệu không hợp lệ.'); }
+                var result = {text: value.text, orientation: value.orientation, pattern: value.pattern, strokes: value.strokes.map(function (stroke) {
                     return {id: stroke.id, tool: stroke.tool, color: stroke.color, width: stroke.width, points: copy(stroke.points)};
                 })};
+                if (value.textColor !== undefined) { result.textColor = value.textColor; } return result;
             }
             function equal(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
             function open(identity) {

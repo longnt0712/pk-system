@@ -20,7 +20,7 @@
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
-                    '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette()" aria-label="Màu bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu bút"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
+                    '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette()" ng-disabled="notebook.isLocked()" aria-label="Màu chữ và bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu cho chữ và bút"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
                     '<label class="study-notebook-stroke"><span>Nét bút</span><select ng-model="notebook.inkWidth" aria-label="Độ rộng nét bút"><option value="2">Mảnh</option><option value="4">Vừa</option><option value="7">Đậm</option></select></label>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
@@ -38,7 +38,7 @@
                     '</div></div></div>',
                     '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
                     '</section>',
-                    '<div class="study-notebook-palette ng-hide" ng-if="notebook.isOpen && !notebook.readOnly" ng-show="notebook.paletteOpen" role="dialog" aria-label="Bảng màu bút" ng-attr-id="{{notebook.dialogId}}-palette">',
+                    '<div class="study-notebook-palette ng-hide" ng-if="notebook.isOpen && !notebook.readOnly" ng-show="notebook.paletteOpen" role="dialog" aria-label="Bảng màu chữ và bút" ng-attr-id="{{notebook.dialogId}}-palette">',
                     '<div class="study-notebook-palette-grid" role="group" aria-label="Màu có sẵn"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.paletteColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-keydown="notebook.paletteKey($event,$index)" ng-attr-tabindex="{{notebook.paletteFocusColor===color?0:-1}}" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button></div>',
                     '<div class="study-notebook-palette-label">Tùy chỉnh</div><div class="study-notebook-custom-colors"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.customColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu tùy chỉnh {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button><button type="button" class="study-notebook-add-color" ng-click="notebook.openCustomColor()" aria-label="Thêm màu tùy chỉnh" ng-attr-aria-expanded="{{notebook.customColorOpen}}" title="Thêm màu tùy chỉnh"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v8M6 10h8"/></svg></button></div>',
                     '<form class="study-notebook-custom-form" ng-if="notebook.customColorOpen" ng-submit="notebook.applyCustomColor()"><label>Mã màu HEX<input type="text" ng-model="notebook.customHex" ng-change="notebook.customHexChanged()" placeholder="#315BBE" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Mã màu HEX"></label><div><input type="color" ng-model="notebook.customColor" ng-change="notebook.customHex=notebook.customColor" aria-label="Chọn màu tùy chỉnh"><button type="submit" ng-disabled="!notebook.validCustomColor()">Áp dụng</button></div></form>',
@@ -61,16 +61,7 @@
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
                     ui.tool = 'text'; ui.inkColor = '#315bbe'; ui.inkWidth = '4'; ui.touchDrawing = false;
                     ui.paletteOpen = false; ui.customColorOpen = false; ui.customColors = [ui.inkColor];
-                    ui.paletteColors = [
-                        '#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#d9d9d9','#efefef','#f3f3f3','#ffffff',
-                        '#980000','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff',
-                        '#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3','#c9daf8','#cfe2f3','#d9d2e9','#ead1dc',
-                        '#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd',
-                        '#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#c27ba0',
-                        '#a61c00','#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3c78d8','#3d85c6','#674ea7','#a64d79',
-                        '#85200c','#990000','#b45f06','#bf9000','#38761d','#134f5c','#1155cc','#0b5394','#351c75','#741b47',
-                        '#5b0f00','#660000','#783f04','#7f6000','#274e13','#0c343d','#1c4587','#073763','#20124d','#4c1130'
-                    ];
+                    ui.paletteColors = $window.AppColorPalette ? $window.AppColorPalette.colors.slice() : [];
                     ui.zoomPercent = 100;
                     ui.zoomSliderValue = 100;
                     ui.tools = [{ id: 'text', label: 'Gõ chữ', icon: 'fa-font' }, { id: 'pen', label: 'Bút', icon: 'fa-pencil' },
@@ -118,7 +109,8 @@
                         schedulePalette('.study-notebook-swatch[aria-pressed="true"]');
                     };
                     ui.selectInkColor = function (color) {
-                        color = normalizedColor(color); if (!color || ui.readOnly) { return; } finishStroke(true); ui.inkColor = color;
+                        color = normalizedColor(color); if (!color || ui.isLocked()) { return; } flushText(); finishStroke(true); ui.inkColor = color;
+                        ui.session.document.textColor = color; markChanged(); scheduleLayout();
                         if (ui.paletteColors.indexOf(color) < 0 && ui.customColors.indexOf(color) < 0) { ui.customColors.unshift(color); ui.customColors = ui.customColors.slice(0, 8); }
                         ui.closePalette();
                     };
@@ -288,6 +280,7 @@
                         textarea.style.lineHeight = (lineHeight * scale) + 'px';
                         textarea.style.padding = (40 * scale) + 'px';
                         textarea.style.paddingTop = (paddingTop * scale) + 'px';
+                        textarea.style.color = /^#[0-9a-f]{6}$/i.test(ui.session.document.textColor || '') ? ui.session.document.textColor : '#27364d';
                         textarea.style.height = '0px';
                         var textHeight = textarea.scrollHeight;
                         textarea.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
@@ -483,6 +476,9 @@
                         if (value !== knownStrokes) { knownStrokes = value; cacheDirty = true; undo = []; redo = []; scheduleLayout(); }
                     });
                     var unwatchStatus = scope.$watch(function () { return ui.session && ui.session.status; }, function () { scheduleLayout(); });
+                    var unwatchTextColor = scope.$watch(function () { return ui.session && ui.session.document && ui.session.document.textColor; }, function (color) {
+                        if (/^#[0-9a-f]{6}$/i.test(color || '')) { ui.inkColor = color.toLowerCase(); } scheduleLayout();
+                    });
                     textarea.addEventListener('compositionstart', compositionStart); textarea.addEventListener('compositionend', compositionEnd);
                     canvas.addEventListener('pointerdown', pointerDown); canvas.addEventListener('pointermove', pointerMove);
                     canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerCancel);
@@ -496,7 +492,7 @@
                     var toolbar = dialog.querySelector('.study-notebook-toolbar'); if (toolbar) { toolbar.addEventListener('scroll', positionPalette); }
                     if ($window.ResizeObserver) { observer = new $window.ResizeObserver(scheduleLayout); observer.observe(paper); }
                     scope.$on('$destroy', function () {
-                        ui.close(); alive = false; unwatchIdentity(); unwatchStrokes(); unwatchStatus();
+                        ui.close(); alive = false; unwatchIdentity(); unwatchStrokes(); unwatchStatus(); unwatchTextColor();
                         $timeout.cancel(layoutTimer); if (raf) { cancelFrame.call($window, raf); raf = null; }
                         $timeout.cancel(paletteTimer); if (toolbar) { toolbar.removeEventListener('scroll', positionPalette); }
                         if (observer) { observer.disconnect(); }
