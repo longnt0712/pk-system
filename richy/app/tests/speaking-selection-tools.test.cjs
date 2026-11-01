@@ -95,7 +95,7 @@ test('unsupported or failed speech leaves the answer writable and rejects detach
 test('manual IPA creates an anchored note and pasted phonetic uses the same autosave without altering the answer',async()=>{
  const f=editorFixture();f.identity([11,7,42,9]);await settle();f.select('memorising');f.scope.ed.addPhonetic();
  assert.equal(f.state.notes.length,1);assert.equal(f.scope.ed.activeNote.id,f.state.notes[0].id);assert.equal(f.scope.ed.lookupText,'memorising');assert.match(f.state.html,/data-note-id=/);assert.match(f.state.html,/>memorising<\/span>/);
- assert.equal(f.scope.ed.cambridgeUrl(),'https://dictionary.cambridge.org/dictionary/english/?q=memorising');
+ assert.equal(f.scope.ed.cambridgeUrl(),'https://dictionary.cambridge.org/dictionary/english/memorising');
  const html=f.state.html;f.scope.ed.activeNote.text='UK /ˈmem.ə.raɪz/';f.scope.ed.noteChanged();assert.equal(f.state.notes[0].text,'UK /ˈmem.ə.raɪz/');assert.equal(f.state.html,html);assert.ok([...f.timers.values()].some(timer=>timer.delay===1300));assert.equal(f.saves,0);
  assert.match(f.directive.template,/target="_blank" rel="noopener noreferrer"/);assert.match(f.directive.template,/Ghi chú tự lưu/);assert.doesNotMatch(f.directive.template,/Lưu phiên âm|Lưu ghi chú/);f.destroy();
 });
@@ -110,5 +110,14 @@ test('mixed note selections are rejected safely and small screens keep the phone
  const f=editorFixture();f.identity([11,7,42,9]);await settle();f.existingNote();const html=f.state.html;
  f.range.commonAncestorContainer=f.editable;f.select('memorising and more');f.scope.ed.addPhonetic();assert.match(f.scope.ed.phoneticError,/đang chứa ghi chú/);assert.equal(f.state.html,html);assert.equal(f.changes,0);
  f.range.commonAncestorContainer=f.range.startContainer;f.win.innerWidth=320;f.win.innerHeight=240;f.select('memorising');assert.ok(parseFloat(f.scope.ed.selectionStyle.top)+parseFloat(f.scope.ed.selectionStyle.maxHeight)<=232);f.scope.ed.addPhonetic();const top=parseFloat(f.scope.ed.noteStyle.top),height=parseFloat(f.scope.ed.noteStyle.maxHeight);assert.ok(top>=8);assert.ok(top+height<=232);assert.equal(parseFloat(f.scope.ed.noteStyle.left),8);
- f.scope.ed.lookupText='we\'re <ready> & done';assert.equal(new URL(f.scope.ed.cambridgeUrl()).searchParams.get('q'),"we're <ready> & done");f.identity([11,7,43,9]);assert.equal(f.scope.ed.lookupText,'');assert.equal(f.scope.ed.activeNote,null);f.destroy();
+ f.scope.ed.lookupText='we\'re <ready> & done';assert.equal(decodeURIComponent(new URL(f.scope.ed.cambridgeUrl()).pathname),"/dictionary/english/we're-<ready>-&-done");f.identity([11,7,43,9]);assert.equal(f.scope.ed.lookupText,'');assert.equal(f.scope.ed.activeNote,null);f.destroy();
+});
+
+test('Cambridge links place words and phrases in the entry path without query or fragment injection',async()=>{
+ const f=editorFixture();f.identity([11,7,42,9]);await settle();
+ for(const [text,entry] of [['  MEMORISING  ','memorising'],[' Look \n up ','look-up'],['what? #/ & why','what?-#/-&-why']]){
+  f.scope.ed.lookupText=text;const url=new URL(f.scope.ed.cambridgeUrl());
+  assert.equal(url.origin,'https://dictionary.cambridge.org');assert.equal(url.search,'');assert.equal(url.hash,'');assert.equal(decodeURIComponent(url.pathname),'/dictionary/english/'+entry);
+ }
+ assert.equal(f.changes,0);assert.equal(f.saves,0);f.destroy();
 });

@@ -292,7 +292,10 @@
                     ed.noteStyle = {position: 'fixed', top: positionTop + 'px', left: Math.max(8, Math.min(bounds.left, width - 316)) + 'px', maxHeight: Math.max(40, height - positionTop - 8) + 'px'};
                 }
                 ed.closeNote = function () { ed.activeNote = null; };
-                ed.cambridgeUrl = function () { return 'https://dictionary.cambridge.org/dictionary/english/?q=' + encodeURIComponent(ed.lookupText || ''); };
+                ed.cambridgeUrl = function () {
+                    var word = String(ed.lookupText || '').trim().toLowerCase().replace(/\s+/g, '-');
+                    return 'https://dictionary.cambridge.org/dictionary/english/' + encodeURIComponent(word);
+                };
                 ed.addPhonetic = function () {
                     if (destroyed || !ed.state.ready || !ed.hasSelection || !selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
                     var text = selectedRange.toString().replace(/\s+/g, ' ').trim(), marker = selectedRange.commonAncestorContainer;
