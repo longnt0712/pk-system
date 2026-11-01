@@ -172,7 +172,7 @@
 
         vm.searchDisplayDto = {
             enrollmentClass: 1,
-            educationProgramId: 1,
+            educationProgramId: null,
             textSearch: null,
             groupId: null
         };
@@ -455,7 +455,8 @@
         service.getEducationPrograms(vm.filter, 1, 1000000).then(function (data) {
             vm.educationPrograms = data.content || [];
             if (vm.educationPrograms.length > 0) {
-                vm.searchDisplayDto.educationProgramId = vm.educationPrograms[0].id;
+                var mainProgram = vm.educationPrograms.filter(function (program) { return program.main === true; })[0];
+                vm.searchDisplayDto.educationProgramId = (mainProgram || vm.educationPrograms[0]).id;
             }
             programsReady = true;
             initialBoard();

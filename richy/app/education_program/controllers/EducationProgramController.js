@@ -107,6 +107,22 @@
         vm.pageIndex = 1;
         vm.pageSize = 25;
         vm.searchDto = {};
+        vm.mainSaving = false;
+        vm.canSetMain = function () {
+            var permissions = $rootScope.settings || settings;
+            return permissions.isAdmin === true || permissions.isEducationManagerment === true;
+        };
+        $scope.setMainProgram = function (id) {
+            if (!vm.canSetMain() || vm.mainSaving || vm.educationPrograms.some(function (p) { return Number(p.id) === Number(id) && p.main === true; })) { return; }
+            vm.mainSaving = true;
+            return service.setMain(id).then(function () {
+                toastr.success('Đã chọn chương trình Main.', 'Thông báo');
+                return vm.getPage();
+            }).catch(function () {
+                toastr.error('Chưa đổi được chương trình Main. Vui lòng thử lại.', 'Lỗi');
+                return vm.getPage();
+            }).finally(function () { vm.mainSaving = false; });
+        };
 
         /* TINYMCE */
         vm.tinymceOptions = {
@@ -136,7 +152,7 @@
         };
 
         vm.getPage = function () {
-            service.getPage(vm.searchDto,vm.pageIndex, vm.pageSize).then(function (data) {
+            return service.getPage(vm.searchDto,vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.educationPrograms = data.content;
                 vm.bsTableControl.options.data = vm.educationPrograms;
                 vm.bsTableControl.options.totalRows = data.totalElements;

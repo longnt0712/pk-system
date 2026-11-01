@@ -138,8 +138,11 @@
             });
         };
 
+        var markPageGeneration = 0;
         vm.getPage = function () {
+            var generation = ++markPageGeneration;
             service.getPage(vm.searchDto,vm.pageIndex, vm.pageSize).then(function (data) {
+                if (generation !== markPageGeneration) { return; }
                 vm.marks = data.content;
                 vm.bsTableControl.options.data = vm.marks;
                 vm.bsTableControl.options.totalRows = data.totalElements;
@@ -305,7 +308,12 @@
         vm.searchEduDto = {};
         vm.getPageEducationProgram = function () {
             service.getPageEducationProgram(vm.searchEduDto,1, 100000).then(function (data) {
-                vm.educationPrograms = data.content;
+                vm.educationPrograms = data.content || [];
+                var mainProgram = vm.educationPrograms.filter(function (program) { return program.main === true; })[0];
+                if (!vm.searchDto.educationProgram && mainProgram) {
+                    vm.searchDto.educationProgram = mainProgram;
+                    vm.onEducationProgramChanged();
+                }
             });
         };
         vm.getPageEducationProgram();

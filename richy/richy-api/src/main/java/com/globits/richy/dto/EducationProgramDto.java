@@ -11,6 +11,13 @@ public class EducationProgramDto implements Serializable{
 	private String code;
 	private String description;
 	private String textSearch;
+	private Boolean main;
+	private String createDate;
+
+	public Boolean getMain() { return main; }
+	public void setMain(Boolean main) { this.main = main; }
+	public String getCreateDate() { return createDate; }
+	public void setCreateDate(String createDate) { this.createDate = createDate; }
 	
 	public String getDescription() {
 		return description;
@@ -50,6 +57,8 @@ public class EducationProgramDto implements Serializable{
 		this.name = domain.getName();
 		this.code = domain.getCode();
 		this.description = domain.getDescription();
+		this.main = Boolean.TRUE.equals(domain.getMain());
+		this.createDate = domain.getCreateDate() == null ? null : domain.getCreateDate().toString("yyyy-MM-dd'T'HH:mm:ss");
 	}
 	
 }

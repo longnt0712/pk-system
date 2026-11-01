@@ -11,5 +11,6 @@ public interface EducationProgramService {
 	public List<EducationProgramDto> getListObject(EducationProgramDto searchDto, int pageIndex, int pageSize);
 	public EducationProgramDto getObjectById(Long id);
 	public boolean saveObject(EducationProgramDto dto);
+	public EducationProgramDto setMain(Long id);
 	public boolean deleteObject(Long id);
 }

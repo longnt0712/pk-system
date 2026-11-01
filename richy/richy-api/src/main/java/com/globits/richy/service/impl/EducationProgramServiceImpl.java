@@ -4,6 +4,7 @@ import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.LockModeType;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.globits.richy.domain.EducationProgram;
 import com.globits.richy.dto.EducationProgramDto;
 import com.globits.richy.repository.EducationProgramRepository;
@@ -35,17 +37,17 @@ public class EducationProgramServiceImpl implements EducationProgramService {
 			pageIndex = 0;
 		Pageable pageable = new PageRequest(pageIndex, pageSize);
 
-		String textSearch = searchDto.getTextSearch();
+		String textSearch = searchDto == null ? null : searchDto.getTextSearch();
 
 		String sql = "select new com.globits.richy.dto.EducationProgramDto(s) from EducationProgram s where (1=1)";
 		String sqlCount = "select count(s.id) from EducationProgram s where (1=1)";
 		String whereClause = "";
 
 		if (textSearch != null && textSearch.length() > 0) {
-			whereClause += " and (s.text like :textSearch)";
+			whereClause += " and (s.name like :textSearch or s.code like :textSearch)";
 		}
 
-		sql += whereClause;
+		sql += whereClause + " order by s.createDate desc, s.id desc";
 		sqlCount += whereClause;
 
 		Query q = manager.createQuery(sql, EducationProgramDto.class);
@@ -76,21 +78,24 @@ public class EducationProgramServiceImpl implements EducationProgramService {
 	}
 
 	@Override
+	@Transactional
 	public boolean saveObject(EducationProgramDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
 		LocalDateTime currentDate = LocalDateTime.now();
 		String currentUserName = "Unknown User";
-		if (authentication != null) {
+		if (authentication != null && authentication.getPrincipal() instanceof User) {
 			modifiedUser = (User) authentication.getPrincipal();
 			currentUserName = modifiedUser.getUsername();
 		}
 		if(dto == null) {
 			return false;
 		}
+		List<EducationProgram> programs = lockPrograms();
 		EducationProgram domain = null;
 		if(dto.getId() != null) {
-			domain = educationProgramRepository.getOne(dto.getId());
+			for (EducationProgram program : programs) if (dto.getId().equals(program.getId())) { domain = program; break; }
+			if (domain == null) return false;
 		}
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
@@ -100,17 +105,48 @@ public class EducationProgramServiceImpl implements EducationProgramService {
 			domain = new EducationProgram();
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
+			domain.setMain(false);
 		}
+		if (Boolean.TRUE.equals(dto.getMain())) clearOtherMain(programs, domain.getId());
+		if (dto.getMain() != null) domain.setMain(dto.getMain());
 		
 		domain.setCode(dto.getCode());
 		domain.setName(dto.getName());
 		domain.setDescription(dto.getDescription());
 		domain = educationProgramRepository.save(domain);
+		manager.flush();
 		
-		return false;
+		return true;
+	}
+
+	private List<EducationProgram> lockPrograms() {
+		return manager.createQuery("select p from EducationProgram p order by p.id", EducationProgram.class)
+				.setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultList();
+	}
+
+	private void clearOtherMain(List<EducationProgram> programs, Long selectedId) {
+		for (EducationProgram program : programs) {
+			if (Boolean.TRUE.equals(program.getMain()) && !program.getId().equals(selectedId)) program.setMain(false);
+		}
+		// Clear the old flag before setting the new one, including when a unique filtered index is present.
+		manager.flush();
 	}
 
 	@Override
+	@Transactional
+	public EducationProgramDto setMain(Long id) {
+		List<EducationProgram> programs = lockPrograms();
+		EducationProgram selected = null;
+		for (EducationProgram program : programs) if (program.getId().equals(id)) { selected = program; break; }
+		if (selected == null) throw new IllegalArgumentException("Không tìm thấy chương trình đào tạo.");
+		clearOtherMain(programs, id);
+		selected.setMain(true);
+		manager.flush();
+		return new EducationProgramDto(selected);
+	}
+
+	@Override
+	@Transactional
 	public boolean deleteObject(Long id) {
 		if(id == null) {
 			return false;

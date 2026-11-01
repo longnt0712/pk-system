@@ -23,6 +23,9 @@
         self.getOne = getOne;
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
+        self.setMain = function (id) {
+            return utils.resolveAlt(baseUrl + 'education_program/set_main/' + id, 'POST', null, {}, {'Content-Type':'application/json; charset=utf-8'});
+        };
 
         var restUrl = 'education_program';
         function getPage(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
@@ -38,8 +41,9 @@
 
         function saveObject(object, successCallback, errorCallback) {
             var url = baseUrl + restUrl + '/save';
-
-            return utils.resolveAlt(url, 'POST', null, object, {
+            // A metadata form opened earlier must not undo another user's Main selection.
+            var payload = angular.copy(object); delete payload.main;
+            return utils.resolveAlt(url, 'POST', null, payload, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
         }
@@ -123,17 +127,33 @@
                     cellStyle: _cellNowrap
                 }
                 , {
+                    field: 'main',
+                    title: 'Main',
+                    switchable: false,
+                    align: 'center',
+                    formatter: function (value, row) {
+                        return '<input type="radio" name="education-program-main" aria-label="Đặt chương trình làm Main" title="Dùng mặc định tại student_marks và marks" ng-checked="' + (row.main === true) + '" ng-disabled="$parent.vm.mainSaving || !$parent.vm.canSetMain()" ng-click="$parent.setMainProgram(' + Number(row.id) + ')" style="width:17px;height:17px;cursor:pointer">';
+                    }
+                }
+                , {
                     field: 'name',
-                    title: 'name',
+                    title: 'Tên chương trình',
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
                 }
                 , {
                     field: 'code',
-                    title: 'code',
+                    title: 'Mã',
                     sortable: true,
                     switchable: false,
+                    cellStyle: _cellNowrap
+                }
+                , {
+                    field: 'createDate',
+                    title: 'Thời gian tạo',
+                    switchable: true,
+                    formatter: function (value) { return value ? $filter('date')(value, 'dd/MM/yyyy HH:mm') : '—'; },
                     cellStyle: _cellNowrap
                 }
             ]

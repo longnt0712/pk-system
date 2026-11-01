@@ -46,4 +46,10 @@ public class RestEducationProgramController {
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/set_main/{id}", method = RequestMethod.POST)
+	public EducationProgramDto setMain(@PathVariable Long id) {
+		return service.setMain(id);
+	}
 }

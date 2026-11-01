@@ -28,6 +28,12 @@ public class EducationProgram extends BaseObject{
 	@Column(name="description")
 	private String description;
 
+	@Column(name="is_main")
+	private Boolean main;
+
+	public Boolean getMain() { return main; }
+	public void setMain(Boolean main) { this.main = main; }
+
 	public String getName() {
 		return name;
 	}
