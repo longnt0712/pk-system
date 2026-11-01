@@ -100,7 +100,14 @@
                             catch (error) { return; }
                             knownStrokes = strokes();
                             if (ui.session.ready && ui.session.ready.then) {
-                                ui.session.ready.then(function () { if (alive) { undo = []; redo = []; knownStrokes = strokes(); scheduleLayout(); } }, angular.noop);
+                                ui.session.ready.then(function () {
+                                    if (alive) {
+                                        undo = []; redo = []; knownStrokes = strokes();
+                                        // Loading may finish after a blank frame was cached.
+                                        // Invalidate it even when the page dimensions stay the same.
+                                        cacheDirty = true; scheduleLayout();
+                                    }
+                                }, angular.noop);
                             }
                         }
                         ui.isOpen = true; openNotebooks++;

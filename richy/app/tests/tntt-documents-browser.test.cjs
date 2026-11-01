@@ -4,7 +4,7 @@ const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-pri
 const app=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(app,f),'utf8');
 let browser;before(async()=>{browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});});after(async()=>{if(browser)await browser.close();});
 const blank=()=>({text:'',orientation:'portrait',pattern:'lined',strokes:[]});
-async function fixture({width=1440,gender='M',student=false,unread=true,expires=60000,dark=false,dashboard=false,enabled=true}={}){
+async function fixture({width=1440,gender='M',student=false,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0}={}){
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
  const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:3,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:!student,document:blank()},notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
@@ -21,6 +21,7 @@ async function fixture({width=1440,gender='M',student=false,unread=true,expires=
   if(u.pathname.endsWith('/publish'))return reply({id:21});
   if(u.pathname.endsWith('/entries/12')){
    if(req.method()==='PUT'){const p=req.postDataJSON();server.entry={...server.entry,revision:server.entry.revision+1,document:p.document};}
+   else if(notebookReadDelay && server.calls.filter(c=>c.path===u.pathname&&c.method==='GET').length>1)await new Promise(resolve=>setTimeout(resolve,notebookReadDelay));
    return reply(u.searchParams.get('revision')===String(server.entry.revision)?{id:12,revision:server.entry.revision,changed:false}:{...server.entry,changed:true});
   }
   if(u.pathname.endsWith('/entries'))return reply([{id:3,title:'Biên bản họp',kind:'FOLDER',parentId:null,revision:0,updatedAt:Date.now()},server.entry]);
@@ -61,6 +62,40 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
   assert.equal(await f.page.locator('.study-notebook-tools').count(),0);
   assert.deepEqual(f.server.errors,[]);
  }finally{await f.context.close();}
+});
+
+test('saved pen and highlighter ink is visible on reopening before any zoom or tool change, including slow loads',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width,notebookReadDelay:350});try{
+   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status!=='loading');
+   await f.page.locator('.study-notebook-text').fill('Biên bản có chữ gõ và nét bút đã lưu.');
+   for(const tool of ['Bút','Đánh dấu']){
+    await f.page.getByRole('button',{name:tool,exact:true}).click();
+    const box=await f.page.locator('.study-notebook-canvas').boundingBox();
+    await f.page.mouse.move(box.x+40,box.y+70);await f.page.mouse.down();await f.page.mouse.move(box.x+130,box.y+100,{steps:8});await f.page.mouse.up();
+   }
+   await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.equal(f.server.entry.document.strokes.length,2);const saved=JSON.stringify(f.server.entry.document);
+   for(let attempt=0;attempt<2;attempt++){
+    await f.page.locator('.study-notebook-close').click();await f.page.waitForFunction(()=>!window.vm.active);
+    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='loading');
+    await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+    await f.page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const painted=await f.page.locator('.study-notebook-canvas').evaluate(canvas=>{
+     const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let ink=0;
+     for(let i=3;i<pixels.length;i+=4)if(pixels[i])ink++;return ink;
+    });
+    assert.ok(painted>100,`Handwriting is visible immediately after reopen at ${width}px (attempt ${attempt+1})`);
+    assert.equal(await f.page.locator('.study-notebook-zoom output').textContent(),'100%');
+    assert.equal(await f.page.locator('.study-notebook-tools .is-active').innerText(),'Gõ chữ');
+    assert.equal(JSON.stringify(f.server.entry.document),saved,'Reopening does not mutate the saved text or ink');
+   }
+   await f.page.screenshot({path:path.join(app,`../../.tmp/tntt-notebook-reopen-${width}.png`)});
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
 });
 
 test('publish form chooses adults and UTC+7 dates while unconfigured mail and Zalo remain unavailable',async()=>{

@@ -353,6 +353,22 @@ test('ordinary text changes reuse the committed ink cache until stroke geometry 
     assert.ok(cachePaints() > painted, 'A newly committed stroke invalidates the cached ink');
 });
 
+test('handwriting loaded after the first blank frame is painted immediately without zooming', async () => {
+    let resolveReady;
+    const strokes = [{id: 'loaded', tool: 'pen', color: '#315bbe', width: 4, points: [[100, 100, .5], [200, 100, .5]]}];
+    const session = {document: {text: '', orientation: 'portrait', pattern: 'lined', strokes: []}, status: 'loading',
+        ready: new Promise(resolve => { resolveReady = resolve; }), changed() {}, save() { return Promise.resolve(this); }, destroy() {}};
+    const h = harness({identity: {sessionOpener: () => session}});
+    await h.open();
+    assert.ok(h.drawCalls.some(call => call.name === 'drawImage'), 'The initial blank canvas has already been rendered');
+    h.drawCalls.length = 0;
+    session.document = {...session.document, strokes: clone(strokes)}; session.status = 'saved'; resolveReady(session);
+    await h.flush();
+    assert.ok(h.drawCalls.some(call => call.context === 'offscreen' && call.name === 'stroke'), 'Loaded handwriting replaces the blank ink cache');
+    assert.equal(h.ui.zoomPercent, 100); assert.deepEqual(clone(session.document.strokes), strokes);
+    assert.equal(h.ui.canUndo(), false, 'Loading saved handwriting does not create a local edit');
+});
+
 test('zoom buttons respect their bounds, fit resets the view, and the page frame exposes horizontal overflow only when required', async () => {
     const h = harness({width: 397}), session = await h.open(); session.document.text = 'The same note while zooming';
     assert.equal(h.ui.zoomPercent, 100);
