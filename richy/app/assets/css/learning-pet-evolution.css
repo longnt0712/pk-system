@@ -335,6 +335,9 @@ img[src*="assets/images/learning-pets/dragon-ball-"] {
 
 /* Aragonda animates its tongue and eyes inside the SVG; keep the coils still. */
 .learning-pet-shell .learning-pet-egg.is-aragonda {
+    width: 99px;
+    height: 103px;
+    margin-top: 5px;
     animation: none;
 }
 
