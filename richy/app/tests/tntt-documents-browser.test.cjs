@@ -4,7 +4,7 @@ const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-pri
 const app=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(app,f),'utf8');
 let browser;before(async()=>{browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});});after(async()=>{if(browser)await browser.close();});
 const blank=()=>({text:'',orientation:'portrait',pattern:'lined',strokes:[]});
-async function fixture({width=1440,gender='M',student=false,unread=true,expires=60000,dark=false,dashboard=false}={}){
+async function fixture({width=1440,gender='M',student=false,unread=true,expires=60000,dark=false,dashboard=false,enabled=true}={}){
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
  const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:3,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:!student,document:blank()},notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
@@ -13,7 +13,7 @@ async function fixture({width=1440,gender='M',student=false,unread=true,expires=
   if(u.pathname==='/tai-lieu'||u.pathname==='/dashboard')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="vi"'+(dark?' class="global-dark-mode"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div ng-controller="TnttDocumentsController as vm">'+read('tntt_documents/documents.html')+'</div><tntt-notification-pet></tntt-notification-pet></body></html>'});
   if(u.pathname.startsWith('/assets/images/tntt-notices/'))return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(app,u.pathname.slice(1)))});
   server.calls.push({path:u.pathname,method:req.method(),body:req.postDataJSON()});
-  if(u.pathname.endsWith('/capabilities'))return reply({enabled:true,canEdit:!student,canReceive:!student,emailConfigured:false,userId:7,serverNow:Date.now()});
+  if(u.pathname.endsWith('/capabilities'))return reply({enabled:enabled,canEdit:!student,canReceive:!student,emailConfigured:false,userId:7,serverNow:Date.now()});
   if(u.pathname.endsWith('/notifications/21/read')){server.notice.readAt=Date.now();return reply({});}
   if(u.pathname.endsWith('/notifications/21'))return reply({...server.notice,canEdit:false,revision:21,document:{...blank(),text:'Nội dung đã công bố'}});
   if(u.pathname.endsWith('/notifications'))return reply(student?[]:(u.searchParams.get('unread')==='true'&&server.notice.readAt?[]:[server.notice]));
@@ -40,7 +40,7 @@ async function fixture({width=1440,gender='M',student=false,unread=true,expires=
   angular.module('Fixture',['Hrm.TnttDocuments','ngCookies']).value('settings',{campaignsEnabled:true,permissionsLoaded:true,api:{baseUrl:'/service/'}}).value('AuthSession',{hasCredentials:()=>!!window.user}).value('$stateParams',{});
   angular.bootstrap(document,['Fixture']);window.injector=angular.element(document).injector();window.vm=angular.element(document.querySelector('[ng-controller]')).scope().vm;
  });
- await page.locator('.td-entry').first().waitFor().catch(async e=>{console.error(JSON.stringify({errors:server.errors,calls:server.calls,state:await page.evaluate(()=>({error:window.vm?.error,caps:window.vm?.caps,entries:window.vm?.entries})),body:(await page.locator('body').innerText()).slice(0,700)}));await context.close();throw e;});
+ await page.locator(enabled?'.td-entry':'.td-empty').first().waitFor().catch(async e=>{console.error(JSON.stringify({errors:server.errors,calls:server.calls,state:await page.evaluate(()=>({error:window.vm?.error,caps:window.vm?.caps,entries:window.vm?.entries})),body:(await page.locator('body').innerText()).slice(0,700)}));await context.close();throw e;});
  return{page,context,server};
 }
 
@@ -152,4 +152,19 @@ test('printing preserves plain text and ink across a multipage A4 PDF and escape
   const pdf=await popup.pdf({preferCSSPageSize:true,printBackground:true,path:path.join(app,'../../.tmp/tntt-document-print.pdf')});
   assert.ok((pdf.toString('latin1').match(/\/Type \/Page\b/g)||[]).length>=3);await popup.close();
  }finally{await f.context.close();}
+});
+
+
+test('a disabled document feature explains the server setting to editors and avoids reading document tables',async()=>{
+ for(const student of [false,true]){
+  const f=await fixture({width:440,enabled:false,student});try{
+   await f.page.getByRole('heading',{name:'Mục Tài liệu chưa được bật trên máy chủ'}).waitFor();
+   assert.equal(f.server.calls.some(c=>/\/(entries|notifications)(?:\/|$)/.test(c.path)),false);
+   assert.equal(await f.page.locator('.td-empty code').count(),student?0:1);
+   await f.page.addStyleTag({content:'.td-page h1{color:#2c3c55!important}'});
+   assert.equal(await f.page.locator('.td-heading h1').evaluate(e=>getComputedStyle(e).color),'rgb(255, 255, 255)');
+   assert.equal(await f.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
 });

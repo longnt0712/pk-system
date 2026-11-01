@@ -2,3 +2,5 @@
 @media(max-width:950px){.td-layout{grid-template-columns:190px minmax(0,1fr)}.td-grid{grid-template-columns:1fr}}@media(max-width:650px){.td-page{margin:8px 0 24px}.td-heading{padding:23px}.td-heading h1{font-size:26px}.td-heading>i{font-size:34px}.td-layout{grid-template-columns:1fr}.td-sidebar{max-height:210px}.td-toolbar{gap:12px}.td-search{max-width:none;width:100%}.td-form-columns{grid-template-columns:1fr}.td-dialog-body{padding:18px;max-height:62vh}.td-dialog header{padding:20px}.td-dialog footer{padding:15px}.td-notice{padding:18px}.td-notice-meta{flex-direction:column;gap:4px}}
 
 .global-dark-mode .td-dialog legend,.global-dark-mode .td-dialog summary{color:#e0d4eb}.global-dark-mode .td-dialog header p{color:#c0c5d5}
+
+.td-page .td-heading h1{color:#fff!important}

@@ -351,7 +351,8 @@
 
         vm.loadResumeDrafts = function () {
             vm.resumeDrafts = [];
-            if (!vm.myUser.id) { return; }
+            // The TNTT dashboard has its own documents and notifications, not IELTS test drafts.
+            if (!vm.myUser.id || vm.isTnttDomain) { return; }
 
             var userId = String(vm.myUser.id);
             var ieltsPrefix = 'ieltsReadingInProgress:' + userId;

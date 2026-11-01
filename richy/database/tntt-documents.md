@@ -5,6 +5,28 @@
 3. Admin và `ROLE_EDUCATION_MANAGERMENT` soạn tài liệu chung. Những người nhận được chọn chỉ xem bản được chia sẻ. Tài khoản `ROLE_STUDENT` và hồ sơ `DOAN_SINH` không được nhận thông báo.
 4. Nhóm giáo lý viên/huynh trưởng bao gồm thành phần trưởng, trợ tá, trợ úy, tuyên úy và tài khoản giáo viên `ROLE_USER` có lớp trường 2; bao gồm người phụ trách lớp gốc trường 2, không lấy giáo viên IELTS chưa thuộc TNTT.
 
+## Khi giao diện báo chưa kích hoạt
+
+API `api/tntt-documents/capabilities` trả `enabled: false` khi cấu hình backend chưa bật. Chạy SQL chỉ tạo cấu trúc lưu trữ, không tự bật tính năng.
+
+Sau khi chạy cả hai script SQL, thêm hoặc sửa trong file `application.properties` bên ngoài JAR mà dịch vụ backend đang đọc:
+
+```properties
+tntt.documents.enabled=true
+```
+
+Hoặc cấu hình biến môi trường `TNTT_DOCUMENTS_ENABLED=true` cho chính dịch vụ Java. Cần khởi động lại dịch vụ để nhận cấu hình mới; không cần build lại JAR. Sau đó tải lại trang Tài liệu, API capabilities phải trả `enabled: true`. Nếu dùng biến môi trường của Windows, tiến trình dịch vụ phải nhận được biến đó khi khởi động.
+
+Trên server Windows đang dùng quy trình reset của dự án, mở PowerShell bằng **Run as administrator**, sau khi lưu cấu hình thì chạy:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\ServiceReset\Reset-RichyService.ps1"
+```
+
+Đây là đường dẫn cài script trong `deployment/windows-server-2012-r2/HUONG-DAN-RESET-SERVICE.md`; nếu script đã được cài tại thư mục khác thì dùng đúng đường dẫn đó. Đợi log `SUCCESS` rồi tải lại trang. Dịch vụ backend gián đoạn trong lúc reset. Script khởi động lại service `richy-wine-service` hiện có, không chạy thêm một lệnh `java -jar` song song.
+
+Nếu dịch vụ chưa dùng file cấu hình ngoài JAR, Spring Boot mặc định đọc `application.properties` và `config/application.properties` theo thư mục làm việc của dịch vụ. Xác nhận đúng thư mục làm việc và các tham số cấu hình hiện có trước khi tạo file; giữ nguyên cấu hình kết nối đang dùng.
+
 ## Email (tùy chọn)
 
 Thiết lập bằng biến môi trường, không đưa mật khẩu vào source:
