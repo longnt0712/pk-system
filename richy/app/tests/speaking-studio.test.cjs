@@ -63,6 +63,38 @@ function controllerFixture(options={}){
  const vm={};register('question/controllers/SpeakingController.js').controller.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},intervals,q,{},api,recorder,{trustAsResourceUrl:url=>url},{current:{data:{speakingManagement:options.managementMode===true}}});
  return{vm,storage,calls,handlers,api,practice,setProgressAck(v){progressAck=v;},setStartFailure(v){startFailure=v;},tick:()=>interval()};
 }
+test('bank import preselects every valid change and confirms selections across all lazy batches', async()=>{
+ const f=controllerFixture({managementMode:true});await settle();f.vm.isAdmin=true;
+ const rows=Array.from({length:125},(_,i)=>({status:['NEW','CHANGED','UPDATE_SAMPLE','UNCHANGED','INVALID'][i%5],row:{rowId:'row-'+i,topic:'Topic',prompt:'Prompt '+i}}));
+ const confirmations=[];f.api.preview=()=>Promise.resolve({token:'compare-1',rows:structuredClone(rows)});
+ f.api.confirm=(id,payload)=>{confirmations.push(plain(payload));return Promise.resolve({imported:payload.choices.length,preview:{token:'compare-2',rows:rows.map(row=>({...row,status:row.status==='INVALID'?'INVALID':'UNCHANGED'}))}});};
+ f.vm.openModal('import');f.vm.chooseFile({name:'bank.xlsx',size:100});f.vm.previewFile();await settle();
+ assert.equal(f.vm.importLimit,50);assert.equal(f.vm.importSelected,75);
+ assert.deepEqual(plain(f.vm.importRows.slice(0,5).map(row=>row.selected)),[true,true,true,false,false]);
+ assert.equal(f.vm.importRows[1].action,'NEW_VARIANT');assert.equal(f.vm.importRows[2].action,'UPDATE_SAMPLE');
+ f.vm.selectNewRows();assert.equal(f.vm.importSelected,25);f.vm.selectChangedRows();assert.equal(f.vm.importSelected,75);
+ const first=f.vm.importRows[0];f.vm.importRows[1].action='MINOR_CORRECTION';f.vm.importRows[121].selected=false;f.vm.countSelected();
+ f.vm.loadMoreImportRows();assert.equal(f.vm.importLimit,100);f.vm.loadMoreImportRows();assert.equal(f.vm.importLimit,125);f.vm.loadMoreImportRows();assert.equal(f.vm.importLimit,125);
+ assert.strictEqual(f.vm.importRows[0],first);assert.equal(f.vm.importRows[121].selected,false);assert.equal(f.vm.importSelected,74);
+ f.vm.confirmImport();await settle();assert.equal(confirmations.length,1);assert.equal(confirmations[0].token,'compare-1');assert.equal(confirmations[0].choices.length,74);
+ assert.ok(confirmations[0].choices.some(row=>row.rowId==='row-1'&&row.action==='MINOR_CORRECTION'));
+ assert.ok(confirmations[0].choices.some(row=>row.rowId==='row-122'&&row.action==='UPDATE_SAMPLE'));
+ assert.equal(confirmations[0].choices.some(row=>['row-3','row-4','row-121'].includes(row.rowId)),false);
+ assert.equal(f.vm.importSelected,0);assert.equal(f.vm.importLimit,50);
+ f.vm.previewFile();await settle();assert.equal(f.vm.importSelected,75);assert.equal(f.vm.importRows[121].selected,true);assert.equal(confirmations.length,1,'reading the comparison again never saves automatically');
+});
+
+test('topic scrolling appends batches without closing an answer and resets for a new Part or search',async()=>{
+ const f=controllerFixture({managementMode:true});await settle();
+ f.vm.questions=Array.from({length:14},(_,i)=>({id:i+1,entryId:i+11,part:1,topic:'Topic '+i,prompt:'Question '+i}));f.vm.rebuildGroups();
+ const first=f.vm.groups[0];first.lazyLoaded=true;f.vm.answerQuestionId=1;
+ assert.equal(f.vm.groupLimit,6);f.vm.loadMoreGroups();assert.equal(f.vm.groupLimit,12);f.vm.loadMoreGroups();assert.equal(f.vm.groupLimit,14);f.vm.loadMoreGroups();assert.equal(f.vm.groupLimit,14);
+ assert.strictEqual(f.vm.groups[0],first);assert.equal(first.lazyLoaded,true);assert.equal(f.vm.answerQuestionId,1);
+ f.vm.query='Topic 13';f.vm.rebuildGroups();assert.equal(f.vm.groupLimit,6);assert.equal(f.vm.groups.length,1);
+ f.vm.query='';f.vm.changePart(2);assert.equal(f.vm.groupLimit,6);assert.equal(f.vm.groups.length,0);
+ f.vm.changePart(1);f.vm.modal='import';f.vm.loadMoreGroups();assert.equal(f.vm.groupLimit,6);f.vm.modal=null;f.vm.loadingBank=true;f.vm.loadMoreGroups();assert.equal(f.vm.groupLimit,6);
+});
+
 test('practice start retries keep the same request and client key even after a reload or changed form',async()=>{
  const f=controllerFixture();await settle();f.vm.openPracticeSetup();f.setStartFailure(true);f.vm.startPractice();await settle();assert.equal(f.calls.start.length,1);assert.ok(f.storage.has('speaking-start:v1:7'));
  const g=controllerFixture({storage:f.storage});await settle();g.vm.openPracticeSetup();g.vm.practiceConfig.part1Count=20;g.vm.startPractice();await settle();assert.deepEqual(g.calls.start[0],f.calls.start[0]);assert.equal(g.vm.practice.id,21);assert.equal(g.storage.has('speaking-start:v1:7'),false);

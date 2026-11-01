@@ -31,7 +31,7 @@ function fixture() {
     const recorder = {state:{pending:[]}, loadPending(){}, stop:()=>Promise.resolve()};
     const vm = {};
     controller.call(vm, scope, {settings:{layout:{}}}, win, {search(key, value){if(key===undefined) return location; location[key]=value;}}, interval, q, {}, api, recorder, {}, {current:{data:{}}});
-    return {vm, win, api, events, scopeEvents, calls, location, elements, questions, flush(){while(scheduled.length) scheduled.shift()();}, render(){vm.groups.slice(vm.groupPage*6, vm.groupPage*6+6).forEach(group=>elements.set(group.anchorId, makeElement(group.anchorId)));}};
+    return {vm, win, api, events, scopeEvents, calls, location, elements, questions, flush(){while(scheduled.length) scheduled.shift()();}, render(){vm.groups.slice(0, vm.groupLimit).forEach(group=>elements.set(group.anchorId, makeElement(group.anchorId)));}};
 }
 
 test('the locator lists each topic once across Parts and searches topic names without matching question text', async () => {
@@ -44,11 +44,11 @@ test('the locator lists each topic once across Parts and searches topic names wi
     f.vm.topicQuery = 'food'; f.vm.filterTopics(); assert.equal(f.vm.topicResults.length, 1); assert.equal(f.vm.topicResults[0].part, 3);
 });
 
-test('selecting an off-page topic clears the main filter and opens the correct page before scrolling', async () => {
+test('selecting a later topic clears the filter and reveals the full prefix before scrolling', async () => {
     const f = fixture(); await settle(); const last = f.vm.topicLinks.find(topic=>topic.title==='Topic 8');
     f.vm.query = 'Secret prompt phrase'; f.vm.rebuildGroups(); assert.equal(f.vm.groups.length, 1);
     f.vm.toggleTopicLocator(); f.vm.jumpToTopic(last);
-    assert.equal(f.vm.query, ''); assert.equal(f.vm.groupPage, 1); assert.equal(f.vm.topicLocatorOpen, false);
+    assert.equal(f.vm.query, ''); assert.equal(f.vm.groupLimit, 8); assert.equal(f.vm.topicLocatorOpen, false);
     f.render(); f.flush();
     assert.equal(f.calls.scroll.length, 1); assert.equal(f.calls.scroll[0].id, 'sp-topic-'+encodeURIComponent(last.key));
     assert.deepEqual(plain(f.calls.scroll[0].options), {behavior:'smooth', block:'start'});

@@ -28,6 +28,31 @@
         }};
     }]);
 
+    // Append a batch when its sentinel enters the page or import-dialog scroll
+    // area. Keep the button usable when IntersectionObserver is unavailable.
+    angular.module('Hrm.Question').directive('speakingLoadMore', ['$window', function ($window) {
+        return {restrict: 'A', link: function (scope, element, attrs) {
+            var node = element[0], observer = null, generation = 0, queued = false, destroyed = false;
+            function disconnect() { if (observer) { observer.disconnect(); observer = null; } }
+            var unwatch = scope.$watchGroup([attrs.speakingLoadMoreItems, attrs.speakingLoadMoreCount, attrs.speakingLoadMoreEnabled || 'true'], function (values) {
+                disconnect(); queued = false; var stamp = ++generation, items = values[0], count = Number(values[1]);
+                if (destroyed || !values[2] || !items || !isFinite(count) || count < 0 || count >= items.length || !$window.IntersectionObserver) { return; }
+                try {
+                    observer = new $window.IntersectionObserver(function (entries) {
+                        if (destroyed || stamp !== generation || queued || !entries.some(function (entry) { return entry.target === node && entry.isIntersecting; })) { return; }
+                        queued = true;
+                        scope.$evalAsync(function () {
+                            if (destroyed || stamp !== generation) { return; }
+                            queued = false; scope.$eval(attrs.speakingLoadMore);
+                        });
+                    }, {root: node.closest ? node.closest('.sp-modal-body') : null, rootMargin: '240px 0px'});
+                    observer.observe(node);
+                } catch (error) { disconnect(); }
+            });
+            scope.$on('$destroy', function () { destroyed = true; generation++; disconnect(); unwatch(); });
+        }};
+    }]);
+
     // Closed <details> otherwise still creates its Angular bindings and sample
     // text nodes. Mount the body only while the user opens the sample.
     angular.module('Hrm.Question').directive('speakingLazySample', [function () {

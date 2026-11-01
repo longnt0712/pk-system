@@ -43,13 +43,13 @@ async function fixture(width,dark=false) {
         const set = {id:1,name:'Bộ 3 năm 2026',year:2026,fromMonth:9,toMonth:12,sharedForEveryone:true,canManage:true};
         const state = {loading:false,status:'Đã đồng bộ',ready:true,conflict:true,remote:{},history:{loading:false,versions:[],preview:null}};
         const model = {managementMode:true,isAdmin:true,canManage:true,sets:[set],selectedSet:set,selectedSetId:1,years:[2026],yearFilter:'',
-            part:1,questions:[question],groups:[{key:'hometown',part:1,title:'Hometown',passed:0,questions:[question],visible:[question]}],groupPage:0,
+            part:1,questions:[question],groups:[{key:'hometown',part:1,title:'Hometown',passed:0,questions:[question],visible:[question]}],groupLimit:6,
             adminClassId:1,adminStudentRows:[{id:7,name:'Nguyễn Minh Anh',username:'minhanh',answerCount:3,canAccess:true}],adminPage:0,adminPageSize:20,adminTotal:1,
             studentId:7,answerQuestionId:42,userId:1,history:[],recorder:{state:{pending:[]}},modal:null,preview:true,importRows:[
                 {row:{rowId:'P1-01',topic:'Home',prompt:'Where do you live?'},status:'NEW',selected:true},
-                {row:{rowId:'P1-02',topic:'Home',prompt:'What is your hometown like?'},status:'CHANGED',selected:false},
+                {row:{rowId:'P1-02',topic:'Home',prompt:'What is your hometown like?'},status:'CHANGED',selected:true},
                 {row:{rowId:'P1-03',topic:'Home',prompt:'A question needing review'},status:'INVALID',error:'Thiếu nội dung cần sửa',selected:false}],
-            importLabels:{NEW:'Câu mới',CHANGED:'Có thay đổi',INVALID:'Cần sửa'},importPage:1,importSelected:1,
+            importLabels:{NEW:'Câu mới',CHANGED:'Có thay đổi',INVALID:'Cần sửa'},importLimit:50,answerImportLimit:30,importSelected:2,
             availableSets:()=>[set],canImportOwnAnswers:()=>true,canUseClassRoster:()=>true,canReviewStudents:()=>true,canOpenAnswer:()=>true,
             answerStudentLabel:()=> 'Nguyễn Minh Anh',answerStudentId:()=>7,canImportViewedStudent:()=>false,canImportStudent:()=>true,
             modalTitle:()=> 'Import câu hỏi Speaking',openModal(name){this.modal=name;},closeModal(){this.modal=null;},changePart(part){this.part=part;},

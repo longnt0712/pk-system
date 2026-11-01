@@ -42,6 +42,7 @@
 .speaking-page summary { cursor:pointer; color:#7257b5; font-size:12px; padding:7px 0; }
 .speaking-page .sp-sample { background:#f7f5fd; padding:15px; border-radius:12px; margin-top:8px; }
 .speaking-page .sp-pagination { justify-content:flex-end; margin:20px 0 0; }
+.speaking-page .sp-load-more { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px; min-height:64px; padding:14px 0 4px; color:var(--sp-muted); font-size:12px; }
 .speaking-page .sp-empty { text-align:center; padding:55px 20px; }
 .speaking-page .sp-empty>i { font-size:40px; color:#a897df; margin-bottom:20px; }
 .speaking-page .sp-alert { padding:12px 16px; border-radius:12px; background:#edf8f2; color:#246c53; margin-bottom:14px; }

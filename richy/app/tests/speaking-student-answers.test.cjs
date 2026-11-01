@@ -74,9 +74,19 @@ function controllerFixture(options={}){
 test('a teacher on a shared bank can review their selected student without requesting another student history',async()=>{
  const f=controllerFixture({isAdmin:false});await settle();assert.equal(f.vm.canReviewStudents(),true);f.vm.studentId=7;const before=f.calls.history.length;await f.vm.loadBank();assert.equal(f.calls.history.length,before);await f.vm.markPass(f.vm.questions,true);assert.equal(f.calls.pass.length,1);assert.equal(f.calls.pass[0].studentId,7);assert.equal(f.vm.questions[0].passed,true);
 });
-test('Excel preview selects only new answers; overwrites are explicit and blank annotation lists are scoped to selected rows',async()=>{
- const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();f.vm.openAnswerImport(f.student);f.vm.chooseAnswerFile({name:'answers.xlsx',size:100});await f.vm.previewAnswers();assert.equal(f.vm.answerImportSelected,1);assert.equal(f.vm.answerImportRows[1].selected,false);f.vm.answerImportRows[1].selected=true;f.vm.answerImportRows[2].selected=true;f.vm.answerImportRows[3].selected=true;f.vm.countAnswerImports();assert.equal(f.vm.answerImportSelected,2);await f.vm.confirmAnswers();assert.deepEqual(f.calls.confirm[0],{setId:11,studentId:7,rows:[{questionId:42,html:'New answer',notes:[],revision:0},{questionId:43,html:'Changed answer',notes:[],revision:2}]});assert.equal(f.vm.modal,null);assert.match(f.vm.notice,/Đã lưu 2/);
+test('Excel preview preselects new and changed answers while invalid and unchanged rows stay excluded',async()=>{
+ const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();f.vm.openAnswerImport(f.student);f.vm.chooseAnswerFile({name:'answers.xlsx',size:100});await f.vm.previewAnswers();assert.equal(f.vm.answerImportSelected,2);assert.equal(f.vm.answerImportRows[1].selected,true);assert.equal(f.vm.answerImportRows[2].selected,false);assert.equal(f.vm.answerImportRows[3].selected,false);f.vm.answerImportRows[2].selected=true;f.vm.answerImportRows[3].selected=true;f.vm.countAnswerImports();assert.equal(f.vm.answerImportSelected,2);await f.vm.confirmAnswers();assert.deepEqual(f.calls.confirm[0],{setId:11,studentId:7,rows:[{questionId:42,html:'New answer',notes:[],revision:0},{questionId:43,html:'Changed answer',notes:[],revision:2}]});assert.equal(f.vm.modal,null);assert.match(f.vm.notice,/Đã lưu 2/);
 });
+test('answer import batches retain deselections and include selected changes beyond the first batch',async()=>{
+ const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();f.vm.openAnswerImport(f.student);
+ const rows=Array.from({length:65},(_,i)=>({rowId:'r'+i,questionId:100+i,html:'Answer '+i,revision:2,status:i===64?'UNCHANGED':i%2?'CHANGED':'NEW'}));
+ f.api.previewStudentAnswers=()=>Promise.resolve({setId:11,studentId:7,rows});f.vm.chooseAnswerFile({name:'again.xlsx',size:100});await f.vm.previewAnswers();
+ assert.equal(f.vm.answerImportLimit,30);assert.equal(f.vm.answerImportSelected,64);f.vm.answerImportRows[60].selected=false;f.vm.countAnswerImports();const first=f.vm.answerImportRows[0];
+ f.vm.loadMoreAnswerImports();assert.equal(f.vm.answerImportLimit,60);f.vm.loadMoreAnswerImports();assert.equal(f.vm.answerImportLimit,65);f.vm.loadMoreAnswerImports();assert.equal(f.vm.answerImportLimit,65);
+ assert.strictEqual(f.vm.answerImportRows[0],first);assert.equal(f.vm.answerImportRows[60].selected,false);await f.vm.confirmAnswers();
+ assert.equal(f.calls.confirm[0].rows.length,63);assert.equal(f.calls.confirm[0].rows.some(row=>row.questionId===160||row.questionId===164),false);assert.ok(f.calls.confirm[0].rows.some(row=>row.questionId===163));
+});
+
 test('Excel save never closes the preview or reports success for the wrong student, missing answer receipt or missing revision',async()=>{
  for(const mutate of [ack=>({...ack,studentId:8}),ack=>({...ack,answers:[]}),ack=>{delete ack.answers[0].revision;return ack;}]){
   const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();f.vm.openAnswerImport(f.student);f.vm.chooseAnswerFile({name:'answers.xlsx',size:100});await f.vm.previewAnswers();f.setAck(payload=>mutate({...payload,saved:payload.rows.length,answers:payload.rows.map(row=>({...row,setId:payload.setId,studentId:payload.studentId,revision:1}))}));await f.vm.confirmAnswers();assert.equal(f.vm.modal,'answers');assert.equal(f.vm.notice,undefined);assert.ok(f.vm.error);assert.equal(f.vm.answerImportRows.length,4);
@@ -107,9 +117,9 @@ test('late class or search responses cannot replace the currently selected class
  const oldSearch=deferred(),newSearch=deferred();f.api.adminStudents=(s,c,query)=>query==='old'?oldSearch.promise:newSearch.promise;f.vm.adminStudentQuery='old';const stale=f.vm.searchAdminStudents();f.vm.adminStudentQuery='new';const latest=f.vm.searchAdminStudents();newSearch.resolve({setId:11,classId:22,page:0,pageSize:25,total:1,students:[{...f.student,id:10}]});await latest;oldSearch.resolve({setId:11,classId:22,page:0,pageSize:25,total:1,students:[{...f.student,id:9}]});await stale;assert.equal(f.vm.adminStudentRows[0].id,10);
 });
 
-test('View opens the selected students first saved answer in its actual Part and topic page',async()=>{
+test('View opens the selected students first saved answer in its actual Part after revealing the topic prefix',async()=>{
  const f=controllerFixture();await settle();f.vm.adminClassId=21;await f.vm.changeAdminClass();const questions=Array.from({length:14},(_,i)=>({id:100+i,entryId:200+i,part:3,topic:'Topic '+i,prompt:'Question '+i,passed:false}));
- f.api.bank=(id,studentId)=>Promise.resolve({set:{...f.vm.selectedSet},studentId,questions});const viewed={...f.student,firstAnswerQuestionId:113,firstAnswerPart:3};await f.vm.viewAdminStudent(viewed);assert.equal(f.vm.studentId,7);assert.equal(f.vm.part,3);assert.equal(f.vm.groupPage,2);assert.equal(f.vm.answerQuestionId,113);assert.equal(f.vm.answerStudentLabel(),'Student (s7)');assert.equal(f.vm.adminViewEmpty,false);
+ f.api.bank=(id,studentId)=>Promise.resolve({set:{...f.vm.selectedSet},studentId,questions});const viewed={...f.student,firstAnswerQuestionId:113,firstAnswerPart:3};await f.vm.viewAdminStudent(viewed);assert.equal(f.vm.studentId,7);assert.equal(f.vm.part,3);assert.equal(f.vm.groupLimit,14);assert.equal(f.vm.answerQuestionId,113);assert.equal(f.vm.answerStudentLabel(),'Student (s7)');assert.equal(f.vm.adminViewEmpty,false);
 });
 
 test('rapid View changes clear old Pass flags and only the latest student may reopen an editor',async()=>{

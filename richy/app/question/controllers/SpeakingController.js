@@ -13,7 +13,10 @@
             vm.managementMode = !!($state && $state.current && $state.current.data && $state.current.data.speakingManagement === true);
             vm.directorySchoolId = 1;
             vm.loading = true; vm.error = ''; vm.sets = []; vm.classes = []; vm.importClasses = []; vm.classOptions = []; vm.canImportStudentAnswers = false; vm.students = []; vm.studentCache = {}; vm.groups = []; vm.questions = [];
-            vm.part = 1; vm.query = ''; vm.groupPage = 0; vm.recorder = recorder; vm.importRows = []; vm.importPage = 1;
+            vm.part = 1; vm.query = ''; vm.groupLimit = 6; vm.recorder = recorder; vm.importRows = []; vm.importLimit = 50; vm.answerImportLimit = 30;
+            vm.loadMoreGroups = function () { if (!vm.loadingBank && !vm.modal && !vm.practice) { vm.groupLimit = Math.min(vm.groups.length, vm.groupLimit + 6); } };
+            vm.loadMoreImportRows = function () { if (!vm.busy && vm.modal === 'import') { vm.importLimit = Math.min(vm.importRows.length, vm.importLimit + 50); } };
+            vm.loadMoreAnswerImports = function () { if (!vm.busy && vm.modal === 'answers') { vm.answerImportLimit = Math.min(vm.answerImportRows.length, vm.answerImportLimit + 30); } };
             vm.topicLinks = []; vm.topicResults = []; vm.topicQuery = ''; vm.topicLocatorOpen = false;
             vm.adminStudentRows = []; vm.adminRosterContext = null; vm.adminPage = 0; vm.adminPageSize = 25; vm.adminTotal = 0; vm.adminStudentQuery = '';
             vm.importLabels = {NEW: 'Chưa import', UNCHANGED: 'Đã import', UPDATE_SAMPLE: 'Sample / liên kết thay đổi', CHANGED: 'Cách hỏi thay đổi', INVALID: 'Cần sửa'};
@@ -45,11 +48,11 @@
             function normalize(text) { return String(text || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim(); }
             function topicKey(question) { return question.part + ':' + question.topic + ':' + (question.linkedPart2Id || ''); }
             function topicAnchor(key) { return 'sp-topic-' + encodeURIComponent(key); }
-            function showTopicPageThrough(index) {
-                vm.groupPage = Math.floor(index / 6);
+            function showTopicsThrough(index) {
+                vm.groupLimit = Math.min(vm.groups.length, Math.max(vm.groupLimit, (Math.floor(index / 6) + 1) * 6));
                 // Mount preceding topics before a deliberate jump so their
                 // later expansion cannot move the target while scrolling.
-                for (var position = vm.groupPage * 6; position <= index; position++) { vm.groups[position].lazyLoaded = true; }
+                for (var position = 0; position <= index; position++) { vm.groups[position].lazyLoaded = true; }
             }
             function resetTopicLocator() { topicJumpGeneration++; vm.topicLocatorOpen = false; vm.topicLinks = []; vm.topicResults = []; vm.activeTopicKey = null; }
             vm.filterTopics = function () {
@@ -71,10 +74,10 @@
                 var current = vm.topicLinks.filter(function (item) { return item.key === topic.key; })[0]; if (!current) { return; }
                 vm.query = ''; vm.part = current.part; vm.rebuildGroups();
                 var index = vm.groups.findIndex(function (group) { return group.key === current.key; }); if (index < 0) { return; }
-                showTopicPageThrough(index); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
-                var generation = ++topicJumpGeneration, bank = bankGeneration, setId = vm.selectedSetId, studentId = vm.answerStudentId(), part = vm.part, page = vm.groupPage;
+                showTopicsThrough(index); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
+                var generation = ++topicJumpGeneration, bank = bankGeneration, setId = vm.selectedSetId, studentId = vm.answerStudentId(), part = vm.part, groups = vm.groups;
                 $window.setTimeout(function () {
-                    if (!alive || generation !== topicJumpGeneration || bank !== bankGeneration || vm.selectedSetId !== setId || vm.answerStudentId() !== studentId || vm.part !== part || vm.groupPage !== page || vm.practice || vm.modal || vm.notebookQuestionId || !$window.document.getElementById) { return; }
+                    if (!alive || generation !== topicJumpGeneration || bank !== bankGeneration || vm.selectedSetId !== setId || vm.answerStudentId() !== studentId || vm.part !== part || vm.groups !== groups || vm.practice || vm.modal || vm.notebookQuestionId || !$window.document.getElementById) { return; }
                     var target = $window.document.getElementById(topicAnchor(current.key)); if (!target) { return; }
                     var reducedMotion = $window.matchMedia && $window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                     target.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
@@ -167,14 +170,14 @@
                     if (first) {
                         vm.part = first.part; vm.rebuildGroups();
                         var groupIndex = vm.groups.findIndex(function (group) { return group.questions.some(function (question) { return question.id === first.id; }); });
-                        if (groupIndex >= 0) { showTopicPageThrough(groupIndex); }
+                        if (groupIndex >= 0) { showTopicsThrough(groupIndex); }
                         vm.answerQuestionId = first.id;
                         if ($window.document.getElementById) { $window.setTimeout(function () { var target = $window.document.getElementById('sp-answer-question-' + first.id); if (alive && generation === studentViewGeneration && target) { target.scrollIntoView({behavior: 'smooth', block: 'center'}); } }, 0); }
                     } else if (Number(student.answerCount) > 0) { vm.error = 'Câu trả lời đã thay đổi sau khi tải danh sách. Bấm Làm mới ở danh sách lớp rồi chọn View lại.'; }
                 });
             };
             vm.rebuildGroups = function () {
-                var grouped = {}, groups = [], topics = {}, topicLinks = [], term = normalize(vm.query); vm.groupPage = 0; vm.notebookQuestionId = null; topicJumpGeneration++;
+                var grouped = {}, groups = [], topics = {}, topicLinks = [], term = normalize(vm.query); vm.groupLimit = 6; vm.notebookQuestionId = null; topicJumpGeneration++;
                 vm.questions.forEach(function (question) {
                     var key = topicKey(question);
                     if (!topics[key]) { topics[key] = true; topicLinks.push({key: key, part: question.part, title: question.topic}); }
@@ -253,12 +256,13 @@
             };
             vm.chooseFile = function (file) { if (!vm.managementMode || !vm.isAdmin || !owner() || !file) { return; } if (!/\.xlsx$/i.test(file.name) || file.size > 8 * 1024 * 1024) { vm.error = 'Chọn file .xlsx nhỏ hơn 8 MB.'; return; } vm.importFile = file; };
             function setPreview(preview) {
-                vm.preview = preview; vm.importPage = 1; vm.importRows = (preview.rows || []).map(function (item) {
-                    item.selected = item.status === 'NEW'; item.action = item.status === 'CHANGED' ? 'NEW_VARIANT' : item.status === 'UPDATE_SAMPLE' ? 'UPDATE_SAMPLE' : 'IMPORT'; return item;
+                vm.preview = preview; vm.importLimit = 50; vm.importRows = (preview.rows || []).map(function (item) {
+                    item.selected = item.status === 'NEW' || item.status === 'CHANGED' || item.status === 'UPDATE_SAMPLE'; item.action = item.status === 'CHANGED' ? 'NEW_VARIANT' : item.status === 'UPDATE_SAMPLE' ? 'UPDATE_SAMPLE' : 'IMPORT'; return item;
                 }); vm.countSelected();
             }
             vm.countSelected = function () { vm.importSelected = vm.importRows.filter(function (item) { return item.selected && item.status !== 'INVALID'; }).length; };
             vm.selectNewRows = function () { vm.importRows.forEach(function (item) { item.selected = item.status === 'NEW'; }); vm.countSelected(); };
+            vm.selectChangedRows = function () { vm.importRows.forEach(function (item) { item.selected = item.status === 'NEW' || item.status === 'CHANGED' || item.status === 'UPDATE_SAMPLE'; }); vm.countSelected(); };
             vm.previewFile = function () {
                 if (!vm.managementMode || !vm.isAdmin || !owner() || !vm.importFile) { return; } vm.busy = true; vm.error = '';
                 api.preview(vm.selectedSetId, vm.importFile).then(setPreview).catch(fail).finally(function () { vm.busy = false; });
@@ -299,12 +303,12 @@
             vm.openAnswerImport = function (student) {
                 var context = importTarget(student); if (!context || vm.busy) { return; }
                 vm.answerImportContext = context;
-                vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportPage = 1; vm.openModal('answers');
+                vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportLimit = 30; vm.openModal('answers');
             };
             vm.openOwnAnswerImport = function () {
                 if (!vm.canImportOwnAnswers() || vm.busy || vm.loadingBank || !vm.selectedSet || Number(vm.selectedSet.id) !== Number(vm.selectedSetId) || !Number.isInteger(Number(vm.userId)) || Number(vm.userId) <= 0) { return; }
                 vm.answerImportContext = {kind: 'SELF', actorId: Number(vm.userId), setId: Number(vm.selectedSetId), classId: null, studentId: Number(vm.userId), label: 'Câu trả lời của tôi'};
-                vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportPage = 1; vm.openModal('answers');
+                vm.answerImportFile = null; vm.answerImportRows = []; vm.answerImportSelected = 0; vm.answerImportLimit = 30; vm.openModal('answers');
             };
             vm.chooseAnswerFile = function (file) {
                 if (!currentImportContext(vm.answerImportContext) || vm.modal !== 'answers' || !file) { return; } if (!/\.xlsx$/i.test(file.name) || file.size > 8 * 1024 * 1024) { vm.error = 'Chọn file .xlsx nhỏ hơn 8 MB.'; return; }
@@ -316,7 +320,7 @@
                 return (context.kind === 'SELF' ? api.previewOwnAnswers(context.setId, vm.answerImportFile) : vm.isAdmin ? api.previewStudentAnswers(context.setId, context.studentId, vm.answerImportFile) : api.previewClassAnswers(context.setId, context.studentId, vm.answerImportFile)).then(function (data) {
                     if (!data || Number(data.setId) !== context.setId || Number(data.studentId) !== context.studentId || !Array.isArray(data.rows)) { throw new Error('File đối chiếu không khớp bộ đề hoặc học sinh. Chưa nhập dữ liệu.'); }
                     if (!alive || context !== vm.answerImportContext || !currentImportContext(context) || vm.modal !== 'answers') { return; }
-                    vm.answerImportRows = data.rows.map(function (row) { row.selected = row.status === 'NEW'; return row; }); vm.answerImportPage = 1; vm.countAnswerImports();
+                    vm.answerImportRows = data.rows.map(function (row) { row.selected = row.status === 'NEW' || row.status === 'CHANGED'; return row; }); vm.answerImportLimit = 30; vm.countAnswerImports();
                 }).catch(fail).finally(function () { vm.busy = false; });
             };
             vm.confirmAnswers = function () {

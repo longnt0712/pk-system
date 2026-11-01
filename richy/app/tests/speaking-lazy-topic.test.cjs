@@ -58,6 +58,43 @@ test('sample details mount their body only when opened, and late toggles cannot 
  node.open=true;listeners.toggle();destroy();queue.shift()();assert.equal(scope.spSampleOpen,false);assert.equal(listeners.toggle,undefined);
 });
 
+function loadMoreFixture(supported=true, root=null){
+ const observed=[],queue=[];let bind,destroy,unwatched=0,calls=0;
+ const node={closest(selector){assert.equal(selector,'.sp-modal-body');return root;}};
+ const win=supported?{IntersectionObserver:function(callback,options){this.callback=callback;this.options=options;this.observe=target=>this.target=target;this.disconnect=()=>this.disconnected=true;observed.push(this);}}:{};
+ const scope={$watchGroup(expressions,fn){bind=fn;return()=>unwatched++;},$evalAsync:fn=>queue.push(fn),$eval(expression){assert.equal(expression,'load()');calls++;},$on(name,fn){destroy=fn;}};
+ directives.speakingLoadMore(win).link(scope,[node],{speakingLoadMore:'load()',speakingLoadMoreItems:'items',speakingLoadMoreCount:'limit',speakingLoadMoreEnabled:'enabled'});
+ return{node,win,observed,bind,destroy,flush(){while(queue.length)queue.shift()();},get calls(){return calls;},get unwatched(){return unwatched;}};
+}
+
+test('a page or modal sentinel queues one batch only when it becomes visible',()=>{
+ for(const root of [null,{id:'modal-scroll'}]){
+  const f=loadMoreFixture(true,root);f.bind([Array(120),50,true]);const observer=f.observed[0];
+  assert.equal(observer.options.root,root);assert.equal(observer.target,f.node);
+  observer.callback([{target:f.node,isIntersecting:false}]);observer.callback([{target:{},isIntersecting:true}]);f.flush();assert.equal(f.calls,0);
+  observer.callback([{target:f.node,isIntersecting:true}]);observer.callback([{target:f.node,isIntersecting:true}]);assert.equal(f.calls,0);f.flush();assert.equal(f.calls,1);f.destroy();
+ }
+});
+
+test('appending rows rearms the sentinel and completion disconnects it',()=>{
+ const f=loadMoreFixture(),items=Array(120);f.bind([items,50,true]);const first=f.observed[0];
+ first.callback([{target:f.node,isIntersecting:true}]);f.flush();f.bind([items,100,true]);assert.equal(first.disconnected,true);
+ f.observed[1].callback([{target:f.node,isIntersecting:true}]);f.flush();assert.equal(f.calls,2);
+ f.bind([items,120,true]);assert.equal(f.observed[1].disconnected,true);assert.equal(f.observed.length,2);f.destroy();
+});
+
+test('a new file, disabled import or destroyed view discards stale queued scroll callbacks',()=>{
+ const f=loadMoreFixture();f.bind([Array(120),50,true]);const stale=f.observed[0];stale.callback([{target:f.node,isIntersecting:true}]);
+ f.bind([Array(70),50,true]);f.flush();assert.equal(f.calls,0);stale.callback([{target:f.node,isIntersecting:true}]);f.flush();assert.equal(f.calls,0);
+ const current=f.observed[1];current.callback([{target:f.node,isIntersecting:true}]);f.bind([Array(70),50,false]);f.flush();assert.equal(f.calls,0);assert.equal(current.disconnected,true);
+ f.bind([Array(70),50,true]);f.observed[2].callback([{target:f.node,isIntersecting:true}]);f.destroy();f.flush();assert.equal(f.calls,0);assert.equal(f.observed[2].disconnected,true);assert.equal(f.unwatched,1);
+});
+
+test('unsupported or failing observers leave manual loading available without a background loop',()=>{
+ const unsupported=loadMoreFixture(false);unsupported.bind([Array(100),50,true]);unsupported.flush();assert.equal(unsupported.calls,0);unsupported.destroy();
+ const broken=loadMoreFixture();broken.win.IntersectionObserver=function(){throw Error('Unavailable');};broken.bind([Array(100),50,true]);broken.flush();assert.equal(broken.calls,0);broken.destroy();
+});
+
 test('both Speaking routes load the directive while the view keeps full topic headers and lazy sample bodies',()=>{
  const routes=fs.readFileSync(path.join(app,'question/question.module.js'),'utf8'),view=fs.readFileSync(path.join(app,'question/views/speaking.html'),'utf8');
  assert.equal((routes.match(/business\/speaking-lazy-topic\.js/g)||[]).length,2);
@@ -65,4 +102,9 @@ test('both Speaking routes load the directive while the view keeps full topic he
  assert.match(view,/<div ng-if="group\.lazyLoaded">/);assert.match(view,/ng-if="!group\.lazyLoaded"/);
  assert.match(view,/<details ng-if="question\.sample" speaking-lazy-sample><summary>Sample trả lời<\/summary><p ng-if="spSampleOpen"/);
  assert.match(view,/ng-if="vm\.answerQuestionId===question\.id"/);assert.match(view,/ng-if="vm\.notebookQuestionId===question\.id"/);
+ assert.match(view,/group in vm\.groups \| limitTo:vm\.groupLimit track by group\.key/);
+ assert.match(view,/item in vm\.importRows \| limitTo:vm\.importLimit track by item\.row\.rowId/);
+ assert.match(view,/item in vm\.answerImportRows \| limitTo:vm\.answerImportLimit track by item\.rowId/);
+ assert.equal((view.match(/speaking-load-more="/g)||[]).length,3);
+ assert.doesNotMatch(view,/vm\.(groupPage|importPage|answerImportPage)/);
 });
