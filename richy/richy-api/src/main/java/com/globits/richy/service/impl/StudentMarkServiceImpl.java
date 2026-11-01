@@ -119,12 +119,11 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    List<DisplayStudentMarkDto> ret =
 	            new ArrayList<DisplayStudentMarkDto>();
 
-	    /*
-	     * Chương trình đào tạo vẫn cần thiết vì dùng để lấy
-	     * danh sách loại điểm/cột điểm.
-	     */
+	    // A grade board always belongs to a class and a program, including row refreshes.
+	    // Old clients must not fall back to loading every active student when a class is cleared.
 	    if (searchDto == null
-	            || searchDto.getEducationProgramId() == null) {
+	            || searchDto.getEnrollmentClass() == null || searchDto.getEnrollmentClass() <= 0
+	            || searchDto.getEducationProgramId() == null || searchDto.getEducationProgramId() <= 0) {
 	        return ret;
 	    }
 
@@ -144,13 +143,11 @@ public class StudentMarkServiceImpl implements StudentMarkService {
         if (searchDto.getStudentUserId() != null) {
             // A targeted row request never retrieves all users or the entire board.
             String sql = "select distinct new com.globits.security.dto.UserDto(u) from User u "
-                    + "left join u.enrollmentClassIds ec where u.id = :studentId and u.active = true";
-            if (enrollmentClass != null) { sql += " and (u.person.enrollmentClassId = :classId or ec = :longClassId)"; }
+                    + "left join u.enrollmentClassIds ec where u.id = :studentId and u.active = true"
+                    + " and (u.person.enrollmentClassId = :classId or ec = :longClassId)";
             if (groupId != null) { sql += " and exists (select g.id from User ug join ug.groups g where ug.id=u.id and g.id=:groupId)"; }
             Query rowQuery = manager.createQuery(sql, UserDto.class).setParameter("studentId", searchDto.getStudentUserId());
-            if (enrollmentClass != null) {
-                rowQuery.setParameter("classId", enrollmentClass); rowQuery.setParameter("longClassId", enrollmentClass.longValue());
-            }
+            rowQuery.setParameter("classId", enrollmentClass); rowQuery.setParameter("longClassId", enrollmentClass.longValue());
             if (groupId != null) { rowQuery.setParameter("groupId", groupId); }
             users = rowQuery.getResultList();
         } else {
@@ -160,7 +157,7 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	     * Có lớp và có group.
 	     * Lấy học sinh đồng thời thuộc lớp và group.
 	     */
-	    if (enrollmentClass != null && groupId != null) {
+	    if (groupId != null) {
 
 	        users = userRepository
 	                .getUsersDtoByEnrollmentClassAndGroupId(
@@ -172,30 +169,13 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	     * Trường hợp 2:
 	     * Chỉ chọn lớp.
 	     */
-	    } else if (enrollmentClass != null) {
+	    } else {
 
 	        users = userRepository
 	                .getUsersDtoByEnrollmentClass(
 	                        enrollmentClass
 	                );
 
-	    /*
-	     * Trường hợp 3:
-	     * Chỉ chọn group.
-	     */
-	    } else if (groupId != null) {
-
-	        users = userRepository
-	                .getUsersDtoByGroupId(groupId);
-
-	    /*
-	     * Trường hợp 4:
-	     * Không chọn lớp và không chọn group.
-	     */
-	    } else {
-
-	        users = userRepository
-	                .getAllActiveStudentDtos();
 	    }
         }
 

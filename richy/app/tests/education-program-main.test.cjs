@@ -14,6 +14,12 @@ test('student_marks selects Main instead of the first returned program and keeps
   await tick();assert.equal(vm.searchDisplayDto.educationProgramId,withMain?1:3);assert.equal(calls.length,1);assert.equal(calls[0].educationProgramId,withMain?1:3);
  }
 });
+test('student_marks does not load a phantom class or all students when the class catalog is empty or belongs to another school',async()=>{
+ for(const classes of [[],[{id:1,name:'IELTS only',schoolId:1}]]){
+  const calls=[];const {vm}=controller('student_mark/controllers/StudentMarkController.js','StudentMarkController',{getAllGroups:()=>Promise.resolve([]),getEnrolmentClass:()=>Promise.resolve({content:classes}),getEducationPrograms:()=>Promise.resolve({content:programs}),getListDisplayStudentMark:d=>{calls.push(clone(d));return Promise.resolve([]);}});
+  await tick();assert.equal(calls.length,0);assert.equal(vm.searchDisplayDto.enrollmentClass,null);assert.equal(vm.studentMarks.length,0);assert.match(vm.boardHint,/Chọn lớp/);
+ }
+});
 test('marks selects Main and an older unfiltered page cannot replace the filtered result',async()=>{
  const initial=deferred(),calls=[],orders=[];const {vm}=controller('mark/controllers/MarkController.js','MarkController',{getTableDefinition:()=>[],getPage:d=>{calls.push(clone(d));return calls.length===1?initial.promise:Promise.resolve({content:[{id:77,name:'Main mark'}],totalElements:1});},getPageEducationProgram:()=>Promise.resolve({content:programs}),getOrderedMarks:id=>{orders.push(id);return Promise.resolve([]);}});
  await tick();assert.equal(vm.searchDto.educationProgram.id,1);assert.deepEqual(orders,[1]);assert.equal(calls[1].educationProgram.id,1);

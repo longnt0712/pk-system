@@ -17,8 +17,8 @@ const boardCode = section('        function initializeMarks(student)', '        
     section('        vm.getListDisplayStudentMark = function', '        vm.markTimeouts =') +
     section('        vm.parseMarkNumber = function', '        vm.onMarkKeyup = function');
 
-function setup() {
-    const calls = [], warnings = [];
+function setup(request = () => Promise.resolve([])) {
+    const calls = [], warnings = [], loading = [];
     const vm = {
         searchDisplayDto: {enrollmentClass: 10, educationProgramId: 5, groupId: 8},
         loadedScope: {enrollmentClass: 10, educationProgramId: 5, groupId: 8},
@@ -27,10 +27,50 @@ function setup() {
     };
     nodeVm.runInNewContext(boardCode, {vm, boardGeneration: 0, destroyed: false,
         angular: {copy: structuredClone, forEach(values, callback) {(values || []).forEach(callback);}},
-        service: {getListDisplayStudentMark(payload) {calls.push(structuredClone(payload)); return Promise.resolve([]);}},
-        blockUI: {start() {}, stop() {}}, toastr: {warning(message) {warnings.push(message);}}});
-    return {vm, calls, warnings};
+        service: {getListDisplayStudentMark(payload) {calls.push(structuredClone(payload)); return request(payload);}},
+        blockUI: {start() {loading.push('start');}, stop() {loading.push('stop');}}, toastr: {warning(message) {warnings.push(message);}}});
+    return {vm, calls, warnings, loading};
 }
+
+test('missing or invalid class never requests students, even when a program and group are selected', () => {
+    for (const classId of [null, undefined, '', 0, -1, 'all', 'undefined', 1.5]) {
+        const h = setup();
+        h.vm.studentMarks = [{studentMarks: []}];
+        h.vm.markColumns = [{id: 1}];
+        h.vm.searchDisplayDto.enrollmentClass = classId;
+        h.vm.getListDisplayStudentMark();
+        assert.equal(h.calls.length, 0, String(classId));
+        assert.equal(h.vm.studentMarks.length, 0);
+        assert.equal(h.vm.markColumns.length, 0);
+        assert.equal(h.vm.loadedScope, null);
+        assert.match(h.vm.boardHint, /Chọn lớp/);
+        assert.deepEqual(h.loading, []);
+    }
+});
+
+test('a missing program also waits for a complete class scope', () => {
+    const h = setup();
+    h.vm.searchDisplayDto.educationProgramId = null;
+    h.vm.getListDisplayStudentMark();
+    assert.equal(h.calls.length, 0);
+    assert.match(h.vm.boardHint, /Chọn chương trình/);
+});
+
+test('clearing a class invalidates an in-flight response instead of repopulating an unscoped board', async () => {
+    let resolve;
+    const h = setup(() => new Promise(done => {resolve = done;}));
+    h.vm.getListDisplayStudentMark();
+    assert.equal(h.vm.tableLoading, true);
+    h.vm.searchDisplayDto.enrollmentClass = null;
+    h.vm.getListDisplayStudentMark();
+    resolve([{user: {id: 100}, studentMarks: []}]);
+    await new Promise(setImmediate);
+    assert.equal(h.calls.length, 1);
+    assert.equal(h.vm.tableLoading, false);
+    assert.equal(h.vm.studentMarks.length, 0);
+    assert.equal(h.vm.loadedScope, null);
+    assert.deepEqual(h.loading, ['start', 'stop']);
+});
 
 test('selecting a class keeps the current program and group in the actual grade-board request', async () => {
     const h = setup();
@@ -139,14 +179,32 @@ test('the grade-page tree picker updates the real board scope and blocks both op
             const requests = await page.evaluate(() => window.qaRequests);
             assert.deepEqual(requests, [{enrollmentClass: 11, educationProgramId: 5, groupId: 8}]);
             assert.match(await trigger.innerText(), /Lớp giáo lý \/ Đội Lucia/);
+            assert.equal(await page.locator('.class-tree-clear').count(), 0, 'The grades page requires a class');
+            for (const dismiss of ['footer', 'close', 'escape', 'backdrop']) {
+                await trigger.click();
+                await modal.waitFor();
+                assert.equal(await modal.locator('.class-tree-row').count(), 2, 'Reopening starts with parent classes');
+                assert.equal(await modal.getByRole('button', {name: 'Bỏ lọc lớp', exact: true}).count(), 0);
+                if (dismiss === 'footer') await modal.locator('.modal-footer').getByRole('button', {name: 'Đóng', exact: true}).click();
+                else if (dismiss === 'close') await modal.locator('.modal-header').getByRole('button', {name: 'Đóng', exact: true}).click();
+                else if (dismiss === 'escape') await page.keyboard.press('Escape');
+                else await page.locator('.class-tree-picker-window').click({position: {x: 2, y: 2}});
+                await modal.waitFor({state: 'hidden'});
+                assert.equal(await page.evaluate(() => window.qaRequests.length), 1, dismiss + ' must not reload');
+                assert.equal(await page.evaluate(() => window.qaVm.searchDisplayDto.enrollmentClass), 11);
+                assert.equal(await page.evaluate(() => window.qaVm.loadedScope.enrollmentClass), 11);
+            }
+            // Dismissing with no selection must not turn an empty board into an all-student query.
+            await page.evaluate(() => window.qaScope.$apply(() => {
+                window.qaVm.searchDisplayDto.enrollmentClass = null;
+                window.qaVm.getListDisplayStudentMark();
+            }));
             await trigger.click();
-            assert.equal(await modal.locator('.class-tree-row').count(), 2, 'Reopening starts with parent classes');
+            await modal.waitFor();
             await modal.locator('.modal-footer').getByRole('button', {name: 'Đóng', exact: true}).click();
             await modal.waitFor({state: 'hidden'});
-            assert.equal(await page.evaluate(() => window.qaRequests.length), 1, 'Cancel does not reload');
-            await page.locator('.class-tree-clear').click();
-            await page.waitForFunction(() => window.qaRequests.length === 2);
-            assert.deepEqual(await page.evaluate(() => window.qaRequests[1]), {enrollmentClass: null, educationProgramId: 5, groupId: 8});
+            assert.equal(await page.evaluate(() => window.qaRequests.length), 1);
+            assert.equal(await page.evaluate(() => window.qaVm.studentMarks.length), 0);
             assert.deepEqual(errors, []);
             await page.close();
         }

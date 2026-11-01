@@ -171,7 +171,7 @@
         vm.searchDto = {};
 
         vm.searchDisplayDto = {
-            enrollmentClass: 1,
+            enrollmentClass: null,
             educationProgramId: null,
             textSearch: null,
             groupId: null
@@ -518,6 +518,19 @@
                 return;
             }
             var generation = ++boardGeneration, scope = angular.copy(vm.searchDisplayDto);
+            var classSelected = scope && /^[1-9]\d*$/.test(String(scope.enrollmentClass));
+            var programSelected = scope && /^[1-9]\d*$/.test(String(scope.educationProgramId));
+            vm.boardHint = '';
+            if (!classSelected || !programSelected) {
+                // Never turn an empty class filter into an all-student board.
+                // Incrementing the generation above also discards any older response.
+                if (vm.tableLoading) blockUI.stop();
+                vm.tableLoading = false;
+                vm.studentMarks = []; vm.markColumns = []; vm.loadedScope = null;
+                vm.boardError = '';
+                vm.boardHint = !classSelected ? 'Chọn lớp để xem bảng điểm.' : 'Chọn chương trình để xem bảng điểm của lớp.';
+                return;
+            }
             if (!vm.tableLoading) blockUI.start();
             vm.tableLoading = true;
             vm.boardError = '';

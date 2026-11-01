@@ -61,6 +61,7 @@
                         <class-tree-picker classes="vm.enrollmentClasses"
                                            ng-model="vm.searchDisplayDto.enrollmentClass"
                                            school-id="2"
+                                           allow-clear="false"
                                            disabled="vm.hasUnsavedMarks()"
                                            on-change="vm.getListDisplayStudentMark()"
                                            placeholder="LỚP HỌC"
@@ -132,6 +133,7 @@
                     </div>
                 </div>
                 <p class="text-danger" ng-if="vm.boardError" role="alert">{{vm.boardError}}</p>
+                <p class="text-muted" ng-if="vm.boardHint" role="status">{{vm.boardHint}}</p>
 
                 <div class="table-responsive margin-top-10 student-mark-table-wrap">
                     <table class="table table-bordered table-hover table-striped text-center product-table student-mark-table">
