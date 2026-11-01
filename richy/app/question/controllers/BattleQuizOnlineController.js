@@ -1517,6 +1517,9 @@
                     (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
                 return 'assets/images/learning-pets/halloween-pumpkin/pet.png' + suffix;
             }
+            if (petKey === 'ARAGONDA') {
+                return 'assets/images/learning-pets/aragonda/pet.svg' + suffix;
+            }
 
             var dragonBall = /^DRAGON_BALL_([1-7])$/.exec(petKey);
             if (dragonBall && level >= 5 + Number(dragonBall[1])) {
@@ -1646,6 +1649,7 @@
                 key: 'MAM_HOC',
                 label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
             }];
+            battlePetOptions.push({key: 'ARAGONDA', label: 'Aragonda'});
             if (halloweenAvailable) {
                 battlePetOptions.push({key: 'HALLOWEEN_PUMPKIN', label: 'Bí ngô Halloween'});
             }

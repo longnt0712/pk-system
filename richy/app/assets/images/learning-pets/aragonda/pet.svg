@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="340" viewBox="0 0 320 340" role="img" aria-labelledby="title desc">
+  <title id="title">Aragonda</title>
+  <desc id="desc">A friendly olive-green snake with dark spots, a golden eye and a little forked tongue.</desc>
+  <defs>
+    <linearGradient id="coil" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#9da94f"/>
+      <stop offset="1" stop-color="#7e8b3c"/>
+    </linearGradient>
+    <linearGradient id="neck" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#94a248"/>
+      <stop offset="1" stop-color="#7e8e3a"/>
+    </linearGradient>
+    <clipPath id="lower-clip"><path d="M51 217C19 217 9 242 12 271C14 297 34 310 69 310H246C279 310 297 297 298 271C300 244 287 223 260 218Z"/></clipPath>
+    <clipPath id="middle-clip"><path d="M76 163C48 163 34 185 35 213C35 242 55 254 85 254H226C259 254 277 240 277 214C277 185 261 165 236 164Z"/></clipPath>
+    <clipPath id="upper-clip"><path d="M104 135C79 135 65 153 66 176C67 200 83 213 108 213H208C235 213 247 198 244 176C240 152 226 137 204 136Z"/></clipPath>
+    <clipPath id="neck-clip"><path d="M91 162V103C91 62 119 39 162 39C187 39 208 44 218 58L223 73L257 84Q265 87 261 96Q258 103 246 103H174V122H195C219 122 232 135 230 153C229 172 213 181 192 181H113Q91 181 91 162Z"/></clipPath>
+  </defs>
+  <style>
+    .aragonda-tongue { transform-origin: 254px 98px; transform: scaleX(0); opacity: 0; animation: aragonda-tongue 4.8s ease-in-out infinite; }
+    @keyframes aragonda-tongue {
+      0%, 68%, 87%, 100% { transform: scaleX(0); opacity: 0; }
+      70%, 77%, 82% { transform: scaleX(1); opacity: 1; }
+      74%, 80% { transform: scaleX(.4); opacity: 1; }
+      85% { transform: scaleX(.75); opacity: 1; }
+    }
+    .aragonda-eye { transform-origin: 193px 64px; animation: aragonda-blink 7.4s ease-in-out infinite; }
+    @keyframes aragonda-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
+    @media (prefers-reduced-motion: reduce) {
+      .aragonda-tongue { animation: none; opacity: 0; transform: scaleX(0); }
+      .aragonda-eye { animation: none; }
+    }
+  </style>
+  <path d="M51 217C19 217 9 242 12 271C14 297 34 310 69 310H246C279 310 297 297 298 271C300 244 287 223 260 218Z" fill="url(#coil)"/>
+  <g clip-path="url(#lower-clip)" fill="#62672d">
+    <ellipse cx="59" cy="272" rx="24" ry="31" transform="rotate(-12 59 272)"/>
+    <ellipse cx="142" cy="277" rx="24" ry="32"/>
+    <ellipse cx="230" cy="273" rx="24" ry="32" transform="rotate(12 230 273)"/>
+    <path d="M11 264Q139 289 300 264V304H11Z" fill="#66752e" opacity=".34"/>
+  </g>
+  <path d="M76 163C48 163 34 185 35 213C35 242 55 254 85 254H226C259 254 277 240 277 214C277 185 261 165 236 164Z" fill="url(#coil)"/>
+  <g clip-path="url(#middle-clip)" fill="#60622b">
+    <ellipse cx="57" cy="190" rx="24" ry="28" transform="rotate(18 57 190)"/>
+    <ellipse cx="110" cy="231" rx="25" ry="27"/>
+    <ellipse cx="189" cy="231" rx="25" ry="27"/>
+    <ellipse cx="253" cy="191" rx="23" ry="28" transform="rotate(-16 253 191)"/>
+    <path d="M35 224Q154 250 278 223V265H35Z" fill="#66752e" opacity=".25"/>
+  </g>
+  <path d="M104 135C79 135 65 153 66 176C67 200 83 213 108 213H208C235 213 247 198 244 176C240 152 226 137 204 136Z" fill="#8e9d45"/>
+  <g clip-path="url(#upper-clip)" fill="#666b2f">
+    <ellipse cx="77" cy="160" rx="21" ry="29"/>
+    <ellipse cx="231" cy="164" rx="21" ry="27"/>
+    <path d="M68 191Q153 211 242 190V221H68Z" fill="#718337" opacity=".45"/>
+  </g>
+  <path d="M91 162V103C91 62 119 39 162 39C187 39 208 44 218 58L223 73L257 84Q265 87 261 96Q258 103 246 103H174V122H195C219 122 232 135 230 153C229 172 213 181 192 181H113Q91 181 91 162Z" fill="url(#neck)"/>
+  <g clip-path="url(#neck-clip)" fill="#62672e">
+    <ellipse cx="101" cy="79" rx="20" ry="18" transform="rotate(-32 101 79)"/>
+    <ellipse cx="97" cy="121" rx="24" ry="22"/>
+    <path d="M133 80Q160 66 184 75Q171 86 147 87Z"/>
+    <path d="M168 122H214Q225 132 222 143H172Z" fill="#788839"/>
+    <path d="M88 159Q141 173 230 156L234 183H90Z" fill="#738735" opacity=".38"/>
+  </g>
+  <path d="M102 151V105" fill="none" stroke="#b2bc66" stroke-width="6" stroke-linecap="round" opacity=".33"/>
+  <g class="aragonda-tongue" fill="none" stroke="#cf596a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M254 98H287L302 90M287 98L302 106"/>
+  </g>
+  <path d="M215 98Q237 101 254 96" fill="none" stroke="#66762f" stroke-width="3.5" stroke-linecap="round"/>
+  <ellipse cx="247" cy="86" rx="2.3" ry="1.7" fill="#5e6a2c"/>
+  <g class="aragonda-eye">
+    <ellipse cx="193" cy="64" rx="15" ry="19" fill="#d8d047"/>
+    <ellipse cx="196" cy="64" rx="8" ry="17" fill="#3b4226"/>
+    <ellipse cx="199" cy="55" rx="5" ry="7" fill="#fffef4"/>
+    <ellipse cx="189" cy="73" rx="2.5" ry="3.5" fill="#fffef4"/>
+  </g>
+</svg>

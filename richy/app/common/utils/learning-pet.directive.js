@@ -66,6 +66,7 @@
             var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
             var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
             var halloweenPumpkinUrl = 'assets/images/learning-pets/halloween-pumpkin/pet.png?v=' + version;
+            var aragondaUrl = 'assets/images/learning-pets/aragonda/pet.svg?v=' + version;
             var gokuKidEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-21.png?v=' + version;
             var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=' + version;
             var gokuSuperSaiyanUrl = 'assets/images/learning-pets/goku-kid/pet-level-23.png?v=' + version;
@@ -205,6 +206,12 @@
                                 ? 'assets/images/learning-pets/mam-hoc/egg-level-1.png?v=' + version
                                 : vm.hatchedFallbackImage)
                 }];
+                vm.availablePets.push({
+                    key: 'ARAGONDA',
+                    name: 'Aragonda',
+                    description: 'Bạn rắn xanh · thè lưỡi tinh nghịch',
+                    image: aragondaUrl
+                });
                 vm.availablePets.push({
                     key: 'HALLOWEEN_PUMPKIN',
                     name: 'Bí ngô Halloween',
@@ -387,6 +394,11 @@
                 if (selectedPet === 'HALLOWEEN_PUMPKIN') {
                     vm.petForm = 'halloween-pumpkin';
                     vm.petImage = halloweenPumpkinUrl;
+                    return;
+                }
+                if (selectedPet === 'ARAGONDA') {
+                    vm.petForm = 'aragonda';
+                    vm.petImage = aragondaUrl;
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {

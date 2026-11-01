@@ -77,6 +77,43 @@ function setupBattle(level, roles = [], clock = petClock()) {
         $window, {}, {}, {}, {});
 }
 
+test('Aragonda is available all year at level zero in both pickers without replacing the chosen pet', () => {
+    const expected = 'assets/images/learning-pets/aragonda/pet.svg?v=pet-test';
+    for (const iso of ['2026-02-01T00:00:00Z', '2026-10-31T12:00:00Z', '2026-11-06T00:00:00Z']) {
+        for (const roles of [[], [{name: 'ROLE_ADMIN'}]]) {
+            const clock = petClock(iso), h = setupLearningPet(0, 'MAM_HOC', new Map(), roles, clock);
+            const card = h.pet.availablePets.find(item => item.key === 'ARAGONDA');
+            assert.ok(card && !card.locked);
+            assert.equal(h.pet.selectedPetKey, 'MAM_HOC');
+            assert.equal(card.image, expected);
+            h.hooks.form({...h.user(), selectedLearningPet: 'ARAGONDA'});
+            assert.equal(h.pet.petForm, 'aragonda');
+            assert.equal(h.pet.petImage, expected);
+            const battle = setupBattle(0, roles, clock), options = battle.getBattlePetOptions();
+            assert.equal(options.filter(item => item.key === 'ARAGONDA').length, 1);
+            assert.strictEqual(battle.getBattlePetOptions(), options);
+            assert.equal(battle.getBattlePetOptionImage('ARAGONDA'), expected);
+            assert.equal(battle.getPlayerPetImage({username: 'another-student', selectedPetKey: 'ARAGONDA', vocabularyExperienceLevel: 0}), expected);
+            assert.equal(h.user().vocabularyExperienceLevel, 0);
+        }
+    }
+});
+
+test('selecting Aragonda persists the choice, updates both displays and survives a fresh session', async () => {
+    const h = setupLearningPet(0, 'MAM_HOC');
+    h.pet.selectPet('ARAGONDA');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests[0].url, '/api/v1/battle-online/pet-selection');
+    assert.equal(h.requests[0].body.petKey, 'ARAGONDA');
+    assert.equal(h.user().selectedLearningPet, 'ARAGONDA');
+    assert.equal(h.pet.selectedPetKey, 'ARAGONDA');
+    assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', 'ARAGONDA']]);
+    const fresh = setupLearningPet(0, h.user().selectedLearningPet);
+    assert.equal(fresh.pet.petForm, 'aragonda');
+    assert.equal(fresh.pet.petImage, h.pet.petImage);
+    assert.equal(fresh.user().vocabularyExperienceLevel, 0);
+});
+
 test('Jerry is unavailable before level 12 even with a stale saved selection', () => {
     const {pet} = setupLearningPet(11);
     assert.equal(pet.selectedPetKey, 'MAM_HOC');
@@ -101,7 +138,7 @@ test('both pet displays use the same Jerry stage at levels 12, 13, 14 and later'
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options, 'option reference stays stable between digests');
-        assert.equal(options.length, level >= 21 ? 17 : (level >= 20 ? 16 : (level >= 18 ? 15 : (level >= 15 ? 14 : 13))), 'earlier pets stay available');
+        assert.equal(options.length, level >= 21 ? 18 : (level >= 20 ? 17 : (level >= 18 ? 16 : (level >= 15 ? 15 : 14))), 'earlier pets stay available');
     }
 });
 
@@ -166,7 +203,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 21);
+        assert.equal(h.pet.availablePets.length, 22);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -182,7 +219,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 21);
+    assert.equal(options.length, 22);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
@@ -199,14 +236,14 @@ test('the battle picker unlocks grown pets only for admins and keeps other playe
     assert.equal(admin.currentUser.vocabularyExperienceLevel, 0);
     // Losing admin access at the same real level must invalidate the options cache.
     admin.currentUser.roles = [{name: 'ROLE_STUDENT'}];
-    assert.equal(admin.getBattlePetOptions().length, 1);
+    assert.equal(admin.getBattlePetOptions().length, 2);
     const student = setupBattle(0, [{name: 'ROLE_STUDENT'}]);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-14.png/);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_TUFFY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-17.png/);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: 0}), /pet-level-20.png/);
     assert.match(student.getPlayerPetImage({username: 'student', host: true, selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.match(student.getPlayerPetImage({username: 'student', host: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
-    assert.equal(student.getBattlePetOptions().length, 1);
+    assert.equal(student.getBattlePetOptions().length, 2);
 });
 
 test('Tuffy is locked before level 15 and stale selection falls back to the first pet', () => {
@@ -237,7 +274,7 @@ test('Tuffy evolves at levels 15, 16 and 17 consistently in the assistant and ba
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, level >= 21 ? 17 : (level >= 20 ? 16 : (level >= 18 ? 15 : 14)));
+        assert.equal(options.length, level >= 21 ? 18 : (level >= 20 ? 17 : (level >= 18 ? 16 : 15)));
         if (level <= 17) {
             assert.equal(battle.getGiftRewardImage(level), expected);
             assert.match(battle.getGiftRewardLabel(level), /Chuột Tuffy/);
@@ -290,7 +327,7 @@ test('Pikachu evolves consistently in the assistant, battle and reward preview',
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, level >= 25 ? 20 : (level >= 24 ? 19 : (level >= 23 ? 18 : (level >= 21 ? 17 : (level >= 20 ? 16 : 15)))));
+        assert.equal(options.length, level >= 25 ? 21 : (level >= 24 ? 20 : (level >= 23 ? 19 : (level >= 21 ? 18 : (level >= 20 ? 17 : 16)))));
         assert.ok(options.some(item => item.key === 'CUTE_TUFFY_MOUSE'));
         if (level <= 20) {
             assert.equal(battle.getGiftRewardImage(level), expected);

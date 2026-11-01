@@ -25,6 +25,7 @@
 .learning-pet-egg.is-pikachu-pet,
 .learning-pet-egg.is-perry-pet,
 .learning-pet-egg.is-halloween-pumpkin,
+.learning-pet-egg.is-aragonda,
 .learning-pet-egg.is-goku-kid-pet {
     width: 104px;
     height: 108px;
@@ -266,6 +267,7 @@ img[src*="assets/images/learning-pets/tuffy-mouse/"],
 img[src*="assets/images/learning-pets/pikachu/"],
 img[src*="assets/images/learning-pets/perry/"],
 img[src*="assets/images/learning-pets/halloween-pumpkin/"],
+img[src*="assets/images/learning-pets/aragonda/"],
 img[src*="assets/images/learning-pets/goku-kid/"],
 img[src*="assets/images/learning-pets/dragon-ball-"] {
     image-rendering: auto !important;
@@ -329,6 +331,11 @@ img[src*="assets/images/learning-pets/dragon-ball-"] {
 
 .learning-pet-shell.has-alert .learning-pet-egg {
     animation: learning-pet-egg-alert .72s ease-in-out infinite;
+}
+
+/* Aragonda animates its tongue and eyes inside the SVG; keep the coils still. */
+.learning-pet-shell .learning-pet-egg.is-aragonda {
+    animation: none;
 }
 
 @keyframes learning-pet-egg-breathe {

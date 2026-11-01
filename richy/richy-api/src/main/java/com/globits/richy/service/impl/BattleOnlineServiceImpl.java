@@ -119,6 +119,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_GOKU_SSJ2 = "GOKU_SSJ2";
     private static final String PET_GOKU_SSJ4 = "GOKU_SSJ4";
     private static final String PET_HALLOWEEN_PUMPKIN = "HALLOWEEN_PUMPKIN";
+    private static final String PET_ARAGONDA = "ARAGONDA";
     private static final ZoneId PET_SEASON_ZONE = ZoneId.of("Asia/Bangkok");
     private Clock petSeasonClock = Clock.systemUTC();
     private static final int CAPYBARA_UNLOCK_LEVEL = 3;
@@ -524,6 +525,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         result.setAllPetsUnlocked(allPetsUnlocked);
         List<String> unlocked = new ArrayList<String>();
         unlocked.add(PET_MAM_HOC);
+        unlocked.add(PET_ARAGONDA);
         if (allPetsUnlocked || isHalloweenPetSeason()) {
             unlocked.add(PET_HALLOWEEN_PUMPKIN);
         }
@@ -595,6 +597,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private String normalizePetKey(String petKey) {
         String normalized = clean(petKey).toUpperCase(Locale.ROOT);
+        if (PET_ARAGONDA.equals(normalized)) { return PET_ARAGONDA; }
         if (dragonBallUnlockLevel(normalized) > 0) { return normalized; }
         if (PET_CAPYBARA_EGG.equals(normalized)) {
             return PET_CAPYBARA_EGG;
