@@ -36,6 +36,7 @@
                                 'common/class-tree-picker.css?v=' + version,
                                 'common/directives/ClassTreePicker.js?v=' + version,
                                 'users/StudentQrWorkbook.js?v=' + version,
+                                'users/TnttProfileStatistics.js?v=' + version,
                                 'users/controllers/UserController.js?v=' + version,
                             ]
                         });

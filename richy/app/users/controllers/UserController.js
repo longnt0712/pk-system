@@ -1354,11 +1354,40 @@
             return statistics;
         }
 
+        // TNTT branch statistics are read-only and use the same scoped directory API.
+        var studentStatisticsGeneration = 0;
+        $scope.$on('$destroy', function () { studentStatisticsGeneration++; });
+        vm.tnttStatistics = null;
+        vm.tnttStatisticsIncludeInactive = false;
+        vm.tnttStatisticsFilter = null;
+        vm.tnttStatisticsDetails = [];
+        vm.showTnttStatisticsDetails = function (kind, key, name) {
+            vm.tnttStatisticsFilter = key == null ? null : {kind: kind, key: key};
+            vm.tnttStatisticsDetailsTitle = name ? 'Cần bổ sung / kiểm tra: ' + name : 'Tất cả học sinh cần bổ sung / kiểm tra';
+            vm.tnttStatisticsDetails = ((vm.tnttStatistics || {}).issues || []).filter(function (item) {
+                return key == null || (kind === 'class' ? item.classId === key : item.branchId === key);
+            });
+        };
+        vm.exportTnttStatistics = function () {
+            if (vm.studentStatisticsLoading || vm.studentStatisticsError || !vm.tnttStatistics) return;
+            try {
+                var workbook = window.TnttProfileStatistics.workbook(XLSX, vm.tnttStatistics);
+                window.StudentQrWorkbook.download(XLSX.write(workbook, {bookType: 'xlsx', type: 'array'}),
+                    'thong_ke_nganh_cap_TNTT_' + moment().format('YYYYMMDD_HHmmss') + '.xlsx');
+            } catch (error) { toastr.error('Không xuất được file Excel. Vui lòng thử lại.', 'Thông báo'); }
+        };
         vm.chooseStudentStatisticsMode = function (mode) {
+            if (mode === 'branch' && vm.isIeltsRoomDomain) return;
+            studentStatisticsGeneration++;
             vm.studentStatisticsMode = mode;
             vm.studentStatisticsError = '';
+            vm.studentStatisticsLoading = false;
+            vm.tnttStatistics = null;
+            vm.studentStatisticsParentClasses = getDirectorySchoolParentClasses().filter(function (item) {
+                return mode !== 'branch' || !!window.TnttProfileStatistics.expected(item.name);
+            });
 
-            if (mode === 'class') {
+            if (mode === 'class' || mode === 'branch') {
                 vm.studentStatisticsSelectedClassIds = vm.studentStatisticsParentClasses.map(
                     function (parentClass) {
                         return toNumberOrNull(parentClass.id);
@@ -1406,6 +1435,8 @@
         };
 
         vm.backStudentStatisticsStep = function () {
+            studentStatisticsGeneration++;
+            vm.studentStatisticsLoading = false;
             if (vm.studentStatisticsStep === 'results') {
                 vm.studentStatisticsStep = vm.studentStatisticsMode === 'team'
                     ? 'team-class-selection'
@@ -1419,7 +1450,7 @@
 
         vm.loadStudentStatistics = function () {
             if (
-                vm.studentStatisticsMode === 'class' &&
+                vm.studentStatisticsMode !== 'team' &&
                 vm.studentStatisticsSelectedClassIds.length === 0
             ) {
                 toastr.warning('Vui lòng chọn ít nhất một lớp.', 'Thông báo');
@@ -1455,7 +1486,7 @@
 
             var statisticsFilter = {
                 keyword: '',
-                active: true,
+                active: vm.studentStatisticsMode === 'branch' && vm.tnttStatisticsIncludeInactive ? null : true,
                 roles: getDirectorySearchRoles(requestedClassIds),
                 groups: [],
                 filtered: 0,
@@ -1466,15 +1497,45 @@
             vm.studentStatisticsLoading = true;
             vm.studentStatisticsError = '';
             vm.studentStatisticsStep = 'results';
+            vm.tnttStatistics = null;
+            var generation = ++studentStatisticsGeneration;
+            if (vm.studentStatisticsMode === 'branch') {
+                function failStatistics() {
+                    if (generation !== studentStatisticsGeneration) return;
+                    vm.studentStatisticsLoading = false;
+                    vm.studentStatisticsError = 'Không tải đủ dữ liệu thống kê. Vui lòng thử lại.';
+                }
+                function loadStatisticsPage(page, users) {
+                    return service.getUsers(statisticsFilter, page, 500).then(function (data) {
+                        if (generation !== studentStatisticsGeneration) return;
+                        if (!data || !angular.isArray(data.content) || data.totalElements == null || !isFinite(Number(data.totalElements))) {
+                            failStatistics(); return;
+                        }
+                        var batch = data && angular.isArray(data.content) ? data.content : [];
+                        var combined = users.concat(batch), total = Number(data && data.totalElements);
+                        if (isFinite(total) && total > combined.length) {
+                            if (!batch.length) { failStatistics(); return; }
+                            return loadStatisticsPage(page + 1, combined);
+                        }
+                        vm.tnttStatistics = window.TnttProfileStatistics.build(combined, vm.enrollmentClasses,
+                            vm.studentStatisticsSelectedClassIds, vm.tnttStatisticsIncludeInactive);
+                        vm.showTnttStatisticsDetails(null, null);
+                        vm.studentStatisticsLoading = false;
+                    }, failStatistics);
+                }
+                return loadStatisticsPage(1, []);
+            }
 
             service.getUsers(statisticsFilter, 1, 1000000).then(
                 function (data) {
+                    if (generation !== studentStatisticsGeneration) return;
                     vm.studentStatistics = buildStudentStatistics(
                         data && angular.isArray(data.content) ? data.content : []
                     );
                     vm.studentStatisticsLoading = false;
                 },
                 function () {
+                    if (generation !== studentStatisticsGeneration) return;
                     vm.studentStatisticsLoading = false;
                     vm.studentStatisticsError = 'Không tải được dữ liệu thống kê. Vui lòng thử lại.';
                 }
@@ -1482,6 +1543,9 @@
         };
 
         vm.openStudentStatisticsModal = function () {
+            studentStatisticsGeneration++;
+            vm.tnttStatistics = null;
+            vm.tnttStatisticsIncludeInactive = false;
             vm.studentStatistics = createEmptyStudentStatistics();
             vm.studentStatisticsError = '';
             vm.studentStatisticsLoading = false;
@@ -1497,6 +1561,13 @@
                 scope: $scope,
                 size: 'lg'
             });
+            var statisticsModal = vm.studentStatisticsModalInstance;
+            function statisticsClosed() {
+                if (vm.studentStatisticsModalInstance !== statisticsModal) return;
+                studentStatisticsGeneration++; vm.studentStatisticsLoading = false;
+                vm.studentStatisticsModalInstance = null;
+            }
+            statisticsModal.result.then(statisticsClosed, statisticsClosed);
         };
 
         $scope.pageChanged = function() {

@@ -507,10 +507,10 @@
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
             <h4 class="modal-title">
                 <i class="fa fa-bar-chart"></i>
-                Thống kê tài khoản đang kích hoạt
+                Thống kê học sinh
             </h4>
             <p class="student-statistics-subtitle">
-                Phạm vi: tất cả tài khoản thuộc schoolId = {{vm.directorySchoolId}} và có trạng thái đang kích hoạt
+                {{vm.studentStatisticsMode === 'branch' && vm.tnttStatisticsIncludeInactive ? 'Bao gồm cả tài khoản không kích hoạt.' : 'Phạm vi: các tài khoản đang kích hoạt.'}}
             </p>
         </div>
 
@@ -519,7 +519,7 @@
                 <h4 class="student-statistics-step-title">Bạn muốn thống kê theo hình thức nào?</h4>
 
                 <div class="row student-statistics-mode-grid">
-                    <div class="col-sm-6">
+                    <div ng-class="vm.isIeltsRoomDomain ? 'col-sm-6' : 'col-sm-4'">
                         <button type="button"
                                 class="student-statistics-mode-card"
                                 ng-click="vm.chooseStudentStatisticsMode('class')">
@@ -528,13 +528,20 @@
                             <span>Chọn một hoặc nhiều lớp cha; không hiển thị lớp con.</span>
                         </button>
                     </div>
-                    <div class="col-sm-6">
+                    <div ng-class="vm.isIeltsRoomDomain ? 'col-sm-6' : 'col-sm-4'">
                         <button type="button"
                                 class="student-statistics-mode-card is-team"
                                 ng-click="vm.chooseStudentStatisticsMode('team')">
                             <i class="fa fa-users"></i>
                             <strong>Thống kê theo đội</strong>
                             <span>Chọn một lớp cha để xem số liệu từng đội trực thuộc.</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4" ng-if="!vm.isIeltsRoomDomain">
+                        <button type="button" class="student-statistics-mode-card is-branch" ng-click="vm.chooseStudentStatisticsMode('branch')">
+                            <i class="fa fa-leaf"></i>
+                            <strong>Theo ngành/cấp TNTT</strong>
+                            <span>Đối chiếu ngành, cấp theo lớp; xem tên và xuất Excel các em cần bổ sung.</span>
                         </button>
                     </div>
                 </div>
@@ -544,7 +551,7 @@
                 <div class="student-statistics-selection-heading">
                     <div>
                         <h4>Chọn các lớp muốn thống kê</h4>
-                        <p>Danh sách chỉ gồm lớp cha thuộc schoolId = {{vm.directorySchoolId}}.</p>
+                        <p>{{vm.studentStatisticsMode === 'branch' ? 'Chỉ gồm lớp TNTT nhận diện được ngành và cấp trong tên lớp hiện tại.' : 'Danh sách chỉ gồm các lớp cha.'}}</p>
                     </div>
                     <label class="student-statistics-select-all">
                         <input type="checkbox"
@@ -568,6 +575,9 @@
                 <div class="student-statistics-selection-count">
                     Đã chọn <strong>{{vm.studentStatisticsSelectedClassIds.length}}</strong>/{{vm.studentStatisticsParentClasses.length}} lớp
                 </div>
+                <label ng-if="vm.studentStatisticsMode === 'branch'" class="tntt-stat-option">
+                    <input type="checkbox" ng-model="vm.tnttStatisticsIncludeInactive"> Bao gồm tài khoản không kích hoạt
+                </label>
             </div>
 
             <div ng-if="vm.studentStatisticsStep === 'team-class-selection'">
@@ -603,7 +613,54 @@
                     <div class="clearfix"></div>
                 </div>
 
-                <div ng-if="!vm.studentStatisticsLoading && !vm.studentStatisticsError">
+                <div ng-if="!vm.studentStatisticsLoading && !vm.studentStatisticsError && vm.studentStatisticsMode === 'branch' && vm.tnttStatistics" class="tntt-stat-results">
+                    <div class="tntt-stat-totals" role="status">
+                        <span>Đã kiểm tra <strong>{{vm.tnttStatistics.total}}</strong> học sinh</span>
+                        <span>Đúng ngành/cấp <strong>{{vm.tnttStatistics.matched}}</strong></span>
+                        <button type="button" class="btn btn-warning" ng-click="vm.showTnttStatisticsDetails(null, null)">Cần bổ sung / kiểm tra: {{vm.tnttStatistics.mismatched}}</button>
+                    </div>
+                    <p class="text-muted">Đối chiếu theo tên lớp hiện tại, bỏ qua tên lớp cũ trong ngoặc. Học sinh ở đội được gộp về lớp cha; lớp phụ như Ca đoàn không thay đổi ngành/cấp theo lớp TNTT chính.</p>
+                    <h4>Thống kê theo ngành</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped tntt-stat-table">
+                            <thead><tr><th>Ngành</th><th>Tổng HS</th><th>Đúng</th><th>Cần bổ sung / kiểm tra</th><th>Thiếu thông tin</th><th>Chưa đúng ngành</th><th>Chưa đúng cấp</th></tr></thead>
+                            <tbody><tr ng-repeat="row in vm.tnttStatistics.branches track by row.id">
+                                <td>{{row.name}}</td><td>{{row.total}}</td><td>{{row.matched}}</td>
+                                <td><button type="button" class="btn btn-default btn-sm" ng-disabled="!row.mismatched" ng-click="vm.showTnttStatisticsDetails('branch', row.id, row.name)" aria-label="Xem học sinh cần bổ sung ngành {{row.name}}">{{row.mismatched}} <i class="fa fa-list"></i></button></td>
+                                <td>{{row.missing}}</td><td>{{row.branchMismatch}}</td><td>{{row.levelMismatch}}</td>
+                            </tr></tbody>
+                        </table>
+                    </div>
+                    <h4>Đối chiếu từng lớp</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped tntt-stat-table">
+                            <thead><tr><th>Lớp</th><th>Ngành/cấp theo lớp</th><th>Tổng HS</th><th>Đúng</th><th>Cần bổ sung / kiểm tra</th><th>Chưa đúng ngành</th><th>Chưa đúng cấp</th></tr></thead>
+                            <tbody><tr ng-repeat="row in vm.tnttStatistics.classes track by row.id">
+                                <td>{{row.name}}</td><td>{{row.expected ? row.expected.branchName + ' · Cấp ' + row.expected.level : 'Cần xác định lớp chính'}}</td>
+                                <td>{{row.total}}</td><td>{{row.matched}}</td>
+                                <td><button type="button" class="btn btn-default btn-sm" ng-disabled="!row.mismatched" ng-click="vm.showTnttStatisticsDetails('class', row.id, row.name)" aria-label="Xem học sinh cần bổ sung lớp {{row.name}}">{{row.mismatched}} <i class="fa fa-list"></i></button></td>
+                                <td>{{row.branchMismatch}}</td><td>{{row.levelMismatch}}</td>
+                            </tr></tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted">Một em có thể thiếu hoặc chưa đúng nhiều mục; cột “Cần bổ sung / kiểm tra” chỉ tính em đó một lần.</p>
+                    <div class="tntt-stat-detail-heading">
+                        <h4>{{vm.tnttStatisticsDetailsTitle}} ({{vm.tnttStatisticsDetails.length}})</h4>
+                        <button type="button" class="btn btn-default btn-sm" ng-if="vm.tnttStatisticsFilter" ng-click="vm.showTnttStatisticsDetails(null, null)">Xem tất cả</button>
+                    </div>
+                    <div class="table-responsive tntt-stat-details">
+                        <table class="table table-bordered table-striped tntt-stat-table">
+                            <thead><tr><th>Lớp</th><th>Học sinh</th><th>Thông tin hiện tại</th><th>Ngành/cấp theo lớp</th><th>Cần bổ sung / kiểm tra</th></tr></thead>
+                            <tbody><tr ng-repeat="row in vm.tnttStatisticsDetails track by row.userId">
+                                <td>{{row.className}}</td><td><strong>{{row.patron}} {{row.name}}</strong><small>{{row.username}} · {{row.birthDate}}</small></td>
+                                <td>{{row.currentType}}<small>{{row.currentBranch}} · {{row.currentLevel}}</small></td>
+                                <td>{{row.expectedBranch}}<small>{{row.expectedLevel}}</small></td><td>{{row.reason}}</td>
+                            </tr><tr ng-if="!vm.tnttStatisticsDetails.length"><td colspan="5" class="text-center">Không có học sinh cần bổ sung / kiểm tra trong danh sách này.</td></tr></tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted">File Excel gồm 3 trang: Theo ngành, Theo lớp và toàn bộ Danh sách cần bổ sung trong phạm vi đã chọn.</p>
+                </div>
+                <div ng-if="!vm.studentStatisticsLoading && !vm.studentStatisticsError && vm.studentStatisticsMode !== 'branch'">
                 <div class="row student-statistics-cards">
                     <div class="col-sm-3 col-xs-6">
                         <div class="student-stat-card is-total">
@@ -678,6 +735,10 @@
         </div>
 
         <div class="modal-footer">
+            <button type="button" class="btn btn-success" ng-if="vm.studentStatisticsMode === 'branch' && vm.studentStatisticsStep === 'results'"
+                    ng-disabled="vm.studentStatisticsLoading || vm.studentStatisticsError || !vm.tnttStatistics" ng-click="vm.exportTnttStatistics()">
+                <i class="fa fa-file-excel-o"></i> Xuất Excel thống kê
+            </button>
             <button type="button"
                     class="btn btn-default pull-left"
                     ng-if="vm.studentStatisticsStep !== 'mode'"
@@ -1962,6 +2023,19 @@
         max-width: 760px;
         margin: 0 auto;
     }
+
+    .student-statistics-modal .is-branch { background: #eaf8f2; border-color: #b4dfcc; }
+    .tntt-stat-option { display: block; margin: 14px 0; }
+    .tntt-stat-totals { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .tntt-stat-totals > span { padding: 10px 14px; border-radius: 10px; background: #f2f4ff; }
+    .tntt-stat-results .table-responsive { max-width: 100%; }
+    .tntt-stat-table { min-width: 730px; }
+    .tntt-stat-table th { white-space: normal; vertical-align: middle !important; }
+    .tntt-stat-table td { vertical-align: middle !important; }
+    .tntt-stat-table small { display: block; margin-top: 5px; color: #667085; }
+    .tntt-stat-details { max-height: 46vh; overflow: auto; }
+    .tntt-stat-detail-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
+    .tntt-stat-detail-heading h4 { margin: 0; }
 
     .student-statistics-mode-card {
         display: flex;

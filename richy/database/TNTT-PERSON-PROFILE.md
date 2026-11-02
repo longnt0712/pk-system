@@ -40,3 +40,15 @@ Dữ liệu lưu trên `tbl_person`:
 | `tntt_level` | 1, 2, 3 hoặc NULL; 4 là Đặc cấp, chỉ áp dụng cho Huynh trưởng |
 
 Thông tin TNTT được lưu riêng với quyền đăng nhập và lớp chính. Cấp không tự thay đổi khi đổi lớp. API cũ không gửi các trường TNTT vẫn giữ thông tin TNTT đã lưu.
+
+## Thống kê ngành/cấp theo lớp
+
+Vào **Danh sách học sinh → Thống kê → Theo ngành/cấp TNTT**, chọn các lớp rồi xác nhận. Mặc định chỉ tính tài khoản đang kích hoạt; có thể tích **Bao gồm tài khoản không kích hoạt** trước khi chạy báo cáo.
+
+- Ngành/cấp cần đối chiếu lấy từ tên lớp hiện tại, ví dụ `ẤU NHI 1A (ĐCN2 CŨ)` → Ấu nhi cấp I. Phần tên cũ trong ngoặc không được dùng. Các lớp không thuộc ngành TNTT như Giáo lý viên, Huynh trưởng, Khác và Ca đoàn không tham gia đối chiếu này.
+- Học sinh thuộc đội con được gộp về lớp cha. Ưu tiên lớp TNTT chính trong hồ sơ; lớp phụ không làm đổi ngành/cấp cần đối chiếu. Nếu chưa có lớp TNTT chính nhưng chỉ có một lớp TNTT trong các lớp tham gia, dùng lớp đó; nếu có nhiều lớp TNTT thì đưa vào nhóm **Cần xác định lớp TNTT chính**, không tự chọn một lớp.
+- Xem tổng hợp theo ngành và từng lớp: tổng số học sinh, số đúng ngành/cấp, số cần bổ sung/kiểm tra, số thiếu thông tin, chưa đúng ngành và chưa đúng cấp. Một em có nhiều lý do vẫn chỉ tính một lần ở số cần bổ sung/kiểm tra. Các chỉ số lý do có thể trùng nhau.
+- Bấm số **Cần bổ sung / kiểm tra** của ngành hoặc lớp để xem họ tên, mã học sinh, ngày sinh, thông tin hiện tại, thông tin theo lớp và lý do. **Xem tất cả** trở lại toàn bộ danh sách cần kiểm tra.
+- **Xuất Excel thống kê** tải tệp `.xlsx` gồm ba trang **Theo ngành**, **Theo lớp**, **Danh sách cần bổ sung**. Tệp gồm toàn bộ phạm vi lớp và trạng thái tài khoản đã chọn, kể cả khi đang xem chi tiết một lớp. Mã học sinh được giữ dạng chữ để không mất số 0 đầu.
+
+Báo cáo chỉ đọc dữ liệu qua API danh sách học sinh hiện có, phân trang 500 tài khoản mỗi lần và giữ phạm vi quyền của tài khoản đăng nhập. Lỗi tải sẽ ngăn xuất báo cáo chưa đủ dữ liệu. Chức năng này chỉ hiện trên giao diện TNTT và không tự sửa hồ sơ. Bản cập nhật thống kê chỉ cần cập nhật frontend, không có SQL mới hoặc yêu cầu build lại JAR.
