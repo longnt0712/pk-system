@@ -599,6 +599,14 @@
 
             data.summary = buildSummary(data, rows);
 
+            // Keep each group in Excel order and leave rows unchanged for import.
+            // Resolved conflicts stay at the top so choosing a card never moves a row.
+            data.displayRows = rows.filter(function (row) {
+                return row.status === 'CONFLICT';
+            }).concat(rows.filter(function (row) {
+                return row.status !== 'CONFLICT';
+            }));
+
             return data;
         }
 

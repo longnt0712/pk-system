@@ -26,7 +26,7 @@ async function settledModal(page) {
     });
 }
 
-async function fixture(browser, {width = 1440, existing = false, failSave = false, failPreview = false, failCategories = false} = {}) {
+async function fixture(browser, {width = 1440, existing = false, failSave = false, failPreview = false, failCategories = false, previewRows = null} = {}) {
     const page = await browser.newPage({viewport: {width, height: 1100}});
     page.setDefaultTimeout(10000);
     const state = {saves: [], previews: [], confirms: [], errors: [], failSave, failPreview, failCategories};
@@ -47,7 +47,7 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
         if (url.pathname === '/api/question/import_excel/preview') {
             state.previews.push(request.postDataBuffer().toString('latin1'));
             if (state.failPreview) return json({message: 'Invalid worksheet'}, 422);
-            return json({rows: [
+            return json({rows: previewRows || [
                 {rowNumber: 2, word: 'apple', motherTongue: 'quả táo', level: 'A2', status: 'NEW'},
                 {rowNumber: 3, word: 'pear', motherTongue: 'quả lê', level: 'B1', status: 'NEW'}
             ]});
@@ -225,5 +225,42 @@ test('topic dropdown filters while typing, supports keyboard selection and prese
             assert.deepEqual(state.errors, []);
             await page.close();
         }
+    } finally {await browser.close();}
+});
+
+test('conflicts from the end of a large Excel preview appear first and stay put while choosing cards', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const previewRows = Array.from({length: 278}, (_, index) => ({rowNumber: index + 2, word: 'Word ' + (index + 2), status: 'NEW'}));
+        previewRows[194] = {rowNumber: 196, word: 'hang out', status: 'CONFLICT', candidates: [
+            {id: 48126, word: 'hang out', motherTongue: 'đi chơi', level: 'B2'},
+            {id: 48127, word: 'hang out', motherTongue: 'tụ tập', level: 'B1'}
+        ]};
+        previewRows[248] = {rowNumber: 250, word: 'look up to', status: 'CONFLICT', candidates: [
+            {id: 50100, word: 'look up to', motherTongue: 'ngưỡng mộ', level: 'B2'}
+        ]};
+        const {page, state} = await fixture(browser, {existing: true, previewRows});
+        await chooseSearchable(page, '#excel-import-topic', 'Existing', 'Existing topic');
+        await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
+        await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
+        const rows = page.locator('.modal-body tbody tr');
+        await rows.first().waitFor();
+        assert.equal(await rows.count(), 278);
+        const firstRowNumbers = () => rows.evaluateAll(elements => elements.slice(0, 4).map(element => Number(element.children[1].textContent.trim())));
+        assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
+        assert.equal(await rows.nth(0).locator('input[type=checkbox]').isDisabled(), true);
+        await rows.nth(0).locator('select').selectOption('48126');
+        assert.equal(await rows.nth(0).locator('input[type=checkbox]').isChecked(), true);
+        assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
+        await rows.nth(1).locator('select').selectOption('50100');
+        assert.equal(await rows.nth(1).locator('input[type=checkbox]').isChecked(), true);
+        assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
+        await page.getByRole('button', {name: /Confirm import/}).click();
+        await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+        assert.equal(state.confirms[0].rows.length, 278);
+        assert.deepEqual(state.confirms[0].rows.slice(0, 3).map(row => row.rowNumber), [2, 3, 4]);
+        assert.equal(state.confirms[0].rows.find(row => row.rowNumber === 196).selectedExistingQuestionId, 48126);
+        assert.equal(state.confirms[0].rows.find(row => row.rowNumber === 250).selectedExistingQuestionId, 50100);
+        assert.deepEqual(state.errors, []);
     } finally {await browser.close();}
 });

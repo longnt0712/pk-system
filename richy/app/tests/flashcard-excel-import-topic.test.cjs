@@ -121,6 +121,45 @@ test('existing topic import does not create a topic or require loading categorie
     assert.deepEqual(calls.categories, []);
 });
 
+test('all conflicts appear first in Excel order while original row numbers and import order are preserved', async () => {
+    const topic = {id: 8, name: 'Existing'};
+    const rows = [
+        {rowNumber: 2, word: 'New word', status: 'NEW'},
+        {rowNumber: 3, word: 'First conflict', status: 'conflict', candidates: [{id: 101}, {id: 102}]},
+        {rowNumber: 4, word: 'Existing word', status: 'ADD_TOPIC', existingQuestionId: 50},
+        {rowNumber: 5, word: 'Invalid word', status: 'INVALID'},
+        {rowNumber: 6, word: 'Second conflict', status: 'CONFLICT', candidates: [{id: 201}], selectedExistingQuestionId: 201, selected: true},
+        {rowNumber: 7, word: 'Duplicate word', status: 'DUPLICATE_IN_FILE'}
+    ];
+    const {vm, calls} = harness({topics: [topic], preview: () => ({rows})});
+    vm.selectedTopic = topic;
+    vm.onFileSelected({name: 'words.xlsx', size: 123});
+    await vm.loadPreview();
+    assert.deepEqual(Array.from(vm.preview.displayRows, row => row.rowNumber), [3, 6, 2, 4, 5, 7]);
+    assert.deepEqual(Array.from(vm.preview.rows, row => row.rowNumber), [2, 3, 4, 5, 6, 7]);
+    assert.equal(vm.preview.displayRows[0], rows[1], 'display and import must share each row object');
+    assert.equal(vm.preview.summary.conflictCount, 2);
+    assert.equal(vm.getSelectedCount(), 3);
+    const conflict = vm.preview.displayRows[0];
+    conflict.selectedExistingQuestionId = 102;
+    vm.onConflictCandidateChanged(conflict);
+    assert.equal(vm.getSelectedCount(), 4);
+    assert.equal(vm.preview.displayRows[0], conflict, 'selection must not move the row');
+    await vm.confirmImport();
+    assert.deepEqual(calls.confirm[0].rows.map(row => row.rowNumber), [2, 3, 4, 6]);
+    assert.equal(calls.confirm[0].rows[1].selectedExistingQuestionId, 102);
+});
+
+test('previews without conflicts or rows retain their original display order', async () => {
+    for (const rows of [[], [{rowNumber: 2, word: 'First', status: 'NEW'}, {rowNumber: 3, word: 'Second', status: 'ADD_TOPIC'}]]) {
+        const {vm} = harness({topics: [{id: 8}], preview: () => ({items: rows})});
+        vm.selectedTopic = {id: 8};
+        vm.onFileSelected({name: 'words.xlsx', size: 123});
+        await vm.loadPreview();
+        assert.deepEqual(Array.from(vm.preview.displayRows, row => row.rowNumber), rows.map(row => row.rowNumber));
+    }
+});
+
 test('category loading supports multiple pages and retry without exposing a partial failed list', async () => {
     let fail = true;
     const {vm, calls} = harness({categories(page) {
