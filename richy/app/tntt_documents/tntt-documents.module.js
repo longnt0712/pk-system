@@ -3,7 +3,7 @@
     Hrm.TnttDocuments = angular.module('Hrm.TnttDocuments', ['ui.router', 'oc.lazyLoad', 'ui.bootstrap', 'Hrm.Common']);
     Hrm.TnttDocuments.config(['$stateProvider', function (states) {
         var v = (window.APP_VERSION || '') + '-tntt-documents-1';
-        states.state('application.tntt_documents', {url: '/tai-lieu?tab&notice', data: {pageTitle: 'Tài liệu TNTT'},
+        states.state('application.tntt_documents', {url: '/tai-lieu?tab&notice&document&mode', data: {pageTitle: 'Tài liệu TNTT'},
             templateUrl: 'tntt_documents/documents.html?v=' + v, controller: 'TnttDocumentsController as vm',
             resolve: {deps: ['$ocLazyLoad', function (loader) { return loader.load({name: 'Hrm.TnttDocuments', files: [
                 'tntt_documents/TnttDocumentNotebookStore.js?v=' + v, 'tntt_documents/TnttDocumentPrint.js?v=' + v,

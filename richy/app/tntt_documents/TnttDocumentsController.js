@@ -1,7 +1,7 @@
 (function () {
     'use strict';
-    angular.module('Hrm.TnttDocuments').controller('TnttDocumentsController', ['$scope', '$state', '$stateParams', '$q', '$uibModal', 'settings', 'TnttDocumentApi', 'TnttDocumentNotebookStore', 'TnttNoticeCenter', 'TnttDocumentPrint',
-        function (scope, state, params, q, modal, settings, api, notebooks, center, printer) {
+    angular.module('Hrm.TnttDocuments').controller('TnttDocumentsController', ['$scope', '$state', '$stateParams', '$q', '$uibModal', '$window', 'settings', 'TnttDocumentApi', 'TnttDocumentNotebookStore', 'TnttNoticeCenter', 'TnttDocumentPrint',
+        function (scope, state, params, q, modal, win, settings, api, notebooks, center, printer) {
             var vm = this, alive = true, generation = 0, dialog = null;
             vm.entries = []; vm.notices = []; vm.folderId = null; vm.tab = params.tab === 'notices' ? 'notices' : 'files'; vm.query = ''; vm.searchTerm = ''; vm.trash = false; vm.active = null;
             vm.viewMode = 'grid'; vm.breadcrumbs = []; vm.folderById = {};
@@ -13,7 +13,7 @@
             function formDialog(id) { dialog = modal.open({templateUrl:id,scope:scope,size:'lg',backdrop:'static',keyboard:false}); dialog.result.catch(angular.noop); }
             function blank() { return {text:'',orientation:'portrait',pattern:'lined',strokes:[]}; }
             function fresh(item) { return item.kind === 'DOCUMENT' && !item.archived ? api.read(item.id).then(function (row) { return angular.extend({},item,row); }) : q.when(item); }
-            vm.switchTab = function (tab) { state.go('application.tntt_documents',{tab:tab==='notices'?'notices':null,notice:null}); };
+            vm.switchTab = function (tab) { state.go('application.tntt_documents',{tab:tab==='notices'?'notices':null,notice:null,document:null,mode:null}); };
             vm.reload = function () {
                 if (!alive || !vm.caps || !vm.caps.enabled) { return q.when(); } var requestId = ++generation, term = vm.query.trim(); vm.loading = true;
                 return q.all([api.list(vm.trash,term),api.notifications(false)]).then(function (rows) { if (!alive || requestId !== generation) { return; } vm.entries=rows[0];vm.notices=rows[1];vm.searchTerm=term;vm.rebuildFolders(); })
@@ -45,7 +45,50 @@
                 return (vm.form.id?api.metadata(vm.form.id,payload):api.create(payload)).then(function(row){closeDialog();return vm.reload().then(function(){if(!vm.form.id&&row.kind==='DOCUMENT'){vm.openEntry(row);}});});});};
             vm.archive=function(item,restore){vm.confirmEntry=item;vm.restoring=!!restore;formDialog('tntt-archive-form.html');};
             vm.confirmArchive=function(){return request(function(){var item=vm.confirmEntry;return fresh(item).then(function(row){return api.metadata(row.id,{title:row.title,parentId:row.parentId||null,revision:row.revision,archived:!vm.restoring});}).then(function(){closeDialog();return vm.reload();});});};
-            vm.openEntry=function(item){if(item.kind==='FOLDER'){vm.chooseFolder(item);return;}vm.error='';api.read(item.id).then(function(row){vm.active={id:row.id,title:row.title,readOnly:!row.canEdit,snapshot:row.canEdit?null:row};vm.session=null;}).catch(error);};
+            vm.openEntry = function (item, mode) {
+                if (item.kind === 'FOLDER') { return vm.chooseFolder(item); }
+                vm.error = '';
+                if (mode === 'edit' && !vm.caps.canEdit) {
+                    vm.error = 'Chỉ Admin và Quản lý đào tạo được mở liên kết chỉnh sửa.';
+                    return;
+                }
+                return api.read(item.id).then(function (row) {
+                    if (!alive) { return; }
+                    if (mode === 'edit' && !row.canEdit) {
+                        vm.error = 'Tài khoản này không có quyền chỉnh sửa tài liệu.';
+                        return;
+                    }
+                    var readOnly = mode === 'view' || !row.canEdit;
+                    vm.active = {id: row.id, title: row.title, readOnly: readOnly, snapshot: readOnly ? row : null};
+                    vm.session = null;
+                }).catch(function (e) { if (alive) { error(e); } });
+            };
+            vm.openLinkSharing = function (item) {
+                vm.linkShare = {item: item, mode: 'view'};
+                vm.updateShareLink();
+                formDialog('tntt-link-share.html');
+            };
+            vm.updateShareLink = function () {
+                var share = vm.linkShare;
+                share.url = state.href('application.tntt_documents', {document: share.item.id, mode: share.mode},
+                    {absolute: true, inherit: false});
+                share.status = '';
+            };
+            vm.copyShareLink = function () {
+                var share = vm.linkShare, url = share.url;
+                function report(message) {
+                    scope.$evalAsync(function () { if (vm.linkShare === share && share.url === url) { share.status = message; } });
+                }
+                if (!win.navigator.clipboard || !win.navigator.clipboard.writeText) {
+                    report('Hãy chọn và sao chép đường dẫn trong ô bên trên.');
+                    return;
+                }
+                win.navigator.clipboard.writeText(url).then(function () {
+                    report('Đã sao chép liên kết.');
+                }, function () {
+                    report('Hãy chọn và sao chép đường dẫn trong ô bên trên.');
+                });
+            };
             vm.openSession=function(){if(!vm.active){return null;}if(vm.active.snapshot){var snapshot=vm.active.snapshot;return {document:angular.copy(snapshot.document),revision:snapshot.revision,status:'saved',error:'',ready:q.when(),save:function(){return q.when();},changed:angular.noop,refresh:function(){return q.when();},destroy:angular.noop};}vm.session=notebooks.open({documentId:vm.active.id,userId:vm.caps.userId});return vm.session;};
             vm.closeEditor=function(){var session=vm.session;vm.busy=true;vm.active=null;vm.session=null;return q.when(session?session.save():null).finally(function(){vm.busy=false;return vm.reload();});};
             vm.openNotice=function(notice){vm.error='';api.notification(notice.id).then(function(row){vm.active={id:row.entryId,title:row.title,readOnly:true,snapshot:row};vm.session=null;}).catch(error);};
@@ -63,7 +106,24 @@
             vm.print=function(item){printer.openAsync(function(){return api.read(item.id);}).catch(error);};
             vm.printNotice=function(notice){printer.openAsync(function(){return api.notification(notice.id);}).catch(error);};
             if(settings.campaignsEnabled!==true){state.go('application.dashboard');return;}
-            vm.loading=true;api.capabilities().then(function(caps){if(!alive){return;}vm.caps=caps;if(!caps.enabled){vm.loading=false;return;}return vm.reload().then(function(){if(params.notice&&/^[1-9][0-9]*$/.test(String(params.notice))){vm.tab='notices';vm.openNotice({id:Number(params.notice)});}});}).catch(error).finally(function(){vm.loading=false;});
+            vm.loading = true;
+            api.capabilities().then(function (caps) {
+                if (!alive) { return; }
+                vm.caps = caps;
+                if (!caps.enabled) { return; }
+                return vm.reload().then(function () {
+                    if (!alive) { return; }
+                    if (/^[1-9][0-9]*$/.test(String(params.document)) && Number.isSafeInteger(Number(params.document)) &&
+                        (params.mode === 'view' || params.mode === 'edit')) {
+                        vm.tab = 'files';
+                        return vm.openEntry({id: params.document}, params.mode);
+                    }
+                    if (params.notice && /^[1-9][0-9]*$/.test(String(params.notice))) {
+                        vm.tab = 'notices';
+                        vm.openNotice({id: Number(params.notice)});
+                    }
+                });
+            }).catch(error).finally(function () { vm.loading = false; });
             scope.$on('$destroy',function(){alive=false;++generation;closeDialog();});
         }]);
 }());

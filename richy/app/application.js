@@ -167,9 +167,24 @@
                 return code;
             }
 
+            var pendingTnttDocument;
+            function rememberTnttDocument(id, mode) {
+                if (!/^[1-9][0-9]*$/.test(String(id)) || !Number.isSafeInteger(Number(id)) ||
+                    (mode !== 'view' && mode !== 'edit')) { return; }
+                pendingTnttDocument = {document: String(id), mode: mode};
+                try { window.sessionStorage.setItem('tntt.document.return', JSON.stringify(pendingTnttDocument)); } catch (ignore) {}
+            }
+
             function rememberTnttNotice() {
                 if (!settings.campaignsEnabled) { return; }
                 var location = window.location;
+                if (location.pathname !== '/tai-lieu') { return; }
+                var documentMatch = /(?:^|[?&])document=([1-9][0-9]*)(?:&|$)/.exec(location.search || '');
+                var modeMatch = /(?:^|[?&])mode=(view|edit)(?:&|$)/.exec(location.search || '');
+                if (documentMatch && modeMatch) {
+                    rememberTnttDocument(documentMatch[1], modeMatch[1]);
+                    return;
+                }
                 var match = /(?:^|[?&])notice=([1-9][0-9]*)(&|$)/.exec(location.search || '');
                 if (location.pathname === '/tai-lieu' && match && Number.isSafeInteger(Number(match[1]))) {
                     try { window.sessionStorage.setItem('tntt.notice.return', match[1]); } catch (ignore) {}
@@ -262,8 +277,21 @@
 
                 var signedInUser = $rootScope.currentUser || $cookies.getObject(constants.cookies_user);
                 if (signedInUser) { applyRolesToSettings(signedInUser); }
+                var documentTarget = pendingTnttDocument;
+                pendingTnttDocument = null;
+                try {
+                    var storedDocument = window.sessionStorage.getItem('tntt.document.return');
+                    window.sessionStorage.removeItem('tntt.document.return');
+                    documentTarget = documentTarget || JSON.parse(storedDocument);
+                } catch (ignore) {}
                 var pendingNotice;
                 try { pendingNotice = window.sessionStorage.getItem('tntt.notice.return'); window.sessionStorage.removeItem('tntt.notice.return'); } catch (ignore) {}
+                if (settings.campaignsEnabled && documentTarget &&
+                    /^[1-9][0-9]*$/.test(String(documentTarget.document)) && Number.isSafeInteger(Number(documentTarget.document)) &&
+                    (documentTarget.mode === 'view' || documentTarget.mode === 'edit')) {
+                    $state.go('application.tntt_documents', {document: documentTarget.document, mode: documentTarget.mode});
+                    return;
+                }
                 if (settings.campaignsEnabled && /^[1-9][0-9]*$/.test(pendingNotice || '') && Number.isSafeInteger(Number(pendingNotice))) {
                     $state.go('application.tntt_documents', {tab:'notices', notice:Number(pendingNotice)});
                     return;
@@ -420,6 +448,13 @@
                 return settings.campaignsEnabled && (/^\/campaigns(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}(?:\/canh-dong-hoa)?))?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || ''));
             }
             $rootScope.$on('$stateChangeStart', function (event, nextState, nextParams) {
+                if (settings.campaignsEnabled && nextState.name === 'application.tntt_documents' &&
+                    nextParams && nextParams.document && !authSession.hasCredentials()) {
+                    rememberTnttDocument(nextParams.document, nextParams.mode);
+                    event.preventDefault();
+                    $state.go('login');
+                    return;
+                }
                 if (nextState.data && (nextState.data.publicFair || nextState.data.fairPrivate) && !settings.fairsEnabled) {
                     event.preventDefault();
                     $state.go('login', {showHome: true}, {location: 'replace'});

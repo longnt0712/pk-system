@@ -1774,3 +1774,21 @@ test('a document notice link resumes once after login only on the TNTT domain', 
         h.deps.$rootScope.resetPostLoginNavigation();h.deps.$rootScope.navigateAfterLogin();assert.deepEqual(redirects[1],['application.dashboard']);
     }
 });
+
+test('TNTT document links require sign-in and resume the exact document and mode once', () => {
+    for (const mode of ['view', 'edit']) {
+        const h = setup(() => ({data: {}})), app = startApp(h, 'tnttphungkhoang.com'), redirects = [];
+        h.token.removeToken();
+        app.state.go = (...args) => redirects.push(copy(args));
+        let prevented = false;
+        app.listeners.$stateChangeStart({preventDefault() { prevented = true; }},
+            {name: 'application.tntt_documents'}, {document: '12', mode});
+        assert.equal(prevented, true);
+        assert.deepEqual(redirects[0], ['login']);
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(redirects[1], ['application.tntt_documents', {document: '12', mode}]);
+        h.deps.$rootScope.resetPostLoginNavigation();
+        h.deps.$rootScope.navigateAfterLogin();
+        assert.deepEqual(redirects[2], ['application.dashboard']);
+    }
+});

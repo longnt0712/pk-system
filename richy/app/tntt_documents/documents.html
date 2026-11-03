@@ -29,7 +29,7 @@
       <div class="td-entry-copy"><h2><button type="button" ng-click="vm.openEntry(item)" ng-disabled="vm.trash">{{item.title}}</button></h2><p class="td-updated">Cập nhật {{item.updatedAt | date:'dd/MM/yyyy HH:mm'}}</p><p class="td-entry-location" ng-if="vm.searchTerm||vm.trash">{{vm.entryLocation(item)}}</p></div>
       <div class="td-entry-actions" ng-if="!vm.trash"><button type="button" class="tn-button tn-primary" ng-click="vm.openEntry(item)">{{vm.caps.canEdit?'Soạn nội dung':'Xem tài liệu'}}</button><button type="button" class="tn-button" ng-click="vm.print(item)" aria-label="In hoặc lưu PDF {{item.title}}" title="In hoặc lưu PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4V8h16v9h-3M7 14h10v7H7Zm10-3h1"/></svg></button></div>
       <div class="td-manage" ng-if="vm.caps.canEdit&&!vm.trash"><button ng-click="vm.editMetadata(item)">Tên / di chuyển</button><button ng-click="vm.openHistory(item)">Lịch sử</button><button ng-click="vm.archive(item)">Xóa</button></div>
-      <div class="td-share" ng-if="vm.caps.canEdit&&!vm.trash"><button class="td-switch" ng-class="{'is-on':item.shared}" ng-click="vm.toggleSharing(item)" ng-disabled="vm.busy" role="switch" aria-checked="{{item.shared}}"><span aria-hidden="true"></span> {{item.shared?'Đang cho xem':'Chưa cho xem'}}</button><button class="td-text-button" ng-click="vm.openPublish(item)">Thông báo / gửi nhắc</button><button class="td-text-button" ng-if="item.noticeId" ng-click="vm.openDelivery(item)">Theo dõi</button></div>
+      <div class="td-share" ng-if="vm.caps.canEdit&&!vm.trash"><button class="td-switch" ng-class="{'is-on':item.shared}" ng-click="vm.toggleSharing(item)" ng-disabled="vm.busy" role="switch" aria-checked="{{item.shared}}"><span aria-hidden="true"></span> {{item.shared?'Đang cho xem':'Chưa cho xem'}}</button><button class="td-text-button" type="button" ng-click="vm.openLinkSharing(item)"><i class="fa fa-link" aria-hidden="true"></i> Chia sẻ link</button><button class="td-text-button" ng-click="vm.openPublish(item)">Thông báo / gửi nhắc</button><button class="td-text-button" ng-if="item.noticeId" ng-click="vm.openDelivery(item)">Theo dõi</button></div>
       <button class="tn-button td-restore" ng-if="vm.caps.canEdit&&vm.trash" ng-click="vm.archive(item,true)">Khôi phục</button>
      </article>
     </div></div>
@@ -40,6 +40,28 @@
  <section class="td-notices" ng-if="vm.caps.enabled && vm.tab==='notices'"><div class="td-notice-head"><h2>Thông báo gửi đến bạn</h2><button class="tn-button" ng-click="vm.reload()">Làm mới</button></div><article class="td-notice" ng-repeat="notice in vm.notices track by notice.id"><span class="td-notice-dot" ng-class="{'is-unread':!notice.readAt&&notice.active}"></span><div><div class="td-notice-meta"><span>{{notice.readAt?'Đã đọc':notice.active?'Chưa đọc':'Đã hết đợt nhắc'}}</span><time>{{notice.publishedAt | date:'dd/MM/yyyy HH:mm'}}</time></div><h2>{{notice.title}}</h2><p class="tn-preserve">{{notice.summary}}</p><small>Thời gian nhắc: {{notice.startsAt | date:'dd/MM/yyyy HH:mm'}} – {{notice.endsAt | date:'dd/MM/yyyy HH:mm'}}</small><div class="td-entry-actions"><button class="tn-button tn-primary" ng-click="vm.openNotice(notice)">Xem tài liệu</button><button class="tn-button" ng-if="!notice.readAt" ng-disabled="vm.busy" ng-click="vm.markRead(notice)">Đã đọc</button><button class="tn-button" ng-click="vm.printNotice(notice)">In / PDF</button></div></div></article><div class="td-empty" ng-if="!vm.loading&&!vm.notices.length"><i class="fa fa-check-circle-o"></i><h2>Chưa có thông báo gửi đến bạn</h2><p>Thông báo đã đọc và các đợt nhắc hết hạn vẫn có thể xem lại tại đây khi tài liệu còn được chia sẻ.</p></div></section>
  <study-notebook ng-if="vm.active" test-id="vm.active.id" test-mode="TNTT" user-id="vm.caps.userId" enabled="true" session-opener="vm.openSession()" session-key="{{vm.active.id}}:{{vm.active.readOnly}}:{{vm.active.snapshot.revision}}" hide-toggle="true" auto-open="true" placeholder="Gõ nội dung biên bản hoặc chọn Bút để viết tay…" read-only="vm.active.readOnly" title="{{vm.active.title}}" on-close="vm.closeEditor()" footer-label="{{vm.active.readOnly?'Bản được chia sẻ · Chỉ xem':'Tài liệu chung · Admin và Quản lý đào tạo cùng sửa'}}"></study-notebook>
 </main>
+
+<script type="text/ng-template" id="tntt-link-share.html">
+ <section class="td-dialog">
+  <header><h2>Chia sẻ liên kết</h2><p>{{vm.linkShare.item.title}}</p></header>
+  <div class="td-dialog-body">
+   <label>Chế độ mở
+    <select class="form-control" ng-model="vm.linkShare.mode" ng-change="vm.updateShareLink()">
+     <option value="view">Chỉ xem</option>
+     <option value="edit">Chỉnh sửa</option>
+    </select>
+   </label>
+   <p ng-if="vm.linkShare.mode==='view'">Người nhận cần đăng nhập và có quyền xem tài liệu.</p>
+   <p ng-if="vm.linkShare.mode==='edit'">Người nhận cần đăng nhập bằng tài khoản Admin hoặc Quản lý đào tạo.</p>
+   <label>Đường dẫn<input class="form-control" type="text" readonly ng-value="vm.linkShare.url"></label>
+   <p role="status" ng-if="vm.linkShare.status">{{vm.linkShare.status}}</p>
+  </div>
+  <footer>
+   <button class="tn-button" type="button" ng-click="$dismiss()">Đóng</button>
+   <button class="tn-button tn-primary" type="button" ng-click="vm.copyShareLink()" ng-disabled="!vm.linkShare.url">Sao chép liên kết</button>
+  </footer>
+ </section>
+</script>
 
 <script type="text/ng-template" id="tntt-entry-form.html"><form ng-submit="vm.saveEntry()" class="td-dialog"><header><h2>{{vm.form.id?'Đổi tên / di chuyển':vm.form.kind==='FOLDER'?'Tạo thư mục':vm.form.meeting?'Tạo biên bản họp':'Tạo tài liệu'}}</h2></header><div class="td-dialog-body"><p role="alert" class="td-error" ng-if="vm.error">{{vm.error}}</p><label>Tên<input class="form-control" ng-model="vm.form.title" maxlength="200" required autofocus ng-disabled="vm.busy"></label><label>Thư mục<select class="form-control" ng-model="vm.form.parentId" ng-options="folder.id as folder.path for folder in vm.folders" ng-disabled="vm.busy"><option value="">Thư mục gốc</option></select></label></div><footer><button type="button" class="tn-button" ng-click="$dismiss()" ng-disabled="vm.busy">Hủy</button><button class="tn-button tn-primary" type="submit" ng-disabled="vm.busy">{{vm.busy?'Đang lưu…':'Lưu'}}</button></footer></form></script>
 <script type="text/ng-template" id="tntt-archive-form.html"><section class="td-dialog"><header><h2>{{vm.restoring?'Khôi phục tài liệu':'Chuyển vào thùng rác'}}</h2></header><div class="td-dialog-body"><p>{{vm.confirmEntry.title}}</p><p ng-if="!vm.restoring">Bạn có thể khôi phục lại từ thùng rác. Chia sẻ và thông báo đang chờ của tài liệu sẽ được tắt.</p><p role="alert" class="td-error" ng-if="vm.error">{{vm.error}}</p></div><footer><button class="tn-button" ng-click="$dismiss()" ng-disabled="vm.busy">Hủy</button><button class="tn-button tn-primary" ng-click="vm.confirmArchive()" ng-disabled="vm.busy">{{vm.restoring?'Khôi phục':'Chuyển vào thùng rác'}}</button></footer></section></script>

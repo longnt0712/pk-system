@@ -4,7 +4,7 @@ const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-pri
 const app=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(app,f),'utf8');
 let browser;before(async()=>{browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});});after(async()=>{if(browser)await browser.close();});
 const blank=()=>({text:'',orientation:'portrait',pattern:'lined',strokes:[]});
-async function fixture({width=1440,gender='M',student=false,editor=!student,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0}={}){
+async function fixture({width=1440,gender='M',student=false,editor=!student,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0,params={}}={}){
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
  const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:null,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:editor,document:blank()},extraEntries:[],archivedEntries:[],notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
@@ -37,18 +37,51 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  await page.evaluate(({student,editor,gender,dashboard})=>{
   window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGEMENT'}],person:{gender}};
   document.cookie='education.user='+encodeURIComponent(JSON.stringify(window.user))+';path=/';
-  angular.module('ui.router',[]).provider('$state',function(){this.state=function(){return this;};this.$get=['$rootScope',function(root){return{current:{name:dashboard?'application.dashboard':'application.tntt_documents'},is(name){return this.current.name===name;},go(name,params){window.lastNavigation={name,params};this.current.name=name;root.$broadcast('$stateChangeSuccess');}};}];});
+  angular.module('ui.router',[]).provider('$state',function(){
+   const routes={};this.state=function(name,config){routes[name]=config;return this;};
+   this.$get=['$rootScope',function(root){return{
+    current:{name:dashboard?'application.dashboard':'application.tntt_documents'},
+    is(name){return this.current.name===name;},
+    go(name,params){window.lastNavigation={name,params};this.current.name=name;root.$broadcast('$stateChangeSuccess');},
+    href(name,params){const [path,keys]=routes[name].url.split('?');const url=new URL(path,location.origin);
+     keys.split('&').filter(key=>params[key]!=null).forEach(key=>url.searchParams.set(key,params[key]));return url.href;}
+   };}];
+  });
   angular.module('oc.lazyLoad',[]);angular.module('Hrm.Common',[]);
  },{student,editor,gender,dashboard});
  for(const f of ['common/utils/color-palette.js','tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
  await page.addScriptTag({path:path.join(app,'common/utils/study-notebook.directive.js')});
- await page.evaluate(()=>{
-  angular.module('Fixture',['Hrm.TnttDocuments','ngCookies']).value('settings',{campaignsEnabled:true,permissionsLoaded:true,api:{baseUrl:'/service/'}}).value('AuthSession',{hasCredentials:()=>!!window.user}).value('$stateParams',{});
+ await page.evaluate(params=>{
+  angular.module('Fixture',['Hrm.TnttDocuments','ngCookies']).value('settings',{campaignsEnabled:true,permissionsLoaded:true,api:{baseUrl:'/service/'}}).value('AuthSession',{hasCredentials:()=>!!window.user}).value('$stateParams',params);
   angular.bootstrap(document,['Fixture']);window.injector=angular.element(document).injector();window.vm=angular.element(document.querySelector('[ng-controller]')).scope().vm;
- });
+ },params);
  await page.locator(enabled?'.td-entry':'.td-empty').first().waitFor().catch(async e=>{console.error(JSON.stringify({errors:server.errors,calls:server.calls,state:await page.evaluate(()=>({error:window.vm?.error,caps:window.vm?.caps,entries:window.vm?.entries})),body:(await page.locator('body').innerText()).slice(0,700)}));await context.close();throw e;});
  return{page,context,server};
 }
+
+test('share links select the right document and cannot turn a read-only account into an editor',async()=>{
+ const author=await fixture({params:{document:'12',mode:'view'}});
+ try {
+  await author.page.waitForFunction(()=>document.querySelector('.study-notebook-text')?.readOnly);
+  assert.equal(await author.page.locator('.study-notebook-tools').count(),0);
+  await author.page.locator('.study-notebook-close').click();
+  await author.page.getByRole('button',{name:'Chia sẻ link'}).click();
+  const link=author.page.getByRole('textbox',{name:'Đường dẫn'});
+  assert.equal(await link.inputValue(),'https://tnttphungkhoang.test/tai-lieu?document=12&mode=view');
+  await author.page.getByLabel('Chế độ mở').selectOption('edit');
+  assert.equal(await link.inputValue(),'https://tnttphungkhoang.test/tai-lieu?document=12&mode=edit');
+ } finally {await author.context.close();}
+ const reader=await fixture({editor:false,params:{document:'12',mode:'edit'}});
+ try {
+  await reader.page.getByRole('alert').filter({hasText:'Chỉ Admin và Quản lý đào tạo'}).waitFor();
+  assert.equal(reader.server.calls.filter(call=>call.path.endsWith('/entries/12')).length,0);
+ } finally {await reader.context.close();}
+ const editor=await fixture({params:{document:'12',mode:'edit'}});
+ try {
+  await editor.page.locator('.study-notebook-tools').waitFor();
+  assert.equal(await editor.page.evaluate(()=>window.vm.active.id),12);
+ } finally {await editor.context.close();}
+});
 
 test('shared minutes type and draw with the existing A4 editor, autosave together and preserve read-only snapshots',async()=>{
  const f=await fixture();try{
