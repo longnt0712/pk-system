@@ -41,6 +41,7 @@
             'Hrm.Products',
             'Hrm.PersonDate',
             'Hrm.EducationProgram',
+            'Hrm.School',
             'Hrm.Campaign',
             'Hrm.Fair',
             'Hrm.TnttDocuments',

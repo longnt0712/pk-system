@@ -24,6 +24,9 @@ public class StudentMarkDto implements Serializable{
 	private MarkDto mark;
 	private Double markNumber;
 	private String markText;
+    private Integer enrollmentClass;
+    public Integer getEnrollmentClass() { return enrollmentClass; }
+    public void setEnrollmentClass(Integer value) { enrollmentClass = value; }
 	
 	private String textSearch;
 

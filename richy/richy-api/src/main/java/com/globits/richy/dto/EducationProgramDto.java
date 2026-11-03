@@ -13,6 +13,13 @@ public class EducationProgramDto implements Serializable{
 	private String textSearch;
 	private Boolean main;
 	private String createDate;
+    private Long schoolId;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private java.util.Set<Long> permittedSchoolIds;
+    public java.util.Set<Long> getPermittedSchoolIds() { return permittedSchoolIds; }
+    public void setPermittedSchoolIds(java.util.Set<Long> value) { permittedSchoolIds = value; }
+    public Long getSchoolId() { return schoolId; }
+    public void setSchoolId(Long value) { schoolId = value; }
 
 	public Boolean getMain() { return main; }
 	public void setMain(Boolean main) { this.main = main; }
@@ -54,6 +61,7 @@ public class EducationProgramDto implements Serializable{
 	}
 	public EducationProgramDto(EducationProgram domain) {
 		this.id = domain.getId();
+        this.schoolId = domain.getSchoolId();
 		this.name = domain.getName();
 		this.code = domain.getCode();
 		this.description = domain.getDescription();

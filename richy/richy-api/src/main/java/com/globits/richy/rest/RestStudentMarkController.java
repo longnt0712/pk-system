@@ -20,36 +20,51 @@ import com.globits.richy.service.StudentMarkService;
 @RestController
 @RequestMapping("/api/student_mark")
 public class RestStudentMarkController {
+    @Autowired private com.globits.richy.service.impl.SchoolAccess access;
 	@Autowired
 	StudentMarkService service;
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<StudentMarkDto> getPage(@RequestBody StudentMarkDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
+        if (!access.isAdmin()) {
+            Long program = searchDto != null && searchDto.getMark() != null && searchDto.getMark().getEducationProgram() != null
+                ? searchDto.getMark().getEducationProgram().getId() : null;
+            access.requireProgram(program, "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT");
+        }
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/get_list_display", method = RequestMethod.POST)
 	public List<DisplayStudentMarkDto> getListDisplayStudentMark(@RequestBody DisplayStudentMarkDto searchDto) {
+        if (searchDto == null || searchDto.getEnrollmentClass() == null || searchDto.getEducationProgramId() == null) {
+            return java.util.Collections.emptyList();
+        }
+        access.requireBoard(searchDto.getEnrollmentClass(), searchDto.getEducationProgramId());
 		return service.getListDisplayStudentMark(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public StudentMarkDto getOne(@PathVariable Long id) {
+        access.requireMark(id);
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public StudentMarkDto saveOne(@RequestBody StudentMarkDto searchDto) {
+        access.requireMarkWrite(searchDto.getEnrollmentClass(), searchDto.getId(),
+            searchDto.getMark() == null ? null : searchDto.getMark().getId(),
+            searchDto.getUser() == null ? null : searchDto.getUser().getId());
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
+        access.requireMark(id);
 		return service.deleteObject(id);
 	}
 }

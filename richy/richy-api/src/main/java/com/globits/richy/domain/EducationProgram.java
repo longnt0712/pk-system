@@ -31,6 +31,11 @@ public class EducationProgram extends BaseObject{
 	@Column(name="is_main")
 	private Boolean main;
 
+    @Column(name="school_id")
+    private Long schoolId;
+    public Long getSchoolId() { return schoolId; }
+    public void setSchoolId(Long value) { schoolId = value; }
+
 	public Boolean getMain() { return main; }
 	public void setMain(Boolean main) { this.main = main; }
 

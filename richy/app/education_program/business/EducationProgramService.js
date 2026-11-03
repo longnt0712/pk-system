@@ -150,6 +150,11 @@
                     cellStyle: _cellNowrap
                 }
                 , {
+                    field: 'schoolId',
+                    title: 'School ID',
+                    formatter: function (value) { return Number(value) || '—'; }
+                }
+                , {
                     field: 'createDate',
                     title: 'Thời gian tạo',
                     switchable: true,

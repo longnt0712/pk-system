@@ -60,7 +60,7 @@
                     <div class="col-md-2">
                         <class-tree-picker classes="vm.enrollmentClasses"
                                            ng-model="vm.searchDisplayDto.enrollmentClass"
-                                           school-id="2"
+                                           school-id="vm.schoolId"
                                            allow-clear="false"
                                            disabled="vm.hasUnsavedMarks()"
                                            on-change="vm.getListDisplayStudentMark()"

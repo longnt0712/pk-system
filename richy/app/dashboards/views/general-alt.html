@@ -579,7 +579,7 @@
         <!-- ĐIỂM DANH -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                ng-if="!$settings.hideAttendance && (vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin)">
 
             <a
                     href="person_dates"

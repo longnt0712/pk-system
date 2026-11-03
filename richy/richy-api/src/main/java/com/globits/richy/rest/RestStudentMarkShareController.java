@@ -6,7 +6,7 @@ import javax.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.globits.richy.dto.StudentMarkShareDto;
 import com.globits.richy.dto.StudentMarkShareRequestDto;
@@ -14,7 +14,7 @@ import com.globits.richy.service.StudentMarkShareService;
 
 @RestController
 @RequestMapping("/api/student_mark/share")
-@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+@PreAuthorize("isAuthenticated()")
 public class RestStudentMarkShareController {
     @Autowired StudentMarkShareService service;
     @RequestMapping(method=RequestMethod.POST)

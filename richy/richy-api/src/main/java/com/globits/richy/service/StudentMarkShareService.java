@@ -22,7 +22,6 @@ import com.globits.richy.domain.*;
 import com.globits.richy.dto.*;
 import com.globits.richy.repository.*;
 import com.globits.richy.service.impl.StudentMarkShareSupport;
-import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 import com.globits.security.repository.UserRepository;
@@ -35,8 +34,8 @@ public class StudentMarkShareService {
     @Autowired EducationProgramRepository programRepository;
     @Autowired MarkRepository markRepository;
     @Autowired UserRepository userRepository;
-    @Autowired EnrolmentClassService classService;
     @Autowired StudentMarkService markService;
+    @Autowired com.globits.richy.service.impl.SchoolAccess schoolAccess;
 
     public StudentMarkShareDto create(StudentMarkShareRequestDto request,HttpServletRequest http) {
         if(request==null)throw new IllegalArgumentException("Chọn lớp và chương trình trước khi tạo link.");
@@ -74,7 +73,8 @@ public class StudentMarkShareService {
         if(share==null||share.isRevoked()||!share.getHostname().equals(hostname(http)))throw new Unavailable();
         EnrolmentClass selectedClass=classRepository.findOne(share.getEnrollmentClass().longValue());
         EducationProgram program=programRepository.findOne(share.getEducationProgramId());
-        if(selectedClass==null||program==null)throw new Unavailable();
+        if (selectedClass == null || selectedClass.getSchoolId() == null || program == null
+                || !Long.valueOf(selectedClass.getSchoolId()).equals(program.getSchoolId())) { throw new Unavailable(); }
         DisplayStudentMarkDto scope=new DisplayStudentMarkDto();
         scope.setEnrollmentClass(share.getEnrollmentClass());scope.setEducationProgramId(share.getEducationProgramId());
         scope.setGroupId(share.getGroupId());scope.setTextSearch(share.getTextSearch());
@@ -113,15 +113,11 @@ public class StudentMarkShareService {
         if(authentication==null||!authentication.isAuthenticated()||authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
             throw new AccessDeniedException("Cần đăng nhập để chia sẻ bảng điểm.");
         User teacher=authentication==null?null:userRepository.findByUsername(authentication.getName());
-        boolean allowed=false;
-        if(teacher!=null&&teacher.getRoles()!=null)for(Role role:teacher.getRoles()) {
-            if(role!=null&&java.util.Arrays.asList("ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT").contains(role.getName()))allowed=true;
+        if (teacher == null || !Boolean.TRUE.equals(teacher.getActive())) {
+            throw new AccessDeniedException("Tài khoản không hoạt động.");
         }
-        if(!allowed)throw new AccessDeniedException("Chỉ giáo viên/quản lý được chia sẻ bảng điểm.");
         if(classId==null||classId<=0||programId==null||programId<=0)throw new IllegalArgumentException("Chọn lớp và chương trình hợp lệ trước khi chia sẻ.");
-        EnrolmentClassDto selected=classService.getObjectById(classId.longValue());
-        if(selected==null||!selected.isCanEdit())throw new AccessDeniedException("Bạn không có quyền chia sẻ bảng điểm lớp này.");
-        if(programRepository.findOne(programId)==null)throw new IllegalArgumentException("Chương trình không còn tồn tại.");
+        schoolAccess.requireBoard(classId, programId);
         return teacher;
     }
     private String hostname(HttpServletRequest request) {

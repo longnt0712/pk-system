@@ -15,7 +15,8 @@
         'Utilities',
         '$uibModal',
         'EducationProgramService',
-        'Upload'
+        'Upload',
+        'SchoolContext'
     ];
 
     angular.module('Hrm.EducationProgram').directive('fileDownload',function(){
@@ -89,7 +90,7 @@
 
     });
 
-    function EducationProgramController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload) {
+    function EducationProgramController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload, schoolContext) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -107,10 +108,22 @@
         vm.pageIndex = 1;
         vm.pageSize = 25;
         vm.searchDto = {};
+        vm.schools = [];
+        var pageRequest = 0;
+        vm.selectSchool = function () {
+            vm.searchDto.schoolId = vm.schoolId;
+            vm.pageIndex = 1;
+            vm.bsTableControl.state = angular.extend(vm.bsTableControl.state || {}, {pageNumber: 1});
+            vm.selectedEducationPrograms = [];
+            vm.bsTableControl.options.data = vm.educationPrograms = [];
+            vm.bsTableControl.options.totalRows = 0;
+            return vm.getPage();
+        };
         vm.mainSaving = false;
         vm.canSetMain = function () {
             var permissions = $rootScope.settings || settings;
-            return permissions.isAdmin === true || permissions.isEducationManagerment === true;
+            return !!vm.schoolId && (permissions.isAdmin === true ||
+                (settings.schoolAccess && settings.schoolAccess.education.indexOf(vm.schoolId) >= 0));
         };
         $scope.setMainProgram = function (id) {
             if (!vm.canSetMain() || vm.mainSaving || vm.educationPrograms.some(function (p) { return Number(p.id) === Number(id) && p.main === true; })) { return; }
@@ -152,14 +165,26 @@
         };
 
         vm.getPage = function () {
-            return service.getPage(vm.searchDto,vm.pageIndex, vm.pageSize).then(function (data) {
+            if (!vm.schoolId) { return; }
+            var request = ++pageRequest;
+            return service.getPage(angular.copy(vm.searchDto),vm.pageIndex, vm.pageSize).then(function (data) {
+                if (request !== pageRequest) { return; }
                 vm.educationPrograms = data.content;
                 vm.bsTableControl.options.data = vm.educationPrograms;
                 vm.bsTableControl.options.totalRows = data.totalElements;
+            }, function () {
+                if (request === pageRequest) { toastr.error('Không thể tải chương trình của School đã chọn.'); }
             });
         };
 
-        vm.getPage();
+        schoolContext.load().then(function (school) {
+            return schoolContext.list().then(function (rows) {
+                vm.schools = rows;
+                var preferred = school && rows.find(function (row) { return row.id === school.id; });
+                vm.schoolId = (preferred || rows[0] || {}).id;
+                vm.selectSchool();
+            });
+        }).catch(function () { toastr.error('Không thể tải danh sách School.'); });
 
         vm.bsTableControl = {
             options: {
@@ -212,8 +237,8 @@
          * New event account
          */
         vm.newObject = function () {
-
-            vm.educationProgram.isNew = true;
+            if (!vm.canSetMain()) { return; }
+            vm.educationProgram = {isNew: true, schoolId: vm.schoolId};
 
             var modalInstance = modal.open({
                 animation: true,
@@ -241,6 +266,7 @@
          * Edit a account
          */
         $scope.editObject = function (id) {
+            if (!vm.canSetMain()) { return; }
             service.getOne(id).then(function (data) {
                 vm.educationProgram = data;
                 vm.educationProgram.isNew = false;
@@ -271,6 +297,7 @@
          * Delete accounts
          */
         $scope.deleteObject = function (id) {
+            if (!vm.canSetMain()) { return; }
             var modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'confirm_delete_modal.html',

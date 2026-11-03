@@ -20,7 +20,8 @@ BEGIN TRY
     IF COL_LENGTH(N'dbo.tbl_education_program', N'is_main') IS NULL
         ALTER TABLE dbo.tbl_education_program ADD is_main bit NULL;
 
-    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.tbl_education_program') AND name = N'UX_education_program_single_main')
+    IF COL_LENGTH(N'dbo.tbl_education_program', N'school_id') IS NULL
+       AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.tbl_education_program') AND name = N'UX_education_program_single_main')
         EXEC(N'CREATE UNIQUE INDEX UX_education_program_single_main ON dbo.tbl_education_program(is_main) WHERE is_main = 1;');
     COMMIT TRANSACTION;
 END TRY

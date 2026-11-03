@@ -5,11 +5,14 @@
     
         <div class="portlet light bordered">
             <div class="portlet-body">
-                <div class="btn-group pull-left margin-top-10 margin-bottom-10">
-                    <button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>
+                <div class="form-inline margin-top-10 margin-bottom-10">
+                    <label for="education-school">School</label>
+                    <select id="education-school" class="form-control" ng-model="vm.schoolId" ng-change="vm.selectSchool()" ng-disabled="vm.mainSaving"
+                            ng-options="school.id as (school.name + ' (#' + school.id + ')') for school in vm.schools"></select>
+                    <button class="btn btn-default" ng-if="vm.canSetMain()" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i> Thêm mới</button>
                 </div>
                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
-                <p class="text-muted" style="margin-top:12px">Sắp xếp theo thời gian tạo, mới nhất trước. Chỉ một chương trình được chọn <strong>Main</strong>; chương trình này sẽ được chọn mặc định ở danh sách điểm học sinh và thiết lập đầu điểm.</p>
+                <p class="text-muted" style="margin-top:12px">Mỗi School có một chương trình <strong>Main</strong> dùng mặc định cho bảng điểm và thiết lập đầu điểm.</p>
             </div>
         </div>
     </div>
@@ -34,11 +37,16 @@
                     <label class="bold">Mã</label>
                     <input data-ng-model="vm.educationProgram.code" type="text" autofocus="autofocus" class="form-control" />
                 </div>
+                <div class="col-md-12">
+                    <label for="program-school">School ID</label>
+                    <select id="program-school" class="form-control" ng-model="vm.educationProgram.schoolId" ng-disabled="!$settings.isAdmin"
+                            ng-options="school.id as (school.name + ' (#' + school.id + ')') for school in vm.schools"></select>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
-            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+            <button type="button" ng-click="$close('yes');" ng-disabled="!vm.educationProgram.schoolId" class="btn btn-primary" data-dismiss="modal">Lưu</button>
         </div>
     </div>
 </script>

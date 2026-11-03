@@ -1,13 +1,14 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),nodeVm=require('node:vm');
 const app=path.resolve(__dirname,'..'),clone=v=>JSON.parse(JSON.stringify(v));
-const programs=[{id:3,name:'New',main:false},{id:2,name:'Middle',main:false},{id:1,name:'Main',main:true}];
+const programs=[{id:3,name:'New',main:false,schoolId:2},{id:2,name:'Middle',main:false,schoolId:2},{id:1,name:'Main',main:true,schoolId:2}];
 const tick=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};}
 function registration(file,name){let constructor;const module={controller(n,fn){if(n===name)constructor=fn;return this;},directive(){return this;},filter(){return this;},service(n,fn){if(n===name)constructor=fn;return this;}};
  const angular={module:()=>module,noop(){},copy:clone,isArray:Array.isArray,forEach:(items,fn)=>(items||[]).forEach(fn),extend:Object.assign};
  nodeVm.runInNewContext(fs.readFileSync(path.join(app,file),'utf8'),{angular,console:{log(){},debug(){}},Date,JSON,Math,Number,window:{location:{hostname:'tnttphungkhoang.com'},addEventListener(){},removeEventListener(){}},document:{}});return constructor;}
-function controller(file,name,service,permissions={isAdmin:true}){const create=registration(file,name),scope={$on(){return()=>{};},$watch(){return()=>{};},$watchGroup(){return()=>{};}},root={settings:{layout:{},api:{baseUrl:'',apiPrefix:''},...permissions}},timer=()=>{};timer.cancel=()=>{};const vm={};
- create.call(vm,root,scope,{success(){},info(){},warning(){},error(){}},timer,root.settings,{}, {},service,{}, {start(){},stop(){}},()=>v=>v);return{vm,scope,root};}
+function controller(file,name,service,permissions={isAdmin:true},schoolId=2){const create=registration(file,name),scope={$on(){return()=>{};},$watch(){return()=>{};},$watchGroup(){return()=>{};}},root={settings:{layout:{},api:{baseUrl:'',apiPrefix:''},...permissions}},timer=()=>{};timer.cancel=()=>{};const vm={};
+ const schools={load:()=>Promise.resolve({id:schoolId}),list:()=>Promise.resolve([{id:schoolId,name:"School"}]),classes:id=>service.getEnrolmentClass(id).then(result=>result.content)};
+ create.call(vm,root,scope,{success(){},info(){},warning(){},error(){}},timer,root.settings,{}, {},service,{}, ...(name==="StudentMarkController"?[{start(){},stop(){}},()=>v=>v,schools]:[schools]));return{vm,scope,root};}
 test('student_marks selects Main instead of the first returned program and keeps a fallback for legacy lists',async()=>{
  for(const withMain of [true,false]){const calls=[],rows=programs.map(p=>({...p,main:withMain&&p.main}));
   const {vm}=controller('student_mark/controllers/StudentMarkController.js','StudentMarkController',{getAllGroups:()=>Promise.resolve([]),getEnrolmentClass:()=>Promise.resolve({content:[{id:10,name:'Class',schoolId:2}]}),getEducationPrograms:()=>Promise.resolve({content:rows}),getListDisplayStudentMark:d=>{calls.push(clone(d));return Promise.resolve([]);}});
@@ -19,6 +20,20 @@ test('student_marks does not load a phantom class or all students when the class
   const calls=[];const {vm}=controller('student_mark/controllers/StudentMarkController.js','StudentMarkController',{getAllGroups:()=>Promise.resolve([]),getEnrolmentClass:()=>Promise.resolve({content:classes}),getEducationPrograms:()=>Promise.resolve({content:programs}),getListDisplayStudentMark:d=>{calls.push(clone(d));return Promise.resolve([]);}});
   await tick();assert.equal(calls.length,0);assert.equal(vm.searchDisplayDto.enrollmentClass,null);assert.equal(vm.studentMarks.length,0);assert.match(vm.boardHint,/Chọn lớp/);
  }
+});
+test('the IELTS school only opens a School 1 class and program even when catalogs contain School 2 rows',async()=>{
+ const calls=[], programsForSchool=[...programs,{id:7,name:'IELTS',schoolId:1,main:true}];
+ const {vm}=controller('student_mark/controllers/StudentMarkController.js','StudentMarkController',{
+  getAllGroups:()=>Promise.resolve([]),
+  getEnrolmentClass:id=>{assert.equal(id,1);return Promise.resolve({content:[{id:30,schoolId:2},{id:10,schoolId:1}]});},
+  getEducationPrograms:filter=>{assert.equal(filter.schoolId,1);return Promise.resolve({content:programsForSchool});},
+  getListDisplayStudentMark:d=>{calls.push(clone(d));return Promise.resolve([]);}
+ },{isAdmin:true},1);
+ await tick();
+ assert.deepEqual(Array.from(vm.enrollmentClasses,row=>row.id),[10]);
+ assert.deepEqual(Array.from(vm.educationPrograms,row=>row.id),[7]);
+ assert.equal(calls[0].enrollmentClass,10);
+ assert.equal(calls[0].educationProgramId,7);
 });
 test('marks selects Main and an older unfiltered page cannot replace the filtered result',async()=>{
  const initial=deferred(),calls=[],orders=[];const {vm}=controller('mark/controllers/MarkController.js','MarkController',{getTableDefinition:()=>[],getPage:d=>{calls.push(clone(d));return calls.length===1?initial.promise:Promise.resolve({content:[{id:77,name:'Main mark'}],totalElements:1});},getPageEducationProgram:()=>Promise.resolve({content:programs}),getOrderedMarks:id=>{orders.push(id);return Promise.resolve([]);}});

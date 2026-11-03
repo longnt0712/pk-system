@@ -1,0 +1,43 @@
+<div class="portlet light bordered" ng-if="vm.settings.isAdmin">
+    <h2>Quản lý School</h2>
+    <p>Gán quyền cho từng tài khoản theo School để dùng trong Chương trình đào tạo và Student Mark.</p>
+    <div class="alert alert-danger" ng-if="vm.error" role="alert">{{vm.error}}</div>
+    <button type="button" class="btn btn-primary" ng-disabled="vm.busy" ng-click="vm.edit()">Thêm School</button>
+    <div class="table-responsive margin-top-10">
+        <table class="table table-striped">
+            <thead><tr><th>ID</th><th>Tên School</th><th>Tên miền</th><th>Hoạt động</th><th>Điểm danh</th><th>Thao tác</th></tr></thead>
+            <tbody><tr ng-repeat="row in vm.rows track by row.id">
+                <td>{{row.id}}</td><td>{{row.name}}</td><td>{{row.domain}}</td>
+                <td>{{row.active ? 'Đang hoạt động' : 'Đã tắt'}}</td>
+                <td>{{row.domain === 'ieltsroom.com' || !row.showAttendance ? 'Ẩn' : 'Hiện'}}</td>
+                <td><button class="btn btn-default" ng-disabled="vm.busy" ng-click="vm.edit(row)">Sửa</button>
+                    <button class="btn btn-default" ng-disabled="vm.busy" ng-click="vm.openMembers(row)">Tài khoản và quyền</button></td>
+            </tr></tbody>
+        </table>
+    </div>
+    <form ng-if="vm.editing" ng-submit="vm.save()" class="well">
+        <h3>{{vm.editing.id ? 'Sửa School #' + vm.editing.id : 'Thêm School'}}</h3>
+        <label for="school-name">Tên School</label>
+        <input id="school-name" class="form-control" ng-model="vm.editing.name" maxlength="255" required>
+        <label for="school-domain">Tên miền</label>
+        <input id="school-domain" class="form-control" ng-model="vm.editing.domain" placeholder="example.com" maxlength="253" required>
+        <div class="checkbox"><label><input type="checkbox" ng-model="vm.editing.active"> Hoạt động</label></div>
+        <div class="checkbox"><label><input type="checkbox" ng-model="vm.editing.showAttendance" ng-disabled="vm.editing.domain === 'ieltsroom.com'"> Hiện Điểm danh</label></div>
+        <button class="btn btn-primary" type="submit" ng-disabled="vm.busy">Lưu School</button>
+        <button class="btn btn-default" type="button" ng-disabled="vm.busy" ng-click="vm.editing = null">Đóng</button>
+    </form>
+    <form ng-if="vm.members" ng-submit="vm.saveRoles()" class="well">
+        <h3>Tài khoản và quyền · {{vm.members.name}}</h3>
+        <ul><li ng-repeat="(username, roleIds) in vm.assignments">
+            <button type="button" class="btn btn-link" ng-disabled="vm.busy" ng-click="vm.selectUser(username)">{{username}}</button>
+            <span ng-repeat="role in vm.roles track by role.id" ng-if="roleIds.indexOf(role.id) >= 0" class="label label-default margin-right-5">{{role.name}}</span>
+        </li></ul>
+        <label for="school-username">Tên đăng nhập</label>
+        <input id="school-username" class="form-control" ng-model="vm.assignment.username" maxlength="100" required>
+        <label for="school-roles">Role trong School</label>
+        <select id="school-roles" class="form-control" multiple size="8" ng-model="vm.assignment.roles" ng-options="role.id as role.name for role in vm.roles"></select>
+        <p class="help-block">Lưu khi không chọn role nào sẽ gỡ tài khoản khỏi School này.</p>
+        <button class="btn btn-primary" type="submit" ng-disabled="vm.busy">Lưu quyền</button>
+    </form>
+</div>
+<p class="alert alert-warning" ng-if="!vm.settings.isAdmin">Quản trị viên hệ thống mới có quyền cấu hình School.</p>

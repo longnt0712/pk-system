@@ -203,22 +203,22 @@
                     </ul>
                 </li>
 
-                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true || settings.isStudentManagerment == true" class="menu-dropdown">
+                <li ng-show="settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.schoolAccess.studentMarks.indexOf(settings.school.id) >= 0" class="menu-dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         HỌC SINH <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li>
+                        <li ng-if="!settings.hideAttendance && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment)">
                             <a href="person_dates">
                                 <i class="fa fa-caret-right"></i> ĐIỂM DANH
                             </a>
                         </li>
-                        <li>
+                        <li ng-if="settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment">
                             <a href="user/accounts">
                                 <i class="fa fa-caret-right"></i> DANH SÁCH HỌC SINH
                             </a>
                         </li>
-                        <li>
+                        <li ng-if="settings.isAdmin || settings.schoolAccess.studentMarks.indexOf(settings.school.id) >= 0">
                             <a href="student_marks">
                                 <i class="fa fa-caret-right"></i> DANH SÁCH ĐIỂM
                             </a>
@@ -231,12 +231,12 @@
                         ĐÀO TẠO <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true">
+                        <li ng-if="settings.isAdmin || settings.schoolAccess.education.length">
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo
                             </a>
                         </li>
-                        <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true">
+                        <li ng-if="settings.isAdmin || settings.schoolAccess.education.indexOf(settings.school.id) >= 0">
                             <a href="marks">
                                 <i class="fa fa-caret-right"></i> Thiết lập điểm
                             </a>
@@ -292,6 +292,7 @@
                                 <i class="fa fa-gear"></i> Thiết lập hệ thống
                             </a>
                         </li>
+                        <li><a href="schools"><i class="fa fa-university"></i> Quản lý School</a></li>
                         <li>
                             <a href="ielts_material/admin">
                                 <i class="fa fa-caret-right"></i> Material

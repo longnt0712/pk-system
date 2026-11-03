@@ -15,7 +15,8 @@
         'Utilities',
         '$uibModal',
         'MarkService',
-        'Upload'
+        'Upload',
+        'SchoolContext'
     ];
 
     angular.module('Hrm.Mark').directive('fileDownload',function(){
@@ -89,7 +90,7 @@
 
     });
 
-    function MarkController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload) {
+    function MarkController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload, schoolContext) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -302,8 +303,7 @@
             vm.queueSaveOrderedMarks();
         };
 
-        vm.getPage();
-
+        if (settings.isAdmin) { vm.getPage(); }
         vm.educationPrograms = [];
         vm.searchEduDto = {};
         vm.getPageEducationProgram = function () {
@@ -316,7 +316,12 @@
                 }
             });
         };
-        vm.getPageEducationProgram();
+        schoolContext.load().then(function (school) {
+            if (school) {
+                vm.searchEduDto.schoolId = school.id;
+                vm.getPageEducationProgram();
+            }
+        }).catch(function () { toastr.error('Không tải được School của tên miền này.'); });
 
         vm.bsTableControl = {
             options: {

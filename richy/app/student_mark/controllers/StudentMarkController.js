@@ -14,7 +14,8 @@
         'StudentMarkService',
         'Upload',
         'blockUI',
-        '$filter'
+        '$filter',
+        'SchoolContext'
     ];
 
     angular.module('Hrm.StudentMark').directive('fileDownload', function () {
@@ -150,7 +151,8 @@
         service,
         Upload,
         blockUI,
-        $filter
+        $filter,
+        schoolContext
     ) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
@@ -436,31 +438,30 @@
             }
         });
 
-        var classesReady = false, programsReady = false, boardGeneration = 0, rowGeneration = 0, shareGeneration = 0, destroyed = false;
-        function initialBoard() {
-            if (classesReady && programsReady) vm.getListDisplayStudentMark();
-        }
-        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
-            vm.enrollmentClasses = data.content || [];
-
-            var visibleClasses = vm.enrollmentClasses.filter(function (cls) { return Number(cls.schoolId) === 2; });
-            if (visibleClasses.length && !visibleClasses.some(function (cls) { return cls.id === vm.searchDisplayDto.enrollmentClass; })) {
-                vm.searchDisplayDto.enrollmentClass = visibleClasses[0].id;
+        var boardGeneration = 0, rowGeneration = 0, shareGeneration = 0, destroyed = false;
+        schoolContext.load().then(function (school) {
+            if (!school || destroyed) {
+                if (!destroyed) { vm.boardError = 'Tên miền này chưa được gán School đang hoạt động.'; }
+                return;
             }
-
-            classesReady = true;
-            initialBoard();
-        }, function () { vm.boardError = 'Không tải được danh sách lớp. Vui lòng tải lại trang.'; });
-
-        service.getEducationPrograms(vm.filter, 1, 1000000).then(function (data) {
-            vm.educationPrograms = data.content || [];
-            if (vm.educationPrograms.length > 0) {
-                var mainProgram = vm.educationPrograms.filter(function (program) { return program.main === true; })[0];
-                vm.searchDisplayDto.educationProgramId = (mainProgram || vm.educationPrograms[0]).id;
-            }
-            programsReady = true;
-            initialBoard();
-        }, function () { vm.boardError = 'Không tải được chương trình. Vui lòng tải lại trang.'; });
+            vm.schoolId = school.id;
+            if (!vm.canShare()) { vm.boardError = 'Bạn chưa có quyền xem bảng điểm của School này.'; return; }
+            return schoolContext.classes(school.id).then(function (classes) {
+                if (destroyed) { return; }
+                vm.enrollmentClasses = classes.filter(function (cls) { return Number(cls.schoolId) === Number(school.id); });
+                var first = vm.enrollmentClasses[0];
+                vm.searchDisplayDto.enrollmentClass = first ? first.id : null;
+                return service.getEducationPrograms({schoolId: school.id}, 1, 1000000);
+            }).then(function (data) {
+                if (destroyed || !data) { return; }
+                vm.educationPrograms = (data.content || []).filter(function (program) { return Number(program.schoolId) === Number(school.id); });
+                var selected = vm.educationPrograms.find(function (program) { return program.main === true; }) || vm.educationPrograms[0];
+                vm.searchDisplayDto.educationProgramId = selected ? selected.id : null;
+                vm.getListDisplayStudentMark();
+            });
+        }).catch(function () {
+            if (!destroyed) { vm.boardError = 'Không tải được lớp và chương trình của School. Vui lòng tải lại trang.'; }
+        });
 
         function initializeMarks(student) {
             angular.forEach(student.studentMarks || [], function (item) {
@@ -615,6 +616,7 @@
             markItem._saveError = false;
 
             var dto = {
+                enrollmentClass: vm.loadedScope && vm.loadedScope.enrollmentClass,
                 id: markItem.id,
                 markNumber: normalizedMarkNumber,
                 markText: markItem.markText,
@@ -678,7 +680,7 @@
         };
         vm.canShare = function () {
             var permissions = $rootScope.settings || {};
-            return permissions.isAdmin === true || permissions.isEducationManagerment === true || permissions.isStudentManagerment === true;
+            return permissions.isAdmin === true || (settings.schoolAccess && settings.schoolAccess.studentMarks.indexOf(vm.schoolId) >= 0);
         };
         vm.createShare = function () {
             if (vm.shareBusy || vm.hasUnsavedMarks()) return;
