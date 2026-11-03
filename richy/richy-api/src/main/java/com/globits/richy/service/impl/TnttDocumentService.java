@@ -384,6 +384,54 @@ public class TnttDocumentService {
         return out;
     }
 
+    public Map<String, String> publicLink(Long id) {
+        requireEditor();
+        return Collections.singletonMap("token", publicLinkEntry(id, false).publicViewToken);
+    }
+
+    public Map<String, String> enablePublicLink(Long id) {
+        requireEditor();
+        TnttDocumentEntry e = publicLinkEntry(id, true);
+        if (e.publicViewToken == null) {
+            e.publicViewToken = UUID.randomUUID().toString().replace("-", "");
+            em.flush();
+        }
+        return Collections.singletonMap("token", e.publicViewToken);
+    }
+
+    public void revokePublicLink(Long id) {
+        requireEditor();
+        TnttDocumentEntry e = publicLinkEntry(id, true);
+        if (e.publicViewToken != null) {
+            e.publicViewToken = null;
+            em.flush();
+        }
+    }
+
+    private TnttDocumentEntry publicLinkEntry(Long id, boolean lock) {
+        TnttDocumentEntry e = entry(id, lock);
+        if (!"DOCUMENT".equals(e.kind) || e.archived)
+            throw new IllegalArgumentException("Không mở được tài liệu này.");
+        return e;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> readPublicLink(String token) {
+        if (!enabled || token == null || !token.matches("[a-f0-9]{32}")) return null;
+        List<TnttDocumentEntry> entries = em.createQuery(
+                "select e from TnttDocumentEntry e where e.publicViewToken=:token and e.archived=false and e.kind='DOCUMENT'",
+                TnttDocumentEntry.class)
+                .setParameter("token", token)
+                .setMaxResults(1)
+                .getResultList();
+        if (entries.isEmpty()) return null;
+        TnttDocumentEntry e = entries.get(0);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("title", e.title);
+        result.put("document", decode(e.notebookJson));
+        return result;
+    }
+
     public Map<String, Object> create(TnttDocumentRequest r) {
         User u = requireEditor();
         if (r == null || !Arrays.asList("FOLDER", "DOCUMENT").contains(r.kind))
@@ -453,6 +501,7 @@ public class TnttDocumentService {
         e.archived = Boolean.TRUE.equals(r.archived);
         if (e.archived) {
             e.shared = false;
+            e.publicViewToken = null;
             cancel(e.noticeId);
         }
         e.editorId = u.getId();

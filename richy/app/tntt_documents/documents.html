@@ -51,14 +51,18 @@
      <option value="edit">Chỉnh sửa</option>
     </select>
    </label>
-   <p ng-if="vm.linkShare.mode==='view'">Người nhận cần đăng nhập và có quyền xem tài liệu.</p>
+   <p ng-if="vm.linkShare.mode==='view'">Bất kỳ ai có link đều xem được nội dung hiện tại và các cập nhật sau này, kể cả khi chưa đăng nhập.</p>
    <p ng-if="vm.linkShare.mode==='edit'">Người nhận cần đăng nhập bằng tài khoản Admin hoặc Quản lý đào tạo.</p>
-   <label>Đường dẫn<input class="form-control" type="text" readonly ng-value="vm.linkShare.url"></label>
+   <p role="alert" class="td-error" ng-if="vm.linkShare.mode==='view' && vm.linkShare.error">{{vm.linkShare.error}}</p>
+   <p role="status" ng-if="vm.linkShare.mode==='view' && vm.linkShare.loading">Đang tải liên kết…</p>
+   <label ng-if="vm.linkShare.url">Đường dẫn<input class="form-control" type="text" readonly ng-value="vm.linkShare.url"></label>
    <p role="status" ng-if="vm.linkShare.status">{{vm.linkShare.status}}</p>
   </div>
   <footer>
    <button class="tn-button" type="button" ng-click="$dismiss()">Đóng</button>
-   <button class="tn-button tn-primary" type="button" ng-click="vm.copyShareLink()" ng-disabled="!vm.linkShare.url">Sao chép liên kết</button>
+   <button class="tn-button" type="button" ng-if="vm.linkShare.mode==='view' && vm.linkShare.token" ng-click="vm.managePublicLink('DELETE')" ng-disabled="vm.linkShare.loading">Thu hồi link chỉ xem</button>
+   <button class="tn-button tn-primary" type="button" ng-if="vm.linkShare.mode==='view' && !vm.linkShare.token" ng-click="vm.managePublicLink('POST')" ng-disabled="vm.linkShare.loading">Tạo link chỉ xem</button>
+   <button class="tn-button tn-primary" type="button" ng-if="vm.linkShare.url" ng-click="vm.copyShareLink()" ng-disabled="vm.linkShare.loading && vm.linkShare.mode==='view'">Sao chép liên kết</button>
   </footer>
  </section>
 </script>

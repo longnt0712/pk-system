@@ -13,7 +13,9 @@
     Hrm.TnttDocuments.factory('TnttDocumentApi', ['$http', 'settings', function ($http, settings) {
         var base = settings.api.baseUrl + 'api/tntt-documents';
         function request(method, path, data, params) { return $http({method: method, url: base + path, data: data, params: params, timeout: 20000}).then(function (r) { return r.data; }); }
+        function publicLink(method, id) { return request(method, '/entries/' + id + '/public-link'); }
         return {capabilities: function () { return request('GET', '/capabilities'); }, list: function (trash, q) { return request('GET', '/entries', null, {trash: !!trash, q: q || ''}); },
+            publicLink: publicLink,
             recipients: function () { return request('GET', '/recipients'); }, create: function (data) { return request('POST', '/entries', data); },
             read: function (id, revision) { return request('GET', '/entries/' + id, null, {revision: revision}); }, save: function (id, data) { return request('PUT', '/entries/' + id, data); },
             metadata: function (id, data) { return request('PUT', '/entries/' + id + '/metadata', data); }, publish: function (id, data) { return request('POST', '/entries/' + id + '/publish', data); },

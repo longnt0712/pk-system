@@ -7,7 +7,7 @@ BEGIN TRY
   id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
   create_date DATETIME2 NOT NULL,created_by NVARCHAR(100) NOT NULL,modify_date DATETIME2 NULL,modified_by NVARCHAR(100) NULL,uuid_key VARCHAR(36) NULL,voided BIT NULL,
   title NVARCHAR(200) NOT NULL,kind VARCHAR(20) NOT NULL,parent_id BIGINT NULL,creator_id BIGINT NOT NULL,editor_id BIGINT NOT NULL,updated_at BIGINT NOT NULL,
-  archived BIT NOT NULL DEFAULT(0),shared BIT NOT NULL DEFAULT(0),notice_id BIGINT NULL,notebook_json NVARCHAR(MAX) NULL,revision BIGINT NOT NULL DEFAULT(0),
+  archived BIT NOT NULL DEFAULT(0),shared BIT NOT NULL DEFAULT(0),public_view_token VARCHAR(32) NULL,notice_id BIGINT NULL,notebook_json NVARCHAR(MAX) NULL,revision BIGINT NOT NULL DEFAULT(0),
   CONSTRAINT fk_tntt_document_parent FOREIGN KEY(parent_id) REFERENCES dbo.tbl_tntt_document_entry(id)
  );
  IF OBJECT_ID(N'dbo.tbl_tntt_document_notice',N'U') IS NULL

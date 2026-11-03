@@ -127,7 +127,10 @@
                     ui.validCustomColor = function () { return !!normalizedColor(ui.customHex); };
                     ui.customHexChanged = function () { var color = normalizedColor(ui.customHex); if (color) { ui.customColor = color; } };
                     ui.applyCustomColor = function () { if (ui.validCustomColor()) { ui.selectInkColor(ui.customHex); } };
-                    ui.canOpen = function () { return !!ui.enabled && Number(ui.testId) > 0 && Number(ui.userId) > 0; };
+                    ui.canOpen = function () {
+                        return !!ui.enabled && Number(ui.testId) > 0 &&
+                            (Number(ui.userId) > 0 || (ui.readOnly && !!ui.sessionOpener));
+                    };
                     ui.isLocked = function () { return !!ui.readOnly || !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
                     ui.statusText = function () {
                         if (!ui.session) { return ''; }

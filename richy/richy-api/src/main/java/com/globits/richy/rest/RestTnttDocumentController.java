@@ -77,6 +77,22 @@ public class RestTnttDocumentController {
         return service.sharing(id, r);
     }
 
+    @RequestMapping(value = "/entries/{id}/public-link", method = RequestMethod.GET)
+    public Object publicLink(@PathVariable Long id) {
+        return service.publicLink(id);
+    }
+
+    @RequestMapping(value = "/entries/{id}/public-link", method = RequestMethod.POST)
+    public Object enablePublicLink(@PathVariable Long id) {
+        return service.enablePublicLink(id);
+    }
+
+    @RequestMapping(value = "/entries/{id}/public-link", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokePublicLink(@PathVariable Long id) {
+        service.revokePublicLink(id);
+    }
+
     @RequestMapping(value = "/entries/{id}/history", method = RequestMethod.GET)
     public Object history(@PathVariable Long id) {
         return service.history(id);

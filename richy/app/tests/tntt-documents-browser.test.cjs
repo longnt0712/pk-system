@@ -19,6 +19,11 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
   if(u.pathname.endsWith('/notifications'))return reply(student?[]:(u.searchParams.get('unread')==='true'&&server.notice.readAt?[]:[server.notice]));
   if(u.pathname.endsWith('/recipients'))return reply([{id:7,name:'Huynh trưởng kiểm thử',groups:['ADMIN'],hasEmail:false}]);
   if(u.pathname.endsWith('/publish'))return reply({id:21});
+  if(u.pathname.endsWith('/entries/12/public-link')){
+   if(req.method()==='POST')server.token='0123456789abcdef0123456789abcdef';
+   if(req.method()==='DELETE')server.token=null;
+   return reply({token:server.token||null});
+  }
   if(u.pathname.endsWith('/entries/12')){
    if(req.method()==='PUT'){const p=req.postDataJSON();server.entry={...server.entry,revision:server.entry.revision+1,document:p.document};}
    else if(notebookReadDelay && server.calls.filter(c=>c.path===u.pathname&&c.method==='GET').length>1)await new Promise(resolve=>setTimeout(resolve,notebookReadDelay));
@@ -66,10 +71,15 @@ test('share links select the right document and cannot turn a read-only account 
   assert.equal(await author.page.locator('.study-notebook-tools').count(),0);
   await author.page.locator('.study-notebook-close').click();
   await author.page.getByRole('button',{name:'Chia sẻ link'}).click();
+  await author.page.getByRole('button',{name:'Tạo link chỉ xem'}).click();
   const link=author.page.getByRole('textbox',{name:'Đường dẫn'});
-  assert.equal(await link.inputValue(),'https://tnttphungkhoang.test/tai-lieu?document=12&mode=view');
+  assert.equal(await link.inputValue(),'https://tnttphungkhoang.test/tntt_documents/shared.html#0123456789abcdef0123456789abcdef');
   await author.page.getByLabel('Chế độ mở').selectOption('edit');
   assert.equal(await link.inputValue(),'https://tnttphungkhoang.test/tai-lieu?document=12&mode=edit');
+  await author.page.getByLabel('Chế độ mở').selectOption('view');
+  await author.page.getByRole('button',{name:'Thu hồi link chỉ xem'}).click();
+  await author.page.getByText('Đã thu hồi liên kết chỉ xem.').waitFor();
+  assert.equal(await link.count(),0);
  } finally {await author.context.close();}
  const reader=await fixture({editor:false,params:{document:'12',mode:'edit'}});
  try {
@@ -81,6 +91,36 @@ test('share links select the right document and cannot turn a read-only account 
   await editor.page.locator('.study-notebook-tools').waitFor();
   assert.equal(await editor.page.evaluate(()=>window.vm.active.id),12);
  } finally {await editor.context.close();}
+});
+
+test('a guest can open the public notebook without a session and a revoked link shows an error', async () => {
+ const context=await browser.newContext(), page=await context.newPage();
+ const token='0123456789abcdef0123456789abcdef', url='https://tnttphungkhoang.test/tntt_documents/shared.html#'+token;
+ let revoked=false;
+ try {
+  await page.route('**/*', route => {
+   const pathname=new URL(route.request().url()).pathname;
+   if(pathname==='/service/public/tntt-documents/'+token){
+    assert.equal(route.request().method(),'GET');
+    assert.equal(route.request().headers().authorization,undefined);
+    return route.fulfill({status:revoked?404:200,json:{title:'Biên bản công khai',document:{...blank(),text:'Nội dung chỉ xem'}}});
+   }
+   const file=path.join(app,pathname.slice(1));
+   if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
+   return route.fulfill({status:404});
+  });
+  await page.goto(url);
+  const notebook=page.locator('.study-notebook-text');
+  await notebook.waitFor();
+  assert.equal(await notebook.inputValue(),'Nội dung chỉ xem');
+  assert.equal(await notebook.evaluate(element=>element.readOnly),true);
+  assert.equal(await page.locator('.study-notebook-tools').count(),0);
+  assert.deepEqual(await context.cookies(),[]);
+  revoked=true;
+  await page.reload();
+  await page.getByRole('alert').filter({hasText:'đã bị thu hồi'}).waitFor();
+  assert.equal(await notebook.count(),0);
+ } finally {await context.close();}
 });
 
 test('shared minutes type and draw with the existing A4 editor, autosave together and preserve read-only snapshots',async()=>{

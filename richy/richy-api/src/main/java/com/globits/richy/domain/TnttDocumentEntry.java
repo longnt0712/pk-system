@@ -30,6 +30,9 @@ public class TnttDocumentEntry extends BaseObject {
     @Column(nullable = false)
     public boolean shared;
 
+    @Column(name = "public_view_token", length = 32)
+    public String publicViewToken;
+
     @Column(name = "notice_id")
     public Long noticeId;
 

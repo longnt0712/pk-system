@@ -222,6 +222,25 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void publicLinkIsReadOnlyForGuestsAndCanBeRevoked() {
+        Long id = create("DOCUMENT", null);
+        assertNull(service.publicLink(id).get("token"));
+        String token = service.enablePublicLink(id).get("token");
+        assertTrue(token.matches("[a-f0-9]{32}"));
+        assertEquals(token, service.enablePublicLink(id).get("token"));
+        actor(student);
+        denied(() -> service.enablePublicLink(id));
+        denied(() -> service.revokePublicLink(id));
+        SecurityContextHolder.clearContext();
+        assertNull(service.readPublicLink(id.toString()));
+        assertEquals(new HashSet<>(Arrays.asList("title", "document")), service.readPublicLink(token).keySet());
+        actor(admin);
+        service.revokePublicLink(id);
+        assertNull(service.readPublicLink(token));
+        assertNotEquals(token, service.enablePublicLink(id).get("token"));
+    }
+
+    @Test
     public void foldersAreNestedCycleSafeAndRecoverable() {
         Long a = create("FOLDER", null), b = create("FOLDER", a), doc = create("DOCUMENT", b);
         TnttDocumentEntry e = em.find(TnttDocumentEntry.class, a);

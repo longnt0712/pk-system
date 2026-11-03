@@ -65,14 +65,34 @@
             };
             vm.openLinkSharing = function (item) {
                 vm.linkShare = {item: item, mode: 'view'};
-                vm.updateShareLink();
                 formDialog('tntt-link-share.html');
+                vm.managePublicLink('GET');
             };
             vm.updateShareLink = function () {
                 var share = vm.linkShare;
-                share.url = state.href('application.tntt_documents', {document: share.item.id, mode: share.mode},
-                    {absolute: true, inherit: false});
+                if (share.mode === 'view') {
+                    share.url = share.token ? win.location.origin + '/tntt_documents/shared.html#' + share.token : '';
+                } else {
+                    share.url = state.href('application.tntt_documents', {document: share.item.id, mode: 'edit'},
+                        {absolute: true, inherit: false});
+                }
                 share.status = '';
+            };
+            vm.managePublicLink = function (method) {
+                var share = vm.linkShare;
+                if (share.loading) { return; }
+                share.loading = true;
+                share.error = '';
+                return api.publicLink(method, share.item.id).then(function (row) {
+                    if (!alive || vm.linkShare !== share) { return; }
+                    share.token = row && row.token;
+                    vm.updateShareLink();
+                    if (method === 'DELETE') { share.status = 'Đã thu hồi liên kết chỉ xem.'; }
+                }).catch(function (e) {
+                    if (alive && vm.linkShare === share) {
+                        share.error = e && e.data && e.data.message || 'Không cập nhật được liên kết. Vui lòng thử lại.';
+                    }
+                }).finally(function () { share.loading = false; });
             };
             vm.copyShareLink = function () {
                 var share = vm.linkShare, url = share.url;
