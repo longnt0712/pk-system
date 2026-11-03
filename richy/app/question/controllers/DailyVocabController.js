@@ -334,11 +334,16 @@
                 var allowed = topicIds.some(function (id) { return String(id) === String(requested); });
                 if (!task || task.activityType !== 'DAILY_VOCAB' || !allowed) {
                     vm.assignmentLaunch.invalid = true;
+                    vm.assignmentLaunch.verified = false;
                     toastr.error('Topic này không thuộc bài được giao hoặc bài đã hết hạn. Hãy mở lại bài từ trang chủ.');
                     return;
                 }
                 vm.assignmentLaunch.topicId = requested;
+                vm.assignmentLaunch.invalid = false;
                 vm.assignmentLaunch.verified = true;
+                vm.assignmentLaunch.canStartNewAttempt = task.canStartNewAttempt === true;
+                vm.assignmentLaunch.newAttemptUnavailableReason = vm.assignmentLaunch.canStartNewAttempt ? '' : (task.newAttemptUnavailableReason
+                    || 'Chưa xác nhận được thời hạn bài giao. Hãy mở lại bài từ Dashboard.');
                 vm.assignmentLaunch.topicIds = topicIds.slice(0);
                 var assignedTopic = null;
                 angular.forEach(task.topics || [], function (topic) {
@@ -346,8 +351,10 @@
                 });
                 vm.assignmentLaunch.categoryId = (assignedTopic || {}).categoryId
                     || (String(task.topicId) === String(requested) ? task.categoryId : null) || vm.assignmentLaunch.categoryId;
+                return vm.assignmentLaunch.canStartNewAttempt;
             }, function () {
                 vm.assignmentLaunch.invalid = true;
+                vm.assignmentLaunch.verified = false;
                 toastr.error('Chưa kiểm tra được bài được giao. Vui lòng tải lại trang để thử lại.');
             });
         }
@@ -2736,6 +2743,18 @@
         }
 
         vm.startDailyVocab = function () {
+            if (vm.dailyVocabRunning || vm.dailyAssignmentChecking || !vm.canBeginDailyVocabRun()) { return; }
+            if (!vm.assignmentSelectionLocked) { return startDailyVocabRun(); }
+
+            vm.dailyAssignmentChecking = true;
+            return loadDailyAssignment().then(function (canStart) {
+                if (dailySaveDestroyed) { return; }
+                if (canStart) { startDailyVocabRun(); }
+                else if (!vm.assignmentLaunch.invalid) { toastr.warning(vm.assignmentLaunch.newAttemptUnavailableReason); }
+            }).finally(function () { vm.dailyAssignmentChecking = false; });
+        };
+
+        function startDailyVocabRun() {
             if (!vm.canBeginDailyVocabRun()) return;
             if (vm.dailyVocabRunning === true) {
                 return;
@@ -2818,7 +2837,7 @@
              */
             dailyVocabTimeout =
                 $timeout(dailyVocabTick, 1000);
-        };
+        }
 
         function handleDailyVocabVisibilityChange() {
             if (vm.dailyVocabRunning !== true) {

@@ -256,6 +256,8 @@
             {{vm.finishDailyVocab}}
         </div>
 
+        <p class="alert alert-warning" role="status" ng-if="vm.assignmentLaunch.newAttemptUnavailableReason">{{vm.assignmentLaunch.newAttemptUnavailableReason}}</p>
+
         <section class="daily-result-save" ng-if="vm.dailySaveReady || vm.dailyVocabPendingResult"
                  ng-class="{'save-failed':vm.dailySaveStatus === 'failed', 'save-pending':vm.dailySaveStatus === 'pending', 'save-success':vm.dailySaveStatus === 'saved'}">
             <div class="daily-result-save-info">
@@ -339,7 +341,7 @@
                 type="button"
                 class="daily-clock"
                 ng-click="vm.startDailyVocab()"
-                ng-disabled="vm.dailyVocabRunning">
+                ng-disabled="vm.dailyVocabRunning || vm.dailyAssignmentChecking">
 
                 <span class="daily-clock-caption" ng-if="!vm.dailyVocabRunning">
                     BẤM ĐỂ BẮT ĐẦU

@@ -64,7 +64,36 @@ test('opening the second child validates its membership and keeps its own catego
     await h.context.loadDailyAssignment();
     assert.equal(h.vm.assignmentLaunch.topicId, 200);
     assert.equal(h.vm.assignmentLaunch.categoryId, 2);
-    assert.equal(h.vm.assignmentLaunch.invalid, undefined);
+    assert.equal(h.vm.assignmentLaunch.invalid, false);
+});
+
+test('starting an assigned run rechecks the deadline and preserves a pending result', async () => {
+    const h = dailySetup();
+    let starts = 0;
+    h.context.startDailyVocabRun = () => { starts++; };
+    h.vm.canBeginDailyVocabRun = () => !h.vm.dailyVocabPendingResult;
+    let available = true, requests = 0;
+    h.service.getAssignedTask = async () => {
+        requests++;
+        return {activityType: 'DAILY_VOCAB', topicId: 200, canStartNewAttempt: available,
+            newAttemptUnavailableReason: available ? null : 'Bài được giao đã hết hạn.'};
+    };
+    nodeVm.runInContext(functionSource(daily, 'vm.startDailyVocab = function ()'), h.context);
+    await h.context.loadDailyAssignment();
+    available = false;
+    await h.vm.startDailyVocab();
+    assert.equal(requests, 2);
+    assert.equal(starts, 0);
+    assert.equal(h.vm.assignmentLaunch.newAttemptUnavailableReason, 'Bài được giao đã hết hạn.');
+    assert.equal(h.vm.assignmentLaunch.verified, true);
+    h.vm.dailyVocabPendingResult = pending(200);
+    await h.vm.startDailyVocab();
+    assert.equal(requests, 2);
+    assert.equal(h.vm.dailyVocabPendingResult.payload.assignmentTaskId, 55);
+    h.vm.dailyVocabPendingResult = null;
+    available = true;
+    await h.vm.startDailyVocab();
+    assert.equal(starts, 1);
 });
 
 test('foreign child topic is rejected instead of silently opening the first assigned topic', async () => {
@@ -81,7 +110,7 @@ test('legacy single-topic links and links without a child keep working', async (
     await h.context.loadDailyAssignment();
     assert.equal(h.vm.assignmentLaunch.topicId, 100);
     assert.equal(h.vm.assignmentLaunch.categoryId, 1, 'the assigned topic supplies its authoritative category');
-    assert.equal(h.vm.assignmentLaunch.invalid, undefined);
+    assert.equal(h.vm.assignmentLaunch.invalid, false);
 });
 
 test('active drafts use task and child topic identity without replacing sibling or free practice drafts', () => {
