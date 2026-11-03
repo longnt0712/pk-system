@@ -9,14 +9,18 @@
     <section class="sp-empty sp-panel" ng-if="!vm.loading && !vm.sets.length"><i class="fa fa-comments-o"></i><h2>Khởi đầu một cuộc trò chuyện</h2><p>{{vm.managementMode && vm.canManage ? 'Tạo bộ đề theo năm, rồi nhập câu hỏi và sample bằng file Excel.' : 'Các bộ Speaking dùng chung và bộ được giáo viên chia sẻ sẽ xuất hiện tại đây.'}}</p></section>
 
     <div ng-if="vm.sets.length && !vm.practice">
-        <section class="sp-panel sp-filters">
-            <label>Năm<select ng-model="vm.yearFilter" ng-change="vm.changeYear()" ng-options="year as year for year in vm.years"><option value="">Tất cả năm</option></select></label>
-            <label class="sp-grow">Bộ đề<select ng-model="vm.selectedSetId" ng-change="vm.selectSet()" ng-options="set.id as (set.name + ' · Tháng ' + set.fromMonth + '–' + set.toMonth + (set.sharedForEveryone ? ' · Dùng chung' : ' · ' + set.ownerName)) for set in vm.availableSets()"></select></label>
-            <span class="sp-badge" ng-if="vm.selectedSet.sharedForEveryone"><i class="fa fa-globe"></i> Bộ dùng chung</span>
-            <button class="sp-button" ng-if="vm.managementMode && vm.selectedSet.canManage && !vm.selectedSet.sharedForEveryone" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
-            <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
-            <button class="sp-button" ng-if="vm.canImportOwnAnswers() && vm.selectedSet" ng-click="vm.openOwnAnswerImport()" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import bài của tôi</button>
-            <button class="sp-button sp-primary" ng-if="!vm.managementMode" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
+        <section class="sp-panel sp-filters" aria-label="Chọn bộ đề Speaking">
+            <div class="sp-filter-fields">
+                <label>Năm<select ng-model="vm.yearFilter" ng-change="vm.changeYear()" ng-options="year as year for year in vm.years"><option value="">Tất cả năm</option></select></label>
+                <label>Bộ đề<select ng-model="vm.selectedSetId" ng-change="vm.selectSet()" ng-options="set.id as (set.name + ' · Tháng ' + set.fromMonth + '–' + set.toMonth + (set.sharedForEveryone ? ' · Dùng chung' : ' · ' + set.ownerName)) for set in vm.availableSets()"></select></label>
+            </div>
+            <div class="sp-filter-actions">
+                <span class="sp-badge" ng-if="vm.selectedSet.sharedForEveryone"><i class="fa fa-globe"></i> Bộ dùng chung</span>
+                <button class="sp-button" ng-if="vm.managementMode && vm.selectedSet.canManage && !vm.selectedSet.sharedForEveryone" ng-click="vm.openModal('share')"><i class="fa fa-users"></i> Chia sẻ</button>
+                <button class="sp-button" ng-if="vm.managementMode && vm.isAdmin && vm.selectedSet.canManage" ng-click="vm.openModal('import')"><i class="fa fa-file-excel-o"></i> Import Excel</button>
+                <button class="sp-button" ng-if="vm.canImportOwnAnswers() && vm.selectedSet" ng-click="vm.openOwnAnswerImport()" ng-disabled="vm.busy || vm.loadingBank"><i class="fa fa-file-excel-o"></i> Import bài của tôi</button>
+                <button class="sp-button sp-primary" ng-if="!vm.managementMode" ng-disabled="!vm.questions.length || vm.loadingBank" ng-click="vm.openPracticeSetup()"><i class="fa fa-play"></i> Luyện tập</button>
+            </div>
         </section>
         <section class="sp-panel sp-admin-students" ng-if="vm.canUseClassRoster() && vm.selectedSet" aria-label="Câu trả lời Speaking theo lớp">
             <div class="sp-toolbar"><div class="sp-grow"><span class="sp-eyebrow">QUẢN LÝ CÂU TRẢ LỜI</span><h2>Học sinh theo lớp</h2><p class="sp-muted">Chọn lớp, import cho từng em hoặc bấm View để xem câu trả lời riêng. Giáo viên chỉ import cho học sinh thuộc lớp mình chủ nhiệm; admin quản lý toàn bộ.</p></div></div>

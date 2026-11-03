@@ -16,14 +16,25 @@
 .speaking-page .sp-primary { background:var(--sp-purple); color:#fff; border-color:var(--sp-purple); }
 .speaking-page .sp-primary:hover:not(:disabled) { background:#6041c8; color:#fff; }
 .speaking-page button:focus-visible,.speaking-page input:focus-visible,.speaking-page select:focus-visible,.speaking-page summary:focus-visible { outline:3px solid #b7a6f5; outline-offset:2px; }
-.speaking-page .sp-toolbar,.speaking-page .sp-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.speaking-page .sp-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .speaking-page .sp-toolbar { margin-bottom:14px; }
 .speaking-page .sp-grow { flex:1 1 180px; min-width:0; }
 .speaking-page label { font-size:12px; font-weight:600; margin:0; }
 .speaking-page label>input:not([type=checkbox]),.speaking-page label>select { display:block; margin-top:5px; }
 .speaking-page input:not([type=checkbox]),.speaking-page select { width:100%; border:1px solid var(--sp-line); border-radius:10px; padding:10px 12px; background:#fff; color:var(--sp-ink); font-family:inherit; font-size:13px; min-height:40px; }
 .speaking-page input[type=checkbox] { width:17px; height:17px; accent-color:var(--sp-purple); vertical-align:middle; margin:0 5px 0 0; }
-.speaking-page .sp-filters .sp-button { align-self:flex-end; }
+.speaking-page .sp-filters { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px 20px; padding:16px 22px; }
+.speaking-page .sp-filter-fields { display:grid; grid-template-columns:minmax(112px, 150px) minmax(0, 1fr); gap:12px; flex:1 1 400px; min-width:0; }
+.speaking-page .sp-filter-fields label { min-width:0; }
+.speaking-page .sp-filter-fields select { height:42px; padding:6px 10px; text-overflow:ellipsis; }
+.speaking-page .sp-filter-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; margin-left:auto; }
+.speaking-page .sp-filter-actions .sp-button { min-height:42px; }
+.speaking-page .sp-filter-actions .sp-badge { white-space:nowrap; }
+@media(max-width:600px) {
+    .speaking-page .sp-filter-fields { grid-template-columns:minmax(100px, 1fr) minmax(0, 2fr); gap:8px; }
+    .speaking-page .sp-filter-actions { width:100%; justify-content:flex-start; }
+    .speaking-page .sp-filter-actions .sp-primary { margin-left:auto; }
+}
 .speaking-page .sp-search { display:flex; align-items:center; gap:8px; flex:1 1 250px; margin-left:auto; }
 .speaking-page .sp-search input { margin:0 !important; }
 .speaking-page .sp-tabs { display:flex; gap:5px; padding:4px; background:#f3f4fa; border-radius:13px; }
