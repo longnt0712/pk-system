@@ -110,7 +110,11 @@
         vm.searchDto = {};
         vm.schools = [];
         var pageRequest = 0;
-        vm.selectSchool = function () {
+        vm.selectSchool = function (schoolId) {
+            if (schoolId != null) {
+                if (vm.mainSaving || schoolId === vm.schoolId) { return; }
+                vm.schoolId = schoolId;
+            }
             vm.searchDto.schoolId = vm.schoolId;
             vm.pageIndex = 1;
             vm.bsTableControl.state = angular.extend(vm.bsTableControl.state || {}, {pageNumber: 1});

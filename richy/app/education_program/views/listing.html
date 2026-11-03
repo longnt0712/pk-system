@@ -1,3 +1,57 @@
+<style>
+    .education-school-toolbar, .education-school-switch, .education-school-options {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    .education-school-toolbar { margin: 10px 0 14px; gap: 12px; }
+    .education-school-switch {
+        max-width: 100%;
+        padding: 5px;
+        border: 1px solid rgba(110, 110, 160, .22);
+        border-radius: 16px;
+        background: rgba(110, 110, 160, .08);
+    }
+    .education-school-label {
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+    .education-school-options { gap: 4px; }
+    .education-school-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        max-width: 100%;
+        min-height: 38px;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        font-weight: 700;
+    }
+    .education-school-option:hover:not(:disabled) { border-color: currentColor; }
+    .education-school-option.is-selected {
+        background: linear-gradient(125deg, #4d55cc, #7044c5);
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(75, 62, 163, .22);
+    }
+    .education-school-option:focus-visible { outline: 2px solid #7466e8; outline-offset: 2px; }
+    .education-school-option:disabled { opacity: .65; cursor: wait; }
+    .education-school-id {
+        padding: 1px 6px;
+        border-radius: 10px;
+        background: rgba(110, 110, 160, .14);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .education-school-option.is-selected .education-school-id { background: rgba(255, 255, 255, .20); }
+</style>
 <!-- END PAGE HEADER-->
 <!-- BEGIN MAIN CONTENT -->
 <div class="row margin-top-10">
@@ -5,10 +59,18 @@
     
         <div class="portlet light bordered">
             <div class="portlet-body">
-                <div class="form-inline margin-top-10 margin-bottom-10">
-                    <label for="education-school">School</label>
-                    <select id="education-school" class="form-control" ng-model="vm.schoolId" ng-change="vm.selectSchool()" ng-disabled="vm.mainSaving"
-                            ng-options="school.id as (school.name + ' (#' + school.id + ')') for school in vm.schools"></select>
+                <div class="education-school-toolbar">
+                    <div class="education-school-switch" ng-if="vm.schools.length" role="group" aria-labelledby="education-school-label">
+                        <span id="education-school-label" class="education-school-label"><i class="fa fa-university" aria-hidden="true"></i> School</span>
+                        <div class="education-school-options">
+                            <button type="button" class="education-school-option" ng-repeat="school in vm.schools track by school.id"
+                                    ng-class="{'is-selected': vm.schoolId === school.id}" ng-attr-aria-pressed="{{vm.schoolId === school.id}}"
+                                    ng-disabled="vm.mainSaving" ng-click="vm.selectSchool(school.id)">
+                                <span ng-bind="school.name"></span>
+                                <span class="education-school-id" ng-bind="'#' + school.id"></span>
+                            </button>
+                        </div>
+                    </div>
                     <button class="btn btn-default" ng-if="vm.canSetMain()" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i> Thêm mới</button>
                 </div>
                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
