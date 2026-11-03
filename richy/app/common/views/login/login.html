@@ -47,10 +47,10 @@
                                         <div class="col-md-2 not-for-media text-center">
                                             <div class="row">
                                                 <div class="col-md-12">
-                                                    <img class="side-image" src="assets/images/1a.png">
+                                                    <img class="side-image" loading="lazy" decoding="async" width="600" height="1800" src="assets/images/1a.png" alt="">
                                                 </div>
                                                 <div class="col-md-12">
-                                                    <img class="side-image" src="assets/images/1b.png">
+                                                    <img class="side-image" loading="lazy" decoding="async" width="600" height="1800" src="assets/images/1b.png" alt="">
                                                 </div>
                                             </div>
                                         </div>
@@ -85,19 +85,19 @@
                                                 <!--<img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNHmcGIdWsvFhctM9tMwQzpSHVWxKATALDjVX7pBgtZQV5GDR-SYVi1zqJ0JBuw2M85lIh9eLAG647DyQwlBCoreydZ7ueLQbzKfmtenn5bPT40g02_0GGYOzF96aqBwbMXCqlpQAHNZJYB-tjci89i=w1225-h919-s-no-gm?authuser=1">-->
                                             <!--</div>-->
                                         <!--</div>-->
-                                        <div ng-show="settings.chapter == true" class="col-md-8 center-content xu-doan-gallery-wrap">
+                                        <div ng-if="settings.chapter == true" class="col-md-8 center-content xu-doan-gallery-wrap">
 
                                             <!-- 2 ảnh banner đầu -->
                                             <div class="xu-banner">
                                                 <img class="xu-banner-img"
-                                                     loading="lazy"
-                                                     src="https://lh3.googleusercontent.com/pw/AP1GczMGQvE_PfkSM7N1QBY6RqS-SbR5UGMIl5G2y5GoEMM9qzBjOqdyQ20COciwe_PZDblS9P3sWidUZXgHtNqJ7tuPd9ktZayvV0YTlmF1JTLjSi6jULTmuRKGUWRi5havJRfeQP1St4uGlPNHzZMdJU1P=w1920-h714-s-no-gm?authuser=1">
+                                                     fetchpriority="high" width="1920" height="714" alt="Abba! Cha ơi!"
+                                                     ng-src="https://lh3.googleusercontent.com/pw/AP1GczMGQvE_PfkSM7N1QBY6RqS-SbR5UGMIl5G2y5GoEMM9qzBjOqdyQ20COciwe_PZDblS9P3sWidUZXgHtNqJ7tuPd9ktZayvV0YTlmF1JTLjSi6jULTmuRKGUWRi5havJRfeQP1St4uGlPNHzZMdJU1P=w1920-h714-s-no-gm?authuser=1">
                                             </div>
 
                                             <div class="xu-banner">
                                                 <img class="xu-banner-img"
-                                                     loading="lazy"
-                                                     src="https://lh3.googleusercontent.com/pw/AP1GczN7RYQ4IgqfwoMdaQMHm0MGY79j_FB-FTslJoOBPo-ux2Ymz3461W992MTLoCB3YI1pYGcoQqZHQmBeJlkh_7Q6SR3k7p2yCo38CMB8zCR8fhG4SRYcpuMWwd3GmEa9BQNGIN8zMOFr4n6zY9Sg47cB=w1672-h941-s-no-gm?authuser=1">
+                                                     loading="lazy" decoding="async" width="1672" height="941" alt="Kerygma"
+                                                     ng-src="https://lh3.googleusercontent.com/pw/AP1GczN7RYQ4IgqfwoMdaQMHm0MGY79j_FB-FTslJoOBPo-ux2Ymz3461W992MTLoCB3YI1pYGcoQqZHQmBeJlkh_7Q6SR3k7p2yCo38CMB8zCR8fhG4SRYcpuMWwd3GmEa9BQNGIN8zMOFr4n6zY9Sg47cB=w1672-h941-s-no-gm?authuser=1">
                                             </div>
 
                                             <!-- tiêu đề -->
@@ -121,8 +121,8 @@
                                                          ng-click="vm.openGalleryImage(img.src)"
                                                          ng-keydown="vm.openGalleryImageFromKeyboard($event, img.src)">
                                                         <img class="xu-gallery-img"
-                                                             loading="lazy"
-                                                             ng-src="{{img.src}}"
+                                                             loading="lazy" decoding="async"
+                                                             style="aspect-ratio: auto 4 / 3;" ng-src="{{img.src}}"
                                                              alt="Xu đoàn 2022 - {{img.index}}">
                                                         <!--<div class="xu-gallery-overlay">-->
                                                             <!--<span>Ảnh {{img.index}}</span>-->
@@ -132,42 +132,42 @@
                                             </div>
 
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczOW_plo9T12GhNAEZDdI7dbRrA6TV2SH82xszXXhfMZWjRaMBNcK_B7sEnSbkEh5DhJJboWQlT_bL0sjGEnDqkFEC5bkvRFMqCjN6MD56-ADCUMGtGY-GmS9WTuVhC0GGbTMn96yIgCsecT6n2GNRsP=w1225-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1225" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczOW_plo9T12GhNAEZDdI7dbRrA6TV2SH82xszXXhfMZWjRaMBNcK_B7sEnSbkEh5DhJJboWQlT_bL0sjGEnDqkFEC5bkvRFMqCjN6MD56-ADCUMGtGY-GmS9WTuVhC0GGbTMn96yIgCsecT6n2GNRsP=w1225-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczM0GEOpVe0zKJkel3z2wSvE2O1HOZ9qhwfxsiKtOiPXsihMxCSGiqckuqE48NLZ73hWIUcPvSv9gyy1ZpjxYg5JT5uEkwIREwcjVNf2SvAn2ONOWHoB-KllmQWoIDF2gUmh51WpGVhI9FGus8uU29CR=w1380-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1380" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczM0GEOpVe0zKJkel3z2wSvE2O1HOZ9qhwfxsiKtOiPXsihMxCSGiqckuqE48NLZ73hWIUcPvSv9gyy1ZpjxYg5JT5uEkwIREwcjVNf2SvAn2ONOWHoB-KllmQWoIDF2gUmh51WpGVhI9FGus8uU29CR=w1380-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczMIYHxnNF3zeSgLn9QpZJ2Ock3AnKi2DIJt9dSwXqEudMD04IQfF-LRwXT-Seqo8Rq6i28kfh_vHUGAMaxK8V4vJvYRVo_J6GKxla3PfOS9UnfL-wmnC5imki7a2xNSBqv1qt9AKxt87wZEc15RdGCX=w1225-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1225" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczMIYHxnNF3zeSgLn9QpZJ2Ock3AnKi2DIJt9dSwXqEudMD04IQfF-LRwXT-Seqo8Rq6i28kfh_vHUGAMaxK8V4vJvYRVo_J6GKxla3PfOS9UnfL-wmnC5imki7a2xNSBqv1qt9AKxt87wZEc15RdGCX=w1225-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNW25L4njU9w603E6UBfqWkq0Qaor4rcABESA7r-HBVlZn_xrB0YmKp5CaElfvmWWe3XSvocntxPW63mFypHwbXyPEMg5GiMbmVH7IpU6Y_kozshKjVk9Dnyeyy9qS3TK7Bp3Ic5MC4uBuGlBKWMPS9=w1920-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1920" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczNW25L4njU9w603E6UBfqWkq0Qaor4rcABESA7r-HBVlZn_xrB0YmKp5CaElfvmWWe3XSvocntxPW63mFypHwbXyPEMg5GiMbmVH7IpU6Y_kozshKjVk9Dnyeyy9qS3TK7Bp3Ic5MC4uBuGlBKWMPS9=w1920-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczO9r7EibUypDIx55C7Bbh-oV6625uWjT6TesYc3BoSe1tJvyR-vn3SoONdyRsZLusxf9PsHBlwzvEeS6QugdcnikXeP6qS6s_n465W7vxzuTegzK-_i4yCEghSY6Z68DNwg-iJUM1h6oc-CPq-r6qhc=w1382-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1382" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczO9r7EibUypDIx55C7Bbh-oV6625uWjT6TesYc3BoSe1tJvyR-vn3SoONdyRsZLusxf9PsHBlwzvEeS6QugdcnikXeP6qS6s_n465W7vxzuTegzK-_i4yCEghSY6Z68DNwg-iJUM1h6oc-CPq-r6qhc=w1382-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
                                             <div class="col-md-12">
-                                                <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNHmcGIdWsvFhctM9tMwQzpSHVWxKATALDjVX7pBgtZQV5GDR-SYVi1zqJ0JBuw2M85lIh9eLAG647DyQwlBCoreydZ7ueLQbzKfmtenn5bPT40g02_0GGYOzF96aqBwbMXCqlpQAHNZJYB-tjci89i=w1225-h919-s-no-gm?authuser=1">
+                                                <img style="width:100%;height:auto;padding:5px;" loading="lazy" decoding="async" width="1225" height="919" ng-src="https://lh3.googleusercontent.com/pw/AP1GczNHmcGIdWsvFhctM9tMwQzpSHVWxKATALDjVX7pBgtZQV5GDR-SYVi1zqJ0JBuw2M85lIh9eLAG647DyQwlBCoreydZ7ueLQbzKfmtenn5bPT40g02_0GGYOzF96aqBwbMXCqlpQAHNZJYB-tjci89i=w1225-h919-s-no-gm?authuser=1" alt="Sinh hoạt Xứ đoàn">
                                             </div>
 
                                         </div>
 
-                                        <div ng-show="settings.ieltsRoom == true" class="col-md-8 text-center center-content">
+                                        <div ng-if="settings.ieltsRoom == true" class="col-md-8 text-center center-content">
                                             <div class="row ielts-score-gallery">
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPzO5cfV6vCefrhI-xoTrYwqXpPfXux_yRolsUOGmVdVsTeiWmtDIC-0A-KHngP257kix93jMp5CPVpJckymNLjA4YlFjhzdSfS3Eum3ANC-77rlleFEzW9cABBFUtiOjFYvezUao1n22Fkyl5ec3b_=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" ng-src="https://lh3.googleusercontent.com/pw/AP1GczPzO5cfV6vCefrhI-xoTrYwqXpPfXux_yRolsUOGmVdVsTeiWmtDIC-0A-KHngP257kix93jMp5CPVpJckymNLjA4YlFjhzdSfS3Eum3ANC-77rlleFEzW9cABBFUtiOjFYvezUao1n22Fkyl5ec3b_=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczNi25SwEpEnpaEtZAAQxL166VDB1v7Z6CqxUOelMwtD98YpZ21MVbEeWbCAkMYJCUFzDJxqC8ysf_z-SWIJagEik9ormlUOUyrn0h7pE2JaKuFPXKVxNF_pZNAsG22NIGtPMIeRpwCHTNSfAj3fCPxL=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 2">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" ng-src="https://lh3.googleusercontent.com/pw/AP1GczNi25SwEpEnpaEtZAAQxL166VDB1v7Z6CqxUOelMwtD98YpZ21MVbEeWbCAkMYJCUFzDJxqC8ysf_z-SWIJagEik9ormlUOUyrn0h7pE2JaKuFPXKVxNF_pZNAsG22NIGtPMIeRpwCHTNSfAj3fCPxL=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 2">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczO_YGH8KeQVQWl5zDNtZCX59ugP01H4p9n67AukgI_Rj0n7yogO33wASdLd1s11ramArHjBzK-pqdxdRQHcrOQU1MUF4J5k26984iSOmSW7t9mEs8_lXUCchHu62Fp3FLy1dqLPCCLq8CEUbyTlFHpx=w424-h918-s-no-gm?authuser=1" alt="Kết quả học viên 3">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" ng-src="https://lh3.googleusercontent.com/pw/AP1GczO_YGH8KeQVQWl5zDNtZCX59ugP01H4p9n67AukgI_Rj0n7yogO33wASdLd1s11ramArHjBzK-pqdxdRQHcrOQU1MUF4J5k26984iSOmSW7t9mEs8_lXUCchHu62Fp3FLy1dqLPCCLq8CEUbyTlFHpx=w424-h918-s-no-gm?authuser=1" alt="Kết quả học viên 3">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPqguxJnwGuJ4o20PnyFOGmmCIg3-hwhnQ_erx-JS1W3jRxz6_AAbVSN_gwigo1-wy6c87KGiiZyz4zVydTOAJTEk0DHevMvr-BSMalE67cXlKxIKBz6lRCVFzM9HDjCFg_mB_t-e0-ok9DZ1dPjhru=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 4">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" ng-src="https://lh3.googleusercontent.com/pw/AP1GczPqguxJnwGuJ4o20PnyFOGmmCIg3-hwhnQ_erx-JS1W3jRxz6_AAbVSN_gwigo1-wy6c87KGiiZyz4zVydTOAJTEk0DHevMvr-BSMalE67cXlKxIKBz6lRCVFzM9HDjCFg_mB_t-e0-ok9DZ1dPjhru=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 4">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPevNwHIgSE8Hi7ujpJvPxx5SX-Bt4zg6TU1MLVvA_Q4Li04Fz6ACGsdaM4nwKHMVW4XarcEqcvJXrQ9X4jV2CddCkWCeR6ac76emOgp-1TrPqhLpBj3MNNY397PmSvSCySfl2lpa5vemPhM5KEq3wp=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 5">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" ng-src="https://lh3.googleusercontent.com/pw/AP1GczPevNwHIgSE8Hi7ujpJvPxx5SX-Bt4zg6TU1MLVvA_Q4Li04Fz6ACGsdaM4nwKHMVW4XarcEqcvJXrQ9X4jV2CddCkWCeR6ac76emOgp-1TrPqhLpBj3MNNY397PmSvSCySfl2lpa5vemPhM5KEq3wp=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 5">
                                                 </div>
                                             </div>
                                             <!--<img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczN-OfRmSWgKnrKZbBURvdnx7zf6-iV_6Q4B7ApquOBMYDLfxdWM_048KOaltJT4UU0OHx94spjiMigq3gpmzDPnOT9ol5MSkKEAYWpavpBEg9blF4V7zieMxqypQ-k8j9KX0Y-YzQnmkcf4mRhO1zRN=w1280-h720-s-no-gm?authuser=1">-->
@@ -175,7 +175,7 @@
                                                 <a href="https://www.facebook.com/saint.paul.academy.pk" target="_blank"><i class="fa fa-arrow-right"></i> FACEBOOK <i class="fa fa-arrow-left"></i></a>
                                             </h1>
                                             <!--<img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNTP20dYzQXqABodlsnYR4EaMfi-PhhiFmgk5_-TTI-QF8yteJdOsRsHo6qQ8TaL5MfImDjb7P9o7XcXyKajiCYExhqQ06PJB_bofMnR06pzAFoxywOCUp3oGkTs7MWq5pFkQsryw0JW-fPGOzRr1WO=w1280-h720-s-no-gm?authuser=1">-->
-                                            <img class="ielts-wide-image" loading="lazy" src="https://lh3.googleusercontent.com/pw/AP1GczOjgxKslkrfmkG3USmEz6NEbVafgLS07BYDsl9jHuzCgXzqOPyc5keQ16qZLB3r3qXB4_zL956BI3X3aWi0-suNSgt6o53J48OSOEoCxEfQKmBzVY3jqsaDVb5gMyGC9hQvlcYMHZ5DY_egjZpeqptC=w960-h617-s-no-gm?authuser=1" alt="Vinh danh học viên Saint Paul Academy">
+                                            <img class="ielts-wide-image" loading="lazy" ng-src="https://lh3.googleusercontent.com/pw/AP1GczOjgxKslkrfmkG3USmEz6NEbVafgLS07BYDsl9jHuzCgXzqOPyc5keQ16qZLB3r3qXB4_zL956BI3X3aWi0-suNSgt6o53J48OSOEoCxEfQKmBzVY3jqsaDVb5gMyGC9hQvlcYMHZ5DY_egjZpeqptC=w960-h617-s-no-gm?authuser=1" alt="Vinh danh học viên Saint Paul Academy">
                                             <!--<h1 class="col-md-12 text-center bold">-->
                                                 <!--PHỔ THÔNG CÁC CẤP-->
                                             <!--</h1>-->
@@ -186,9 +186,9 @@
                                             </div>
 
                                             <div class="ielts-extra-gallery">
-                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV86UVYy9ZSIWCJJZjc-PZmID_3tCtBcTrGt79uhnpxIsuPEOcMh7Krq-uEGHpW3pyqEf9HwwK3z2_LSE6iutolNi-2khIgREP3v5vFnXuEGa-7GT_84zPcauUr_xCZT7KHJJd6DbqsNfhYs--Po_6sU=w624-h600-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
-                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV86FmPs6JkaXj5BQrOgVM_k9fxBDzI_JujPrJfu7ua30bYyyqY-3Hmq7ITCQS5dqOlTWGeZd1vsMWJwj6IQ7GfcoAzRmQZzBr1eUK30luDmo9ZEFjgEKPr21-GE2OKg7dbJn3Hvl9iTaSjGmnFoUPLs=w617-h636-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
-                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV85ojX-7_WdaBz1C7ztF1Scm9WgkU8eQZBxbQ0E8cUTzZCL_NThQUMbMAGEv3trbx_0--yZ_03qQ8lSUTnxFWUjdcFQxPy2ytYL4Dpu7mtG0JI-0yS5YCxcog6TcOdh8usYMP4EHKtWXkZO6Hqy0_Pc=w1242-h804-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" ng-src="https://lh3.googleusercontent.com/pw/ABLVV86UVYy9ZSIWCJJZjc-PZmID_3tCtBcTrGt79uhnpxIsuPEOcMh7Krq-uEGHpW3pyqEf9HwwK3z2_LSE6iutolNi-2khIgREP3v5vFnXuEGa-7GT_84zPcauUr_xCZT7KHJJd6DbqsNfhYs--Po_6sU=w624-h600-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" ng-src="https://lh3.googleusercontent.com/pw/ABLVV86FmPs6JkaXj5BQrOgVM_k9fxBDzI_JujPrJfu7ua30bYyyqY-3Hmq7ITCQS5dqOlTWGeZd1vsMWJwj6IQ7GfcoAzRmQZzBr1eUK30luDmo9ZEFjgEKPr21-GE2OKg7dbJn3Hvl9iTaSjGmnFoUPLs=w617-h636-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" ng-src="https://lh3.googleusercontent.com/pw/ABLVV85ojX-7_WdaBz1C7ztF1Scm9WgkU8eQZBxbQ0E8cUTzZCL_NThQUMbMAGEv3trbx_0--yZ_03qQ8lSUTnxFWUjdcFQxPy2ytYL4Dpu7mtG0JI-0yS5YCxcog6TcOdh8usYMP4EHKtWXkZO6Hqy0_Pc=w1242-h804-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
                                             </div>
 
 
@@ -203,10 +203,10 @@
                                         <div class="col-md-2 not-for-media text-center">
                                             <div class="row">
                                                 <div class="col-md-12">
-                                                    <img class="side-image" src="assets/images/2a.png">
+                                                    <img class="side-image" loading="lazy" decoding="async" width="600" height="1800" src="assets/images/2a.png" alt="">
                                                 </div>
                                                 <div class="col-md-12">
-                                                    <img class="side-image" src="assets/images/2b.png">
+                                                    <img class="side-image" loading="lazy" decoding="async" width="600" height="1800" src="assets/images/2b.png" alt="">
                                                 </div>
                                             </div>
 

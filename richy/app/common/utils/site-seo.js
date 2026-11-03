@@ -3,7 +3,7 @@
     Hrm.run(['$rootScope', '$window', function (root, win) {
         var tntt = /^(www\.)?tnttphungkhoang\.com$/i.test(win.location.hostname);
         var brand = tntt ? 'TNTT Phùng Khoang' : 'IELTS Room';
-        var homeTitle = tntt ? 'TNTT Phùng Khoang | Thiếu Nhi Thánh Thể Phùng Khoang'
+        var homeTitle = tntt ? 'TNTT Phùng Khoang | Trang chủ'
             : 'IELTS Room | Luyện IELTS và tiếng Anh online';
         var home = tntt ? 'https://tnttphungkhoang.com/' : 'https://ieltsroom.com/';
         root.$on('$stateChangeSuccess', function (event, state) {
