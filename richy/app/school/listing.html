@@ -1,17 +1,37 @@
-<div class="portlet light bordered" ng-if="vm.settings.isAdmin">
-    <h2>Quản lý School</h2>
-    <p>Gán quyền cho từng tài khoản theo School để dùng trong Chương trình đào tạo và Student Mark.</p>
+<style>
+    .school-admin-page { margin-top: clamp(20px, 3vw, 36px); }
+    .school-admin-hero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: clamp(16px, 2.5vw, 28px); margin-bottom: 20px; border: 1px solid rgba(105, 93, 191, .2); border-radius: 18px; background: linear-gradient(115deg, rgba(112, 92, 209, .12), rgba(64, 152, 220, .06)); }
+    .school-admin-hero h2 { margin: 0 0 5px; font-size: clamp(22px, 3vw, 32px); font-weight: 800; }
+    .school-admin-hero p { margin: 0; }
+    .school-admin-page .school-table-frame { border: 1px solid rgba(105, 93, 191, .22); border-radius: 14px; overflow-x: auto; }
+    .school-admin-page .school-table { margin: 0; }
+    .school-admin-page .school-table th, .school-admin-page .school-table td { padding: 12px 14px; text-align: left; vertical-align: middle; }
+    .school-admin-page .school-table thead { background: rgba(105, 93, 191, .1); }
+    .school-admin-page .school-table tbody tr:hover { background: rgba(105, 93, 191, .07); }
+    .school-table-domain, .school-table-actions { white-space: nowrap; }
+    .school-table-tag { display: inline-block; padding: 4px 9px; border: 1px solid rgba(115, 119, 155, .25); border-radius: 999px; background: rgba(115, 119, 155, .09); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .school-table-tag.is-enabled { background: #def5eb; border-color: #bde8d6; color: #146347; }
+    .school-table-actions .btn + .btn { margin-left: 5px; }
+    .school-admin-page .well { margin-top: 20px; }
+</style>
+<section class="school-admin-page portlet light bordered" ng-if="vm.settings.isAdmin">
+    <div class="school-admin-hero">
+        <div>
+            <h2>Quản lý School</h2>
+            <p>Gán quyền cho từng tài khoản theo School để dùng trong Chương trình đào tạo và Student Mark.</p>
+        </div>
+        <button type="button" class="btn btn-primary" ng-disabled="vm.busy" ng-click="vm.edit()"><i class="fa fa-plus" aria-hidden="true"></i> Thêm School</button>
+    </div>
     <div class="alert alert-danger" ng-if="vm.error" role="alert">{{vm.error}}</div>
-    <button type="button" class="btn btn-primary" ng-disabled="vm.busy" ng-click="vm.edit()">Thêm School</button>
-    <div class="table-responsive margin-top-10">
-        <table class="table table-striped">
+    <div class="table-responsive school-table-frame">
+        <table class="table school-table">
             <thead><tr><th>ID</th><th>Tên School</th><th>Tên miền</th><th>Hoạt động</th><th>Điểm danh</th><th>Thao tác</th></tr></thead>
             <tbody><tr ng-repeat="row in vm.rows track by row.id">
-                <td>{{row.id}}</td><td>{{row.name}}</td><td>{{row.domain}}</td>
-                <td>{{row.active ? 'Đang hoạt động' : 'Đã tắt'}}</td>
-                <td>{{row.domain === 'ieltsroom.com' || !row.showAttendance ? 'Ẩn' : 'Hiện'}}</td>
-                <td><button class="btn btn-default" ng-disabled="vm.busy" ng-click="vm.edit(row)">Sửa</button>
-                    <button class="btn btn-default" ng-disabled="vm.busy" ng-click="vm.openMembers(row)">Tài khoản và quyền</button></td>
+                <td><span class="school-table-tag">#{{row.id}}</span></td><td><strong>{{row.name}}</strong></td><td class="school-table-domain">{{row.domain}}</td>
+                <td><span class='school-table-tag' ng-class='row.active ? &quot;is-enabled&quot; : &quot;&quot;'>{{row.active ? 'Đang hoạt động' : 'Đã tắt'}}</span></td>
+                <td><span class='school-table-tag' ng-class='{&quot;is-enabled&quot;: row.showAttendance && row.domain !== &quot;ieltsroom.com&quot;}'>{{row.domain === 'ieltsroom.com' || !row.showAttendance ? 'Ẩn' : 'Hiện'}}</span></td>
+                <td class="school-table-actions"><button type="button" class="btn btn-default btn-sm" ng-disabled="vm.busy" ng-click="vm.edit(row)">Sửa</button>
+                    <button type="button" class="btn btn-default btn-sm" ng-disabled="vm.busy" ng-click="vm.openMembers(row)">Tài khoản và quyền</button></td>
             </tr></tbody>
         </table>
     </div>
@@ -39,5 +59,5 @@
         <p class="help-block">Lưu khi không chọn role nào sẽ gỡ tài khoản khỏi School này.</p>
         <button class="btn btn-primary" type="submit" ng-disabled="vm.busy">Lưu quyền</button>
     </form>
-</div>
+</section>
 <p class="alert alert-warning" ng-if="!vm.settings.isAdmin">Quản trị viên hệ thống mới có quyền cấu hình School.</p>

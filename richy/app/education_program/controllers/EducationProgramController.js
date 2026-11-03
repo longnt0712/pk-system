@@ -108,21 +108,7 @@
         vm.pageIndex = 1;
         vm.pageSize = 25;
         vm.searchDto = {};
-        vm.schools = [];
         var pageRequest = 0;
-        vm.selectSchool = function (schoolId) {
-            if (schoolId != null) {
-                if (vm.mainSaving || schoolId === vm.schoolId) { return; }
-                vm.schoolId = schoolId;
-            }
-            vm.searchDto.schoolId = vm.schoolId;
-            vm.pageIndex = 1;
-            vm.bsTableControl.state = angular.extend(vm.bsTableControl.state || {}, {pageNumber: 1});
-            vm.selectedEducationPrograms = [];
-            vm.bsTableControl.options.data = vm.educationPrograms = [];
-            vm.bsTableControl.options.totalRows = 0;
-            return vm.getPage();
-        };
         vm.mainSaving = false;
         vm.canSetMain = function () {
             var permissions = $rootScope.settings || settings;
@@ -182,13 +168,15 @@
         };
 
         schoolContext.load().then(function (school) {
-            return schoolContext.list().then(function (rows) {
-                vm.schools = rows;
-                var preferred = school && rows.find(function (row) { return row.id === school.id; });
-                vm.schoolId = (preferred || rows[0] || {}).id;
-                vm.selectSchool();
-            });
-        }).catch(function () { toastr.error('Không thể tải danh sách School.'); });
+            if (!school || !school.id) {
+                toastr.warning('Tên miền này chưa được gắn với School.');
+                return;
+            }
+            vm.currentSchool = school;
+            vm.schoolId = school.id;
+            vm.searchDto.schoolId = school.id;
+            return vm.getPage();
+        }).catch(function () { toastr.error('Không thể tải School của tên miền hiện tại.'); });
 
         vm.bsTableControl = {
             options: {

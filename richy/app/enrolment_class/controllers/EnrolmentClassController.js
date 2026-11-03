@@ -321,7 +321,7 @@
 
             function sortItems(items) {
                 items.sort(function (a, b) {
-                    return (a.name || '').localeCompare(b.name || '', 'vi');
+                    return (a.name || '').localeCompare(b.name || '', 'vi', {numeric: true});
                 });
             }
 
