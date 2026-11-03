@@ -2,7 +2,7 @@
 const {test}=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../dashboards/controllers/DashboardController.js'),'utf8');
 const tick=()=>new Promise(setImmediate);
-function fixture(hostname,role='ROLE_EDUCATION_MANAGERMENT'){
+function fixture(hostname,role='ROLE_EDUCATION_MANAGEMENT'){
  let Controller,storageReads=0;
  const requests=[],entries=new Map([['ieltsReadingInProgress:7:reading:test:42','{"userId":7,"testId":42}']]);
  const angular={module:()=>({controller(name,constructor){Controller=constructor;}}),isArray:Array.isArray,forEach(items,fn){(items||[]).forEach(fn);},noop(){}};
@@ -18,7 +18,7 @@ function fixture(hostname,role='ROLE_EDUCATION_MANAGERMENT'){
 
 test('TNTT dashboard never fetches IELTS drafts or reads their local cache for any account role',async()=>{
  for(const host of ['tnttphungkhoang.com','www.tnttphungkhoang.com','TNTTPHUNGKHOANG.COM']){
-  for(const role of ['ROLE_ADMIN','ROLE_EDUCATION_MANAGERMENT','ROLE_STUDENT_MANAGERMENT','ROLE_USER','ROLE_STUDENT','ROLE_VIEWER','ROLE_STAFF']){
+  for(const role of ['ROLE_ADMIN','ROLE_EDUCATION_MANAGEMENT','ROLE_STUDENT_MANAGEMENT','ROLE_USER','ROLE_STUDENT','ROLE_VIEWER','ROLE_STAFF']){
    const f=fixture(host,role);await tick();
    assert.equal(f.requests.filter(url=>url.endsWith('/test_result/drafts')).length,0,host+':'+role);
    assert.equal(f.storageReads(),0);assert.equal(f.instance.resumeDrafts.length,0);assert.equal(f.entries.size,1);

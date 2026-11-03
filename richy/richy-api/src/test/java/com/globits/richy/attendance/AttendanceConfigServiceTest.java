@@ -84,8 +84,8 @@ public class AttendanceConfigServiceTest {
     @Test public void teachersCanReadButOnlyManagersCanWriteTheSharedSchedule() throws Exception {
         String[] readRoles = RestPersonDateController.class.getMethod("getAttendanceConfig").getAnnotation(Secured.class).value();
         String[] writeRoles = RestPersonDateController.class.getMethod("saveAttendanceConfig", AttendanceConfigDto.class).getAnnotation(Secured.class).value();
-        assertArrayEquals(new String[] {"ROLE_ADMIN", "ROLE_STUDENT_MANAGERMENT", "ROLE_EDUCATION_MANAGERMENT"}, readRoles);
-        assertArrayEquals(new String[] {"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"}, writeRoles);
+        assertArrayEquals(new String[] {"ROLE_ADMIN", "ROLE_STUDENT_MANAGEMENT", "ROLE_EDUCATION_MANAGEMENT"}, readRoles);
+        assertArrayEquals(new String[] {"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT"}, writeRoles);
     }
 
     @Test public void sharedSchedulePersistsUsingTheRealHibernateEntityMapping() {

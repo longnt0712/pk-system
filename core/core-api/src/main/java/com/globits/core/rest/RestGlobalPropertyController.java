@@ -24,7 +24,7 @@ public class RestGlobalPropertyController {
 	private GlobalPropertyService globalPropertyService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" })
 	public Page<GlobalProperty> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<GlobalProperty> page = globalPropertyService.findByPage(pageIndex, pageSize);
 		return page;

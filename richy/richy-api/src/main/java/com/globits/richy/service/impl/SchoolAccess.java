@@ -16,8 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class SchoolAccess {
     @PersistenceContext private EntityManager em;
 
-    public static final String EDUCATION = "ROLE_EDUCATION_MANAGERMENT";
-    public static final String STUDENTS = "ROLE_STUDENT_MANAGERMENT";
+    public static final String EDUCATION = "ROLE_EDUCATION_MANAGEMENT";
+    public static final String STUDENTS = "ROLE_STUDENT_MANAGEMENT";
 
     public boolean isAdmin() {
         Authentication actor = SecurityContextHolder.getContext().getAuthentication();

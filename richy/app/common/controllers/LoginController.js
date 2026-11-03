@@ -5,6 +5,26 @@
     'use strict';
 
     angular.module('Hrm.Common').controller('LoginController', LoginController);
+    angular.module('Hrm.Common').directive('loginLazyGallery', ['$window', function ($window) {
+        return {link: function (scope, element, attrs) {
+            var observer, destroyed = false;
+            function reveal() {
+                if (observer) { observer.disconnect(); }
+                scope.$evalAsync(function () {
+                    if (!destroyed) { scope.$eval(attrs.loginLazyGallery); }
+                });
+            }
+            scope.$on('$destroy', function () {
+                destroyed = true;
+                if (observer) { observer.disconnect(); }
+            });
+            if (!$window.IntersectionObserver) { reveal(); return; }
+            observer = new $window.IntersectionObserver(function (entries) {
+                if (entries.some(function (entry) { return entry.isIntersecting; })) { reveal(); }
+            }, {rootMargin: '160px'});
+            observer.observe(element[0]);
+        }};
+    }]);
 
     LoginController.$inject = [
         '$rootScope',

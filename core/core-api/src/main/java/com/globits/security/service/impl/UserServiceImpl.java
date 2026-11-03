@@ -61,13 +61,13 @@ import java.util.Set;
 public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements UserService {
 
 	private static final String ROLE_ADMIN = "ROLE_ADMIN";
-	private static final String ROLE_EDUCATION_MANAGERMENT =
-			"ROLE_EDUCATION_MANAGERMENT";
+	private static final String ROLE_EDUCATION_MANAGEMENT =
+			"ROLE_EDUCATION_MANAGEMENT";
 	private static final Set<String> EDUCATION_MANAGED_ROLE_NAMES =
 			new LinkedHashSet<String>();
 
 	static {
-		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STUDENT_MANAGERMENT");
+		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STUDENT_MANAGEMENT");
 		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STUDENT");
 		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STAFF");
 	}
@@ -494,9 +494,31 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * khoản có ít nhất một role khác ROLE_VIEWER.
 	     */
 	    Integer schoolId = filter == null ? null : filter.getSchoolId();
+	    String directoryAccountType = filter == null ? null : filter.getDirectoryAccountType();
+	    boolean splitDirectory = ("STUDENT".equals(directoryAccountType) || "STAFF".equals(directoryAccountType))
+	            && (Integer.valueOf(1).equals(schoolId) || Integer.valueOf(2).equals(schoolId));
 	    boolean withoutEnrollmentClass = Integer.valueOf(1).equals(schoolId)
 	            && Boolean.TRUE.equals(filter.getWithoutEnrollmentClass());
-	    if (withoutEnrollmentClass) {
+	    if (splitDirectory) {
+	        String siteStudentRoles = schoolId == 1 ? "'ROLE_VIEWER','ROLE_USER'" : "'ROLE_STUDENT'";
+	        String student = "exists (select 1 from u.roles learnerRole where learnerRole.name in (" + siteStudentRoles + "))";
+	        String unassigned = "(p.enrollmentClassId is null or p.enrollmentClassId <= 0)"
+	                + " and not exists (select 1 from u.enrollmentClassIds assignedClass where assignedClass > 0)";
+	        String schoolClasses = "select c.id from EnrolmentClass c where c.schoolId = :schoolId";
+	        String local = "(cast(p.enrollmentClassId as long) in (" + schoolClasses + ")"
+	                + " or exists (select 1 from u.enrollmentClassIds localClass where localClass in (" + schoolClasses + ")))";
+	        if ("STUDENT".equals(directoryAccountType)) {
+	            clause += " and " + student + (withoutEnrollmentClass ? " and " + unassigned
+	                    : " and (" + local + (schoolId == 2 ? " or (" + unassigned + ")" : "") + ")");
+	        } else {
+	            withoutEnrollmentClass = false;
+	            String learnerAnywhere = "exists (select 1 from u.roles otherLearnerRole"
+	                    + " where otherLearnerRole.name in ('ROLE_VIEWER','ROLE_USER','ROLE_STUDENT'))";
+	            String admin = "exists (select 1 from u.roles adminRole where adminRole.name='ROLE_ADMIN')";
+	            clause += " and not " + student + " and (" + local + " or " + admin
+	                    + " or (" + unassigned + " and not " + learnerAnywhere + "))";
+	        }
+	    } else if (withoutEnrollmentClass) {
 	        // Chưa có lớp nên xác định học sinh IELTS bằng ROLE_VIEWER.
 	        clause += " and exists (select 1 from u.roles studentRole "
 	                + "where studentRole.name = 'ROLE_VIEWER') "
@@ -963,7 +985,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		User user = null;
 		boolean currentUserIsAdmin = currentUserHasRole(ROLE_ADMIN);
 		boolean currentUserIsEducationManager =
-				currentUserHasRole(ROLE_EDUCATION_MANAGERMENT);
+				currentUserHasRole(ROLE_EDUCATION_MANAGEMENT);
 
 		if (CommonUtils.isPositive(userDto.getId(), true)) {
 			user = userRepository.findById(userDto.getId());

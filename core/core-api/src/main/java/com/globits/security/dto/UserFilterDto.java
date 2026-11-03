@@ -16,6 +16,10 @@ public class UserFilterDto {
 
 	/* Phạm vi trường của danh sách tài khoản, được suy ra từ domain hiện tại. */
 	private Integer schoolId;
+	private String directoryAccountType;
+
+	public String getDirectoryAccountType() { return directoryAccountType; }
+	public void setDirectoryAccountType(String value) { directoryAccountType = value; }
 
 	/* Chỉ tìm học sinh IELTS Room chưa được gán lớp chính hoặc lớp phụ. */
 	private Boolean withoutEnrollmentClass;

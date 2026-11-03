@@ -35,7 +35,7 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  await page.goto('https://tnttphungkhoang.test/'+(dashboard?'dashboard':'tai-lieu'));
  for(const f of ['angular.min.js','angular-cookies.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',f)});
  await page.evaluate(({student,editor,gender,dashboard})=>{
-  window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGERMENT'}],person:{gender}};
+  window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGEMENT'}],person:{gender}};
   document.cookie='education.user='+encodeURIComponent(JSON.stringify(window.user))+';path=/';
   angular.module('ui.router',[]).provider('$state',function(){this.state=function(){return this;};this.$get=['$rootScope',function(root){return{current:{name:dashboard?'application.dashboard':'application.tntt_documents'},is(name){return this.current.name===name;},go(name,params){window.lastNavigation={name,params};this.current.name=name;root.$broadcast('$stateChangeSuccess');}};}];});
   angular.module('oc.lazyLoad',[]);angular.module('Hrm.Common',[]);

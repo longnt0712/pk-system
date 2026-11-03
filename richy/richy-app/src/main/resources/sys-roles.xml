@@ -18,19 +18,19 @@
 		<description></description>
 	</sys-role>
 	<sys-role>
-		<name>ROLE_EDUCATION_MANAGERMENT</name>
+		<name>ROLE_EDUCATION_MANAGEMENT</name>
 		<description></description>
 	</sys-role>
 	<sys-role>
-		<name>ROLE_STUDENT_MANAGERMENT</name>
+		<name>ROLE_STUDENT_MANAGEMENT</name>
 		<description></description>
 	</sys-role>
 	<sys-role>
-		<name>ROLE_EXAM_MANAGERMENT</name>
+		<name>ROLE_EXAM_MANAGEMENT</name>
 		<description></description>
 	</sys-role>
 	<sys-role>
-		<name>ROLE_FINANCIAL_MANAGERMENT</name>
+		<name>ROLE_FINANCIAL_MANAGEMENT</name>
 		<description></description>
 	</sys-role>
 	<sys-role>

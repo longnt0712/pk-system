@@ -27,13 +27,13 @@ public class RestDegreeStudentController {
 	private DegreeStudentService degreeStudentService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT"})
 	public Page<DegreeStudent> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<DegreeStudent> page = degreeStudentService.getList(pageIndex, pageSize);
 		return page;
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/{degreeStudentId}", method = RequestMethod.GET)
 	public DegreeStudent getDiscipline(@PathVariable("degreeStudentId") String degreeStudentId) {
 		DegreeStudent degreeStudent = degreeStudentService.findById(new Long(degreeStudentId));

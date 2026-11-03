@@ -27,7 +27,7 @@ public class RestMarkController {
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<MarkDto> getPage(@RequestBody MarkDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		if (!access.isAdmin() || programId(searchDto) != null) {
-            access.requireProgram(programId(searchDto), "ROLE_EDUCATION_MANAGERMENT");
+            access.requireProgram(programId(searchDto), "ROLE_EDUCATION_MANAGEMENT");
         }
         return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
@@ -35,7 +35,7 @@ public class RestMarkController {
 	@PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/get_ordered/{educationProgramId}", method = RequestMethod.GET)
 	public List<MarkDto> getOrderedMarks(@PathVariable Long educationProgramId) {
-		access.requireProgram(educationProgramId, "ROLE_EDUCATION_MANAGERMENT");
+		access.requireProgram(educationProgramId, "ROLE_EDUCATION_MANAGEMENT");
         return service.getOrderedMarks(educationProgramId);
 	}
 
@@ -43,7 +43,7 @@ public class RestMarkController {
 	@RequestMapping(value = "/reorder/{educationProgramId}", method = RequestMethod.POST)
 	public List<MarkDto> reorderMarks(@PathVariable Long educationProgramId,
 			@RequestBody List<Long> orderedMarkIds) {
-		access.requireProgram(educationProgramId, "ROLE_EDUCATION_MANAGERMENT");
+		access.requireProgram(educationProgramId, "ROLE_EDUCATION_MANAGEMENT");
         return service.reorderMarks(educationProgramId, orderedMarkIds);
 	}
 	
@@ -58,7 +58,7 @@ public class RestMarkController {
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public MarkDto saveOne(@RequestBody MarkDto searchDto) {
 		Long program = programId(searchDto);
-        access.requireProgram(program, "ROLE_EDUCATION_MANAGERMENT");
+        access.requireProgram(program, "ROLE_EDUCATION_MANAGEMENT");
         if (searchDto.getId() != null && !program.equals(access.columnProgram(searchDto.getId()))) {
             throw new IllegalArgumentException("Đầu điểm phải giữ nguyên chương trình.");
         }

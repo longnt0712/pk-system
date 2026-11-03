@@ -1,7 +1,7 @@
 # Cấu hình giờ điểm danh
 
 Trong `person_date`, chọn **Công cụ → Cấu hình giờ điểm danh** bằng tài khoản
-`ROLE_ADMIN` hoặc `ROLE_EDUCATION_MANAGERMENT`. Giáo viên có quyền điểm danh được
+`ROLE_ADMIN` hoặc `ROLE_EDUCATION_MANAGEMENT`. Giáo viên có quyền điểm danh được
 đọc cấu hình và chọn mọi trạng thái trong dropdown điểm danh tay.
 
 | Cấu hình mặc định | Giá trị |

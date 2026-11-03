@@ -32,7 +32,7 @@ public class RestStatusController {
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{statusId}", method = RequestMethod.GET)
 	public Status getStatus(@PathVariable("statusId") String statusId) {
 		Status status = statusService.findById(new Long(statusId));

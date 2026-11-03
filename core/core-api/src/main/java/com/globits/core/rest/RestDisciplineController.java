@@ -26,13 +26,13 @@ public class RestDisciplineController {
 	private DisciplineService disciplineService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" })
 	public Page<Discipline> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Discipline> page = disciplineService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" })
 	@RequestMapping(value = "/{disciplineId}", method = RequestMethod.GET)
 	public Discipline getDiscipline(@PathVariable("disciplineId") String disciplineId) {
 		Discipline discipline = disciplineService.findById(new Long(disciplineId));
@@ -60,7 +60,7 @@ public class RestDisciplineController {
 		return Discipline;
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public DisciplineDto checkDuplicateCode(@PathVariable("code") String code) {
 		return disciplineService.checkDuplicateCode(code);

@@ -184,7 +184,7 @@ public class BattleOnlinePetSelectionTest {
 
     @Test
     public void clientCannotClaimAdminPetAccessOrUseAnotherRoleToUnlockPets() {
-        for (String name : new String[] {"ROLE_STUDENT", "ROLE_STAFF", "ROLE_EDUCATION_MANAGERMENT", "ROLE_ADMINISTRATOR"}) {
+        for (String name : new String[] {"ROLE_STUDENT", "ROLE_STAFF", "ROLE_EDUCATION_MANAGEMENT", "ROLE_ADMINISTRATOR"}) {
             student.getRoles().clear();
             Role role = new Role(); role.setName(name); student.getRoles().add(role);
             student.setTotalVocabularyWordsLearned(0L);

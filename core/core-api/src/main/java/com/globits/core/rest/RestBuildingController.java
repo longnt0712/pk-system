@@ -26,13 +26,13 @@ public class RestBuildingController {
 	private BuildingService buildingService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	public Page<BuildingDto> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<BuildingDto> page = buildingService.getListByPage(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	@RequestMapping(value = "/{buildingId}", method = RequestMethod.GET)
 	public BuildingDto getBuilding(@PathVariable("buildingId") String buildingId) {
 		BuildingDto building = buildingService.getBuilding(new Long(buildingId));
@@ -58,7 +58,7 @@ public class RestBuildingController {
 		return building;
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public BuildingDto checkDuplicateCode(@PathVariable("code") String code) {
 		return buildingService.checkDuplicateCode(code);

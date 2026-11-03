@@ -29,20 +29,20 @@ public class RestAdministrativeUnitController {
 	private AdministrativeUnitService administrativeUnitService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<AdministrativeUnit> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<AdministrativeUnit> page = administrativeUnitService.getListAdministrativeUnitByTree(pageIndex, pageSize);
 		return page;
 	}
 	@RequestMapping(value = "tree/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public ResponseEntity<Page<AdministrativeUnitDto>> getListTree(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<AdministrativeUnitDto> page = administrativeUnitService.getListTree(pageIndex, pageSize);
 		return new ResponseEntity<Page<AdministrativeUnitDto>>(page, HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/listProvince/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	public Page<AdministrativeUnit> getListProvince(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<AdministrativeUnit> page = administrativeUnitService.getListAdministrativeUnitbyProvince(pageIndex,
 				pageSize);
@@ -50,7 +50,7 @@ public class RestAdministrativeUnitController {
 	}
 
 	@RequestMapping(value = "/listCity/{parentId}/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<AdministrativeUnit> getListCity(@PathVariable("parentId") Long parentId, @PathVariable int pageIndex,
 			@PathVariable int pageSize) {
 		Page<AdministrativeUnit> page = administrativeUnitService.getListAdministrativeUnitbyCity(parentId, pageIndex,
@@ -59,13 +59,13 @@ public class RestAdministrativeUnitController {
 	}
 	
 	@RequestMapping(value = "/simple/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<AdministrativeUnitDto> findByPageBasicInfo(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<AdministrativeUnitDto> page = administrativeUnitService.findByPageBasicInfo(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	@RequestMapping(value = "/{administrativeUnitId}", method = RequestMethod.GET)
 	public AdministrativeUnit geAdministrativeUnit(@PathVariable("administrativeUnitId") String administrativeUnitId) {
 		AdministrativeUnit administrativeUnit = administrativeUnitService.findById(new Long(administrativeUnitId));

@@ -35,7 +35,7 @@ public class EducationProgramMainTest {
             s.execute("CREATE TABLE dbo.tbl_role(id BIGINT PRIMARY KEY,role_name VARCHAR(150))");
             s.execute("CREATE TABLE dbo.tbl_school_user_role(school_id BIGINT,user_id BIGINT,role_id BIGINT)");
             s.execute("INSERT INTO dbo.tbl_user VALUES(1,'main-test',1)");
-            s.execute("INSERT INTO dbo.tbl_role VALUES(1,'ROLE_EDUCATION_MANAGERMENT'),(2,'ROLE_STUDENT_MANAGERMENT')");
+            s.execute("INSERT INTO dbo.tbl_role VALUES(1,'ROLE_EDUCATION_MANAGEMENT'),(2,'ROLE_STUDENT_MANAGEMENT')");
         }
         Configuration cfg=new Configuration().addAnnotatedClass(EducationProgram.class).addAnnotatedClass(School.class)
             .setProperty("hibernate.default_schema","dbo").setProperty("hibernate.dialect","org.hibernate.dialect.H2Dialect")

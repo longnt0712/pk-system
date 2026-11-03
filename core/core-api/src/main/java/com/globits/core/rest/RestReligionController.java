@@ -26,13 +26,13 @@ public class RestReligionController {
 	private ReligionService religionService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Religion> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Religion> page = religionService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{religionId}", method = RequestMethod.GET)
 	public Religion getReligion(@PathVariable("religionId") String religionId) {
 		Religion religion = religionService.findById(new Long(religionId));

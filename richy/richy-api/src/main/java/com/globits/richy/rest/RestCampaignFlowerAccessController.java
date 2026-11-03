@@ -11,7 +11,7 @@ import com.globits.richy.service.impl.CampaignService;
 
 @RestController
 @RequestMapping("/api/campaign-flower")
-@Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT"})
+@Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"})
 public class RestCampaignFlowerAccessController {
     @Autowired private CampaignFlowerService service;
     @RequestMapping(value = "/access", method = RequestMethod.POST)

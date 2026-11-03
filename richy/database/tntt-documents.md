@@ -2,7 +2,7 @@
 
 1. Sao lưu database, chạy `tntt-documents.sql` và `tntt-team-gender.sql` trên database ứng dụng. Các script chỉ bổ sung bốn bảng mới và cột loại đội; không sửa danh sách học sinh hiện có.
 2. Cập nhật backend và frontend, sau đó đặt `TNTT_DOCUMENTS_ENABLED=true` và khởi động lại backend. Mặc định tính năng tắt để không truy vấn bảng chưa được tạo.
-3. Admin và `ROLE_EDUCATION_MANAGERMENT` soạn tài liệu chung. Những người nhận được chọn chỉ xem bản được chia sẻ. Tài khoản `ROLE_STUDENT` và hồ sơ `DOAN_SINH` không được nhận thông báo.
+3. Admin và `ROLE_EDUCATION_MANAGEMENT` soạn tài liệu chung. Những người nhận được chọn chỉ xem bản được chia sẻ. Tài khoản `ROLE_STUDENT` và hồ sơ `DOAN_SINH` không được nhận thông báo.
 4. Nhóm giáo lý viên/huynh trưởng bao gồm thành phần trưởng, trợ tá, trợ úy, tuyên úy và tài khoản giáo viên `ROLE_USER` có lớp trường 2; bao gồm người phụ trách lớp gốc trường 2, không lấy giáo viên IELTS chưa thuộc TNTT.
 
 ## Khi giao diện báo chưa kích hoạt

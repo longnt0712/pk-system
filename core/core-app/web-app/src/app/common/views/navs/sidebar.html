@@ -36,10 +36,10 @@
                 <span class="title">Hồ sơ sinh viên</span>
             </a>
         </li>
-        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT', 'ROLE_STUDENT_MANAGERMENT', 'ROLE_EXAM_MANAGERMENT', 'ROLE_FINANCIAL_MANAGERMENT'])">
+        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGEMENT', 'ROLE_STUDENT_MANAGEMENT', 'ROLE_EXAM_MANAGEMENT', 'ROLE_FINANCIAL_MANAGEMENT'])">
             <h3 class="uppercase">Đào tạo</h3>
         </li>
-        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT'])">
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGEMENT'])">
             <a href="javascript:;" class="nav-link nav-toggle">
                 <i class="icon-book-open"></i>
                 <span class="title">Quản lý đào tạo</span>
@@ -118,7 +118,7 @@
                 </li>
             </ul>
         </li>
-        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT'])">
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGEMENT'])">
             <a href="javascript:;" class="nav-link nav-toggle">
                 <i class="icon-wallet"></i>
                 <span class="title">Quản lý học phí</span>
@@ -142,7 +142,7 @@
                 </li>
             </ul>
         </li>
-        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_STUDENT_MANAGERMENT'])">
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_STUDENT_MANAGEMENT'])">
             <a href="javascript:;" class="nav-link nav-toggle">
                 <i class="fa fa-mortar-board"></i>
                 <span class="title">Quản lý sinh viên</span>
@@ -181,7 +181,7 @@
                 </li>
             </ul>
         </li>
-        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EXAM_MANAGERMENT'])">
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EXAM_MANAGEMENT'])">
             <a href="javascript:;" class="nav-link nav-toggle">
                 <i class="fa fa-certificate"></i>
                 <span class="title">Khảo thí/quản lý điểm</span>

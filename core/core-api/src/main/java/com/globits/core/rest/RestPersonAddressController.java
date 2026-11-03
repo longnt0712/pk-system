@@ -24,7 +24,7 @@ public class RestPersonAddressController {
 	private PersonAddressService personaddressService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<PersonAddress> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<PersonAddress> page = personaddressService.getList(pageIndex, pageSize);
 		return page;

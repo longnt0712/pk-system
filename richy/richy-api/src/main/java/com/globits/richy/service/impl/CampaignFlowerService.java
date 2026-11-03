@@ -33,7 +33,7 @@ public class CampaignFlowerService {
     @PersistenceContext private EntityManager entityManager;
     private static LocalDate today() { return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")); }
 
-    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"})
     public CampaignFlowerDto.Access issue(String studentCode) {
         return issueAccess(findStudent(studentCode));
     }
@@ -65,7 +65,7 @@ public class CampaignFlowerService {
         dto.token = access.getToken(); dto.student = profile(student); return dto;
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"})
     @Transactional(readOnly = true)
     public String resolveForAttendance(String token) { return access(token, false).getStudent().getUsername(); }
 

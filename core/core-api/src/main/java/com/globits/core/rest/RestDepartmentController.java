@@ -30,14 +30,14 @@ public class RestDepartmentController {
 	private DepartmentService departmentService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	public Page<Department> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		// Page<Department> page = departmentService.getList(pageIndex,pageSize);
 		Page<Department> page = departmentService.getListDepartmentByTree();
 		return page;
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	@RequestMapping(value = "/{DepartmentId}", method = RequestMethod.GET)
 	public Department getDepartment(@PathVariable("DepartmentId") String DepartmentId) {
 		Department depart = departmentService.findById(new Long(DepartmentId));
@@ -86,14 +86,14 @@ public class RestDepartmentController {
 	 * @author Tuan Anh for Calendar
 	 */
 	@RequestMapping(value = "/all", method = RequestMethod.GET)
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	public ResponseEntity<List<DepartmentDto>> getAllDepartments() {
 		List<DepartmentDto> list = departmentService.getAll();
 
 		return new ResponseEntity<List<DepartmentDto>>(list, HttpStatus.OK);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(path = "/tree/{pageIndex}/{pageSize}", method = RequestMethod.GET)
 	public ResponseEntity<Page<DepartmentDto>> getTreeData(@PathVariable("pageIndex")int pageIndex,@PathVariable("pageSize")int pageSize){
 		
@@ -102,25 +102,25 @@ public class RestDepartmentController {
 		return new ResponseEntity<Page<DepartmentDto>>(ret, HttpStatus.OK);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(path = "/tree_none_child", method = RequestMethod.GET)
 	List<DepartmentDto> findTreeDepartmentNoneChild(){
 		return departmentService.findTreeDepartmentNoneChild();
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(path = "/tree_none_child/faculty", method = RequestMethod.GET)
 	List<DepartmentDto> findTreeFacultiesNoneChild(){
 		return departmentService.findTreeFacultiesNoneChild();
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/checkCode/{code}/",method = RequestMethod.GET)
 	public DepartmentDto checkDuplicateCode(@PathVariable String code) {
 		return departmentService.checkDuplicateCode(code);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	@RequestMapping(value = "/dto/{departmentId}", method = RequestMethod.GET)
 	public DepartmentDto getDepartmentDto(@PathVariable("departmentId") String departmentId) {
 		return departmentService.getDepartmentById(new Long(departmentId));

@@ -30,19 +30,19 @@ public class RestRoomController {
 	private RoomService roomService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Room> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Room> page = roomService.getList(pageIndex, pageSize);
 		return page;
 	}
 	@RequestMapping(value = "/{keyword}/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<RoomDto> searchRoom(@PathVariable String keyword, @PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<RoomDto> page = roomService.searchRoom(keyword,pageSize, pageIndex);
 		return page;
 	}
 	
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{roomId}", method = RequestMethod.GET)
 	public Room getRoom(@PathVariable("roomId") String roomId) {
 		Room room = roomService.findById(new Long(roomId));
@@ -82,7 +82,7 @@ public class RestRoomController {
 		return new ResponseEntity<List<RoomDto>>(rooms, HttpStatus.OK);
 	}
 	
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public RoomDto checkDuplicateCode(@PathVariable("code") String code) {
 		return roomService.checkDuplicateCode(code);

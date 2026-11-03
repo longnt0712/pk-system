@@ -90,11 +90,11 @@
                     vm.isRoleStaffManagement = true;
                     console.log('Staff Management');
                 }
-                if (value.name === "ROLE_STUDENT_MANAGERMENT") {
+                if (value.name === "ROLE_STUDENT_MANAGEMENT") {
                     vm.isRoleStudentManagerment = true;
                     console.log('isRoleStudentManagerment');
                 }
-                if (value.name === "ROLE_EDUCATION_MANAGERMENT") {
+                if (value.name === "ROLE_EDUCATION_MANAGEMENT") {
                     vm.isEducationManagerment = true;
                     console.log('isEducationManagerment');
                 }

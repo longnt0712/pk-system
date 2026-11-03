@@ -38,8 +38,8 @@ public class TopicCategoryVisibilityService {
         boolean learner = hasRole(student, "ROLE_STUDENT") || hasRole(student, "ROLE_VIEWER");
         if (!learner
                 || hasRole(student, "ROLE_ADMIN")
-                || hasRole(student, "ROLE_EDUCATION_MANAGERMENT")
-                || hasRole(student, "ROLE_STUDENT_MANAGERMENT")
+                || hasRole(student, "ROLE_EDUCATION_MANAGEMENT")
+                || hasRole(student, "ROLE_STUDENT_MANAGEMENT")
                 || hasRole(student, "ROLE_STAFF")
                 || hasRole(student, "ROLE_STAFF_MANAGEMENT")) {
             return null;

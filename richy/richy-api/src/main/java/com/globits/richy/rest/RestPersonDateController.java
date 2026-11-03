@@ -31,7 +31,7 @@ public class RestPersonDateController {
 	@Autowired
 	private AttendanceConfigService attendanceConfigService;
 
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/attendance_config", method = RequestMethod.GET)
 	public AttendanceConfigDto getAttendanceConfig() {
 		AttendanceConfigDto config = attendanceConfigService.getConfig();
@@ -39,7 +39,7 @@ public class RestPersonDateController {
 		return config;
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/attendance_config", method = RequestMethod.PUT)
 	public AttendanceConfigDto saveAttendanceConfig(@RequestBody AttendanceConfigDto config) {
 		return attendanceConfigService.saveConfig(config);
@@ -51,18 +51,18 @@ public class RestPersonDateController {
 				.body(Collections.singletonMap("message", error.getMessage()));
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<PersonDateDto> getPage(@RequestBody PersonDateDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public PersonDateDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}/{attendanceDate}", method = RequestMethod.POST)
 	public ResponseEntity<Boolean> saveListByEnrollmentClass(
 	        @PathVariable("enrollmentClass") int enrollmentClass,
@@ -71,7 +71,7 @@ public class RestPersonDateController {
 	    return new ResponseEntity<Boolean>(result, HttpStatus.OK);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}/{attendanceDate}/{schoolId}", method = RequestMethod.POST)
 	public ResponseEntity<Boolean> saveListByEnrollmentClassForSchool(
 	        @PathVariable("enrollmentClass") int enrollmentClass,
@@ -81,7 +81,7 @@ public class RestPersonDateController {
 	    return new ResponseEntity<Boolean>(result, HttpStatus.OK);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/attendance_classes/{attendanceDate}/{schoolId}", method = RequestMethod.GET)
 	public List<PersonDateClassReportDto> getAttendanceClassStatuses(
 	        @PathVariable("attendanceDate") String attendanceDate,
@@ -89,19 +89,19 @@ public class RestPersonDateController {
 		return service.getAttendanceClassStatuses(attendanceDate, schoolId);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/save_list_by_enrollment_classes", method = RequestMethod.POST)
 	public ResponseEntity<List<PersonDateClassReportDto>> saveListByEnrollmentClasses(@RequestBody PersonDateBulkCreateDto dto) {
 		return new ResponseEntity<List<PersonDateClassReportDto>>(service.saveListByEnrollmentClasses(dto), HttpStatus.OK);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public PersonDateDto saveOne(@RequestBody PersonDateDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/save_by_qr/{attendanceDate}", method = RequestMethod.POST)
 	public PersonDateDto saveByQr(
 			@RequestBody PersonDateDto dto,
@@ -109,7 +109,7 @@ public class RestPersonDateController {
 		return service.saveByQr(dto, attendanceDate);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);

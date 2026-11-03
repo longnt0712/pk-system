@@ -618,8 +618,8 @@ public class TestResultServiceImpl implements TestResultService {
         if (hasRole(user, "ROLE_ADMIN")) { return true; }
         if (hasRole(user, "ROLE_VIEWER") || hasRole(user, "ROLE_STUDENT")) { return false; }
         return hasRole(user, "ROLE_USER") || hasRole(user, "ROLE_STAFF")
-            || hasRole(user, "ROLE_STAFF_MANAGEMENT") || hasRole(user, "ROLE_EDUCATION_MANAGERMENT")
-            || hasRole(user, "ROLE_STUDENT_MANAGERMENT");
+            || hasRole(user, "ROLE_STAFF_MANAGEMENT") || hasRole(user, "ROLE_EDUCATION_MANAGEMENT")
+            || hasRole(user, "ROLE_STUDENT_MANAGEMENT");
     }
     private TestResultDto scopeResultSearch(TestResultDto search) {
         User reader = getCurrentUser();
@@ -642,8 +642,8 @@ public class TestResultServiceImpl implements TestResultService {
 		boolean teacherRole = hasRole(currentUser, "ROLE_USER")
 				|| hasRole(currentUser, "ROLE_STAFF")
 				|| hasRole(currentUser, "ROLE_STAFF_MANAGEMENT")
-				|| hasRole(currentUser, "ROLE_EDUCATION_MANAGERMENT")
-				|| hasRole(currentUser, "ROLE_STUDENT_MANAGERMENT");
+				|| hasRole(currentUser, "ROLE_EDUCATION_MANAGEMENT")
+				|| hasRole(currentUser, "ROLE_STUDENT_MANAGEMENT");
 		return teacherRole && isPrimaryTeacherOfStudent(currentUser, result.getUser());
 	}
 

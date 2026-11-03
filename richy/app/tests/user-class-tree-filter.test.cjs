@@ -46,7 +46,7 @@ function setup(schoolId = 2) {
         ['vm.enrollmentClassesLoading = false;', 'vm.findEnrollmentClass = function'],
         ['vm.getClassAndDescendantIds = function', 'vm.genders ='],
         ['function getDirectorySearchRoles()', 'function isEducationManagedRole'],
-        ['vm.getUsers = function', 'function toCalendarDate'],
+        ["vm.directoryAccountType = 'STUDENT';", 'function toCalendarDate'],
         ['vm.hasAnyFilterValue = function', 'vm.syncModalEnrollmentClassToFilter ='],
         ['vm.search = function', 'vm.searchByCreatedDate =']
     ]) nodeVm.runInContext(section(start, end), context);
@@ -58,6 +58,17 @@ function tree(schoolId) {
         {id: 11, name: 'Đội Lucia', schoolId, parentId: 10},
         {id: 111, name: 'Tổ 1 (a3)', schoolId, parentId: 11}];
 }
+
+test('account tabs send a server-side filter and reset pagination', async () => {
+    const h = setup(1);
+    h.vm.getUsers();
+    h.vm.selectDirectoryAccountType('STAFF');
+    await tick();
+    assert.equal(h.calls.requests[0].filter.directoryAccountType, 'STUDENT');
+    assert.equal(h.calls.requests[1].filter.directoryAccountType, 'STAFF');
+    assert.equal(h.calls.requests[1].pageIndex, 1);
+    assert.equal(h.calls.requests[1].filter.withoutEnrollmentClass, false);
+});
 
 test('User class picker loader retains the domain school and builds existing class paths', async () => {
     for (const schoolId of [1, 2]) {

@@ -78,7 +78,7 @@ public class CampaignFieldTest {
         execute("create table tbl_enrolment_class(id bigint,name varchar(100),school_id int,parent_id bigint,code varchar(100))");
         execute("create table tbl_user_enrolment_class(user_id bigint,enrolment_class_id bigint)");
         execute("create table tbl_campaign_flower_entry(campaign_id bigint,student_id bigint,entry_date varchar(10),item_key varchar(36),completed int)");
-        execute("insert into tbl_role values(1,'ROLE_STUDENT'),(2,'ROLE_ADMIN'),(3,'ROLE_EDUCATION_MANAGERMENT'),(4,'ROLE_STUDENT_MANAGERMENT'),(5,'ROLE_VIEWER'),(6,'ROLE_STAFF')");
+        execute("insert into tbl_role values(1,'ROLE_STUDENT'),(2,'ROLE_ADMIN'),(3,'ROLE_EDUCATION_MANAGEMENT'),(4,'ROLE_STUDENT_MANAGEMENT'),(5,'ROLE_VIEWER'),(6,'ROLE_STAFF')");
         execute("insert into tbl_enrolment_class(id,name,school_id) values(12,'Thiếu 1',2),(13,'Ấu 1',2),(99,'IELTS',1)");
         participant(1,1,12,1);participant(2,1,13,1);participant(3,2,12,1);participant(4,3,12,1);participant(5,4,12,1);
         participant(6,1,99,1);participant(7,5,99,1);participant(8,1,12,0);participant(9,6,12,1);participant(10,1,null,1);
@@ -128,7 +128,7 @@ public class CampaignFieldTest {
     @Test public void privateListRequiresAdminOrEitherManager(){
         for(String role:Arrays.asList("ROLE_STUDENT","ROLE_STAFF")){login(role);try{service.managed(5L,null,"","",6);fail();}catch(AccessDeniedException expected){}}
         SecurityContextHolder.clearContext();try{service.managed(5L,null,"","",6);fail();}catch(org.springframework.security.core.AuthenticationException expected){}catch(AccessDeniedException expected){}
-        for(String role:Arrays.asList("ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT")){login(role);assertTrue(ids(service.managed(5L,null,"","",12)).containsAll(Arrays.asList(3L,4L,5L,11L)));}
+        for(String role:Arrays.asList("ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT")){login(role);assertTrue(ids(service.managed(5L,null,"","",12)).containsAll(Arrays.asList(3L,4L,5L,11L)));}
     }
     @Test public void classFilterSupportsMultipleClassesAndRejectsForeignClasses(){
         assertEquals(Arrays.asList(1L,2L),ids(service.students(5L,13L,"","",6)));
@@ -198,7 +198,7 @@ public class CampaignFieldTest {
         mvc.perform(post("/public/campaigns/5/field")).andExpect(status().isMethodNotAllowed());
     }
     @Test public void classExportRequiresAdminAndIncludesManagersAndZeroGardens() {
-        for(String role:Arrays.asList("ROLE_STUDENT","ROLE_STAFF","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT")){
+        for(String role:Arrays.asList("ROLE_STUDENT","ROLE_STAFF","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT")){
             login(role);try{service.exportGardens(5L,12L,"",12);fail("Export must require Admin");}catch(AccessDeniedException expected){}
         }
         SecurityContextHolder.clearContext();try{service.exportGardens(5L,12L,"",12);fail();}catch(org.springframework.security.core.AuthenticationException expected){}catch(AccessDeniedException expected){}

@@ -675,7 +675,7 @@
 
         vm.canReviewOtherResults = function () {
             var roles=getCurrentRoleNames();if(roles.ROLE_ADMIN)return true;if(roles.ROLE_VIEWER||roles.ROLE_STUDENT)return false;
-            return !!(roles.ROLE_USER||roles.ROLE_STAFF||roles.ROLE_STAFF_MANAGEMENT||roles.ROLE_EDUCATION_MANAGERMENT||roles.ROLE_STUDENT_MANAGERMENT);
+            return !!(roles.ROLE_USER||roles.ROLE_STAFF||roles.ROLE_STAFF_MANAGEMENT||roles.ROLE_EDUCATION_MANAGEMENT||roles.ROLE_STUDENT_MANAGEMENT);
         };
         vm.canUseResultDeletion = function () {
             var roleNames = getCurrentRoleNames();
@@ -685,8 +685,8 @@
                 roleNames.ROLE_USER ||
                 roleNames.ROLE_STAFF ||
                 roleNames.ROLE_STAFF_MANAGEMENT ||
-                roleNames.ROLE_EDUCATION_MANAGERMENT ||
-                roleNames.ROLE_STUDENT_MANAGERMENT
+                roleNames.ROLE_EDUCATION_MANAGEMENT ||
+                roleNames.ROLE_STUDENT_MANAGEMENT
             ) { return true; }
             return (vm.testResults || []).some(function (result) {
                 return result && result.canDelete === true;
@@ -1561,7 +1561,7 @@
         vm.filter.active = true;
 
         angular.forEach(vm.roles, function(value1, key1) {
-            if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
+            if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGEMENT" || value1.name === "ROLE_EDUCATION_MANAGEMENT" ){
                 // vm.filter.roles = [];
                 if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
                     vm.filter.roles.push(value1);

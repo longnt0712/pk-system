@@ -26,13 +26,13 @@ public class RestRewardController {
 	private RewardService rewardService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Reward> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Reward> page = rewardService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" , "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" , "ROLE_STUDENT"})
 	@RequestMapping(value = "/{rewardId}", method = RequestMethod.GET)
 	public Reward getReward(@PathVariable("rewardId") String rewardId) {
 		Reward reward = rewardService.findById(new Long(rewardId));
@@ -58,7 +58,7 @@ public class RestRewardController {
 		return Reward;
 	}
 	
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public RewardDto checkDuplicateCode(@PathVariable("code") String code) {
 		return rewardService.checkDuplicateCode(code);

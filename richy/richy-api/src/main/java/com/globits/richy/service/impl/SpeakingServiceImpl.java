@@ -53,7 +53,7 @@ public class SpeakingServiceImpl {
         return actor;
     }
     public boolean teacher(User user) {
-        return role(user,"ROLE_ADMIN") || role(user,"ROLE_USER") || role(user,"ROLE_EDUCATION_MANAGERMENT")
+        return role(user,"ROLE_ADMIN") || role(user,"ROLE_USER") || role(user,"ROLE_EDUCATION_MANAGEMENT")
             || classes.findAll().stream().anyMatch(c -> user.getId().equals(c.getPrimaryTeacherId()) || c.getTeachers().stream().anyMatch(t -> user.getId().equals(t.getId())));
     }
     private void requireTeacher(User user) { if (!teacher(user)) throw new AccessDeniedException("Chỉ giáo viên được quản lý Speaking."); }

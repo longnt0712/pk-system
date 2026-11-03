@@ -1448,7 +1448,7 @@ test('a background error never stops an unrelated foreground Block UI', async ()
 function loginHarness(performLogin, frontend = 'richy') {
     const h = setup(() => ({data: {id: 7, roles: []}}), 'https:', frontend);
     let Controller;
-    h.context.angular.module = () => ({controller(name, fn) { Controller = fn; }});
+    h.context.angular.module = () => ({controller(name, fn) { Controller = fn; }, directive() {}});
     h.context.angular.isFunction = value => typeof value === 'function';
     h.context.angular.isObject = value => value !== null && typeof value === 'object';
     h.context.angular.forEach = (items, fn) => items.forEach(fn);

@@ -50,35 +50,35 @@ public class RestEnrolmentClassController {
 				"Kế hoạch vừa được cập nhật ở phiên khác. Hãy tải lại lịch."), HttpStatus.CONFLICT);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/students", method = RequestMethod.GET)
 	public List<UserDto> getScheduleStudents(@PathVariable Long classId) { return service.getScheduleStudents(classId); }
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/attendance", method = RequestMethod.GET)
 	public List<PersonDateDto> getScheduleAttendance(@PathVariable Long classId, @RequestParam String date) {
 		return service.getScheduleAttendance(classId, date);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/attendance/{studentUserId}", method = RequestMethod.PUT)
 	public PersonDateDto updateScheduleAttendance(@PathVariable Long classId, @PathVariable Long studentUserId,
 			@RequestParam String date, @RequestBody PersonDateDto dto) {
 		return service.updateScheduleAttendance(classId, studentUserId, date, dto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<EnrolmentClassDto> getPage(@RequestBody EnrolmentClassDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EnrolmentClassDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT"})
 	@RequestMapping(value = "/tree", method = RequestMethod.GET)
 	public List<EnrolmentClassDto> getTree(@RequestParam(defaultValue = "2") Integer schoolId) {
 		return service.getTreeObjects(schoolId);
@@ -90,31 +90,31 @@ public class RestEnrolmentClassController {
 		return service.getMyAssignedTasks();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/assignment/{taskId}", method = RequestMethod.GET)
 	public StudentAssignedTaskDto getAssignedTask(@PathVariable Long taskId) {
 		return service.getAssignedTask(taskId);
 	}
-    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value="/schedule/comprehensive-sections/preview",method=RequestMethod.POST)
     public List<com.globits.richy.dto.ComprehensiveAssignmentSectionDto> previewComprehensiveSections(@RequestBody com.globits.richy.dto.EnrolmentClassScheduleTaskDto request) {
         return service.previewComprehensiveSections(request);
     }
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}", method = RequestMethod.GET)
 	public EnrolmentClassTeamBoardDto getTeamBoard(@PathVariable Long classId) {
 		return service.getTeamBoard(classId);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}/team/{teamId}", method = RequestMethod.PUT)
 	public EnrolmentClassTeamBoardDto updateTeamSettings(@PathVariable Long classId, @PathVariable Long teamId,
 			@RequestBody com.globits.richy.dto.EnrolmentClassTeamSettingsDto request) {
 		return service.updateTeamSettings(classId, teamId, request);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}/move", method = RequestMethod.POST)
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(
 			@PathVariable Long classId,
@@ -122,26 +122,26 @@ public class RestEnrolmentClassController {
 		return service.moveStudentToTeam(classId, moveDto);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/teacher_candidates", method = RequestMethod.GET)
 	public List<UserDto> getTeacherCandidates() {
 		return service.getTeacherCandidates();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/responsible_candidates/{parentClassId}", method = RequestMethod.GET)
 	public List<UserDto> getResponsibleCandidates(@PathVariable Long parentClassId) {
 		return service.getResponsibleCandidates(parentClassId);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/responsible_candidates/{parentClassId}/{classId}", method = RequestMethod.GET)
 	public List<UserDto> getResponsibleCandidates(
 			@PathVariable Long parentClassId, @PathVariable Long classId) {
 		return service.getResponsibleCandidates(parentClassId, classId);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/schedule/{classId}", method = RequestMethod.GET)
 	public List<EnrolmentClassScheduleDayDto> getSchedule(
 			@PathVariable Long classId,
@@ -150,97 +150,97 @@ public class RestEnrolmentClassController {
 		return service.getScheduleDays(classId, fromDate, toDate);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/settings", method = RequestMethod.POST)
 	public EnrolmentClassDto saveScheduleSettings(
 			@PathVariable Long classId, @RequestBody EnrolmentClassDto dto) {
 		return service.saveScheduleSettings(classId, dto);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/topic-categories", method = RequestMethod.GET)
 	public List<TopicCategoryDto> getScheduleTopicCategories() {
 		return service.getScheduleTopicCategories();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/topic-categories", method = RequestMethod.POST)
 	public EnrolmentClassDto saveTopicCategoryVisibility(
 			@PathVariable Long classId, @RequestBody EnrolmentClassDto dto) {
 		return service.saveTopicCategoryVisibility(classId, dto);
 	}
 
-    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value = "/schedule/{classId}/previous", method = RequestMethod.GET)
     public EnrolmentClassScheduleDayDto getPreviousScheduleDay(@PathVariable Long classId, @RequestParam String beforeDate) {
         return service.getPreviousScheduleDay(classId, beforeDate);
     }
 
-    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value = "/schedule/{classId}/session", method = RequestMethod.GET)
     public EnrolmentClassScheduleDayDto getScheduleSession(@PathVariable Long classId, @RequestParam String date) {
         return service.getScheduleSession(classId, date);
     }
 
-    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value = "/schedule/{classId}/move", method = RequestMethod.POST)
     public EnrolmentClassScheduleDayDto moveScheduleDay(@PathVariable Long classId,
             @RequestBody com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto) {
         return service.moveScheduleDay(classId, dto);
     }
 
-    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value = "/schedule/{classId}/day/{dayId}/task/{taskId}/progress", method = RequestMethod.PUT)
     public EnrolmentClassScheduleDayDto updateTaskProgress(@PathVariable Long classId, @PathVariable Long dayId,
             @PathVariable Long taskId, @RequestBody com.globits.richy.dto.EnrolmentClassTaskProgressUpdateDto dto) {
         return service.updateTaskProgress(classId, dayId, taskId, dto);
     }
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/day", method = RequestMethod.POST)
 	public EnrolmentClassScheduleDayDto saveScheduleDay(
 			@PathVariable Long classId, @RequestBody EnrolmentClassScheduleDayDto dto) {
 		return service.saveScheduleDay(classId, dto);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/{classId}/day/{dayId}", method = RequestMethod.DELETE)
 	public boolean deleteExtraScheduleDay(
 			@PathVariable Long classId, @PathVariable Long dayId, @RequestParam Long version) {
 		return service.deleteExtraScheduleDay(classId, dayId, version);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/topics", method = RequestMethod.GET)
 	public List<TopicForListAllDto> getScheduleTopics() {
 		return service.getScheduleTopics();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/topics/{topicId}/listening-items", method = RequestMethod.GET)
 	public List<QuestionForGamesDto> getScheduleListeningItems(@PathVariable Long topicId) {
 		return service.getScheduleListeningItems(topicId);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/ielts-tests", method = RequestMethod.GET)
 	public List<QuestionForTestsDto> getAssignableIeltsTests() {
 		return service.getAssignableIeltsTests();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/daily-listening-tests", method = RequestMethod.GET)
 	public List<QuestionForTestsDto> getAssignableDailyListeningTests() {
 		return service.getAssignableDailyListeningTests();
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public boolean saveOne(@RequestBody EnrolmentClassDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);

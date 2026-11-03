@@ -32,13 +32,13 @@ public class RestTrainingBaseController {
 	private TrainingBaseService trainingBaseService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<TrainingBaseDto> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<TrainingBaseDto> page = trainingBaseService.getListByPage(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{trainingBaseId}", method = RequestMethod.GET)
 	public TrainingBaseDto getRoom(@PathVariable("trainingBaseId") String trainingBaseId) {
 		TrainingBaseDto trainingBase = trainingBaseService.getTrainingBase(new Long(trainingBaseId));
@@ -68,7 +68,7 @@ public class RestTrainingBaseController {
 	 * 
 	 * @author Hoang Quoc Dung
 	 */
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/all", method = RequestMethod.GET)
 	public ResponseEntity<List<TrainingBaseDto>> getAllTrainingBases() {
 
@@ -77,7 +77,7 @@ public class RestTrainingBaseController {
 		return new ResponseEntity<List<TrainingBaseDto>>(trainingBases, HttpStatus.OK);
 	}
 	
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public TrainingBaseDto checkDuplicateCode(@PathVariable("code") String code) {
 		return trainingBaseService.checkDuplicateCode(code);

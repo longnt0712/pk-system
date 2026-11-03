@@ -28,7 +28,7 @@ public class RestEducationProgramController {
 	public Page<EducationProgramDto> getPage(@RequestBody EducationProgramDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
         if (searchDto == null) { searchDto = new EducationProgramDto(); }
         if (!access.isAdmin()) {
-            searchDto.setPermittedSchoolIds(access.schoolsFor("ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT"));
+            searchDto.setPermittedSchoolIds(access.schoolsFor("ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"));
         }
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
@@ -37,29 +37,29 @@ public class RestEducationProgramController {
 	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EducationProgramDto getOne(@PathVariable Long id) {
-        access.requireProgram(id, "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT");
+        access.requireProgram(id, "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT");
 		return service.getObjectById(id);
 	}
 	
 	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public boolean saveOne(@RequestBody EducationProgramDto searchDto) {
-        access.require(searchDto.getSchoolId(), "ROLE_EDUCATION_MANAGERMENT");
-        if (searchDto.getId() != null) { access.requireProgram(searchDto.getId(), "ROLE_EDUCATION_MANAGERMENT"); }
+        access.require(searchDto.getSchoolId(), "ROLE_EDUCATION_MANAGEMENT");
+        if (searchDto.getId() != null) { access.requireProgram(searchDto.getId(), "ROLE_EDUCATION_MANAGEMENT"); }
 		return service.saveObject(searchDto);
 	}
 	
 	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
-        access.requireProgram(id, "ROLE_EDUCATION_MANAGERMENT");
+        access.requireProgram(id, "ROLE_EDUCATION_MANAGEMENT");
 		return service.deleteObject(id);
 	}
 
 	@org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
 	@RequestMapping(value = "/set_main/{id}", method = RequestMethod.POST)
 	public EducationProgramDto setMain(@PathVariable Long id) {
-        access.requireProgram(id, "ROLE_EDUCATION_MANAGERMENT");
+        access.requireProgram(id, "ROLE_EDUCATION_MANAGEMENT");
 		return service.setMain(id);
 	}
     @org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)

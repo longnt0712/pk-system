@@ -17,6 +17,14 @@
     <div class="col-md-12">
         <div class="portlet light bordered">
             <div class="portlet-body">
+                <div class="btn-group margin-bottom-10" role="group" aria-label="Danh sách tài khoản">
+                    <button type="button" class="btn" ng-class="vm.directoryAccountType === 'STUDENT' ? 'btn-primary' : 'btn-default'"
+                            ng-attr-aria-pressed="{{vm.directoryAccountType === 'STUDENT'}}"
+                            ng-click="vm.selectDirectoryAccountType('STUDENT')">Danh sách học sinh</button>
+                    <button type="button" class="btn" ng-class="vm.directoryAccountType === 'STAFF' ? 'btn-primary' : 'btn-default'"
+                            ng-attr-aria-pressed="{{vm.directoryAccountType === 'STAFF'}}"
+                            ng-click="vm.selectDirectoryAccountType('STAFF')">Danh sách nhân viên</button>
+                </div>
                 <div class="row margin-bottom-10 margin-right-10">
                     <div class="col-sm-6 col-xs-12 margin-top-10">
                         <button ng-if="vm.isRoleAdmin == true" class="btn btn-default" ng-click="vm.newUser()"><i class="icon-user-follow"></i> Thêm người dùng</button>
@@ -28,12 +36,12 @@
                             <i class="fa fa-image"></i> Xuất ảnh
                         </button>
 
-                        <button class="btn btn-primary margin-left-10" ng-click="vm.openStudentStatisticsModal()">
+                        <button class="btn btn-primary margin-left-10" ng-if="vm.directoryAccountType === 'STUDENT'" ng-click="vm.openStudentStatisticsModal()">
                             <i class="fa fa-bar-chart"></i> Thống kê
                         </button>
 
                         <button type="button" class="btn btn-primary margin-left-10"
-                                ng-if="vm.canEditTntt()" ng-click="vm.openTnttBulkModal()">
+                                ng-if="vm.directoryAccountType === 'STUDENT' && vm.canEditTntt()" ng-click="vm.openTnttBulkModal()">
                             <i class="fa fa-pencil-square-o" aria-hidden="true"></i> Sửa/Thêm thông tin TNTT
                         </button>
 
@@ -110,7 +118,7 @@
                                    ng-change="vm.changeInactiveUsersVisibility()">
                             Hiển thị tài khoản không kích hoạt
                         </label>
-                        <label ng-if="vm.isIeltsRoomDomain" class="checkbox-inline"
+                        <label ng-if="vm.isIeltsRoomDomain && vm.directoryAccountType === 'STUDENT'" class="checkbox-inline"
                                style="display: block; margin-left: 0; padding-top: 7px; font-weight: 600; cursor: pointer;">
                             <input type="checkbox"
                                    ng-model="vm.showUnassignedStudents"
@@ -163,7 +171,7 @@
                                     </th>
 
                                     <th scope="col" class="sortable" ng-click="vm.sortBy('username')">
-                                        MÃ HỌC SINH (TÊN ĐĂNG NHẬP)
+                                        {{vm.directoryAccountType === 'STAFF' ? 'TÊN ĐĂNG NHẬP' : 'MÃ HỌC SINH (TÊN ĐĂNG NHẬP)'}}
                                         <i class="fa" ng-class="vm.getSortIcon('username')"></i>
                                     </th>
 
@@ -1170,7 +1178,7 @@
                         </ui-select-choices>
                     </ui-select>
                     <small class="text-muted">
-                        Chỉ được thêm hoặc gỡ ROLE_STUDENT_MANAGERMENT,
+                        Chỉ được thêm hoặc gỡ ROLE_STUDENT_MANAGEMENT,
                         ROLE_STUDENT và ROLE_STAFF.
                     </small>
                 </div>

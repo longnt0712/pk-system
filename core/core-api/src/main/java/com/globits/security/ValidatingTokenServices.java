@@ -242,7 +242,9 @@ public class ValidatingTokenServices extends DefaultTokenServices implements Ses
 
     private Set<String> authorities(Iterable<? extends GrantedAuthority> values) {
         Set<String> names = new TreeSet<>();
-        for (GrantedAuthority value : values) { names.add(value.getAuthority()); }
+        for (GrantedAuthority value : values) {
+            names.add(com.globits.security.domain.Role.canonicalName(value.getAuthority()));
+        }
         return names;
     }
 

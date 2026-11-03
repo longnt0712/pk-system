@@ -65,7 +65,7 @@ public class CampaignService {
         }
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT"})
     public CampaignDto create(CampaignDto dto) {
         validate(dto);
         Campaign campaign = new Campaign();
@@ -76,7 +76,7 @@ public class CampaignService {
         return new CampaignDto(repository.saveAndFlush(campaign), true);
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT"})
     public CampaignDto update(Long id, CampaignDto dto) {
         validate(dto);
         Campaign campaign = find(id);
@@ -89,7 +89,7 @@ public class CampaignService {
         return new CampaignDto(repository.saveAndFlush(campaign), true);
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
+    @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT"})
     public void delete(Long id) {
         Campaign campaign = find(id);
         entryRepository.deleteCampaignEntries(id);

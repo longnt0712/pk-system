@@ -226,7 +226,7 @@ public class CampaignFlowerTest {
         }
         verifyZeroInteractions(users);
         when(users.findByUsernameAndPerson("hs0007")).thenReturn(studentA);
-        for (String role : Arrays.asList("ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT")) {
+        for (String role : Arrays.asList("ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT")) {
             identity(role); assertTrue(StudentMarkShareSupport.validToken(controller.issue(request).getBody().token));
         }
     }
@@ -287,7 +287,7 @@ public class CampaignFlowerTest {
         RestCampaignFlowerAccessController controller = context.getBean(RestCampaignFlowerAccessController.class);
         CampaignFlowerDto.CheckRequest request = new CampaignFlowerDto.CheckRequest(); request.completed = true;
         String yesterday = LocalDate.parse(today).minusDays(1).toString();
-        for (String role : Arrays.asList("ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT", "ROLE_VIEWER", "ROLE_STUDENT", "ROLE_USER", "ROLE_STAFF")) {
+        for (String role : Arrays.asList("ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT", "ROLE_VIEWER", "ROLE_STUDENT", "ROLE_USER", "ROLE_STAFF")) {
             identity(role);
             denied(() -> service.checkAsAdmin(tokenA, 5L, yesterday, key, true));
             denied(() -> controller.checkAsAdmin(tokenA, 5L, yesterday, key, request));
@@ -341,7 +341,7 @@ public class CampaignFlowerTest {
                 .contentType("application/json").content("{\"completed\":true}"))
                 .andExpect(status().isBadRequest()).andReturn();
         assertTrue(new ObjectMapper().readTree(invalid.getResponse().getContentAsString()).has("message"));
-        identity("ROLE_EDUCATION_MANAGERMENT");
+        identity("ROLE_EDUCATION_MANAGEMENT");
         try {
             mvc.perform(put(path + yesterday + "/" + key).contentType("application/json").content("{\"completed\":false,\"isAdmin\":true}"));
             fail("Non-Admin HTTP override accepted");
@@ -421,7 +421,7 @@ public class CampaignFlowerTest {
         when(users.findByUsernameAndPerson("hs0007")).thenReturn(studentA);
         CampaignFlowerAccess existing = new CampaignFlowerAccess(); existing.setStudent(studentA); existing.setToken(tokenA);
         when(access.findByStudentId(7L)).thenReturn(existing);
-        for (String roleName : Arrays.asList("ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT", "ROLE_STAFF", "ROLE_VIEWER", "ROLE_USER", "")) {
+        for (String roleName : Arrays.asList("ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT", "ROLE_STAFF", "ROLE_VIEWER", "ROLE_USER", "")) {
             studentA.getRoles().clear();
             if (!roleName.isEmpty()) { Role role = new Role(); role.setName(roleName); studentA.getRoles().add(role); }
             assertEquals(tokenA, service.scan("hs0007").token);

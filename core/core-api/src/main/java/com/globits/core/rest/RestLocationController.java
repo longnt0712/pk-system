@@ -30,13 +30,13 @@ public class RestLocationController {
 	private LocationService locationService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Location> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Location> page = locationService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{locationId}", method = RequestMethod.GET)
 	public Location getEthnics(@PathVariable("locationId") String locationId) {
 		Location ethnics = locationService.findById(new Long(locationId));
@@ -67,7 +67,7 @@ public class RestLocationController {
 	 * 
 	 * @author Tuan Anh for Calendar
 	 */
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/all", method = RequestMethod.GET)
 	public ResponseEntity<List<LocationDto>> getAllLocations() {
 
@@ -76,7 +76,7 @@ public class RestLocationController {
 		return new ResponseEntity<List<LocationDto>>(list, HttpStatus.OK);
 	}
 	
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/checkCode/{code}",method = RequestMethod.GET)
 	public LocationDto checkDuplicateCode(@PathVariable("code") String code) {
 		return locationService.checkDuplicateCode(code);

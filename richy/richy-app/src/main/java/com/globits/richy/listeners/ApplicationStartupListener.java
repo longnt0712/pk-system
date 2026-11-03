@@ -145,6 +145,10 @@ public class ApplicationStartupListener implements ApplicationListener<ContextRe
 		}
 
 		Role role = roleService.findByName(roleName);
+		if (role == null && roleName.endsWith("_MANAGEMENT")) {
+			String legacy = roleName.replace("_MANAGEMENT", "_MANAGERMENT");
+			if (roleName.equals(Role.canonicalName(legacy))) { role = roleService.findByName(legacy); }
+		}
 
 		if (CommonUtils.isNotNull(role)) {
 			return;

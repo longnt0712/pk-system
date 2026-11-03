@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/tntt-documents")
 @Secured({
     "ROLE_ADMIN",
-    "ROLE_EDUCATION_MANAGERMENT",
-    "ROLE_STUDENT_MANAGERMENT",
+    "ROLE_EDUCATION_MANAGEMENT",
+    "ROLE_STUDENT_MANAGEMENT",
     "ROLE_USER",
     "ROLE_VIEWER",
     "ROLE_STUDENT",

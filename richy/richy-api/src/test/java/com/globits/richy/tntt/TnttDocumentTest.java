@@ -133,8 +133,8 @@ public class TnttDocumentTest {
         em = factory.createEntityManager();
         em.getTransaction().begin();
         admin = user("ROLE_ADMIN", null);
-        education = user("ROLE_EDUCATION_MANAGERMENT", null);
-        manager = user("ROLE_STUDENT_MANAGERMENT", null);
+        education = user("ROLE_EDUCATION_MANAGEMENT", null);
+        manager = user("ROLE_STUDENT_MANAGEMENT", null);
         leader = user("ROLE_USER", "HUYNH_TRUONG");
         student = user("ROLE_STUDENT", "DOAN_SINH");
         other = user("ROLE_VIEWER", null);

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CampaignFieldRepository {
     @PersistenceContext private EntityManager entityManager;
-    private static final String MANAGERS = "'ROLE_ADMIN','ROLE_EDUCATION_MANAGERMENT','ROLE_STUDENT_MANAGERMENT'";
+    private static final String MANAGERS = "'ROLE_ADMIN','ROLE_EDUCATION_MANAGEMENT','ROLE_STUDENT_MANAGEMENT'";
     private static String role(String names) {
         return "exists (select 1 from tbl_user_role ur join tbl_role r on r.id=ur.role_id where ur.user_id=u.id and r.role_name in (" + names + "))";
     }

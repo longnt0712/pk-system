@@ -34,7 +34,7 @@ public class Role extends BaseObject implements GrantedAuthority {
 	// --------------------------------------
 	@Transient
 	public String getAuthority() {
-		return this.name;
+		return getName();
 	}
 	// --------------------------------------
 	// GETTERS/SETTERS
@@ -48,11 +48,19 @@ public class Role extends BaseObject implements GrantedAuthority {
 	// }
 
 	public String getName() {
-		return name;
+		return canonicalName(name);
 	}
 
 	public void setName(String name) {
-		this.name = name;
+		this.name = canonicalName(name);
+	}
+
+	public static String canonicalName(String name) {
+		if ("ROLE_EDUCATION_MANAGERMENT".equals(name)) { return "ROLE_EDUCATION_MANAGEMENT"; }
+		if ("ROLE_STUDENT_MANAGERMENT".equals(name)) { return "ROLE_STUDENT_MANAGEMENT"; }
+		if ("ROLE_EXAM_MANAGERMENT".equals(name)) { return "ROLE_EXAM_MANAGEMENT"; }
+		if ("ROLE_FINANCIAL_MANAGERMENT".equals(name)) { return "ROLE_FINANCIAL_MANAGEMENT"; }
+		return name;
 	}
 
 	public String getDescription() {

@@ -10,7 +10,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/speaking/answer-shares")
-@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 public class RestSpeakingAnswerShareController {
     @Autowired private SpeakingAnswerShareService service;
     @RequestMapping(method=RequestMethod.GET) public List<Map<String,Object>> list(@RequestParam("setId")Long setId,@RequestParam(value="studentId",required=false)Long studentId){return service.list(setId,studentId);}

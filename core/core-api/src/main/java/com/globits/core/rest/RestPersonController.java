@@ -24,14 +24,14 @@ public class RestPersonController {
 	private PersonService personService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	public Page<Person> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Person> page = personService.getList(pageIndex, pageSize);
 		return page;
 	}
 
 	@RequestMapping(value = "/simple/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Person> getListBasicInfo(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Person> page = personService.getListByPage(pageIndex, pageSize);
 		return page;

@@ -791,23 +791,23 @@
                 vm.isRoleStaffManagement = true;
                 // console.log('ROLE_STAFF_MANAGEMENT');
             }
-            if(value.name === "ROLE_STUDENT_MANAGERMENT"){
+            if(value.name === "ROLE_STUDENT_MANAGEMENT"){
                 vm.isRoleStudentManagerment = true;
                 // angular.forEach(vm.roles, function(value1, key1) {
                 //     if(value1.name === "ROLE_STUDENT"){
                 //         vm.filter.roles.add(value1);
                 //     }
                 // });
-                // console.log('ROLE_STUDENT_MANAGERMENT');
+                // console.log('ROLE_STUDENT_MANAGEMENT');
             }
-            if(value.name === "ROLE_EDUCATION_MANAGERMENT"){
+            if(value.name === "ROLE_EDUCATION_MANAGEMENT"){
                 vm.isRoleEducationManagerment = true;
                 // angular.forEach(vm.roles, function(value1, key1) {
                 //     if(value1.name === "ROLE_STUDENT"){
                 //         vm.filter.roles.add(value1);
                 //     }
                 // });
-                // console.log('ROLE_STUDENT_MANAGERMENT');
+                // console.log('ROLE_STUDENT_MANAGEMENT');
             }
         });
 
@@ -833,6 +833,12 @@
             return getStudentDirectoryRole();
         }
 
+        function getDefaultDirectoryRole() {
+            if (vm.directoryAccountType !== 'STAFF') { return getDefaultStudentRole(); }
+            var staff = findRoleByName('ROLE_STAFF');
+            return staff ? [staff] : [];
+        }
+
         function getStudentDirectoryRole() {
             var roleName = isIeltsRoomDomain()
                 ? 'ROLE_VIEWER'
@@ -851,7 +857,7 @@
                 return false;
             }
 
-            return role.name === 'ROLE_STUDENT_MANAGERMENT' ||
+            return role.name === 'ROLE_STUDENT_MANAGEMENT' ||
                 role.name === 'ROLE_STUDENT' ||
                 role.name === 'ROLE_STAFF';
         }
@@ -898,7 +904,7 @@
             refreshEducationAssignableRoles();
 
             if (vm.user && vm.user.isNew === true && (!vm.user.roles || vm.user.roles.length === 0)) {
-                vm.user.roles = getDefaultStudentRole();
+                vm.user.roles = getDefaultDirectoryRole();
             }
 
             vm.getUsers();
@@ -938,15 +944,27 @@
         // pagination
         vm.pageIndex = 1;
         vm.pageSize = 25;
+        vm.directoryAccountType = 'STUDENT';
+        var directoryRequest = 0;
+        vm.selectDirectoryAccountType = function (type) {
+            if (type === vm.directoryAccountType) { return; }
+            vm.directoryAccountType = type;
+            vm.showUnassignedStudents = false;
+            vm.users = [];
+            vm.selectedUsers = [];
+            vm.search();
+        };
 
         /**
          * Get a list of users
          */
         vm.getUsers = function () {
-
+            var request = ++directoryRequest;
 			var requestFilter = angular.copy(vm.filter);
 			requestFilter.schoolId = vm.directorySchoolId;
-			requestFilter.withoutEnrollmentClass = vm.isIeltsRoomDomain && vm.showUnassignedStudents === true;
+            requestFilter.directoryAccountType = vm.directoryAccountType;
+			requestFilter.withoutEnrollmentClass = vm.directoryAccountType === 'STUDENT'
+                && vm.isIeltsRoomDomain && vm.showUnassignedStudents === true;
 			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
 				? vm.advancedSearchApplied.classIds.slice()
 				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
@@ -964,10 +982,13 @@
 				: null;
 
 			service.getUsers(requestFilter, vm.pageIndex, vm.pageSize).then(function (data) {
+                if (request !== directoryRequest) { return; }
                 var users = angular.isArray(data.content) ? data.content : [];
 
                 vm.users = users;
                 vm.users.totalElement = data.totalElements;
+            }, function () {
+                if (request === directoryRequest) { toastr.error('Không tải được danh sách tài khoản.'); }
             });
         };
 
@@ -1485,6 +1506,7 @@
             }
 
             var statisticsFilter = {
+                directoryAccountType: 'STUDENT',
                 keyword: '',
                 active: vm.studentStatisticsMode === 'branch' && vm.tnttStatisticsIncludeInactive ? null : true,
                 roles: getDirectorySearchRoles(requestedClassIds),
@@ -2002,12 +2024,12 @@
             vm.user = {
                 isNew: true,
                 active: true,
-                roles: getDefaultStudentRole(),
+                roles: getDefaultDirectoryRole(),
 				enrollmentClassIds: [],
                 person: {}
             };
 
-            if (!vm.isIeltsRoomDomain) vm.user.person.tnttMemberType = 'DOAN_SINH';
+            if (!vm.isIeltsRoomDomain && vm.directoryAccountType === 'STUDENT') vm.user.person.tnttMemberType = 'DOAN_SINH';
 
             vm.modalInstance = modal.open({
                 animation: true,

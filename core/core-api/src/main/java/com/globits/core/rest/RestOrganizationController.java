@@ -26,13 +26,13 @@ public class RestOrganizationController {
 	private OrganizationService organizationService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<OrganizationDto> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<OrganizationDto> page = organizationService.toDtoPage(organizationService.getListOrganizationByTree()); 
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" , "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" , "ROLE_STUDENT"})
 	@RequestMapping(value = "/{organizationId}", method = RequestMethod.GET)
 	public OrganizationDto getOrganization(@PathVariable("organizationId") String organizationId) {
 		Organization orga = organizationService.findById(new Long(organizationId));

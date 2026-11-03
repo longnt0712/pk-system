@@ -48,7 +48,7 @@ public class RestRoleController {
 	}
 
 	@GetMapping(path = "/all")
-	@Secured({ "ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT" })
+	@Secured({ "ROLE_ADMIN","ROLE_STUDENT_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT" })
 	public List<RoleDto> getAll() {
 		return roleService.findAll();
 	}

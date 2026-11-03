@@ -26,13 +26,13 @@ public class RestProfessionController {
 	private ProfessionService professionService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	public Page<Profession> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Profession> page = professionService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT" })
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT" })
 	@RequestMapping(value = "/{professionId}", method = RequestMethod.GET)
 	public Profession getProfession(@PathVariable("professionId") String professionId) {
 		Profession pro = professionService.findById(new Long(professionId));

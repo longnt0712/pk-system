@@ -26,13 +26,13 @@ public class RestCountryController {
 	private CountryService countryService;
 
 	@RequestMapping(value = "/{pageIndex}/{pageSize}", method = RequestMethod.GET)
-	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGERMENT", "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" ,"ROLE_STUDENT_MANAGEMENT", "ROLE_STUDENT"})
 	public Page<Country> getList(@PathVariable int pageIndex, @PathVariable int pageSize) {
 		Page<Country> page = countryService.getList(pageIndex, pageSize);
 		return page;
 	}
 
-	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGERMENT" , "ROLE_STUDENT"})
+	@Secured({ "ROLE_ADMIN", "ROLE_USER","ROLE_STUDENT_MANAGEMENT" , "ROLE_STUDENT"})
 	@RequestMapping(value = "/{countryId}", method = RequestMethod.GET)
 	public Country getCountry(@PathVariable("countryId") String countryId) {
 		Country country = countryService.findById(new Long(countryId));

@@ -319,10 +319,10 @@
                     } else if (value.name === "ROLE_STAFF" || value.name === "ROLE_STAFF_MANAGEMENT") {
                         settings.isStaff = true;
                         console.log("STAFF");
-                    } else if (value.name === "ROLE_STUDENT_MANAGERMENT") {
+                    } else if (value.name === "ROLE_STUDENT_MANAGEMENT") {
                         settings.isStudentManagerment = true;
                         console.log("isStudentManagerment");
-                    } else if (value.name === "ROLE_EDUCATION_MANAGERMENT") {
+                    } else if (value.name === "ROLE_EDUCATION_MANAGEMENT") {
                         settings.isEducationManagerment = true;
                         console.log("isEducationManagerment");
                     }

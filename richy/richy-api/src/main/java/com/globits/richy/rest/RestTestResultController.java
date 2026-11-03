@@ -62,19 +62,19 @@ public class RestTestResultController {
         return writingGradingService.grade(id);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/writing-feedback/{id}", method = RequestMethod.POST)
 	public TestResultDto saveWritingFeedback(@PathVariable Long id, @RequestBody TestResultDto dto) {
 		return service.saveWritingFeedback(id, dto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/delete-many", method = RequestMethod.POST)
 	public int deleteMany(@RequestBody List<Long> ids) {
 		return service.deleteObjects(ids);

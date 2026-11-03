@@ -41,7 +41,7 @@ public class TnttDocumentService {
     }
 
     public static boolean editor(User u) {
-        return role(u, "ROLE_ADMIN") || role(u, "ROLE_EDUCATION_MANAGERMENT");
+        return role(u, "ROLE_ADMIN") || role(u, "ROLE_EDUCATION_MANAGEMENT");
     }
 
     public static boolean student(User u) {
@@ -131,8 +131,8 @@ public class TnttDocumentService {
         List<String> out = new ArrayList<>();
         if (u == null || student(u) || !Boolean.TRUE.equals(u.getActive())) return out;
         if (role(u, "ROLE_ADMIN")) out.add("ADMIN");
-        if (role(u, "ROLE_EDUCATION_MANAGERMENT")) out.add("EDUCATION");
-        if (role(u, "ROLE_STUDENT_MANAGERMENT")) out.add("STUDENT_MANAGEMENT");
+        if (role(u, "ROLE_EDUCATION_MANAGEMENT")) out.add("EDUCATION");
+        if (role(u, "ROLE_STUDENT_MANAGEMENT")) out.add("STUDENT_MANAGEMENT");
         boolean member =
                 u.getPerson() != null
                         && Arrays.asList(

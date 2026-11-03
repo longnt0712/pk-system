@@ -104,15 +104,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	private static final List<String> TEACHER_ROLE_NAMES = Arrays.asList(
 			"ROLE_ADMIN",
-			"ROLE_EDUCATION_MANAGERMENT",
-			"ROLE_STUDENT_MANAGERMENT",
+			"ROLE_EDUCATION_MANAGEMENT",
+			"ROLE_STUDENT_MANAGEMENT",
 			"ROLE_STAFF");
 
 	private static final String ROLE_ADMIN = "ROLE_ADMIN";
 	private static final String ROLE_USER = "ROLE_USER";
 	private static final String ROLE_VIEWER = "ROLE_VIEWER";
-	private static final String ROLE_EDUCATION_MANAGERMENT = "ROLE_EDUCATION_MANAGERMENT";
-	private static final String ROLE_STUDENT_MANAGERMENT = "ROLE_STUDENT_MANAGERMENT";
+	private static final String ROLE_EDUCATION_MANAGEMENT = "ROLE_EDUCATION_MANAGEMENT";
+	private static final String ROLE_STUDENT_MANAGEMENT = "ROLE_STUDENT_MANAGEMENT";
 	private static final Integer HIDDEN_SCHOOL_ID = Integer.valueOf(1);
 	private static final Integer EDUCATION_MANAGER_SCHOOL_ID = Integer.valueOf(2);
 	private static final List<String> ASSIGNMENT_ACTIVITY_TYPES = Arrays.asList(
@@ -2069,7 +2069,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (hasRole(user, ROLE_ADMIN)) {
 			return true;
 		}
-		if (hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+		if (hasRole(user, ROLE_EDUCATION_MANAGEMENT)
 				&& EDUCATION_MANAGER_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
 			return true;
 		}
@@ -2083,8 +2083,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
     private boolean canViewSchool(User user, Integer schoolId) {
         if (user == null || schoolId == null) { return false; }
-        boolean manager = hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGERMENT)
-                || hasRole(user, ROLE_STUDENT_MANAGERMENT) || hasRole(user, "ROLE_STAFF")
+        boolean manager = hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGEMENT)
+                || hasRole(user, ROLE_STUDENT_MANAGEMENT) || hasRole(user, "ROLE_STAFF")
                 || hasRole(user, "ROLE_STAFF_MANAGEMENT");
         if (HIDDEN_SCHOOL_ID.equals(schoolId)) {
             if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes)) { return false; }
@@ -2102,16 +2102,16 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (hasRole(user, ROLE_ADMIN)) {
 			return true;
 		}
-		if (hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+		if (hasRole(user, ROLE_EDUCATION_MANAGEMENT)
 				&& EDUCATION_MANAGER_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
 			return true;
 		}
-		return hasRole(user, ROLE_STUDENT_MANAGERMENT)
+		return hasRole(user, ROLE_STUDENT_MANAGEMENT)
 				&& isAssignedResponsibleForClassOrAncestor(user, selectedClass);
 	}
 
 	private boolean canCreateRootClass(User user) {
-		return hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGERMENT);
+		return hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGEMENT);
 	}
 
 	private boolean canEditAnyDirectChild(User user, Long parentClassId) {
