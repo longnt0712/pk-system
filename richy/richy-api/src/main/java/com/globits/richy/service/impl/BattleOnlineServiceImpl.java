@@ -134,6 +134,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final int GOKU_SSJ1_UNLOCK_LEVEL = 23;
     private static final int GOKU_SSJ2_UNLOCK_LEVEL = 24;
     private static final int GOKU_SSJ4_UNLOCK_LEVEL = 25;
+    private static final int ARAGONDA_UNLOCK_LEVEL = 26;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -407,6 +408,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String selectedPet = normalizePetKey(
                 selectionDto != null ? selectionDto.getPetKey() : null
         );
+        if (!allPetsUnlocked && PET_ARAGONDA.equals(selectedPet) && level < ARAGONDA_UNLOCK_LEVEL) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Aragonda được mở khóa ở level 26, sau SSJ4.");
+        }
 
         if (!allPetsUnlocked && PET_HALLOWEEN_PUMPKIN.equals(selectedPet) && !isHalloweenPetSeason()) {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
@@ -525,7 +529,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         result.setAllPetsUnlocked(allPetsUnlocked);
         List<String> unlocked = new ArrayList<String>();
         unlocked.add(PET_MAM_HOC);
-        unlocked.add(PET_ARAGONDA);
+        if (allPetsUnlocked || level >= ARAGONDA_UNLOCK_LEVEL) { unlocked.add(PET_ARAGONDA); }
         if (allPetsUnlocked || isHalloweenPetSeason()) {
             unlocked.add(PET_HALLOWEEN_PUMPKIN);
         }
@@ -8872,6 +8876,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (!identity.allPetsUnlocked && identity.vocabularyExperienceLevel < dragonBallUnlockLevel(identity.selectedPetKey)) {
             identity.selectedPetKey = PET_MAM_HOC;
         }
+        if (!identity.allPetsUnlocked && PET_ARAGONDA.equals(identity.selectedPetKey) && identity.vocabularyExperienceLevel < ARAGONDA_UNLOCK_LEVEL) { identity.selectedPetKey = PET_MAM_HOC; }
         identity.selectedPetKey = effectiveSeasonalPetKey(identity.selectedPetKey, identity.allPetsUnlocked);
         return identity;
     }

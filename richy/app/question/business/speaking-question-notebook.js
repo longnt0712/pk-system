@@ -32,14 +32,14 @@
             function open(identity) {
                 var context = {setId: Number(identity.setId), studentId: Number(identity.studentId), questionId: Number(identity.questionId), userId: Number(identity.userId)};
                 if (!Object.keys(context).every(function (key) { return positive(context[key]); })) { throw new Error('Thiếu thông tin ghi chú Speaking.'); }
-                var key = 'speaking-notebook:v1:' + context.userId + ':' + context.setId + ':' + context.studentId + ':' + context.questionId;
+                var key = (api.publicAccess ? 'speaking-shared-notebook:v1:' + api.publicAccess.key + ':' : 'speaking-notebook:v1:') + context.userId + ':' + context.setId + ':' + context.studentId + ':' + context.questionId;
                 if (!authenticated()) { throw new Error('Tài khoản ghi chú không khớp tài khoản đang đăng nhập.'); }
                 if (entries[key]) { entries[key].refs++; return entries[key].session; }
                 var session = {document: blank(), status: 'loading', error: '', revision: 0, ready: null};
                 var entry = {session: session, refs: 1}, loaded = false, dirty = false, baseline = JSON.stringify(session.document), operation = null, reading = null;
                 var timer = null, poll = null, visible = false, interaction = false, interactions = {}, deferredRemote = null, conflict = null, lastBackup = null, localSaved = true;
                 entries[key] = entry;
-                function authenticated() { try { return Number(JSON.parse($cookies.get('education.user') || '{}').id) === context.userId; } catch (ignore) { return false; } }
+                function authenticated() { if (api.publicAccess) { return api.publicAccess.matches(context); } try { return Number(JSON.parse($cookies.get('education.user') || '{}').id) === context.userId; } catch (ignore) { return false; } }
                 function matches(row) { return row && ['setId', 'studentId', 'questionId'].every(function (name) { return Number(row[name]) === context[name]; }) && Number.isInteger(row.revision) && row.revision >= 0; }
                 function fail(error) { session.status = conflict ? 'conflict' : localSaved ? 'local' : 'error'; session.error = (error && error.data && error.data.message) || (error && error.message) || 'Chưa đồng bộ được ghi chú. Bản đang viết vẫn được giữ.'; }
                 function persist() {
@@ -67,6 +67,7 @@
                     if (entry.refs && dirty && !conflict && !interaction) { timer = $timeout(function () { timer = null; session.save(); }, 900); }
                 }
                 session.changed = function () {
+                    if (api.publicAccess && !api.publicAccess.canEdit) { return; }
                     dirty = JSON.stringify(session.document) !== baseline;
                     persist();
                     if (!conflict) { session.status = dirty ? localSaved ? 'local' : 'error' : session.revision ? 'saved' : 'ready'; session.error = localSaved ? '' : 'Chưa giữ được bản nháp trên thiết bị. Hãy giữ trang mở và thử đồng bộ lại.'; }
@@ -90,7 +91,7 @@
                 function cleanup() {
                     if (!entry.refs && (!dirty || localSaved) && entries[key] === entry) { delete entries[key]; }
                 }
-                session.save = function () {
+                session.save = function () { if (api.publicAccess && !api.publicAccess.canEdit) { return $q.when(session); }
                     $timeout.cancel(timer); timer = null;
                     if (operation) { return operation; }
                     if (!dirty || conflict || interaction || !authenticated()) { return $q.when(session); }
@@ -173,8 +174,8 @@
             return {open: open, validDocument: documentValue};
         }]);
     angular.module('Hrm.Question').directive('speakingQuestionNotebook', ['SpeakingQuestionNotebookStore', function (store) {
-        return {restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', onClose: '&'},
-            template: '<study-notebook test-id="questionId" test-mode="SPEAKING" user-id="userId" enabled="true" session-opener="openSession()" session-key="{{setId}}:{{studentId}}:{{questionId}}:{{userId}}" hide-save="true" hide-toggle="true" auto-open="true" on-close="onClose()" footer-label="Ghi chú Speaking · {{studentLabel}} · Học sinh và giáo viên phụ trách cùng xem"></study-notebook>',
+        return {restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', onClose: '&', readOnly: '<?'},
+            template: '<study-notebook test-id="questionId" test-mode="SPEAKING" user-id="userId" enabled="true" session-opener="openSession()" session-key="{{setId}}:{{studentId}}:{{questionId}}:{{userId}}" read-only="readOnly" hide-save="true" hide-toggle="true" auto-open="true" on-close="onClose()" footer-label="Ghi chú Speaking · {{studentLabel}} · Học sinh và giáo viên phụ trách cùng xem"></study-notebook>',
             link: function (scope) { scope.openSession = function () { return store.open({setId: scope.setId, studentId: scope.studentId, questionId: scope.questionId, userId: scope.userId}); }; }};
     }]);
 }());

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi" ng-app="SpeakingPublic" ng-csp>
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>Speaking · Bài được chia sẻ</title>
+    <link rel="stylesheet" href="../assets/css/external/font-awesome.min.css">
+    <link rel="stylesheet" href="../question/speaking.css?v=20261103-share-1">
+    <link rel="stylesheet" href="../assets/css/study-notebook.css?v=20261103-share-1">
+    <link rel="stylesheet" href="shared.css?v=20261103-share-1">
+</head>
+<body ng-controller="SpeakingPublicController as pub">
+<main class="speaking-page" ng-cloak>
+    <section class="sp-panel"><span class="sp-eyebrow">SPEAKING STUDIO · CHIA SẺ</span><h1>{{pub.data.studentName || 'Bài Speaking'}}</h1><p>{{pub.data.setName}}</p><span class="sp-badge" ng-if="pub.ready">{{pub.data.canEdit ? 'Được chỉnh sửa · Tự động lưu' : 'Chỉ xem'}}</span><p role="status" ng-if="pub.loading">Đang mở bài…</p><p class="sp-error" role="alert" ng-if="pub.error">{{pub.error}}</p></section>
+    <section class="sp-panel" ng-if="pub.ready">
+        <div class="sp-toolbar"><div class="sp-tabs"><button type="button" class="sp-button" ng-repeat="part in [1,2,3]" ng-class="{'is-active':pub.part===part}" ng-click="pub.changePart(part)">Part {{part}}</button></div><label class="sp-search">Tìm topic<input type="search" ng-model="pub.query" ng-change="pub.rebuild()" placeholder="Tên topic hoặc câu hỏi…" ng-model-options="{debounce:200}"></label></div>
+        <p class="sp-muted" ng-if="!pub.groups.length">Chưa có câu phù hợp.</p>
+        <article class="sp-topic" ng-repeat="group in pub.groups | limitTo:pub.limit track by group.key" speaking-lazy-topic="group" speaking-lazy-eager="$first"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2>
+            <div ng-if="!group.lazyLoaded" class="sp-lazy-placeholder">{{group.questions.length}} câu hỏi · Hiện khi bạn cuộn tới.</div>
+            <div ng-if="group.lazyLoaded"><div class="sp-question" ng-repeat="question in group.questions track by question.entryId"><p class="sp-preserve">{{question.prompt}}</p><div class="sp-toolbar"><button type="button" class="sp-button" ng-click="pub.answerId=pub.answerId===question.id?null:question.id">{{pub.answerId===question.id ? 'Ẩn câu trả lời' : question.hasAnswer ? 'Xem câu trả lời' : pub.data.canEdit ? 'Viết câu trả lời' : 'Xem câu trả lời'}}</button><button type="button" class="sp-button" ng-click="pub.notebookId=question.id">Xem ghi chú</button></div>
+                <speaking-student-answer-editor ng-if="pub.answerId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" hide-history="true"></speaking-student-answer-editor>
+                <speaking-question-notebook ng-if="pub.notebookId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" on-close="pub.notebookId=null"></speaking-question-notebook>
+            </div></div>
+        </article>
+        <div class="sp-load-more" ng-if="pub.limit < pub.groups.length" speaking-load-more="pub.more()" speaking-load-more-items="pub.groups" speaking-load-more-count="pub.limit" speaking-load-more-enabled="!pub.notebookId"><button type="button" class="sp-button" ng-click="pub.more()">Hiện thêm topic</button></div>
+    </section>
+</main>
+<script src="../assets/scripts/external/angular.min.js"></script>
+<script src="../assets/scripts/external/angular-cookies.min.js"></script>
+<script src="../assets/scripts/external/angular-sanitize.min.js"></script>
+<script src="shared.js?v=20261103-share-1"></script>
+<script src="../common/utils/color-palette.js?v=20261103-share-1"></script>
+<script src="../common/utils/english-speech.js?v=20261103-share-1"></script>
+<script src="../common/utils/study-notebook.directive.js?v=20261103-share-1"></script>
+<script src="../question/business/speaking-lazy-topic.js?v=20261103-share-1"></script>
+<script src="../question/business/speaking-student-answer-editor.js?v=20261103-share-1"></script>
+<script src="../question/business/speaking-question-notebook.js?v=20261103-share-1"></script>
+</body>
+</html>

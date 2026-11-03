@@ -43,8 +43,8 @@ test('assigned video soft limit records 65 and 75 minutes without automatic subm
  f.advance(600);f.scope.onTimeout();assert.equal(f.c.getActiveDurationSeconds(),4500);assert.equal(f.log.notices.length,1);assert.equal(f.log.submits.length,0);assert.equal(f.vm.isVideoHomeworkOvertime(),true);
  assert.match(view,/Đã làm \{\{vm.getRemainingMinutes\(\)\}\} phút/);assert.match(view,/ng-click="vm.replayVideoSegment\(\)"/);
 });
-test('normal Reading, Writing, non-video Comprehensive, preview and unassigned tests retain their hard timeout',()=>{
- for(const options of [{reading:true},{writing:true},{noVideo:true},{unassigned:true},{preview:true}]){
+test('normal Reading, unassigned Writing, non-video Comprehensive, preview and unassigned tests retain their hard timeout',()=>{
+ for(const options of [{reading:true},{writing:true,unassigned:true},{noVideo:true},{unassigned:true},{preview:true}]){
   const f=fixture(options);f.scope.startCount();f.advance(3600);f.scope.onTimeout();assert.equal(f.log.submits.length,1,JSON.stringify(options));assert.equal(f.log.submits[0].automatic,true);assert.equal(f.log.broadcasts[0][0],'timer-stopped');assert.equal(f.log.notices.length,0);
  }
 });

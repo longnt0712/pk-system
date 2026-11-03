@@ -673,6 +673,10 @@
             return !!getCurrentRoleNames().ROLE_ADMIN;
         }
 
+        vm.canReviewOtherResults = function () {
+            var roles=getCurrentRoleNames();if(roles.ROLE_ADMIN)return true;if(roles.ROLE_VIEWER||roles.ROLE_STUDENT)return false;
+            return !!(roles.ROLE_USER||roles.ROLE_STAFF||roles.ROLE_STAFF_MANAGEMENT||roles.ROLE_EDUCATION_MANAGERMENT||roles.ROLE_STUDENT_MANAGERMENT);
+        };
         vm.canUseResultDeletion = function () {
             var roleNames = getCurrentRoleNames();
             if (roleNames.ROLE_ADMIN) { return true; }
@@ -874,6 +878,7 @@
                 blockUI.stop();
                 if (requestId !== resultPageRequest) { return; }
                 vm.testResults = data.content;
+                vm.resultTotalRows = data.totalElements;
                 vm.bsTableControl.options.columns = service.getTableDefinition(
                     vm.searchDto.resultGroup,
                     vm.canUseResultDeletion()
@@ -1361,7 +1366,66 @@
         /**
          * Delete accounts
          */
+        vm.deletingResultIds = {};
+
+        function setDeletingResults(ids, pending) {
+            vm.isDeletingResults = pending;
+            ids.forEach(function (id) {
+                if (pending) { vm.deletingResultIds[id] = true; }
+                else { delete vm.deletingResultIds[id]; }
+            });
+        }
+
+        function reconcileDeletedResults(ids) {
+            var removed = vm.testResults.filter(function (row) { return ids.indexOf(String(row.id)) >= 0; });
+            vm.testResults = vm.testResults.filter(function (row) { return ids.indexOf(String(row.id)) < 0; });
+            vm.selectedTestResults = vm.selectedTestResults.filter(function (row) { return ids.indexOf(String(row.id)) < 0; });
+            vm.resultTotalRows = Math.max(0, Number(vm.resultTotalRows || 0) - removed.length);
+            // Keep the last declarative table snapshot unchanged: changing its
+            // options would make the legacy Angular adapter destroy the table.
+            var table = angular.element(document.getElementById('bsTableControl'));
+            if (removed.length) {
+                table.bootstrapTable('remove', {field: 'id', values: removed.map(function (row) { return row.id; })});
+            }
+            var requestId = ++resultPageRequest, search = angular.copy(vm.searchDto);
+            service.getPage(search, search.pageIndex, search.pageSize).then(function (data) {
+                if (requestId !== resultPageRequest || !angular.equals(search, vm.searchDto)) { return; }
+                var lastPage = Math.max(1, Math.ceil(data.totalElements / search.pageSize));
+                if (search.pageIndex > lastPage) {
+                    vm.searchDto.pageIndex = lastPage;
+                    vm.bsTableControl.state = vm.bsTableControl.state || {};
+                    vm.bsTableControl.state.pageNumber = lastPage;
+                    vm.getPage();
+                    return;
+                }
+                if (angular.equals(vm.testResults, data.content) && vm.resultTotalRows === data.totalElements) { return; }
+                // Another change or a row from the next page needs one redraw.
+                var scroll = table.bootstrapTable('getScrollPosition');
+                vm.bsTableControl.state = vm.bsTableControl.state || {};
+                vm.bsTableControl.state.scroll = scroll;
+                vm.testResults = data.content;
+                vm.resultTotalRows = data.totalElements;
+                vm.bsTableControl.options.data = vm.testResults;
+                vm.bsTableControl.options.totalRows = data.totalElements;
+                var selectedIds = vm.selectedTestResults.map(function (row) { return row.id; });
+                vm.selectedTestResults = vm.testResults.filter(function (row) { return row.canDelete === true && selectedIds.indexOf(row.id) >= 0; });
+                if (vm.selectedTestResults.length) {
+                    $timeout(function () {
+                        if (requestId === resultPageRequest) {
+                            table.bootstrapTable('checkBy', {field: 'id', values: vm.selectedTestResults.map(function (row) { return row.id; })});
+                        }
+                    });
+                }
+            }, function () {
+                if (requestId !== resultPageRequest) { return; }
+                toastr.warning('Đã xóa bản ghi, nhưng chưa kiểm tra được thay đổi khác trong bảng. Bạn có thể tìm kiếm lại để cập nhật.');
+            });
+        }
+
         $scope.deleteObject = function (id) {
+            if (vm.isDeletingResults || !vm.canUseResultDeletion() || !vm.testResults.some(function (row) {
+                return String(row.id) === String(id) && row.canDelete === true;
+            })) { return; }
             vm.deleteConfirmationCount = 1;
             var modalInstance = modal.open({
                 animation: true,
@@ -1372,11 +1436,18 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                   console.log(vm.selectedTestResults);
-                    service.deleteObject(id, function success() {
+                    if (vm.isDeletingResults) { return; }
+                    setDeletingResults([id], true);
+                    service.deleteObject(id).then(function (deleted) {
+                        setDeletingResults([id], false);
+                        if (deleted !== true) {
+                            toastr.error('Server chưa xác nhận xóa bản ghi. Bảng được giữ nguyên.', 'Chưa xóa');
+                            return;
+                        }
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
-                        vm.getPage();
+                        reconcileDeletedResults([String(id)]);
                     }, function failure() {
+                        setDeletingResults([id], false);
                         toastr.error('Có lỗi xảy ra khi xóa bản ghi.', 'Lỗi');
                     });
                 }
@@ -1416,14 +1487,19 @@
             });
             modalInstance.result.then(function (confirm) {
                 if (confirm !== 'yes') { return; }
-                vm.isDeletingResults = true;
+                if (vm.isDeletingResults) { return; }
+                setDeletingResults(ids, true);
                 service.deleteObjects(ids).then(function (deletedCount) {
-                    vm.isDeletingResults = false;
-                    vm.selectedTestResults = [];
+                    setDeletingResults(ids, false);
+                    if (deletedCount !== ids.length) {
+                        toastr.warning('Số bản ghi được xóa khác với yêu cầu. Đang kiểm tra lại bảng.');
+                        reconcileDeletedResults([]);
+                        return;
+                    }
                     toastr.success('Đã xóa ' + deletedCount + ' kết quả.', 'Thông báo');
-                    vm.getPage();
+                    reconcileDeletedResults(ids.map(String));
                 }, function (response) {
-                    vm.isDeletingResults = false;
+                    setDeletingResults(ids, false);
                     var message = response && response.data && (response.data.message || response.data.error);
                     toastr.error(message || 'Không thể xóa các kết quả đã chọn.', 'Lỗi');
                 });

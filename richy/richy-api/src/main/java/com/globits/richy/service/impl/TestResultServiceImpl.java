@@ -129,6 +129,7 @@ public class TestResultServiceImpl implements TestResultService {
 	@Override
 	@Transactional(readOnly = true)
 	public Page<TestResultDto> getPageObject(TestResultDto searchDto, int pageIndex, int pageSize) {
+        searchDto = scopeResultSearch(searchDto);
 
 	    if (pageIndex > 0)
 	        pageIndex = pageIndex - 1;
@@ -448,6 +449,7 @@ public class TestResultServiceImpl implements TestResultService {
 
 	@Override
 	public List<TestResultStudyCalendarItemDto> getStudyCalendar(TestResultDto searchDto) {
+        searchDto = scopeResultSearch(searchDto);
 		List<TestResultStudyCalendarItemDto> calendarItems =
 				new ArrayList<TestResultStudyCalendarItemDto>();
 
@@ -516,6 +518,11 @@ public class TestResultServiceImpl implements TestResultService {
 	public TestResultDto getObjectById(Long id) {
 		TestResult domain = id == null ? null : testResultRepository.findOne(id);
 		if (domain == null) { return null; }
+        User reader = getCurrentUser();
+        if (reader == null || reader.getId() == null || (!canReadAllResults(reader)
+                && (domain.getUser() == null || !reader.getId().equals(domain.getUser().getId())))) {
+            throw new AccessDeniedException("Bạn chỉ được xem kết quả của mình.");
+        }
 		TestResultDto dto = new TestResultDto(domain, true);
 		populateResultStudentClass(dto, domain);
 		dto.setCanEditWritingFeedback(canEditWritingFeedback(getCurrentUser(), domain));
@@ -606,6 +613,21 @@ public class TestResultServiceImpl implements TestResultService {
 		return userRepository.findByUsername(authentication.getName());
 	}
 
+    private boolean canReadAllResults(User user) {
+        if (user == null) { return false; }
+        if (hasRole(user, "ROLE_ADMIN")) { return true; }
+        if (hasRole(user, "ROLE_VIEWER") || hasRole(user, "ROLE_STUDENT")) { return false; }
+        return hasRole(user, "ROLE_USER") || hasRole(user, "ROLE_STAFF")
+            || hasRole(user, "ROLE_STAFF_MANAGEMENT") || hasRole(user, "ROLE_EDUCATION_MANAGERMENT")
+            || hasRole(user, "ROLE_STUDENT_MANAGERMENT");
+    }
+    private TestResultDto scopeResultSearch(TestResultDto search) {
+        User reader = getCurrentUser();
+        if (reader == null || reader.getId() == null) { throw new AccessDeniedException("Bạn chưa đăng nhập."); }
+        if (search == null) { search = new TestResultDto(); }
+        if (!canReadAllResults(reader)) { search.setUser(new com.globits.security.dto.UserDto(reader)); }
+        return search;
+    }
 	private boolean canEditWritingFeedback(User currentUser, TestResult result) {
 		if (currentUser == null || currentUser.getId() == null || result == null
 				|| !Integer.valueOf(7).equals(result.getTestType())) { return false; }

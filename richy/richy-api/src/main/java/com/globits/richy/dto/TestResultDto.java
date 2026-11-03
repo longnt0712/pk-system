@@ -116,6 +116,27 @@ public class TestResultDto implements Serializable{
 		writingIntegrityReasons = value == null ? new ArrayList<String>() : value;
 	}
 
+    private String testTimeDisplay;
+    public String getTestTimeDisplay(){return testTimeDisplay;}
+    private String clock(long seconds){return (seconds/60)+":"+String.format(java.util.Locale.ROOT,"%02d",seconds%60);}
+    private void populateTiming(TestResult domain){
+        if(domain==null||!java.util.Arrays.asList(2,4,6,7).contains(domain.getTestType()))return;
+        Integer elapsed=domain.getActiveDurationSeconds();Long budget=null;boolean untimed="STUDY".equals(domain.getIeltsSessionMode());
+        try{JsonNode timing=JSON_MAPPER.readTree(domain.getIeltsLearningState()==null?"{}":domain.getIeltsLearningState()).path("timing");
+            if(timing.isObject()){
+                untimed=timing.path("untimed").asBoolean(false);
+                if(timing.path("elapsedSeconds").canConvertToInt()&&timing.path("elapsedSeconds").asInt()>=0)elapsed=timing.path("elapsedSeconds").asInt();
+                if(timing.path("limitSeconds").canConvertToLong()&&timing.path("limitSeconds").asLong()>0&&timing.path("limitSeconds").asLong()<=604800)budget=timing.path("limitSeconds").asLong();
+            }
+        }catch(Exception ignored){}
+        // Older timed IELTS rows stored remaining time. Infer their original
+        // budget only when the active clock and mode make that meaning certain.
+        String old=domain.getTestTime();
+        if(budget==null&&!untimed&&elapsed!=null&&elapsed>=0&&java.util.Arrays.asList(2,4,7).contains(domain.getTestType())&&"SERIOUS".equals(domain.getIeltsSessionMode())&&old!=null&&old.matches("\\d+:\\d{1,2}")){
+            try{String[] values=old.split(":");long remaining=Long.parseLong(values[0])*60+Long.parseLong(values[1]);if(Long.parseLong(values[1])<60&&remaining+elapsed>0&&remaining+elapsed<=604800)budget=remaining+elapsed;}catch(NumberFormatException ignored){}
+        }
+        testTimeDisplay=(elapsed!=null&&elapsed>=0?clock(elapsed):"—")+" / "+(untimed?"Không giới hạn":budget!=null?clock(budget):"Chưa rõ");
+    }
 	private int durationSeconds(TestResult domain) {
 		if (domain.getActiveDurationSeconds() != null && domain.getActiveDurationSeconds() > 0) {
 			return domain.getActiveDurationSeconds();
@@ -521,6 +542,7 @@ public class TestResultDto implements Serializable{
 			this.bandScore = dto.getBandScoreReading();
 		}
 		populateWritingIntegrity(domain);
+        populateTiming(domain);
 		
 	}
 	
@@ -610,6 +632,7 @@ public class TestResultDto implements Serializable{
 			this.bandScore = dto.getBandScoreReading();
 		}
 		populateWritingIntegrity(domain);
+        populateTiming(domain);
 		
 	}
 	

@@ -39,7 +39,7 @@ public class SpeakingStudentAnswerService {
     public Map<String,Object> adminStudents(Long setId,Long classId,String query,int page,int pageSize){return speaking.adminStudents(setId,classId,query,page,pageSize);}
     public Map<String,Object> classStudents(Long setId,Long classId,String query,int page,int pageSize){return speaking.classStudents(setId,classId,query,page,pageSize);}
     private static class Context {
-        Long setId; User student; Map<Long,Map<String,Object>> questions=new LinkedHashMap<Long,Map<String,Object>>();
+        Long setId,editorId; User student; Map<Long,Map<String,Object>> questions=new LinkedHashMap<Long,Map<String,Object>>();
     }
     private Context identityContext(Long setId,Long studentId) {
         if(setId==null||setId<=0)throw new IllegalArgumentException("Chọn bộ Speaking.");
@@ -96,10 +96,10 @@ public class SpeakingStudentAnswerService {
         List<SpeakingStudentAnswerVersion> values=em.createQuery("select v from SpeakingStudentAnswerVersion v where v.answerId=:answer and v.updatedAt>=:cutoff order by v.id desc",SpeakingStudentAnswerVersion.class).setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).setMaxResults(1).getResultList();return values.isEmpty()?null:values.get(0);
     }
     private boolean snapshotMatches(SpeakingStudentAnswerVersion saved,SpeakingStudentAnswer answer){return saved!=null&&Objects.equals(saved.getHtml(),answer.getHtml())&&Objects.equals(saved.getNotesJson(),answer.getNotesJson())&&Objects.equals(saved.getNotebookJson(),answer.getNotebookJson());}
-    private boolean interactive(String source){return "EDIT".equals(source)||"NOTEBOOK".equals(source);}
+    private boolean interactive(String source){return "EDIT".equals(source)||"NOTEBOOK".equals(source)||"SHARE_EDIT".equals(source)||"SHARE_NOTEBOOK".equals(source); }
     private SpeakingStudentAnswerVersion checkpoint(SpeakingStudentAnswer answer,String source,boolean group){
         SpeakingStudentAnswerVersion latest=latestVersion(answer);long now=historyClock.millis();
-        boolean merge=group&&latest!=null&&interactive(source)&&interactive(latest.getSource())&&Objects.equals(latest.getEditorId(),answer.getEditorId())&&now>=latest.getStartedAt()&&now-latest.getStartedAt()<CHECKPOINT_MILLIS;
+        boolean merge=group&&latest!=null&&interactive(source)&&interactive(latest.getSource())&&source.startsWith("SHARE_")==latest.getSource().startsWith("SHARE_")&&Objects.equals(latest.getEditorId(),answer.getEditorId())&&now>=latest.getStartedAt()&&now-latest.getStartedAt()<CHECKPOINT_MILLIS;
         SpeakingStudentAnswerVersion value=merge?latest:new SpeakingStudentAnswerVersion();
         if(!merge){value.setAnswerId(answer.getId());value.setStartedAt(now);}
         value.setAnswerRevision(version(answer));value.setEditorId(answer.getEditorId());value.setSource(source);value.setUpdatedAt(now);value.setHtml(answer.getHtml());value.setNotesJson(answer.getNotesJson());value.setNotebookJson(answer.getNotebookJson());
@@ -113,14 +113,14 @@ public class SpeakingStudentAnswerService {
     }
     private String editorName(Long id){User user=id==null?null:em.find(User.class,id);return user==null?"Người dùng":speaking.displayName(user);}
     private Map<String,Object> versionDto(SpeakingStudentAnswerVersion value,boolean body){
-        Map<String,Object> out=SpeakingServiceImpl.map("id",value.getId(),"revision",value.getAnswerRevision(),"editorId",value.getEditorId(),"editorName",editorName(value.getEditorId()),"source",value.getSource(),"startedAt",value.getStartedAt(),"updatedAt",value.getUpdatedAt());
+        Map<String,Object> out=SpeakingServiceImpl.map("id",value.getId(),"revision",value.getAnswerRevision(),"editorId",value.getEditorId(),"editorName",value.getSource().startsWith("SHARE_")?"Qua link chia sẻ":editorName(value.getEditorId()),"source",value.getSource(),"startedAt",value.getStartedAt(),"updatedAt",value.getUpdatedAt());
         if(body){out.put("html",value.getHtml()==null?"":value.getHtml());out.put("notes",notes(value.getNotesJson()));out.put("notebook",document(value.getNotebookJson()));}return out;
     }
     public Map<String,Object> history(Long setId,Long studentId,Long questionId){
         Context c=questionContext(setId,studentId,questionId);SpeakingStudentAnswer answer=find(c.student.getId(),questionId,false);List<Map<String,Object>> rows=new ArrayList<Map<String,Object>>();
         // The picker needs metadata only; A4 snapshots can contain large drawings.
         if(answer!=null)for(Object[] value:em.createQuery("select v.id,v.answerRevision,v.editorId,v.source,v.startedAt,v.updatedAt from SpeakingStudentAnswerVersion v where v.answerId=:answer and v.updatedAt>=:cutoff order by v.id desc",Object[].class).setParameter("answer",answer.getId()).setParameter("cutoff",historyCutoff()).setMaxResults(HISTORY_LIMIT).getResultList())
-            rows.add(SpeakingServiceImpl.map("id",value[0],"revision",value[1],"editorId",value[2],"editorName",editorName((Long)value[2]),"source",value[3],"startedAt",value[4],"updatedAt",value[5]));
+            rows.add(SpeakingServiceImpl.map("id",value[0],"revision",value[1],"editorId",value[2],"editorName",String.valueOf(value[3]).startsWith("SHARE_")?"Qua link chia sẻ":editorName((Long)value[2]),"source",value[3],"startedAt",value[4],"updatedAt",value[5]));
         return SpeakingServiceImpl.map("setId",setId,"studentId",c.student.getId(),"questionId",questionId,"currentRevision",version(answer),"checkpointMinutes",10,"retainedLimit",HISTORY_LIMIT,"retentionDays",RETENTION_DAYS,"versions",rows);
     }
     private SpeakingStudentAnswerVersion ownedVersion(SpeakingStudentAnswer answer,Long id){
@@ -175,11 +175,14 @@ public class SpeakingStudentAnswerService {
         if(answer!=null&&Objects.equals(answer.getHtml(),content.html)&&Objects.equals(answer.getNotesJson(),encode(notes)))return answer;
         preserveCurrent(answer);
         if(answer==null){answer=new SpeakingStudentAnswer();answer.setStudentId(c.student.getId());answer.setQuestionId(request.questionId);}
-        answer.setHtml(content.html);answer.setNotesJson(encode(notes));answer.setEditorId(speaking.currentUser().getId());if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,source,true);return answer;
+        answer.setHtml(content.html);answer.setNotesJson(encode(notes));answer.setEditorId(c.editorId==null?speaking.currentUser().getId():c.editorId);if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,source,true);return answer;
     }
     public Map<String,Object> save(WriteRequest request){
         if(request==null)throw new IllegalArgumentException("Thiếu câu trả lời.");Context c=questionContext(request.setId,request.studentId,request.questionId);
-        CleanHtml html=clean(request.html);List<Note> notes=validateNotes(request.notes,html.markers);lockStudent(c);SpeakingStudentAnswer saved=write(c,request,find(c.student.getId(),request.questionId,true),html,notes,"EDIT");em.flush();return dto(c,request.questionId,saved);
+        return saveInContext(c,request,"EDIT");
+    }
+    private Map<String,Object> saveInContext(Context c,WriteRequest request,String source){
+        CleanHtml html=clean(request.html);List<Note> notes=validateNotes(request.notes,html.markers);lockStudent(c);SpeakingStudentAnswer saved=write(c,request,find(c.student.getId(),request.questionId,true),html,notes,source);em.flush();return dto(c,request.questionId,saved);
     }
     private Map<String,Object> document(String value){try{return value==null?null:json.readValue(value,DOCUMENT);}catch(IOException error){throw new IllegalStateException("Không đọc được sổ ghi chú đã lưu.",error);}}
     private Map<String,Object> blankDocument(){return SpeakingServiceImpl.map("text","","orientation","portrait","pattern","lined","strokes",new ArrayList<Object>());}
@@ -209,12 +212,47 @@ public class SpeakingStudentAnswerService {
         return notebookDto(c,questionId,find(c.student.getId(),questionId,false),known);
     }
     public Map<String,Object> saveNotebook(NotebookRequest request){
-        if(request==null||request.revision==null||request.revision<0)throw new IllegalArgumentException("Thiếu phiên bản sổ ghi chú.");Context c=questionContext(request.setId,request.studentId,request.questionId);String data=encode(validateDocument(request.document));lockStudent(c);SpeakingStudentAnswer answer=find(c.student.getId(),request.questionId,true);
+        if(request==null||request.revision==null||request.revision<0)throw new IllegalArgumentException("Thiếu phiên bản sổ ghi chú.");Context c=questionContext(request.setId,request.studentId,request.questionId);return saveNotebookInContext(c,request,"NOTEBOOK");
+    }
+    private Map<String,Object> saveNotebookInContext(Context c,NotebookRequest request,String source){
+        String data=encode(validateDocument(request.document));lockStudent(c);SpeakingStudentAnswer answer=find(c.student.getId(),request.questionId,true);
         if(notebookRevision(answer)!=request.revision){if(answer!=null&&Objects.equals(answer.getNotebookJson(),data))return notebookDto(c,request.questionId,answer,null);throw new Conflict();}
         if(answer!=null&&Objects.equals(answer.getNotebookJson(),data))return notebookDto(c,request.questionId,answer,null);
         preserveCurrent(answer);if(answer==null){answer=new SpeakingStudentAnswer();answer.setStudentId(c.student.getId());answer.setQuestionId(request.questionId);answer.setHtml("");answer.setNotesJson("[]");}
-        answer.setNotebookJson(data);answer.setNotebookRevision(notebookRevision(answer)+1);answer.setEditorId(speaking.currentUser().getId());if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,"NOTEBOOK",true);return notebookDto(c,request.questionId,answer,null);
+        answer.setNotebookJson(data);answer.setNotebookRevision(notebookRevision(answer)+1);answer.setEditorId(c.editorId==null?speaking.currentUser().getId():c.editorId);if(answer.getId()==null)em.persist(answer);em.flush();checkpoint(answer,source,true);return notebookDto(c,request.questionId,answer,null);
     }
+
+    /** Called only with a capability already resolved by SpeakingAnswerShareService. No authentication impersonation. */
+    private Context sharedContext(SpeakingAnswerShare share,Long questionId){
+        Context c=new Context();c.setId=share.getSetId();c.editorId=share.getCreatorId();c.student=em.find(User.class,share.getStudentId());
+        SpeakingSet set=em.find(SpeakingSet.class,c.setId);
+        if(share.isRevoked()||set==null||c.student==null||!Boolean.TRUE.equals(c.student.getActive()))throw new AccessDeniedException("Link không còn khả dụng.");
+        if(questionId==null||questionId<=0)throw new AccessDeniedException("Câu hỏi không thuộc link chia sẻ.");
+        List<Integer> parts=em.createQuery("select distinct q.part from SpeakingSetEntry e, SpeakingQuestion q where e.setId=:set and e.questionId=:question and q.id=e.questionId and q.ownerId=:owner",Integer.class)
+            .setParameter("set",c.setId).setParameter("question",questionId).setParameter("owner",set.getOwnerId()).getResultList();
+        if(parts.isEmpty())throw new AccessDeniedException("Câu hỏi không thuộc link chia sẻ.");c.questions.put(questionId,SpeakingServiceImpl.map("part",parts.get(0)));return c;
+    }
+    public Map<String,Object> sharedAnswer(SpeakingAnswerShare share,Long questionId,Long known){
+        Context c=sharedContext(share,questionId);if(known!=null&&known<0)throw new IllegalArgumentException("Phiên bản không hợp lệ.");
+        if(known!=null){long revision=currentRevisions(c.student.getId(),questionId)[0];Map<String,Object> out=SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"questionId",questionId,"revision",revision,"changed",revision!=known);
+            if(revision!=known){SpeakingStudentAnswer answer=find(c.student.getId(),questionId,false);out.put("revision",version(answer));out.put("answer",dto(c,questionId,answer));}return out;}
+        return SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"canEdit","EDIT".equals(share.getPermission()),"answers",Collections.singletonList(dto(c,questionId,find(c.student.getId(),questionId,false))));
+    }
+    public Map<String,Object> sharedNotebook(SpeakingAnswerShare share,Long questionId,Long known){
+        Context c=sharedContext(share,questionId);if(known!=null&&known<0)throw new IllegalArgumentException("Phiên bản không hợp lệ.");
+        if(known!=null&&currentRevisions(c.student.getId(),questionId)[1]==known)return SpeakingServiceImpl.map("setId",c.setId,"studentId",c.student.getId(),"questionId",questionId,"revision",known,"changed",false);
+        return notebookDto(c,questionId,find(c.student.getId(),questionId,false),known);
+    }
+    private void sharedWriteScope(SpeakingAnswerShare share,Long setId,Long studentId){
+        if(!"EDIT".equals(share.getPermission())||!Objects.equals(share.getSetId(),setId)||!Objects.equals(share.getStudentId(),studentId))throw new AccessDeniedException("Link không cho phép sửa bài này.");
+    }
+    public Map<String,Object> saveSharedAnswer(SpeakingAnswerShare share,WriteRequest request){
+        if(request==null)throw new IllegalArgumentException("Thiếu câu trả lời.");sharedWriteScope(share,request.setId,request.studentId);return saveInContext(sharedContext(share,request.questionId),request,"SHARE_EDIT");
+    }
+    public Map<String,Object> saveSharedNotebook(SpeakingAnswerShare share,NotebookRequest request){
+        if(request==null||request.revision==null||request.revision<0)throw new IllegalArgumentException("Thiếu phiên bản sổ ghi chú.");sharedWriteScope(share,request.setId,request.studentId);return saveNotebookInContext(sharedContext(share,request.questionId),request,"SHARE_NOTEBOOK");
+    }
+
     public Map<String,Object> restore(RestoreRequest request){
         if(request==null||request.revision==null||request.revision<0||request.versionRevision==null||request.versionRevision<1)throw new IllegalArgumentException("Thiếu phiên bản hiện tại hoặc phiên bản đã xem trước.");Context c=questionContext(request.setId,request.studentId,request.questionId);lockStudent(c);SpeakingStudentAnswer answer=find(c.student.getId(),request.questionId,true);
         SpeakingStudentAnswerVersion latest=latestVersion(answer);
@@ -226,7 +264,7 @@ public class SpeakingStudentAnswerService {
         // Retried, already applied restores are safe even if their ACK was lost.
         boolean same=snapshotMatches(selected,answer);if(version(answer)!=request.revision&&!same)throw new Conflict();
         if(!same){String html=selected.getHtml(),noteData=selected.getNotesJson(),notebookData=selected.getNotebookJson();preserveCurrent(answer);
-            answer.setHtml(html);answer.setNotesJson(noteData);if(!Objects.equals(answer.getNotebookJson(),notebookData))answer.setNotebookRevision(notebookRevision(answer)+1);answer.setNotebookJson(notebookData);answer.setEditorId(speaking.currentUser().getId());em.flush();SpeakingStudentAnswerVersion restored=checkpoint(answer,"RESTORE",false);restored.setSourceVersionId(request.versionId);restored.setSourceVersionRevision(request.versionRevision);em.flush();
+            answer.setHtml(html);answer.setNotesJson(noteData);if(!Objects.equals(answer.getNotebookJson(),notebookData))answer.setNotebookRevision(notebookRevision(answer)+1);answer.setNotebookJson(notebookData);answer.setEditorId(c.editorId==null?speaking.currentUser().getId():c.editorId);em.flush();SpeakingStudentAnswerVersion restored=checkpoint(answer,"RESTORE",false);restored.setSourceVersionId(request.versionId);restored.setSourceVersionRevision(request.versionRevision);em.flush();
         }
         Map<String,Object> out=dto(c,request.questionId,answer);out.put("restoredVersionId",request.versionId);return out;
     }

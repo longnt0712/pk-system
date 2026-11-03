@@ -215,7 +215,8 @@
             var _tableOperation = function (value, row, index) {
                 var actions = '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="fa fa-eye"></i></a>';
                 if (allowDelete && row.canDelete === true) {
-                    actions += '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';
+                    actions += '<a class="green-dark margin-right-20" href="#" data-ng-click="$event.preventDefault(); $parent.deleteObject(' + "'" + row.id + "'" + ')" ng-attr-aria-disabled="{{$parent.vm.deletingResultIds[' + row.id + ']}}" title="Xóa bản ghi">'
+                        + '<i class="fa" ng-class="$parent.vm.deletingResultIds[' + row.id + '] ? \'fa-spinner fa-spin\' : \'fa-trash\'"></i></a>';
                 }
                 return actions;
             };
@@ -312,6 +313,7 @@
                 , {
                     field: 'testTime',
                     title: 'Test time',
+                    formatter: function (value, row) { return escapeText(row.testTimeDisplay || value || ''); },
                     sortable: true,
                     switchable: false,
                     // formatter: _dateFormatter,

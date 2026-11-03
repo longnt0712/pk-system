@@ -24,7 +24,7 @@
         function sameContext(row, context) { return row && ['setId', 'studentId', 'questionId'].every(function (key) { return Number(row[key]) === Number(context[key]); }); }
         function session(context, clean) {
             context = copy(context);
-            var key = 'speaking-answer:v1:' + context.userId + ':' + context.setId + ':' + context.studentId + ':' + context.questionId;
+            var key = (api.publicAccess ? 'speaking-shared-answer:v1:' + api.publicAccess.key + ':' : 'speaking-answer:v1:') + context.userId + ':' + context.setId + ':' + context.studentId + ':' + context.questionId;
             var state = {context: context, loading: true, ready: false, saving: false, dirty: false, revision: 0, html: '', notes: [], error: '', status: 'Đang tải câu trả lời…'};
             var baseline = valueOf(state), pending = null, inFlightPayload = null, syncing = null, restoring = null, historyGeneration = 0, destroyed = false, lastBackup;
             state.history = {loading: false, versions: [], error: '', preview: null};
@@ -79,9 +79,9 @@
                 if (typeof api.studentAnswers !== 'function') { state.loading = false; state.error = 'Cần cập nhật backend để mở câu trả lời riêng.'; state.status = 'Chưa tải được'; return $q.when(); }
                 return api.studentAnswers(context.setId, context.studentId, context.questionId).then(function (data) {
                     if (destroyed) { return; }
-                    if (!data || Number(data.setId) !== context.setId || Number(data.studentId) !== context.studentId || data.canEdit !== true || !Array.isArray(data.answers) || data.answers.length !== 1 || !validRow(data.answers[0])) { throw new Error('Câu trả lời nhận được không khớp học sinh hoặc câu hỏi.'); }
+                    if (!data || Number(data.setId) !== context.setId || Number(data.studentId) !== context.studentId || (!context.readOnly && data.canEdit !== true) || !Array.isArray(data.answers) || data.answers.length !== 1 || !validRow(data.answers[0])) { throw new Error('Câu trả lời nhận được không khớp học sinh hoặc câu hỏi.'); }
                     apply(data.answers[0]); state.ready = true;
-                    var saved = readBackup();
+                    var saved = context.readOnly ? null : readBackup();
                     if (saved && sameContext(saved.context, context) && Number(saved.context.userId) === context.userId && typeof saved.revision === 'number' && Number.isInteger(saved.revision) && saved.revision >= 0) {
                         var draft = normalized(saved);
                         if (valueOf(draft) !== baseline) {
@@ -95,6 +95,7 @@
                     .finally(function () { if (!destroyed) { state.loading = false; } });
             }
             function change(html, notes) {
+                if (context.readOnly) { return; }
                 if (!state.ready) { return; }
                 var value = clean(html, notes); state.html = value.html; state.notes = value.notes;
                 state.dirty = valueOf(state) !== baseline || !!(inFlightPayload && valueOf(state) !== valueOf(inFlightPayload)); state.invalid = state.html.length > 100000; state.error = state.invalid ? 'Câu trả lời quá dài (tối đa 100.000 ký tự định dạng). Bản nháp vẫn được giữ; hãy rút gọn trước khi lưu.' : '';
@@ -103,6 +104,7 @@
                 backup();
             }
             function save() {
+                if (context.readOnly) { return $q.when(); }
                 if (restoring) { return restoring; }
                 if (!state.ready || state.loading || state.conflict || state.invalid || !state.dirty) { return $q.when(); }
                 if (pending) { return pending; }
@@ -188,15 +190,15 @@
 
     angular.module('Hrm.Question').directive('speakingStudentAnswerEditor', ['$window', '$timeout', 'SpeakingStudentAnswerStore', function ($window, $timeout, store) {
         return {
-            restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@'},
-            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
-                '<div class="sp-answer-format" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+            restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?'},
+            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
+                '<div class="sp-answer-format" ng-if="!readOnly" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
-                '<div class="sp-answer-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
-                '<div class="sp-answer-selection" ng-if="ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
+                '<div class="sp-answer-editable" ng-attr-contenteditable="{{readOnly ? false : true}}" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
-                '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
+                '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
                 '<div class="sp-answer-conflict" ng-if="ed.state.conflict"><strong>Bản mới vừa được lưu ở nơi khác</strong><p>Bản bạn đang sửa vẫn được giữ. Đối chiếu trước khi thay nội dung trên server.</p><details ng-if="ed.state.remote"><summary>Xem bản mới trên server</summary><p class="sp-preserve">{{ed.remoteText()}}</p></details><div class="sp-toolbar"><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.useServer()">Dùng bản máy chủ, giữ nháp cũ trên thiết bị</button><button class="sp-button" type="button" ng-disabled="!ed.state.remote || ed.state.saving" ng-click="ed.overwrite()">Lưu bản đang sửa thay bản máy chủ</button></div></div><small class="sp-muted">Tự lưu chữ, định dạng, ghi chú và highlight. Thay đổi từ người cùng xem được cập nhật sau vài giây.</small>' +
                 '<div class="sp-overlay sp-version-overlay" ng-if="ed.historyOpen" ng-click="ed.closeHistory()"><section class="sp-modal sp-version-dialog" role="dialog" aria-modal="true" aria-label="Lịch sử câu trả lời" ng-click="$event.stopPropagation()"><header><div><h2>Lịch sử phiên bản</h2><small>Giữ tối đa 5 mốc trong 14 ngày gần nhất; gộp sửa liên tiếp khoảng 10 phút. Bài hiện tại vẫn được giữ và tự lưu ngay khi sửa.</small></div><button type="button" class="sp-close" ng-click="ed.closeHistory()" aria-label="Đóng lịch sử" ng-disabled="ed.state.history.restoring">×</button></header><div class="sp-modal-body"><p class="sp-error-text" role="alert" ng-if="ed.state.history.error">{{ed.state.history.error}}</p><p role="status" ng-if="ed.state.history.loading">Đang tải phiên bản…</p><div class="sp-version-layout"><nav class="sp-version-list" aria-label="Các phiên bản đã lưu"><button type="button" class="sp-button" ng-repeat="version in ed.state.history.versions track by version.id" ng-click="ed.previewVersion(version)" ng-disabled="ed.state.history.restoring" ng-class="{\'is-active\':ed.state.history.preview.id===version.id}"><strong>{{version.updatedAt | date:\'dd/MM/yyyy HH:mm\'}}</strong><small>{{version.editorName || (\'Tài khoản #\'+version.editorId)}} · {{ed.versionSource(version.source)}}</small></button><p class="sp-muted" ng-if="!ed.state.history.loading && !ed.state.history.versions.length">Chưa có phiên bản. Lịch sử bắt đầu được giữ sau khi cập nhật tính năng.</p></nav><article class="sp-version-preview" ng-if="ed.state.history.preview"><h3>Bản xem trước · {{ed.state.history.preview.updatedAt | date:\'dd/MM/yyyy HH:mm\'}}</h3><div class="sp-version-answer" ng-bind-html="ed.state.history.preview.html"></div><div ng-if="ed.state.history.preview.notes.length"><h3>Ghi chú trong đoạn chữ</h3><p class="sp-preserve" ng-repeat="note in ed.state.history.preview.notes track by note.id">{{note.text || \'(Ghi chú trống)\'}}</p></div><div ng-if="ed.state.history.preview.notebook"><h3>Sổ ghi chú A4</h3><div class="sp-version-paper-scroll"><div class="sp-version-paper" ng-class="\'is-\'+ed.state.history.preview.notebook.orientation"><pre>{{ed.state.history.preview.notebook.text}}</pre><canvas aria-label="Nét vẽ trong phiên bản ghi chú" class="sp-version-drawing"></canvas></div></div></div></article><p class="sp-muted" ng-if="!ed.state.history.preview && ed.state.history.versions.length">Chọn một mốc để xem nội dung, ghi chú và nét vẽ.</p></div></div><footer><button type="button" class="sp-button" ng-click="ed.refreshHistory()" ng-disabled="ed.state.history.loading || ed.state.history.restoring">Làm mới lịch sử</button><button type="button" class="sp-button sp-primary" ng-click="ed.restoreVersion()" ng-disabled="!ed.state.history.preview || ed.state.history.loading || ed.state.history.restoring">{{ed.state.history.restoring ? \'Đang khôi phục…\' : \'Khôi phục thành phiên bản mới\'}}</button></footer></section></div></section>',
             link: function (scope, element) {
@@ -255,7 +257,7 @@
                     }
                     scrub(container); var serialized = doc.createElement('div'); serialized.appendChild(container.cloneNode(true)); return {html: serialized.innerHTML, notes: result};
                 }
-                function render() { editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
+                function render() { editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', scope.readOnly || ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
                 function renderIncoming() {
                     var noteId = ed.activeNote && ed.activeNote.id, selection = $window.getSelection(), offsets = null;
                     if (selection && selection.rangeCount && editable.contains(selection.getRangeAt(0).commonAncestorContainer)) {
@@ -272,7 +274,7 @@
                 }
                 function cancelTimer() { if (timer) { $timeout.cancel(timer); timer = null; } }
                 function schedule() { cancelTimer(); if (current && ed.state.dirty && !ed.state.conflict && !composing) { timer = $timeout(function () { timer = null; ed.save(); }, 1300); } }
-                function changed() { if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
+                function changed() { if (scope.readOnly) { return; } if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
                 function capture() {
                     var selection = $window.getSelection(), range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
                     if (range && editable.contains(range.commonAncestorContainer)) {
@@ -296,7 +298,7 @@
                     var word = String(ed.lookupText || '').trim().toLowerCase().replace(/\s+/g, '-');
                     return 'https://dictionary.cambridge.org/dictionary/english/' + encodeURIComponent(word);
                 };
-                ed.addPhonetic = function () {
+                ed.addPhonetic = function () { if (scope.readOnly) { return; }
                     if (destroyed || !ed.state.ready || !ed.hasSelection || !selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
                     var text = selectedRange.toString().replace(/\s+/g, ' ').trim(), marker = selectedRange.commonAncestorContainer;
                     ed.phoneticError = ''; if (!text) { return; }
@@ -310,7 +312,7 @@
                     var added = ed.annotate(true); if (added && ed.activeNote && ed.activeNote.id === added.id) { ed.lookupText = text.slice(0, 200); }
                 };
                 ed.noteChanged = function () { changed(); };
-                ed.deleteNote = function () {
+                ed.deleteNote = function () { if (scope.readOnly) { return; }
                     if (!current || !ed.state.ready || !ed.activeNote) { return; }
                     var id = ed.activeNote.id;
                     Array.prototype.slice.call(editable.querySelectorAll('span[data-note-id]')).forEach(function (span) {
@@ -323,8 +325,8 @@
                     });
                     ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== id; }); ed.activeNote = null; ed.marker = null; changed();
                 };
-                ed.format = function (command) { if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
-                ed.annotate = function (withNote) {
+                ed.format = function (command) { if (scope.readOnly) { return; } if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
+                ed.annotate = function (withNote) { if (scope.readOnly) { return; }
                     if (!ed.state.ready || !ed.hasSelection || !restoreSelection()) { return; }
                     if (withNote && ed.state.notes.length >= 200) { ed.state.error = 'Mỗi câu trả lời có tối đa 200 note. Hãy xoá note cũ trước khi thêm.'; return; }
                     var range = selectedRange.cloneRange(), walker = doc.createTreeWalker(editable, 4, null, false), nodes = [], node;
@@ -340,12 +342,12 @@
                     if (!markers.length) { return; } if (withNote) { ed.state.notes.push(note); openNote(note, markers[markers.length - 1]); }
                     ed.marker = markers[0]; selectedRange = null; ed.hasSelection = false; $window.getSelection().removeAllRanges(); changed(); return withNote ? note : null;
                 };
-                ed.removeAnnotation = function () {
+                ed.removeAnnotation = function () { if (scope.readOnly) { return; }
                     if (!ed.marker || !editable.contains(ed.marker)) { return; } var group = ed.marker.getAttribute('data-annotation-group'), noteId = ed.marker.getAttribute('data-note-id');
                     Array.prototype.slice.call(editable.querySelectorAll('span.ielts-annotation')).forEach(function (span) { if ((group && span.getAttribute('data-annotation-group') === group) || (!group && span === ed.marker)) { while (span.firstChild) { span.parentNode.insertBefore(span.firstChild, span); } span.parentNode.removeChild(span); } });
                     ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== noteId || editable.querySelector('[data-note-id="' + note.id + '"]'); }); ed.marker = null; ed.activeNote = null; changed();
                 };
-                ed.save = function () {
+                ed.save = function () { if (scope.readOnly) { return; }
                     if (!current || composing || !ed.state.ready) { return; } cancelTimer(); changed(); cancelTimer(); var session = current, before = editable.innerHTML;
                     return session.save().then(function () { if (!destroyed && session === current) { if (before === editable.innerHTML && !ed.state.dirty && !editable.contains(doc.activeElement)) { render(); } if (ed.state.dirty && !ed.state.error && !ed.state.conflict) { schedule(); } } });
                 };
@@ -353,8 +355,8 @@
                 ed.remoteText = function () { var div = doc.createElement('div'); div.innerHTML = clean(ed.state.remote && ed.state.remote.html, ed.state.remote && ed.state.remote.notes).html; return div.textContent || ''; };
                 ed.overwrite = function () { if (!$window.confirm('Thay câu trả lời vừa được lưu trên server bằng bản bạn đang sửa?')) { return; } return current.overwriteReviewed().then(function () { if (!destroyed) { render(); } }); };
                 ed.useServer = function () { if (!$window.confirm('Dùng bản máy chủ? Bản nháp đang sửa sẽ được giữ riêng trên thiết bị.')) { return; } current.useServer(); ed.activeNote = null; render(); };
-                ed.versionSource = function (source) { return {EDIT:'Chỉnh sửa', IMPORT:'Import', RESTORE:'Khôi phục', BASELINE:'Bản trước khi sửa', NOTEBOOK:'Sổ ghi chú'}[source] || 'Đã lưu'; };
-                ed.openHistory = function () { if (!current || !ed.state.ready) { return; } ed.activeNote = null; ed.historyOpen = true; return current.loadHistory(); };
+                ed.versionSource = function (source) { return {EDIT:'Chỉnh sửa', IMPORT:'Import', RESTORE:'Khôi phục', BASELINE:'Bản trước khi sửa', NOTEBOOK:'Sổ ghi chú', SHARE_EDIT:'Sửa qua link', SHARE_NOTEBOOK:'Ghi chú qua link'}[source] || 'Đã lưu'; };
+                ed.openHistory = function () { if (scope.hideHistory) { return; } if (!current || !ed.state.ready) { return; } ed.activeNote = null; ed.historyOpen = true; return current.loadHistory(); };
                 ed.closeHistory = function () { if (ed.state.history && ed.state.history.restoring) { return; } ed.historyOpen = false; };
                 ed.refreshHistory = function () { if (!current) { return; } return current.loadHistory(); };
                 function drawHistoryNotebook() {
@@ -423,7 +425,7 @@
                 function selectionChanged() { scope.$evalAsync(capture); }
                 function compositionStart() { composing = true; cancelTimer(); }
                 function compositionEnd() { composing = false; input(); }
-                function paste(event) { event.preventDefault(); var text = event.clipboardData ? event.clipboardData.getData('text/plain') : ''; doc.execCommand('insertText', false, text); input(); }
+                function paste(event) { event.preventDefault(); if (scope.readOnly) { return; } var text = event.clipboardData ? event.clipboardData.getData('text/plain') : ''; doc.execCommand('insertText', false, text); input(); }
                 function drop(event) { event.preventDefault(); }
                 function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { ed.activeNote = null; ed.closeHistory(); }); } }
                 function leaving() { if (current) { current.backup(); } }
@@ -431,7 +433,7 @@
                 scope.$watchGroup(['setId', 'studentId', 'questionId', 'userId'], function (values) {
                     var next = ++generation; stopSpeech(); ed.speechError = ''; ed.phoneticError = ''; ed.lookupText = ''; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
                     if (!values.every(function (id) { return Number.isInteger(Number(id)) && Number(id) > 0; })) { return; }
-                    current = store.open({setId: Number(values[0]), studentId: Number(values[1]), questionId: Number(values[2]), userId: Number(values[3])}, clean); ed.state = current.state; render();
+                    current = store.open({setId: Number(values[0]), studentId: Number(values[1]), questionId: Number(values[2]), userId: Number(values[3]), readOnly: scope.readOnly === true}, clean); ed.state = current.state; render();
                     current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } poll(); } });
                 });
                 scope.$on('$destroy', function () { destroyed = true; generation++; stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving); });

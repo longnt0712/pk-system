@@ -4,6 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 
+test('test time uses the elapsed/budget display and safely escapes server strings', () => {
+    const column = loadService().getTableDefinition('WRITING', false).find(c => c.field === 'testTime');
+    assert.equal(column.formatter('0:00', {testTimeDisplay: '20:06 / 60:00'}), '20:06 / 60:00');
+    assert.equal(column.formatter('1:30', {}), '1:30');
+    assert.doesNotMatch(column.formatter('', {testTimeDisplay: '<img src=x>'}), /<img/);
+});
+
 function loadService() {
     let Service;
     const angular = {

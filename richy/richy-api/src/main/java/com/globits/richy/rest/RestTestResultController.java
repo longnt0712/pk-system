@@ -58,7 +58,8 @@ public class RestTestResultController {
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
 	@RequestMapping(value = "/grade-writing/{id}", method = RequestMethod.POST)
 	public TestResultDto gradeWriting(@PathVariable Long id) {
-		return writingGradingService.grade(id);
+		service.getObjectById(id);
+        return writingGradingService.grade(id);
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})

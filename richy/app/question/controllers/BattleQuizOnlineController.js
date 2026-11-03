@@ -1511,13 +1511,13 @@
             var ownAdminPet = player && player.username &&
                 player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
             if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
-                level = Math.max(level, 25);
+                level = Math.max(level, 26);
             }
             if (petKey === 'HALLOWEEN_PUMPKIN' &&
                     (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
                 return 'assets/images/learning-pets/halloween-pumpkin/pet.png' + suffix;
             }
-            if (petKey === 'ARAGONDA') {
+            if (petKey === 'ARAGONDA' && level >= 26) {
                 return 'assets/images/learning-pets/aragonda/pet.svg' + suffix;
             }
 
@@ -1627,7 +1627,7 @@
             var adminAccess = (me && me.allPetsUnlocked === true) || hasAdminPetAccess();
             var halloweenAvailable = !!adminAccess || isHalloweenPetSeason();
             if (adminAccess) {
-                level = Math.max(level, 25);
+                level = Math.max(level, 26);
             }
 
             /*
@@ -1649,7 +1649,7 @@
                 key: 'MAM_HOC',
                 label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
             }];
-            battlePetOptions.push({key: 'ARAGONDA', label: 'Aragonda'});
+            if (level >= 26) { battlePetOptions.push({key: 'ARAGONDA', label: 'Aragonda'}); }
             if (halloweenAvailable) {
                 battlePetOptions.push({key: 'HALLOWEEN_PUMPKIN', label: 'Bí ngô Halloween'});
             }

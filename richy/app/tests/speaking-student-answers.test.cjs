@@ -16,6 +16,13 @@ function fixture(){
 test('answer saves preserve formatting, anchored notes and exact student/question context before clearing the backup',async()=>{
  const f=fixture(),s=f.session();await s.load();const html='<p><b>Answer</b> <span class="ielts-annotation has-note" data-note-id="note-1">word</span></p>',notes=[{id:'note-1',text:'Remember this'}];s.change(html,notes);assert.equal(f.storage.size,1);await s.save();assert.equal(s.state.dirty,false);assert.equal(s.state.revision,2);assert.equal(f.storage.size,0);assert.deepEqual(f.calls[0],{setId:11,studentId:7,questionId:42,revision:1,html,notes});
 });
+
+test('public read-only editor neither restores a draft nor writes changes while retaining remote notes',async()=>{
+ const f=fixture();f.api.publicAccess={key:'91',canEdit:false};f.setGet(()=>Promise.resolve({setId:11,studentId:7,canEdit:false,answers:[{...context,html:'Read only',notes:[{id:'n1',text:'Teacher note'}],revision:3}]}));
+ f.storage.set('speaking-shared-answer:v1:91:9:11:7:42',JSON.stringify({context,revision:3,html:'Unsaved edit',notes:[]}));
+ const s=f.store.open({...context,readOnly:true},(html,notes)=>({html,notes}));await s.load();assert.equal(s.state.ready,true);assert.equal(s.state.html,'Read only');assert.equal(s.state.notes[0].text,'Teacher note');
+ s.change('Attempted edit',[]);await s.save();assert.equal(s.state.html,'Read only');assert.equal(f.calls.length,0);assert.equal(s.state.dirty,false);
+});
 test('a missing or mismatched acknowledgement never clears the local answer or reports success',async()=>{
  for(const mutate of [row=>({...row,studentId:8}),row=>({...row,questionId:99}),row=>({...row,setId:12}),row=>{delete row.revision;return row;}]){
   const f=fixture(),s=f.session();await s.load();s.change('<u>Draft</u>',[]);f.setSave(payload=>Promise.resolve(mutate({...payload,revision:2})));await s.save();assert.equal(s.state.dirty,true);assert.equal(f.storage.size,1);assert.match(s.state.error,/Chưa nhận đúng/);assert.notEqual(s.state.status,'Đã đồng bộ');
@@ -69,8 +76,29 @@ function controllerFixture(options={}){
  const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Blob,URL:{revokeObjectURL(){},createObjectURL(){return 'blob:test';}},document:{hidden:false,addEventListener(){},removeEventListener(){},createElement(){return {click(){},parentNode:{removeChild(){}}};},body:{appendChild(){}}},addEventListener(){},removeEventListener(){},setTimeout};
  const scope={$on(){},$watch(){return()=>{};}};const interval=()=>{};interval.cancel=()=>{};
  const vm={};registered('question/controllers/SpeakingController.js').SpeakingController.call(vm,scope,{settings:{layout:{}}},win,{search(key,value){if(key===undefined)return location;if(value===null)delete location[key];else location[key]=value;}},interval,q,{},api,{state:{pending:[]},loadPending:()=>Promise.resolve(),stop:()=>Promise.resolve()},{trustAsResourceUrl:v=>v},{current:{data:{speakingManagement:options.managementMode!==false}}});
- return{vm,calls,api,student,set,location,setAck(fn){ack=fn;}};
+ return{vm,calls,api,student,set,location,win,setAck(fn){ack=fn;}};
 }
+
+test('share management creates and revokes a link for the exact viewed person and set',async()=>{
+ for(const options of [{},{isAdmin:false,canManage:false,managementMode:false}]){
+  const f=controllerFixture(options);await settle();f.win.location={origin:'https://ieltsroom.com'};
+  if(f.vm.managementMode){f.vm.studentId=7;f.vm.adminViewedStudent=f.student;}
+  const studentId=f.vm.answerStudentId(),calls=[];
+  f.api.answerShares=(...args)=>{calls.push(args);return Promise.resolve([]);};
+  f.api.createAnswerShare=payload=>Promise.resolve({...payload,id:91,token:'a'.repeat(43)});
+  f.api.revokeAnswerShare=id=>Promise.resolve({id,revoked:true});
+  await f.vm.openSpeakingLinks();assert.equal(calls[0][1],studentId);await f.vm.createSpeakingLink('EDIT');
+  assert.equal(f.vm.newShareUrl,'https://ieltsroom.com/speaking/shared.html#'+'a'.repeat(43));
+  await f.vm.revokeSpeakingLink(f.vm.linkRows[0]);assert.equal(f.vm.newShareUrl,'');assert.equal(f.vm.linkRows.length,0);
+ }
+});
+
+test('a mismatched or stale share receipt never displays another persons link',async()=>{
+ const f=controllerFixture({managementMode:false});await settle();f.win.location={origin:'https://ieltsroom.com'};f.api.answerShares=()=>Promise.resolve([]);await f.vm.openSpeakingLinks();
+ f.api.createAnswerShare=payload=>Promise.resolve({...payload,studentId:99,id:91,token:'a'.repeat(43)});await f.vm.createSpeakingLink('VIEW');assert.equal(f.vm.newShareUrl,'');assert.ok(f.vm.error);
+ const wait=deferred();f.api.createAnswerShare=()=>wait.promise;const pending=f.vm.createSpeakingLink('VIEW');f.vm.selectedSetId=12;
+ wait.resolve({id:91,setId:11,studentId:9,permission:'VIEW',token:'a'.repeat(43)});await pending;assert.equal(f.vm.newShareUrl,'');
+});
 test('a teacher on a shared bank can review their selected student without requesting another student history',async()=>{
  const f=controllerFixture({isAdmin:false});await settle();assert.equal(f.vm.canReviewStudents(),true);f.vm.studentId=7;const before=f.calls.history.length;await f.vm.loadBank();assert.equal(f.calls.history.length,before);await f.vm.markPass(f.vm.questions,true);assert.equal(f.calls.pass.length,1);assert.equal(f.calls.pass[0].studentId,7);assert.equal(f.vm.questions[0].passed,true);
 });

@@ -772,6 +772,9 @@
         vm.isVideoHomeworkPractice = function () {
             return !!vm.assignmentTaskId && !vm.isPreviewMode && vm.hasComprehensiveVideo();
         };
+        vm.isWritingHomeworkPractice = function () {
+            return !!vm.assignmentTaskId && vm.isWritingRoute && !vm.isPreviewMode && !vm.isLearningReview;
+        };
         var pendingVideoReplay = null;
         var videoPlaybackRequested = false, videoPlaybackNoticeReason = null;
         vm.videoPlaybackNotice = '';
@@ -2266,6 +2269,7 @@
                     currentOrdinalNumber: Number(vm.tempOrdinalNumber) || null,
                     remainingSeconds: Math.max(0, Number($scope.counter) || 0),
                     videoHomeworkBudgetSeconds: vm.isVideoHomeworkPractice() ? seriousTotalSeconds : null,
+                    homeworkBudgetSeconds: usesHomeworkPracticeTimer() ? seriousTotalSeconds : null,
                     elapsedSeconds: getActiveDurationSeconds(),
                     answeredCount: Object.keys(answeredNumbers).length,
                     totalQuestions: getReadingQuestionEntries().length,
@@ -2567,16 +2571,16 @@
             } else if (vm.testSessionMode !== 'STUDY' && draft.remainingSeconds != null &&
                     isFinite(Number(draft.remainingSeconds)) && Number(draft.remainingSeconds) >= 0) {
                 timerRestoredFromDraft = true;
-                if (vm.isVideoHomeworkPractice()) {
+                if (usesHomeworkPracticeTimer()) {
                     // A soft limit stays 60 minutes even when an older draft is
                     // already overdue; preserve its elapsed time rather than extending the limit.
                     seriousTotalSeconds = vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveAssignmentMinutes != null
-                        ? configuredWritingSeconds : (isFinite(Number(draft.videoHomeworkBudgetSeconds)) && Number(draft.videoHomeworkBudgetSeconds) > 0
-                            ? Number(draft.videoHomeworkBudgetSeconds) : configuredWritingSeconds);
+                        ? configuredWritingSeconds : (Number(draft.homeworkBudgetSeconds || draft.videoHomeworkBudgetSeconds) > 0
+                            ? Number(draft.homeworkBudgetSeconds || draft.videoHomeworkBudgetSeconds) : configuredWritingSeconds);
                     var videoElapsed = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds))
                         ? Math.max(0, Number(draft.elapsedSeconds))
                         : Math.max(0, seriousTotalSeconds - Number(draft.remainingSeconds));
-                    restoreVideoHomeworkClock(videoElapsed);
+                    restoreHomeworkPracticeClock(videoElapsed);
                 } else if (vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveAssignmentMinutes != null) {
                     seriousTotalSeconds = configuredWritingSeconds;
                     var assignmentElapsed = draft.elapsedSeconds != null && isFinite(Number(draft.elapsedSeconds)) ? Math.max(0, Number(draft.elapsedSeconds)) : null;
@@ -3758,6 +3762,7 @@
             newDraft.completed = false; newDraft.resultId = null;
             newDraft.remainingSeconds = vm.testSessionMode === 'STUDY' ? 0 : seriousTotalSeconds; newDraft.elapsedSeconds = 0;
             newDraft.videoHomeworkBudgetSeconds = vm.isVideoHomeworkPractice() ? seriousTotalSeconds : null;
+            newDraft.homeworkBudgetSeconds = usesHomeworkPracticeTimer() ? seriousTotalSeconds : null;
             newDraft.comprehensiveShuffle = angular.copy(vm.comprehensiveShuffleState || previousDraft.comprehensiveShuffle || null);
             newDraft.annotations = readingAnnotationsRestoring ? angular.copy(previousDraft.annotations || []) : serializeReadingAnnotations();
             newDraft.completeListStates = serializeCompleteListStates();
@@ -3993,7 +3998,7 @@
             saveReadingDraft();
             syncTimerForPersistence();
             var activeDurationSeconds = getActiveDurationSeconds();
-            vm.testResult.testTime = formatTimerClock(vm.testSessionMode === 'STUDY' || vm.isVideoHomeworkPractice()
+            vm.testResult.testTime = formatTimerClock(vm.testSessionMode === 'STUDY' || usesHomeworkPracticeTimer()
                 || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment())
                 ? activeDurationSeconds : Math.max(0, Number($scope.counter) || 0));
             vm.testResult.ieltsSessionMode = vm.testSessionMode;
@@ -4290,7 +4295,11 @@
             return vm.isStudyMode() || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment());
         }
 
-        function restoreVideoHomeworkClock(elapsedSeconds) {
+        function usesHomeworkPracticeTimer() {
+            return vm.isVideoHomeworkPractice() || !!(vm.isWritingHomeworkPractice && vm.isWritingHomeworkPractice());
+        }
+
+        function restoreHomeworkPracticeClock(elapsedSeconds) {
             var elapsed = Math.max(0, Number(elapsedSeconds) || 0);
             countdownEndsAt = Date.now() + (seriousTotalSeconds - elapsed) * 1000;
             $scope.counter = Math.max(0, seriousTotalSeconds - elapsed);
@@ -4299,7 +4308,10 @@
         }
 
         vm.isVideoHomeworkOvertime = function () {
-            return vm.isVideoHomeworkPractice() && !usesElapsedTimer() && getActiveDurationSeconds() >= seriousTotalSeconds;
+            return vm.isVideoHomeworkPractice() && vm.isHomeworkOvertime();
+        };
+        vm.isHomeworkOvertime = function () {
+            return usesHomeworkPracticeTimer() && !usesElapsedTimer() && getActiveDurationSeconds() >= seriousTotalSeconds;
         };
 
         function currentStudyElapsedSeconds() {
@@ -4361,7 +4373,7 @@
                 return currentStudyElapsedSeconds();
             }
             syncCountdownFromDeadline();
-            if (vm.isVideoHomeworkPractice() && countdownEndsAt !== null) {
+            if (usesHomeworkPracticeTimer() && countdownEndsAt !== null) {
                 return Math.max(0, seriousTotalSeconds + Math.floor((Date.now() - countdownEndsAt) / 1000));
             }
             return Math.max(0, seriousTotalSeconds - Math.max(0, Number($scope.counter) || 0));
@@ -4384,7 +4396,7 @@
                 return;
             }
             syncCountdownFromDeadline();
-            if (vm.isVideoHomeworkPractice()) {
+            if (usesHomeworkPracticeTimer()) {
                 if (readingDraftSubmitted || vm.passageNumber === 4) {
                     $timeout.cancel(mytimeout);
                     mytimeout = null;
@@ -4392,7 +4404,10 @@
                 }
                 if ($scope.counter <= 0 && !videoHomeworkTimeNoticeShown) {
                     videoHomeworkTimeNoticeShown = true;
-                    toastr.info('Đã hết thời gian dự kiến, bạn có thể tiếp tục nghe và làm bài. Hạn nộp giáo viên giao không thay đổi.', 'Tiếp tục luyện nghe');
+                    toastr.info(vm.isWritingRoute
+                        ? 'Đã hết thời gian dự kiến, bạn có thể tiếp tục viết và nộp bài khi sẵn sàng. Hạn nộp giáo viên giao không thay đổi.'
+                        : 'Đã hết thời gian dự kiến, bạn có thể tiếp tục nghe và làm bài. Hạn nộp giáo viên giao không thay đổi.',
+                        vm.isWritingRoute ? 'Tiếp tục Writing' : 'Tiếp tục luyện nghe');
                     saveReadingDraft();
                 }
                 mytimeout = $timeout($scope.onTimeout, 1000);
@@ -4418,7 +4433,7 @@
             } else if (!timerStarted) {
                 // Loading has already selected the task budget or restored a draft.
                 // Start from that value instead of replacing it with 60 minutes.
-                if (!vm.isVideoHomeworkPractice() || !timerRestoredFromDraft || countdownEndsAt === null) {
+                if (!usesHomeworkPracticeTimer() || !timerRestoredFromDraft || countdownEndsAt === null) {
                     setCountdownSeconds($scope.counter);
                 }
             } else {
@@ -4513,7 +4528,7 @@
             if (usesElapsedTimer()) {
                 return Math.max(0, Math.floor(currentStudyElapsedSeconds() / 60));
             }
-            if (vm.isVideoHomeworkOvertime()) { return Math.floor(getActiveDurationSeconds() / 60); }
+            if (vm.isHomeworkOvertime()) { return Math.floor(getActiveDurationSeconds() / 60); }
             return Math.max(0, Math.ceil(Number($scope.counter || 0) / 60));
         };
 
@@ -4521,7 +4536,7 @@
             if (usesElapsedTimer()) {
                 return formatTimerClock(currentStudyElapsedSeconds());
             }
-            if (vm.isVideoHomeworkOvertime()) { return formatTimerClock(getActiveDurationSeconds()); }
+            if (vm.isHomeworkOvertime()) { return formatTimerClock(getActiveDurationSeconds()); }
             var minutes = Math.max(0, Number($scope.minuteDisplay || 0));
             var seconds = Math.max(0, Number($scope.secondDisplay || 0));
             return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
@@ -4529,7 +4544,7 @@
 
         vm.getTimerStatusLabel = function () {
             if (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment()) { return 'elapsed'; }
-            return vm.isStudyMode() || vm.isVideoHomeworkOvertime() ? 'studied' : 'remaining';
+            return vm.isStudyMode() || vm.isHomeworkOvertime() ? 'studied' : 'remaining';
         };
 
         vm.ieltsReadingActualTest = {};
@@ -6690,6 +6705,7 @@
                 version: 2,
                 sessionMode: vm.testSessionMode,
                 activeDurationSeconds: getActiveDurationSeconds(),
+                timing: {elapsedSeconds: getActiveDurationSeconds(), limitSeconds: usesElapsedTimer() ? null : seriousTotalSeconds, untimed: usesElapsedTimer()},
                 passageNumber: vm.passageNumber || 1,
                 assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
                 assignmentSectionKey: vm.assignmentSectionKey || null,

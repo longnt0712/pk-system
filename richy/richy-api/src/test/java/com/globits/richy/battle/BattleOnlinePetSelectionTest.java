@@ -49,17 +49,28 @@ public class BattleOnlinePetSelectionTest {
     }
 
     @Test
-    public void aragondaPersistsAtLevelZeroThroughoutTheYearWithoutChangingExperience() {
+    public void aragondaIsLockedBeforeLevel26AndAdminKeepsExistingBypass() {
+        for (int level : new int[] {0, 25}) {
+            try { choose("ARAGONDA", level); fail("Aragonda must be locked"); }
+            catch (BattleOnlineException expected) { assertTrue(expected.getMessage().contains("26")); }
+        }
+        Role admin = new Role(); admin.setName("ROLE_ADMIN"); student.setRoles(Collections.singleton(admin));
+        assertEquals("ARAGONDA", choose("ARAGONDA", 0).getSelectedPetKey());
+        assertEquals(Integer.valueOf(0), student.getVocabularyExperienceLevel());
+    }
+
+    @Test
+    public void aragondaPersistsAfterSsj4ThroughoutTheYearWithoutChangingExperience() {
         for (String date : new String[] {"2026-02-01T12:00:00Z", "2026-10-31T12:00:00Z", "2026-11-06T12:00:00Z"}) {
             setSeasonClock(date);
-            BattleOnlinePetSelectionDto result = choose(" aragonda ", 0);
+            BattleOnlinePetSelectionDto result = choose(" aragonda ", 26);
             assertEquals("ARAGONDA", result.getSelectedPetKey());
             assertEquals("ARAGONDA", student.getSelectedLearningPet());
             assertTrue(result.getUnlockedPetKeys().contains("ARAGONDA"));
             assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
-            assertFalse(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
-            assertEquals(0, result.getVocabularyExperienceLevel());
-            assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
+            assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
+            assertEquals(26, result.getVocabularyExperienceLevel());
+            assertEquals(Long.valueOf(26L*User.VOCABULARY_WORDS_PER_LEVEL), student.getTotalVocabularyWordsLearned());
             assertFalse(result.isAllPetsUnlocked());
         }
         verify(users, times(3)).save(student);
@@ -68,19 +79,19 @@ public class BattleOnlinePetSelectionTest {
     @Test
     public void aragondaDoesNotReplaceExistingChoicesAndIsRetainedWhenRejoining() {
         assertEquals("MAM_HOC", choose("MAM_HOC", 0).getSelectedPetKey());
-        assertEquals("ARAGONDA", choose("ARAGONDA", 0).getSelectedPetKey());
+        assertEquals("ARAGONDA", choose("ARAGONDA", 26).getSelectedPetKey());
         EntityManager entity = mock(EntityManager.class);
         Query account = mock(Query.class), roles = mock(Query.class);
         ReflectionTestUtils.setField(service, "entityManager", entity);
         when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
         when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
         when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {
-                7L, "", "", "Student", 0L, "ARAGONDA"
+                7L, "", "", "Student", 26L*User.VOCABULARY_WORDS_PER_LEVEL, "ARAGONDA"
         }));
         when(roles.getResultList()).thenReturn(Collections.emptyList());
         Object identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
         assertEquals("ARAGONDA", ReflectionTestUtils.getField(identity, "selectedPetKey"));
-        assertEquals(0, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
+        assertEquals(26, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
         assertEquals(Boolean.FALSE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
     }
 
@@ -113,7 +124,7 @@ public class BattleOnlinePetSelectionTest {
             assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
             assertTrue(result.getUnlockedPetKeys().contains("CAPYBARA_EGG"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PERRY"));
-            assertEquals(1 + ((level >= 20 ? 9 : (level >= 18 ? 8 : (level >= 6 ? 4 : 3))) + Math.max(0, Math.min(7,level - 5))), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + ((level >= 20 ? 9 : (level >= 18 ? 8 : (level >= 6 ? 4 : 3))) + Math.max(0, Math.min(7,level - 5))), result.getUnlockedPetKeys().size());
         }
         verify(users, times(4)).save(student);
     }
@@ -138,7 +149,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("CUTE_JERRY_MOUSE", result.getSelectedPetKey());
             assertEquals("CUTE_JERRY_MOUSE", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
-            assertEquals(1 + (level >= 20 ? 16 : (level >= 18 ? 15 : (level >= 15 ? 14 : 13))), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (level >= 20 ? 16 : (level >= 18 ? 15 : (level >= 15 ? 14 : 13))), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_TOM_CAT"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_JERRY_MOUSE"));
         }
@@ -149,7 +160,7 @@ public class BattleOnlinePetSelectionTest {
     public void tomStaysSelectableAndJerryIsNotAdvertisedAtLevelEleven() {
         BattleOnlinePetSelectionDto result = choose("CUTE_TOM_CAT", 11);
         assertEquals("CUTE_TOM_CAT", result.getSelectedPetKey());
-        assertEquals(1 + (11), result.getUnlockedPetKeys().size());
+        assertEquals(11, result.getUnlockedPetKeys().size());
         assertFalse(result.getUnlockedPetKeys().contains("CUTE_JERRY_MOUSE"));
         assertEquals("CUTE_TOM_CAT", choose("CUTE_TOM_CAT", 14).getSelectedPetKey());
     }
@@ -234,7 +245,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("CUTE_TUFFY_MOUSE", result.getSelectedPetKey());
             assertEquals("CUTE_TUFFY_MOUSE", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
-            assertEquals(1 + (level >= 20 ? 16 : (level >= 18 ? 15 : 14)), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (level >= 20 ? 16 : (level >= 18 ? 15 : 14)), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_JERRY_MOUSE"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_TUFFY_MOUSE"));
         }
@@ -263,7 +274,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("CUTE_PIKACHU", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
             assertFalse(result.isAllPetsUnlocked());
-            assertEquals(1 + (level >= 25 ? 20 : (level >= 21 ? 17 : (level >= 20 ? 16 : 15))), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (level >= 25 ? 20 : (level >= 21 ? 17 : (level >= 20 ? 16 : 15))), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_TUFFY_MOUSE"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
         }
@@ -296,7 +307,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("SPARKLING_LIGHTNING", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
             assertFalse(result.isAllPetsUnlocked());
-            assertEquals(1 + (level >= 25 ? 20 : (level >= 21 ? 17 : 16)), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (level >= 25 ? 20 : (level >= 21 ? 17 : 16)), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
             assertTrue(result.getUnlockedPetKeys().contains("DRAGON_BALL_7"));
             assertTrue(result.getUnlockedPetKeys().contains("SPARKLING_LIGHTNING"));
@@ -341,7 +352,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals(level, result.getVocabularyExperienceLevel());
             assertEquals(Long.valueOf(level * User.VOCABULARY_WORDS_PER_LEVEL), student.getTotalVocabularyWordsLearned());
             assertFalse(result.isAllPetsUnlocked());
-            assertEquals(1 + (17 + Math.max(0, Math.min(3, level - 22))), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (17 + Math.max(0, Math.min(3, level - 22))), result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_PIKACHU"));
             assertTrue(result.getUnlockedPetKeys().contains("SPARKLING_LIGHTNING"));
@@ -668,7 +679,7 @@ public class BattleOnlinePetSelectionTest {
             assertFalse(result.isAllPetsUnlocked());
             assertTrue(result.getUnlockedPetKeys().contains("MAM_HOC"));
             assertTrue(result.getUnlockedPetKeys().contains("HALLOWEEN_PUMPKIN"));
-            assertEquals(1 + (level >= 25 ? 21 : (level >= 21 ? 18 : (level >= 20 ? 17 : 2))), result.getUnlockedPetKeys().size());
+            assertEquals((level>=26?1:0) + (level >= 25 ? 21 : (level >= 21 ? 18 : (level >= 20 ? 17 : 2))), result.getUnlockedPetKeys().size());
         }
         verify(users, times(4)).save(student);
     }

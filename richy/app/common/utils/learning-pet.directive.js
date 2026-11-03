@@ -154,7 +154,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 25); }
+                if (admin) { level = Math.max(level, 26); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
@@ -187,6 +187,7 @@
                 if (selectedPet === 'GOKU_KID' && level < 21) {
                     selectedPet = 'MAM_HOC';
                 }
+                if (selectedPet === 'ARAGONDA' && level < 26) { selectedPet = 'MAM_HOC'; }
                 gokuForms.forEach(function (form) {
                     if (selectedPet === form.key && level < form.level) { selectedPet = 'MAM_HOC'; }
                 });
@@ -206,12 +207,12 @@
                                 ? 'assets/images/learning-pets/mam-hoc/egg-level-1.png?v=' + version
                                 : vm.hatchedFallbackImage)
                 }];
-                vm.availablePets.push({
+                if (level >= 26) { vm.availablePets.push({
                     key: 'ARAGONDA',
                     name: 'Aragonda',
-                    description: 'Bạn rắn xanh · thè lưỡi tinh nghịch',
+                    description: 'Mở khóa ở level 26 · sau SSJ4',
                     image: aragondaUrl
-                });
+                }); }
                 vm.availablePets.push({
                     key: 'HALLOWEEN_PUMPKIN',
                     name: 'Bí ngô Halloween',

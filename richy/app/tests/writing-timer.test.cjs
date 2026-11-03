@@ -17,22 +17,25 @@ const restoreCode = section("            if (vm.testSessionMode === 'STUDY' && d
 const writingBudgetCode = section('                    if (vm.isWritingRoute) {', '                    vm.getOrdinalNumber(data);',
     source.indexOf('                    vm.ieltsReadingActualTest = data;'));
 
-function timer({mode = 'SERIOUS', writingTypes = [], audio = null} = {}) {
+function timer({mode = 'SERIOUS', writingTypes = [], audio = null, assigned = false, preview = false} = {}) {
     let now = 1000000;
     let nextId = 1;
     const scheduled = new Map();
     const context = nodeVm.createContext({
         Date: class extends Date { static now() { return now; } },
         vm: {isVideoHomeworkPractice: () => false, testSessionMode: mode, isStartTest: false, isWritingRoute: writingTypes.length > 0,
+            assignmentTaskId: assigned ? 238 : null, isPreviewMode: preview, passageNumber: 1,
             isListeningRoute: !!audio, saveTestResult() { context.submissions += 1; }},
         $scope: {$broadcast() {}, $evalAsync(callback) { if (callback) { callback(); } }},
         $window: {document: {hidden: false}}, document: {getElementById() { return audio; }},
         getMainAudio() { return audio; }, submissions: 0,
+        readingDraftSubmitted: false, saveReadingDraft() {}, toastr: {info() {}},
         getWritingTaskPackages: () => writingTypes.map(type => ({type})),
         angular: {forEach: (values, callback) => values.forEach(callback)},
         $timeout(callback) { const id = nextId++; scheduled.set(id, callback); return id; }
     });
     context.$timeout.cancel = id => scheduled.delete(id);
+    nodeVm.runInContext(section('        vm.isWritingHomeworkPractice = function', '        var pendingVideoReplay'), context);
     nodeVm.runInContext(timerCode, context);
     if (writingTypes.length) { nodeVm.runInContext(writingBudgetCode, context); }
     return {
@@ -76,6 +79,29 @@ test('an expired Writing draft stays at zero and submits on the next timer tick'
     assert.equal(c.remaining(), 0); assert.equal(c.elapsed(), 1200);
     c.tick();
     assert.equal(c.context.submissions, 1); assert.equal(c.pendingTimers(), 0);
+});
+
+test('assigned Writing continues beyond its target and keeps the same assignment', () => {
+    const c = timer({writingTypes: [16], assigned: true}); c.start(); c.tick(1205);
+    assert.equal(c.context.submissions, 0); assert.equal(c.elapsed(), 1205);
+    assert.equal(c.pendingTimers(), 1); assert.equal(c.context.vm.assignmentTaskId, 238);
+    c.tick(60); assert.equal(c.elapsed(), 1265);
+});
+
+test('assigned Writing reload restores overtime without extending its target or resubmitting', () => {
+    const c = timer({writingTypes: [16], assigned: true});
+    c.restore({sessionMode: 'SERIOUS', remainingSeconds: 0, elapsedSeconds: 1530, homeworkBudgetSeconds: 1200});
+    c.start(); c.tick(3);
+    assert.equal(c.elapsed(), 1533); assert.equal(c.context.submissions, 0);
+    assert.equal(c.context.vm.isHomeworkOvertime(), true);
+    assert.equal(nodeVm.runInContext('seriousTotalSeconds', c.context), 1200);
+});
+
+test('assigned Writing preview and an ordinary Writing test retain hard timeout', () => {
+    for (const options of [{assigned: true, preview: true}, {assigned: false}]) {
+        const c = timer({writingTypes: [16], ...options}); c.start(); c.tick(1201);
+        assert.equal(c.context.submissions, 1); assert.equal(c.pendingTimers(), 0);
+    }
 });
 
 test('a legacy draft without elapsed time retains the configured Writing budget', () => {

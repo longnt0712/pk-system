@@ -337,6 +337,36 @@
                     }
                 }).catch(fail).finally(function () { vm.busy = false; });
             };
+
+            function currentLinkContext(context) { return alive && context && vm.modal==='links' && context.setId===Number(vm.selectedSetId) && context.studentId===vm.answerStudentId() && context.actorId===Number(vm.userId); }
+            vm.openSpeakingLinks = function () {
+                if(vm.busy||vm.loadingBank||!vm.selectedSet||!vm.canOpenAnswer())return;
+                var context={setId:Number(vm.selectedSetId),studentId:vm.answerStudentId(),actorId:Number(vm.userId)};
+                vm.linkContext=context;vm.linkRows=[];vm.newShareUrl='';vm.modal='links';vm.error='';vm.busy=true;
+                return api.answerShares(context.setId,context.studentId).then(function(rows){
+                    if(!Array.isArray(rows)||rows.some(function(row){return !row||!(Number(row.id)>0)||['VIEW','EDIT'].indexOf(row.permission)<0;}))throw new Error('Chưa nhận đúng danh sách link chia sẻ.');
+                    if(currentLinkContext(context))vm.linkRows=rows;
+                }).catch(fail).finally(function(){vm.busy=false;});
+            };
+            vm.createSpeakingLink = function (permission) {
+                var context=vm.linkContext;if(vm.busy||!currentLinkContext(context)||['VIEW','EDIT'].indexOf(permission)<0)return;
+                vm.busy=true;vm.error='';return api.createAnswerShare({setId:context.setId,studentId:context.studentId,permission:permission}).then(function(link){
+                    if(!link||!(Number(link.id)>0)||Number(link.setId)!==context.setId||Number(link.studentId)!==context.studentId||link.permission!==permission||!/^[A-Za-z0-9_-]{43}$/.test(link.token||''))throw new Error('Chưa xác nhận được link của đúng người và bộ đề.');
+                    if(currentLinkContext(context)){vm.newShareUrl=$window.location.origin+'/speaking/shared.html#'+link.token;vm.newShareId=link.id;vm.linkRows.unshift(link);}
+                }).catch(fail).finally(function(){vm.busy=false;});
+            };
+            vm.copySpeakingLink = function () {
+                if(!vm.newShareUrl)return;
+                if($window.navigator&&$window.navigator.clipboard){return $window.navigator.clipboard.writeText(vm.newShareUrl).then(function(){$scope.$evalAsync(function(){if(alive)vm.notice='Đã sao chép link Speaking.';});},function(){$scope.$evalAsync(function(){if(alive)vm.error='Chưa sao chép được. Bạn có thể chọn và copy đường dẫn bên dưới.';});});}
+                vm.notice='Chọn và copy đường dẫn bên dưới để lưu lại.';
+            };
+            vm.revokeSpeakingLink = function (link) {
+                var context=vm.linkContext;if(vm.busy||!currentLinkContext(context)||!vm.linkRows.some(function(row){return row.id===link.id;}))return;
+                vm.busy=true;vm.error='';return api.revokeAnswerShare(link.id).then(function(ack){
+                    if(!ack||ack.id!==link.id||ack.revoked!==true)throw new Error('Chưa xác nhận thu hồi link. Hãy thử lại.');
+                    if(currentLinkContext(context)){vm.linkRows=vm.linkRows.filter(function(row){return row.id!==link.id;});if(vm.newShareId===link.id)vm.newShareUrl='';}
+                }).catch(fail).finally(function(){vm.busy=false;});
+            };
             vm.openPracticeSetup = function () {
                 if (vm.managementMode || !vm.selectedSet) { return; }
                 vm.practiceSets = vm.sets.filter(function (set) { return set.ownerId === vm.selectedSet.ownerId; }); vm.practiceConfig.setIds = [vm.selectedSetId]; vm.openModal('practice');

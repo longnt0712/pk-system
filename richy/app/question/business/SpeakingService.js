@@ -6,6 +6,9 @@
         function post(path, data) { return $http.post(base + path, data || {}, {timeout: 45000}).then(function (r) { return r.data; }); }
         return {
             bootstrap: function () { return get('/bootstrap'); },
+            answerShares: function (setId, studentId) { return get('/answer-shares', {setId: setId, studentId: studentId}); },
+            createAnswerShare: function (data) { return post('/answer-shares', data); },
+            revokeAnswerShare: function (id) { return post('/answer-shares/' + id + '/revoke'); },
             createSet: function (data) { return post('/sets', data); },
             bank: function (id, studentId) { return get('/sets/' + id, studentId ? {studentId: studentId} : {}); },
             students: function (id, query) { return get('/sets/' + id + '/students', {q: query || ''}); },
