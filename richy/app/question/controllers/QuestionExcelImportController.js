@@ -14,7 +14,35 @@
     angular.module('Hrm.Question')
         .directive('questionExcelImport', questionExcelImport)
         .directive('questionFileSelect', questionFileSelect)
+        .directive('questionImportLoadMore', questionImportLoadMore)
         .controller('QuestionExcelImportModalController', QuestionExcelImportModalController);
+
+    questionImportLoadMore.$inject = ['$window'];
+    function questionImportLoadMore($window) {
+        return {restrict: 'A', link: function (scope, element, attrs) {
+            var node = element[0], observer = null, generation = 0, queued = false, destroyed = false;
+            function disconnect() { if (observer) { observer.disconnect(); observer = null; } }
+            var unwatch = scope.$watchGroup([
+                attrs.questionImportLoadMoreItems, attrs.questionImportLoadMoreCount, attrs.questionImportLoadMoreEnabled
+            ], function (values) {
+                disconnect(); queued = false;
+                var stamp = ++generation, items = values[0], count = Number(values[1]);
+                if (destroyed || !values[2] || !items || !isFinite(count) || count < 0 || count >= items.length || !$window.IntersectionObserver) { return; }
+                try {
+                    observer = new $window.IntersectionObserver(function (entries) {
+                        if (destroyed || stamp !== generation || queued || !entries.some(function (entry) { return entry.target === node && entry.isIntersecting; })) { return; }
+                        queued = true;
+                        scope.$evalAsync(function () {
+                            if (destroyed || stamp !== generation) { return; }
+                            disconnect(); scope.$eval(attrs.questionImportLoadMore);
+                        });
+                    }, {root: node.closest ? node.closest('.question-import-scroll') : null, rootMargin: '240px 0px'});
+                    observer.observe(node);
+                } catch (error) { disconnect(); }
+            });
+            scope.$on('$destroy', function () { destroyed = true; generation++; disconnect(); unwatch(); });
+        }};
+    }
 
     questionExcelImport.$inject = ['$uibModal', '$timeout'];
 
@@ -138,6 +166,7 @@
         importVm.loadingPreview = false;
         importVm.loadingConfirm = false;
         importVm.preview = null;
+        importVm.previewLimit = 40;
         importVm.updateEmptyFields = true;
         importVm.selectAll = true;
 
@@ -158,6 +187,10 @@
         importVm.onTopicModeChanged = onTopicModeChanged;
         importVm.loadTopicCategories = loadTopicCategories;
         importVm.canPreview = canPreview;
+        importVm.loadMorePreviewRows = function () {
+            if (!importVm.preview || importVm.loadingPreview || importVm.loadingConfirm) { return; }
+            importVm.previewLimit = Math.min(importVm.preview.displayRows.length, importVm.previewLimit + 40);
+        };
 
         var categoriesLoaded = false;
         if (importVm.topicMode === 'new') {
@@ -267,6 +300,7 @@
             importVm.file = file;
             importVm.fileName = file ? file.name : '';
             importVm.preview = null;
+            importVm.previewLimit = 40;
 
             if (!file) {
                 return;
@@ -359,6 +393,7 @@
             ).then(
                 function (data) {
                     importVm.preview = normalizePreview(data);
+                    importVm.previewLimit = Math.min(40, importVm.preview.displayRows.length);
                     importVm.preview.topicId =
                         importVm.preview.topicId || topic.id;
                     importVm.preview.topicName =
@@ -805,6 +840,7 @@
                 return;
             }
             importVm.preview = null;
+            importVm.previewLimit = 40;
         }
 
         function cancel() {

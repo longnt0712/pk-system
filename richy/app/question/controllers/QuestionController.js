@@ -443,18 +443,20 @@
         };
 
 
+        var flashCardPageRequest = 0;
         vm.getPageFlashCard = function () {
+            var requestId = ++flashCardPageRequest;
             vm.selectedFlashCardIds = {};
             vm.flashCardsLoading = true;
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.username = vm.currentUser.username;
             vm.searchDto.userId = vm.currentUser.id;
-            blockUI.start();
-            return service.getPage(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+            var search = angular.copy(vm.searchDto);
+            return service.getPage(search, search.pageIndex, search.pageSize).then(function (data) {
+                if (requestId !== flashCardPageRequest) { return; }
                 vm.questions = data.content;
                 vm.flashCardsLoading = false;
                 vm.selectedFlashCardIds = {};
-                blockUI.stop();
                 
                 //tạm thời
                 vm.totalCard = data.totalElements; //cmt tạm
@@ -500,8 +502,8 @@
                 shuffleArray2(vm.questions7);
 
             }, function () {
+                if (requestId !== flashCardPageRequest) { return; }
                 vm.flashCardsLoading = false;
-                blockUI.stop();
                 toastr.error('Không thể tải danh sách flashcard. Vui lòng thử lại.');
             });
         };
@@ -718,12 +720,15 @@
         vm.searchTopicDto.username = vm.currentUser.username;
         vm.searchTopicDto.userId = vm.currentUser.id;
 
+        var topicListRequest = 0;
         vm.getTopics = function () {
-            blockUI.start();
-            service.getTopics(vm.searchTopicDto,1, 10000000).then(function (data) {
+            var requestId = ++topicListRequest;
+            return service.getTopics(angular.copy(vm.searchTopicDto),1, 10000000).then(function (data) {
+                if (requestId !== topicListRequest) { return; }
                 vm.topics = data.content;
-                blockUI.stop();
-                // console.log(vm.topics);
+            }, function () {
+                if (requestId !== topicListRequest) { return; }
+                toastr.error('Không thể cập nhật danh sách topic. Vui lòng thử lại.');
             });
         };
         vm.saveTopic = function () {

@@ -366,6 +366,9 @@
                         </div>
                     </div>
 
+                    <div class="text-muted" ng-if="vm.flashCardsLoading" role="status" aria-live="polite" style="padding:8px 12px">
+                        <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang cập nhật danh sách flashcard...
+                    </div>
                     <div class="flashcard-delete-toolbar" ng-if="vm.showListFlashCard"
                          role="group" aria-label="Xóa flashcard đã chọn">
                         <button type="button" class="btn btn-default" ng-click="vm.toggleAllFlashCards()"
@@ -859,6 +862,10 @@
         </div>
 
         <div class="modal-body">
+            <div class="alert alert-info" ng-if="importVm.loadingPreview || importVm.loadingConfirm" role="status" aria-live="polite">
+                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                {{importVm.loadingConfirm ? 'Đang nhập các dòng đã chọn...' : (importVm.savingTopic ? 'Đang tạo topic...' : 'Đang đọc và đối chiếu file Excel...')}}
+            </div>
             <div ng-if="!importVm.preview">
                 <div class="alert alert-info">
                     <strong>Excel format</strong>
@@ -1028,11 +1035,11 @@
 
                 <div class="checkbox">
                     <label>
-                        <input type="checkbox" ng-model="importVm.updateEmptyFields"> Fill pronounce, first language and CEFR level only when existing values are empty
+                        <input type="checkbox" ng-model="importVm.updateEmptyFields" ng-disabled="importVm.loadingConfirm"> Fill pronounce, first language and CEFR level only when existing values are empty
                     </label>
                 </div>
 
-                <div class="table-responsive" style="max-height: 420px;
+                <div class="table-responsive question-import-scroll" style="max-height: 420px;
             overflow-y: auto;
             border: 1px solid #ddd;">
 
@@ -1043,7 +1050,7 @@
                             <!-- Checkbox chọn dòng -->
                             <th class="text-center" style="width: 45px; min-width: 45px;">
 
-                                <input type="checkbox" ng-model="importVm.selectAll" ng-change="importVm.toggleAllRows()">
+                                <input type="checkbox" ng-model="importVm.selectAll" ng-disabled="importVm.loadingConfirm" ng-change="importVm.toggleAllRows()">
                             </th>
 
                             <!-- Số dòng trong Excel -->
@@ -1084,12 +1091,12 @@
                         </thead>
 
                         <tbody>
-                        <tr ng-repeat="row in importVm.preview.displayRows track by $index">
+                        <tr ng-repeat="row in importVm.preview.displayRows | limitTo:importVm.previewLimit track by $index">
 
                             <!-- Checkbox chỉ mở khi dòng có thể import -->
                             <td class="text-center" style="vertical-align: middle;">
 
-                                <input type="checkbox" ng-model="row.selected" ng-disabled="!importVm.isImportable(row)" ng-change="importVm.onRowSelectionChanged()">
+                                <input type="checkbox" ng-model="row.selected" ng-disabled="importVm.loadingConfirm || !importVm.isImportable(row)" ng-change="importVm.onRowSelectionChanged()">
                             </td>
 
                             <td style="vertical-align: middle;">
@@ -1117,7 +1124,7 @@
 
                                 <div ng-if="row.status === 'CONFLICT'">
 
-                                    <select class="form-control" ng-model="row.selectedExistingQuestionId" ng-change="importVm.onConflictCandidateChanged(row)" ng-options="candidate.id as candidate.displayText
+                                    <select class="form-control" ng-disabled="importVm.loadingConfirm" ng-model="row.selectedExistingQuestionId" ng-change="importVm.onConflictCandidateChanged(row)" ng-options="candidate.id as candidate.displayText
                                         for candidate in row.candidates
                                         track by candidate.id">
 
@@ -1162,6 +1169,17 @@
 
                             <td style="vertical-align: middle;">
                                 {{row.message}}
+                            </td>
+                        </tr>
+
+                        <tr ng-if="importVm.previewLimit < importVm.preview.displayRows.length"
+                            question-import-load-more="importVm.loadMorePreviewRows()"
+                            question-import-load-more-items="importVm.preview.displayRows"
+                            question-import-load-more-count="importVm.previewLimit"
+                            question-import-load-more-enabled="!importVm.loadingPreview && !importVm.loadingConfirm">
+                            <td colspan="9" class="text-center" style="padding:12px">
+                                <span role="status">Đã hiện {{importVm.previewLimit}}/{{importVm.preview.displayRows.length}} dòng.</span>
+                                <button type="button" class="btn btn-default btn-sm" ng-disabled="importVm.loadingConfirm" ng-click="importVm.loadMorePreviewRows()">Hiện thêm 40 dòng</button>
                             </td>
                         </tr>
 

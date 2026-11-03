@@ -160,6 +160,31 @@ test('previews without conflicts or rows retain their original display order', a
     }
 });
 
+test('lazy preview preserves unseen selections, conflict choices and complete Excel-order confirmation', async () => {
+    const rows = Array.from({length: 427}, (_, i) => ({rowNumber: i + 2, word: 'Word ' + i,
+        status: i % 10 === 0 ? 'CONFLICT' : 'NEW', candidates: i % 10 === 0 ? [{id: i + 1000}] : []}));
+    const {vm, calls} = harness({topics: [{id: 8}], preview: () => ({rows})});
+    vm.selectedTopic = {id: 8}; vm.onFileSelected({name: 'large.xlsx', size: 1000}); await vm.loadPreview();
+    assert.equal(vm.previewLimit, 40); assert.equal(vm.preview.displayRows.length, 427); assert.equal(vm.getSelectedCount(), 384);
+    const hiddenConflict = vm.preview.displayRows[42]; assert.equal(hiddenConflict, rows[420]);
+    hiddenConflict.selectedExistingQuestionId = 1420; vm.onConflictCandidateChanged(hiddenConflict);
+    vm.loadMorePreviewRows(); assert.equal(vm.previewLimit, 80); assert.equal(vm.preview.displayRows[42], hiddenConflict);
+    vm.selectAll = false; vm.toggleAllRows(); assert.equal(vm.getSelectedCount(), 0);
+    vm.selectAll = true; vm.toggleAllRows(); assert.equal(vm.getSelectedCount(), 385);
+    await vm.confirmImport(); assert.equal(calls.confirm[0].rows.length, 385);
+    assert.deepEqual(calls.confirm[0].rows.map(row => row.rowNumber), rows.filter(row => row.selected).map(row => row.rowNumber));
+    assert.equal(calls.confirm[0].rows.find(row => row.rowNumber === 422).selectedExistingQuestionId, 1420);
+});
+
+test('loading another file resets the batch, and busy confirmation cannot append more rows', async () => {
+    const {vm} = harness({topics: [{id: 8}], preview: () => ({rows: Array.from({length: 81}, (_, i) => ({rowNumber: i + 2, word: 'Word ' + i, status: 'NEW'}))})});
+    vm.selectedTopic = {id: 8}; vm.onFileSelected({name: 'large.xlsx', size: 1000}); await vm.loadPreview();
+    vm.loadingConfirm = true; vm.loadMorePreviewRows(); assert.equal(vm.previewLimit, 40);
+    vm.loadingConfirm = false; vm.loadMorePreviewRows(); vm.loadMorePreviewRows(); assert.equal(vm.previewLimit, 81);
+    vm.backToFileSelection(); assert.equal(vm.preview, null); assert.equal(vm.previewLimit, 40);
+    vm.onFileSelected({name: 'another.xlsx', size: 1000}); await vm.loadPreview(); assert.equal(vm.previewLimit, 40);
+});
+
 test('category loading supports multiple pages and retry without exposing a partial failed list', async () => {
     let fail = true;
     const {vm, calls} = harness({categories(page) {

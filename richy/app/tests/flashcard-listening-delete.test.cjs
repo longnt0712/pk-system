@@ -6,7 +6,7 @@ const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../question/controllers/QuestionController.js'), 'utf8');
 const feature = source.slice(source.indexOf('vm.selectedFlashCardIds = {};'), source.indexOf('// $scope.setPage'));
-const loadPage = source.slice(source.indexOf('vm.getPageFlashCard = function ()'), source.indexOf('vm.clickShowListFlashCard = function'));
+const loadPage = source.slice(source.indexOf('var flashCardPageRequest = 0;'), source.indexOf('vm.clickShowListFlashCard = function'));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function setup(outcomes = {}) {
@@ -16,7 +16,7 @@ function setup(outcomes = {}) {
         getPageFlashCard() {calls.reload++; vm.selectedFlashCardIds = {};},
         loadLevelTable() {calls.levels++;}};
     const context = nodeVm.createContext({vm, $scope: {},
-        angular: {forEach(items, callback) {(items || []).forEach(callback);}},
+        angular: {copy: structuredClone, forEach(items, callback) {(items || []).forEach(callback);}},
         blockUI: {start() {calls.blocks++;}, stop() {calls.blocks--; }},
         toastr: {success(message) {calls.success.push(message);}, error(message) {calls.error.push(message);}},
         service: {deleteObject(id) {
@@ -192,6 +192,7 @@ test('reloading clears selection on page/filter changes and handles deleting the
     nodeVm.runInContext(loadPage, context);
     const loading = vm.getPageFlashCard();
     assert.equal(vm.flashCardsLoading, true);
+    assert.equal(calls.blocks, 0, 'refresh uses the inline loading status without a global overlay');
     assert.equal(Object.keys(vm.selectedFlashCardIds).length, 0);
     await loading;
     assert.equal(vm.currentCard.id, undefined);
