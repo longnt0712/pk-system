@@ -759,18 +759,7 @@
 				toastr.error('Không tải được các buổi học đã thiết lập.', 'Lỗi');
 			});
 
-			service.getScheduleTopics().then(function (topics) {
-				vm.scheduleTopics = angular.isArray(topics) ? topics : [];
-				vm.buildScheduleTaskCategories();
-				vm.buildScheduleTopicSources();
-				if (vm.taskEditor && vm.taskEditor.activityType === 'COMPREHENSIVE') {
-					vm.initializeComprehensiveAssignment(true);
-				}
-				vm.scheduleTopicsLoading = false;
-			}, function () {
-				vm.scheduleTopicsLoading = false;
-				toastr.error('Không tải được danh sách topic.', 'Lỗi');
-			});
+			refreshTaskCatalogs();
 
 			service.getScheduleTopicCategories().then(function (categories) {
 				vm.scheduleTopicCategories = angular.isArray(categories) ? categories : [];
@@ -782,14 +771,6 @@
 				vm.scheduleTopicCategoriesLoading = false;
 				vm.scheduleTopicCategoriesError = true;
 				toastr.error('Không tải được danh sách category bài học.', 'Lỗi');
-			});
-
-			service.getAssignableIeltsTests().then(function (tests) {
-				vm.assignableIeltsTests = angular.isArray(tests) ? tests : [];
-				vm.assignableIeltsTestsLoading = false;
-			}, function () {
-				vm.assignableIeltsTestsLoading = false;
-				toastr.error('Không tải được danh sách đề IELTS.', 'Lỗi');
 			});
 
 			vm.loadScheduleMonth();
@@ -2304,6 +2285,47 @@
                 : (task.comprehensiveTimeLimitMinutes == null ? 60 : task.comprehensiveTimeLimitMinutes) + ' phút / lượt';
         };
         /* End comprehensive assignment settings. */
+        var taskCatalogRequest = 0;
+        function refreshTaskCatalogs() {
+            var request = ++taskCatalogRequest;
+            vm.scheduleTopicsLoading = true;
+            vm.assignableIeltsTestsLoading = true;
+
+            service.getScheduleTopics().then(function (topics) {
+                if (request !== taskCatalogRequest) { return; }
+                vm.scheduleTopicsLoading = false;
+                if (!angular.isArray(topics) || angular.equals(vm.scheduleTopics, topics)) { return; }
+                vm.scheduleTopics = topics;
+                vm.buildScheduleTaskCategories();
+                vm.buildScheduleTopicSources();
+                vm.rebuildComprehensiveTaskCategories();
+            }, function () {
+                if (request !== taskCatalogRequest) { return; }
+                vm.scheduleTopicsLoading = false;
+                toastr.warning('Không cập nhật được danh sách topic. Bạn có thể mở lại + Tasks để thử lại.');
+            });
+
+            service.getAssignableIeltsTests().then(function (tests) {
+                if (request !== taskCatalogRequest) { return; }
+                vm.assignableIeltsTestsLoading = false;
+                if (angular.isArray(tests) && !angular.equals(vm.assignableIeltsTests, tests)) {
+                    vm.assignableIeltsTests = tests;
+                    taskExerciseVideoCache = {};
+                }
+            }, function () {
+                if (request !== taskCatalogRequest) { return; }
+                vm.assignableIeltsTestsLoading = false;
+                toastr.warning('Không cập nhật được danh sách đề. Bạn có thể mở Chọn bài để thử lại.');
+            });
+        }
+
+        vm.openNewScheduleTask = function (section) {
+            if (vm.taskEditor) { return; }
+            vm.openScheduleTask(section);
+            if (vm.taskEditor) { refreshTaskCatalogs(); }
+        };
+
+
 		vm.openScheduleTask = function (section, task) {
 			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }

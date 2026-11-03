@@ -1294,7 +1294,7 @@
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-book"></i> Class</h4>
                         <div class="class-day-plan-actions">
-                        <button type="button" class="btn btn-primary" data-ng-click="vm.openScheduleTask('CLASS')"
+                        <button type="button" class="btn btn-primary" data-ng-click="vm.openNewScheduleTask('CLASS')"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         </div>
                     </div>
@@ -1327,7 +1327,7 @@
                             <i class="fa" data-ng-class="vm.exportingHomeworkTasksImage ? 'fa-spinner fa-spin' : 'fa-image'"></i>
                             {{vm.exportingHomeworkTasksImage ? 'Đang tạo ảnh...' : 'Xuất ảnh Homework'}}
                         </button>
-                        <button type="button" class="btn btn-warning" data-ng-click="vm.openScheduleTask('HOMEWORK')"
+                        <button type="button" class="btn btn-warning" data-ng-click="vm.openNewScheduleTask('HOMEWORK')"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         </div>
                     </div>

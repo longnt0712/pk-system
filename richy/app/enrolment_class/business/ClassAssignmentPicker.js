@@ -39,7 +39,7 @@
                             vm.loading = true; vm.error = '';
                             var catalog = vm.dailyListening ? service.getAssignableDailyListeningTests() : service.getAssignableIeltsTests();
                             return $q.all([catalog, vm.dailyListening ? service.getScheduleTopics() : $q.when([]),
-                                folders.load(true, false, mode)]).then(function (data) {
+                                folders.load(true, true, mode)]).then(function (data) {
                                 if (request !== requestId) { return; }
                                 vm.catalog = (data[0] || []).filter(function (file) { return vm.dailyListening || fileMode(file) === mode; })
                                     .sort(function (a, b) { return String(a.title || '').localeCompare(String(b.title || ''), 'vi', {numeric: true}); });
