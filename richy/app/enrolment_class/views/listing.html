@@ -1593,7 +1593,7 @@
 </script>
 
 <script type="text/ng-template" id="class_schedule_task_editor_modal.html">
-    <form name="taskForm" class="class-management-modal class-task-editor-modal" novalidate data-ng-submit="taskForm.$valid && vm.commitScheduleTask()">
+    <form name="taskForm" class="class-management-modal class-task-editor-modal" novalidate data-ng-submit="taskForm.$valid && !vm.taskEditorLoading() && vm.commitScheduleTask()">
         <div class="modal-header class-task-editor-header">
             <div><small>{{vm.taskEditor.section === 'HOMEWORK' ? 'BÀI TẬP VỀ NHÀ' : 'NHIỆM VỤ TRÊN LỚP'}}</small><h4 class="modal-title">{{vm.taskEditorIndex < 0 ? 'Tạo task mới' : 'Chỉnh sửa task'}}</h4></div>
             <button type="button" class="close" data-ng-click="vm.cancelScheduleTask()" data-ng-disabled="vm.scheduleDaySaving || vm.taskExercisePickerOpen" aria-label="Đóng form task"><span aria-hidden="true">&times;</span></button>
@@ -1786,7 +1786,8 @@
         <div class="modal-footer class-task-editor-footer">
             <span class="class-task-help" data-ng-if="vm.scheduleDaySaving" role="status"><i class="fa fa-spinner fa-spin"></i> Đang lưu task...</span>
             <button type="button" class="btn btn-default" data-ng-click="vm.cancelScheduleTask()" data-ng-disabled="vm.scheduleDaySaving || vm.taskExercisePickerOpen">Hủy sửa</button>
-            <button type="submit" class="btn btn-primary" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExercisePickerOpen || vm.scheduleListeningItemsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError || vm.validateComprehensiveTask(vm.taskEditor)">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+            <span class="class-task-help" data-ng-if="vm.taskEditorLoading() && !vm.scheduleDaySaving" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải dữ liệu task...</span>
+            <button type="submit" class="btn btn-primary" data-ng-if="!vm.taskEditorLoading()" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExerciseVideoError || vm.validateComprehensiveTask(vm.taskEditor)">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
         </div>
     </form>
 </script>

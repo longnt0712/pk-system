@@ -2319,6 +2319,16 @@
             });
         }
 
+        vm.taskEditorLoading = function () {
+            var task = vm.taskEditor;
+            if (!task) { return false; }
+            return vm.taskExercisePickerOpen
+                || (task.activityType === 'DAILY_VOCAB' && vm.scheduleTopicsLoading)
+                || (task.activityType === 'DAILY_LISTENING' && vm.scheduleListeningItemsLoading)
+                || (vm.isIeltsTask(task) && vm.assignableIeltsTestsLoading)
+                || (task.activityType === 'COMPREHENSIVE' && (vm.taskExerciseVideoLoading || vm.taskComprehensivePlanLoading));
+        };
+
         vm.openNewScheduleTask = function (section) {
             if (vm.taskEditor) { return; }
             vm.openScheduleTask(section);
