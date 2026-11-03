@@ -122,6 +122,11 @@
             });
         };
 
+        self.cancelScheduleMove = function (classId, dayId, version) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/day/' + dayId
+                + '/cancel-move?version=' + encodeURIComponent(version), 'POST', null, null);
+        };
+
         self.deleteExtraScheduleDay = function (classId, dayId, version) {
             if (!classId || !dayId || version == null) { return $q.when(false); }
             return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/day/' + dayId

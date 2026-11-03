@@ -190,6 +190,13 @@ public class RestEnrolmentClassController {
     }
 
     @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
+    @RequestMapping(value = "/schedule/{classId}/day/{dayId}/cancel-move", method = RequestMethod.POST)
+    public EnrolmentClassScheduleDayDto cancelScheduleMove(@PathVariable Long classId, @PathVariable Long dayId,
+            @RequestParam long version) {
+        return service.cancelScheduleMove(classId, dayId, version);
+    }
+
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
     @RequestMapping(value = "/schedule/{classId}/day/{dayId}/task/{taskId}/progress", method = RequestMethod.PUT)
     public EnrolmentClassScheduleDayDto updateTaskProgress(@PathVariable Long classId, @PathVariable Long dayId,
             @PathVariable Long taskId, @RequestBody com.globits.richy.dto.EnrolmentClassTaskProgressUpdateDto dto) {

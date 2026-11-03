@@ -1233,6 +1233,10 @@
                 Đây là buổi được dời từ <strong>{{vm.scheduleDay.movedFromDate | date:'dd/MM/yyyy'}}</strong>.
                 Toàn bộ topic, task, ghi chú và tiến độ của buổi cũ đã được chuyển sang ngày này.
                 <span data-ng-if="vm.scheduleDay.moveReason"><br />Lý do: {{vm.scheduleDay.moveReason}}</span>
+                <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleMove()"
+                        data-ng-disabled="vm.scheduleMoving || vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor || vm.homeworkHasDrafts()">
+                    <i class="fa fa-undo"></i> Hủy dời buổi học
+                </button>
             </div>
             <div class="alert alert-warning" data-ng-if="vm.scheduleDayIsExtraDate">
                 <i class="fa fa-calendar-plus-o"></i>

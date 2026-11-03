@@ -1157,6 +1157,32 @@
 			});
 		};
 
+        vm.cancelScheduleMove = function () {
+            var day = vm.scheduleDay;
+            if (!day || !day.movedFromDate || day.movedToDate || !day.id || day.version == null
+                || vm.scheduleMoving || vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving
+                || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.homeworkHasDrafts() || vm.taskEditor) { return; }
+            if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
+                toastr.warning('Hãy chờ lưu xong thay đổi trước khi hủy dời.'); return;
+            }
+            if (!window.confirm('Trả buổi học về ngày gốc? Nội dung và hạn bài tập nhập tay hiện tại sẽ được giữ.')) { return; }
+            vm.scheduleMoving = true;
+            service.cancelScheduleMove(vm.scheduleClass.id, day.id, day.version).then(function (saved) {
+                vm.scheduleMoving = false;
+                if (!saved || saved.id !== day.id || !saved.scheduleDate || saved.movedFromDate || saved.movedToDate) {
+                    toastr.error('Chưa xác nhận hủy dời. Hãy tải lại lịch để kiểm tra.'); return;
+                }
+                scheduleSessionRequest++; homeworkReviewRequest++;
+                if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
+                vm.scheduleMonthDate = moment(saved.scheduleDate, 'YYYY-MM-DD', true).startOf('month').toDate();
+                vm.loadScheduleMonth();
+                toastr.success('Đã trả buổi học về ' + moment(saved.scheduleDate, 'YYYY-MM-DD').format('DD/MM/YYYY') + '.');
+            }, function (error) {
+                vm.scheduleMoving = false;
+                toastr.error(error && error.data && error.data.message ? error.data.message : 'Không hủy dời được buổi học.');
+            });
+        };
+
         vm.openScheduleMove = function () {
 			if (vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor
 				|| vm.scheduleDay.dayOff) { return; }

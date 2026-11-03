@@ -1273,6 +1273,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             day = new EnrolmentClassScheduleDay(); day.setEnrolmentClass(selected);
             day.setCreateDate(LocalDateTime.now()); day.setCreatedBy(teacher.getUsername());
         }
+        EffectiveClassSchedule.Slot sourceSlot = timeline.on(dto.getFromDate());
         if (day.getMovedFromDate() == null || dto.getFromDate().compareTo(day.getMovedFromDate()) < 0) { day.setMovedFromDate(dto.getFromDate()); }
         day.setScheduleDate(dto.getToDate()); day.setSessionStartTime(start); day.setSessionEndTime(end); day.setMoveReason(reason);
         for (Map.Entry<EnrolmentClassScheduleTask, String> entry : shifted.entrySet()) { entry.getKey().setDueDate(entry.getValue()); }
@@ -1287,12 +1288,58 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             EnrolmentClassScheduleDay marker = new EnrolmentClassScheduleDay();
             marker.setEnrolmentClass(selected); marker.setScheduleDate(dto.getFromDate()); marker.setMovedToDate(dto.getToDate());
             marker.setMovedDayId(day.getId()); marker.setMoveReason(reason);
+            if (sourceSlot != null) {
+                marker.setSessionStartTime(sourceSlot.startTime);
+                marker.setSessionEndTime(sourceSlot.endTime);
+            }
             marker.setCreateDate(LocalDateTime.now()); marker.setCreatedBy(teacher.getUsername());
             scheduleDayRepository.saveAndFlush(marker);
         } catch (org.springframework.dao.OptimisticLockingFailureException error) {
             throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Lịch vừa thay đổi. Hãy tải lại trước khi dời.");
         } catch (org.springframework.dao.DataIntegrityViolationException error) {
             throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Ngày mới vừa được sử dụng. Không dời và không ghi đè kế hoạch.");
+        }
+        return scheduleDayWithCompletion(day);
+    }
+
+    @Override
+    public EnrolmentClassScheduleDayDto cancelScheduleMove(Long classId, Long dayId, long version) {
+        User teacher = getCurrentUser();
+        EnrolmentClass selected = enrolmentClassRepository.findOne(classId);
+        if (selected == null || !canEditClass(teacher, selected)) {
+            throw new AccessDeniedException("Bạn không được hủy dời buổi lớp này.");
+        }
+        EnrolmentClassScheduleDay day = scheduleDayRepository.findOne(dayId);
+        if (day == null || !classId.equals(day.getEnrolmentClass().getId()) || day.getMovedFromDate() == null
+                || day.getMovedToDate() != null || day.getScheduleVersion() != version) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Lịch đã thay đổi. Hãy tải lại trước khi hủy dời.");
+        }
+        List<EnrolmentClassScheduleDay> markers = scheduleDayRepository.findByEnrolmentClassIdAndMovedDayId(classId, dayId);
+        if (markers.isEmpty()) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Không tìm thấy ngày gốc của buổi đã dời.");
+        }
+        EnrolmentClassScheduleDay original = java.util.Collections.min(markers,
+                java.util.Comparator.comparing(EnrolmentClassScheduleDay::getId));
+        String originalDate = original.getScheduleDate();
+        if (original.getSessionStartTime() != null && original.getSessionEndTime() != null) {
+            day.setSessionStartTime(original.getSessionStartTime());
+            day.setSessionEndTime(original.getSessionEndTime());
+        } else if (effectiveSchedule(classId).weeklyCount(originalDate) == 1) {
+            day.setSessionStartTime(null);
+            day.setSessionEndTime(null);
+        }
+        try {
+            // Release the unique class/date key before moving the live plan back.
+            scheduleDayRepository.delete(markers);
+            scheduleDayRepository.flush();
+            day.setScheduleDate(originalDate);
+            day.setMovedFromDate(null);
+            day.setMoveReason(null);
+            day.setModifyDate(LocalDateTime.now());
+            day.setModifiedBy(teacher.getUsername());
+            day = scheduleDayRepository.saveAndFlush(day);
+        } catch (org.springframework.dao.OptimisticLockingFailureException | org.springframework.dao.DataIntegrityViolationException error) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Lịch vừa thay đổi. Hãy tải lại trước khi hủy dời.");
         }
         return scheduleDayWithCompletion(day);
     }

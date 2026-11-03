@@ -45,6 +45,8 @@ public interface EnrolmentClassService {
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
     public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version);
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date);
+    EnrolmentClassScheduleDayDto cancelScheduleMove(Long classId, Long dayId, long version);
+
     public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto);
 	public List<TopicForListAllDto> getScheduleTopics();
 	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId);
