@@ -371,7 +371,7 @@
             })
 
             .state('application.speaking', {
-                url: '/speaking?set&part&practice',
+                url: '/speaking-studio?set&part&practice',
                 reloadOnSearch: false,
                 templateUrl: 'question/views/speaking.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Speaking Studio', speakingManagement: false},

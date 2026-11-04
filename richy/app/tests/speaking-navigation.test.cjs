@@ -18,7 +18,7 @@ test('the Speaking Studio dashboard card opens personal Studio for every IELTSRo
         assert.equal(nodeVm.runInNewContext(condition, {settings:{ieltsRoom:true}, vm}), true);
     }
     assert.equal(nodeVm.runInNewContext(condition, {settings:{ieltsRoom:false}, vm:{isRoleAdmin:true}}), false);
-    assert.match(card[0], /href="speaking"/);
+    assert.match(card[0], /href="speaking-studio"/);
     assert.match(card[0], /fa-microphone/);
     assert.match(card[0], /SPEAKING STUDIO/);
 });
@@ -32,8 +32,26 @@ test('Studio and creation have separate menu routes and creation follows the adm
     assert.match(create[0], /ui-sref="application\.create_speaking_test"/);
     assert.match(create[0], /href="create_speaking_test"/);
     assert.match(create[0], /Tạo test Speaking/);
-    assert.match(header, /ui-sref="application\.speaking" href="speaking"/);
+    assert.match(header, /ui-sref="application\.speaking" href="speaking-studio"/);
     const testMenu = header.match(/<li class="dropdown test-room-nav"[^>]*>/);
     assert.ok(testMenu);
     assert.match(attr(testMenu[0], 'ng-class'), /application\.create_speaking_test/);
+});
+
+test('Studio uses a route without a matching static directory and keeps its URL parameters', () => {
+    const questionModule = read('question/question.module.js');
+    assert.match(questionModule, /url: '\/speaking-studio\?set&part&practice'/);
+    assert.equal(fs.existsSync(path.join(__dirname, '..', 'speaking-studio')), false);
+});
+
+test('old Studio URLs keep query and fragment on redirect, while existing shared links keep their entry point', () => {
+    const redirect = read('speaking/index.html');
+    const script = redirect.match(/<script>([\s\S]*?)<\/script>/)[1];
+    for (const [search, hash] of [['', ''], ['?set=5&part=3&practice=9', '#current']]) {
+        const navigations = [];
+        nodeVm.runInNewContext(script, {location: {search, hash, replace: url => navigations.push(url)}});
+        assert.deepEqual(navigations, ['/speaking-studio' + search + hash]);
+    }
+    assert.match(redirect, /href="\/speaking-studio"/);
+    assert.match(read('speaking/shared.html'), /ng-app="SpeakingPublic"/);
 });
