@@ -60,17 +60,42 @@
 }
 .teaching-pdf-library-form label { flex: 1 1 170px; min-width: 0; margin: 0; }
 .teaching-pdf-library-form .form-control { width: 100%; margin-top: 3px; }
-.teaching-pdf-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 8px; padding: 12px; }
-.teaching-pdf-folder-card { display: flex; align-items: center; border: 1px solid #e6eaf4; border-radius: 10px; background: #fafbff; }
+.teaching-pdf-upload-area {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 10px 12px;
+    border: 1px dashed #c3cbea; border-radius: 9px; background: #f7f8ff; color: #485d81; font-size: 12px;
+}
+.teaching-pdf-upload-area i { color: #6254ca; font-size: 18px; }
+.teaching-pdf-library-notice { color: #157452; }
+.teaching-pdf-explorer-items { padding: 0 12px 10px; }
+.teaching-pdf-folder-card, .teaching-pdf-file-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-width: 0; padding: 6px 8px; border-bottom: 1px solid #e6eaf4; background: #fff;
+}
+.teaching-pdf-explorer-items > :last-child { border-bottom-color: transparent; }
 .teaching-pdf-folder-open {
     display: flex; align-items: center; flex: 1 1 auto; min-width: 0; gap: 8px; padding: 10px 8px;
     border: 0; border-radius: 10px; color: #263655; background: transparent; font-weight: 700; text-align: left; overflow-wrap: anywhere;
 }
 .teaching-pdf-folder-open:hover { background: #f0f3ff; }
 .teaching-pdf-folder-open i { color: #bd790f; font-size: 24px; }
-.teaching-pdf-folder-card .teaching-pdf-organize { margin-right: 6px; }
-.teaching-pdf-file-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-top: 1px solid #eef0f7; overflow-wrap: anywhere; }
-.teaching-pdf-file-row .fa-file-pdf-o { margin-right: 4px; color: #b13c55; }
+.teaching-pdf-file-row { flex-wrap: wrap; }
+.teaching-pdf-file-name { display: flex; flex: 1 1 160px; align-items: center; gap: 8px; padding: 8px; min-width: 0; overflow-wrap: anywhere; }
+.teaching-pdf-file-name i { flex: 0 0 24px; text-align: center; color: #b13c55; font-size: 19px; }
+.teaching-pdf-explorer [draggable="true"] { cursor: grab; }
+.teaching-pdf-explorer .is-pdf-drop-target { background: #eeebff; outline: 2px solid #8872ef; outline-offset: -2px; }
+.teaching-pdf-explorer.is-grid .teaching-pdf-explorer-items {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(195px, 100%), 1fr)); gap: 8px;
+}
+.teaching-pdf-explorer.is-grid .teaching-pdf-folder-card, .teaching-pdf-explorer.is-grid .teaching-pdf-file-row {
+    flex-direction: column; align-items: stretch; border: 1px solid #e6eaf4; border-radius: 10px; background: #fafbff;
+}
+.teaching-pdf-explorer.is-grid .teaching-pdf-folder-open, .teaching-pdf-explorer.is-grid .teaching-pdf-file-name {
+    flex: 1 1 auto; flex-direction: column; justify-content: center; text-align: center; min-height: 70px;
+}
+.teaching-pdf-explorer.is-grid .teaching-pdf-folder-open i, .teaching-pdf-explorer.is-grid .teaching-pdf-file-name i { font-size: 30px; }
+.teaching-pdf-explorer.is-grid .teaching-pdf-organize { align-self: flex-end; }
+.teaching-pdf-explorer.is-grid .teaching-pdf-file-row .teaching-pdf-toolbar { justify-content: center; }
+.teaching-pdf-explorer.is-grid .is-pdf-drop-target { background: #eeebff; }
 .teaching-pdf-explorer-empty { margin: 0; padding: 18px 12px; color: #556583; }
 .teaching-pdf-reader { min-height: 0; display: flex; flex-direction: column; }
 .teaching-pdf-controls { min-height: 39px; }

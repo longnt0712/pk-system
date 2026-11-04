@@ -58,10 +58,18 @@
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+                        var libraryDrag, libraryDropTarget;
                         vm.pages = [];
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
                         var foldersById = Object.create(null);
+                        var viewKey = 'teaching-pdf-view-mode';
+                        vm.libraryView = 'list';
+                        try { if (window.localStorage.getItem(viewKey) === 'grid') { vm.libraryView = 'grid'; } } catch (ignore) {}
+                        vm.toggleLibraryView = function () {
+                            vm.libraryView = vm.libraryView === 'list' ? 'grid' : 'list';
+                            try { window.localStorage.setItem(viewKey, vm.libraryView); } catch (ignore) {}
+                        };
 
                         function fail(error, fallback) {
                             vm.error = error && error.data && error.data.message || fallback;
@@ -121,17 +129,25 @@
                         vm.saveLibrary = function () {
                             var form = vm.libraryForm;
                             if (!form || !form.name || !form.name.trim() || vm.busy) { return; }
+                            return saveLibraryEntry(form);
+                        };
+                        function saveLibraryEntry(form, move) {
                             var isFolder = form.kind === 'folder';
                             var path = base + (isFolder ? '/folders' : '/files');
                             var data = {name: form.name};
-                            data[isFolder ? 'parentId' : 'folderId'] = form.parentId;
-                            vm.busy = true; vm.error = '';
+                            var parentKey = isFolder ? 'parentId' : 'folderId';
+                            data[parentKey] = form.parentId;
+                            vm.busy = true; vm.error = ''; vm.libraryNotice = '';
                             var request = form.id ? http.put(path + '/' + encodeURIComponent(form.id), data) : http.post(path, data);
                             return request.then(function (response) {
                                 var saved = response.data;
+                                if (!saved || !saved.id || !saved.name || (form.id && saved.id !== form.id) ||
+                                        (saved[parentKey] || null) !== (form.parentId || null)) {
+                                    vm.error = 'Chưa xác nhận được thay đổi trong kho PDF. Hãy mở lại kho để kiểm tra.';
+                                    return;
+                                }
                                 var entries = isFolder ? vm.folders : vm.library;
                                 var existing = entries.find(function (item) { return item.id === saved.id; });
-                                var parentKey = isFolder ? 'parentId' : 'folderId';
                                 saved[parentKey] = saved[parentKey] || null;
                                 if (existing) {
                                     if (!isFolder && existing.name !== saved.name) {
@@ -144,23 +160,103 @@
                                 } else { entries.push(saved); }
                                 vm.libraryForm = null;
                                 refreshExplorer();
+                                if (move) { vm.libraryNotice = 'Đã chuyển ' + saved.name + ' vào ' + (saved[parentKey] ? foldersById[saved[parentKey]].name : 'Kho PDF') + '.'; }
                             }, function (error) { fail(error, 'Không lưu được thay đổi trong kho PDF.'); })
                                 .finally(function () { vm.busy = false; });
-                        };
+                        }
 
                         vm.upload = function (file) {
-                            if (!file || vm.busy) { return; }
-                            if (file.size > 9 * 1024 * 1024) { vm.error = 'Chọn PDF tối đa 9 MB.'; return; }
-                            var body = new FormData();
-                            body.append('file', file);
-                            if (vm.folderId) { body.append('folderId', vm.folderId); }
-                            vm.busy = true; vm.error = '';
-                            http.post(base + '/upload', body, {transformRequest: angular.identity, headers: {'Content-Type': undefined}})
-                                .then(function (response) {
-                                    vm.library.push(response.data); vm.selected = response.data.id;
-                                    showFolder(vm.folderId);
-                                }, function (error) { fail(error, 'Không tải lên được tệp PDF.'); })
-                                .finally(function () { vm.busy = false; });
+                            if (file) { return uploadFiles([file], vm.folderId || null); }
+                        };
+                        function uploadFiles(files, folderId) {
+                            if (!files.length || vm.busy || vm.run) { return; }
+                            var errors = [], uploaded = 0;
+                            vm.busy = true; vm.error = ''; vm.libraryNotice = '';
+                            return files.reduce(function (queue, file) {
+                                return queue.then(function () {
+                                    if ((file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) || file.size > 9 * 1024 * 1024) {
+                                        errors.push(file.name + ' (chỉ nhận PDF tối đa 9 MB)');
+                                        return;
+                                    }
+                                    var body = new FormData();
+                                    body.append('file', file);
+                                    if (folderId) { body.append('folderId', folderId); }
+                                    return http.post(base + '/upload', body, {transformRequest: angular.identity, headers: {'Content-Type': undefined}})
+                                        .then(function (response) {
+                                            var saved = response.data;
+                                            if (!saved || !saved.id || !saved.name || (saved.folderId || null) !== folderId) {
+                                                errors.push(file.name + ' (chưa xác nhận được)');
+                                                return;
+                                            }
+                                            vm.library.push(saved); vm.selected = saved.id; uploaded++;
+                                            showFolder(vm.folderId);
+                                        }, function (error) {
+                                            errors.push(file.name + (error && error.data && error.data.message ? ' (' + error.data.message + ')' : ''));
+                                        });
+                                });
+                            }, $q.when()).then(function () {
+                                if (uploaded) { vm.libraryNotice = 'Đã tải lên ' + uploaded + ' PDF.'; }
+                                if (errors.length) { vm.error = 'Không tải lên được: ' + errors.join('; '); }
+                            }).finally(function () { vm.busy = false; });
+                        }
+                        function highlightLibraryDrop(target) {
+                            if (libraryDropTarget === target) { return; }
+                            if (libraryDropTarget) { libraryDropTarget.classList.remove('is-pdf-drop-target'); }
+                            libraryDropTarget = target;
+                            if (target) { target.classList.add('is-pdf-drop-target'); }
+                        }
+                        function endLibraryDrag() {
+                            libraryDrag = null;
+                            highlightLibraryDrop(null);
+                        }
+                        function startLibraryDrag(event) {
+                            var source = event.target.closest('[data-pdf-drag]');
+                            if (!source || !event.dataTransfer || vm.run) { return; }
+                            if (vm.busy || vm.libraryForm) { event.preventDefault(); return; }
+                            var kind = source.getAttribute('data-pdf-drag');
+                            var entries = kind === 'folder' ? vm.visibleFolders : vm.visibleFiles;
+                            var entry = entries.find(function (item) { return item.id === source.getAttribute('data-pdf-entry-id'); });
+                            if (!entry) { event.preventDefault(); return; }
+                            libraryDrag = {kind: kind, entry: entry};
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('application/x-teaching-pdf-item', kind);
+                        }
+                        function libraryDrop(event) {
+                            var transfer = event.dataTransfer;
+                            var library = event.target.closest('.teaching-pdf-library');
+                            if (!library || !transfer) { return; }
+                            var external = Array.prototype.indexOf.call(transfer.types || [], 'Files') !== -1;
+                            if (!external && !libraryDrag) { return; }
+                            event.preventDefault();
+                            var folder = event.target.closest('[data-pdf-destination]');
+                            var folderId = folder ? folder.getAttribute('data-pdf-destination') || null : vm.folderId || null;
+                            var drag = libraryDrag;
+                            var parentKey = drag && drag.kind === 'folder' ? 'parentId' : 'folderId';
+                            var canMove = drag && folder && (drag.entry[parentKey] || null) !== folderId
+                                && (drag.kind !== 'folder' || !folderPath(folderId).some(function (ancestor) { return ancestor.id === drag.entry.id; }));
+                            var allowed = !vm.busy && !vm.run && !vm.libraryForm && (external || canMove);
+                            var target = allowed ? folder || library.querySelector('.teaching-pdf-upload-area') : null;
+                            if (event.type === 'dragover') {
+                                transfer.dropEffect = allowed ? (external ? 'copy' : 'move') : 'none';
+                                highlightLibraryDrop(target);
+                                return;
+                            }
+                            endLibraryDrag();
+                            if (!allowed) { return; }
+                            var files = external && Array.prototype.slice.call(transfer.files);
+                            scope.$evalAsync(function () {
+                                if (destroyed || vm.busy || vm.run || vm.libraryForm || (folderId && !foldersById[folderId])) { return; }
+                                if (external) { uploadFiles(files, folderId); }
+                                else { saveLibraryEntry({kind: drag.kind, id: drag.entry.id, name: drag.entry.name, parentId: folderId}, true); }
+                            });
+                        }
+                        function leaveLibraryDrop(event) {
+                            if (libraryDropTarget && libraryDropTarget.contains(event.target) &&
+                                    !libraryDropTarget.contains(event.relatedTarget)) { highlightLibraryDrop(null); }
+                        }
+                        var libraryDragEvents = {
+                            dragstart: startLibraryDrag, dragover: libraryDrop, drop: libraryDrop,
+                            dragleave: leaveLibraryDrop, dragend: endLibraryDrag
                         };
 
                         vm.attach = function (choice) {
@@ -760,6 +856,7 @@
                         }
                         vm.bindSurface = function (node) {
                             root = node;
+                            Object.keys(libraryDragEvents).forEach(function (name) { root.addEventListener(name, libraryDragEvents[name]); });
                             pointerEvents.forEach(function (name) { root.addEventListener(name, onPointer); });
                             root.addEventListener('scroll', onScroll, true);
                             root.addEventListener('input', onZoom);
@@ -781,6 +878,8 @@
                             if (saveTimer) { timer.cancel(saveTimer); }
                             window.removeEventListener('beforeunload', preventUnsavedExit);
                             if (root) {
+                                endLibraryDrag();
+                                Object.keys(libraryDragEvents).forEach(function (name) { root.removeEventListener(name, libraryDragEvents[name]); });
                                 root.removeEventListener('scroll', onScroll, true);
                                 root.removeEventListener('click', onPageClick);
                                 root.removeEventListener('contextmenu', onContextMenu);

@@ -85,7 +85,11 @@ function fixture(saved = {}, completed = false, catalog = {}) {
     };
     const source = fs.readFileSync(path.join(__dirname, '../enrolment_class/business/TeachingPdf.js'), 'utf8')
         .replace("import(new URL('pdf.min.js?v=' + version, pdfAssets).href)", 'Promise.resolve(pdfEngineMock)');
-    vm.runInNewContext(source, {window, document, URL, pdfEngineMock: engine,
+    const FormData = class {
+        constructor() { this.fields = new Map(); }
+        append(key, value) { this.fields.set(key, value); }
+    };
+    vm.runInNewContext(source, {window, document, URL, FormData, pdfEngineMock: engine,
         angular: {module: () => module, extend: Object.assign, isArray: Array.isArray, copy: structuredClone, noop() {}}});
     const http = {
         async get(url) {
@@ -279,4 +283,61 @@ test('explorer navigates nested folders and moves a PDF back to the root', async
     assert.equal(h.ctrl.visibleFiles.length, 0);
     h.ctrl.browseFolder(null);
     assert.deepEqual(Array.from(h.ctrl.visibleFiles, file => file.id), ['original', 'moved']);
+});
+
+test('the PDF explorer routes drags to the destination and keeps successful uploads from a mixed drop', async () => {
+    const h = fixture({}, false, {
+        folders: [{id: 'class', name: 'Class'}],
+        library: [{id: 'original', name: 'Original.pdf'}]
+    });
+    await h.tick();
+    assert.equal(h.ctrl.libraryView, 'list');
+    h.ctrl.toggleLibraryView();
+    assert.equal(h.ctrl.libraryView, 'grid');
+    const classes = new Set();
+    const targetFolder = {classList: {add: name => classes.add(name), remove: name => classes.delete(name)},
+        getAttribute: () => 'class'};
+    const library = {querySelector: () => targetFolder};
+    const target = {closest: selector => selector === '.teaching-pdf-library' ? library : targetFolder};
+    const source = (kind, id) => ({
+        closest() { return this; },
+        getAttribute: name => name === 'data-pdf-drag' ? kind : id
+    });
+    let moves = 0;
+    h.http.put = async (url, body) => {
+        moves++;
+        assert.match(url, /\/files\/original$/);
+        assert.equal(body.folderId, 'class');
+        return {data: {id: 'original', name: body.name, folderId: body.folderId}};
+    };
+    const internal = {types: ['application/x-teaching-pdf-item'], setData() {}};
+    const drag = (type, eventTarget, dataTransfer) => h.events[type]({type, target: eventTarget, dataTransfer, preventDefault() {}});
+    drag('dragstart', source('folder', 'class'), internal);
+    drag('drop', target, internal);
+    assert.equal(moves, 0);
+    drag('dragstart', source('file', 'original'), internal);
+    drag('dragover', target, internal);
+    assert.equal(internal.dropEffect, 'move');
+    assert.ok(classes.has('is-pdf-drop-target'));
+    drag('drop', target, internal);
+    await h.tick();
+    assert.equal(moves, 1);
+    assert.equal(classes.size, 0);
+    assert.equal(h.ctrl.visibleFiles.length, 0);
+
+    const uploads = [];
+    h.http.post = async (url, body) => {
+        assert.match(url, /\/upload$/);
+        assert.equal(body.fields.get('folderId'), 'class');
+        const name = body.fields.get('file').name;
+        uploads.push(name);
+        return {data: {id: name, name, folderId: 'class'}};
+    };
+    drag('drop', target, {types: ['Files'], files: [{name: 'One.pdf', size: 100}, {name: 'Bad.txt', size: 10}, {name: 'Two.pdf', size: 200}]});
+    await h.tick();
+    assert.deepEqual(uploads, ['One.pdf', 'Two.pdf']);
+    assert.match(h.ctrl.error, /Bad\.txt/);
+    assert.equal(h.ctrl.libraryNotice, 'Đã tải lên 2 PDF.');
+    h.ctrl.browseFolder('class');
+    assert.deepEqual(Array.from(h.ctrl.visibleFiles, file => file.name), ['Original.pdf', 'One.pdf', 'Two.pdf']);
 });
