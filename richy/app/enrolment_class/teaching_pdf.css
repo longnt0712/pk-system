@@ -150,13 +150,14 @@
 .teaching-pdf-scroll.is-adding-text .teaching-pdf-page, .teaching-pdf-scroll.is-adding-text .textLayer span { cursor: crosshair; }
 .teaching-pdf-free-text {
     position: absolute; z-index: 2; width: max-content; max-width: min(30%, 320px);
+    display: flex; align-items: center;
     transform: translate(var(--pdf-text-shift-x, 0), var(--pdf-text-shift-y, 0));
 }
 .teaching-pdf-free-text.is-right { --pdf-text-shift-x: -100%; }
 .teaching-pdf-free-text.is-bottom { --pdf-text-shift-y: -100%; }
 .teaching-pdf-free-text.is-dragging { z-index: 4; transform: none; }
 .teaching-pdf-text-value, .teaching-pdf-free-text textarea {
-    display: block; padding: 3px 5px; border: 1px solid #8ba6e5; border-radius: 4px;
+    display: block; min-width: 0; padding: 3px 5px; border: 1px solid #8ba6e5; border-radius: 4px;
     background: #fffdf1; color: #243e79; font: 600 1em/1.3 Arial, sans-serif;
     white-space: pre-wrap; overflow-wrap: anywhere; text-align: left;
 }
@@ -168,7 +169,7 @@
 .teaching-pdf-free-text.is-dragging .teaching-pdf-text-value { cursor: grabbing; }
 .teaching-pdf-free-text textarea { width: min(220px, 50vw); max-width: 100%; resize: vertical; }
 .teaching-pdf-text-remove {
-    position: absolute; top: -12px; right: -12px; display: grid; place-items: center;
+    display: grid; place-items: center; flex: 0 0 24px;
     width: 24px; height: 24px; min-height: 0; padding: 0; border: 0;
     background: transparent; color: #34486e; cursor: pointer;
 }
