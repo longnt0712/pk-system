@@ -194,16 +194,14 @@
                              ng-style="{left:(pdf.textPosition(mark).x * 100) + '%', top:(pdf.textPosition(mark).y * 100) + '%'}">
                             <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
                                       maxlength="4000" rows="2" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
-                            <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" ng-click="pdf.editText(mark, $event)"
-                                    ng-disabled="pdf.run.completed || pdf.busy" ng-bind="mark.text"></button>
-                            <div class="teaching-pdf-text-actions" ng-if="!pdf.run.completed && !pdf.drawing">
-                                <button type="button" class="teaching-pdf-text-handle" teaching-pdf-text-handle tabindex="-1"
-                                        title="Kéo để di chuyển chữ" aria-label="Kéo để di chuyển chữ" ng-disabled="pdf.busy">
-                                    <i class="fa fa-arrows" aria-hidden="true"></i>
-                                </button>
-                                <button type="button" class="teaching-pdf-text-remove" title="Xóa chữ" aria-label="Xóa chữ trên PDF"
-                                        ng-mousedown="$event.preventDefault()" ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">×</button>
-                            </div>
+                            <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
+                                    ng-keydown="$event.key === 'Enter' && pdf.editText(mark, $event)" ng-disabled="pdf.run.completed || pdf.busy"
+                                    ng-attr-title="{{pdf.run.completed ? undefined : 'Kéo để di chuyển · Nhấp đúp để sửa'}}" ng-bind="mark.text"></button>
+                            <button ng-if="!pdf.run.completed && !pdf.drawing" type="button" class="teaching-pdf-text-remove"
+                                    title="Xóa chữ" aria-label="Xóa chữ trên PDF" ng-mousedown="$event.preventDefault()"
+                                    ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">
+                                <svg viewBox="0 0 4 4" width="4" height="4" aria-hidden="true"><path d="M.5.5l3 3m0-3l-3 3" fill="none" stroke="currentColor"/></svg>
+                            </button>
                         </div>
                         <div class="teaching-pdf-ink" ng-if="pdf.drawing && !pdf.run.completed"></div>
                     </div>

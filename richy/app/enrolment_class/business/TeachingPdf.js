@@ -59,6 +59,7 @@
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
                         var libraryDrag, libraryDropTarget;
+                        var lastTextTap;
                         vm.pages = [];
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
@@ -556,6 +557,7 @@
 
                         function release() {
                             endTextDrag();
+                            lastTextTap = null;
                             if (batchTimer) { timer.cancel(batchTimer); batchTimer = null; }
                             if (zoomTimer) { timer.cancel(zoomTimer); zoomTimer = null; }
                             if (scrollFrame) { window.cancelAnimationFrame(scrollFrame); scrollFrame = null; }
@@ -734,6 +736,7 @@
                         vm.editText = function (mark, event) {
                             event.stopPropagation();
                             if (!vm.run || vm.run.completed || vm.busy) { return; }
+                            if (vm.editingText && vm.editingText !== mark) { vm.finishText(vm.editingText); }
                             vm.editingText = mark;
                             timer(function () {
                                 var input = root.querySelector('.teaching-pdf-free-text textarea');
@@ -759,17 +762,17 @@
 
                         vm.beginTextDrag = function (mark, event) {
                             if (!vm.run || vm.run.completed || vm.busy || vm.drawing || vm.textDrag ||
-                                    !event.isPrimary || event.button !== 0) { return; }
-                            var handle = event.currentTarget;
-                            var sheet = handle.closest('[data-pdf-page]');
-                            var box = handle.closest('.teaching-pdf-free-text').getBoundingClientRect();
+                                    vm.editingText === mark || !event.isPrimary || event.button !== 0) { return; }
+                            var label = event.currentTarget;
+                            var sheet = label.closest('[data-pdf-page]');
+                            var box = label.closest('.teaching-pdf-free-text').getBoundingClientRect();
                             event.preventDefault();
-                            handle.setPointerCapture(event.pointerId);
+                            label.setPointerCapture(event.pointerId);
                             vm.textDrag = {
-                                mark: mark, handle: handle, sheet: sheet, pointerId: event.pointerId,
+                                mark: mark, label: label, sheet: sheet, pointerId: event.pointerId,
                                 startX: event.clientX, startY: event.clientY,
                                 offsetX: event.clientX - box.left, offsetY: event.clientY - box.top,
-                                width: box.width, height: box.height
+                                width: box.width, height: box.height, threshold: event.pointerType === 'touch' ? 8 : 3
                             };
                             vm.addingText = false;
                             closeContext();
@@ -779,13 +782,14 @@
                         function endTextDrag() {
                             var drag = vm.textDrag;
                             vm.textDrag = null;
-                            if (drag && drag.handle.hasPointerCapture(drag.pointerId)) {
-                                drag.handle.releasePointerCapture(drag.pointerId);
+                            if (drag && drag.label.hasPointerCapture(drag.pointerId)) {
+                                drag.label.releasePointerCapture(drag.pointerId);
                             }
                         }
                         function textDragPointer(event, drag) {
                             if (event.type === 'pointermove' || event.type === 'pointerup') {
-                                if (drag.position || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= 3) {
+                                if (drag.position || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= drag.threshold) {
+                                    lastTextTap = null;
                                     var page = drag.sheet.getBoundingClientRect();
                                     var width = Math.min(1, drag.width / page.width);
                                     var height = Math.min(1, drag.height / page.height);
@@ -798,7 +802,13 @@
                                         drag.mark.y = y > .9 ? y + height : y;
                                         changed();
                                     }
+                                } else if (event.type === 'pointerup') {
+                                    var doubleTap = lastTextTap && lastTextTap.mark === drag.mark && event.timeStamp - lastTextTap.time <= 450;
+                                    lastTextTap = doubleTap ? null : {mark: drag.mark, time: event.timeStamp};
+                                    if (doubleTap) { vm.editText(drag.mark, event); }
                                 }
+                            } else {
+                                lastTextTap = null;
                             }
                             if (event.type !== 'pointermove') { endTextDrag(); }
                             scope.$evalAsync(angular.noop);
@@ -964,7 +974,7 @@
         }
     ]).directive('teachingPdfSurface', function () {
         return {link: function (scope, element) { scope.pdf.bindSurface(element[0]); }};
-    }).directive('teachingPdfTextHandle', function () {
+    }).directive('teachingPdfTextDrag', function () {
         return {link: function (scope, element) {
             function start(event) { scope.pdf.beginTextDrag(scope.mark, event); }
             element[0].addEventListener('pointerdown', start);
