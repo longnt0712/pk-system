@@ -36,7 +36,7 @@
                     ariaLabelledBy: 'teaching-pdf-title',
                     controller: ['$scope', '$timeout', '$uibModalInstance', function (scope, timer, instance) {
                         var vm = this, root, pdf, api, loadingTask, renderTask, textLayer, saveTimer, saveRequest;
-                        var renderId = 0, editId = 0, savedEditId = 0, destroyed = false, stroke;
+                        var renderId = 0, editId = 0, savedEditId = 0, destroyed = false, stroke, pendingHighlight;
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.current = []; vm.previous = [];
 
@@ -100,6 +100,7 @@
                                 angular.extend(vm.run, data[0].data);
                                 var state = vm.run.progress ? JSON.parse(vm.run.progress) : {};
                                 vm.state = angular.extend({page: 1, zoom: 1, x: 0, y: 0, marks: []}, state);
+                                vm.zoomInput = vm.state.zoom;
                                 api = data[2];
                                 loadingTask = api.getDocument({data: data[1].data, isEvalSupported: false, enableXfa: false,
                                     cMapUrl: new URL('cmaps/', pdfAssets).href, cMapPacked: true,
@@ -166,13 +167,18 @@
                             if (!pdf || !Number.isFinite(page)) { return; }
                             page = Math.min(pdf.numPages, Math.max(1, page));
                             if (page === vm.state.page) { return; }
-                            vm.state.page = page; vm.state.x = 0; vm.state.y = 0; vm.selectedMark = null;
+                            vm.state.page = page; vm.state.x = 0; vm.state.y = 0; vm.selectedMark = null; vm.tip = null; pendingHighlight = null;
                             render(false); changed();
                         };
-                        vm.zoom = function (step) {
-                            vm.state.zoom = Math.max(.5, Math.min(3, Math.round((vm.state.zoom + step) * 10) / 10));
+                        vm.setZoom = function (value) {
+                            if (!pdf || !Number.isFinite(value)) { return; }
+                            var zoom = Math.max(.5, Math.min(3, Math.round(value * 10) / 10));
+                            vm.zoomInput = zoom;
+                            if (vm.state.zoom === zoom) { return; }
+                            vm.state.zoom = zoom; pendingHighlight = null;
                             render(true); changed();
                         };
+                        vm.zoom = function (step) { vm.setZoom(vm.state.zoom + step); };
 
                         function changed() {
                             if (vm.run.completed) { return; }
@@ -223,7 +229,7 @@
                             if (vm.busy) { return; }
                             vm.busy = true;
                             save(false).then(function () {
-                                release(); vm.run = null; vm.selectedMark = null; vm.drawing = false;
+                                release(); vm.run = null; vm.selectedMark = null; vm.drawing = false; vm.notesOpen = false; vm.tip = null; pendingHighlight = null;
                                 editId = savedEditId = 0; vm.saveStatus = '';
                                 if (close) { instance.close(vm.changedDay); } else { return load(); }
                             }).catch(angular.noop).finally(function () { vm.busy = false; });
@@ -231,12 +237,12 @@
                         vm.back = function () { leave(false); };
                         vm.close = function () { leave(true); };
 
-                        vm.capture = function () {
+                        function readHighlight() {
                             var selected = window.getSelection();
                             var page = root.querySelector('.teaching-pdf-page');
                             if (!page || vm.rendering || !selected || !selected.rangeCount || selected.isCollapsed
                                 || !page.contains(selected.anchorNode) || !page.contains(selected.focusNode)) {
-                                vm.error = 'Bôi chọn chữ trên trang PDF trước khi thêm highlight.'; return;
+                                return null;
                             }
                             var box = page.getBoundingClientRect();
                             var rects = Array.from(selected.getRangeAt(0).getClientRects()).filter(function (rect) {
@@ -245,13 +251,34 @@
                                 return {x: (rect.left - box.left) / box.width, y: (rect.top - box.top) / box.height,
                                     w: rect.width / box.width, h: rect.height / box.height};
                             });
-                            if (!rects.length) { return; }
-                            vm.selectedMark = {page: vm.state.page, quote: selected.toString().trim().slice(0, 1000), rects: rects, note: ''};
-                            vm.state.marks.push(vm.selectedMark); selected.removeAllRanges(); changed();
+                            if (!rects.length) { return null; }
+                            return {page: vm.state.page, quote: selected.toString().trim().slice(0, 1000), rects: rects, note: ''};
+                        }
+                        function addMark(mark) {
+                            vm.notesOpen = true; vm.selectedMark = mark; vm.tip = null;
+                            vm.state.marks.push(mark); changed();
+                        }
+                        vm.capture = function () {
+                            if (vm.busy || vm.rendering || vm.run.completed || vm.drawing) { return; }
+                            var mark = readHighlight() || pendingHighlight;
+                            pendingHighlight = null;
+                            if (!mark || mark.page !== vm.state.page) {
+                                vm.tip = 'Bôi chọn một đoạn chữ trên PDF, rồi bấm Highlight.';
+                                return;
+                            }
+                            window.getSelection().removeAllRanges();
+                            addMark(mark);
                         };
                         vm.addNote = function () {
-                            vm.selectedMark = {page: vm.state.page, note: ''};
-                            vm.state.marks.push(vm.selectedMark); changed();
+                            addMark({page: vm.state.page, note: ''});
+                            timer(function () {
+                                var input = root.querySelector('.teaching-pdf-notes textarea');
+                                if (input) { input.focus(); }
+                            });
+                        };
+                        vm.toggleNotes = function () { vm.notesOpen = !vm.notesOpen; };
+                        vm.pageHasMarks = function () {
+                            return vm.state.marks.some(function (mark) { return mark.page === vm.state.page; });
                         };
                         vm.removeMark = function (mark) {
                             var index = vm.state.marks.indexOf(mark);
@@ -266,6 +293,9 @@
                                 Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)).toFixed(4)];
                         }
                         function onPointer(event) {
+                            if (event.type === 'pointerdown') {
+                                pendingHighlight = event.target.closest('[data-pdf-highlight]') ? readHighlight() : null;
+                            }
                             var overlay = event.target.closest('.teaching-pdf-ink');
                             if (!overlay || !vm.drawing || !vm.run || vm.run.completed || vm.busy || vm.rendering) { return; }
                             if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
@@ -306,7 +336,10 @@
                                     return position[0] >= rect.x && position[0] <= rect.x + rect.w
                                         && position[1] >= rect.y && position[1] <= rect.y + rect.h;
                                 })) {
-                                    scope.$evalAsync(function () { vm.selectedMark = vm.selectedMark === mark ? null : mark; });
+                                    scope.$evalAsync(function () {
+                                        vm.selectedMark = vm.notesOpen && vm.selectedMark === mark ? null : mark;
+                                        vm.notesOpen = true;
+                                    });
                                     return;
                                 }
                             }
