@@ -195,7 +195,7 @@
                 '<div class="sp-answer-format" ng-if="!readOnly" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
                 '<div class="sp-answer-editable" ng-attr-contenteditable="{{readOnly ? false : true}}" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
-                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
                 '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
@@ -294,14 +294,15 @@
                     ed.noteStyle = {position: 'fixed', top: positionTop + 'px', left: Math.max(8, Math.min(bounds.left, width - 316)) + 'px', maxHeight: Math.max(40, height - positionTop - 8) + 'px'};
                 }
                 ed.closeNote = function () { ed.activeNote = null; };
-                ed.cambridgeUrl = function () {
-                    var word = String(ed.lookupText || '').trim().toLowerCase().replace(/\s+/g, '-');
+                ed.cambridgeUrl = function (text) {
+                    var word = String(text || ed.lookupText || '').trim().toLowerCase().replace(/\s+/g, '-');
                     return 'https://dictionary.cambridge.org/dictionary/english/' + encodeURIComponent(word);
                 };
                 ed.addPhonetic = function () { if (scope.readOnly) { return; }
                     if (destroyed || !ed.state.ready || !ed.hasSelection || !selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
                     var text = selectedRange.toString().replace(/\s+/g, ' ').trim(), marker = selectedRange.commonAncestorContainer;
                     ed.phoneticError = ''; if (!text) { return; }
+                    $window.open(ed.cambridgeUrl(text.slice(0, 200)), '_blank', 'noopener,noreferrer');
                     while (marker && marker !== editable && !(marker.nodeType === 1 && marker.getAttribute('data-note-id'))) { marker = marker.parentNode; }
                     var id = marker && marker !== editable && marker.getAttribute('data-note-id'), existing = id && ed.state.notes.filter(function (note) { return note.id === id; })[0];
                     if (existing) {
@@ -437,6 +438,41 @@
                     current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } poll(); } });
                 });
                 scope.$on('$destroy', function () { destroyed = true; generation++; stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving); });
+            }
+        };
+    }]);
+    angular.module('Hrm.Question').directive('speakingQuestionSpeaker', ['$window', function ($window) {
+        return {
+            restrict: 'E',
+            scope: {text: '='},
+            template: '<button type="button" class="sp-question-speaker" ng-click="readQuestion()" aria-label="Đọc câu hỏi" title="Đọc câu hỏi"><i class="fa fa-volume-up" aria-hidden="true"></i></button>' +
+                '<small class="sp-question-speech-error" role="status" ng-if="speechError" ng-bind="speechError"></small>',
+            link: function (scope) {
+                var speech = $window.EnglishSpeech, owner = {}, request = 0;
+                function cancel() {
+                    request++;
+                    scope.speechError = '';
+                    if (speech) { speech.cancel(owner); }
+                }
+                scope.readQuestion = function () {
+                    scope.speechError = '';
+                    if (!speech || !speech.isSupported()) {
+                        scope.speechError = 'Trình duyệt này chưa hỗ trợ đọc câu hỏi.';
+                        return;
+                    }
+                    var current = ++request;
+                    function onError(error) {
+                        if (error && (error.error === 'interrupted' || error.error === 'canceled')) { return; }
+                        scope.$evalAsync(function () {
+                            if (current === request) { scope.speechError = 'Chưa đọc được câu hỏi. Bạn thử lại nhé.'; }
+                        });
+                    }
+                    try {
+                        if (!speech.speak(scope.text, {lang: 'en-GB', plainText: true, owner: owner, onerror: onError})) { onError(); }
+                    } catch (error) { onError(); }
+                };
+                scope.$watch('text', cancel);
+                scope.$on('$destroy', cancel);
             }
         };
     }]);

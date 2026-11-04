@@ -43,6 +43,13 @@
 .speaking-page .sp-muted { color:var(--sp-muted); font-size:12px; }
 .speaking-page .sp-topic { border:1px solid var(--sp-line); border-radius:15px; padding:20px; margin-top:16px; }
 .speaking-page .sp-question { padding:15px 0; border-top:1px solid #edf0f6; }
+.speaking-page .sp-question-prompt { display:flex; align-items:flex-start; min-width:0; gap:8px; }
+.speaking-page .sp-question-prompt > p { min-width:0; margin:0; overflow-wrap:anywhere; }
+.speaking-page .sp-question-prompt > speaking-question-speaker { display:flex; flex:0 0 auto; flex-wrap:wrap; max-width:38%; gap:5px; }
+.speaking-page .sp-question-speaker { display:grid; place-items:center; width:30px; height:30px; padding:0; border:1px solid #c4b5e9; border-radius:8px; background:#f6f2ff; color:#5939a0; }
+.speaking-page .sp-question-speaker:hover { background:#ebe4ff; }
+.speaking-page .sp-question-speaker:focus-visible { outline:2px solid #6a49c5; outline-offset:2px; }
+.speaking-page .sp-question-speech-error { color:#a43f52; align-self:center; }
 .speaking-page .sp-question-heading { display:flex; align-items:flex-start; gap:12px; }
 .speaking-page .sp-number { display:flex; align-items:center; justify-content:center; border-radius:10px; background:#f1edff; color:#7354cf; min-width:30px; height:30px; font-weight:750; }
 .speaking-page .sp-preserve { white-space:pre-wrap; overflow-wrap:anywhere; margin:0 0 10px; }
@@ -65,7 +72,7 @@
 .speaking-page .sp-clock { border-radius:12px; background:#f3effc; padding:10px 15px; font-variant-numeric:tabular-nums; }
 .speaking-page .sp-cue { max-width:880px; margin:30px auto; padding:30px; border-radius:18px; border:1px solid #e6dff6; background:#fbf9ff; }
 .speaking-page .sp-cue h2 { margin:12px 0 20px; }
-.speaking-page .sp-cue>.sp-preserve { font-size:19px; line-height:1.8; }
+.speaking-page .sp-cue .sp-question-prompt>.sp-preserve { font-size:19px; line-height:1.8; }
 .speaking-page .sp-record { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:14px; padding:15px; font-size:12px; color:var(--sp-muted); }
 .speaking-page .sp-record-start { color:#b34460; border-color:#f0cbd5; background:#fff5f8; }
 .speaking-page .sp-record-stop { color:#fff; background:#bc4968; border-color:#bc4968; }

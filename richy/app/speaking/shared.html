@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <title>Speaking · Bài được chia sẻ</title>
     <link rel="stylesheet" href="../assets/css/external/font-awesome.min.css">
-    <link rel="stylesheet" href="../question/speaking.css?v=20261103-share-1">
+    <link rel="stylesheet" href="../question/speaking.css?v=20261104-share-2">
     <link rel="stylesheet" href="../assets/css/study-notebook.css?v=20261103-share-1">
     <link rel="stylesheet" href="shared.css?v=20261103-share-1">
 </head>
@@ -18,7 +18,7 @@
         <p class="sp-muted" ng-if="!pub.groups.length">Chưa có câu phù hợp.</p>
         <article class="sp-topic" ng-repeat="group in pub.groups | limitTo:pub.limit track by group.key" speaking-lazy-topic="group" speaking-lazy-eager="$first"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2>
             <div ng-if="!group.lazyLoaded" class="sp-lazy-placeholder">{{group.questions.length}} câu hỏi · Hiện khi bạn cuộn tới.</div>
-            <div ng-if="group.lazyLoaded"><div class="sp-question" ng-repeat="question in group.questions track by question.entryId"><p class="sp-preserve">{{question.prompt}}</p><div class="sp-toolbar"><button type="button" class="sp-button" ng-click="pub.answerId=pub.answerId===question.id?null:question.id">{{pub.answerId===question.id ? 'Ẩn câu trả lời' : question.hasAnswer ? 'Xem câu trả lời' : pub.data.canEdit ? 'Viết câu trả lời' : 'Xem câu trả lời'}}</button><button type="button" class="sp-button" ng-click="pub.notebookId=question.id">Xem ghi chú</button></div>
+            <div ng-if="group.lazyLoaded"><div class="sp-question" ng-repeat="question in group.questions track by question.entryId"><div class="sp-question-prompt"><p class="sp-preserve">{{question.prompt}}</p><speaking-question-speaker text="question.prompt"></speaking-question-speaker></div><div class="sp-toolbar"><button type="button" class="sp-button" ng-click="pub.answerId=pub.answerId===question.id?null:question.id">{{pub.answerId===question.id ? 'Ẩn câu trả lời' : question.hasAnswer ? 'Xem câu trả lời' : pub.data.canEdit ? 'Viết câu trả lời' : 'Xem câu trả lời'}}</button><button type="button" class="sp-button" ng-click="pub.notebookId=question.id">Xem ghi chú</button></div>
                 <speaking-student-answer-editor ng-if="pub.answerId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" hide-history="true"></speaking-student-answer-editor>
                 <speaking-question-notebook ng-if="pub.notebookId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" on-close="pub.notebookId=null"></speaking-question-notebook>
             </div></div>
@@ -34,7 +34,7 @@
 <script src="../common/utils/english-speech.js?v=20261103-share-1"></script>
 <script src="../common/utils/study-notebook.directive.js?v=20261103-share-1"></script>
 <script src="../question/business/speaking-lazy-topic.js?v=20261103-share-1"></script>
-<script src="../question/business/speaking-student-answer-editor.js?v=20261103-share-1"></script>
+<script src="../question/business/speaking-student-answer-editor.js?v=20261104-share-2"></script>
 <script src="../question/business/speaking-question-notebook.js?v=20261103-share-1"></script>
 </body>
 </html>

@@ -53,8 +53,8 @@ function node(name,value=''){
 }
 
 function editorFixture(){
- let definition,identity,destroy,selected='memorising',inside=true,rangeClears=0,changes=0,saves=0,owner=null;const requests=[],cancelled=[],timers=new Map(),listeners={};let timerId=0;
- const module={factory(){return this;},directive(name,dep){definition=dep.at(-1);return this;}};
+ let definition,identity,destroy,selected='memorising',inside=true,rangeClears=0,changes=0,saves=0,owner=null;const requests=[],cancelled=[],opened=[],timers=new Map(),listeners={};let timerId=0;
+ const module={factory(){return this;},directive(name,dep){if(name==='speakingStudentAnswerEditor'){definition=dep.at(-1);}return this;}};
  vm.runInNewContext(fs.readFileSync(path.join(app,'question/business/speaking-student-answer-editor.js'),'utf8'),{angular:{module:()=>module},JSON,Date,Number,Array,Math});
  const textNode=node('#text','memorising'),range={commonAncestorContainer:textNode,startContainer:textNode,endContainer:textNode,startOffset:0,get endOffset(){return textNode.nodeValue.length;},collapsed:false,toString:()=>selected,cloneRange(){return this;},intersectsNode:target=>target===textNode||target.contains(textNode),getBoundingClientRect:()=>({left:20,bottom:30})};
  const selection={rangeCount:1,toString:()=>selected,getRangeAt:()=>range,removeAllRanges(){rangeClears++;},addRange(){}};
@@ -62,13 +62,13 @@ function editorFixture(){
  editable.contains=target=>inside&&nativeContains.call(editable,target);editable.focus=()=>{};editable.addEventListener=(name,fn)=>listeners[name]=fn;editable.removeEventListener=()=>{};
  const root={querySelector:()=>editable,contains:()=>true},doc={hidden:false,documentElement:{clientWidth:1024,clientHeight:768},createElement:name=>node(name.toUpperCase()),createTreeWalker(parent){const texts=[];function walk(current){if(current.nodeType===3){texts.push(current);}else{current.childNodes.forEach(walk);}}walk(parent);let index=0;return{nextNode:()=>texts[index++]||null};},addEventListener(){},removeEventListener(){}};
  const speech={isSupported:()=>true,speak(text,options){owner=options.owner;requests.push({text,options});return true;},cancel(target){if(owner===target){cancelled.push(target);owner=null;return true;}return false;}};
- const win={document:doc,innerWidth:1024,innerHeight:768,EnglishSpeech:speech,getSelection:()=>selection,addEventListener(){},removeEventListener(){}};
+ const win={document:doc,innerWidth:1024,innerHeight:768,EnglishSpeech:speech,open(...args){opened.push(args);},getSelection:()=>selection,addEventListener(){},removeEventListener(){}};
  const state={ready:true,loading:false,dirty:false,html:'memorising',notes:[],history:{versions:[]}};
  const session={state,load:()=>Promise.resolve(),save(){saves++;return Promise.resolve();},change(html,notes){changes++;state.html=html;state.notes=notes;state.dirty=true;},destroy(){},backup(){}};
  const timeout=(fn,delay)=>{const key=++timerId;timers.set(key,{fn,delay});return key;};timeout.cancel=key=>timers.delete(key);
  const scope={$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
  const directive=definition(win,timeout,{open:()=>session});directive.link(scope,[root]);
- return{scope,state,requests,cancelled,speech,win,directive,timers,identity,destroy,editable,range,select(text,valid=true){selected=text;inside=valid;listeners.mouseup();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
+ return{scope,state,requests,cancelled,opened,speech,win,directive,timers,identity,destroy,editable,range,select(text,valid=true){selected=text;inside=valid;listeners.mouseup();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
 }
 
 test('selection speaker reads the exact selected phrase without moving the caret or changing notes and toggles stop',async()=>{
@@ -94,6 +94,7 @@ test('unsupported or failed speech leaves the answer writable and rejects detach
 
 test('manual IPA creates an anchored note and pasted phonetic uses the same autosave without altering the answer',async()=>{
  const f=editorFixture();f.identity([11,7,42,9]);await settle();f.select('memorising');f.scope.ed.addPhonetic();
+ assert.deepEqual(f.opened,[['https://dictionary.cambridge.org/dictionary/english/memorising','_blank','noopener,noreferrer']]);
  assert.equal(f.state.notes.length,1);assert.equal(f.scope.ed.activeNote.id,f.state.notes[0].id);assert.equal(f.scope.ed.lookupText,'memorising');assert.match(f.state.html,/data-note-id=/);assert.match(f.state.html,/>memorising<\/span>/);
  assert.equal(f.scope.ed.cambridgeUrl(),'https://dictionary.cambridge.org/dictionary/english/memorising');
  const html=f.state.html;f.scope.ed.activeNote.text='UK /ˈmem.ə.raɪz/';f.scope.ed.noteChanged();assert.equal(f.state.notes[0].text,'UK /ˈmem.ə.raɪz/');assert.equal(f.state.html,html);assert.ok([...f.timers.values()].some(timer=>timer.delay===1300));assert.equal(f.saves,0);
@@ -120,4 +121,18 @@ test('Cambridge links place words and phrases in the entry path without query or
   assert.equal(url.origin,'https://dictionary.cambridge.org');assert.equal(url.search,'');assert.equal(url.hash,'');assert.equal(decodeURIComponent(url.pathname),'/dictionary/english/'+entry);
  }
  assert.equal(f.changes,0);assert.equal(f.saves,0);f.destroy();
+});
+
+test('question speaker uses the current English prompt and cancels only its own speech', () => {
+ const requests=[], cancelled=[];let definition, onChange, onDestroy;
+ const module={factory(){return this;},directive(name,dep){if(name==='speakingQuestionSpeaker'){definition=dep.at(-1);}return this;}};
+ vm.runInNewContext(fs.readFileSync(path.join(app,'question/business/speaking-student-answer-editor.js'),'utf8'),{angular:{module:()=>module}});
+ const speech={isSupported:()=>true,speak(text,options){requests.push({text,options});return true;},cancel(owner){cancelled.push(owner);}};
+ const scope={text:'Do you think car colours are important?',$evalAsync:fn=>fn(),$watch(name,fn){onChange=fn;},$on(name,fn){onDestroy=fn;}};
+ const speaker=definition({EnglishSpeech:speech});
+ speaker.link(scope);scope.readQuestion();
+ assert.equal(requests[0].text,scope.text);assert.equal(requests[0].options.lang,'en-GB');assert.equal(requests[0].options.plainText,true);
+ onChange();requests[0].options.onerror({error:'old-error'});assert.equal(scope.speechError,'');
+ scope.text='What car would you choose?';scope.readQuestion();assert.equal(requests[1].text,scope.text);
+ onDestroy();assert.equal(cancelled.length,2);assert.equal(cancelled[1],requests[1].options.owner);
 });

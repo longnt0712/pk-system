@@ -68,7 +68,7 @@
                 <div class="sp-lazy-placeholder" ng-if="!group.lazyLoaded"><span>{{group.visible.length}} câu hỏi · Tải khi bạn cuộn tới topic này.</span><button type="button" class="sp-button" ng-click="group.lazyLoaded=true">Hiện câu hỏi</button></div>
                 <div ng-if="group.lazyLoaded">
                 <div class="sp-question" id="sp-answer-question-{{question.id}}" ng-repeat="question in group.visible track by question.entryId" ng-class="{'is-passed': question.passed}">
-                    <div class="sp-question-heading"><span class="sp-number">{{$index+1}}</span><p class="sp-preserve sp-grow">{{question.prompt}}</p>
+                    <div class="sp-question-heading"><span class="sp-number">{{$index+1}}</span><div class="sp-question-prompt sp-grow"><p class="sp-preserve">{{question.prompt}}</p><speaking-question-speaker text="question.prompt"></speaking-question-speaker></div>
                         <button class="sp-pass" ng-if="vm.canMarkPass()" role="checkbox" aria-checked="{{question.passed}}" aria-label="Đánh dấu Pass câu {{$index+1}}" ng-disabled="vm.passSaving || vm.loadingBank" ng-click="vm.markPass([question],!question.passed)"><i class="fa" ng-class="question.passed ? 'fa-check-square' : 'fa-square-o'"></i> Pass</button>
                         <span class="sp-badge" ng-if="!vm.canMarkPass() && question.passed"><i class="fa fa-check"></i> Pass</span>
                     </div>
@@ -91,7 +91,7 @@
         <div class="sp-toolbar"><button class="sp-button" ng-click="vm.leavePractice()">← Kho câu hỏi</button><span class="sp-grow">{{vm.practice.studentName}} · {{vm.practice.status==='DONE' ? 'Đã luyện' : 'Đang luyện'}}</span><strong class="sp-clock">{{vm.clock()}}</strong></div>
         <div class="sp-alert sp-error" ng-if="vm.progressError" role="alert">{{vm.progressError}} <button class="sp-button" ng-click="vm.retryProgress()">Thử lưu lại</button></div>
         <div ng-repeat="question in [vm.practice.snapshot.questions[vm.practice.currentIndex]] track by $index" class="sp-cue">
-            <span class="sp-eyebrow">PART {{question.part}} · CÂU {{vm.practice.currentIndex+1}} / {{vm.practice.snapshot.questions.length}}</span><h2>{{question.topic}}</h2><p class="sp-preserve">{{question.prompt}}</p>
+            <span class="sp-eyebrow">PART {{question.part}} · CÂU {{vm.practice.currentIndex+1}} / {{vm.practice.snapshot.questions.length}}</span><h2>{{question.topic}}</h2><div class="sp-question-prompt"><p class="sp-preserve">{{question.prompt}}</p><speaking-question-speaker text="question.prompt"></speaking-question-speaker></div>
             <details ng-if="question.sample && vm.practice.status==='DONE'"><summary>Sample tham khảo</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
         </div>
         <div class="sp-record" ng-if="vm.ownPractice() && vm.practice.status==='ACTIVE'">
