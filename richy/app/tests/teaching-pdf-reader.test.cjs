@@ -70,7 +70,7 @@ function fixture(saved = {}, completed = false, catalog = {}) {
         TextLayer: function () { this.render = async () => {}; this.cancel = () => {}; }
     };
     let factory, config;
-    const module = {factory(name, args) { factory = args.at(-1); return this; }, directive() {}};
+    const module = {factory(name, args) { factory = args.at(-1); return this; }, directive() { return this; }};
     const document = {baseURI: 'https://example.test/', addEventListener: (name, fn) => { documentEvents[name] = fn; }};
     root.closest = () => null;
     root.requestFullscreen = async () => {
@@ -172,6 +172,58 @@ test('selection tools share one saved mark and free text is anchored to the clic
     assert.equal(h.ctrl.state.marks[2].page, 7);
     assert.equal(h.ctrl.state.marks[0].note, 'Older note');
     assert.equal(h.writes.at(-1).state.marks[2].text, 'Added on page 7');
+});
+
+test('dragging free text stays on its PDF page and saves the final position; deleting clears the editor', async () => {
+    const saved = {page: 2, marks: [{page: 2, x: .2, y: .3, text: 'Move me'}, {page: 2, note: 'Keep me'}]};
+    const h = fixture(saved);
+    await h.tick();
+    await h.ctrl.open('run');
+    await h.tick();
+    const mark = h.ctrl.state.marks[0];
+    const sheet = h.sheet(2);
+    const page = sheet.getBoundingClientRect();
+    const box = {left: page.width * mark.x, top: page.height * mark.y, width: 60, height: 28};
+    let captured;
+    const handle = {
+        closest: selector => selector === '[data-pdf-page]' ? sheet : {getBoundingClientRect: () => box},
+        setPointerCapture: id => { captured = id; },
+        hasPointerCapture: id => captured === id,
+        releasePointerCapture: () => { captured = null; }
+    };
+    const start = {currentTarget: handle, isPrimary: true, button: 0, pointerId: 5,
+        clientX: box.left + 12, clientY: box.top + 3, preventDefault() {}};
+    const pointer = (type, x, y) => h.events[type]({type, pointerId: 5, clientX: x, clientY: y});
+    h.ctrl.beginTextDrag(mark, start);
+    assert.equal(captured, 5);
+    pointer('pointermove', page.width + 40, page.height + 40);
+    assert.ok(h.ctrl.textPosition(mark).x > .76);
+    assert.equal(mark.x, .2);
+    assert.equal(h.writes.length, 0);
+    pointer('pointercancel');
+    assert.equal(captured, null);
+    assert.equal(h.ctrl.textPosition(mark), mark);
+    assert.equal(mark.y, .3);
+
+    h.ctrl.beginTextDrag(mark, start);
+    pointer('pointerup', page.width + 40, page.height + 40);
+    await h.tick();
+    const moved = h.writes.at(-1).state.marks[0];
+    assert.deepEqual(moved, {page: 2, x: 1, y: 1, text: 'Move me'});
+    h.ctrl.editText(mark, {stopPropagation() {}});
+    h.ctrl.removeMark(mark);
+    assert.equal(h.ctrl.editingText, null);
+    await h.tick();
+    assert.deepEqual(h.writes.at(-1).state.marks, [{page: 2, note: 'Keep me'}]);
+
+    const readonly = fixture(saved, true);
+    await readonly.tick();
+    await readonly.ctrl.open('run');
+    const locked = readonly.ctrl.state.marks[0];
+    readonly.ctrl.beginTextDrag(locked, start);
+    readonly.ctrl.removeMark(locked);
+    assert.ok(!readonly.ctrl.textDrag);
+    assert.equal(readonly.ctrl.state.marks.length, 2);
 });
 
 test('fullscreen preserves reading position and the zoom slider remains active', async () => {

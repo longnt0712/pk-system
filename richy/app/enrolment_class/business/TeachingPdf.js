@@ -367,6 +367,7 @@
                             return lo + 1;
                         }
                         function clearPage(item) {
+                            if (vm.textDrag && vm.textDrag.mark.page === item.number) { endTextDrag(); }
                             var job = item.job;
                             item.job = null; item.ready = false; item.error = false;
                             if (!job) { return; }
@@ -554,6 +555,7 @@
 
 
                         function release() {
+                            endTextDrag();
                             if (batchTimer) { timer.cancel(batchTimer); batchTimer = null; }
                             if (zoomTimer) { timer.cancel(zoomTimer); zoomTimer = null; }
                             if (scrollFrame) { window.cancelAnimationFrame(scrollFrame); scrollFrame = null; }
@@ -731,7 +733,7 @@
                         };
                         vm.editText = function (mark, event) {
                             event.stopPropagation();
-                            if (vm.run.completed) { return; }
+                            if (!vm.run || vm.run.completed || vm.busy) { return; }
                             vm.editingText = mark;
                             timer(function () {
                                 var input = root.querySelector('.teaching-pdf-free-text textarea');
@@ -748,11 +750,63 @@
                         };
                         vm.removeMark = function (mark) {
                             var index = vm.state.marks.indexOf(mark);
-                            if (index < 0 || vm.run.completed) { return; }
+                            if (index < 0 || !vm.run || vm.run.completed) { return; }
+                            if (vm.editingText === mark) { vm.editingText = null; }
+                            if (vm.textDrag && vm.textDrag.mark === mark) { endTextDrag(); }
                             vm.state.marks.splice(index, 1); vm.selectedMark = null; changed();
                         };
                         vm.markChanged = changed;
 
+                        vm.beginTextDrag = function (mark, event) {
+                            if (!vm.run || vm.run.completed || vm.busy || vm.drawing || vm.textDrag ||
+                                    !event.isPrimary || event.button !== 0) { return; }
+                            var handle = event.currentTarget;
+                            var sheet = handle.closest('[data-pdf-page]');
+                            var box = handle.closest('.teaching-pdf-free-text').getBoundingClientRect();
+                            event.preventDefault();
+                            handle.setPointerCapture(event.pointerId);
+                            vm.textDrag = {
+                                mark: mark, handle: handle, sheet: sheet, pointerId: event.pointerId,
+                                startX: event.clientX, startY: event.clientY,
+                                offsetX: event.clientX - box.left, offsetY: event.clientY - box.top,
+                                width: box.width, height: box.height
+                            };
+                            vm.addingText = false;
+                            closeContext();
+                            clearTextSelection();
+                            scope.$evalAsync(angular.noop);
+                        };
+                        function endTextDrag() {
+                            var drag = vm.textDrag;
+                            vm.textDrag = null;
+                            if (drag && drag.handle.hasPointerCapture(drag.pointerId)) {
+                                drag.handle.releasePointerCapture(drag.pointerId);
+                            }
+                        }
+                        function textDragPointer(event, drag) {
+                            if (event.type === 'pointermove' || event.type === 'pointerup') {
+                                if (drag.position || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= 3) {
+                                    var page = drag.sheet.getBoundingClientRect();
+                                    var width = Math.min(1, drag.width / page.width);
+                                    var height = Math.min(1, drag.height / page.height);
+                                    var x = Math.max(0, Math.min(1 - width, (event.clientX - drag.offsetX - page.left) / page.width));
+                                    var y = Math.max(0, Math.min(1 - height, (event.clientY - drag.offsetY - page.top) / page.height));
+                                    drag.position = {x: x, y: y};
+                                    if (event.type === 'pointerup') {
+                                        // Saved anchors near an edge use the right or bottom of the text box.
+                                        drag.mark.x = x > .76 ? x + width : x;
+                                        drag.mark.y = y > .9 ? y + height : y;
+                                        changed();
+                                    }
+                                }
+                            }
+                            if (event.type !== 'pointermove') { endTextDrag(); }
+                            scope.$evalAsync(angular.noop);
+                        }
+                        vm.textPosition = function (mark) {
+                            var drag = vm.textDrag;
+                            return drag && drag.mark === mark && drag.position ? drag.position : mark;
+                        };
                         function point(event, target) {
                             var box = target.getBoundingClientRect();
                             return [Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)).toFixed(4),
@@ -766,6 +820,10 @@
                             }
                         }
                         function onPointer(event) {
+                            if (vm.textDrag && event.pointerId === vm.textDrag.pointerId && event.type !== 'pointerdown') {
+                                textDragPointer(event, vm.textDrag);
+                                return;
+                            }
                             if (event.type === 'pointerdown') {
                                 var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
                                 if (event.target.closest('.textLayer')) { touchSelection = touch; }
@@ -816,7 +874,7 @@
                             });
                         }
 
-                        var pointerEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'];
+                        var pointerEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'];
                         function onPageClick(event) {
                             var selection = window.getSelection();
                             if (event.target.closest('.teaching-pdf-context, .teaching-pdf-inline-note, .teaching-pdf-free-text')) { return; }
@@ -906,5 +964,11 @@
         }
     ]).directive('teachingPdfSurface', function () {
         return {link: function (scope, element) { scope.pdf.bindSurface(element[0]); }};
+    }).directive('teachingPdfTextHandle', function () {
+        return {link: function (scope, element) {
+            function start(event) { scope.pdf.beginTextDrag(scope.mark, event); }
+            element[0].addEventListener('pointerdown', start);
+            scope.$on('$destroy', function () { element[0].removeEventListener('pointerdown', start); });
+        }};
     });
 })();
