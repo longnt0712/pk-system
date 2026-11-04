@@ -1,4 +1,4 @@
-<div class="teaching-pdf-dialog study-notebook-dialog" teaching-pdf-surface>
+<div class="teaching-pdf-dialog study-notebook-dialog" ng-class="{'is-fullscreen': pdf.fullscreen}" teaching-pdf-surface>
     <header class="study-notebook-heading">
         <div class="study-notebook-heading__copy">
             <h2 id="teaching-pdf-title" ng-bind="pdf.run.name || 'Quản lý tài liệu PDF'"></h2>
@@ -10,10 +10,6 @@
             </span>
             <button type="button" class="study-notebook-action" ng-if="pdf.run && pdf.saveStatus === 'Chưa lưu'" ng-click="pdf.save()" ng-disabled="pdf.busy">
                 <i class="fa fa-floppy-o" aria-hidden="true"></i> Lưu lại
-            </button>
-            <button type="button" class="study-notebook-action teaching-pdf-complete" ng-if="pdf.run && !pdf.run.completed"
-                    ng-click="pdf.complete()" ng-disabled="pdf.busy">
-                <i class="fa fa-check" aria-hidden="true"></i> Hoàn thành
             </button>
             <button type="button" class="study-notebook-close" ng-click="pdf.close()" ng-disabled="pdf.busy" aria-label="Đóng PDF">×</button>
         </div>
@@ -83,6 +79,11 @@
                 <output>{{(pdf.zoomInput || pdf.state.zoom) * 100 | number:0}}%</output>
                 <button type="button" ng-click="pdf.zoom(.1)" ng-disabled="pdf.busy || pdf.state.zoom >= 3" aria-label="Phóng to">+</button>
             </div>
+            <button type="button" class="study-notebook-action teaching-pdf-fullscreen" ng-click="pdf.toggleFullscreen()" ng-disabled="pdf.busy"
+                    ng-attr-aria-label="{{pdf.fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}}" ng-attr-aria-pressed="{{!!pdf.fullscreen}}"
+                    title="{{pdf.fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}}">
+                <i class="fa" ng-class="pdf.fullscreen ? 'fa-compress' : 'fa-expand'" aria-hidden="true"></i>
+            </button>
             <button type="button" class="study-notebook-action teaching-pdf-notes-toggle" ng-click="pdf.toggleNotes()"
                     ng-attr-aria-expanded="{{!!pdf.notesOpen}}" aria-controls="teaching-pdf-notes">
                 <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Ghi chú trang
@@ -94,17 +95,11 @@
                      ng-attr-data-pdf-page="{{page.number}}" ng-style="page.style">
                     <div class="teaching-pdf-page-content" ng-if="page.active">
                         <canvas></canvas>
-                        <svg class="teaching-pdf-marks teaching-pdf-text-colors" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-                            <g ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true" ng-if="mark.textColor">
-                                <rect ng-repeat="rect in mark.rects track by $index" ng-attr-x="{{rect.x * 1000}}" ng-attr-y="{{rect.y * 1000}}"
-                                      ng-attr-width="{{rect.w * 1000}}" ng-attr-height="{{rect.h * 1000}}" ng-attr-fill="{{mark.textColor}}"></rect>
-                            </g>
-                        </svg>
                         <svg class="teaching-pdf-marks" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
                             <g ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true">
                                 <g ng-repeat="rect in mark.rects track by $index">
                                     <rect ng-if="mark.highlight !== false" ng-attr-x="{{rect.x * 1000}}" ng-attr-y="{{rect.y * 1000}}"
-                                          ng-attr-width="{{rect.w * 1000}}" ng-attr-height="{{rect.h * 1000}}" fill="#ffcf33" fill-opacity=".38"></rect>
+                                          ng-attr-width="{{rect.w * 1000}}" ng-attr-height="{{rect.h * 1000}}" ng-attr-fill="{{mark.highlightColor || '#ffcf33'}}" fill-opacity=".38"></rect>
                                     <line ng-if="(mark.note || mark.noteAnchor) && mark.highlight === false" ng-attr-x1="{{rect.x * 1000}}" ng-attr-x2="{{(rect.x + rect.w) * 1000}}"
                                           ng-attr-y1="{{(rect.y + rect.h) * 1000}}" ng-attr-y2="{{(rect.y + rect.h) * 1000}}" class="teaching-pdf-note-line"></line>
                                 </g>
@@ -128,11 +123,11 @@
                 </div>
             </div>
             <div class="teaching-pdf-context" ng-if="pdf.context && !pdf.run.completed"
-                 ng-style="{left:pdf.context.x + 'px', top:pdf.context.top + 'px'}" aria-label="Thao tác với đoạn chữ">
-                <div class="teaching-pdf-swatches" role="group" aria-label="Màu chữ">
-                    <button type="button" ng-repeat="color in pdf.textColors track by color.value" ng-mousedown="$event.preventDefault()"
+                 ng-style="{left:pdf.context.menu.x + 'px', top:pdf.context.menu.y + 'px', visibility:pdf.context.menu ? 'visible' : 'hidden'}" aria-label="Thao tác với đoạn chữ">
+                <div class="teaching-pdf-swatches" role="group" aria-label="Màu highlight">
+                    <button type="button" ng-repeat="color in pdf.highlightColors track by color.value" ng-mousedown="$event.preventDefault()"
                             ng-style="{backgroundColor:color.value}" ng-click="pdf.colorSelection(color.value)"
-                            ng-attr-aria-pressed="{{pdf.context.mark.textColor === color.value}}" title="{{color.name}}" aria-label="{{color.name}}"></button>
+                            ng-attr-aria-pressed="{{pdf.context.mark.highlight !== false && pdf.context.mark.highlightColor === color.value}}" title="{{color.name}}" aria-label="{{color.name}}"></button>
                 </div>
                 <div class="study-notebook-tools">
                     <button type="button" ng-mousedown="$event.preventDefault()" ng-click="pdf.highlightSelection()">
@@ -147,7 +142,7 @@
                 </div>
             </div>
             <div class="teaching-pdf-inline-note" ng-if="pdf.context.showNote"
-                 ng-style="{left:pdf.context.x + 'px', top:pdf.context.noteTop + 'px'}">
+                 ng-style="{left:pdf.context.note.x + 'px', top:pdf.context.note.y + 'px', visibility:pdf.context.note ? 'visible' : 'hidden'}">
                 <label for="teaching-pdf-inline-note-text">Ghi chú</label>
                 <textarea id="teaching-pdf-inline-note-text" rows="3" maxlength="4000" ng-model="pdf.context.mark.note"
                           ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"
@@ -172,7 +167,7 @@
         </div>
         <footer class="study-notebook-footer">
             <span><i class="fa fa-lock" aria-hidden="true"></i> Ghi chú riêng theo lớp</span>
-            <span class="teaching-pdf-tip" role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành.' : (pdf.drawing ? 'Viết trực tiếp trên PDF.' : (pdf.addingText ? 'Bấm vào trang để đặt chữ.' : 'Bôi chọn chữ để đổi màu, highlight hoặc ghi chú.'))}}</span>
+            <span class="teaching-pdf-tip" role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành.' : (pdf.drawing ? 'Viết trực tiếp trên PDF.' : (pdf.addingText ? 'Bấm vào trang để đặt chữ.' : 'Bôi chọn chữ để highlight hoặc ghi chú.'))}}</span>
         </footer>
     </div>
 </div>

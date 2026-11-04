@@ -1117,7 +1117,7 @@
 
         vm.openTeachingPdf = function (previousRun, currentRun) {
             var day = vm.scheduleDay;
-            if (!day || vm.teachingPdfOpen || vm.scheduleDaySaving || vm.scheduleSessionLoading
+            if (!day || vm.teachingPdfOpen || vm.teachingPdfCompleting || vm.scheduleDaySaving || vm.scheduleSessionLoading
                 || vm.scheduleSessionError || day.dayOff || day.movedToDate) { return; }
             if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
                 toastr.warning('Hãy chờ kế hoạch tự lưu rồi mở PDF.'); return;
@@ -1127,6 +1127,35 @@
             teachingPdf.open(classId, day.scheduleDate, previousRun, currentRun).then(function (changed) {
                 if (changed && vm.scheduleDay === day) { vm.loadScheduleSession(); }
             }, angular.noop).finally(function () { vm.teachingPdfOpen = false; });
+        };
+
+        vm.confirmCompleteTeachingPdf = function (run) {
+            var day = vm.scheduleDay;
+            if (!day || !run || run.completed || vm.teachingPdfOpen || vm.teachingPdfCompleting
+                || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleDaySaving
+                || day.dayOff || day.movedToDate || vm.teachingPdfCurrent.indexOf(run) < 0) { return; }
+
+            var classId = vm.scheduleClass.id;
+            vm.teachingPdfCompleting = run;
+            var confirmModal = modal.open({
+                templateUrl: 'confirm_complete_teaching_pdf.html',
+                scope: $scope,
+                size: 'md',
+                windowClass: 'class-management-modal-window',
+                ariaLabelledBy: 'confirm-complete-teaching-pdf-title'
+            });
+            confirmModal.result.then(function () {
+                if (vm.scheduleDay !== day) { return; }
+                return teachingPdf.complete(classId, day.scheduleDate, run.id).then(function () {
+                    run.completed = true;
+                    toastr.success('Đã đánh dấu hoàn thành tài liệu PDF.');
+                }, function (error) {
+                    var message = error && error.status === 409
+                        ? 'Tiến trình PDF vừa thay đổi ở phiên khác. Hãy thử đánh dấu lại.'
+                        : 'Chưa xác nhận được tài liệu PDF đã hoàn thành. Hãy thử lại.';
+                    toastr.error(message);
+                });
+            }, angular.noop).finally(function () { vm.teachingPdfCompleting = null; });
         };
 
         vm.openMovedScheduleDay = function () {

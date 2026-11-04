@@ -1316,12 +1316,18 @@
                     </ul>
                     <div class="teaching-pdf-toolbar class-day-plan-actions" data-ng-if="vm.schoolId === 1 && !vm.scheduleDay.dayOff">
                         <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf()"
-                                data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"><i class="fa fa-file-pdf-o"></i> Quản lý tài liệu PDF</button>
-                        <button type="button" class="btn btn-default" data-ng-repeat="run in vm.teachingPdfCurrent track by run.id"
-                                data-ng-click="vm.openTeachingPdf(null, run.id)" data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"
-                                title="{{run.name}}">{{run.completed ? 'Xem lại' : 'Mở PDF'}} · {{run.name}}</button>
+                                data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"><i class="fa fa-file-pdf-o"></i> Quản lý tài liệu PDF</button>
+                        <div class="teaching-pdf-session-actions" data-ng-repeat="run in vm.teachingPdfCurrent track by run.id">
+                            <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf(null, run.id)"
+                                    data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
+                                    title="{{run.name}}">{{run.completed ? 'Xem lại' : 'Mở PDF'}} · {{run.name}}</button>
+                            <button type="button" class="btn btn-primary" data-ng-if="!run.completed"
+                                    data-ng-click="vm.confirmCompleteTeachingPdf(run)"
+                                    data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
+                                    ng-attr-aria-label="Hoàn thành {{run.name}}"><i class="fa fa-check" aria-hidden="true"></i> Hoàn thành</button>
+                        </div>
                         <button type="button" class="btn btn-primary" data-ng-repeat="run in vm.teachingPdfPrevious track by run.id"
-                                data-ng-click="vm.openTeachingPdf(run.id)" data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"
+                                data-ng-click="vm.openTeachingPdf(run.id)" data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
                                 title="{{run.name}}"><i class="fa fa-play"></i> Tiếp tục buổi trước · {{run.name}}</button>
                     </div>
                     <div data-ng-repeat="taskSection in ['CLASS']" data-ng-include="'class_schedule_tasks.html'"></div>
@@ -1892,6 +1898,20 @@
             <button type="button" ng-click="vm.saveObject()" class="btn btn-primary" data-ng-disabled="vm.saving || vm.candidatesLoading || vm.candidatesError">
                 <i class="fa fa-save"></i> {{vm.saving ? 'Đang lưu...' : 'Lưu'}}
             </button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_complete_teaching_pdf.html">
+    <div class="class-management-modal">
+        <div class="modal-header"><h4 class="modal-title" id="confirm-complete-teaching-pdf-title">Hoàn thành tài liệu PDF?</h4></div>
+        <div class="modal-body">
+            <p>Đánh dấu <strong ng-bind="vm.teachingPdfCompleting.name"></strong> đã dạy xong?</p>
+            <p class="text-muted">Bạn vẫn có thể mở lại tài liệu và xem ghi chú đã lưu. Lượt dạy này sẽ ngừng xuất hiện trong mục “Tiếp tục buổi trước”.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">Quay lại</button>
+            <button type="button" ng-click="$close()" class="btn btn-primary"><i class="fa fa-check" aria-hidden="true"></i> Hoàn thành</button>
         </div>
     </div>
 </script>

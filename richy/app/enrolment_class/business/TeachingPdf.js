@@ -20,9 +20,27 @@
             function sessionUrl(classId, date) {
                 return settings.api.baseUrl + settings.api.apiV1Url + 'class_teaching_pdf/' + classId + '/' + date;
             }
+            function saveRun(url, state, revision, completed) {
+                return http.put(url, {state: state, revision: revision, completed: completed}).then(function (response) {
+                    if (response.data.revision !== revision + 1 || response.data.completed !== completed) {
+                        throw new Error('Invalid save confirmation');
+                    }
+                    return response.data;
+                });
+            }
+
             return {
                 list: function (classId, date) {
                     return http.get(sessionUrl(classId, date), {cache: false}).then(function (response) { return response.data; });
+                },
+                complete: function (classId, date, runId) {
+                    var url = sessionUrl(classId, date) + '/run/' + encodeURIComponent(runId);
+                    return http.get(url, {cache: false}).then(function (response) {
+                        var run = response.data;
+                        if (run.completed === true) { return; }
+                        var state = run.progress ? JSON.parse(run.progress) : {page: 1, zoom: 1, x: 0, y: 0, marks: []};
+                        return saveRun(url, state, run.revision, true);
+                    });
                 },
                 open: function (classId, date, previousRun, currentRun) {
                 var base = sessionUrl(classId, date);
@@ -103,6 +121,13 @@
                                 angular.extend(vm.run, data[0].data);
                                 var state = vm.run.progress ? JSON.parse(vm.run.progress) : {};
                                 vm.state = angular.extend({page: 1, zoom: 1, x: 0, y: 0, marks: []}, state);
+                                vm.state.marks.forEach(function (mark) {
+                                    if (mark.textColor) {
+                                        mark.highlightColor = mark.highlightColor || mark.textColor;
+                                        mark.highlight = true;
+                                        delete mark.textColor;
+                                    }
+                                });
                                 vm.zoomInput = vm.state.zoom;
                                 api = data[2];
                                 loadingTask = api.getDocument({data: data[1].data, isEvalSupported: false, enableXfa: false,
@@ -263,9 +288,14 @@
                             vm.zoomInput = zoom;
                             syncZoomInput();
                             if (vm.state.zoom === zoom) { return; }
+                            vm.state.zoom = zoom;
+                            refitPages();
+                            changed();
+                        };
+                        function refitPages() {
+                            if (!pdf || destroyed) { return; }
                             layoutPending = true;
                             closeContext();
-                            vm.state.zoom = zoom;
                             var container = viewport();
                             vm.pages.forEach(function (item) {
                                 clearPage(item); sizeSheet(item, container);
@@ -277,9 +307,43 @@
                                 layoutPending = false;
                                 updateBatch();
                             });
-                            changed();
-                        };
+                        }
                         vm.zoom = function (step) { vm.setZoom(vm.state.zoom + step); };
+                        function nativeFullscreen() {
+                            return !!root && (document.fullscreenElement || document.webkitFullscreenElement) === root;
+                        }
+                        function applyFullscreen(active) {
+                            if (!!vm.fullscreen === active) { return; }
+                            vm.fullscreen = active;
+                            var modalWindow = root && root.closest('.teaching-pdf-window');
+                            if (modalWindow) { modalWindow.classList.toggle('is-pdf-fullscreen', active); }
+                            if (!pdf || destroyed) { return; }
+                            layoutPending = true;
+                            timer(refitPages);
+                        }
+                        function fullscreenChanged() {
+                            if (!vm.fullscreen && !nativeFullscreen()) { return; }
+                            scope.$evalAsync(function () { applyFullscreen(nativeFullscreen()); });
+                        }
+                        function exitFullscreen() {
+                            if (nativeFullscreen()) {
+                                var exit = document.exitFullscreen || document.webkitExitFullscreen;
+                                if (exit) { $q.when(exit.call(document)).catch(angular.noop); }
+                            }
+                            applyFullscreen(false);
+                        }
+                        vm.toggleFullscreen = function () {
+                            if (!pdf || vm.busy) { return; }
+                            if (vm.fullscreen || nativeFullscreen()) { exitFullscreen(); return; }
+                            var request = root.requestFullscreen || root.webkitRequestFullscreen;
+                            if (!request) { applyFullscreen(true); return; }
+                            function useViewport() {
+                                if (pdf && !destroyed) { scope.$evalAsync(function () { applyFullscreen(true); }); }
+                            }
+                            try {
+                                $q.when(request.call(root)).catch(useViewport);
+                            } catch (error) { useViewport(); }
+                        };
                         function onZoom(event) {
                             if (!event.target.matches('[data-pdf-zoom]') || !pdf || vm.busy) { return; }
                             var value = Number(event.target.value);
@@ -296,22 +360,18 @@
                             editId++;
                             vm.saveStatus = 'Chờ đồng bộ';
                             if (saveTimer) { timer.cancel(saveTimer); }
-                            saveTimer = timer(function () { save(false).catch(angular.noop); }, 700);
+                            saveTimer = timer(function () { save().catch(angular.noop); }, 700);
                         }
-                        function save(complete) {
+                        function save() {
                             if (saveTimer) { timer.cancel(saveTimer); saveTimer = null; }
                             if (!vm.run || vm.run.completed) { return $q.when(); }
-                            if (saveRequest) { return saveRequest.then(function () { return save(complete); }); }
-                            if (editId === savedEditId && !complete) { return $q.when(); }
+                            if (saveRequest) { return saveRequest.then(function () { return save(); }); }
+                            if (editId === savedEditId) { return $q.when(); }
                             var sent = editId, revision = vm.run.revision;
                             vm.saveStatus = 'Đang đồng bộ…';
-                            saveRequest = http.put(runUrl(), {state: angular.copy(vm.state), revision: revision, completed: complete})
-                                .then(function (response) {
-                                    if (response.data.revision !== revision + 1 || response.data.completed !== complete) {
-                                        throw new Error('Invalid save confirmation');
-                                    }
-                                    vm.run.revision = response.data.revision;
-                                    vm.run.completed = complete;
+                            saveRequest = saveRun(runUrl(), angular.copy(vm.state), revision, false)
+                                .then(function (saved) {
+                                    vm.run.revision = saved.revision;
                                     savedEditId = sent;
                                     vm.saveStatus = sent === editId ? 'Đã đồng bộ' : 'Chờ đồng bộ';
                                 }).catch(function (error) {
@@ -321,14 +381,8 @@
                                 }).finally(function () { saveRequest = null; });
                             return saveRequest;
                         }
-                        vm.save = function () { vm.error = ''; save(false).catch(angular.noop); };
-                        vm.complete = function () {
-                            if (!pdf || vm.busy || vm.run.completed || !window.confirm('Đánh dấu hoàn thành lượt dạy PDF này?')) { return; }
-                            vm.busy = true;
-                            if (vm.editingText) { vm.finishText(vm.editingText); }
-                            save(true).then(function () { vm.changedDay = true; }).catch(angular.noop)
-                                .finally(function () { vm.busy = false; });
-                        };
+                        vm.save = function () { vm.error = ''; save().catch(angular.noop); };
+
 
                         function release() {
                             if (batchTimer) { timer.cancel(batchTimer); batchTimer = null; }
@@ -344,8 +398,8 @@
                             if (vm.busy) { return; }
                             vm.busy = true;
                             if (vm.editingText) { vm.finishText(vm.editingText); }
-                            save(false).then(function () {
-                                release(); vm.run = null; vm.selectedMark = null; vm.drawing = false; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
+                            save().then(function () {
+                                release(); exitFullscreen(); vm.run = null; vm.selectedMark = null; vm.drawing = false; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
                                 editId = savedEditId = 0; vm.saveStatus = '';
                                 if (close) { instance.close(vm.changedDay); } else { return load(); }
                             }).catch(angular.noop).finally(function () { vm.busy = false; });
@@ -353,21 +407,58 @@
                         vm.back = function () { leave(false); };
                         vm.close = function () { leave(true); };
 
-                        vm.textColors = [
+                        vm.highlightColors = [
                             {name:'Đỏ', value:'#bc4136'}, {name:'Hồng', value:'#b63f77'},
                             {name:'Cam', value:'#b65b16'}, {name:'Vàng', value:'#946500'},
                             {name:'Xanh lá', value:'#32743a'}, {name:'Xanh ngọc', value:'#157276'},
                             {name:'Xanh dương', value:'#2b62ba'}, {name:'Tím', value:'#7255a8'}
                         ];
+                        function placeContextPanel(panel, bounds, area, preferAbove, gap) {
+                            var width = panel.offsetWidth, height = panel.offsetHeight;
+                            var x = Math.max(8, Math.min(area.width - width - 8, (bounds.left + bounds.right - width) / 2));
+                            var above = bounds.top - height - gap, below = bounds.bottom + gap;
+                            if (above >= 4 && (preferAbove || below + height > area.height - 4)) { return {x: x, y: above}; }
+                            if (below + height <= area.height - 4) { return {x: x, y: below}; }
+                            var y = Math.max(4, Math.min(area.height - height - 4, (bounds.top + bounds.bottom - height) / 2));
+                            if (bounds.right + gap + width <= area.width - 4) { return {x: bounds.right + gap, y: y}; }
+                            if (bounds.left - gap - width >= 4) { return {x: bounds.left - gap - width, y: y}; }
+                            return {x: x, y: above};
+                        }
+                        function positionContext() {
+                            var context = vm.context, container = viewport();
+                            if (!context || !container) { return; }
+                            var area = container.getBoundingClientRect(), rect = context.rect;
+                            var bounds = {left: rect.left - area.left, right: rect.right - area.left,
+                                top: rect.top - area.top, bottom: rect.bottom - area.top};
+                            var menu = root.querySelector('.teaching-pdf-context');
+                            var note = root.querySelector('.teaching-pdf-inline-note');
+                            if (menu) {
+                                context.menu = placeContextPanel(menu, bounds, area, true, 10);
+                                if (context.menu.y >= bounds.bottom) {
+                                    bounds.bottom = context.menu.y + menu.offsetHeight;
+                                } else if (context.menu.y + menu.offsetHeight <= bounds.top) {
+                                    bounds.top = context.menu.y;
+                                } else {
+                                    bounds.left = Math.min(bounds.left, context.menu.x);
+                                    bounds.right = Math.max(bounds.right, context.menu.x + menu.offsetWidth);
+                                }
+                            }
+                            if (note) { context.note = placeContextPanel(note, bounds, area, false, 8); }
+                        }
                         function anchorContext(mark, rect) {
-                            var area = viewport().getBoundingClientRect();
-                            var x = (rect.left + rect.right) / 2 - area.left;
-                            var top = Math.max(6, rect.top - area.top - 73);
-                            var below = rect.bottom - area.top + 7;
-                            vm.context = {mark: mark,
-                                x: Math.max(8, Math.min(area.width - 294, x - 142)),
-                                top: top,
-                                noteTop: below + 146 <= area.height ? below : Math.max(6, top - 146)};
+                            vm.context = {mark: mark, rect: rect};
+                            timer(positionContext);
+                        }
+                        function markBounds(mark, sheet) {
+                            var page = sheet.getBoundingClientRect();
+                            var bounds = {left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity};
+                            mark.rects.forEach(function (rect) {
+                                bounds.left = Math.min(bounds.left, page.left + rect.x * page.width);
+                                bounds.right = Math.max(bounds.right, page.left + (rect.x + rect.w) * page.width);
+                                bounds.top = Math.min(bounds.top, page.top + rect.y * page.height);
+                                bounds.bottom = Math.max(bounds.bottom, page.top + (rect.y + rect.h) * page.height);
+                            });
+                            return bounds;
                         }
                         function closeContext() { vm.context = null; }
                         function selectedTextContext() {
@@ -412,7 +503,7 @@
                             if (!vm.context || vm.run.completed) { return; }
                             var mark = vm.context.mark;
                             mark.highlight = mark.highlight === false;
-                            if (!mark.highlight && !mark.note && !mark.noteAnchor && !mark.textColor && !vm.context.draft) {
+                            if (!mark.highlight && !mark.note && !mark.noteAnchor && !vm.context.draft) {
                                 vm.removeMark(mark);
                                 vm.context.draft = true;
                                 return;
@@ -421,7 +512,8 @@
                         };
                         vm.colorSelection = function (color) {
                             if (!vm.context || vm.run.completed) { return; }
-                            vm.context.mark.textColor = color;
+                            vm.context.mark.highlightColor = color;
+                            vm.context.mark.highlight = true;
                             saveContextMark(); changed();
                         };
                         vm.noteSelection = function () {
@@ -432,6 +524,7 @@
                             }
                             vm.context.showNote = true;
                             timer(function () {
+                                positionContext();
                                 var input = root.querySelector('.teaching-pdf-inline-note textarea');
                                 if (input && !vm.run.completed) { input.focus(); }
                             });
@@ -559,7 +652,7 @@
                                 })) {
                                     scope.$evalAsync(function () {
                                         if (vm.context && vm.context.mark === mark) { closeContext(); return; }
-                                        anchorContext(mark, {left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY});
+                                        anchorContext(mark, markBounds(mark, sheet));
                                         vm.context.showNote = vm.run.completed || !!(mark.note || mark.noteAnchor);
                                     });
                                     return;
@@ -575,6 +668,8 @@
                             root.addEventListener('change', onZoom);
                             root.addEventListener('click', onPageClick);
                             document.addEventListener('selectionchange', queueSelection);
+                            document.addEventListener('fullscreenchange', fullscreenChanged);
+                            document.addEventListener('webkitfullscreenchange', fullscreenChanged);
                         };
                         function preventUnsavedExit(event) {
                             if (editId !== savedEditId || saveRequest) {
@@ -583,7 +678,7 @@
                         }
                         window.addEventListener('beforeunload', preventUnsavedExit);
                         scope.$on('$destroy', function () {
-                            destroyed = true; release();
+                            destroyed = true; release(); exitFullscreen();
                             if (saveTimer) { timer.cancel(saveTimer); }
                             window.removeEventListener('beforeunload', preventUnsavedExit);
                             if (root) {
@@ -592,6 +687,8 @@
                                 root.removeEventListener('input', onZoom);
                                 root.removeEventListener('change', onZoom);
                                 document.removeEventListener('selectionchange', queueSelection);
+                                document.removeEventListener('fullscreenchange', fullscreenChanged);
+                                document.removeEventListener('webkitfullscreenchange', fullscreenChanged);
                                 if (selectionTimer) { timer.cancel(selectionTimer); }
                                 pointerEvents.forEach(function (name) { root.removeEventListener(name, onPointer); });
                             }
