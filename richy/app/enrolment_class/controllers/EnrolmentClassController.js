@@ -42,10 +42,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders', 'ClassAssignmentPicker'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders', 'ClassAssignmentPicker', 'TeachingPdf'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders, assignmentPicker) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders, assignmentPicker, teachingPdf) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -1081,6 +1081,7 @@
             if (!angular.isFunction(service.getScheduleSession)) { return; }
             var request = ++scheduleSessionRequest, classId = vm.scheduleClass.id, date = vm.scheduleDay.scheduleDate;
             vm.scheduleSessionLoading = true; vm.scheduleSessionError = false;
+            vm.teachingPdfPrevious = []; vm.teachingPdfCurrent = [];
             return service.getScheduleSession(classId, date).then(function (info) {
                 if (request !== scheduleSessionRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
                     || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== date) { return; }
@@ -1093,11 +1094,39 @@
                 vm.scheduleDayIsExtraDate = isExtraScheduleDate(vm.scheduleDay);
                 scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
                 if (vm.scheduleDay.movedToDate) { vm.previousHomeworkDay = null; vm.previousHomeworkTasks = []; }
+                refreshTeachingPdf(classId, date);
             }, function () {
                 if (request !== scheduleSessionRequest || vm.scheduleClass.id !== classId || vm.scheduleDay.scheduleDate !== date) { return; }
                 vm.scheduleSessionLoading = false; vm.scheduleSessionError = true;
                 toastr.error('Không tải được buổi học và hạn mặc định. Hãy thử lại; chưa được lưu kế hoạch.', 'Lỗi');
             });
+        };
+
+        function refreshTeachingPdf(classId, date) {
+            vm.teachingPdfPrevious = []; vm.teachingPdfCurrent = [];
+            if (!teachingPdf || vm.schoolId !== 1 || vm.scheduleDay.dayOff || vm.scheduleDay.movedToDate) { return; }
+            var day = vm.scheduleDay;
+            teachingPdf.list(classId, date).then(function (catalog) {
+                if (vm.scheduleDay !== day) { return; }
+                vm.teachingPdfCurrent = catalog.current || [];
+                vm.teachingPdfPrevious = (catalog.previous || []).filter(function (run) {
+                    return !vm.teachingPdfCurrent.some(function (current) { return current.id === run.id; });
+                });
+            }, angular.noop);
+        }
+
+        vm.openTeachingPdf = function (previousRun, currentRun) {
+            var day = vm.scheduleDay;
+            if (!day || vm.teachingPdfOpen || vm.scheduleDaySaving || vm.scheduleSessionLoading
+                || vm.scheduleSessionError || day.dayOff || day.movedToDate) { return; }
+            if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
+                toastr.warning('Hãy chờ kế hoạch tự lưu rồi mở PDF.'); return;
+            }
+            var classId = vm.scheduleClass.id;
+            vm.teachingPdfOpen = true;
+            teachingPdf.open(classId, day.scheduleDate, previousRun, currentRun).then(function (changed) {
+                if (changed && vm.scheduleDay === day) { vm.loadScheduleSession(); }
+            }, angular.noop).finally(function () { vm.teachingPdfOpen = false; });
         };
 
         vm.openMovedScheduleDay = function () {

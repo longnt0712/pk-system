@@ -1,0 +1,73 @@
+package com.globits.richy.rest;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.globits.richy.service.EnrolmentClassScheduleException;
+import com.globits.richy.service.impl.TeachingPdfService;
+
+@RestController
+@Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"})
+@RequestMapping("/api/class_teaching_pdf/{classId}/{date}")
+public class RestTeachingPdfController {
+    private final TeachingPdfService pdf;
+
+    @Autowired
+    public RestTeachingPdfController(TeachingPdfService pdf) { this.pdf = pdf; }
+
+    @RequestMapping(method = RequestMethod.GET)
+    public Map<String, Object> list(@PathVariable Long classId, @PathVariable String date) {
+        return pdf.list(classId, date);
+    }
+
+    @RequestMapping(value = "/upload", method = RequestMethod.POST)
+    public Map<String, String> upload(@PathVariable Long classId, @PathVariable String date,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        return pdf.upload(classId, date, file);
+    }
+
+    @RequestMapping(value = "/attach", method = RequestMethod.POST)
+    public Map<String, String> attach(@PathVariable Long classId, @PathVariable String date,
+            @RequestBody Map<String, String> request) {
+        return pdf.attach(classId, date, request.get("pdfId"), request.get("previousRun"));
+    }
+
+    @RequestMapping(value = "/run/{runId}", method = RequestMethod.GET)
+    public ResponseEntity<Map<String, Object>> open(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(pdf.open(classId, date, runId));
+    }
+
+    @RequestMapping(value = "/run/{runId}/content", method = RequestMethod.GET)
+    public ResponseEntity<byte[]> content(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId) {
+        return ResponseEntity.ok().header("Cache-Control", "private, no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Disposition", "attachment; filename=\"lesson.pdf\"")
+                .contentType(MediaType.parseMediaType("application/pdf")).body(pdf.content(classId, date, runId));
+    }
+
+    @RequestMapping(value = "/run/{runId}", method = RequestMethod.PUT)
+    public Map<String, Object> save(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId,
+            @RequestBody JsonNode request) {
+        return pdf.save(classId, date, runId, request);
+    }
+
+    @ExceptionHandler(EnrolmentClassScheduleException.class)
+    public ResponseEntity<Map<String, String>> handleError(EnrolmentClassScheduleException error) {
+        return ResponseEntity.status(error.getStatus()).body(Collections.singletonMap("message", error.getMessage()));
+    }
+}

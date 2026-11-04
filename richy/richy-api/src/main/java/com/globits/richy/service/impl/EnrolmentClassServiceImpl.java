@@ -1163,6 +1163,35 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
     }
 
     @Override
+    public com.globits.richy.dto.TeachingPdfSession teachingPdfSession(Long classId, String date, boolean attach) {
+        User teacher = getCurrentUser();
+        EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selected == null || !HIDDEN_SCHOOL_ID.equals(selected.getSchoolId()) || !canEditClass(teacher, selected)) {
+            throw new AccessDeniedException("Bạn không được quản lý PDF của lớp này.");
+        }
+        if (!isValidDate(date)) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày học không hợp lệ."); }
+        if (attach) { teamEntityManager.refresh(selected, javax.persistence.LockModeType.PESSIMISTIC_WRITE); }
+        EffectiveClassSchedule timeline = effectiveSchedule(classId);
+        if (timeline.cancelled(date) || (attach && timeline.on(date) == null)) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chọn một ngày có buổi học để gắn PDF.");
+        }
+        EnrolmentClassScheduleDay day = scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, date);
+        if (attach && day == null) {
+            day = new EnrolmentClassScheduleDay();
+            day.setEnrolmentClass(selected);
+            day.setScheduleDate(date);
+            day.setCreateDate(LocalDateTime.now());
+            day.setCreatedBy(teacher.getUsername());
+            day = scheduleDayRepository.saveAndFlush(day);
+        }
+        EffectiveClassSchedule.Slot previous = timeline.previous(date);
+        EnrolmentClassScheduleDay prior = previous == null ? null
+                : scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, previous.date);
+        return new com.globits.richy.dto.TeachingPdfSession(teacher.getId(), day == null ? null : day.getId(),
+                prior == null ? null : prior.getId());
+    }
+
+    @Override
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date) {
         EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);
         if (selected == null || !canEditClass(getCurrentUser(), selected)) {

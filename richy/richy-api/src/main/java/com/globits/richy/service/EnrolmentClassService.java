@@ -44,6 +44,8 @@ public interface EnrolmentClassService {
     public List<com.globits.richy.dto.ComprehensiveAssignmentSectionDto> previewComprehensiveSections(com.globits.richy.dto.EnrolmentClassScheduleTaskDto request);
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
     public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version);
+    com.globits.richy.dto.TeachingPdfSession teachingPdfSession(Long classId, String date, boolean attach);
+
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date);
     EnrolmentClassScheduleDayDto cancelScheduleMove(Long classId, Long dayId, long version);
 

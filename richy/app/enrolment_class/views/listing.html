@@ -1314,6 +1314,16 @@
                         </li>
                         <li class="class-day-empty" data-ng-if="!vm.scheduleDay.classTopicIds.length">Chưa thiết lập bài học.</li>
                     </ul>
+                    <div class="teaching-pdf-toolbar class-day-plan-actions" data-ng-if="vm.schoolId === 1 && !vm.scheduleDay.dayOff">
+                        <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf()"
+                                data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"><i class="fa fa-file-pdf-o"></i> Quản lý tài liệu PDF</button>
+                        <button type="button" class="btn btn-default" data-ng-repeat="run in vm.teachingPdfCurrent track by run.id"
+                                data-ng-click="vm.openTeachingPdf(null, run.id)" data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"
+                                title="{{run.name}}">{{run.completed ? 'Xem lại' : 'Mở PDF'}} · {{run.name}}</button>
+                        <button type="button" class="btn btn-primary" data-ng-repeat="run in vm.teachingPdfPrevious track by run.id"
+                                data-ng-click="vm.openTeachingPdf(run.id)" data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen"
+                                title="{{run.name}}"><i class="fa fa-play"></i> Tiếp tục buổi trước · {{run.name}}</button>
+                    </div>
                     <div data-ng-repeat="taskSection in ['CLASS']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>
 
