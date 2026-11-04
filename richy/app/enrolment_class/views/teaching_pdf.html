@@ -250,13 +250,7 @@
             </div>
             <div class="teaching-pdf-inline-note" ng-if="pdf.context.showNote"
                  ng-style="{left:pdf.context.note.x + 'px', top:pdf.context.note.y + 'px', visibility:pdf.context.note ? 'visible' : 'hidden'}">
-                <div class="teaching-pdf-inline-note-header">
-                    <label for="teaching-pdf-inline-note-text">Ghi chú</label>
-                    <button type="button" class="study-notebook-action teaching-pdf-inline-note-delete" ng-if="!pdf.run.completed"
-                            ng-click="pdf.removeInlineNote()" ng-disabled="pdf.busy">
-                        <i class="fa fa-trash-o" aria-hidden="true"></i> Xóa ghi chú
-                    </button>
-                </div>
+                <label for="teaching-pdf-inline-note-text">Ghi chú</label>
                 <textarea id="teaching-pdf-inline-note-text" rows="3" maxlength="4000" ng-model="pdf.context.mark.note"
                           ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"
                           placeholder="Gõ điều cần nhớ…"></textarea>

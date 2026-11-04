@@ -158,7 +158,7 @@
 .teaching-pdf-text-value, .teaching-pdf-free-text textarea {
     display: block; padding: 3px 5px; border: 1px solid #8ba6e5; border-radius: 4px;
     background: #fffdf1; color: #243e79; font: 600 1em/1.3 Arial, sans-serif;
-    white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; box-shadow: 0 2px 6px #263b641c;
+    white-space: pre-wrap; overflow-wrap: anywhere; text-align: left;
 }
 .teaching-pdf-text-value {
     max-width: 100%; min-height: 0; padding: 4px 6px; border: 0;
@@ -212,13 +212,14 @@
     box-shadow: inset 0 1px 1px #ffffffa6;
 }
 .teaching-pdf-swatches button:hover, .teaching-pdf-swatches button[aria-pressed="true"] { outline: 2px solid #4358a5; outline-offset: 1px; }
-.teaching-pdf-inline-note { width: min(285px, calc(100% - 16px)); z-index: 7; padding: 10px; }
-.teaching-pdf-inline-note-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
-.teaching-pdf-inline-note label { margin: 0; font-weight: 700; }
-.teaching-pdf-inline-note .teaching-pdf-inline-note-delete { color: #a23c4a; }
+.teaching-pdf-inline-note {
+    width: min(285px, calc(100% - 16px)); z-index: 7; padding: 10px;
+    background: #ffffffc9; border-color: #d5dff280; box-shadow: 0 2px 8px #263b641a;
+}
+.teaching-pdf-inline-note label { display: block; margin-bottom: 5px; font-weight: 700; }
 .teaching-pdf-inline-note textarea {
     display: block; width: 100%; padding: 7px; border: 1px solid #d5dff2; border-radius: 6px;
-    background: #fffdf3; color: #27354d; resize: vertical;
+    background: transparent; color: #27354d; resize: vertical;
 }
 @media (max-width: 720px) {
     .teaching-pdf-window .modal-dialog { width: 98vw; margin: 1vh auto; }

@@ -722,18 +722,6 @@
                             if (!vm.context) { return; }
                             vm.removeMark(vm.context.mark); closeContext();
                         };
-                        vm.removeInlineNote = function () {
-                            if (!vm.context || !vm.run || vm.run.completed || vm.busy) { return; }
-                            var mark = vm.context.mark;
-                            if (mark.highlight === false) {
-                                vm.removeMark(mark);
-                            } else if (mark.note || mark.noteAnchor) {
-                                delete mark.note;
-                                delete mark.noteAnchor;
-                                changed();
-                            }
-                            closeContext();
-                        };
                         function clearTextSelection() {
                             var selection = window.getSelection();
                             if (selection && !selection.isCollapsed) { selection.removeAllRanges(); }
