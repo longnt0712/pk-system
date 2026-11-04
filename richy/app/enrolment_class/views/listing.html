@@ -1318,10 +1318,13 @@
                         <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf()"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"><i class="fa fa-file-pdf-o"></i> Quản lý tài liệu PDF</button>
                         <div class="teaching-pdf-session-actions" data-ng-repeat="run in vm.teachingPdfCurrent track by run.id">
-                            <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf(null, run.id)"
+                            <button type="button" class="teaching-pdf-session-open" data-ng-click="vm.openTeachingPdf(null, run.id)"
                                     data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
-                                    title="{{run.name}}">{{run.completed ? 'Xem lại' : 'Mở PDF'}} · {{run.name}}</button>
-                            <button type="button" class="btn btn-primary" data-ng-if="!run.completed"
+                                    ng-attr-aria-label="{{run.completed ? 'Xem lại' : 'Mở PDF'}} {{run.name}}" title="{{run.name}}">
+                                <span class="teaching-pdf-session-icon"><i class="fa fa-file-pdf-o" aria-hidden="true"></i></span>
+                                <span class="teaching-pdf-session-label"><strong ng-bind="run.name"></strong><small>{{run.completed ? 'Đã hoàn thành · Xem lại' : 'Mở PDF'}}</small></span>
+                            </button>
+                            <button type="button" class="teaching-pdf-session-complete" data-ng-if="!run.completed"
                                     data-ng-click="vm.confirmCompleteTeachingPdf(run)"
                                     data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
                                     ng-attr-aria-label="Hoàn thành {{run.name}}"><i class="fa fa-check" aria-hidden="true"></i> Hoàn thành</button>

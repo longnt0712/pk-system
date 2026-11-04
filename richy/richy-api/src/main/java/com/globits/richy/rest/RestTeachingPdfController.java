@@ -38,8 +38,26 @@ public class RestTeachingPdfController {
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST)
     public Map<String, String> upload(@PathVariable Long classId, @PathVariable String date,
-            @RequestParam("file") MultipartFile file) throws IOException {
-        return pdf.upload(classId, date, file);
+            @RequestParam("file") MultipartFile file, @RequestParam(value = "folderId", required = false) String folderId) throws IOException {
+        return pdf.upload(classId, date, file, folderId);
+    }
+
+    @RequestMapping(value = "/folders", method = RequestMethod.POST)
+    public Map<String, String> createFolder(@PathVariable Long classId, @PathVariable String date,
+            @RequestBody Map<String, String> request) {
+        return pdf.saveFolder(classId, date, null, request.get("parentId"), request.get("name"));
+    }
+
+    @RequestMapping(value = "/folders/{id}", method = RequestMethod.PUT)
+    public Map<String, String> updateFolder(@PathVariable Long classId, @PathVariable String date, @PathVariable String id,
+            @RequestBody Map<String, String> request) {
+        return pdf.saveFolder(classId, date, id, request.get("parentId"), request.get("name"));
+    }
+
+    @RequestMapping(value = "/files/{id}", method = RequestMethod.PUT)
+    public Map<String, String> updateFile(@PathVariable Long classId, @PathVariable String date, @PathVariable String id,
+            @RequestBody Map<String, String> request) {
+        return pdf.updateFile(classId, date, id, request.get("folderId"), request.get("name"));
     }
 
     @RequestMapping(value = "/attach", method = RequestMethod.POST)

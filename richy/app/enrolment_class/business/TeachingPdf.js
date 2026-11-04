@@ -59,7 +59,8 @@
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         vm.pages = [];
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
-                        vm.library = []; vm.current = []; vm.previous = [];
+                        vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
+                        var foldersById = Object.create(null);
 
                         function fail(error, fallback) {
                             vm.error = error && error.data && error.data.message || fallback;
@@ -69,6 +70,9 @@
                             vm.busy = true; vm.error = '';
                             return http.get(base, {cache: false}).then(function (response) {
                                 vm.library = response.data.library || [];
+                                vm.foldersEnabled = angular.isArray(response.data.folders);
+                                vm.folders = response.data.folders || [];
+                                refreshExplorer();
                                 vm.current = response.data.current || [];
                                 vm.previous = (response.data.previous || []).filter(function (item) {
                                     return !vm.current.some(function (current) { return current.id === item.id; });
@@ -77,15 +81,83 @@
                                 .finally(function () { vm.busy = false; });
                         }
 
+                        function showFolder(folderId) {
+                            vm.folderTrail = folderPath(folderId);
+                            vm.folderId = vm.folderTrail.length ? vm.folderTrail[vm.folderTrail.length - 1].id : null;
+                            vm.visibleFolders = vm.folders.filter(function (folder) { return (folder.parentId || null) === vm.folderId; });
+                            vm.visibleFiles = vm.library.filter(function (item) { return (item.folderId || null) === vm.folderId; });
+                        }
+                        function folderPath(id) {
+                            var path = [], folder;
+                            while (id && path.length < vm.folders.length && (folder = foldersById[id])) {
+                                path.unshift(folder);
+                                id = folder.parentId;
+                            }
+                            return path;
+                        }
+                        function refreshExplorer() {
+                            foldersById = Object.create(null);
+                            vm.folders.forEach(function (folder) { foldersById[folder.id] = folder; });
+                            showFolder(vm.folderId);
+                        }
+
+                        vm.browseFolder = function (folderId) {
+                            if (vm.busy) { return; }
+                            vm.libraryForm = null;
+                            showFolder(folderId);
+                        };
+                        vm.editLibrary = function (kind, item) {
+                            if (vm.busy) { return; }
+                            var isFolder = kind === 'folder';
+                            var parentId = item ? (isFolder ? item.parentId : item.folderId) : vm.folderId;
+                            vm.libraryForm = {kind: kind, id: item && item.id, name: item ? item.name : '', parentId: parentId || null};
+                            vm.folderChoices = vm.folders.map(function (folder) {
+                                var path = folderPath(folder.id);
+                                if (isFolder && item && path.some(function (ancestor) { return ancestor.id === item.id; })) { return null; }
+                                return {id: folder.id, path: path.map(function (ancestor) { return ancestor.name; }).join(' / ')};
+                            }).filter(Boolean);
+                        };
+                        vm.saveLibrary = function () {
+                            var form = vm.libraryForm;
+                            if (!form || !form.name || !form.name.trim() || vm.busy) { return; }
+                            var isFolder = form.kind === 'folder';
+                            var path = base + (isFolder ? '/folders' : '/files');
+                            var data = {name: form.name};
+                            data[isFolder ? 'parentId' : 'folderId'] = form.parentId;
+                            vm.busy = true; vm.error = '';
+                            var request = form.id ? http.put(path + '/' + encodeURIComponent(form.id), data) : http.post(path, data);
+                            return request.then(function (response) {
+                                var saved = response.data;
+                                var entries = isFolder ? vm.folders : vm.library;
+                                var existing = entries.find(function (item) { return item.id === saved.id; });
+                                var parentKey = isFolder ? 'parentId' : 'folderId';
+                                saved[parentKey] = saved[parentKey] || null;
+                                if (existing) {
+                                    if (!isFolder && existing.name !== saved.name) {
+                                        vm.changedDay = true;
+                                        vm.current.concat(vm.previous).forEach(function (run) {
+                                            if (run.pdfId === saved.id) { run.name = saved.name; }
+                                        });
+                                    }
+                                    angular.extend(existing, saved);
+                                } else { entries.push(saved); }
+                                vm.libraryForm = null;
+                                refreshExplorer();
+                            }, function (error) { fail(error, 'Không lưu được thay đổi trong kho PDF.'); })
+                                .finally(function () { vm.busy = false; });
+                        };
+
                         vm.upload = function (file) {
                             if (!file || vm.busy) { return; }
                             if (file.size > 9 * 1024 * 1024) { vm.error = 'Chọn PDF tối đa 9 MB.'; return; }
                             var body = new FormData();
                             body.append('file', file);
+                            if (vm.folderId) { body.append('folderId', vm.folderId); }
                             vm.busy = true; vm.error = '';
                             http.post(base + '/upload', body, {transformRequest: angular.identity, headers: {'Content-Type': undefined}})
                                 .then(function (response) {
                                     vm.library.push(response.data); vm.selected = response.data.id;
+                                    showFolder(vm.folderId);
                                 }, function (error) { fail(error, 'Không tải lên được tệp PDF.'); })
                                 .finally(function () { vm.busy = false; });
                         };
@@ -100,7 +172,7 @@
                                     ? vm.previous.find(function (run) { return run.id === choice.previousRun; })
                                     : vm.library.find(function (item) { return item.id === choice.pdfId; });
                                 if (selected && !vm.current.some(function (run) { return run.id === id; })) {
-                                    vm.current.push({id: id, name: selected.name, completed: false});
+                                    vm.current.push({id: id, pdfId: choice.pdfId || selected.pdfId, name: selected.name, completed: false});
                                 }
                                 vm.previous = vm.previous.filter(function (run) { return run.id !== id; });
                                 return open(id);
@@ -408,11 +480,15 @@
                         vm.close = function () { leave(true); };
 
                         vm.highlightColors = [
-                            {name:'Đỏ', value:'#bc4136'}, {name:'Hồng', value:'#b63f77'},
-                            {name:'Cam', value:'#b65b16'}, {name:'Vàng', value:'#946500'},
-                            {name:'Xanh lá', value:'#32743a'}, {name:'Xanh ngọc', value:'#157276'},
-                            {name:'Xanh dương', value:'#2b62ba'}, {name:'Tím', value:'#7255a8'}
+                            {name: 'Đỏ đất nhạt', value: '#e6b8af'}, {name: 'Hồng nhạt', value: '#f4cccc'},
+                            {name: 'Cam nhạt', value: '#fce5cd'}, {name: 'Vàng nhạt', value: '#fff2cc'},
+                            {name: 'Xanh lá nhạt', value: '#d9ead3'}, {name: 'Xanh ngọc nhạt', value: '#d0e0e3'},
+                            {name: 'Xanh lam nhạt', value: '#c9daf8'}, {name: 'Xanh da trời nhạt', value: '#cfe2f3'},
+                            {name: 'Tím nhạt', value: '#d9d2e9'}, {name: 'Hồng tím nhạt', value: '#ead1dc'}
                         ];
+                        vm.highlightOpacity = function (value) {
+                            return vm.highlightColors.some(function (color) { return color.value === value; }) ? 1 : .38;
+                        };
                         function placeContextPanel(panel, bounds, area, preferAbove, gap) {
                             var width = panel.offsetWidth, height = panel.offsetHeight;
                             var x = Math.max(8, Math.min(area.width - width - 8, (bounds.left + bounds.right - width) / 2));

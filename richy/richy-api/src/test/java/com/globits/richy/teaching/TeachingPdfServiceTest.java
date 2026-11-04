@@ -38,7 +38,8 @@ public class TeachingPdfServiceTest {
         source.setDriverClassName("org.h2.Driver");
         JdbcTemplate jdbc = new JdbcTemplate(source);
         jdbc.execute("CREATE SCHEMA dbo");
-        jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, name NVARCHAR(255), content VARBINARY(MAX))");
+        jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, name NVARCHAR(255), content VARBINARY(MAX), folder_id VARCHAR(36))");
+        jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf_folder (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, parent_id VARCHAR(36), name NVARCHAR(200))");
         jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf_run (id VARCHAR(36) PRIMARY KEY, class_id BIGINT, "
                 + "pdf_id VARCHAR(36), revision INT NOT NULL DEFAULT 0, completed BIT NOT NULL DEFAULT 0, progress NVARCHAR(MAX))");
         jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf_day (day_id BIGINT, run_id VARCHAR(36), PRIMARY KEY(day_id, run_id))");
@@ -53,10 +54,13 @@ public class TeachingPdfServiceTest {
         pdf = new TeachingPdfService(source, classes);
     }
 
-    private String upload() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "Lesson.pdf", "application/pdf",
+    private MockMultipartFile lessonFile() {
+        return new MockMultipartFile("file", "Lesson.pdf", "application/pdf",
                 "%PDF-1.7".getBytes(StandardCharsets.US_ASCII));
-        return pdf.upload(1L, "2026-11-04", file).get("id");
+    }
+
+    private String upload() throws Exception {
+        return pdf.upload(1L, "2026-11-04", lessonFile(), null).get("id");
     }
 
     private JsonNode state(int revision, int page, boolean completed) throws Exception {
@@ -109,6 +113,39 @@ public class TeachingPdfServiceTest {
             pdf.save(1L, "2026-11-04", run, state(0, 2, false));
             fail("A different state on an old revision must be rejected");
         } catch (EnrolmentClassScheduleException e) { assertEquals(HttpStatus.CONFLICT, e.getStatus()); }
+    }
+
+    @Test
+    public void foldersOrganizeExistingPdfsWithoutChangingTheirAttachedProgress() throws Exception {
+        String document = upload();
+        String run = pdf.attach(1L, "2026-11-04", document, null).get("id");
+        pdf.save(1L, "2026-11-04", run, state(0, 5, false));
+        String root = pdf.saveFolder(1L, "2026-11-04", null, null, "Grade 9").get("id");
+        String child = pdf.saveFolder(1L, "2026-11-04", null, root, "Week 3").get("id");
+
+        List<?> files = (List<?>) pdf.list(1L, "2026-11-04").get("library");
+        assertNull(((Map<?, ?>) files.get(0)).get("folderId"));
+        assertEquals(child, pdf.updateFile(1L, "2026-11-04", document, child, "Renamed.pdf").get("folderId"));
+        assertEquals("Renamed.pdf", pdf.open(1L, "2026-11-04", run).get("name"));
+        assertEquals(5, json.readTree((String) pdf.open(1L, "2026-11-04", run).get("progress")).path("page").asInt());
+        assertEquals(child, pdf.upload(1L, "2026-11-04", lessonFile(), child).get("folderId"));
+        assertNull(pdf.updateFile(1L, "2026-11-04", document, null, "Renamed.pdf").get("folderId"));
+
+        try {
+            pdf.saveFolder(1L, "2026-11-04", root, child, "Grade 9");
+            fail("A folder cannot be moved inside its descendant");
+        } catch (EnrolmentClassScheduleException e) { assertEquals(HttpStatus.BAD_REQUEST, e.getStatus()); }
+        assertNull(pdf.saveFolder(1L, "2026-11-04", child, null, "Week 3").get("parentId"));
+        owner = 8L;
+        assertEquals(Collections.emptyList(), pdf.list(1L, "2026-11-04").get("folders"));
+        try {
+            pdf.upload(1L, "2026-11-04", lessonFile(), child);
+            fail("Cannot upload into another teacher's folder");
+        } catch (EnrolmentClassScheduleException e) { assertEquals(HttpStatus.NOT_FOUND, e.getStatus()); }
+        try {
+            pdf.updateFile(1L, "2026-11-04", document, null, "Other.pdf");
+            fail("Cannot rename another teacher's file");
+        } catch (EnrolmentClassScheduleException e) { assertEquals(HttpStatus.NOT_FOUND, e.getStatus()); }
     }
 
     @Test

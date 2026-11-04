@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function fixture(saved = {}, completed = false) {
+function fixture(saved = {}, completed = false, catalog = {}) {
     const input = {value: '1', matches: () => true};
     const events = {}, documentEvents = {}, renders = [], reads = [], writes = [];
     const ctrl = {};
@@ -86,13 +86,13 @@ function fixture(saved = {}, completed = false) {
     const source = fs.readFileSync(path.join(__dirname, '../enrolment_class/business/TeachingPdf.js'), 'utf8')
         .replace("import(new URL('pdf.min.js?v=' + version, pdfAssets).href)", 'Promise.resolve(pdfEngineMock)');
     vm.runInNewContext(source, {window, document, URL, pdfEngineMock: engine,
-        angular: {module: () => module, extend: Object.assign, copy: structuredClone, noop() {}}});
+        angular: {module: () => module, extend: Object.assign, isArray: Array.isArray, copy: structuredClone, noop() {}}});
     const http = {
         async get(url) {
             reads.push(url);
             if (url.endsWith('/content')) return {data: new ArrayBuffer(0)};
             if (url.includes('/run/')) return {data: {revision: 0, completed, progress: saved === null ? null : JSON.stringify(saved)}};
-            return {data: {}};
+            return {data: catalog};
         },
         async put(url, data) { writes.push(data); return {data: {revision: data.revision + 1, completed: data.completed}}; }
     };
@@ -145,13 +145,18 @@ test('selection tools share one saved mark and free text is anchored to the clic
     await h.tick();
     assert.equal(h.ctrl.context.mark.page, 6);
     assert.ok(h.ctrl.context.menu.y + 70 <= 140);
-    h.ctrl.colorSelection('#2b62ba');
+    assert.equal(h.ctrl.highlightColors.length, 10);
+    assert.equal(h.ctrl.highlightColors[0].value, '#e6b8af');
+    assert.equal(h.ctrl.highlightColors[9].value, '#ead1dc');
+    assert.equal(h.ctrl.highlightOpacity('#c9daf8'), 1);
+    assert.equal(h.ctrl.highlightOpacity('#2b62ba'), .38);
+    h.ctrl.colorSelection('#c9daf8');
     h.ctrl.noteSelection();
     h.ctrl.context.mark.note = 'Under this selection';
     h.ctrl.markChanged();
     await h.tick();
     assert.equal(h.ctrl.state.marks.length, 2);
-    assert.equal(h.ctrl.state.marks[1].highlightColor, '#2b62ba');
+    assert.equal(h.ctrl.state.marks[1].highlightColor, '#c9daf8');
     assert.equal(h.ctrl.state.marks[1].highlight, true);
     assert.equal(h.ctrl.context.showNote, true);
     h.ctrl.startText();
@@ -225,4 +230,30 @@ test('a failed or unconfirmed completion is returned to the class plan', async (
     await assert.rejects(h.service.complete(1, '2026-11-04', 'run'), /Invalid save confirmation/);
     h.http.put = async () => { throw {status: 409}; };
     await assert.rejects(h.service.complete(1, '2026-11-04', 'run'), {status: 409});
+});
+
+test('explorer navigates nested folders and moves a PDF back to the root', async () => {
+    const h = fixture({}, false, {
+        folders: [{id: 'class', name: 'Class'}, {id: 'week', name: 'Week', parentId: 'class'}],
+        library: [{id: 'original', name: 'Original.pdf'}, {id: 'moved', name: 'Nested.pdf', folderId: 'week'}]
+    });
+    await h.tick();
+    assert.equal(h.ctrl.foldersEnabled, true);
+    assert.equal(h.ctrl.visibleFiles[0].id, 'original');
+    h.ctrl.browseFolder('week');
+    assert.deepEqual(Array.from(h.ctrl.folderTrail, folder => folder.id), ['class', 'week']);
+    assert.equal(h.ctrl.visibleFiles[0].id, 'moved');
+    h.ctrl.editLibrary('folder', h.ctrl.folders[0]);
+    assert.equal(h.ctrl.folderChoices.length, 0);
+    h.ctrl.editLibrary('file', h.ctrl.visibleFiles[0]);
+    h.ctrl.libraryForm.parentId = null;
+    h.http.put = async (url, request) => {
+        assert.match(url, /\/files\/moved$/);
+        assert.equal(request.folderId, null);
+        return {data: {id: 'moved', name: request.name}};
+    };
+    await h.ctrl.saveLibrary();
+    assert.equal(h.ctrl.visibleFiles.length, 0);
+    h.ctrl.browseFolder(null);
+    assert.deepEqual(Array.from(h.ctrl.visibleFiles, file => file.id), ['original', 'moved']);
 });
