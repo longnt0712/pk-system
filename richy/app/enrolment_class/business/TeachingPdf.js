@@ -61,6 +61,7 @@
                         var libraryDrag, libraryDropTarget;
                         var lastTextTap;
                         vm.pages = [];
+                        vm.textSizes = [12, 14, 16, 18, 22, 26, 32];
                         vm.inkSizes = {pen: '2', eraser: '4'};
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
@@ -292,6 +293,7 @@
                                 angular.extend(vm.run, data[0].data);
                                 var state = vm.run.progress ? JSON.parse(vm.run.progress) : {};
                                 vm.state = angular.extend({page: 1, zoom: 1, x: 0, y: 0, marks: []}, state);
+                                vm.state.newTextSize = validTextSize(vm.state.newTextSize);
                                 vm.state.marks.forEach(function (mark) {
                                     if (mark.textColor) {
                                         mark.highlightColor = mark.highlightColor || mark.textColor;
@@ -765,6 +767,8 @@
                         };
                         vm.markChanged = changed;
 
+                        function validTextSize(size) { return vm.textSizes.indexOf(size) >= 0 ? size : 14; }
+                        vm.textFontSize = function (mark) { return validTextSize(mark.fontSize) + 'px'; };
                         vm.beginTextDrag = function (mark, event) {
                             if (!vm.run || vm.run.completed || vm.busy || vm.inkTool || vm.textDrag ||
                                     vm.editingText === mark || !event.isPrimary || event.button !== 0) { return; }
@@ -987,7 +991,7 @@
                             if (vm.addingText && !vm.run.completed) {
                                 scope.$evalAsync(function () {
                                     if (vm.editingText) { vm.finishText(vm.editingText); }
-                                    var mark = {page: page, x: position[0], y: position[1], text: ''};
+                                    var mark = {page: page, x: position[0], y: position[1], text: '', fontSize: validTextSize(vm.state.newTextSize)};
                                     vm.state.marks.push(mark);
                                     vm.addingText = false;
                                     vm.editText(mark, event);

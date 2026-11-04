@@ -174,6 +174,38 @@ test('selection tools share one saved mark and free text is anchored to the clic
     assert.equal(h.writes.at(-1).state.marks[2].text, 'Added on page 7');
 });
 
+test('the PDF font picker applies to new text and keeps sizes on existing text after reopening', async () => {
+    const older = {page: 1, x: .2, y: .2, text: 'Old'};
+    const small = {page: 1, x: .2, y: .4, text: 'Small', fontSize: 12};
+    const h = fixture({page: 1, marks: [older, small]});
+    await h.tick();
+    await h.ctrl.open('run');
+    await h.tick();
+    assert.equal(h.ctrl.state.newTextSize, 14);
+
+    h.ctrl.state.newTextSize = 26;
+    h.ctrl.markChanged();
+    h.ctrl.startText();
+    h.events.click({target: {closest: selector => selector === '[data-pdf-page]' ? h.sheet(1) : null},
+        clientX: 50, clientY: 125, stopPropagation() {}});
+    h.ctrl.editingText.text = 'New';
+    h.ctrl.markChanged();
+    await h.tick();
+    h.ctrl.state.newTextSize = 18;
+    h.ctrl.markChanged();
+    await h.tick();
+    const saved = h.writes.at(-1).state;
+    assert.equal(saved.newTextSize, 18);
+    assert.deepEqual(saved.marks.slice(0, 2), [older, small]);
+    assert.equal(saved.marks[2].fontSize, 26);
+
+    const reopened = fixture(saved);
+    await reopened.tick();
+    await reopened.ctrl.open('run');
+    assert.equal(reopened.ctrl.state.newTextSize, 18);
+    assert.deepEqual(Array.from(reopened.ctrl.state.marks, reopened.ctrl.textFontSize), ['14px', '12px', '26px']);
+});
+
 test('only two taps open free text for editing, while dragging saves its position on the PDF page', async () => {
     const saved = {page: 2, marks: [{page: 2, x: .2, y: .3, text: 'Move me'}, {page: 2, note: 'Keep me'}]};
     const h = fixture(saved);
