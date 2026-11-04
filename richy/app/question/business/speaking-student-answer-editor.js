@@ -192,10 +192,10 @@
         return {
             restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?'},
             template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
-                '<div class="sp-answer-format" ng-if="!readOnly" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+                '<div class="sp-answer-format" ng-if="!readOnly" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker &amp;&amp; !ed.selectionMarker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
                 '<div class="sp-answer-editable" ng-attr-contenteditable="{{readOnly ? false : true}}" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
-                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button></div>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
                 '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
@@ -205,6 +205,7 @@
                 var doc = $window.document, root = element[0], editable = root.querySelector('.sp-answer-editable'), current, timer, pollTimer, previewTimer, selectedRange, composing = false, destroyed = false, generation = 0;
                 var ed = scope.ed = {state: {loading: true, status: 'Đang tải câu trả lời…'}, hasSelection: false, speaking: false};
                 var speechOwner = {}, speechRequest = 0;
+                var touchSelection = !!($window.matchMedia && $window.matchMedia('(pointer: coarse)').matches);
                 function stopSpeech() {
                     speechRequest++; ed.speaking = false;
                     if ($window.EnglishSpeech) { $window.EnglishSpeech.cancel(speechOwner); }
@@ -277,11 +278,24 @@
                 function changed() { if (scope.readOnly) { return; } if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
                 function capture() {
                     var selection = $window.getSelection(), range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
-                    if (range && editable.contains(range.commonAncestorContainer)) {
-                        selectedRange = range.cloneRange(); ed.hasSelection = !range.collapsed && !!selection.toString().trim();
-                        if (ed.hasSelection) { var bounds = range.getBoundingClientRect(), width = $window.innerWidth || doc.documentElement.clientWidth, height = $window.innerHeight || doc.documentElement.clientHeight, popupWidth = Math.min(390, width - 16), popupTop = Math.max(8, Math.min(bounds.bottom + 8, height - 94)); ed.selectionStyle = {left: Math.max(8, Math.min(bounds.left, width - popupWidth - 8)) + 'px', top: popupTop + 'px', maxHeight: Math.max(24, height - popupTop - 8) + 'px'}; }
+                    ed.hasSelection = !!(range && !range.collapsed && editable.contains(range.commonAncestorContainer) && selection.toString().trim());
+                    selectedRange = ed.hasSelection ? range.cloneRange() : null;
+                    ed.selectionMarker = ed.hasSelection ? markerAt(range.commonAncestorContainer) : null;
+                    if (!ed.hasSelection) { return; }
+                    var bounds = range.getBoundingClientRect(), width = $window.innerWidth || doc.documentElement.clientWidth;
+                    var height = $window.innerHeight || doc.documentElement.clientHeight;
+                    if (touchSelection) {
+                        // Native selection actions may occupy either side of the text on a tablet.
+                        var visual = $window.visualViewport, top = visual ? visual.offsetTop : 0;
+                        var bottom = top + (visual ? visual.height : height);
+                        var upper = (bounds.top + bounds.bottom) / 2 > (top + bottom) / 2;
+                        ed.selectionStyle = {left: '8px', width: 'calc(100vw - 16px)', maxWidth: '480px', top: upper ? top + 8 + 'px' : 'auto',
+                            bottom: upper ? 'auto' : Math.max(0, height - bottom) + 8 + 'px'};
+                    } else {
+                        var popupWidth = Math.min(480, width - 16), popupTop = Math.max(8, Math.min(bounds.bottom + 8, height - 94));
+                        ed.selectionStyle = {left: Math.max(8, Math.min(bounds.left, width - popupWidth - 8)) + 'px',
+                            top: popupTop + 'px', maxHeight: Math.max(24, height - popupTop - 8) + 'px'};
                     }
-                    else { ed.hasSelection = false; }
                 }
                 function restoreSelection() { if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return false; } var selection = $window.getSelection(); editable.focus(); selection.removeAllRanges(); selection.addRange(selectedRange); return true; }
                 function markerAt(target) { while (target && target !== editable) { if (target.nodeType === 1 && /\bielts-annotation\b/.test(target.className || '')) { return target; } target = target.parentNode; } return null; }
@@ -344,9 +358,10 @@
                     ed.marker = markers[0]; selectedRange = null; ed.hasSelection = false; $window.getSelection().removeAllRanges(); changed(); return withNote ? note : null;
                 };
                 ed.removeAnnotation = function () { if (scope.readOnly) { return; }
-                    if (!ed.marker || !editable.contains(ed.marker)) { return; } var group = ed.marker.getAttribute('data-annotation-group'), noteId = ed.marker.getAttribute('data-note-id');
-                    Array.prototype.slice.call(editable.querySelectorAll('span.ielts-annotation')).forEach(function (span) { if ((group && span.getAttribute('data-annotation-group') === group) || (!group && span === ed.marker)) { while (span.firstChild) { span.parentNode.insertBefore(span.firstChild, span); } span.parentNode.removeChild(span); } });
-                    ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== noteId || editable.querySelector('[data-note-id="' + note.id + '"]'); }); ed.marker = null; ed.activeNote = null; changed();
+                    var marker = ed.selectionMarker || ed.marker;
+                    if (!marker || !editable.contains(marker)) { return; } var group = marker.getAttribute('data-annotation-group'), noteId = marker.getAttribute('data-note-id');
+                    Array.prototype.slice.call(editable.querySelectorAll('span.ielts-annotation')).forEach(function (span) { if ((group && span.getAttribute('data-annotation-group') === group) || (!group && span === marker)) { while (span.firstChild) { span.parentNode.insertBefore(span.firstChild, span); } span.parentNode.removeChild(span); } });
+                    ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== noteId || editable.querySelector('[data-note-id="' + note.id + '"]'); }); ed.marker = null; ed.selectionMarker = null; ed.activeNote = null; changed();
                 };
                 ed.save = function () { if (scope.readOnly) { return; }
                     if (!current || composing || !ed.state.ready) { return; } cancelTimer(); changed(); cancelTimer(); var session = current, before = editable.innerHTML;
@@ -421,7 +436,19 @@
                 }
                 function visible() { if (!doc.hidden) { scope.$evalAsync(checkRemote); } }
                 function click(event) { var marker = markerAt(event.target); scope.$evalAsync(function () { ed.marker = marker; var id = marker && marker.getAttribute('data-note-id'), note = id && ed.state.notes.filter(function (item) { return item.id === id; })[0]; if (note && (!ed.activeNote || ed.activeNote.id !== id)) { openNote(note, marker); } else { ed.activeNote = null; } }); }
-                function outside(event) { if (!root.contains(event.target)) { scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; ed.hasSelection = false; }); } else if (!editable.contains(event.target) && !event.target.closest('.sp-answer-note, .sp-answer-format, .sp-answer-selection')) { scope.$evalAsync(function () { ed.activeNote = null; }); } }
+                function outside(event) {
+                    if (!root.contains(event.target)) {
+                        scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; ed.selectionMarker = null; ed.hasSelection = false; selectedRange = null; });
+                        return;
+                    }
+                    var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
+                    if (editable.contains(event.target)) { touchSelection = touch; return; }
+                    if (event.target.closest('.sp-answer-format, .sp-answer-selection')) {
+                        if (touch && ed.hasSelection && event.cancelable) { event.preventDefault(); }
+                        return;
+                    }
+                    if (!event.target.closest('.sp-answer-note')) { scope.$evalAsync(function () { ed.activeNote = null; }); }
+                }
                 function input() { scope.$evalAsync(function () { changed(); capture(); }); }
                 function selectionChanged() { scope.$evalAsync(capture); }
                 function compositionStart() { composing = true; cancelTimer(); }

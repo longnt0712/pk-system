@@ -57,6 +57,7 @@
                         var editId = 0, savedEditId = 0, destroyed = false, stroke;
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
+                        var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
                         vm.pages = [];
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
@@ -510,6 +511,13 @@
                             var note = root.querySelector('.teaching-pdf-inline-note');
                             if (menu) {
                                 context.menu = placeContextPanel(menu, bounds, area, true, 10);
+                                if (context.draft && touchSelection) {
+                                    var upper = (bounds.top + bounds.bottom) / 2 > area.height / 2;
+                                    var edge = upper ? 8 : area.height - menu.offsetHeight - 8;
+                                    if (edge + menu.offsetHeight + 8 <= bounds.top || edge >= bounds.bottom + 8) {
+                                        context.menu.y = edge;
+                                    }
+                                }
                                 if (context.menu.y >= bounds.bottom) {
                                     bounds.bottom = context.menu.y + menu.offsetHeight;
                                 } else if (context.menu.y + menu.offsetHeight <= bounds.top) {
@@ -654,7 +662,21 @@
                             return [Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)).toFixed(4),
                                 Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)).toFixed(4)];
                         }
+                        function onContextMenu(event) {
+                            if (vm.run && !vm.run.completed && !vm.drawing && !vm.addingText && !vm.busy
+                                && (touchSelection || event.pointerType === 'touch' || event.pointerType === 'pen')
+                                && event.target.closest('.textLayer') && event.cancelable) {
+                                event.preventDefault();
+                            }
+                        }
                         function onPointer(event) {
+                            if (event.type === 'pointerdown') {
+                                var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
+                                if (event.target.closest('.textLayer')) { touchSelection = touch; }
+                                if (touch && vm.context && vm.context.draft && event.target.closest('.teaching-pdf-context') && event.cancelable) {
+                                    event.preventDefault();
+                                }
+                            }
                             var overlay = event.target.closest('.teaching-pdf-ink');
                             if (!overlay || !vm.drawing || !vm.run || vm.run.completed || vm.busy) { return; }
                             if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
@@ -743,6 +765,7 @@
                             root.addEventListener('input', onZoom);
                             root.addEventListener('change', onZoom);
                             root.addEventListener('click', onPageClick);
+                            root.addEventListener('contextmenu', onContextMenu);
                             document.addEventListener('selectionchange', queueSelection);
                             document.addEventListener('fullscreenchange', fullscreenChanged);
                             document.addEventListener('webkitfullscreenchange', fullscreenChanged);
@@ -760,6 +783,7 @@
                             if (root) {
                                 root.removeEventListener('scroll', onScroll, true);
                                 root.removeEventListener('click', onPageClick);
+                                root.removeEventListener('contextmenu', onContextMenu);
                                 root.removeEventListener('input', onZoom);
                                 root.removeEventListener('change', onZoom);
                                 document.removeEventListener('selectionchange', queueSelection);

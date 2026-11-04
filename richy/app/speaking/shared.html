@@ -16,25 +16,36 @@
     <section class="sp-panel" ng-if="pub.ready">
         <div class="sp-toolbar"><div class="sp-tabs"><button type="button" class="sp-button" ng-repeat="part in [1,2,3]" ng-class="{'is-active':pub.part===part}" ng-click="pub.changePart(part)">Part {{part}}</button></div><label class="sp-search">Tìm topic<input type="search" ng-model="pub.query" ng-change="pub.rebuild()" placeholder="Tên topic hoặc câu hỏi…" ng-model-options="{debounce:200}"></label></div>
         <p class="sp-muted" ng-if="!pub.groups.length">Chưa có câu phù hợp.</p>
-        <article class="sp-topic" ng-repeat="group in pub.groups | limitTo:pub.limit track by group.key" speaking-lazy-topic="group" speaking-lazy-eager="$first"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2>
+        <article class="sp-topic" id="{{group.anchorId}}" tabindex="-1" ng-repeat="group in pub.groups | limitTo:pub.limit track by group.key" speaking-lazy-topic="group" speaking-lazy-eager="$first"><span class="sp-eyebrow">PART {{group.part}}</span><h2>{{group.title}}</h2>
             <div ng-if="!group.lazyLoaded" class="sp-lazy-placeholder">{{group.questions.length}} câu hỏi · Hiện khi bạn cuộn tới.</div>
-            <div ng-if="group.lazyLoaded"><div class="sp-question" ng-repeat="question in group.questions track by question.entryId"><div class="sp-question-prompt"><p class="sp-preserve">{{question.prompt}}</p><speaking-question-speaker text="question.prompt"></speaking-question-speaker></div><div class="sp-toolbar"><button type="button" class="sp-button" ng-click="pub.answerId=pub.answerId===question.id?null:question.id">{{pub.answerId===question.id ? 'Ẩn câu trả lời' : question.hasAnswer ? 'Xem câu trả lời' : pub.data.canEdit ? 'Viết câu trả lời' : 'Xem câu trả lời'}}</button><button type="button" class="sp-button" ng-click="pub.notebookId=question.id">Xem ghi chú</button></div>
+            <div ng-if="group.lazyLoaded"><div class="sp-question" ng-repeat="question in group.questions track by question.entryId"><div class="sp-question-prompt"><p class="sp-preserve">{{question.prompt}}</p><speaking-question-speaker text="question.prompt"></speaking-question-speaker></div><div class="sp-toolbar"><button type="button" class="sp-button" ng-click="pub.answerId=pub.answerId===question.id?null:question.id">{{pub.answerId===question.id ? 'Ẩn câu trả lời' : question.hasAnswer ? 'Xem câu trả lời' : pub.data.canEdit ? 'Viết câu trả lời' : 'Xem câu trả lời'}}</button><button type="button" class="sp-button" ng-click="pub.openNotebook(question.id)">Xem ghi chú</button></div>
                 <speaking-student-answer-editor ng-if="pub.answerId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" hide-history="true"></speaking-student-answer-editor>
                 <speaking-question-notebook ng-if="pub.notebookId===question.id" set-id="pub.data.setId" student-id="pub.data.studentId" question-id="question.id" user-id="pub.data.shareId" student-label="{{pub.data.studentName}}" read-only="!pub.data.canEdit" on-close="pub.notebookId=null"></speaking-question-notebook>
             </div></div>
         </article>
         <div class="sp-load-more" ng-if="pub.limit < pub.groups.length" speaking-load-more="pub.more()" speaking-load-more-items="pub.groups" speaking-load-more-count="pub.limit" speaking-load-more-enabled="!pub.notebookId"><button type="button" class="sp-button" ng-click="pub.more()">Hiện thêm topic</button></div>
     </section>
+    <aside class="sp-topic-locator" id="sp-topic-locator" ng-if="pub.ready && !pub.notebookId && pub.topicLinks.length" aria-label="Định vị topic Speaking">
+        <section class="sp-topic-locator-panel" id="sp-topic-locator-panel" ng-if="pub.locatorOpen" aria-label="Danh sách topic">
+            <header><strong>Đi tới topic</strong><button type="button" class="sp-close" ng-click="pub.closeLocator(true)" aria-label="Đóng danh sách topic">×</button></header>
+            <label class="sp-topic-locator-search"><i class="fa fa-search" aria-hidden="true"></i><input id="sp-topic-locator-search" type="search" ng-model="pub.topicQuery" ng-change="pub.filterTopics()" placeholder="Tìm tên topic…" aria-label="Tìm theo tên topic"></label>
+            <nav class="sp-topic-locator-list" aria-label="Topics trong bộ đề">
+                <button type="button" ng-repeat="topic in pub.topicResults track by topic.key" ng-click="pub.jumpToTopic(topic)" ng-class="{'is-active':pub.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
+                <p ng-if="!pub.topicResults.length" role="status">Không có topic phù hợp.</p>
+            </nav>
+        </section>
+        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="pub.toggleLocator()" ng-class="{'is-active':pub.locatorOpen}" aria-expanded="{{pub.locatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
+    </aside>
 </main>
 <script src="../assets/scripts/external/angular.min.js"></script>
 <script src="../assets/scripts/external/angular-cookies.min.js"></script>
 <script src="../assets/scripts/external/angular-sanitize.min.js"></script>
-<script src="shared.js?v=20261103-share-1"></script>
+<script src="shared.js?v=20261104-share-tools"></script>
 <script src="../common/utils/color-palette.js?v=20261103-share-1"></script>
 <script src="../common/utils/english-speech.js?v=20261103-share-1"></script>
 <script src="../common/utils/study-notebook.directive.js?v=20261103-share-1"></script>
 <script src="../question/business/speaking-lazy-topic.js?v=20261103-share-1"></script>
-<script src="../question/business/speaking-student-answer-editor.js?v=20261104-share-2"></script>
+<script src="../question/business/speaking-student-answer-editor.js?v=20261104-share-tools"></script>
 <script src="../question/business/speaking-question-notebook.js?v=20261103-share-1"></script>
 </body>
 </html>

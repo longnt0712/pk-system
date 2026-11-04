@@ -104,7 +104,7 @@
 .teaching-pdf-page .textLayer {
     position: absolute; inset: 0; overflow: clip; opacity: 1; z-index: 1; transform-origin: 0 0;
     line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; text-rendering: auto;
-    text-size-adjust: none; forced-color-adjust: none;
+    text-size-adjust: none; forced-color-adjust: none; -webkit-touch-callout: none;
 }
 .teaching-pdf-page .textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; user-select: text; }
 .teaching-pdf-page .textLayer > :not(.markedContent), .teaching-pdf-page .textLayer .markedContent span:not(.markedContent) {

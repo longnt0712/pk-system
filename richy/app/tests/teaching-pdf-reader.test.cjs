@@ -204,6 +204,29 @@ test('a selection near the top places the menu and note clear of its text', asyn
     assert.ok(h.ctrl.context.note.y >= h.ctrl.context.menu.y + 70);
 });
 
+test('touch keeps PDF selection actions away from the selected text', async () => {
+    const h = fixture();
+    await h.tick();
+    await h.ctrl.open('run');
+    await h.tick();
+    const text = {closest: selector => selector === '.textLayer' ? text : null};
+    h.events.pointerdown({type: 'pointerdown', pointerType: 'touch', target: text});
+    h.select(1, 150);
+    await h.tick();
+    assert.equal(h.ctrl.context.menu.y, 422);
+    h.select(1, 330);
+    await h.tick();
+    assert.equal(h.ctrl.context.menu.y, 8);
+    let blocked = false;
+    const contextEvent = {target: text, cancelable: true, preventDefault: () => { blocked = true; }};
+    h.events.contextmenu({...contextEvent, pointerType: 'touch'});
+    assert.equal(blocked, true);
+    blocked = false;
+    h.events.pointerdown({type: 'pointerdown', pointerType: 'mouse', target: text});
+    h.events.contextmenu({...contextEvent, pointerType: 'mouse'});
+    assert.equal(blocked, false);
+});
+
 test('completing from the class plan keeps the saved page and annotations without loading the PDF', async () => {
     const state = {page: 6, zoom: 1.5, x: 0, y: .4, marks: [{page: 6, note: 'Keep', highlightColor: '#2b62ba'}]};
     const h = fixture(state);

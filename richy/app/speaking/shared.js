@@ -23,19 +23,83 @@
             speakingNotebook: function (set, student, question, revision) { return request('GET', '/notebook', {questionId: question, revision: revision}); },
             saveSpeakingNotebook: function (body) { return request('PUT', '/notebook', null, body); }
         };
-    }]).controller('SpeakingPublicController', ['$scope', 'SpeakingService', function ($scope, api) {
-        var vm = this; vm.loading = true; vm.part = 1; vm.groups = []; vm.limit = 6; vm.query = '';
+    }]).controller('SpeakingPublicController', ['$scope', '$window', 'SpeakingService', function ($scope, $window, api) {
+        var vm = this, doc = $window.document, alive = true;
+        vm.topicLinks = []; vm.loading = true; vm.part = 1; vm.groups = []; vm.limit = 6; vm.query = '';
         vm.rebuild = function () {
-            var map = {}, term = vm.query.trim().toLowerCase(); vm.groups = []; vm.limit = 6;
+            var map = Object.create(null), term = vm.query.trim().toLowerCase(); vm.groups = []; vm.limit = 6;
             vm.data.questions.forEach(function (q) { if (q.part !== vm.part || term && (q.topic + ' ' + q.prompt).toLowerCase().indexOf(term) < 0) { return; }
-                var key = q.part + ':' + q.topic + ':' + (q.linkedPart2Id || '');
-                if (!map[key]) { map[key] = {key: key, part: q.part, title: q.topic, questions: []}; vm.groups.push(map[key]); } map[key].questions.push(q);
+                var key = keyFor(q);
+                if (!map[key]) { map[key] = {key: key, part: q.part, title: q.topic, anchorId: 'sp-topic-' + encodeURIComponent(key), questions: []}; vm.groups.push(map[key]); } map[key].questions.push(q);
             });
         };
         vm.more = function () { vm.limit = Math.min(vm.groups.length, vm.limit + 6); };
-        vm.changePart = function (part) { vm.part = part; vm.answerId = null; vm.notebookId = null; vm.rebuild(); };
-        var alive = true; $scope.$on('$destroy', function () { alive = false; });
+        vm.changePart = function (part) { vm.part = part; vm.answerId = null; vm.notebookId = null; vm.activeTopicKey = null; vm.closeLocator(false); vm.rebuild(); };
+
+        function keyFor(q) { return q.part + ':' + q.topic + ':' + (q.linkedPart2Id || ''); }
+        function focus(id) { var item = doc.getElementById(id); if (item) { item.focus(); } }
+        vm.filterTopics = function () {
+            var term = vm.topicQuery.toLowerCase().replace(/\s+/g, ' ').trim();
+            vm.topicResults = vm.topicLinks.filter(function (topic) {
+                return String(topic.title || '').toLowerCase().replace(/\s+/g, ' ').indexOf(term) >= 0;
+            });
+        };
+        vm.closeLocator = function (restoreFocus) {
+            vm.locatorOpen = false;
+            if (restoreFocus) { focus('sp-topic-locator-toggle'); }
+        };
+        vm.toggleLocator = function () {
+            if (vm.locatorOpen) { vm.closeLocator(false); return; }
+            vm.topicQuery = ''; vm.filterTopics(); vm.locatorOpen = true;
+            $window.setTimeout(function () {
+                if (alive && vm.locatorOpen) { focus('sp-topic-locator-search'); }
+            }, 0);
+        };
+        vm.jumpToTopic = function (topic) {
+            if (!vm.topicLinks.includes(topic) || vm.notebookId) { return; }
+            vm.query = ''; vm.changePart(topic.part);
+            var index = vm.groups.findIndex(function (group) { return group.key === topic.key; });
+            if (index < 0) { return; }
+            vm.limit = Math.min(vm.groups.length, Math.max(vm.limit, (Math.floor(index / 6) + 1) * 6));
+            for (var i = 0; i <= index; i++) { vm.groups[i].lazyLoaded = true; }
+            vm.activeTopicKey = topic.key;
+            var groups = vm.groups;
+            $window.setTimeout(function () {
+                if (!alive || vm.groups !== groups || vm.notebookId) { return; }
+                var target = doc.getElementById(groups[index].anchorId);
+                if (!target) { return; }
+                var reducedMotion = $window.matchMedia && $window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                target.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
+                target.focus({preventScroll: true});
+            }, 0);
+        };
+        vm.openNotebook = function (questionId) { vm.closeLocator(false); vm.notebookId = questionId; };
+        function outside(event) {
+            if (vm.locatorOpen && !event.target.closest('.sp-topic-locator')) {
+                $scope.$evalAsync(function () { vm.closeLocator(false); });
+            }
+        }
+        function escape(event) {
+            if (vm.locatorOpen && event.key === 'Escape') {
+                event.preventDefault();
+                $scope.$evalAsync(function () { vm.closeLocator(true); });
+            }
+        }
+        doc.addEventListener('click', outside);
+        doc.addEventListener('keydown', escape);
+        $scope.$on('$destroy', function () {
+            alive = false;
+            doc.removeEventListener('click', outside);
+            doc.removeEventListener('keydown', escape);
+        });
+
         api.bootstrap().then(function (data) { if (!alive) { return; } vm.data = data; vm.ready = true;
+            var seen = Object.create(null);
+            data.questions.forEach(function (question) {
+                var key = keyFor(question);
+                if (!seen[key]) { seen[key] = true; vm.topicLinks.push({key: key, part: question.part, title: question.topic}); }
+            });
+            vm.topicLinks.sort(function (a, b) { return a.part - b.part; });
             var first = data.questions.filter(function (q) { return q.hasAnswer; })[0] || data.questions[0];
             if (first) { vm.part = first.part; vm.answerId = first.id; } vm.rebuild();
         }).catch(function (error) { if (alive) { vm.error = error.data && error.data.message || error.message || 'Chưa mở được bài. Link có thể đã bị thu hồi.'; } }).finally(function () { if (alive) { vm.loading = false; } });

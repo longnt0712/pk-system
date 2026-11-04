@@ -6,8 +6,11 @@ import com.globits.security.domain.User;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.*;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.persistence.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +22,29 @@ public class SpeakingAnswerShareService {
     @Autowired private SpeakingServiceImpl speaking;
     @Autowired private SpeakingStudentAnswerService answers;
     private final SecureRandom random=new SecureRandom();
+    private SecretKeySpec copyKey;
     public static class Request { public Long setId,studentId; public String permission; }
+
+    @Value("${speaking.share.copy-key:${SPEAKING_SHARE_COPY_KEY:}}")
+    void configureCopyKey(String encodedKey) {
+        if (encodedKey.trim().isEmpty()) { return; }
+        byte[] key = Base64.getDecoder().decode(encodedKey.trim());
+        if (key.length != 32) {
+            throw new IllegalArgumentException("Speaking link copy key must be 32 bytes encoded as Base64.");
+        }
+        copyKey = new SecretKeySpec(key, "HmacSHA256");
+    }
+
+    private String tokenForNonce(String nonce) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(copyKey);
+            byte[] signature = mac.doFinal(("speaking-answer-share:" + nonce).getBytes(StandardCharsets.US_ASCII));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
+        } catch (GeneralSecurityException error) {
+            throw new IllegalStateException(error);
+        }
+    }
     private User authorize(Long setId,Long studentId){
         SpeakingSet set=speaking.readableSet(setId);User student=speaking.reviewableStudent(set,studentId);
         if(student==null||!Boolean.TRUE.equals(student.getActive()))throw new AccessDeniedException("Tài khoản không còn hoạt động.");return student;
@@ -28,7 +53,14 @@ public class SpeakingAnswerShareService {
         try{byte[] bytes=MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.US_ASCII));StringBuilder out=new StringBuilder();for(byte b:bytes)out.append(String.format(Locale.ROOT,"%02x",b&255));return out.toString();}
         catch(NoSuchAlgorithmException error){throw new IllegalStateException(error);}
     }
-    private Map<String,Object> metadata(SpeakingAnswerShare link){return SpeakingServiceImpl.map("id",link.getId(),"permission",link.getPermission(),"createdAt",link.getCreateDate()==null?null:link.getCreateDate().toString(),"creatorId",link.getCreatorId(),"revoked",link.isRevoked());}
+    private Map<String,Object> metadata(SpeakingAnswerShare link){return SpeakingServiceImpl.map("id",link.getId(),"permission",link.getPermission(),"createdAt",link.getCreateDate()==null?null:link.getCreateDate().toString(),"creatorId",link.getCreatorId(),"revoked",link.isRevoked(),"copyable",copyKey!=null&&link.getCopyNonce()!=null&&!link.isRevoked());}
+    private Map<String,Object> withToken(SpeakingAnswerShare link, String token) {
+        Map<String,Object> result = metadata(link);
+        result.put("setId", link.getSetId());
+        result.put("studentId", link.getStudentId());
+        result.put("token", token);
+        return result;
+    }
     public List<Map<String,Object>> list(Long setId,Long studentId){
         User student=authorize(setId,studentId);List<Map<String,Object>> result=new ArrayList<Map<String,Object>>();
         for(SpeakingAnswerShare link:em.createQuery("select s from SpeakingAnswerShare s where s.setId=:set and s.studentId=:student and s.revoked=false order by s.id desc",SpeakingAnswerShare.class).setParameter("set",setId).setParameter("student",student.getId()).getResultList())result.add(metadata(link));return result;
@@ -38,9 +70,32 @@ public class SpeakingAnswerShareService {
         User student=authorize(request.setId,request.studentId);
         long count=em.createQuery("select count(s) from SpeakingAnswerShare s where s.setId=:set and s.studentId=:student and s.revoked=false",Long.class).setParameter("set",request.setId).setParameter("student",student.getId()).getSingleResult();
         if(count>=40)throw new IllegalArgumentException("Đã có nhiều link đang bật. Thu hồi link không còn dùng trước khi tạo thêm.");
-        byte[] bytes=new byte[32];random.nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        SpeakingAnswerShare link=new SpeakingAnswerShare();link.setSetId(request.setId);link.setStudentId(student.getId());link.setCreatorId(speaking.currentUser().getId());link.setPermission(request.permission);link.setTokenHash(hash(token));em.persist(link);em.flush();
-        Map<String,Object> result=metadata(link);result.put("setId",link.getSetId());result.put("studentId",link.getStudentId());result.put("token",token);return result;
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        String value = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String nonce = copyKey == null ? null : value;
+        String token = nonce == null ? value : tokenForNonce(nonce);
+        SpeakingAnswerShare link=new SpeakingAnswerShare();link.setSetId(request.setId);link.setStudentId(student.getId());link.setCreatorId(speaking.currentUser().getId());link.setPermission(request.permission);link.setCopyNonce(nonce);link.setTokenHash(hash(token));em.persist(link);em.flush();
+        return withToken(link, token);
+    }
+    public Map<String,Object> copy(Long id) {
+        SpeakingAnswerShare link = id == null ? null : em.find(SpeakingAnswerShare.class, id, LockModeType.PESSIMISTIC_READ);
+        if (link == null || link.isRevoked()) {
+            throw new AccessDeniedException("Link không còn khả dụng.");
+        }
+        authorize(link.getSetId(), link.getStudentId());
+        if (copyKey == null || link.getCopyNonce() == null) {
+            throw new IllegalArgumentException("Không có link để sao chép lại. Hãy tạo link mới sau khi bật cấu hình sao chép.");
+        }
+        String token = tokenForNonce(link.getCopyNonce());
+        if (!hash(token).equals(link.getTokenHash())) {
+            throw new IllegalArgumentException("Cấu hình sao chép đã đổi. Hãy tạo link mới để sao chép.");
+        }
+        User creator = em.find(User.class, link.getCreatorId());
+        if (creator == null || !Boolean.TRUE.equals(creator.getActive())) {
+            throw new AccessDeniedException("Link không còn khả dụng.");
+        }
+        return withToken(link, token);
     }
     public Map<String,Object> revoke(Long id){
         SpeakingAnswerShare link=id==null?null:em.find(SpeakingAnswerShare.class,id,LockModeType.PESSIMISTIC_WRITE);

@@ -60,6 +60,21 @@ Nút **Xem ghi chú** cạnh **Câu trả lời riêng** có ở cả **Part 1, 
 
 Sửa sổ giữ nguyên phần trả lời và note trên chữ; sửa/import phần trả lời giữ nguyên sổ. Nháp trên thiết bị tách theo tài khoản đang thao tác, học sinh, bộ và câu để tránh lẫn giữa các em khi chuyển View.
 
+## Sao chép lại link Speaking
+
+1. Chạy lại `speaking-answer-sharing.sql` trong database ứng dụng để thêm cột cho link mới.
+2. Tạo một khóa ngẫu nhiên 32 byte, mã hóa Base64, rồi đặt vào `speaking.share.copy-key` trong cấu hình ngoài JAR hoặc biến môi trường `SPEAKING_SHARE_COPY_KEY` của dịch vụ backend. Giữ cùng khóa khi deploy lại hoặc chạy nhiều instance. Có thể tạo khóa bằng PowerShell trong cửa sổ quản trị.
+
+   ```powershell
+   $speakingCopyKeyBytes = New-Object byte[] 32
+   $speakingCopyKeyRng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+   $speakingCopyKeyRng.GetBytes($speakingCopyKeyBytes)
+   $speakingCopyKeyRng.Dispose()
+   [Convert]::ToBase64String($speakingCopyKeyBytes)
+   ```
+
+3. Cập nhật và khởi động lại JAR. Link tạo sau khi bật cấu hình có nút **Copy link** cạnh **Thu hồi link**. Sao chép lại trả đúng đường dẫn hiện có. Link cũ vẫn sử dụng được bằng URL đã lưu.
+
 ## Tên và tài khoản đang hoạt động
 
 Danh sách Speaking dùng họ và tên hiện tại (`lastName` + `firstName`) như danh sách học sinh, thay vì cột `displayName` cũ có thể còn tên của người từng dùng tài khoản. Tìm kiếm và sắp xếp dùng cùng tên hiện tại; thiếu tên thì hiện username. Không đổi ID tài khoản, câu trả lời hay lịch sử.

@@ -8,6 +8,7 @@
             bootstrap: function () { return get('/bootstrap'); },
             answerShares: function (setId, studentId) { return get('/answer-shares', {setId: setId, studentId: studentId}); },
             createAnswerShare: function (data) { return post('/answer-shares', data); },
+            copyAnswerShare: function (id) { return post('/answer-shares/' + id + '/copy'); },
             revokeAnswerShare: function (id) { return post('/answer-shares/' + id + '/revoke'); },
             createSet: function (data) { return post('/sets', data); },
             bank: function (id, studentId) { return get('/sets/' + id, studentId ? {studentId: studentId} : {}); },

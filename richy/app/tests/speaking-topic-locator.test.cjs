@@ -44,6 +44,30 @@ test('the locator lists each topic once across Parts and searches topic names wi
     f.vm.topicQuery = 'food'; f.vm.filterTopics(); assert.equal(f.vm.topicResults.length, 1); assert.equal(f.vm.topicResults[0].part, 3);
 });
 
+test('copying an existing Speaking link checks the returned link and copies the exact URL', async () => {
+    const f = fixture();
+    await settle();
+    const token = 'a'.repeat(43);
+    const row = {id: 12, permission: 'EDIT', copyable: true};
+    const legacy = {id: 9, permission: 'VIEW', copyable: false};
+    const copies = [], requests = [];
+    f.win.location = {origin: 'https://example.test'};
+    f.win.navigator = {clipboard: {writeText(url) { copies.push(url); return Promise.resolve(); }}};
+    f.api.answerShares = () => Promise.resolve([row, legacy]);
+    const reply = {id: row.id, setId: 1, studentId: 7, permission: row.permission, token};
+    f.api.copyAnswerShare = id => { requests.push(id); return Promise.resolve({...reply, id: id + 1}); };
+    await f.vm.openSpeakingLinks();
+    await f.vm.copySpeakingLink(legacy);
+    assert.deepEqual(requests, []);
+    await f.vm.copySpeakingLink(row);
+    assert.equal(f.vm.newShareUrl, '');
+    assert.deepEqual(copies, []);
+    f.api.copyAnswerShare = id => { requests.push(id); return Promise.resolve(reply); };
+    await f.vm.copySpeakingLink(row);
+    assert.deepEqual(requests, [12, 12]);
+    assert.deepEqual(copies, ['https://example.test/speaking/shared.html#' + token]);
+});
+
 test('selecting a later topic clears the filter and reveals the full prefix before scrolling', async () => {
     const f = fixture(); await settle(); const last = f.vm.topicLinks.find(topic=>topic.title==='Topic 8');
     f.vm.query = 'Secret prompt phrase'; f.vm.rebuildGroups(); assert.equal(f.vm.groups.length, 1);

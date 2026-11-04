@@ -21,6 +21,8 @@ BEGIN TRY
         );
         CREATE INDEX ix_speaking_share_subject ON dbo.tbl_speaking_answer_share(set_id,student_id,revoked);
     END;
+    IF COL_LENGTH(N'dbo.tbl_speaking_answer_share',N'copy_nonce') IS NULL
+        ALTER TABLE dbo.tbl_speaking_answer_share ADD copy_nonce VARCHAR(43) NULL;
     COMMIT TRANSACTION;
     PRINT 'Speaking view/edit sharing links: schema ready.';
 END TRY
