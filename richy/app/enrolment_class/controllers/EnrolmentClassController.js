@@ -108,6 +108,8 @@
 		vm.scheduleSettingsLoading = false;
 		vm.scheduleSettingsError = false;
 		vm.scheduleTopicsLoading = false;
+		vm.taskCategoryTopics = [];
+		vm.taskCategoryTopicsError = false;
 		vm.scheduleTopicCategories = [];
 		vm.scheduleTopicCategoriesLoading = false;
 		vm.scheduleTopicCategoriesError = false;
@@ -719,7 +721,6 @@
 				+ ' / ' + vm.scheduleMonthDate.getFullYear();
 			vm.scheduleSettingsLoading = true;
 			vm.scheduleSettingsError = false;
-			vm.scheduleTopicsLoading = true;
 			vm.assignableIeltsTestsLoading = true;
 			vm.scheduleLoading = true;
 			if (!vm.schedulePageMode) {
@@ -759,19 +760,8 @@
 				toastr.error('Không tải được các buổi học đã thiết lập.', 'Lỗi');
 			});
 
-			refreshTaskCatalogs();
-
-			service.getScheduleTopicCategories().then(function (categories) {
-				vm.scheduleTopicCategories = angular.isArray(categories) ? categories : [];
-				vm.scheduleTopicCategoriesLoading = false;
-				vm.scheduleTopicCategoriesError = false;
-				vm.initializeTopicCategoryVisibility();
-			}, function () {
-				vm.scheduleTopicCategories = [];
-				vm.scheduleTopicCategoriesLoading = false;
-				vm.scheduleTopicCategoriesError = true;
-				toastr.error('Không tải được danh sách category bài học.', 'Lỗi');
-			});
+			refreshAssignableIeltsTests();
+			vm.refreshScheduleTopicCategories();
 
 			vm.loadScheduleMonth();
 		};
@@ -1945,13 +1935,20 @@
 		vm.toggleTopicSelection = function (field) {
             if (vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving) { return; }
 			vm.topicSelectionOpen[field] = !vm.topicSelectionOpen[field];
+			if (vm.topicSelectionOpen[field]) {
+				var selectedClass = vm.scheduleClass;
+				service.getScheduleTopics().then(function (topics) {
+					if (vm.scheduleClass === selectedClass) { vm.rememberScheduleTopics(topics); }
+				}, function () { toastr.warning('Không tải được danh sách topic.'); });
+			}
 		};
 
 		vm.selectedScheduleTopics = function (field) {
 			var selectedIds = vm.scheduleDay && vm.scheduleDay[field] ? vm.scheduleDay[field] : [];
 			var selectedLookup = {};
 			angular.forEach(selectedIds, function (id) { selectedLookup[String(id)] = true; });
-			return vm.scheduleTopics.filter(function (topic) {
+			var dayTopics = vm.scheduleDay && vm.scheduleDay[field === 'classTopicIds' ? 'classTopics' : 'homeworkTopics'];
+			return (dayTopics || vm.scheduleTopics).filter(function (topic) {
 				return topic && selectedLookup[String(topic.id)] === true;
 			});
 		};
@@ -2066,15 +2063,11 @@
 		};
 
 		vm.buildScheduleTaskCategories = function () {
-			var seen = {}; vm.scheduleTaskCategories = [];
-			angular.forEach(vm.scheduleTopics, function (topic) {
-				var key = topic.categoryId == null ? 'uncategorized' : String(topic.categoryId);
-				if (!seen[key]) {
-					seen[key] = true;
-					vm.scheduleTaskCategories.push({id: key, name: topic.categoryName || 'Không phân loại'});
-				}
+			vm.scheduleTaskCategories = vm.scheduleTopicCategories.map(function (category) {
+				return {id: String(category.id), name: category.name || 'Category #' + category.id};
 			});
 			vm.scheduleTaskCategories.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
+			vm.scheduleTaskCategories.push({id: 'uncategorized', name: 'Không phân loại'});
 		};
 
 		var DEFAULT_SCHEDULE_TOPIC_SOURCE_ID = 26;
@@ -2170,8 +2163,9 @@
             });
             angular.forEach(vm.scheduleTopics, function (topic) { known[String(topic.id)] = topic; });
             return vm.taskTopicIds(task).map(function (id) {
-                return known[String(id)] || {id: id, name: task.topicId === id ? task.topicName : 'Topic #' + id,
-                    categoryName: task.topicId === id ? task.categoryName : ''};
+                return known[String(id)] || {id: id, name: Number(task.topicId) === id && task.topicName || 'Topic #' + id,
+                    categoryId: Number(task.topicId) === id ? task.categoryId : null,
+                    categoryName: Number(task.topicId) === id ? task.categoryName : ''};
             });
         };
         vm.taskHasTopics = function (task) { return vm.taskTopicIds(task).length > 0; };
@@ -2187,10 +2181,14 @@
             var task = vm.taskEditor;
             if (!task) { return []; }
             var selected = vm.taskTopicIds(task).map(String);
-            return vm.scheduleTopics.filter(function (topic) {
-                return selected.indexOf(String(topic.id)) >= 0 || !task.categoryKey
-                    || (topic.categoryId == null ? 'uncategorized' : String(topic.categoryId)) === task.categoryKey;
-            });
+            return vm.scheduleTopics.filter(function (topic) { return selected.indexOf(String(topic.id)) >= 0; })
+                .concat(vm.taskTopics().filter(function (topic) { return selected.indexOf(String(topic.id)) < 0; }));
+        };
+
+        vm.rememberScheduleTopics = function (topics) {
+            var byId = new Map(vm.scheduleTopics.map(function (topic) { return [String(topic.id), topic]; }));
+            angular.forEach(topics, function (topic) { byId.set(String(topic.id), topic); });
+            vm.scheduleTopics = Array.from(byId.values());
         };
         vm.taskVocabTopicsChanged = function () {
             if (!vm.taskEditor) { return; }
@@ -2343,35 +2341,62 @@
                 : (task.comprehensiveTimeLimitMinutes == null ? 60 : task.comprehensiveTimeLimitMinutes) + ' phút / lượt';
         };
         /* End comprehensive assignment settings. */
-        var taskCatalogRequest = 0;
-        function refreshTaskCatalogs() {
-            var request = ++taskCatalogRequest;
-            vm.scheduleTopicsLoading = true;
+        var taskCategoryListRequest = 0;
+        vm.refreshScheduleTopicCategories = function () {
+            var request = ++taskCategoryListRequest;
+            vm.scheduleTopicCategoriesLoading = true;
+            vm.scheduleTopicCategoriesError = false;
+            return service.getScheduleTopicCategories().then(function (categories) {
+                if (request !== taskCategoryListRequest) { return; }
+                vm.scheduleTopicCategories = angular.isArray(categories) ? categories : [];
+                vm.scheduleTopicCategoriesLoading = false;
+                vm.buildScheduleTaskCategories();
+                vm.initializeTopicCategoryVisibility();
+            }, function () {
+                if (request !== taskCategoryListRequest) { return; }
+                vm.scheduleTopicCategoriesLoading = false;
+                vm.scheduleTopicCategoriesError = true;
+                toastr.warning('Không cập nhật được danh sách category bài học.');
+            });
+        };
+
+        var taskCategoryTopicsRequest = 0;
+        vm.loadTaskCategoryTopics = function () {
+            var request = ++taskCategoryTopicsRequest, task = vm.taskEditor;
+            var key = task && task.categoryKey;
+            vm.taskCategoryTopics = [];
+            vm.taskCategoryTopicsError = false;
+            vm.scheduleTopicsLoading = !!(key && !vm.isIeltsTask(task) && task.activityType !== 'DAILY_LISTENING');
+            if (!vm.scheduleTopicsLoading) { return; }
+            return service.getScheduleTopicsByCategory(key).then(function (topics) {
+                if (request !== taskCategoryTopicsRequest || vm.taskEditor !== task) { return; }
+                vm.scheduleTopicsLoading = false;
+                vm.taskCategoryTopicsError = !angular.isArray(topics);
+                if (!vm.taskCategoryTopicsError) {
+                    vm.taskCategoryTopics = topics;
+                    vm.rememberScheduleTopics(topics);
+                }
+            }, function () {
+                if (request !== taskCategoryTopicsRequest || vm.taskEditor !== task) { return; }
+                vm.scheduleTopicsLoading = false;
+                vm.taskCategoryTopicsError = true;
+            });
+        };
+
+        var ieltsTaskCatalogRequest = 0;
+        function refreshAssignableIeltsTests() {
+            var request = ++ieltsTaskCatalogRequest;
             vm.assignableIeltsTestsLoading = true;
 
-            service.getScheduleTopics().then(function (topics) {
-                if (request !== taskCatalogRequest) { return; }
-                vm.scheduleTopicsLoading = false;
-                if (!angular.isArray(topics) || angular.equals(vm.scheduleTopics, topics)) { return; }
-                vm.scheduleTopics = topics;
-                vm.buildScheduleTaskCategories();
-                vm.buildScheduleTopicSources();
-                vm.rebuildComprehensiveTaskCategories();
-            }, function () {
-                if (request !== taskCatalogRequest) { return; }
-                vm.scheduleTopicsLoading = false;
-                toastr.warning('Không cập nhật được danh sách topic. Bạn có thể mở lại + Tasks để thử lại.');
-            });
-
             service.getAssignableIeltsTests().then(function (tests) {
-                if (request !== taskCatalogRequest) { return; }
+                if (request !== ieltsTaskCatalogRequest) { return; }
                 vm.assignableIeltsTestsLoading = false;
                 if (angular.isArray(tests) && !angular.equals(vm.assignableIeltsTests, tests)) {
                     vm.assignableIeltsTests = tests;
                     taskExerciseVideoCache = {};
                 }
             }, function () {
-                if (request !== taskCatalogRequest) { return; }
+                if (request !== ieltsTaskCatalogRequest) { return; }
                 vm.assignableIeltsTestsLoading = false;
                 toastr.warning('Không cập nhật được danh sách đề. Bạn có thể mở Chọn bài để thử lại.');
             });
@@ -2381,7 +2406,8 @@
             var task = vm.taskEditor;
             if (!task) { return false; }
             return vm.taskExercisePickerOpen
-                || (task.activityType === 'DAILY_VOCAB' && vm.scheduleTopicsLoading)
+                || (!vm.isIeltsTask(task) && task.activityType !== 'DAILY_LISTENING'
+                    && (vm.scheduleTopicCategoriesLoading || vm.scheduleTopicsLoading))
                 || (task.activityType === 'DAILY_LISTENING' && vm.scheduleListeningItemsLoading)
                 || (vm.isIeltsTask(task) && vm.assignableIeltsTestsLoading)
                 || (task.activityType === 'COMPREHENSIVE' && (vm.taskExerciseVideoLoading || vm.taskComprehensivePlanLoading));
@@ -2390,7 +2416,10 @@
         vm.openNewScheduleTask = function (section) {
             if (vm.taskEditor) { return; }
             vm.openScheduleTask(section);
-            if (vm.taskEditor) { refreshTaskCatalogs(); }
+            if (vm.taskEditor) {
+                vm.refreshScheduleTopicCategories();
+                refreshAssignableIeltsTests();
+            }
         };
 
 
@@ -2422,6 +2451,8 @@
 				vm.initializeComprehensiveAssignment(true);
                 if (vm.initializeComprehensiveTaskSettings) { vm.initializeComprehensiveTaskSettings(vm.taskEditor); }
 			}
+			vm.rememberScheduleTopics(vm.taskSelectedTopics(vm.taskEditor));
+			vm.loadTaskCategoryTopics();
 			vm.loadTaskListeningItems(true);
             vm.refreshTaskExerciseVideo();
             if (typeof modal !== 'undefined' && modal.open) {
@@ -2460,10 +2491,17 @@
         };
         vm.taskDeadlineEdited = function () { if (vm.taskEditor) { vm.taskEditor.legacyDateOnly = false; } };
 		vm.taskCategoryChanged = function () {
-            if (!vm.taskEditor || vm.taskEditor.activityType === 'DAILY_VOCAB') { return; }
-			vm.taskEditor.topicId = null;
-			vm.taskEditor.sourceQuestionId = null;
-			vm.scheduleListeningItems = [];
+			var task = vm.taskEditor;
+			if (!task) { return; }
+			task.topicId = null;
+			if (task.activityType === 'DAILY_VOCAB') {
+				task.topicIds = [];
+				task.topics = [];
+			} else {
+				task.sourceQuestionId = null;
+				vm.scheduleListeningItems = [];
+			}
+			return vm.loadTaskCategoryTopics();
 		};
 		vm.taskTopicChanged = function () {
 			if (!vm.taskEditor) { return; }
@@ -2525,6 +2563,7 @@
 					vm.loadTaskListeningItems(false);
 				}
 			}
+			vm.loadTaskCategoryTopics();
             vm.refreshTaskExerciseVideo();
 			if (browse && (vm.isIeltsTask(vm.taskEditor) || vm.taskEditor.activityType === 'DAILY_LISTENING')) {
 				vm.openTaskExercisePicker();
@@ -2669,10 +2708,7 @@
 			});
 		};
 		vm.taskTopics = function () {
-			if (!vm.taskEditor || !vm.taskEditor.categoryKey) { return []; }
-			return vm.scheduleTopics.filter(function (topic) {
-				return (topic.categoryId == null ? 'uncategorized' : String(topic.categoryId)) === vm.taskEditor.categoryKey;
-			});
+			return vm.taskCategoryTopics;
 		};
 
 		vm.taskStudentProgress = function (student) {

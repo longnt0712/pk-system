@@ -12,6 +12,8 @@ function section(start, end) {
 }
 const helpers = section('        vm.taskTopicIds =', '\t\tvm.tasksForSection =');
 const openCode = section('\t\tvm.openScheduleTask =', '\t\tvm.loadTaskListeningItems =');
+const topicLoadCode = section('        var taskCategoryTopicsRequest =', '        var ieltsTaskCatalogRequest =');
+const topicChoicesCode = section('\t\tvm.taskTopics =', '\t\tvm.taskStudentProgress =');
 const commitCode = section('\t\tfunction scheduleTaskPayload(', '\t\tvm.removeScheduleTask =');
 const saveCode = section('\t\tvm.saveScheduleDay =', '\t\tvm.loadScheduleStudents =');
 const dayPayloadCode = section('        function scheduleDayPayload()', '        vm.loadScheduleSession =');
@@ -29,34 +31,64 @@ function fixture(enabled = true) {
         assignableIeltsTests: [], homeworkProgressLevels: [10,20,30,40,50,60,70,80,90],
         isIeltsTask: () => false, ieltsPartsForTask: () => [1], loadTaskListeningItems() {}, refreshTaskExerciseVideo() {},
         taskHasComprehensiveVideo: () => false, buildScheduleCalendar() { this.calendarRefreshes = (this.calendarRefreshes || 0) + 1; }};
-    const requests = [], modals = [];
+    const requests = [], topicRequests = [], modals = [];
     const context = nodeVm.createContext({vm, angular, $scope: {},
         moment: require(path.join(app, 'assets/scripts/external/moment.min.js')), scheduleDaySnapshot: '',
         isExtraScheduleDate: () => false,
         toastr: {warning(text) { vm.warning = text; }, error(text) { vm.error = text; }, success() {}},
         modal: {open(options) { let resolve; const instance = {options, result: new Promise(done => { resolve = done; }),
             close() { instance.closed = true; resolve(); }}; modals.push(instance); return instance; }},
-        service: {saveScheduleDay(id, payload) { return new Promise((resolve, reject) => requests.push({id, payload, resolve, reject})); }}});
-    nodeVm.runInContext(helpers + openCode + dayPayloadCode + saveCode + commitCode, context);
+        service: {getScheduleTopicsByCategory(key) { return new Promise((resolve, reject) => topicRequests.push({key, resolve, reject})); },
+            saveScheduleDay(id, payload) { return new Promise((resolve, reject) => requests.push({id, payload, resolve, reject})); }}});
+    nodeVm.runInContext(helpers + topicLoadCode + topicChoicesCode + openCode + dayPayloadCode + saveCode + commitCode, context);
     vm.openScheduleTask('HOMEWORK'); vm.taskEditor.title = 'Learn three topics';
-    return {vm, requests, modals, context};
+    return {vm, requests, topicRequests, modals, context};
 }
-test('one task retains selected topics across categories, deduplicates IDs and restores all chips when edited', async () => {
+test('changing category clears selected topics, reloads the catalog, and ignores late replies', async () => {
     const f = fixture(), vm = f.vm;
-    vm.taskEditor.topicIds = [11, '12', 21, 11]; vm.taskVocabTopicsChanged();
-    assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12,21]); assert.equal(vm.taskEditor.topicId, 11);
+    assert.equal(f.topicRequests.length, 0);
+    assert.deepEqual(Array.from(vm.taskTopicChoices()), []);
+    vm.taskEditor.categoryKey = '1'; vm.taskCategoryChanged();
     vm.taskEditor.categoryKey = '2'; vm.taskCategoryChanged();
-    assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12,21]);
-    assert.deepEqual(Array.from(vm.taskTopicChoices(), topic => topic.id), [11,12,21]);
-    assert.deepEqual(Array.from(vm.taskSelectedTopics(vm.taskEditor), topic => topic.name), topics.map(topic => topic.name));
+    assert.deepEqual(f.topicRequests.map(request => request.key), ['1', '2']);
+    f.topicRequests[1].resolve([topics[2]]); await tick();
+    f.topicRequests[0].resolve(topics.slice(0, 2)); await tick();
+    assert.deepEqual(Array.from(vm.taskTopicChoices(), topic => topic.id), [21]);
+    vm.taskEditor.topicIds = [21]; vm.taskVocabTopicsChanged();
+    vm.taskEditor.categoryKey = '1'; vm.taskCategoryChanged();
+    assert.deepEqual(Array.from(vm.taskEditor.topicIds), []);
+    assert.equal(vm.taskEditor.topicId, null);
+    assert.deepEqual(Array.from(vm.taskTopicChoices()), []);
+    assert.equal(f.topicRequests[2].key, '1');
+    const newTopic = {id: 13, name: 'New topic', categoryId: 1};
+    f.topicRequests[2].resolve([newTopic, ...topics.slice(0, 2)]); await tick();
+    assert.deepEqual(Array.from(vm.taskTopicChoices(), topic => topic.id), [13, 11, 12]);
+    vm.taskEditor.topicIds = [13]; vm.taskVocabTopicsChanged();
+    vm.taskEditor.categoryKey = null; vm.taskCategoryChanged();
+    assert.deepEqual(Array.from(vm.taskTopicChoices()), []);
+    assert.equal(f.topicRequests.length, 3);
+    vm.taskEditor.categoryKey = 'uncategorized'; vm.taskCategoryChanged();
+    f.topicRequests[3].reject(Error('Offline')); await tick();
+    assert.equal(vm.taskCategoryTopicsError, true);
+    vm.loadTaskCategoryTopics(); f.topicRequests[4].resolve([{id: 44, name: 'No category'}]); await tick();
+    assert.equal(vm.taskCategoryTopicsError, false);
+    assert.deepEqual(Array.from(vm.taskTopicChoices(), topic => topic.id), [44]);
+});
+test('one task saves multiple topics in its category, deduplicates IDs and restores its chips when edited', async () => {
+    const f = fixture(), vm = f.vm;
+    vm.taskEditor.categoryKey = '1'; vm.taskCategoryChanged();
+    f.topicRequests[0].resolve(topics.slice(0, 2)); await tick();
+    vm.taskEditor.topicIds = [11, '12', 11]; vm.taskVocabTopicsChanged();
+    assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12]); assert.equal(vm.taskEditor.topicId, 11);
+    assert.deepEqual(Array.from(vm.taskSelectedTopics(vm.taskEditor), topic => topic.name), topics.slice(0, 2).map(topic => topic.name));
     vm.commitScheduleTask(); assert.equal(f.requests.length, 1);
-    assert.deepEqual(Array.from(f.requests[0].payload.tasks[0].topicIds), [11,12,21]);
+    assert.deepEqual(Array.from(f.requests[0].payload.tasks[0].topicIds), [11,12]);
     assert.equal(f.requests[0].payload.tasks.length, 1); assert.equal(f.modals[0].closed, undefined);
     const saved = {...f.requests[0].payload, version: 1, multiTopicVocabEnabled: true}; saved.tasks[0].id = 91;
     f.requests[0].resolve(saved); await tick();
     assert.equal(vm.taskEditor, null); assert.equal(f.modals[0].closed, true); assert.equal(vm.scheduleDay.tasks.length, 1);
     vm.openScheduleTask('HOMEWORK', vm.scheduleDay.tasks[0]);
-    assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12,21]);
+    assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12]);
 });
 test('old backends block a multi-topic save before sending any partial assignment', () => {
     const f = fixture(false); f.vm.taskEditor.topicIds = [11,12,21]; f.vm.taskVocabTopicsChanged(); f.vm.commitScheduleTask();
@@ -114,7 +146,7 @@ test('real modal and multi-select work on desktop and mobile, including save fai
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     const css = view.slice(view.indexOf('<style>') + 7, view.indexOf('</style>'));
     const template = view.match(/<script type="text\/ng-template" id="class_schedule_task_editor_modal\.html">([\s\S]*?)<\/script>/)[1];
-    const runtime = helpers + openCode + dayPayloadCode + saveCode + commitCode;
+    const runtime = helpers + topicLoadCode + topicChoicesCode + openCode + dayPayloadCode + saveCode + commitCode;
     try {
         for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
             const page = await browser.newPage({viewport}); const errors = [];
@@ -137,7 +169,8 @@ test('real modal and multi-select work on desktop and mobile, including save fai
                     vm.taskHasComprehensiveVideo = function () { return false; };
                     vm.loadTaskListeningItems = vm.refreshTaskExerciseVideo = vm.buildScheduleCalendar = angular.noop;
                     vm.taskStartLabel = function () { return '19/10/2026 18:00'; };
-                    var service = {saveScheduleDay: function (id,payload) { window.qaPayload = payload; window.qaPending = $q.defer(); return window.qaPending.promise; }};
+                    var service = {getScheduleTopicsByCategory: function (key) { return $q.when(topics.filter(topic => String(topic.categoryId) === key)); },
+                        saveScheduleDay: function (id,payload) { window.qaPayload = payload; window.qaPending = $q.defer(); return window.qaPending.promise; }};
                     eval(runtime);
                     window.qaVm = vm; window.qaScope = $scope;
                     window.qaParent = modal.open({scope:$scope,template:'<div class="qa-parent modal-body"><button id="new-task" ng-click="vm.openScheduleTask(\'HOMEWORK\')">Tạo task</button><span>Parent schedule stays open</span></div>',backdrop:'static'});
@@ -150,30 +183,38 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             const dialog = page.locator('.class-task-editor-modal-window .modal-dialog'); await dialog.waitFor();
             const box = await dialog.boundingBox();
             assert.ok(Math.abs(box.width - (viewport.width > 767 ? viewport.width*.7 : viewport.width-16)) < 3);
-            await page.locator('.class-task-editor input[name="title"]').fill('Learn three topics');
+            await page.locator('.class-task-editor input[name="title"]').fill('Learn two topics');
             const search = page.locator('.class-task-vocab-select input.ui-select-search');
-            for (const topic of topics) {
+            const chips = page.locator('.class-task-vocab-select .ui-select-match-item');
+            const selectCategory = key => page.evaluate(value => qaScope.$apply(function () {
+                qaVm.taskEditor.categoryKey = value; qaVm.taskCategoryChanged();
+            }), key);
+            await selectCategory('2');
+            await search.fill(topics[2].name);
+            await page.locator('.class-task-vocab-select .ui-select-choices-row').filter({hasText: topics[2].name}).click();
+            assert.equal(await chips.count(), 1);
+            await selectCategory('1');
+            assert.equal(await chips.count(), 0);
+            for (const topic of topics.slice(0, 2)) {
                 await search.fill(topic.name);
                 await page.locator('.class-task-vocab-select .ui-select-choices-row').filter({hasText: topic.name}).click();
             }
-            assert.equal(await page.locator('.class-task-vocab-select .ui-select-match-item').count(),3);
-            await page.evaluate(() => qaScope.$apply(function () { qaVm.taskEditor.categoryKey = '2'; qaVm.taskCategoryChanged(); }));
-            assert.equal(await page.locator('.class-task-vocab-select .ui-select-match-item').count(),3);
+            assert.equal(await chips.count(), 2);
             const scroll = await page.locator('.class-task-editor-modal > .modal-body').evaluate(element => ({height:element.clientHeight,total:element.scrollHeight,overflow:getComputedStyle(element).overflowY}));
             assert.equal(scroll.overflow,'auto'); assert.ok(scroll.total > scroll.height);
             await page.getByRole('button',{name:'Thêm task',exact:true}).click();
-            assert.deepEqual(await page.evaluate(() => qaPayload.tasks[0].topicIds),[11,12,21]);
+            assert.deepEqual(await page.evaluate(() => qaPayload.tasks[0].topicIds),[11,12]);
             assert.equal(await page.getByRole('button',{name:'Hủy sửa',exact:true}).isDisabled(),true);
             await page.evaluate(() => qaScope.$apply(function () { qaPending.reject({data:{message:'Offline'}}); }));
             await page.getByRole('alert').waitFor();
-            assert.equal(await page.locator('.class-task-vocab-select .ui-select-match-item').count(),3);
+            assert.equal(await chips.count(), 2);
             await page.getByRole('button',{name:'Thêm task',exact:true}).click();
             await page.evaluate(() => qaScope.$apply(function () { const saved = angular.copy(qaPayload); saved.version = 1; saved.tasks[0].id = 91; qaPending.resolve(saved); }));
             await page.locator('.class-task-editor-modal-window').waitFor({state:'detached'});
             assert.equal(await page.locator('.qa-parent').isVisible(),true);
             await page.evaluate(() => qaScope.$apply(function () { qaVm.openScheduleTask('HOMEWORK',qaVm.scheduleDay.tasks[0]); }));
             await page.locator('.class-task-editor-modal-window').waitFor();
-            assert.equal(await page.locator('.class-task-vocab-select .ui-select-match-item').count(),3);
+            assert.equal(await chips.count(), 2);
             await page.waitForFunction(() => {
                 const window = document.querySelector('.class-task-editor-modal-window');
                 const header = window && window.querySelector('.modal-header');

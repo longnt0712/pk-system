@@ -224,6 +224,12 @@ public class RestEnrolmentClassController {
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
+	@RequestMapping(value = "/schedule/topic-categories/{categoryId}/topics", method = RequestMethod.GET)
+	public List<TopicForListAllDto> getScheduleTopicsByCategory(@PathVariable Long categoryId) {
+		return service.getScheduleTopicsByCategory(categoryId);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/topics/{topicId}/listening-items", method = RequestMethod.GET)
 	public List<QuestionForGamesDto> getScheduleListeningItems(@PathVariable Long topicId) {
 		return service.getScheduleListeningItems(topicId);

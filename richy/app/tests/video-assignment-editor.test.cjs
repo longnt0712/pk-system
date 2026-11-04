@@ -15,7 +15,7 @@ function editor(catalog = [summary(1), summary(2)]) {
     const requests = [], picks = [];
     const vm = {assignableIeltsTests: structuredClone(catalog), scheduleTopics: [], scheduleListeningItems: [],
         scheduleDay: {tasks: [], scheduleDate: '2026-10-19'}, taskEditor: null,
-        taskDeadlineChanged() {}, loadTaskListeningItems() {}, initializeComprehensiveAssignment() {},
+        taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
         isIeltsTask: task => task?.activityType === 'COMPREHENSIVE', ieltsPartsForTask: () => [1],
         selectAllTaskParts() { this.taskEditor.ieltsParts = [1]; },
         saveScheduleDay() { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); }};

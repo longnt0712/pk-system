@@ -51,6 +51,7 @@ public interface EnrolmentClassService {
 
     public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto);
 	public List<TopicForListAllDto> getScheduleTopics();
+	public List<TopicForListAllDto> getScheduleTopicsByCategory(Long categoryId);
 	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId);
 	public List<QuestionForTestsDto> getAssignableIeltsTests();
 	public List<QuestionForTestsDto> getAssignableDailyListeningTests();

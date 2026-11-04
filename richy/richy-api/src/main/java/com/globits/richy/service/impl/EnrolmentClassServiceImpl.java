@@ -1864,6 +1864,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	}
 
 	@Override
+	public List<TopicForListAllDto> getScheduleTopicsByCategory(Long categoryId) {
+		return topicRepository.getScheduleTopicsByCategory(categoryId);
+	}
+
+	@Override
 	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId) {
 		List<QuestionForGamesDto> result = new ArrayList<QuestionForGamesDto>();
 		if (topicId == null || topicRepository.findOne(topicId) == null) { return result; }

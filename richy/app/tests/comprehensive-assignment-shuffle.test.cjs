@@ -148,8 +148,8 @@ test('video preview never shuffles answers or questions and a whitespace URL doe
 });
 test('new comprehensive assignments default on; editing and payload preserve an explicit opt-out', () => {
     const context = nodeVm.createContext({vm: {taskEditor: {activityType: 'COMPREHENSIVE'},
-        initializeComprehensiveAssignment() {}, isIeltsTask: () => true, scheduleDay: {tasks: []},
-        taskDeadlineChanged() {}, loadTaskListeningItems() {}, refreshTaskExerciseVideo() {}, taskHasComprehensiveVideo: () => false}, angular});
+        initializeComprehensiveAssignment() {}, isIeltsTask: () => true, scheduleDay: {tasks: []}, scheduleTopics: [],
+        taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, refreshTaskExerciseVideo() {}, taskHasComprehensiveVideo: () => false}, angular});
     nodeVm.runInContext(section(editorSource, '        vm.taskTopicIds =', '\t\tvm.tasksForSection ='), context);
     nodeVm.runInContext(section(editorSource, 'vm.taskActivityTypeChanged =', 'vm.isIeltsTask ='), context);
     context.vm.taskActivityTypeChanged(); assert.equal(context.vm.taskEditor.shuffleQuestions, true);

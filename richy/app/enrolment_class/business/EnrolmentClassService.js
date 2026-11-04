@@ -82,6 +82,12 @@
             return utils.resolve(baseUrl + '/schedule/topic-categories', 'GET', angular.noop, angular.noop);
         };
 
+        self.getScheduleTopicsByCategory = function (categoryKey) {
+            var categoryId = categoryKey === 'uncategorized' ? 0 : categoryKey;
+            return utils.resolve(baseUrl + '/schedule/topic-categories/' + encodeURIComponent(categoryId) + '/topics',
+                'GET', angular.noop, angular.noop);
+        };
+
         self.saveTopicCategoryVisibility = function (classId, object) {
             return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/topic-categories', 'POST', null, object, {
                 'Content-Type': 'application/json; charset=utf-8'

@@ -1723,14 +1723,16 @@
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
             <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING'">
                 <div class="form-group">
-                    <label>{{vm.taskEditor.activityType === 'DAILY_VOCAB' ? 'Lọc theo category' : 'Category (không bắt buộc)'}}</label>
+                    <label>{{vm.taskEditor.activityType === 'DAILY_VOCAB' ? 'Chọn category' : 'Category (không bắt buộc)'}}</label>
                     <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
-                               data-ng-disabled="vm.scheduleTopicsLoading" allow-clear="true">
+                               data-ng-disabled="vm.scheduleTopicCategoriesLoading" allow-clear="true">
                         <ui-select-match placeholder="Chọn category..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="category.id as category in vm.scheduleTaskCategories | propsFilter:{name:$select.search}">
                             <div data-ng-bind-html="category.name | highlight:$select.search"></div>
                         </ui-select-choices>
                     </ui-select>
+                    <small class="help-block" data-ng-if="vm.scheduleTopicCategoriesLoading" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải category...</small>
+                    <small class="help-block text-danger" data-ng-if="vm.scheduleTopicCategoriesError">Không tải được category. <button type="button" class="class-task-video-retry" data-ng-click="vm.refreshScheduleTopicCategories()">Thử lại</button></small>
                 </div>
                 <div class="form-group" data-ng-if="vm.taskEditor.activityType !== 'DAILY_VOCAB'">
                     <label>Topic / Bài học (không bắt buộc)</label>
@@ -1745,13 +1747,13 @@
             </div>
             <div class="form-group class-task-vocab-topics" data-ng-if="vm.taskEditor.activityType === 'DAILY_VOCAB'">
                 <div class="class-task-parts-heading"><label>Topic / Bài học</label><span class="class-task-topic-count">{{vm.taskEditor.topicIds.length || 0}} topic đã chọn</span></div>
-                <ui-select multiple class="class-task-parts-select class-task-vocab-select" theme="bootstrap" name="vocabTopics" data-ng-model="vm.taskEditor.topicIds" close-on-select="false" data-ng-change="vm.taskVocabTopicsChanged()" data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving">
-                    <ui-select-match placeholder="Tìm và chọn một hoặc nhiều topic..." title="{{$item.name}}">{{$item.name}}</ui-select-match>
+                <ui-select multiple class="class-task-parts-select class-task-vocab-select" theme="bootstrap" name="vocabTopics" data-ng-model="vm.taskEditor.topicIds" close-on-select="false" data-ng-change="vm.taskVocabTopicsChanged()" data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving || (!vm.taskEditor.categoryKey && !vm.taskEditor.topicIds.length)">
+                    <ui-select-match placeholder="{{vm.taskEditor.categoryKey ? 'Tìm và chọn một hoặc nhiều topic...' : 'Chọn category trước...'}}" title="{{$item.name}}">{{$item.name}}</ui-select-match>
                     <ui-select-choices repeat="topic.id as topic in vm.taskTopicChoices() | propsFilter:{name:$select.search}">
                         <div data-ng-bind-html="topic.name | highlight:$select.search"></div><small>{{topic.categoryName || 'Không phân loại'}}</small>
                     </ui-select-choices>
                 </ui-select>
-                <small>Có thể chọn nhiều topic từ các category khác nhau. Đổi bộ lọc vẫn giữ các topic đã chọn; bấm × để bỏ một topic.</small>
+                <small>Có thể chọn nhiều topic trong một category. Khi đổi category, hệ thống bỏ lựa chọn cũ và tải danh sách mới.</small>
                 <p class="class-task-topic-summary" data-ng-if="vm.taskEditor.topicIds.length > 1">Học sinh thấy {{vm.taskEditor.topicIds.length}} bài riêng. Hoàn thành tất cả topic để đạt 100% task.</p>
                 <p class="text-warning class-task-help" data-ng-if="vm.taskEditor.topicIds.length > 1 && !vm.multiTopicVocabEnabled()">Cần cập nhật backend để lưu nhiều topic trong một task.</p>
             </div>
@@ -1769,7 +1771,11 @@
                 </div>
                 <div></div>
             </div>
-            <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
+            <div data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING' && vm.taskEditor.categoryKey">
+                <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải topic trong category đã chọn...</p>
+                <p class="class-task-help text-danger" data-ng-if="vm.taskCategoryTopicsError">Không tải được topic. <button type="button" class="class-task-video-retry" data-ng-click="vm.loadTaskCategoryTopics()">Thử lại</button></p>
+                <p class="class-task-help" data-ng-if="!vm.scheduleTopicsLoading && !vm.taskCategoryTopicsError && !vm.taskCategoryTopics.length">Category này chưa có topic.</p>
+            </div>
             <div class="class-task-editor-grid" data-ng-if="vm.taskHasTopics(vm.taskEditor) || vm.isIeltsTask(vm.taskEditor)">
                 <div class="form-group">
                     <label>Thời gian bắt đầu</label>

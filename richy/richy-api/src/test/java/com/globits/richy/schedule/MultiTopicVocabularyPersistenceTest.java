@@ -1,6 +1,8 @@
 package com.globits.richy.schedule;
 
 import com.globits.richy.domain.*;
+import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.repository.TopicRepository;
 import java.io.File;
 import java.util.*;
 import org.hibernate.Session;
@@ -81,7 +83,23 @@ public class MultiTopicVocabularyPersistenceTest {
             Session first = factory.openSession(); first.beginTransaction();
             EnrolmentClass clazz = new EnrolmentClass(); clazz.setName("Class"); clazz.setSchoolId(2); first.save(clazz);
             EnrolmentClassScheduleDay day = new EnrolmentClassScheduleDay(); day.setScheduleDate("2026-10-19"); day.setEnrolmentClass(clazz); first.save(day);
-            Topic a = new Topic(); a.setName("A"); first.save(a); Topic b = new Topic(); b.setName("B"); first.save(b); Topic c = new Topic(); c.setName("C"); first.save(c);
+            TopicCategory travel = new TopicCategory(); travel.setName("Travel"); first.save(travel);
+            TopicCategory animals = new TopicCategory(); animals.setName("Animals"); first.save(animals);
+            Topic a = new Topic(); a.setName("A"); a.setTopicCategory(travel); first.save(a);
+            Topic b = new Topic(); b.setName("B"); b.setTopicCategory(animals); first.save(b);
+            Topic c = new Topic(); c.setName("C"); first.save(c);
+            Topic hidden = new Topic(); hidden.setName("Hidden"); hidden.setTopicCategory(travel); hidden.setIsShow(false); first.save(hidden);
+            String catalogQuery = TopicRepository.class.getMethod("getScheduleTopicsByCategory", Long.class)
+                    .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+            List<TopicForListAllDto> travelTopics = first.createQuery(catalogQuery, TopicForListAllDto.class)
+                    .setParameter(1, travel.getId()).getResultList();
+            assertEquals(1, travelTopics.size());
+            assertEquals(a.getId(), travelTopics.get(0).getId());
+            assertEquals("Travel", travelTopics.get(0).getCategoryName());
+            List<TopicForListAllDto> uncategorized = first.createQuery(catalogQuery, TopicForListAllDto.class)
+                    .setParameter(1, 0L).getResultList();
+            assertEquals(1, uncategorized.size());
+            assertEquals(c.getId(), uncategorized.get(0).getId());
             EnrolmentClassScheduleTask task = new EnrolmentClassScheduleTask(); task.setScheduleDay(day); task.setSection("HOMEWORK");
             task.setStatus("TODO"); task.setTitle("Three"); task.setActivityType("DAILY_VOCAB"); task.setTopics(Arrays.asList(c, a, b)); first.save(task);
             Long id = task.getId(); Long aId = a.getId(), bId = b.getId(), cId = c.getId();

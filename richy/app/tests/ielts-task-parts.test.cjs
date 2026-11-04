@@ -16,7 +16,7 @@ function editor() {
                 {id: 21, title: 'Writing Task 2', hasWritingTask1: false, hasWritingTask2: true},
                 {id: 22, title: 'Writing Task 1', hasWritingTask1: true, hasWritingTask2: false}],
             scheduleDay: {tasks: [], scheduleDate: '2026-10-06'}, scheduleTopics: [], scheduleListeningItems: [],
-            taskDeadlineChanged() {}, loadTaskListeningItems() {}, initializeComprehensiveAssignment() {},
+            taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
             saveScheduleDay(options) { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); if (options.onSuccess) { options.onSuccess(); } }
         },
         angular: {isArray: Array.isArray, copy: value => JSON.parse(JSON.stringify(value)), forEach: (items, callback) => (items || []).forEach(callback)},

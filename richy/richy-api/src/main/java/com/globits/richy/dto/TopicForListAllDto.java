@@ -37,6 +37,14 @@ public class TopicForListAllDto implements Serializable{
 	public TopicForListAllDto() {
 		
 	}
+	public TopicForListAllDto(Long id, String name, Long categoryId, String categoryName, Long userId, String username) {
+		this.id = id;
+		this.name = name;
+		this.categoryId = categoryId;
+		this.categoryName = categoryName;
+		this.userId = userId;
+		this.username = username;
+	}
 	public TopicForListAllDto(Topic item) {
 		this.id = item.getId();
 		this.name = item.getName();
