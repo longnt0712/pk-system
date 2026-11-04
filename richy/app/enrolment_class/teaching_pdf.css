@@ -101,7 +101,11 @@
 .teaching-pdf-note { margin-top: 8px; }
 .teaching-pdf-note-title { display: block; width: 100%; border: 1px solid #dfe4f1; background: #f5f7fc; color: #253351; border-radius: 8px; padding: 8px; text-align: left; overflow-wrap: anywhere; }
 .teaching-pdf-note textarea { margin: 6px 0; }
-.teaching-pdf-page .textLayer { position: absolute; inset: 0; overflow: clip; opacity: 1; z-index: 1; line-height: 1; transform-origin: 0 0; text-size-adjust: none; forced-color-adjust: none; }
+.teaching-pdf-page .textLayer {
+    position: absolute; inset: 0; overflow: clip; opacity: 1; z-index: 1; transform-origin: 0 0;
+    line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; text-rendering: auto;
+    text-size-adjust: none; forced-color-adjust: none;
+}
 .teaching-pdf-page .textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; user-select: text; }
 .teaching-pdf-page .textLayer > :not(.markedContent), .teaching-pdf-page .textLayer .markedContent span:not(.markedContent) {
     font-size: calc(var(--total-scale-factor) * var(--font-height, 0px) * var(--min-font-size, 1));
