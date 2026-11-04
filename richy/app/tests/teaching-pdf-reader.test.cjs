@@ -241,6 +241,61 @@ test('only two taps open free text for editing, while dragging saves its positio
     assert.equal(readonly.ctrl.state.marks.length, 2);
 });
 
+test('PDF pen widths are saved and the eraser removes only the strokes swept on its page', async () => {
+    const older = {page: 1, points: [['0.2000', '0.2000'], ['0.8000', '0.2000']]};
+    const otherPage = {page: 2, points: older.points};
+    const highlight = {page: 1, highlight: true, rects: [{x: .4, y: .19, w: .2, h: .02}]};
+    const text = {page: 1, x: .4, y: .19, text: 'Keep'};
+    const h = fixture({page: 1, marks: [older, otherPage, highlight, text]});
+    await h.tick();
+    await h.ctrl.open('run');
+    await h.tick();
+    assert.equal(h.ctrl.inkWidth(older), 2);
+    const page = h.sheet(1), box = page.getBoundingClientRect();
+    let captured = null;
+    const overlay = {
+        closest: selector => selector === '[data-pdf-page]' ? page : selector === '.teaching-pdf-ink' ? overlay : null,
+        getBoundingClientRect: () => box,
+        setPointerCapture: id => { captured = id; },
+        hasPointerCapture: id => captured === id,
+        releasePointerCapture: () => { captured = null; }
+    };
+    function pointer(type, x, y) {
+        h.events[type]({type, target: overlay, pointerId: 7, isPrimary: true, button: 0,
+            clientX: box.left + x * box.width, clientY: box.top + y * box.height});
+    }
+    h.ctrl.toggleInk('pen');
+    h.ctrl.inkSizes.pen = '7';
+    pointer('pointerdown', .2, .6);
+    pointer('pointerup', .8, .6);
+    await h.tick();
+    const newStroke = h.writes.at(-1).state.marks.at(-1);
+    assert.equal(newStroke.width, 7);
+    assert.equal(h.ctrl.inkWidth(newStroke), 7);
+    assert.equal(captured, null);
+
+    h.ctrl.toggleInk('eraser');
+    pointer('pointerdown', .5, .1);
+    pointer('pointermove', .5, .3);
+    assert.equal(h.ctrl.inkErased(h.ctrl.state.marks[0]), true);
+    pointer('pointercancel');
+    assert.equal(h.ctrl.state.marks.length, 5);
+    assert.equal(h.ctrl.inkErased(h.ctrl.state.marks[0]), false);
+    pointer('pointerdown', .5, .1);
+    pointer('pointerup', .5, .3);
+    await h.tick();
+    assert.deepEqual(h.writes.at(-1).state.marks, [otherPage, highlight, text, newStroke]);
+    h.ctrl.inkSizes.eraser = '2';
+    pointer('pointerdown', .5, .6 + 19 / box.height);
+    pointer('pointerup', .5, .6 + 19 / box.height);
+    assert.equal(h.ctrl.state.marks.length, 4);
+    h.ctrl.inkSizes.eraser = '7';
+    pointer('pointerdown', .5, .6 + 19 / box.height);
+    pointer('pointerup', .5, .6 + 19 / box.height);
+    await h.tick();
+    assert.deepEqual(h.writes.at(-1).state.marks, [otherPage, highlight, text]);
+});
+
 test('fullscreen preserves reading position and the zoom slider remains active', async () => {
     const h = fixture({page: 6, y: .2});
     await h.tick();

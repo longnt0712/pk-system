@@ -54,13 +54,14 @@
                     ariaLabelledBy: 'teaching-pdf-title',
                     controller: ['$scope', '$timeout', '$uibModalInstance', function (scope, timer, instance) {
                         var vm = this, root, pdf, api, loadingTask, saveTimer, saveRequest;
-                        var editId = 0, savedEditId = 0, destroyed = false, stroke;
+                        var editId = 0, savedEditId = 0, destroyed = false, inkGesture;
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
                         var libraryDrag, libraryDropTarget;
                         var lastTextTap;
                         vm.pages = [];
+                        vm.inkSizes = {pen: '2', eraser: '4'};
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: []};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
                         var foldersById = Object.create(null);
@@ -369,6 +370,7 @@
                         }
                         function clearPage(item) {
                             if (vm.textDrag && vm.textDrag.mark.page === item.number) { endTextDrag(); }
+                            if (inkGesture && inkGesture.page === item.number) { finishInk(false); }
                             var job = item.job;
                             item.job = null; item.ready = false; item.error = false;
                             if (!job) { return; }
@@ -557,6 +559,7 @@
 
                         function release() {
                             endTextDrag();
+                            finishInk(false);
                             lastTextTap = null;
                             if (batchTimer) { timer.cancel(batchTimer); batchTimer = null; }
                             if (zoomTimer) { timer.cancel(zoomTimer); zoomTimer = null; }
@@ -572,7 +575,7 @@
                             vm.busy = true;
                             if (vm.editingText) { vm.finishText(vm.editingText); }
                             save().then(function () {
-                                release(); exitFullscreen(); vm.run = null; vm.selectedMark = null; vm.drawing = false; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
+                                release(); exitFullscreen(); vm.run = null; vm.selectedMark = null; vm.inkTool = null; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
                                 editId = savedEditId = 0; vm.saveStatus = '';
                                 if (close) { instance.close(vm.changedDay); } else { return load(); }
                             }).catch(angular.noop).finally(function () { vm.busy = false; });
@@ -646,7 +649,7 @@
                         }
                         function closeContext() { vm.context = null; }
                         function selectedTextContext() {
-                            if (!pdf || !root || vm.busy || vm.run.completed || vm.drawing || vm.addingText) { return; }
+                            if (!pdf || !root || vm.busy || vm.run.completed || vm.inkTool || vm.addingText) { return; }
                             var selection = window.getSelection();
                             if (!selection || !selection.rangeCount || selection.isCollapsed) {
                                 if (vm.context && vm.context.draft) { closeContext(); }
@@ -722,13 +725,15 @@
                             if (selection && !selection.isCollapsed) { selection.removeAllRanges(); }
                         }
                         vm.startText = function () {
+                            finishInk(false);
                             vm.addingText = !vm.addingText;
-                            vm.drawing = false;
+                            vm.inkTool = null;
                             clearTextSelection();
                             closeContext();
                         };
-                        vm.togglePen = function () {
-                            vm.drawing = !vm.drawing;
+                        vm.toggleInk = function (tool) {
+                            finishInk(false);
+                            vm.inkTool = vm.inkTool === tool ? null : tool;
                             vm.addingText = false;
                             clearTextSelection();
                             closeContext();
@@ -761,7 +766,7 @@
                         vm.markChanged = changed;
 
                         vm.beginTextDrag = function (mark, event) {
-                            if (!vm.run || vm.run.completed || vm.busy || vm.drawing || vm.textDrag ||
+                            if (!vm.run || vm.run.completed || vm.busy || vm.inkTool || vm.textDrag ||
                                     vm.editingText === mark || !event.isPrimary || event.button !== 0) { return; }
                             var label = event.currentTarget;
                             var sheet = label.closest('[data-pdf-page]');
@@ -822,8 +827,87 @@
                             return [Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)).toFixed(4),
                                 Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)).toFixed(4)];
                         }
+                        function startInk(event, overlay) {
+                            var page = Number(overlay.closest('[data-pdf-page]').dataset.pdfPage);
+                            var gesture = inkGesture = {page: page, overlay: overlay, pointerId: event.pointerId};
+                            if (vm.inkTool === 'pen') {
+                                gesture.stroke = {page: page, width: vm.inkWidth({width: vm.inkSizes.pen}), points: []};
+                                vm.stroke = gesture.stroke;
+                            } else {
+                                gesture.erased = new Set();
+                                gesture.radius = {'2': 8, '4': 14, '7': 22}[vm.inkSizes.eraser] || 14;
+                                var box = overlay.getBoundingClientRect();
+                                gesture.candidates = vm.state.marks.filter(function (mark) {
+                                    return mark.page === page && angular.isArray(mark.points) && mark.points.length;
+                                }).map(function (mark) {
+                                    var bounds = {left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity};
+                                    var points = mark.points.map(function (p) {
+                                        var x = p[0] * box.width, y = p[1] * box.height;
+                                        bounds.left = Math.min(bounds.left, x); bounds.right = Math.max(bounds.right, x);
+                                        bounds.top = Math.min(bounds.top, y); bounds.bottom = Math.max(bounds.bottom, y);
+                                        return {x: x, y: y};
+                                    });
+                                    return {mark: mark, points: points, bounds: bounds, radius: gesture.radius + vm.inkWidth(mark) / 2};
+                                });
+                            }
+                            overlay.setPointerCapture(event.pointerId);
+                            moveInk(event);
+                            scope.$evalAsync(angular.noop);
+                        }
+                        function pointSegmentDistanceSquared(p, a, b) {
+                            var dx = b.x - a.x, dy = b.y - a.y, lengthSquared = dx * dx + dy * dy;
+                            var t = lengthSquared ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared)) : 0;
+                            var x = p.x - a.x - t * dx, y = p.y - a.y - t * dy;
+                            return x * x + y * y;
+                        }
+                        function sideOfSegment(a, b, p) {
+                            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+                        }
+                        function sweepHitsStroke(from, to, candidate) {
+                            var radius = candidate.radius, bounds = candidate.bounds;
+                            if (Math.max(from.x, to.x) + radius < bounds.left || Math.min(from.x, to.x) - radius > bounds.right ||
+                                    Math.max(from.y, to.y) + radius < bounds.top || Math.min(from.y, to.y) - radius > bounds.bottom) { return false; }
+                            var limit = radius * radius;
+                            return candidate.points.some(function (b, index, points) {
+                                var a = points[Math.max(0, index - 1)];
+                                return (sideOfSegment(from, to, a) * sideOfSegment(from, to, b) < 0 &&
+                                    sideOfSegment(a, b, from) * sideOfSegment(a, b, to) < 0) ||
+                                    pointSegmentDistanceSquared(to, a, b) <= limit || pointSegmentDistanceSquared(from, a, b) <= limit ||
+                                    pointSegmentDistanceSquared(a, from, to) <= limit || pointSegmentDistanceSquared(b, from, to) <= limit;
+                            });
+                        }
+                        function moveInk(event) {
+                            var gesture = inkGesture;
+                            if (gesture.stroke) {
+                                var points = gesture.stroke.points, next = point(event, gesture.overlay), last = points[points.length - 1];
+                                if (points.length < 1000 && (!last || last[0] !== next[0] || last[1] !== next[1])) { points.push(next); }
+                                return;
+                            }
+                            var box = gesture.overlay.getBoundingClientRect();
+                            var to = {x: event.clientX - box.left, y: event.clientY - box.top};
+                            var from = gesture.previous || to;
+                            gesture.candidates.forEach(function (candidate) {
+                                if (!gesture.erased.has(candidate.mark) && sweepHitsStroke(from, to, candidate)) {
+                                    gesture.erased.add(candidate.mark);
+                                }
+                            });
+                            gesture.previous = to;
+                        }
+                        function finishInk(commit) {
+                            var gesture = inkGesture;
+                            if (!gesture) { return; }
+                            inkGesture = null; vm.stroke = null;
+                            if (gesture.overlay.hasPointerCapture(gesture.pointerId)) { gesture.overlay.releasePointerCapture(gesture.pointerId); }
+                            if (!commit) { return; }
+                            if (gesture.stroke && gesture.stroke.points.length > 1) {
+                                vm.state.marks.push(gesture.stroke); changed();
+                            } else if (gesture.erased && gesture.erased.size) {
+                                vm.state.marks = vm.state.marks.filter(function (mark) { return !gesture.erased.has(mark); });
+                                changed();
+                            }
+                        }
                         function onContextMenu(event) {
-                            if (vm.run && !vm.run.completed && !vm.drawing && !vm.addingText && !vm.busy
+                            if (vm.run && !vm.run.completed && !vm.inkTool && !vm.addingText && !vm.busy
                                 && (touchSelection || event.pointerType === 'touch' || event.pointerType === 'pen')
                                 && event.target.closest('.textLayer') && event.cancelable) {
                                 event.preventDefault();
@@ -841,20 +925,25 @@
                                     event.preventDefault();
                                 }
                             }
-                            var overlay = event.target.closest('.teaching-pdf-ink');
-                            if (!overlay || !vm.drawing || !vm.run || vm.run.completed || vm.busy) { return; }
-                            if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
-                                overlay.setPointerCapture(event.pointerId);
-                                stroke = {page: Number(overlay.closest('[data-pdf-page]').dataset.pdfPage), points: [point(event, overlay)], pointerId: event.pointerId};
-                            } else if (stroke && stroke.pointerId === event.pointerId) {
-                                if (event.type === 'pointermove' && stroke.points.length < 1000) { stroke.points.push(point(event, overlay)); }
-                                if (event.type === 'pointerup' || event.type === 'pointercancel') {
-                                    if (stroke.points.length > 1) { vm.state.marks.push(stroke); changed(); }
-                                    stroke = null;
+                            if (event.type === 'pointerdown') {
+                                var overlay = event.target.closest('.teaching-pdf-ink');
+                                if (overlay && vm.inkTool && vm.run && !vm.run.completed && !vm.busy &&
+                                        !inkGesture && event.isPrimary && event.button === 0) {
+                                    startInk(event, overlay);
                                 }
+                            } else if (inkGesture && inkGesture.pointerId === event.pointerId) {
+                                if (event.type === 'pointermove' || event.type === 'pointerup') { moveInk(event); }
+                                if (event.type !== 'pointermove') {
+                                    finishInk(event.type === 'pointerup' || event.type === 'pointercancel' && !!inkGesture.stroke);
+                                }
+                                scope.$evalAsync(angular.noop);
                             }
-                            scope.$evalAsync(function () { vm.stroke = stroke; });
                         }
+                        vm.inkWidth = function (mark) {
+                            var width = Number(mark.width);
+                            return width === 4 || width === 7 ? width : 2;
+                        };
+                        vm.inkErased = function (mark) { return !!(inkGesture && inkGesture.erased && inkGesture.erased.has(mark)); };
                         vm.inkPoints = function (mark) {
                             return mark.points.map(function (p) { return (1000 * p[0]) + ',' + (1000 * p[1]); }).join(' ');
                         };
@@ -890,7 +979,7 @@
                             if (event.target.closest('.teaching-pdf-context, .teaching-pdf-inline-note, .teaching-pdf-free-text')) { return; }
                             if (selection && !selection.isCollapsed) { return; }
                             var sheet = event.target.closest('[data-pdf-page]');
-                            if (!sheet || vm.drawing || vm.busy) {
+                            if (!sheet || vm.inkTool || vm.busy) {
                                 scope.$evalAsync(closeContext); return;
                             }
                             var position = point(event, sheet).map(Number);

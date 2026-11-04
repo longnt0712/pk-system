@@ -111,8 +111,9 @@
 .teaching-pdf-page { position: relative; isolation: isolate; margin: 0 auto 14px; background: white; box-shadow: 0 2px 12px #0002; }
 .teaching-pdf-page canvas, .teaching-pdf-marks, .teaching-pdf-ink { position: absolute; inset: 0; width: 100%; height: 100%; }
 .teaching-pdf-marks { pointer-events: none; mix-blend-mode: multiply; }
-.teaching-pdf-marks polyline { fill: none; stroke: #2654bd; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.teaching-pdf-marks polyline { fill: none; stroke: #2654bd; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
 .teaching-pdf-ink { z-index: 3; touch-action: none; cursor: crosshair; }
+.teaching-pdf-ink.is-eraser { cursor: cell; }
 .teaching-pdf-notes {
     position: absolute; z-index: 5; top: 12px; right: 12px; width: min(330px, calc(100% - 24px)); max-height: calc(100% - 24px);
     overflow: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid #dfe4f1; border-radius: 14px;
