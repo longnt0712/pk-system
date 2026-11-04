@@ -74,7 +74,15 @@
                             vm.busy = true; vm.error = '';
                             return http.post(base + '/attach', choice).then(function (response) {
                                 vm.changedDay = true;
-                                return open(response.data.id);
+                                var id = response.data.id;
+                                var selected = choice.previousRun
+                                    ? vm.previous.find(function (run) { return run.id === choice.previousRun; })
+                                    : vm.library.find(function (item) { return item.id === choice.pdfId; });
+                                if (selected && !vm.current.some(function (run) { return run.id === id; })) {
+                                    vm.current.push({id: id, name: selected.name, completed: false});
+                                }
+                                vm.previous = vm.previous.filter(function (run) { return run.id !== id; });
+                                return open(id);
                             }, function (error) { fail(error, 'Không gắn được PDF vào buổi này.'); })
                                 .finally(function () { vm.busy = false; });
                         };
@@ -104,7 +112,15 @@
                                     return timer(function () { return render(true); });
                                 });
                             }).catch(function (error) {
-                                fail(error, 'Không mở được PDF. Hãy kiểm tra tệp có bị khóa hoặc hỏng.');
+                                var message = 'Không khởi động được trình đọc PDF. Hãy tải lại trang rồi thử lại.';
+                                if (error && error.status > 0) {
+                                    message = 'Máy chủ không trả được tài liệu PDF (HTTP ' + error.status + ').';
+                                } else if (error && error.name === 'PasswordException') {
+                                    message = 'PDF này có mật khẩu. Hãy tải lên bản PDF đã mở khóa.';
+                                } else if (error && error.name === 'InvalidPDFException') {
+                                    message = 'Dữ liệu tải về không đọc được dưới dạng PDF.';
+                                }
+                                fail(error, message);
                                 release(); vm.run = null;
                             });
                         }

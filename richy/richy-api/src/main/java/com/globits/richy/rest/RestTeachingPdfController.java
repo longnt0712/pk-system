@@ -4,8 +4,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -53,11 +54,16 @@ public class RestTeachingPdfController {
     }
 
     @RequestMapping(value = "/run/{runId}/content", method = RequestMethod.GET)
-    public ResponseEntity<byte[]> content(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId) {
-        return ResponseEntity.ok().header("Cache-Control", "private, no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header("Content-Disposition", "attachment; filename=\"lesson.pdf\"")
-                .contentType(MediaType.parseMediaType("application/pdf")).body(pdf.content(classId, date, runId));
+    public void content(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId,
+            HttpServletResponse response) throws IOException {
+        byte[] bytes = pdf.content(classId, date, runId);
+        // This app's MVC converters only handle strings and JSON.
+        response.setContentType("application/pdf");
+        response.setContentLength(bytes.length);
+        response.setHeader("Cache-Control", "private, no-store");
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("Content-Disposition", "attachment; filename=\"lesson.pdf\"");
+        response.getOutputStream().write(bytes);
     }
 
     @RequestMapping(value = "/run/{runId}", method = RequestMethod.PUT)

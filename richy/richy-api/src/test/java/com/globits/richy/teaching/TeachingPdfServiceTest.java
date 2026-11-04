@@ -13,11 +13,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.globits.richy.dto.TeachingPdfSession;
+import com.globits.richy.rest.RestTeachingPdfController;
 import com.globits.richy.service.EnrolmentClassScheduleException;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.richy.service.impl.TeachingPdfService;
@@ -60,6 +62,17 @@ public class TeachingPdfServiceTest {
     private JsonNode state(int revision, int page, boolean completed) throws Exception {
         return json.readTree("{\"revision\":" + revision + ",\"completed\":" + completed
                 + ",\"state\":{\"page\":" + page + ",\"marks\":[{\"page\":" + page + ",\"note\":\"private note\"}]}}");
+    }
+
+    @Test
+    public void contentEndpointWritesRawPdfBytesAndDisablesCaching() throws Exception {
+        String run = pdf.attach(1L, "2026-11-04", upload(), null).get("id");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        new RestTeachingPdfController(pdf).content(1L, "2026-11-04", run, response);
+
+        assertEquals("application/pdf", response.getContentType());
+        assertEquals("private, no-store", response.getHeader("Cache-Control"));
+        assertArrayEquals("%PDF-1.7".getBytes(StandardCharsets.US_ASCII), response.getContentAsByteArray());
     }
 
     private int previous(Long classId) {
