@@ -174,6 +174,37 @@ test('selection tools share one saved mark and free text is anchored to the clic
     assert.equal(h.writes.at(-1).state.marks[2].text, 'Added on page 7');
 });
 
+test('deleting a note from its popup keeps any highlight and removes a note-only marker', async () => {
+    const h = fixture();
+    await h.tick();
+    await h.ctrl.open('run');
+    await h.tick();
+    h.select(1);
+    await h.tick();
+    h.ctrl.noteSelection();
+    h.ctrl.context.mark.note = 'Note only';
+    h.ctrl.removeInlineNote();
+    await h.tick();
+    assert.equal(h.ctrl.context, null);
+    assert.equal(h.writes.at(-1).state.marks.length, 0);
+
+    h.select(1);
+    await h.tick();
+    h.ctrl.colorSelection('#c9daf8');
+    h.ctrl.noteSelection();
+    h.ctrl.context.mark.note = 'Note on a highlight';
+    h.ctrl.markChanged();
+    await h.tick();
+    h.ctrl.removeInlineNote();
+    await h.tick();
+    const marks = h.writes.at(-1).state.marks;
+    assert.equal(marks.length, 1);
+    assert.equal(marks[0].highlightColor, '#c9daf8');
+    assert.equal(marks[0].highlight, true);
+    assert.equal(marks[0].note, undefined);
+    assert.equal(marks[0].noteAnchor, undefined);
+});
+
 test('the PDF font picker applies to new text and keeps sizes on existing text after reopening', async () => {
     const older = {page: 1, x: .2, y: .2, text: 'Old'};
     const small = {page: 1, x: .2, y: .4, text: 'Small', fontSize: 12};
