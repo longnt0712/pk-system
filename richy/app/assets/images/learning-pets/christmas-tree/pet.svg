@@ -4,17 +4,17 @@
   <defs>
     <radialGradient id="star-halo"><stop stop-color="#fff6b2" stop-opacity=".65"/><stop offset="1" stop-color="#ffcf55" stop-opacity="0"/></radialGradient>
     <filter id="light-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="4"/></filter>
-    <g id="bulb"><circle r="11" fill="#ffdb77" opacity=".8" filter="url(#light-glow)"/><circle r="3.7" fill="#fff6c7"/><circle r="1.8" fill="#fff"/></g>
+    <g id="bulb"><circle r="11" fill="#ffdb77" opacity=".65" filter="url(#light-glow)"/><circle r="3.7" fill="#fff6c7"/><circle r="1.8" fill="#fff"/></g>
     <g id="glint"><path d="M0-16 3-3 16 0 3 3 0 16-3 3-16 0-3-3Z" fill="#fff2bc"/><circle r="2.5" fill="#fff"/></g>
   </defs>
   <style>
-    .bulbs-a { animation: fairy-lights 3.2s ease-in-out infinite; }
-    .bulbs-b { animation: fairy-lights 3.2s -1.6s ease-in-out infinite; }
-    .sparkles-a { animation: fairy-sparkles 4.6s ease-in-out infinite; }
-    .sparkles-b { animation: fairy-sparkles 4.6s -2.3s ease-in-out infinite; }
+    .bulbs-a { animation: fairy-lights 4.8s ease-in-out infinite; }
+    .bulbs-b { animation: fairy-lights 4.8s -2.4s ease-in-out infinite; }
+    .sparkles-a { animation: fairy-sparkles 6.4s ease-in-out infinite; }
+    .sparkles-b { animation: fairy-sparkles 6.4s -3.2s ease-in-out infinite; }
     .star { animation: star-glow 3.8s ease-in-out infinite; }
-    @keyframes fairy-lights { 0%,100% { opacity:.15; } 40%,60% { opacity:1; } }
-    @keyframes fairy-sparkles { 0%,15%,85%,100% { opacity:.08; } 45%,55% { opacity:1; } }
+    @keyframes fairy-lights { 0%,100% { opacity:.35; } 50% { opacity:.85; } }
+    @keyframes fairy-sparkles { 0%,15%,85%,100% { opacity:.12; } 45%,55% { opacity:.6; } }
     @keyframes star-glow { 0%,100% { opacity:.25; } 50% { opacity:1; } }
     @media (prefers-reduced-motion:reduce) { .bulbs-a,.bulbs-b,.sparkles-a,.sparkles-b,.star { animation:none; } }
   </style>
