@@ -52,24 +52,45 @@ function node(name,value=''){
  return result;
 }
 
-function editorFixture(){
+function editorFixture(touch=false){
  let definition,identity,destroy,selected='memorising',inside=true,rangeClears=0,changes=0,saves=0,owner=null;const requests=[],cancelled=[],opened=[],timers=new Map(),listeners={};let timerId=0;
  const module={factory(){return this;},directive(name,dep){if(name==='speakingStudentAnswerEditor'){definition=dep.at(-1);}return this;}};
  vm.runInNewContext(fs.readFileSync(path.join(app,'question/business/speaking-student-answer-editor.js'),'utf8'),{angular:{module:()=>module},JSON,Date,Number,Array,Math});
- const textNode=node('#text','memorising'),range={commonAncestorContainer:textNode,startContainer:textNode,endContainer:textNode,startOffset:0,get endOffset(){return textNode.nodeValue.length;},collapsed:false,toString:()=>selected,cloneRange(){return this;},intersectsNode:target=>target===textNode||target.contains(textNode),getBoundingClientRect:()=>({left:20,bottom:30})};
- const selection={rangeCount:1,toString:()=>selected,getRangeAt:()=>range,removeAllRanges(){rangeClears++;},addRange(){}};
+ const bounds={left:20,top:12,bottom:30};
+ const textNode=node('#text','memorising'),range={commonAncestorContainer:textNode,startContainer:textNode,endContainer:textNode,startOffset:0,get endOffset(){return textNode.nodeValue.length;},collapsed:false,toString:()=>selected,cloneRange(){return this;},intersectsNode:target=>target===textNode||target.contains(textNode),getBoundingClientRect:()=>bounds};
+ const selection={rangeCount:1,toString:()=>selected,getRangeAt:()=>range,removeAllRanges(){rangeClears++;this.rangeCount=0;},addRange(){this.rangeCount=1;}};
  const editable=node('DIV'),nativeContains=editable.contains;editable.appendChild(textNode);Object.defineProperty(editable,'innerHTML',{get:()=>editable.childNodes.map(child=>child.nodeType===3?child.nodeValue:'<'+child.nodeName.toLowerCase()+(child.className?' class="'+child.className+'"':'')+Object.entries(child.attrs).map(([key,text])=>' '+key+'="'+text+'"').join('')+'>'+child.innerHTML+'</'+child.nodeName.toLowerCase()+'>').join(''),set(text){editable.childNodes.splice(0);textNode.nodeValue=text;editable.appendChild(textNode);}});
  editable.contains=target=>inside&&nativeContains.call(editable,target);editable.focus=()=>{};editable.addEventListener=(name,fn)=>listeners[name]=fn;editable.removeEventListener=()=>{};
- const root={querySelector:()=>editable,contains:()=>true},doc={hidden:false,documentElement:{clientWidth:1024,clientHeight:768},createElement:name=>node(name.toUpperCase()),createTreeWalker(parent){const texts=[];function walk(current){if(current.nodeType===3){texts.push(current);}else{current.childNodes.forEach(walk);}}walk(parent);let index=0;return{nextNode:()=>texts[index++]||null};},addEventListener(){},removeEventListener(){}};
+ const root={querySelector:selector=>selector==='.sp-answer-editable'?editable:null,contains:()=>true},doc={hidden:false,documentElement:{clientWidth:1024,clientHeight:768},createElement:name=>node(name.toUpperCase()),createTreeWalker(parent){const texts=[];function walk(current){if(current.nodeType===3){texts.push(current);}else{current.childNodes.forEach(walk);}}walk(parent);let index=0;return{nextNode:()=>texts[index++]||null};},addEventListener(name,fn){listeners[name]=fn;},removeEventListener(){}};
  const speech={isSupported:()=>true,speak(text,options){owner=options.owner;requests.push({text,options});return true;},cancel(target){if(owner===target){cancelled.push(target);owner=null;return true;}return false;}};
  const win={document:doc,innerWidth:1024,innerHeight:768,EnglishSpeech:speech,open(...args){opened.push(args);},getSelection:()=>selection,addEventListener(){},removeEventListener(){}};
+ if(touch){win.matchMedia=()=>({matches:true});win.CSS={highlights:new Map()};win.Highlight=function(value){this.range=value;};win.visualViewport={offsetTop:0,offsetLeft:0,width:1024,height:768,addEventListener(){},removeEventListener(){}};}
  const state={ready:true,loading:false,dirty:false,html:'memorising',notes:[],history:{versions:[]}};
  const session={state,load:()=>Promise.resolve(),save(){saves++;return Promise.resolve();},change(html,notes){changes++;state.html=html;state.notes=notes;state.dirty=true;},destroy(){},backup(){}};
  const timeout=(fn,delay)=>{const key=++timerId;timers.set(key,{fn,delay});return key;};timeout.cancel=key=>timers.delete(key);
  const scope={$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
  const directive=definition(win,timeout,{open:()=>session});directive.link(scope,[root]);
- return{scope,state,requests,cancelled,opened,speech,win,directive,timers,identity,destroy,editable,range,select(text,valid=true){selected=text;inside=valid;listeners.mouseup();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
+ return{scope,state,requests,cancelled,opened,speech,win,directive,timers,identity,destroy,editable,range,bounds,listeners,select(text,valid=true){selected=text;inside=valid;selection.rangeCount=1;listeners[touch?'touchend':'mouseup']();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
 }
+
+test('touch selection keeps its toolbar by the text after the native range is cleared',async()=>{
+ const f=editorFixture(true);f.identity([11,7,42,9]);await settle();
+ Object.assign(f.win.visualViewport,{offsetTop:240,offsetLeft:100,width:500,height:370});
+ Object.assign(f.bounds,{left:330,top:550,bottom:570});
+ f.select('memorising');
+ assert.equal(f.scope.ed.selectionStyle.top,'542px');
+ assert.equal(f.scope.ed.selectionStyle.transform,'translateY(-100%)');
+ const [key,timer]=[...f.timers].find(([,value])=>value.delay===180);f.timers.delete(key);timer.fn();f.listeners.selectionchange();
+ assert.equal(f.rangeClears,1);assert.equal(f.scope.ed.hasSelection,true);
+ assert.equal(f.win.CSS.highlights.get('speaking-touch-selection').range,f.range);
+ assert.equal(f.changes,0);
+ let blocked=false;f.listeners.contextmenu({cancelable:true,preventDefault(){blocked=true;}});assert.equal(blocked,true);
+ Object.assign(f.bounds,{top:320,bottom:340});f.listeners.scroll();
+ assert.equal(f.scope.ed.selectionStyle.top,'348px');assert.equal(f.scope.ed.selectionStyle.transform,'none');
+ f.scope.ed.annotate(true);
+ assert.equal(f.state.notes.length,1);assert.equal(f.scope.ed.hasSelection,false);assert.equal(f.win.CSS.highlights.size,0);
+ f.destroy();
+});
 
 test('selection speaker reads the exact selected phrase without moving the caret or changing notes and toggles stop',async()=>{
  const f=editorFixture();f.identity([11,7,42,9]);await settle();f.select('  memorising\n theory  ');f.scope.ed.readSelection();

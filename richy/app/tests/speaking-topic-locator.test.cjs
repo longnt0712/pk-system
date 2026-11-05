@@ -87,6 +87,28 @@ test('a topic in another Part updates the selected Part and URL and respects red
     f.vm.jumpToTopic({key:'forged topic', part:1}); f.flush(); assert.equal(f.calls.scroll.length, 1);
 });
 
+test('repeated tablet taps scroll to each chosen topic without focusing the search or rebuilding the current Part', async () => {
+    const f = fixture(); await settle();
+    const touch = {originalEvent: {pointerType: 'touch', detail: 1}};
+    const groups = f.vm.groups;
+    const topics = f.vm.topicLinks.filter(topic => topic.part === 1);
+    for (const topic of [topics[0], topics.at(-1), topics[0]]) {
+        f.vm.toggleTopicLocator(touch); f.flush();
+        assert.equal(f.vm.topicLocatorOpen, true);
+        f.vm.jumpToTopic(topic, touch); f.render(); f.flush();
+        assert.equal(f.vm.topicLocatorOpen, false);
+        assert.equal(f.vm.groups, groups);
+        assert.equal(f.calls.scroll.at(-1).id, 'sp-topic-' + encodeURIComponent(topic.key));
+        assert.equal(f.calls.scroll.at(-1).options.behavior, 'instant');
+    }
+    assert.equal(f.calls.focus.length, 0);
+    let blurred = false;
+    f.win.document.activeElement = {id: 'sp-topic-locator-search', blur() { blurred = true; }};
+    f.vm.jumpToTopic(topics[1], touch); f.render(); f.flush();
+    assert.equal(blurred, true);
+    assert.equal(f.calls.scroll.length, 4);
+});
+
 test('a later jump, Part change, bank reload or destroyed page cancels a pending topic scroll', async () => {
     const f = fixture(); await settle();
     f.vm.jumpToTopic(f.vm.topicLinks[0]); f.vm.jumpToTopic(f.vm.topicLinks[1]); f.render(); f.flush();

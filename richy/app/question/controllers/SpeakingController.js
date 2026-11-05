@@ -55,6 +55,12 @@
                 for (var position = 0; position <= index; position++) { vm.groups[position].lazyLoaded = true; }
             }
             function resetTopicLocator() { topicJumpGeneration++; vm.topicLocatorOpen = false; vm.topicLinks = []; vm.topicResults = []; vm.activeTopicKey = null; }
+            function touchLocator(event) {
+                event = event && (event.originalEvent || event);
+                return event && event.detail !== 0 && (event.pointerType === 'touch' || event.pointerType === 'pen'
+                    || (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents)
+                    || (!event.pointerType && $window.matchMedia && $window.matchMedia('(pointer: coarse)').matches));
+            }
             vm.filterTopics = function () {
                 var term = normalize(vm.topicQuery);
                 vm.topicResults = vm.topicLinks.filter(function (topic) { return !term || normalize(topic.title).indexOf(term) >= 0; });
@@ -63,16 +69,21 @@
                 vm.topicLocatorOpen = false;
                 if (restoreFocus && $window.document.getElementById) { var button = $window.document.getElementById('sp-topic-locator-toggle'); if (button) { button.focus(); } }
             };
-            vm.toggleTopicLocator = function () {
+            vm.toggleTopicLocator = function (event) {
                 if (vm.loadingBank || vm.practice || vm.modal || vm.notebookQuestionId || !vm.topicLinks.length) { return; }
                 if (vm.topicLocatorOpen) { vm.closeTopicLocator(false); return; }
                 vm.topicQuery = ''; vm.filterTopics(); vm.topicLocatorOpen = true;
+                if (touchLocator(event)) { return; }
                 $window.setTimeout(function () { if (!alive || !vm.topicLocatorOpen || !$window.document.getElementById) { return; } var input = $window.document.getElementById('sp-topic-locator-search'); if (input) { input.focus(); } }, 0);
             };
-            vm.jumpToTopic = function (topic) {
+            vm.jumpToTopic = function (topic, event) {
                 if (!alive || vm.loadingBank || vm.practice || vm.modal || vm.notebookQuestionId || !topic) { return; }
                 var current = vm.topicLinks.filter(function (item) { return item.key === topic.key; })[0]; if (!current) { return; }
-                vm.query = ''; vm.part = current.part; vm.rebuildGroups();
+                var touch = touchLocator(event), search = $window.document.activeElement;
+                var searchFocused = touch && search && search.id === 'sp-topic-locator-search', visual = $window.visualViewport;
+                var dismissKeyboard = searchFocused || (touch && visual && visual.height * visual.scale < $window.innerHeight - 100);
+                if (searchFocused) { search.blur(); }
+                if (vm.query || vm.part !== current.part) { vm.query = ''; vm.part = current.part; vm.rebuildGroups(); }
                 var index = vm.groups.findIndex(function (group) { return group.key === current.key; }); if (index < 0) { return; }
                 showTopicsThrough(index); vm.activeTopicKey = current.key; vm.closeTopicLocator(false); saveView(); $location.search('part', current.part);
                 var generation = ++topicJumpGeneration, bank = bankGeneration, setId = vm.selectedSetId, studentId = vm.answerStudentId(), part = vm.part, groups = vm.groups;
@@ -80,9 +91,9 @@
                     if (!alive || generation !== topicJumpGeneration || bank !== bankGeneration || vm.selectedSetId !== setId || vm.answerStudentId() !== studentId || vm.part !== part || vm.groups !== groups || vm.practice || vm.modal || vm.notebookQuestionId || !$window.document.getElementById) { return; }
                     var target = $window.document.getElementById(topicAnchor(current.key)); if (!target) { return; }
                     var reducedMotion = $window.matchMedia && $window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                    target.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
-                    if (target.focus) { target.focus({preventScroll: true}); }
-                }, 0);
+                    target.scrollIntoView({behavior: touch ? 'instant' : reducedMotion ? 'auto' : 'smooth', block: 'start'});
+                    if (!touch && target.focus) { target.focus({preventScroll: true}); }
+                }, dismissKeyboard ? 280 : 0);
             };
             function preferenceKey() { return 'speaking-view:v1:' + vm.userId + (vm.managementMode ? ':manage' : ''); }
             function backupKey(id) { return 'speaking-practice:v1:' + vm.userId + ':' + id; }

@@ -115,11 +115,11 @@
             <header><strong>Đi tới topic</strong><button type="button" class="sp-close" ng-click="vm.closeTopicLocator(true)" aria-label="Đóng danh sách topic">×</button></header>
             <label class="sp-topic-locator-search"><i class="fa fa-search" aria-hidden="true"></i><input id="sp-topic-locator-search" type="search" ng-model="vm.topicQuery" ng-change="vm.filterTopics()" placeholder="Tìm tên topic…" aria-label="Tìm theo tên topic"></label>
             <nav class="sp-topic-locator-list" aria-label="Topics trong bộ đề">
-                <button type="button" ng-repeat="topic in vm.topicResults track by topic.key" ng-click="vm.jumpToTopic(topic)" ng-class="{'is-active':vm.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
+                <button type="button" ng-repeat="topic in vm.topicResults track by topic.key" ng-click="vm.jumpToTopic(topic, $event)" ng-class="{'is-active':vm.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
                 <p ng-if="!vm.topicResults.length" role="status">Không có topic phù hợp.</p>
             </nav>
         </section>
-        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="vm.toggleTopicLocator()" ng-class="{'is-active':vm.topicLocatorOpen}" aria-expanded="{{vm.topicLocatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
+        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="vm.toggleTopicLocator($event)" ng-class="{'is-active':vm.topicLocatorOpen}" aria-expanded="{{vm.topicLocatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
     </aside>
 
     <div class="sp-overlay" ng-if="vm.modal" ng-click="vm.closeModal()">

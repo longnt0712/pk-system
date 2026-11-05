@@ -206,6 +206,8 @@
                 var ed = scope.ed = {state: {loading: true, status: 'Đang tải câu trả lời…'}, hasSelection: false, speaking: false};
                 var speechOwner = {}, speechRequest = 0;
                 var touchSelection = !!($window.matchMedia && $window.matchMedia('(pointer: coarse)').matches);
+                var visual = $window.visualViewport, selectionTimer, touchHighlight, detachedSelection = false;
+                var highlights = $window.CSS && $window.CSS.highlights, highlightName = 'speaking-touch-selection';
                 function stopSpeech() {
                     speechRequest++; ed.speaking = false;
                     if ($window.EnglishSpeech) { $window.EnglishSpeech.cancel(speechOwner); }
@@ -258,7 +260,7 @@
                     }
                     scrub(container); var serialized = doc.createElement('div'); serialized.appendChild(container.cloneNode(true)); return {html: serialized.innerHTML, notes: result};
                 }
-                function render() { editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', scope.readOnly || ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
+                function render() { clearSelection(); editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', scope.readOnly || ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
                 function renderIncoming() {
                     var noteId = ed.activeNote && ed.activeNote.id, selection = $window.getSelection(), offsets = null;
                     if (selection && selection.rangeCount && editable.contains(selection.getRangeAt(0).commonAncestorContainer)) {
@@ -276,25 +278,55 @@
                 function cancelTimer() { if (timer) { $timeout.cancel(timer); timer = null; } }
                 function schedule() { cancelTimer(); if (current && ed.state.dirty && !ed.state.conflict && !composing) { timer = $timeout(function () { timer = null; ed.save(); }, 1300); } }
                 function changed() { if (scope.readOnly) { return; } if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
+                function clearSelection() {
+                    $timeout.cancel(selectionTimer); selectionTimer = null;
+                    if (touchHighlight && highlights.get(highlightName) === touchHighlight) { highlights.delete(highlightName); }
+                    touchHighlight = null; detachedSelection = false;
+                    selectedRange = null; ed.hasSelection = false; ed.selectionMarker = null;
+                }
+                function positionSelection() {
+                    if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
+                    var bounds = selectedRange.getBoundingClientRect();
+                    var left = visual ? visual.offsetLeft : 0, top = visual ? visual.offsetTop : 0;
+                    var width = visual ? visual.width : $window.innerWidth || doc.documentElement.clientWidth;
+                    var height = visual ? visual.height : $window.innerHeight || doc.documentElement.clientHeight;
+                    var bottom = top + height, gap = 8;
+                    var below = bottom - bounds.bottom - gap * 2, above = bounds.top - top - gap * 2;
+                    var popupWidth = Math.min(480, Math.max(0, width - gap * 2));
+                    var popup = root.querySelector('.sp-answer-selection');
+                    var popupHeight = popup && popup.scrollHeight || 56;
+                    var useAbove = below < popupHeight && above > below;
+                    var available = useAbove ? above : below;
+                    ed.selectionStyle = {
+                        visibility: bounds.bottom <= top || bounds.top >= bottom || available < 24 ? 'hidden' : 'visible',
+                        left: Math.max(left + gap, Math.min(bounds.left, left + width - popupWidth - gap)) + 'px',
+                        top: (useAbove ? bounds.top - gap : bounds.bottom + gap) + 'px',
+                        transform: useAbove ? 'translateY(-100%)' : 'none', maxWidth: popupWidth + 'px',
+                        maxHeight: Math.max(0, available) + 'px'
+                    };
+                }
                 function capture() {
+                    if (scope.readOnly || !ed.state.ready || ed.state.loading || composing) { return; }
                     var selection = $window.getSelection(), range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
-                    ed.hasSelection = !!(range && !range.collapsed && editable.contains(range.commonAncestorContainer) && selection.toString().trim());
-                    selectedRange = ed.hasSelection ? range.cloneRange() : null;
-                    ed.selectionMarker = ed.hasSelection ? markerAt(range.commonAncestorContainer) : null;
-                    if (!ed.hasSelection) { return; }
-                    var bounds = range.getBoundingClientRect(), width = $window.innerWidth || doc.documentElement.clientWidth;
-                    var height = $window.innerHeight || doc.documentElement.clientHeight;
-                    if (touchSelection) {
-                        // Native selection actions may occupy either side of the text on a tablet.
-                        var visual = $window.visualViewport, top = visual ? visual.offsetTop : 0;
-                        var bottom = top + (visual ? visual.height : height);
-                        var upper = (bounds.top + bounds.bottom) / 2 > (top + bottom) / 2;
-                        ed.selectionStyle = {left: '8px', width: 'calc(100vw - 16px)', maxWidth: '480px', top: upper ? top + 8 + 'px' : 'auto',
-                            bottom: upper ? 'auto' : Math.max(0, height - bottom) + 8 + 'px'};
-                    } else {
-                        var popupWidth = Math.min(480, width - 16), popupTop = Math.max(8, Math.min(bounds.bottom + 8, height - 94));
-                        ed.selectionStyle = {left: Math.max(8, Math.min(bounds.left, width - popupWidth - 8)) + 'px',
-                            top: popupTop + 'px', maxHeight: Math.max(24, height - popupTop - 8) + 'px'};
+                    if ((!range || range.collapsed) && detachedSelection) { return; }
+                    clearSelection();
+                    if (!range || range.collapsed || !editable.contains(range.commonAncestorContainer) || !range.toString().trim()) { return; }
+                    selectedRange = range.cloneRange(); ed.hasSelection = true;
+                    ed.selectionMarker = markerAt(range.commonAncestorContainer);
+                    positionSelection();
+                    if (touchSelection && highlights && typeof $window.Highlight === 'function') {
+                        var captured = selectedRange;
+                        selectionTimer = $timeout(function () {
+                            selectionTimer = null;
+                            if (captured !== selectedRange || !editable.contains(captured.commonAncestorContainer)) { return; }
+                            var nativeRange = selection.rangeCount && selection.getRangeAt(0);
+                            if (!nativeRange || nativeRange.collapsed || !editable.contains(nativeRange.commonAncestorContainer)) { return; }
+                            touchHighlight = new $window.Highlight(captured);
+                            highlights.set(highlightName, touchHighlight);
+                            detachedSelection = true;
+                            selection.removeAllRanges();
+                            positionSelection();
+                        }, 180);
                     }
                 }
                 function restoreSelection() { if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return false; } var selection = $window.getSelection(); editable.focus(); selection.removeAllRanges(); selection.addRange(selectedRange); return true; }
@@ -320,7 +352,7 @@
                     while (marker && marker !== editable && !(marker.nodeType === 1 && marker.getAttribute('data-note-id'))) { marker = marker.parentNode; }
                     var id = marker && marker !== editable && marker.getAttribute('data-note-id'), existing = id && ed.state.notes.filter(function (note) { return note.id === id; })[0];
                     if (existing) {
-                        openNote(existing, marker, text); selectedRange = null; ed.hasSelection = false; $window.getSelection().removeAllRanges(); return;
+                        openNote(existing, marker, text); clearSelection(); $window.getSelection().removeAllRanges(); return;
                     }
                     var overlapsNote = Array.prototype.slice.call(editable.querySelectorAll('span[data-note-id]')).some(function (span) { return selectedRange.intersectsNode(span); });
                     if (overlapsNote) { ed.phoneticError = 'Đoạn chọn đang chứa ghi chú. Chọn riêng một đoạn đã ghi chú để bổ sung phiên âm.'; return; }
@@ -342,7 +374,7 @@
                 };
                 ed.format = function (command) { if (scope.readOnly) { return; } if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
                 ed.annotate = function (withNote) { if (scope.readOnly) { return; }
-                    if (!ed.state.ready || !ed.hasSelection || !restoreSelection()) { return; }
+                    if (!ed.state.ready || !ed.hasSelection || !selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
                     if (withNote && ed.state.notes.length >= 200) { ed.state.error = 'Mỗi câu trả lời có tối đa 200 note. Hãy xoá note cũ trước khi thêm.'; return; }
                     var range = selectedRange.cloneRange(), walker = doc.createTreeWalker(editable, 4, null, false), nodes = [], node;
                     while ((node = walker.nextNode())) { if (range.intersectsNode(node) && node.nodeValue.length) { nodes.push(node); } }
@@ -355,17 +387,17 @@
                         selected.parentNode.insertBefore(span, selected); span.appendChild(selected); markers.push(span);
                     });
                     if (!markers.length) { return; } if (withNote) { ed.state.notes.push(note); openNote(note, markers[markers.length - 1]); }
-                    ed.marker = markers[0]; selectedRange = null; ed.hasSelection = false; $window.getSelection().removeAllRanges(); changed(); return withNote ? note : null;
+                    ed.marker = markers[0]; clearSelection(); $window.getSelection().removeAllRanges(); changed(); return withNote ? note : null;
                 };
                 ed.removeAnnotation = function () { if (scope.readOnly) { return; }
                     var marker = ed.selectionMarker || ed.marker;
                     if (!marker || !editable.contains(marker)) { return; } var group = marker.getAttribute('data-annotation-group'), noteId = marker.getAttribute('data-note-id');
                     Array.prototype.slice.call(editable.querySelectorAll('span.ielts-annotation')).forEach(function (span) { if ((group && span.getAttribute('data-annotation-group') === group) || (!group && span === marker)) { while (span.firstChild) { span.parentNode.insertBefore(span.firstChild, span); } span.parentNode.removeChild(span); } });
-                    ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== noteId || editable.querySelector('[data-note-id="' + note.id + '"]'); }); ed.marker = null; ed.selectionMarker = null; ed.activeNote = null; changed();
+                    ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== noteId || editable.querySelector('[data-note-id="' + note.id + '"]'); }); ed.marker = null; ed.activeNote = null; clearSelection(); changed();
                 };
                 ed.save = function () { if (scope.readOnly) { return; }
                     if (!current || composing || !ed.state.ready) { return; } cancelTimer(); changed(); cancelTimer(); var session = current, before = editable.innerHTML;
-                    return session.save().then(function () { if (!destroyed && session === current) { if (before === editable.innerHTML && !ed.state.dirty && !editable.contains(doc.activeElement)) { render(); } if (ed.state.dirty && !ed.state.error && !ed.state.conflict) { schedule(); } } });
+                    return session.save().then(function () { if (!destroyed && session === current) { if (before === editable.innerHTML && !ed.state.dirty && !ed.hasSelection && !editable.contains(doc.activeElement)) { render(); } if (ed.state.dirty && !ed.state.error && !ed.state.conflict) { schedule(); } } });
                 };
                 ed.reload = function () { if (!current) { return; } return current.load().then(function () { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } }); };
                 ed.remoteText = function () { var div = doc.createElement('div'); div.innerHTML = clean(ed.state.remote && ed.state.remote.html, ed.state.remote && ed.state.remote.notes).html; return div.textContent || ''; };
@@ -438,33 +470,57 @@
                 function click(event) { var marker = markerAt(event.target); scope.$evalAsync(function () { ed.marker = marker; var id = marker && marker.getAttribute('data-note-id'), note = id && ed.state.notes.filter(function (item) { return item.id === id; })[0]; if (note && (!ed.activeNote || ed.activeNote.id !== id)) { openNote(note, marker); } else { ed.activeNote = null; } }); }
                 function outside(event) {
                     if (!root.contains(event.target)) {
-                        scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; ed.selectionMarker = null; ed.hasSelection = false; selectedRange = null; });
+                        scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; clearSelection(); });
                         return;
                     }
                     var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
-                    if (editable.contains(event.target)) { touchSelection = touch; return; }
+                    if (editable.contains(event.target)) {
+                        touchSelection = touch;
+                        if (detachedSelection) { scope.$evalAsync(clearSelection); }
+                        return;
+                    }
                     if (event.target.closest('.sp-answer-format, .sp-answer-selection')) {
-                        if (touch && ed.hasSelection && event.cancelable) { event.preventDefault(); }
+                        if (touch && ed.hasSelection && !detachedSelection && event.cancelable) { event.preventDefault(); }
                         return;
                     }
                     if (!event.target.closest('.sp-answer-note')) { scope.$evalAsync(function () { ed.activeNote = null; }); }
                 }
-                function input() { scope.$evalAsync(function () { changed(); capture(); }); }
+                function input() { scope.$evalAsync(function () { clearSelection(); changed(); capture(); }); }
                 function selectionChanged() { scope.$evalAsync(capture); }
-                function compositionStart() { composing = true; cancelTimer(); }
+                function selectionViewportChanged() { if (ed.hasSelection) { scope.$evalAsync(positionSelection); } }
+                function contextMenu(event) {
+                    if (scope.readOnly || !ed.state.ready || !event.cancelable || !highlights || typeof $window.Highlight !== 'function'
+                        || (!touchSelection && event.pointerType !== 'touch' && event.pointerType !== 'pen')) { return; }
+                    var selection = $window.getSelection(), range = selection && selection.rangeCount && selection.getRangeAt(0);
+                    if (detachedSelection || (range && !range.collapsed && editable.contains(range.commonAncestorContainer))) {
+                        event.preventDefault();
+                    }
+                }
+                function compositionStart() { composing = true; clearSelection(); cancelTimer(); }
                 function compositionEnd() { composing = false; input(); }
                 function paste(event) { event.preventDefault(); if (scope.readOnly) { return; } var text = event.clipboardData ? event.clipboardData.getData('text/plain') : ''; doc.execCommand('insertText', false, text); input(); }
                 function drop(event) { event.preventDefault(); }
-                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { ed.activeNote = null; ed.closeHistory(); }); } }
+                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { clearSelection(); ed.activeNote = null; ed.closeHistory(); }); } }
                 function leaving() { if (current) { current.backup(); } }
                 editable.addEventListener('input', input); editable.addEventListener('click', click); editable.addEventListener('mouseup', selectionChanged); editable.addEventListener('touchend', selectionChanged); editable.addEventListener('keyup', selectionChanged); editable.addEventListener('compositionstart', compositionStart); editable.addEventListener('compositionend', compositionEnd); editable.addEventListener('paste', paste); editable.addEventListener('drop', drop); doc.addEventListener('pointerdown', outside); doc.addEventListener('selectionchange', selectionChanged); doc.addEventListener('keydown', escape); doc.addEventListener('visibilitychange', visible); $window.addEventListener('focus', visible); $window.addEventListener('resize', resizeHistory); $window.addEventListener('pagehide', leaving);
+                editable.addEventListener('contextmenu', contextMenu);
+                doc.addEventListener('scroll', selectionViewportChanged, true);
+                $window.addEventListener('resize', selectionViewportChanged);
+                if (visual) { visual.addEventListener('resize', selectionViewportChanged); visual.addEventListener('scroll', selectionViewportChanged); }
                 scope.$watchGroup(['setId', 'studentId', 'questionId', 'userId'], function (values) {
                     var next = ++generation; stopSpeech(); ed.speechError = ''; ed.phoneticError = ''; ed.lookupText = ''; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
                     if (!values.every(function (id) { return Number.isInteger(Number(id)) && Number(id) > 0; })) { return; }
                     current = store.open({setId: Number(values[0]), studentId: Number(values[1]), questionId: Number(values[2]), userId: Number(values[3]), readOnly: scope.readOnly === true}, clean); ed.state = current.state; render();
                     current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } poll(); } });
                 });
-                scope.$on('$destroy', function () { destroyed = true; generation++; stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving); });
+                scope.$on('$destroy', function () {
+                    destroyed = true; generation++; clearSelection(); stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); }
+                    editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving);
+                    editable.removeEventListener('contextmenu', contextMenu);
+                    doc.removeEventListener('scroll', selectionViewportChanged, true);
+                    $window.removeEventListener('resize', selectionViewportChanged);
+                    if (visual) { visual.removeEventListener('resize', selectionViewportChanged); visual.removeEventListener('scroll', selectionViewportChanged); }
+                });
             }
         };
     }]);

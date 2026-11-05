@@ -1,1 +1,16 @@
 *{box-sizing:border-box}body{margin:0;background:#f4f2fc;color:#24354c;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}.speaking-page{max-width:1350px;margin:auto;padding:24px 14px}.speaking-page h1{font-size:28px}.speaking-page [ng-cloak],[ng-cloak]{display:none!important}.sp-share-url{display:flex;gap:8px;margin:15px 0}.sp-share-url input{flex:1;min-width:0}.speaking-page .sp-answer-editable[contenteditable="false"]{cursor:text;background:#fcfcff}.speaking-page .sp-answer-editor>small{display:block}button,input,textarea{font:inherit}button{cursor:pointer}.sp-preserve{white-space:pre-wrap}.study-notebook-overlay{z-index:10080}[ng-csp] .ng-hide{display:none!important}@media(max-width:600px){.speaking-page{padding:10px 6px}.speaking-page h1{font-size:23px}}
+
+.speaking-page .sp-shared-scroll-top {
+    position: fixed;
+    z-index: 1030;
+    left: 15px;
+    bottom: 26px;
+    font-size: 16px;
+}
+
+@media (max-width: 767px) {
+    .speaking-page .sp-shared-scroll-top {
+        left: 9px;
+        bottom: 24px;
+    }
+}

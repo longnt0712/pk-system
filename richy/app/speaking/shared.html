@@ -6,13 +6,13 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <title>Speaking · Bài được chia sẻ</title>
     <link rel="stylesheet" href="../assets/css/external/font-awesome.min.css">
-    <link rel="stylesheet" href="../question/speaking.css?v=20261104-share-2">
+    <link rel="stylesheet" href="../question/speaking.css?v=20261105-speaking-touch">
     <link rel="stylesheet" href="../assets/css/study-notebook.css?v=20261103-share-1">
-    <link rel="stylesheet" href="shared.css?v=20261103-share-1">
+    <link rel="stylesheet" href="shared.css?v=20261104-share-scroll-top">
 </head>
 <body ng-controller="SpeakingPublicController as pub">
 <main class="speaking-page" ng-cloak>
-    <section class="sp-panel"><span class="sp-eyebrow">SPEAKING STUDIO · CHIA SẺ</span><h1>{{pub.data.studentName || 'Bài Speaking'}}</h1><p>{{pub.data.setName}}</p><span class="sp-badge" ng-if="pub.ready">{{pub.data.canEdit ? 'Được chỉnh sửa · Tự động lưu' : 'Chỉ xem'}}</span><p role="status" ng-if="pub.loading">Đang mở bài…</p><p class="sp-error" role="alert" ng-if="pub.error">{{pub.error}}</p></section>
+    <section class="sp-panel"><span class="sp-eyebrow">SPEAKING STUDIO · CHIA SẺ</span><h1 id="sp-shared-title" tabindex="-1">{{pub.data.studentName || 'Bài Speaking'}}</h1><p>{{pub.data.setName}}</p><span class="sp-badge" ng-if="pub.ready">{{pub.data.canEdit ? 'Được chỉnh sửa · Tự động lưu' : 'Chỉ xem'}}</span><p role="status" ng-if="pub.loading">Đang mở bài…</p><p class="sp-error" role="alert" ng-if="pub.error">{{pub.error}}</p></section>
     <section class="sp-panel" ng-if="pub.ready">
         <div class="sp-toolbar"><div class="sp-tabs"><button type="button" class="sp-button" ng-repeat="part in [1,2,3]" ng-class="{'is-active':pub.part===part}" ng-click="pub.changePart(part)">Part {{part}}</button></div><label class="sp-search">Tìm topic<input type="search" ng-model="pub.query" ng-change="pub.rebuild()" placeholder="Tên topic hoặc câu hỏi…" ng-model-options="{debounce:200}"></label></div>
         <p class="sp-muted" ng-if="!pub.groups.length">Chưa có câu phù hợp.</p>
@@ -30,22 +30,23 @@
             <header><strong>Đi tới topic</strong><button type="button" class="sp-close" ng-click="pub.closeLocator(true)" aria-label="Đóng danh sách topic">×</button></header>
             <label class="sp-topic-locator-search"><i class="fa fa-search" aria-hidden="true"></i><input id="sp-topic-locator-search" type="search" ng-model="pub.topicQuery" ng-change="pub.filterTopics()" placeholder="Tìm tên topic…" aria-label="Tìm theo tên topic"></label>
             <nav class="sp-topic-locator-list" aria-label="Topics trong bộ đề">
-                <button type="button" ng-repeat="topic in pub.topicResults track by topic.key" ng-click="pub.jumpToTopic(topic)" ng-class="{'is-active':pub.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
+                <button type="button" ng-repeat="topic in pub.topicResults track by topic.key" ng-click="pub.jumpToTopic(topic, $event)" ng-class="{'is-active':pub.activeTopicKey===topic.key}"><span>Part {{topic.part}}</span><span aria-hidden="true">·</span><strong>{{topic.title}}</strong></button>
                 <p ng-if="!pub.topicResults.length" role="status">Không có topic phù hợp.</p>
             </nav>
         </section>
-        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="pub.toggleLocator()" ng-class="{'is-active':pub.locatorOpen}" aria-expanded="{{pub.locatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
+        <button type="button" class="sp-topic-locator-toggle" id="sp-topic-locator-toggle" ng-click="pub.toggleLocator($event)" ng-class="{'is-active':pub.locatorOpen}" aria-expanded="{{pub.locatorOpen}}" aria-controls="sp-topic-locator-panel" aria-label="Định vị topic" title="Đi tới topic"><i class="fa fa-crosshairs" aria-hidden="true"></i></button>
     </aside>
+    <button type="button" class="sp-topic-locator-toggle sp-shared-scroll-top" ng-if="pub.ready && !pub.notebookId" ng-click="pub.goToTop()" aria-label="Lên đầu trang" title="Lên đầu trang"><i class="fa fa-chevron-up" aria-hidden="true"></i></button>
 </main>
 <script src="../assets/scripts/external/angular.min.js"></script>
 <script src="../assets/scripts/external/angular-cookies.min.js"></script>
 <script src="../assets/scripts/external/angular-sanitize.min.js"></script>
-<script src="shared.js?v=20261104-share-tools"></script>
+<script src="shared.js?v=20261105-speaking-touch"></script>
 <script src="../common/utils/color-palette.js?v=20261103-share-1"></script>
 <script src="../common/utils/english-speech.js?v=20261103-share-1"></script>
 <script src="../common/utils/study-notebook.directive.js?v=20261103-share-1"></script>
 <script src="../question/business/speaking-lazy-topic.js?v=20261103-share-1"></script>
-<script src="../question/business/speaking-student-answer-editor.js?v=20261104-share-tools"></script>
+<script src="../question/business/speaking-student-answer-editor.js?v=20261105-speaking-touch"></script>
 <script src="../question/business/speaking-question-notebook.js?v=20261103-share-1"></script>
 </body>
 </html>
