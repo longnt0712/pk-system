@@ -3,16 +3,19 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const {chromium} = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+const runtime = path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
+const {chromium} = require(path.join(runtime, 'playwright'));
 const app = path.resolve(__dirname, '..'), repo = path.resolve(app, '../..');
 const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
 const read = file => fs.readFileSync(path.join(app, file), 'utf8');
-async function open(browser, {width = 390, mode = 'lookup', station = {name: 'Ném bóng', operation: 'PLAY', tier: 'HARD'}, role = 'play', admin = false} = {}) {
+async function open(browser, {width = 390, mode = 'lookup', station = {name: 'Ném bóng', operation: 'PLAY', tier: 'HARD'},
+    role = 'play', admin = false, inventory} = {}) {
     const page = await browser.newPage({viewport: {width, height: 844}, isMobile: true, hasTouch: true});
     const errors = [], writes = [], undos = [], requests = [];
     const state = {event: {id: 7, name: 'Hội chợ tổng kết 2026', active: true, easyAmount: 8, mediumAmount: 12, hardAmount: 20}, balance: 20, guests: [], transactions: []};
     state.items = [];
     state.options = [{id: 1, kind: 'CATEGORY', name: 'Đồ chơi'}, {id: 2, kind: 'DIFFICULTY', name: 'Dễ'}];
+    Object.assign(state, inventory);
     const photo = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=', 'base64');
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -44,10 +47,11 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'N�
             state.options.push(saved);
             return json(saved);
         }
-        if (pathname === '/service/api/fairs/7/items/1/photo') {
+        const photoMatch = pathname.match(/^\/service\/api\/fairs\/7\/items\/(\d+)\/photo$/);
+        if (photoMatch) {
             return state.badPhotoResponse
                 ? route.fulfill({contentType: 'image/jpeg', body: JSON.stringify(photo.toString('base64'))})
-                : route.fulfill({contentType: 'image/png', body: photo});
+                : route.fulfill(state.photos?.[photoMatch[1]] || {contentType: 'image/png', body: photo});
         }
         if (pathname === '/service/api/fairs/7/items' || pathname === '/service/api/fairs/7/items/1') {
             if (request.method() === 'GET') return json(state.items);
@@ -218,6 +222,127 @@ test('education management can configure categories and edit fair items with pho
         await gift.page.close();
     } finally { await browser.close(); }
 });
+
+const inventoryFixture = {
+    options: [{id: 1, kind: 'CATEGORY', name: 'Đồ chơi'}, {id: 2, kind: 'DIFFICULTY', name: 'Dễ'},
+        {id: 3, kind: 'CATEGORY', name: 'Văn phòng phẩm'}, {id: 4, kind: 'DIFFICULTY', name: 'Khó'}],
+    items: [
+        {id: 1, name: 'Bút đỏ', unitPrice: 12000, quantity: 3, categoryId: 3, difficultyId: 4, hasPhoto: true, revision: 0},
+        {id: 2, name: 'Bút mực', unitPrice: 28000, quantity: 4, categoryId: 3, difficultyId: 4, hasPhoto: true, revision: 0},
+        {id: 3, name: 'Bút chì', unitPrice: 1000, quantity: 8, categoryId: 3, difficultyId: 2, revision: 0},
+        {id: 4, name: 'Bút đồ chơi', unitPrice: 28000, quantity: 2, categoryId: 1, difficultyId: 4, revision: 0},
+        {id: 5, name: 'Bút đen', unitPrice: 16000, quantity: 2, categoryId: 3, difficultyId: 4, revision: 0}
+    ]
+};
+async function filterHardStationery(page) {
+    const filters = page.locator('.fair-inventory-filters');
+    await filters.getByRole('combobox').nth(0).selectOption({label: 'Văn phòng phẩm'});
+    await filters.getByRole('combobox').nth(1).selectOption({label: 'Khó'});
+}
+async function inventoryTool(page, name) {
+    await page.locator('.fair-inventory-tools summary').click();
+    await page.getByRole('button', {name, exact: true}).click();
+}
+
+test('fair inventory combines dynamic filters, name search and numeric sorting, with matching statistics', async () => {
+    const browser = await chromium.launch({headless: true, executablePath: chrome});
+    try {
+        const {page, errors} = await open(browser, {mode: 'admin', role: 'education', inventory: inventoryFixture});
+        const table = page.locator('.fair-inventory-table');
+        const names = () => table.locator('tbody th[scope=row]').allTextContents().then(values => values.map(value => value.trim()));
+        const search = page.getByRole('searchbox', {name: 'Tìm theo tên'});
+        await inventoryTool(page, 'Thống kê');
+        const stats = page.getByRole('dialog', {name: 'Thống kê mặt hàng'});
+        assert.deepEqual(await stats.locator('tbody tr').evaluateAll(rows =>
+            rows.map(row => Array.from(row.cells, cell => cell.textContent.trim()))),
+            [['Đồ chơi', '1', '2'], ['Văn phòng phẩm', '4', '17'], ['Dễ', '1', '8'], ['Khó', '4', '11']]);
+        await page.keyboard.press('Escape');
+        await stats.waitFor({state: 'hidden'});
+        await filterHardStationery(page);
+        await search.fill('BUT DO');
+        assert.deepEqual(await names(), ['Bút đỏ']);
+        await search.fill('but');
+        const price = table.getByRole('button', {name: 'Đơn giá', exact: true});
+        await price.click();
+        assert.deepEqual(await names(), ['Bút đỏ', 'Bút đen', 'Bút mực']);
+        await price.click();
+        assert.equal(await table.locator('th[aria-sort=descending]').innerText(), 'Đơn giá');
+        assert.deepEqual(await names(), ['Bút mực', 'Bút đen', 'Bút đỏ']);
+        await table.locator('tfoot').getByText('180,000 đ', {exact: true}).waitFor();
+        await inventoryTool(page, 'Thống kê');
+        await stats.getByRole('rowheader', {name: 'Văn phòng phẩm'}).waitFor();
+        assert.deepEqual(await stats.locator('tbody tr td').allTextContents(), ['3', '9', '3', '9']);
+        await stats.getByRole('button', {name: 'Đóng', exact: true}).click();
+        await search.fill('không tìm thấy');
+        await table.getByText('Không tìm thấy mặt hàng phù hợp.').waitFor();
+        await page.locator('.fair-inventory-tools summary').click();
+        assert.equal(await page.getByRole('button', {name: 'Xuất Excel', exact: true}).isDisabled(), true);
+        await page.keyboard.press('Escape');
+        await page.getByRole('button', {name: 'Xóa lọc', exact: true}).click();
+        assert.equal((await names()).length, 5);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        assert.deepEqual(errors, []);
+    } finally { await browser.close(); }
+});
+
+const xlsxPath = process.env.STUDENT_QR_XLSX_PATH;
+test('fair Excel export keeps the filtered sort order, numeric totals and photos on their own rows',
+    {skip: !xlsxPath && 'Set STUDENT_QR_XLSX_PATH to test the actual XLSX', timeout: 60000}, async () => {
+    const JSZip = require(path.join(runtime, 'jszip')), sharp = require(path.join(runtime, 'sharp'));
+    const xlsx = require(path.resolve(xlsxPath));
+    const downloadsPath = path.join(repo, '.tmp', 'fair-tools-downloads');
+    fs.mkdirSync(downloadsPath, {recursive: true});
+    const browser = await chromium.launch({headless: true, executablePath: chrome, downloadsPath});
+    try {
+        const red = await sharp({create: {width: 30, height: 15, channels: 3, background: '#f00000'}}).jpeg().toBuffer();
+        const blue = await sharp({create: {width: 15, height: 30, channels: 3, background: '#0000f0'}}).png().toBuffer();
+        const inventory = {...inventoryFixture, photos: {1: {contentType: 'image/jpeg', body: red}, 2: {contentType: 'image/png', body: blue}}};
+        const {page, errors, state, requests} = await open(browser, {mode: 'admin', role: 'education', width: 1300, inventory});
+        await page.addScriptTag({path: path.resolve(xlsxPath)});
+        await filterHardStationery(page);
+        const price = page.locator('.fair-inventory-table').getByRole('button', {name: 'Đơn giá', exact: true});
+        await price.click();
+        await price.click();
+        let downloads = 0;
+        page.on('download', () => { downloads++; });
+        const [download] = await Promise.all([page.waitForEvent('download'), inventoryTool(page, 'Xuất Excel')]);
+        assert.equal(download.suggestedFilename(), 'mat_hang_hoi_cho_7.xlsx');
+        const bytes = fs.readFileSync(await download.path());
+        const workbook = xlsx.read(bytes), sheet = workbook.Sheets['Mặt hàng hội chợ'];
+        assert.deepEqual(xlsx.utils.sheet_to_json(sheet, {header: 1, defval: null}), [
+            ['STT', 'Mặt hàng', 'Ảnh', 'Đơn giá', 'Số lượng', 'Thể loại', 'Mức độ', 'Thành tiền'],
+            [1, 'Bút mực', null, 28000, 4, 'Văn phòng phẩm', 'Khó', 112000],
+            [2, 'Bút đen', null, 16000, 2, 'Văn phòng phẩm', 'Khó', 32000],
+            [3, 'Bút đỏ', null, 12000, 3, 'Văn phòng phẩm', 'Khó', 36000],
+            ['Tổng', null, null, 56000, 9, null, null, 180000]
+        ]);
+        const zip = await JSZip.loadAsync(bytes);
+        const drawing = await zip.file('xl/drawings/studentQr.xml').async('string');
+        assert.deepEqual(Array.from(drawing.matchAll(/<xdr:col>(\d+)<\/xdr:col>.*?<xdr:row>(\d+)<\/xdr:row>/g), match => match.slice(1)), [['2', '1'], ['2', '3']]);
+        const partNames = xlsx.CFB.read(bytes, {type: 'buffer'}).FullPaths;
+        assert.equal(new Set(partNames).size, partNames.length);
+        const pictures = zip.file(/xl\/media\/student-qr-\d+\.png/);
+        assert.equal(pictures.length, 2);
+        for (const [index, colorChannel, paddingPoint] of [[0, 2, [20, 90]], [1, 0, [90, 20]]]) {
+            const png = await pictures[index].async('nodebuffer');
+            const {data, info} = await sharp(png).raw().toBuffer({resolveWithObject: true});
+            assert.equal(info.width, 180);
+            assert.equal(info.height, 180);
+            const center = (90 * info.width + 90) * info.channels;
+            assert.ok(data[center + colorChannel] > 200);
+            assert.ok(data[center + (2 - colorChannel)] < 40);
+            assert.equal(data[(paddingPoint[1] * info.width + paddingPoint[0]) * info.channels + 3], 0, 'Photo proportions are retained');
+        }
+        assert.ok(requests.includes('/users/StudentQrWorkbook.js'));
+        state.badPhotoResponse = true;
+        await inventoryTool(page, 'Xuất Excel');
+        await page.getByRole('alert').filter({hasText: 'Không tải được ảnh của “Bút mực”'}).waitFor();
+        await page.getByRole('searchbox', {name: 'Tìm theo tên'}).fill('but');
+        assert.equal(downloads, 1, 'A failed photo must not produce an incomplete Excel file');
+        assert.deepEqual(errors, []);
+    } finally { await browser.close(); }
+});
+
 test('phone scan-choose-result flow respects roles, balances, public lookup and editable configuration', async () => {
     const browser = await chromium.launch({headless: true, executablePath: chrome});
     try {
