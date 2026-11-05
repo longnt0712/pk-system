@@ -17,6 +17,7 @@ public class RestFairController {
     }
     @GetMapping("/public/fairs") public ResponseEntity<List<FairEvent>> events() { return response(service.events(false)); }
     @GetMapping("/api/fairs") public ResponseEntity<List<FairEvent>> allEvents() { return response(service.events(true)); }
+    @GetMapping("/api/fairs/management") public ResponseEntity<FairDto.Management> management() { return response(service.management()); }
     @GetMapping("/public/fairs/{id}") public ResponseEntity<FairEvent> event(@PathVariable("id") Long id) { return response(service.event(id)); }
     @GetMapping("/public/fairs/{id}/balance") public ResponseEntity<FairDto.Balance> balance(@PathVariable("id") Long id, @RequestParam("cardCode") String code) { return response(service.balance(id, code)); }
     @PostMapping("/api/fairs") public ResponseEntity<FairEvent> create(@RequestBody FairDto.EventRequest request) { return response(service.saveEvent(null, request)); }

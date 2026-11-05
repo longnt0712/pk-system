@@ -1,0 +1,119 @@
+<section class="fair-panel fair-inventory" aria-labelledby="fair-inventory-title">
+    <h2 id="fair-inventory-title">Quản lý mặt hàng</h2>
+    <button type="button" class="fair-button" ng-if="!inventory.open" ng-click="inventory.load()">Mở bảng mặt hàng</button>
+
+    <div ng-if="inventory.open" ng-attr-aria-busy="{{inventory.busy}}">
+        <p class="fair-alert" role="alert" ng-if="inventory.error">{{inventory.error}}</p>
+        <p role="status" ng-if="inventory.busy && !inventory.loaded">Đang tải mặt hàng…</p>
+        <button type="button" class="fair-button" ng-if="!inventory.loaded && !inventory.busy" ng-click="inventory.load()">Tải lại</button>
+
+        <div ng-if="inventory.loaded">
+            <div class="fair-inventory-actions">
+                <button type="button" class="fair-button fair-button--primary" ng-click="inventory.config=false; inventory.startItem()" ng-disabled="inventory.busy">Thêm mặt hàng</button>
+                <button type="button" class="fair-button" ng-click="inventory.config=!inventory.config" ng-attr-aria-expanded="{{!!inventory.config}}">{{inventory.config ? 'Về bảng mặt hàng' : 'Cấu hình danh mục'}}</button>
+                <button type="button" class="fair-text-button" ng-click="inventory.load()" ng-disabled="inventory.busy">Tải lại bảng</button>
+            </div>
+
+            <section ng-if="inventory.config" aria-label="Danh mục mặt hàng">
+                <p class="fair-muted">Thể loại và mức độ dùng chung giữa các hội chợ.</p>
+                <form class="fair-inventory-form" name="optionForm" ng-if="inventory.optionForm" ng-submit="inventory.saveOption(optionForm.$valid)" novalidate>
+                    <label>{{inventory.optionForm.kind === 'CATEGORY' ? 'Tên thể loại' : 'Tên mức độ'}}
+                        <input ng-model="inventory.optionForm.name" maxlength="80" required ng-disabled="inventory.busy">
+                    </label>
+                    <div class="fair-inventory-actions">
+                        <button type="submit" class="fair-button fair-button--primary" ng-disabled="inventory.busy || optionForm.$invalid">Lưu danh mục</button>
+                        <button type="button" class="fair-button" ng-click="inventory.optionForm=null" ng-disabled="inventory.busy">Hủy</button>
+                    </div>
+                </form>
+                <div class="fair-inventory-option-groups">
+                    <div ng-repeat="group in inventory.groups track by group.kind">
+                        <h3>{{group.label}}</h3>
+                        <button type="button" class="fair-text-button" ng-click="inventory.startOption(group)" ng-disabled="inventory.busy">Thêm {{group.label | lowercase}}</button>
+                        <p class="fair-muted" ng-if="!group.options.length">Chưa có danh mục.</p>
+                        <ul class="fair-list">
+                            <li ng-repeat="option in group.options track by option.id">
+                                <strong>{{option.name}}</strong>
+                                <span class="fair-inventory-row-actions">
+                                    <button type="button" class="fair-text-button" ng-click="inventory.startOption(group, option)" ng-disabled="inventory.busy" aria-label="Sửa {{option.name}}">Sửa</button>
+                                    <button type="button" class="fair-text-button" ng-click="inventory.deleteOption(option)" ng-disabled="inventory.busy" aria-label="Xóa {{option.name}}">Xóa</button>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <div ng-if="!inventory.config">
+                <form class="fair-inventory-form" name="itemForm" ng-if="inventory.itemForm" ng-submit="inventory.saveItem(itemForm.$valid)" novalidate>
+                    <h3>{{inventory.itemForm.id ? 'Sửa mặt hàng' : 'Thêm mặt hàng'}}</h3>
+                    <label>Tên mặt hàng<input ng-model="inventory.itemForm.name" maxlength="150" required ng-disabled="inventory.busy"></label>
+                    <div class="fair-inventory-fields">
+                        <label>Đơn giá (đ)<input type="number" inputmode="numeric" step="1" min="0" max="1000000000" ng-model="inventory.itemForm.unitPrice" required ng-disabled="inventory.busy"></label>
+                        <label>Số lượng<input type="number" inputmode="numeric" step="1" min="0" max="1000000" ng-model="inventory.itemForm.quantity" required ng-disabled="inventory.busy"></label>
+                        <label>Thể loại<select aria-label="Thể loại" ng-model="inventory.itemForm.categoryId" ng-options="option.id as option.name for option in inventory.groups[0].options" required ng-disabled="inventory.busy"><option value="">Chọn thể loại</option></select></label>
+                        <label>Mức độ<select aria-label="Mức độ" ng-model="inventory.itemForm.difficultyId" ng-options="option.id as option.name for option in inventory.groups[1].options" required ng-disabled="inventory.busy"><option value="">Chọn mức độ</option></select></label>
+                    </div>
+                    <p class="fair-muted" ng-if="!inventory.groups[0].options.length || !inventory.groups[1].options.length">Thêm thể loại và mức độ trong mục Cấu hình danh mục trước khi lưu.</p>
+                    <label class="fair-photo-drop" fair-photo-drop="inventory.choosePhoto(file)">
+                        <span>Kéo thả ảnh vào đây hoặc chọn tệp</span>
+                        <small>JPG hoặc PNG, tối đa 8 MB</small>
+                        <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" ng-disabled="inventory.busy" aria-label="Chọn ảnh mặt hàng">
+                    </label>
+                    <p class="fair-alert" ng-if="inventory.fileError" role="alert">{{inventory.fileError}}
+                        <button type="button" class="fair-text-button" ng-click="inventory.fileError=''">Bỏ tệp lỗi</button>
+                    </p>
+                    <div class="fair-inventory-current-photo" ng-if="inventory.filePreview || (inventory.itemForm.hasPhoto && !inventory.itemForm.removePhoto)">
+                        <img ng-if="inventory.filePreview" ng-src="{{inventory.filePreview}}" alt="Ảnh vừa chọn">
+                        <img ng-if="!inventory.filePreview && inventory.itemForm.hasPhoto && !inventory.itemForm.removePhoto" fair-item-photo="inventory.photoUrl(inventory.itemForm)" alt="Ảnh hiện tại">
+                        <button type="button" class="fair-text-button" ng-click="inventory.removePhoto()" ng-disabled="inventory.busy">Bỏ ảnh</button>
+                    </div>
+                    <div class="fair-inventory-actions">
+                        <button type="submit" class="fair-button fair-button--primary" ng-disabled="inventory.busy || itemForm.$invalid || inventory.fileError">{{inventory.busy ? 'Đang lưu…' : 'Lưu mặt hàng'}}</button>
+                        <button type="button" class="fair-button" ng-click="inventory.cancelItem()" ng-disabled="inventory.busy">Hủy</button>
+                    </div>
+                </form>
+
+                <div class="fair-inventory-table-wrap" tabindex="0" role="region" aria-label="Bảng mặt hàng, cuộn ngang để xem đủ cột">
+                    <table class="fair-inventory-table">
+                        <caption class="sr-only">Mặt hàng của hội chợ</caption>
+                        <thead><tr><th scope="col">STT</th><th scope="col">Mặt hàng</th><th scope="col">Ảnh</th><th scope="col">Đơn giá</th><th scope="col">Số lượng</th><th scope="col">Thể loại</th><th scope="col">Mức độ</th><th scope="col">Thành tiền</th><th scope="col">Thao tác</th></tr></thead>
+                        <tbody>
+                            <tr ng-repeat="item in inventory.items track by item.id">
+                                <td>{{$index + 1}}</td><th scope="row">{{item.name}}</th>
+                                <td>
+                                    <button class="fair-item-thumbnail" type="button" ng-if="item.hasPhoto" ng-click="inventory.openPhoto(item)" aria-label="Phóng to ảnh {{item.name}}">
+                                        <img fair-item-photo="inventory.photoUrl(item)" alt="">
+                                        <span aria-hidden="true">↗</span>
+                                    </button>
+                                    <span ng-if="!item.hasPhoto">—</span>
+                                </td>
+                                <td class="fair-inventory-number">{{inventory.price(item.unitPrice)}}</td><td class="fair-inventory-number">{{inventory.count(item.quantity)}}</td>
+                                <td>{{inventory.optionsById[item.categoryId]}}</td><td>{{inventory.optionsById[item.difficultyId]}}</td>
+                                <td class="fair-inventory-number">{{inventory.price(item.unitPrice * item.quantity)}}</td>
+                                <td class="fair-inventory-row-actions">
+                                    <button type="button" class="fair-text-button" ng-click="inventory.startItem(item)" ng-disabled="inventory.busy" aria-label="Sửa mặt hàng {{item.name}}">Sửa</button>
+                                    <button type="button" class="fair-text-button" ng-click="inventory.deleteItem(item)" ng-disabled="inventory.busy" aria-label="Xóa mặt hàng {{item.name}}">Xóa</button>
+                                </td>
+                            </tr>
+                            <tr ng-if="!inventory.items.length"><td colspan="9">Hội chợ này chưa có mặt hàng.</td></tr>
+                        </tbody>
+                        <tfoot><tr>
+                            <th scope="row" colspan="3">Tổng</th>
+                            <td class="fair-inventory-number">{{inventory.totals.prices}}</td><td class="fair-inventory-number">{{inventory.totals.quantity}}</td>
+                            <td colspan="2"></td><td class="fair-inventory-number">{{inventory.totals.value}}</td><td></td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <dialog class="fair-photo-dialog" aria-labelledby="fair-photo-title">
+        <header>
+            <h3 id="fair-photo-title">{{inventory.preview.name}}</h3>
+            <button type="button" class="fair-button" ng-click="inventory.closePhoto()" autofocus>Đóng ảnh</button>
+        </header>
+        <p role="status" ng-if="inventory.preview.loading">Đang tải ảnh…</p>
+        <p role="alert" ng-if="inventory.preview.error">{{inventory.preview.error}}</p>
+        <img ng-if="inventory.preview.url" ng-src="{{inventory.preview.url}}" alt="{{inventory.preview.name}}">
+    </dialog>
+</section>

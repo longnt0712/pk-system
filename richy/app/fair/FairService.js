@@ -4,6 +4,7 @@
         var publicUrl = settings.api.baseUrl + 'public/fairs', privateUrl = settings.api.baseUrl + 'api/fairs';
         var publicOptions = {skipSessionAuth: true, timeout: 15000};
         this.events = function (admin) { return $http.get(admin ? privateUrl : publicUrl, admin ? {timeout: 15000} : publicOptions); };
+        this.management = function () { return $http.get(privateUrl + '/management', {timeout: 15000}); };
         this.event = function (id) { return $http.get(publicUrl + '/' + id, publicOptions); };
         this.balance = function (id, code) { return $http.get(publicUrl + '/' + id + '/balance', {params: {cardCode: code}, skipSessionAuth: true, timeout: 15000}); };
         this.operator = function (id) { return $http.get(privateUrl + '/' + id + '/operator', {timeout: 15000}); };

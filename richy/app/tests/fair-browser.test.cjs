@@ -11,13 +11,20 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'N�
     const page = await browser.newPage({viewport: {width, height: 844}, isMobile: true, hasTouch: true});
     const errors = [], writes = [], undos = [], requests = [];
     const state = {event: {id: 7, name: 'Hội chợ tổng kết 2026', active: true, easyAmount: 8, mediumAmount: 12, hardAmount: 20}, balance: 20, guests: [], transactions: []};
+    state.items = [];
+    state.options = [{id: 1, kind: 'CATEGORY', name: 'Đồ chơi'}, {id: 2, kind: 'DIFFICULTY', name: 'Dễ'}];
+    const photo = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=', 'base64');
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-    await page.route('**/*', route => {
+    await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url()), pathname = url.pathname;
         requests.push(pathname);
         const json = data => route.fulfill({contentType: 'application/json', body: JSON.stringify(data)});
         if (/^\/service\/(public|api)\/fairs$/.test(pathname)) return json([state.event]);
+        if (pathname === '/service/api/fairs/management') {
+            if (!admin && role !== 'education') return route.fulfill({status: 403, json: {message: 'Không có quyền quản lý.'}});
+            return json({events: [state.event], canManageFair: admin});
+        }
         if (pathname === '/service/public/fairs/7') return json(state.event);
         if (pathname === '/service/public/fairs/7/balance') return json({eventId: 7, cardCode: url.searchParams.get('cardCode'), displayName: 'Nguyễn Văn An', guest: false, balance: state.balance});
         if (pathname === '/service/api/fairs/7/operator') return json({username: admin ? 'admin' : role, admin, canPlay: admin || role === 'play', canGift: admin || role === 'gift', station});
@@ -31,6 +38,28 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'N�
             return json(state.guests);
         }
         if (pathname === '/service/api/fairs/7/stations') return json([]);
+        if (pathname === '/service/api/fairs/item-options') {
+            if (request.method() === 'GET') return json(state.options);
+            const saved = {id: state.options.length + 1, ...request.postDataJSON()};
+            state.options.push(saved);
+            return json(saved);
+        }
+        if (pathname === '/service/api/fairs/7/items/1/photo') return route.fulfill({contentType: 'image/png', body: photo});
+        if (pathname === '/service/api/fairs/7/items' || pathname === '/service/api/fairs/7/items/1') {
+            if (request.method() === 'GET') return json(state.items);
+            if (request.method() === 'DELETE') {
+                state.items = [];
+                return route.fulfill({status: 204});
+            }
+            const parts = await new Response(request.postDataBuffer(), {headers: {'content-type': request.headers()['content-type']}}).formData();
+            const saved = {id: 1, revision: (state.items[0]?.revision ?? -1) + 1, name: parts.get('name'),
+                unitPrice: Number(parts.get('unitPrice')), quantity: Number(parts.get('quantity')),
+                categoryId: Number(parts.get('categoryId')), difficultyId: Number(parts.get('difficultyId')),
+                hasPhoto: !!parts.get('photo') || !!state.items[0]?.hasPhoto};
+            state.upload = parts.get('photo');
+            state.items = [saved];
+            return json(saved);
+        }
         const undoMatch = pathname.match(/^\/service\/api\/fairs\/7\/transactions\/(\d+)\/undo$/);
         if (undoMatch && request.method() === 'POST') {
             const original = state.transactions.find(tx => tx.id === Number(undoMatch[1]));
@@ -65,10 +94,74 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'N�
         Hrm.config(['$locationProvider', function ($locationProvider) {$locationProvider.html5Mode({enabled: true, requireBase: false});}]);
         angular.bootstrap(document, ['Hrm']);
     });
-    await page.locator('.fair-intro h1').filter({hasText: state.event.name}).waitFor();
+    if (mode === 'admin' && !admin && role !== 'education') await page.getByRole('alert').waitFor();
+    else await page.locator('.fair-intro h1').filter({hasText: state.event.name}).waitFor();
     if (mode === 'work') await page.locator('.fair-station').waitFor();
     return {page, errors, writes, undos, requests, state};
 }
+
+test('education management can configure categories and edit fair items with photos without accessing ticket management', async () => {
+    const browser = await chromium.launch({headless: true, executablePath: chrome});
+    try {
+        const {page, errors, requests, state} = await open(browser, {mode: 'admin', role: 'education'});
+        const click = name => page.getByRole('button', {name, exact: true}).click();
+        await click('Cấu hình danh mục');
+        assert.equal(await page.getByRole('button', {name: 'Lưu cấu hình', exact: true}).count(), 0);
+        assert.equal(requests.some(url => /\/(operator|guests|transactions)$/.test(url)), false);
+        await click('Thêm thể loại');
+        await page.getByLabel('Tên thể loại', {exact: true}).fill('Phụ kiện');
+        await click('Lưu danh mục');
+        await page.getByText('Phụ kiện', {exact: true}).waitFor();
+        await click('Thêm mặt hàng');
+        await page.getByLabel('Tên mặt hàng', {exact: true}).fill('Móc khóa');
+        await page.getByLabel('Đơn giá (đ)').fill('12000');
+        await page.getByLabel('Số lượng', {exact: true}).fill('3');
+        await page.getByLabel('Thể loại', {exact: true}).selectOption({label: 'Phụ kiện'});
+        await page.getByLabel('Mức độ', {exact: true}).selectOption({label: 'Dễ'});
+        const drop = await page.evaluateHandle(() => {
+            const data = new DataTransfer();
+            const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII='), char => char.charCodeAt(0));
+            data.items.add(new File([bytes], 'moc-khoa.png', {type: 'image/png'}));
+            return data;
+        });
+        await page.locator('.fair-photo-drop').dispatchEvent('drop', {dataTransfer: drop});
+        await page.getByAltText('Ảnh vừa chọn').waitFor();
+        await click('Lưu mặt hàng');
+        const total = page.locator('.fair-inventory-table tfoot');
+        await total.getByText('36.000 đ', {exact: true}).waitFor();
+        assert.equal(state.upload.name, 'moc-khoa.png');
+        assert.equal(state.items[0].categoryId, 3);
+        await click('Phóng to ảnh Móc khóa');
+        const dialog = page.getByRole('dialog', {name: 'Móc khóa'});
+        await dialog.getByAltText('Móc khóa').waitFor();
+        await dialog.getByAltText('Móc khóa').evaluate(img => img.decode());
+        await page.keyboard.press('Escape');
+        await dialog.waitFor({state: 'hidden'});
+        await click('Sửa mặt hàng Móc khóa');
+        await page.getByLabel('Số lượng', {exact: true}).fill('4');
+        await click('Lưu mặt hàng');
+        await total.getByText('48.000 đ', {exact: true}).waitFor();
+        assert.equal(await total.locator('td').nth(1).innerText(), '4');
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        page.once('dialog', confirm => confirm.accept());
+        await click('Xóa mặt hàng Móc khóa');
+        await page.getByText('Hội chợ này chưa có mặt hàng.').waitFor();
+        assert.deepEqual(errors, []);
+        await page.close();
+
+        const admin = await open(browser, {mode: 'admin', admin: true, width: 1300});
+        assert.equal(admin.requests.some(url => url.endsWith('/items')), false);
+        await admin.page.getByRole('button', {name: 'Mở bảng mặt hàng'}).click();
+        await admin.page.getByRole('button', {name: 'Thêm mặt hàng', exact: true}).waitFor();
+        await admin.page.getByRole('button', {name: 'Lưu cấu hình', exact: true}).waitFor();
+        await admin.page.close();
+
+        const gift = await open(browser, {mode: 'admin', role: 'gift'});
+        assert.equal(await gift.page.locator('.fair-inventory').count(), 0);
+        assert.equal(gift.requests.some(url => url.endsWith('/items')), false);
+        await gift.page.close();
+    } finally { await browser.close(); }
+});
 test('phone scan-choose-result flow respects roles, balances, public lookup and editable configuration', async () => {
     const browser = await chromium.launch({headless: true, executablePath: chrome});
     try {

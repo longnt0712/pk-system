@@ -1,0 +1,74 @@
+fair-inventory { display: block; }
+.fair-inventory h3 { margin: 0 0 12px; font-size: 18px; }
+.fair-inventory .fair-button { min-height: 42px; padding: 9px 13px; font-size: 14px; }
+.fair-inventory-actions, .fair-inventory-row-actions {
+    align-items: center;
+    gap: 10px;
+}
+.fair-inventory-actions { display: flex; flex-wrap: wrap; margin-bottom: 14px; }
+.fair-inventory-row-actions { white-space: nowrap; }
+.fair-inventory-row-actions button + button { margin-left: 8px; }
+.fair-inventory-form {
+    margin: 14px 0;
+    padding: 16px;
+    border: 1px solid var(--fair-line);
+    border-radius: 15px;
+    background: #f7faf7;
+}
+.fair-inventory-fields, .fair-inventory-option-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.fair-inventory-table-wrap { max-width: 100%; overflow: auto; border: 1px solid var(--fair-line); border-radius: 12px; }
+.fair-inventory-table { min-width: 690px; width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+.fair-inventory-table th, .fair-inventory-table td { padding: 10px; border-bottom: 1px solid var(--fair-line); vertical-align: middle; }
+.fair-inventory-table thead, .fair-inventory-table tfoot { background: #eaf4ed; font-weight: 700; }
+.fair-inventory-table tfoot > tr > * { border-bottom: 0; }
+.fair-inventory-number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fair-item-thumbnail {
+    position: relative;
+    display: block;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 1px solid var(--fair-line);
+    border-radius: 8px;
+    background: #f2f7f3;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+.fair-item-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fair-item-thumbnail span { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 4px; background: #fff; color: var(--fair-ink); }
+.fair-inventory label.fair-photo-drop {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    margin: 12px 0;
+    padding: 14px;
+    border: 2px dashed #94baa9;
+    border-radius: 12px;
+    text-align: center;
+    background: #fff;
+}
+.fair-inventory label.fair-photo-drop.is-over { border-color: var(--fair-green); background: #dcf2e5; }
+.fair-inventory .fair-photo-drop input { max-width: 100%; width: auto; min-height: 0; padding: 4px; border: 0; }
+.fair-inventory-current-photo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.fair-inventory-current-photo img { width: 70px; height: 70px; border-radius: 8px; object-fit: contain; background: #fff; }
+.fair-photo-dialog {
+    width: max-content;
+    max-width: min(94vw, 980px);
+    max-height: 94vh;
+    padding: 14px;
+    border: 1px solid var(--fair-line);
+    border-radius: 15px;
+    background: #fff;
+    color: var(--fair-ink);
+}
+.fair-photo-dialog::backdrop { background: rgba(17, 31, 27, .72); }
+.fair-photo-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+.fair-photo-dialog h3 { margin: 0; overflow-wrap: anywhere; }
+.fair-photo-dialog img { display: block; margin: auto; max-width: 100%; max-height: 78vh; object-fit: contain; }
+@media (max-width: 520px) {
+    .fair-inventory-fields, .fair-inventory-option-groups { grid-template-columns: 1fr; }
+}

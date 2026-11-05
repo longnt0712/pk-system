@@ -232,6 +232,9 @@
                         ĐÀO TẠO <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
+                        <li ng-if="settings.fairsEnabled === true && (settings.isAdmin || settings.isEducationManagerment)">
+                            <a ui-sref="fair_admin" href="/hoi-cho/quan-tri"><i class="fa fa-caret-right" aria-hidden="true"></i> Mặt hàng hội chợ</a>
+                        </li>
                         <li ng-if="settings.isAdmin || settings.schoolAccess.education.length">
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo

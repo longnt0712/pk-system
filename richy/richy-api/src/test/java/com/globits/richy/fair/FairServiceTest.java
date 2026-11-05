@@ -18,6 +18,8 @@ import com.globits.security.domain.*;
 import com.globits.security.repository.UserRepository;
 import com.globits.richy.domain.*;
 import com.globits.richy.dto.FairDto;
+import com.globits.richy.dto.FairItemRow;
+import com.globits.richy.service.impl.FairInventoryService;
 import com.globits.richy.service.impl.FairService;
 
 /** Real, isolated H2 transactions, including concurrent writes; no application datasource. */
@@ -36,7 +38,8 @@ public class FairServiceTest {
         datasource.setDriverClassName("org.h2.Driver"); datasource.setUrl(properties.getProperty("hibernate.connection.url")); datasource.setUsername("sa"); datasource.setPassword("");
         properties.put("hibernate.connection.datasource", datasource);
         factory = new org.hibernate.cfg.Configuration().setProperties(properties).addAnnotatedClass(FairEvent.class)
-            .addAnnotatedClass(FairWallet.class).addAnnotatedClass(FairTransaction.class).addAnnotatedClass(FairStation.class).buildSessionFactory();
+            .addAnnotatedClass(FairWallet.class).addAnnotatedClass(FairTransaction.class).addAnnotatedClass(FairStation.class)
+            .addAnnotatedClass(FairItem.class).addAnnotatedClass(FairItemOption.class).buildSessionFactory();
         users = mock(UserRepository.class);
         User student = user("HS001", "ROLE_STUDENT"); student.setId(1L);
         Person person = new Person(); person.setFirstName("An"); person.setLastName("Nguyễn Văn"); student.setPerson(person);
@@ -81,6 +84,51 @@ public class FairServiceTest {
     private int balance(String code) { return run(null, null, service -> service.balance(event, code).balance); }
     private void invalid(Runnable action) { try { action.run(); fail("Expected rejected transaction"); } catch (FairService.Invalid expected) {} }
     private void forbidden(Runnable action) { try { action.run(); fail("Expected permission check"); } catch (AccessDeniedException expected) {} }
+    private <T> T inventory(String role, Function<FairInventoryService, T> action) {
+        return run("tester", role, fairs -> {
+            FairInventoryService service = new FairInventoryService(fairs);
+            ReflectionTestUtils.setField(service, "em", ReflectionTestUtils.getField(fairs, "em"));
+            return action.apply(service);
+        });
+    }
+
+    @Test public void inventoryKeepsImagesAndEditsWithinTheSelectedFair() throws Exception {
+        Long category = inventory("ROLE_ADMIN", service -> service.saveOption(null, "CATEGORY", "Đồ chơi").id);
+        Long level = inventory("ROLE_ADMIN", service -> service.saveOption(null, "DIFFICULTY", "Dễ").id);
+        invalid(() -> inventory("ROLE_ADMIN", service -> service.saveOption(null, "CATEGORY", "ĐỒ CHƠI")));
+        java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(4, 3, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", png);
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile("photo", "toy.png", "image/png", png.toByteArray());
+        FairItemRow first = inventory("ROLE_ADMIN", service ->
+            service.saveItem(event, null, null, "Xe đồ chơi", 12000, 4, category, level, false, file));
+        assertTrue(first.hasPhoto);
+        assertEquals(12000L, inventory("ROLE_ADMIN", service -> service.items(event).get(0)).unitPrice);
+        byte[] saved = inventory("ROLE_ADMIN", service -> service.photo(event, first.id));
+        assertEquals(4, javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(saved)).getWidth());
+        assertFalse(run("teacher", "ROLE_EDUCATION_MANAGEMENT", service -> service.management()).canManageFair);
+        assertTrue(run("admin", "ROLE_ADMIN", service -> service.management()).canManageFair);
+        forbidden(() -> run("gift", "ROLE_GIFT", service -> service.management()));
+        forbidden(() -> run("teacher", "ROLE_EDUCATION_MANAGEMENT", service -> service.history(event, "", 0)));
+        forbidden(() -> inventory("ROLE_GIFT", service -> service.items(event)));
+        forbidden(() -> inventory(null, service -> service.photo(event, first.id)));
+        invalid(() -> inventory("ROLE_ADMIN", service -> { service.deleteOption(category, "CATEGORY"); return null; }));
+        Long anotherEvent = run("admin", "ROLE_ADMIN", fairs -> {
+            FairDto.EventRequest request = new FairDto.EventRequest();
+            request.name = "Hội chợ khác";
+            return fairs.saveEvent(null, request).id;
+        });
+        assertTrue(inventory("ROLE_ADMIN", service -> service.items(anotherEvent)).isEmpty());
+        try { inventory("ROLE_ADMIN", service -> service.photo(anotherEvent, first.id)); fail("Photo belongs to a different fair"); }
+        catch (FairService.Missing expected) {}
+        FairItemRow updated = inventory("ROLE_EDUCATION_MANAGEMENT", service ->
+            service.saveItem(event, first.id, first.revision, first.name, 12000, 5, category, level, true, null));
+        assertFalse(updated.hasPhoto);
+        assertEquals(5, updated.quantity);
+        try { inventory("ROLE_ADMIN", service -> { service.deleteItem(event, first.id, first.revision); return null; }); fail("Stale revision"); }
+        catch (FairInventoryService.Conflict expected) {}
+        inventory("ROLE_ADMIN", service -> { service.deleteItem(event, first.id, updated.revision); service.deleteOption(category, "CATEGORY"); return null; });
+        assertTrue(inventory("ROLE_ADMIN", service -> service.items(event)).isEmpty());
+    }
     private void rejectedUndo(Runnable action) { try { action.run(); fail("Expected rejected undo"); } catch (FairService.Invalid expected) {} catch (AccessDeniedException expected) {} }
 
     @Test public void publicLookupStartsAtZeroAndDoesNotCreateWalletOrExposeUserDetails() {

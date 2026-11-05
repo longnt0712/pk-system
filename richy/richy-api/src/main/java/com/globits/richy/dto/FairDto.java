@@ -1,6 +1,7 @@
 package com.globits.richy.dto;
 
 import com.globits.richy.domain.*;
+import java.util.List;
 
 public final class FairDto {
     private FairDto() {}
@@ -15,6 +16,14 @@ public final class FairDto {
         }
     }
     public static class EventRequest { public String name; public Boolean active; public Integer easyAmount, mediumAmount, hardAmount; }
+    public static class Management {
+        public final List<FairEvent> events;
+        public final boolean canManageFair;
+        public Management(List<FairEvent> events, boolean canManageFair) {
+            this.events = events;
+            this.canManageFair = canManageFair;
+        }
+    }
     public static class GuestRequest { public Integer count; }
     public static class StationRequest { public String operatorName, name, operation, tier; }
     public static class TransactionRequest { public String cardCode, operation, requestKey, tier; public Integer amount; }
