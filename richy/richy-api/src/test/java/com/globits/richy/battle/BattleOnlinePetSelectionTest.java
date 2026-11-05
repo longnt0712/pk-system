@@ -170,16 +170,16 @@ public class BattleOnlinePetSelectionTest {
         Role admin = new Role();
         admin.setName("ROLE_ADMIN");
         student.getRoles().add(admin);
-        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING", "GOKU_KID", "GOKU_SSJ1", "GOKU_SSJ2", "GOKU_SSJ4", "HALLOWEEN_PUMPKIN", "CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_PERRY", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE", "CUTE_PIKACHU", "SPARKLING_LIGHTNING", "GOKU_KID", "GOKU_SSJ1", "GOKU_SSJ2", "GOKU_SSJ4", "HALLOWEEN_PUMPKIN", "CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
             BattleOnlinePetSelectionDto result = choose(key, 0);
             assertEquals(key, student.getSelectedLearningPet());
             assertEquals(key, result.getSelectedPetKey());
             assertTrue(result.isAllPetsUnlocked());
-            assertEquals(24, result.getUnlockedPetKeys().size());
+            assertEquals(25, result.getUnlockedPetKeys().size());
             assertEquals(0, result.getVocabularyExperienceLevel());
             assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
         }
-        verify(users, times(16)).save(student);
+        verify(users, times(17)).save(student);
     }
 
     @Test
@@ -752,7 +752,7 @@ public class BattleOnlinePetSelectionTest {
             setSeasonClock(instants[i]);
             assertEquals(instants[i], available[i], ReflectionTestUtils.<Boolean>invokeMethod(service, "isChristmasPetSeason"));
             BattleOnlinePetSelectionDto ordinary = choose("MAM_HOC", 0);
-            for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+            for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
                 assertEquals(instants[i], available[i], ordinary.getUnlockedPetKeys().contains(key));
                 if (available[i]) {
                     BattleOnlinePetSelectionDto selected = choose(" " + key.toLowerCase(java.util.Locale.ROOT) + " ", 0);
@@ -776,7 +776,7 @@ public class BattleOnlinePetSelectionTest {
     @Test
     public void onlyRealAdminsCanBypassTheChristmasSeason() {
         setSeasonClock("2027-01-01T00:00:00Z");
-        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
             BattleOnlinePetSelectionDto request = new BattleOnlinePetSelectionDto();
             request.setPetKey(key);
             request.setAllPetsUnlocked(true);
@@ -792,12 +792,13 @@ public class BattleOnlinePetSelectionTest {
         Role admin = new Role(); admin.setName("ROLE_ADMIN"); student.setRoles(Collections.singleton(admin));
         for (String instant : new String[] {"2026-01-01T00:00:00Z", "2026-11-04T16:59:59Z", "2026-11-04T17:00:00Z", "2026-12-31T17:00:00Z"}) {
             setSeasonClock(instant);
-            for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+            for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
                 BattleOnlinePetSelectionDto selected = choose(key, 0);
                 assertTrue(selected.isAllPetsUnlocked());
                 assertEquals(key, selected.getSelectedPetKey());
                 assertTrue(selected.getUnlockedPetKeys().contains("CHRISTMAS_TREE"));
                 assertTrue(selected.getUnlockedPetKeys().contains("SANTA_REINDEER"));
+                assertTrue(selected.getUnlockedPetKeys().contains("OLAF"));
                 assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
             }
         }
@@ -810,7 +811,7 @@ public class BattleOnlinePetSelectionTest {
         ReflectionTestUtils.setField(service, "entityManager", entity);
         when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
         when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
-        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
             when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {7L, "", "", "Student", 0L, key}));
             when(roles.getResultList()).thenReturn(Collections.emptyList());
             setSeasonClock("2026-12-31T16:59:59Z");
@@ -829,7 +830,7 @@ public class BattleOnlinePetSelectionTest {
     @Test
     @SuppressWarnings("unchecked")
     public void openBattleRoomsStopShowingChristmasPetsAfterExpiryWhileAdminsKeepThem() throws Exception {
-        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER"}) {
+        for (String key : new String[] {"CHRISTMAS_TREE", "SANTA_REINDEER", "OLAF"}) {
             Object room = privateState("RoomState");
             ReflectionTestUtils.setField(room, "code", "XMAS");
             ReflectionTestUtils.setField(room, "status", "LOBBY");

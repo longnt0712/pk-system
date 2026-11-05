@@ -121,6 +121,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_HALLOWEEN_PUMPKIN = "HALLOWEEN_PUMPKIN";
     private static final String PET_CHRISTMAS_TREE = "CHRISTMAS_TREE";
     private static final String PET_SANTA_REINDEER = "SANTA_REINDEER";
+    private static final String PET_OLAF = "OLAF";
     private static final String PET_ARAGONDA = "ARAGONDA";
     private static final ZoneId PET_SEASON_ZONE = ZoneId.of("Asia/Bangkok");
     private Clock petSeasonClock = Clock.systemUTC();
@@ -542,6 +543,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || isChristmasPetSeason()) {
             unlocked.add(PET_CHRISTMAS_TREE);
             unlocked.add(PET_SANTA_REINDEER);
+            unlocked.add(PET_OLAF);
         }
         if (allPetsUnlocked || level >= CAPYBARA_UNLOCK_LEVEL) {
             unlocked.add(PET_CAPYBARA_EGG);
@@ -657,7 +659,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private boolean isChristmasPet(String petKey) {
-        return PET_CHRISTMAS_TREE.equals(petKey) || PET_SANTA_REINDEER.equals(petKey);
+        return PET_CHRISTMAS_TREE.equals(petKey) || PET_SANTA_REINDEER.equals(petKey) || PET_OLAF.equals(petKey);
     }
 
     private boolean isChristmasPetSeason() {

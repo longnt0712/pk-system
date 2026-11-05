@@ -32,7 +32,9 @@
 }
 
 .learning-pet-character.is-christmas-tree,
-.learning-pet-egg.is-christmas-tree {
+.learning-pet-egg.is-christmas-tree,
+.learning-pet-character.is-olaf,
+.learning-pet-egg.is-olaf {
     width: 110px;
     height: 124px;
 }
@@ -281,6 +283,7 @@ img[src*="assets/images/learning-pets/perry/"],
 img[src*="assets/images/learning-pets/halloween-pumpkin/"],
 img[src*="assets/images/learning-pets/christmas-tree/"],
 img[src*="assets/images/learning-pets/santa-reindeer/"],
+img[src*="assets/images/learning-pets/olaf/"],
 img[src*="assets/images/learning-pets/aragonda/"],
 img[src*="assets/images/learning-pets/goku-kid/"],
 img[src*="assets/images/learning-pets/dragon-ball-"] {

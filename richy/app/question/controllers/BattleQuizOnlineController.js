@@ -1524,10 +1524,10 @@
                     (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
                 return 'assets/images/learning-pets/halloween-pumpkin/pet.png' + suffix;
             }
-            if ((petKey === 'CHRISTMAS_TREE' || petKey === 'SANTA_REINDEER') &&
+            if ((petKey === 'CHRISTMAS_TREE' || petKey === 'SANTA_REINDEER' || petKey === 'OLAF') &&
                     (isChristmasPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
                 return 'assets/images/learning-pets/' +
-                    (petKey === 'CHRISTMAS_TREE' ? 'christmas-tree' : 'santa-reindeer') + '/pet.svg' + suffix;
+                    petKey.toLowerCase().replace(/_/g, '-') + '/pet.svg' + suffix;
             }
             if (petKey === 'ARAGONDA' && level >= 26) {
                 return 'assets/images/learning-pets/aragonda/pet.svg' + suffix;
@@ -1652,7 +1652,7 @@
             if (!halloweenAvailable && vm.selectedBattlePetKey === 'HALLOWEEN_PUMPKIN') {
                 vm.selectedBattlePetKey = 'MAM_HOC';
             }
-            if (!christmasAvailable && (vm.selectedBattlePetKey === 'CHRISTMAS_TREE' || vm.selectedBattlePetKey === 'SANTA_REINDEER')) {
+            if (!christmasAvailable && (vm.selectedBattlePetKey === 'CHRISTMAS_TREE' || vm.selectedBattlePetKey === 'SANTA_REINDEER' || vm.selectedBattlePetKey === 'OLAF')) {
                 vm.selectedBattlePetKey = 'MAM_HOC';
             }
             if (battlePetOptionsLevel === level && battlePetOptionsHalloween === halloweenAvailable &&
@@ -1673,7 +1673,8 @@
             }
             if (christmasAvailable) {
                 battlePetOptions.push({key: 'CHRISTMAS_TREE', label: 'Cây thông Noel'},
-                    {key: 'SANTA_REINDEER', label: 'Ông già Noel cưỡi tuần lộc'});
+                    {key: 'SANTA_REINDEER', label: 'Ông già Noel cưỡi tuần lộc'},
+                    {key: 'OLAF', label: 'Olaf'});
             }
             if (level >= 3) {
                 battlePetOptions.push({
@@ -1813,7 +1814,7 @@
                     !(me && me.allPetsUnlocked === true) && !hasAdminPetAccess()) {
                 previousPetKey = 'MAM_HOC';
             }
-            if ((previousPetKey === 'CHRISTMAS_TREE' || previousPetKey === 'SANTA_REINDEER') && !isChristmasPetSeason() &&
+            if ((previousPetKey === 'CHRISTMAS_TREE' || previousPetKey === 'SANTA_REINDEER' || previousPetKey === 'OLAF') && !isChristmasPetSeason() &&
                     !(me && me.allPetsUnlocked === true) && !hasAdminPetAccess()) {
                 previousPetKey = 'MAM_HOC';
             }
