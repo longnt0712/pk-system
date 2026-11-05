@@ -31,9 +31,10 @@ Choose Normal and save for selected schools to remove their Christmas effects.
 
 ## Deployment
 
-School choices use nullable `tbl_school.site_theme`; Hibernate schema update
-adds it without changing existing choices. For explicit migrations use
-`school-site-theme.sql`. Changing a school's registered domain keeps its theme
+School choices use nullable `tbl_school.site_theme`. Linux runs with
+`ddl-auto=none`, so startup explicitly runs `db/school-site-theme.sql` to add
+this column if missing, without changing existing choices. For manual migrations
+use `school-site-theme.sql`. Changing a school's registered domain keeps its theme
 on the same School ID. The public resolver never uses suffix/substring matching.
 
 - `GET /service/public/site-theme?domain=example.com` returns only the active

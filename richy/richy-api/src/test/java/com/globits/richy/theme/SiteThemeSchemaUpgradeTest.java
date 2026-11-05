@@ -24,8 +24,8 @@ public class SiteThemeSchemaUpgradeTest {
         when(statement.getUpdateCount()).thenReturn(-1);
         new SiteThemeSchemaUpgrade(source).run(null);
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(statement, times(1)).execute(sql.capture());
-        String batch = sql.getValue();
+        verify(statement, times(2)).execute(sql.capture());
+        String batch = sql.getAllValues().get(0);
         assertTrue(batch.contains("BEGIN TRANSACTION"));
         assertTrue(batch.contains("COMMIT TRANSACTION"));
         assertTrue(batch.contains("TABLOCKX, HOLDLOCK"));
@@ -36,6 +36,12 @@ public class SiteThemeSchemaUpgradeTest {
         assertTrue(batch.contains("QUOTENAME(name)"));
         assertFalse(batch.matches("(?is).*\\b(?:UPDATE|INSERT|DELETE)\\s+.*"));
         assertFalse(batch.contains("GO\n"));
+        String schoolBatch = sql.getAllValues().get(1);
+        assertTrue(schoolBatch.contains("COL_LENGTH(N'dbo.tbl_school', N'site_theme') IS NULL"));
+        assertTrue(schoolBatch.contains("ALTER TABLE dbo.tbl_school ADD site_theme varchar(16) NULL"));
+        assertTrue(schoolBatch.contains("BEGIN TRANSACTION"));
+        assertTrue(schoolBatch.contains("COMMIT TRANSACTION"));
+        assertFalse(schoolBatch.matches("(?is).*\\b(?:UPDATE|INSERT|DELETE|DROP)\\s+.*"));
     }
 
     @Test public void otherDatabaseEnginesDoNotReceiveSqlServerDdl() throws Exception {

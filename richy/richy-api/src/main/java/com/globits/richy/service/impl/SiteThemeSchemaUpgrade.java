@@ -24,7 +24,8 @@ public class SiteThemeSchemaUpgrade implements ApplicationRunner {
             if (!"Microsoft SQL Server".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName())) { return; }
         }
         ResourceDatabasePopulator migration = new ResourceDatabasePopulator(
-                new ClassPathResource("db/site-theme-christmas.sql"));
+                new ClassPathResource("db/site-theme-christmas.sql"),
+                new ClassPathResource("db/school-site-theme.sql"));
         migration.setSqlScriptEncoding("UTF-8");
         // T-SQL BEGIN/END and local variables must share one JDBC batch.
         migration.setSeparator(ScriptUtils.EOF_STATEMENT_SEPARATOR);
