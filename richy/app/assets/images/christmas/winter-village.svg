@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="240" viewBox="0 0 460 240">
+  <style>
+    .window-lights { animation:warm-lights 4.6s ease-in-out infinite alternate; }
+    .roof-lights { animation:warm-lights 3.8s ease-in-out -1.8s infinite alternate; }
+    .tree-star { animation:star-light 5s ease-in-out infinite alternate; transform-box:fill-box; transform-origin:center; }
+    .banner-snow { animation:local-snow 11s linear infinite; }
+    @keyframes warm-lights { from {opacity:.55} to {opacity:1} }
+    @keyframes star-light { from {opacity:.65} to {opacity:1} }
+    @keyframes local-snow { from {transform:translateY(-8px);opacity:.25} 35% {opacity:.7} to {transform:translateY(29px);opacity:.2} }
+    @media(prefers-reduced-motion:reduce) { .window-lights,.roof-lights,.tree-star,.banner-snow {animation:none} }
+  </style>
+  <defs><linearGradient id="snow" x2="0" y2="1"><stop stop-color="#f2fbff"/><stop offset="1" stop-color="#a9d3de"/></linearGradient><linearGradient id="fir" x2="1" y2="1"><stop stop-color="#458e7b"/><stop offset="1" stop-color="#143d40"/></linearGradient><g id="tree"><path d="M0-83-28-39h15L-39-4h26L-47 24h94L13-4h26L13-39h15Z" fill="url(#fir)"/><path d="m0-83-17 27 17-6 17 6Zm-20 55-13 18 21-6 12 4 12-4 21 6-13-18-20 8Z" fill="#dcf3f6"/><path d="M-5 24H5V42H-5Z" fill="#63524d"/></g></defs>
+  <g fill="#d5f5ff" opacity=".75"><circle cx="90" cy="36" r="2"/><circle cx="200" cy="15" r="1.4"/><circle cx="300" cy="30" r="1.8"/><circle cx="424" cy="17" r="1.6"/><circle cx="157" cy="59" r="1.5"/><circle cx="382" cy="72" r="1.5"/><path d="m356 24 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z"/></g>
+  <circle cx="263" cy="50" r="27" fill="#e6f6ee" opacity=".9"/><circle cx="274" cy="41" r="26" fill="#215b59"/>
+  <path d="M70 209Q170 173 260 200T460 190V240H0Z" fill="#8dc5cf" opacity=".3"/>
+  <use href="#tree" transform="translate(378 178) scale(1.15)"/><use href="#tree" transform="translate(429 177) scale(.75)"/><use href="#tree" transform="translate(161 170) scale(.75)"/>
+  <g class="tree-star"><circle cx="378" cy="77" r="21" fill="#f8d16c" opacity=".1"/><circle cx="378" cy="77" r="14" fill="#f8d16c" opacity=".15"/><path d="m378 63 4.2 9 9.8 1.4-7.1 6.8 1.7 9.7-8.6-4.6-8.6 4.6 1.7-9.7-7.1-6.8 9.8-1.4Z" fill="#ffe4a1" stroke="#fff6d5" stroke-width=".9"/><path d="m378 68 2.4 8 6.6 1-6 2.6-3 6.5-.7-6.8-4.3-3.3 4.7.2Z" fill="#fff9d8" opacity=".8"/></g>
+  <path d="M213 136h89v74h-89Z" fill="#c16466"/><path d="m200 137 59-51 58 51Z" fill="#e5f5f6"/><path d="m212 135 47-40 46 40Z" fill="#7a3d47"/><path d="M282 99V79h13v32" fill="#a45757"/><path d="M279 77h19v7h-19Z" fill="#e4f5f8"/>
+  <g class="window-lights"><ellipse cx="259" cy="183" rx="59" ry="35" fill="#ffd995" opacity=".1"/><g fill="#ffe6a3" stroke="#a45a57" stroke-width="3"><path d="M227 153h20v23h-20Zm42 0h20v23h-20Z"/><path d="M252 183h16v27h-16Z"/></g></g><path d="M237 154v21m-10-10h20m32-11v21m-10-10h20" stroke="#87525a" stroke-width="2"/>
+  <path d="m207 136 52-44 52 44" fill="none" stroke="#dbc58a" stroke-width="1.3"/>
+  <g class="roof-lights" stroke="#fff2c8" stroke-width=".5"><g fill="#f8cc6d"><circle cx="212" cy="135" r="2.4"/><circle cx="234" cy="116" r="2.4"/><circle cx="257" cy="98" r="2.4"/><circle cx="281" cy="117" r="2.4"/><circle cx="304" cy="136" r="2.4"/></g><g fill="#e87584"><circle cx="223" cy="125" r="2.4"/><circle cx="246" cy="106" r="2.4"/><circle cx="269" cy="107" r="2.4"/><circle cx="292" cy="126" r="2.4"/></g><path d="M356 135q21 13 45 0m-54 34q32 15 63 0" fill="none" stroke="#e7d297" stroke-width="1.1"/><g fill="#ffe2a0"><circle cx="359" cy="137" r="2.4"/><circle cx="377" cy="142" r="2.4"/><circle cx="397" cy="137" r="2.4"/><circle cx="354" cy="172" r="2.4"/><circle cx="376" cy="178" r="2.4"/><circle cx="402" cy="173" r="2.4"/></g></g>
+  <g class="banner-snow" fill="#f1fbff"><circle cx="142" cy="91" r="1.4"/><circle cx="192" cy="143" r="1.7"/><circle cx="315" cy="65" r="1.3"/><circle cx="345" cy="120" r="1.7"/><circle cx="431" cy="105" r="1.4"/></g>
+  <path d="M35 231q94-36 194-11 81-41 176-3l55-10v33H0Z" fill="url(#snow)"/>
+  <g transform="translate(330 203)"><circle cy="-4" r="15" fill="#e6f6fa"/><circle cy="-24" r="11" fill="#f6fcff"/><path d="M-9-34h18v-12H-7Z" fill="#284352"/><path d="M-15-34h29" stroke="#284352" stroke-width="4"/><path d="m-11-16 22 3-3 5-20-3Z" fill="#b94d5b"/><path d="m1-24 10 3-10 2Z" fill="#de9c57"/><g fill="#284352"><circle cx="-3" cy="-27" r="1.2"/><circle cx="3" cy="-27" r="1.2"/><circle cy="-4" r="1.6"/><circle cy="3" r="1.6"/></g></g>
+  <g transform="translate(185 219)"><rect x="-15" y="-18" width="27" height="20" rx="2" fill="#c75f70"/><path d="M-3-18V2m-12-12h27" stroke="#f4d8a1" stroke-width="4"/><path d="M-3-18q-19-12-17-2 2 5 17 2 16-14 18-3 0 6-18 3" fill="none" stroke="#f4d8a1" stroke-width="2"/></g>
+</svg>

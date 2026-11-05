@@ -12,7 +12,7 @@ import org.joda.time.LocalDateTime;
 /** One shared appearance setting for IELTS Room. */
 @Entity
 @Table(name = "tbl_site_theme")
-@Check(constraints = "domain_name = 'ieltsroom.com' AND theme IN ('NORMAL', 'HALLOWEEN')")
+@Check(constraints = "domain_name = 'ieltsroom.com' AND theme IN ('NORMAL', 'HALLOWEEN', 'CHRISTMAS')")
 public class SiteTheme {
     @Id
     @Column(name = "domain_name", length = 100, nullable = false)

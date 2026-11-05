@@ -74,6 +74,9 @@ public class SiteThemeServiceTest {
         role("ROLE_ADMIN");
         assertEquals("HALLOWEEN", service.saveIeltsRoomTheme(new SiteThemeDto("HALLOWEEN")).getTheme());
         assertEquals("HALLOWEEN", otherDevice.getIeltsRoomTheme().getTheme());
+        assertEquals("CHRISTMAS", service.saveIeltsRoomTheme(new SiteThemeDto("CHRISTMAS")).getTheme());
+        SecurityContextHolder.clearContext();
+        assertEquals("CHRISTMAS", otherDevice.getIeltsRoomTheme().getTheme());
     }
 
     @Test public void onlyAnAuthenticatedAdminCanWriteEvenWhenServiceIsInvokedDirectly() {
@@ -93,7 +96,7 @@ public class SiteThemeServiceTest {
 
     @Test public void invalidOrMissingValuesCannotChangeTheSavedSelection() {
         role("ROLE_ADMIN");
-        for (String theme : new String[] {null, "", "halloween", " HALLOWEEN ", "CHRISTMAS", "NORMAL<script>"}) {
+        for (String theme : new String[] {null, "", "halloween", " HALLOWEEN ", "christmas", " CHRISTMAS ", "NORMAL<script>"}) {
             try { service.saveIeltsRoomTheme(new SiteThemeDto(theme)); fail("Invalid theme accepted"); }
             catch (IllegalArgumentException expected) { }
         }
@@ -110,6 +113,7 @@ public class SiteThemeServiceTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store, no-cache, must-revalidate"))
                 .andExpect(header().string("Pragma", "no-cache"))
+                .andExpect(header().string("X-Site-Theme-Options", "NORMAL,HALLOWEEN,CHRISTMAS"))
                 .andExpect(content().string("{\"theme\":\"HALLOWEEN\"}"));
         mvc.perform(get("/public/site-theme/chapter")).andExpect(status().isNotFound());
         mvc.perform(put("/public/site-theme/ieltsroom").contentType("application/json").content("{\"theme\":\"NORMAL\"}"))
@@ -152,12 +156,12 @@ public class SiteThemeServiceTest {
                 when(repository.saveAndFlush(any(SiteTheme.class))).thenAnswer(call -> {
                     SiteTheme saved = writer.merge((SiteTheme) call.getArguments()[0]); writer.flush(); return saved;
                 });
-                service.saveIeltsRoomTheme(new SiteThemeDto("NORMAL"));
+                service.saveIeltsRoomTheme(new SiteThemeDto("CHRISTMAS"));
                 writer.getTransaction().commit();
                 EntityManager reader = factory.createEntityManager();
                 try {
                     SiteTheme reloaded = reader.find(SiteTheme.class, "ieltsroom.com");
-                    assertEquals("NORMAL", reloaded.getTheme());
+                    assertEquals("CHRISTMAS", reloaded.getTheme());
                     assertEquals("theme.admin", reloaded.getModifiedBy());
                     assertNotNull(reloaded.getModifyDate());
                     assertNotNull(reloaded.getRevision());

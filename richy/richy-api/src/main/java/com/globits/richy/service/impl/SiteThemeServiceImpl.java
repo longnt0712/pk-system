@@ -32,8 +32,8 @@ public class SiteThemeServiceImpl implements SiteThemeService {
     @Secured("ROLE_ADMIN")
     public SiteThemeDto saveIeltsRoomTheme(SiteThemeDto dto) {
         Authentication admin = requireAdmin();
-        if (dto == null || !("NORMAL".equals(dto.getTheme()) || "HALLOWEEN".equals(dto.getTheme()))) {
-            throw new IllegalArgumentException("Giao diện phải là NORMAL hoặc HALLOWEEN.");
+        if (dto == null || !("NORMAL".equals(dto.getTheme()) || "HALLOWEEN".equals(dto.getTheme()) || "CHRISTMAS".equals(dto.getTheme()))) {
+            throw new IllegalArgumentException("Giao diện phải là NORMAL, HALLOWEEN hoặc CHRISTMAS.");
         }
         SiteTheme config = repository.findOne(IELTS_ROOM_DOMAIN);
         if (config == null) { config = new SiteTheme(); }

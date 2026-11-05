@@ -38,6 +38,7 @@ public class RestSiteThemeController {
         headers.setCacheControl("no-store, no-cache, must-revalidate");
         headers.setPragma("no-cache");
         headers.setExpires(0);
+        headers.set("X-Site-Theme-Options", "NORMAL,HALLOWEEN,CHRISTMAS");
         return new ResponseEntity<SiteThemeDto>(config, headers, HttpStatus.OK);
     }
 

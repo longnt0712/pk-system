@@ -1,0 +1,121 @@
+/* Christmas is additive: no rule applies until the shared Christmas class is
+   active. Content, controls, the Normal palette and exam contrast stay intact. */
+html.ieltsroom-christmas.ieltsroom-christmas {
+    --christmas-ink:#194d4b;
+    --christmas-line:#b8d6d1;
+}
+html.ieltsroom-christmas.ieltsroom-christmas:not(.global-dark-mode) body {
+    background:radial-gradient(ellipse at 12% 0%,#dcedf4,transparent 55%),#f4f8f6 !important;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::before,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after {
+    content:"";
+    display:block;
+    clear:none;
+    position:absolute;
+    z-index:2;
+    top:-7px;
+    left:12px;
+    right:12px;
+    height:28px;
+    border-radius:16px 16px 0 0;
+    background:url('../images/christmas/lights.svg') left top / 240px 28px repeat-x;
+    pointer-events:none;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::before,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before { opacity:.45; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { animation:christmas-lights 4.8s ease-in-out infinite alternate; }
+@keyframes christmas-lights { from {opacity:.35} to {opacity:1} }
+
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero,
+html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card,
+html.ieltsroom-christmas.ieltsroom-christmas .reading-library-hero,
+html.ieltsroom-christmas.ieltsroom-christmas .reading-builder-hero,
+html.ieltsroom-christmas.ieltsroom-christmas .battle-online-hero {
+    border-color:#7eaaa4 !important;
+    background:url('../images/christmas/winter-village.svg') right bottom / 460px auto no-repeat,
+        linear-gradient(115deg,#153e48,#21665c 68%,#194b4d) !important;
+    box-shadow:0 12px 30px #1a52451f,inset 0 1px 0 #f4ffff40 !important;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero h1,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero p,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-kicker,
+html.ieltsroom-christmas.ieltsroom-christmas .daily-page-title,
+html.ieltsroom-christmas.ieltsroom-christmas .daily-page-subtitle,
+html.ieltsroom-christmas.ieltsroom-christmas .reading-library-hero h1,
+html.ieltsroom-christmas.ieltsroom-christmas .reading-library-hero p,
+html.ieltsroom-christmas.ieltsroom-christmas .reading-builder-hero h1,
+html.ieltsroom-christmas.ieltsroom-christmas .battle-online-hero h1 { color:#f1fbf8 !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero::before {
+    background:radial-gradient(circle at 15% 10%,#b6eeee26,transparent 55%) !important;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-star { color:#f2d69a !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-kicker-dot { background:#f0d09c !important; box-shadow:0 0 0 5px #f0d09c20 !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-book {
+    border:1px solid #ffffff96;
+    background:linear-gradient(135deg,#ffffffdd,#dbf0efb0) !important;
+    box-shadow:inset 0 1px 0 #fff,0 8px 18px #073e4833 !important;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .user-learning-level { background:#0d343b80 !important; border-color:#b8e1d449 !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .user-learning-level-badge,
+html.ieltsroom-christmas.ieltsroom-christmas .user-learning-progress-label { color:#fff4d8 !important; background:#ffffff12 !important; border-color:#cee6db66 !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .user-learning-progress-fill { background:linear-gradient(90deg,#c85d6d,#f7dbac) !important; }
+/* A few painted surfaces, rather than blur on every card. */
+html.ieltsroom-christmas.ieltsroom-christmas .learning-tile-daily { background:linear-gradient(135deg,#9d3652,#b85865) !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-tile-classes { background:linear-gradient(135deg,#1b6456,#318875) !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-tile-listening { background:linear-gradient(135deg,#275276,#487c9a) !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-tile-daily .learning-blob-1,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-tile-listening .learning-blob-1 {
+    width:90px;
+    height:90px;
+    border-radius:0;
+    background:url('../images/christmas/crystal.svg') center / contain no-repeat !important;
+    opacity:.22;
+    pointer-events:none;
+}
+
+/* Ten SVG flakes on desktop, six on small screens. Only transform/opacity are
+   animated: no canvas, frame loop, per-flake filters or backdrop sampling. */
+.christmas-snow { position:fixed; inset:0; z-index:1001; overflow:hidden; pointer-events:none !important; contain:strict; }
+.christmas-snow i {
+    position:absolute;
+    top:-44px;
+    left:var(--snow-x);
+    width:var(--snow-size);
+    height:var(--snow-size);
+    background:url('../images/christmas/crystal.svg') center / contain no-repeat;
+    opacity:0;
+    pointer-events:none !important;
+    animation:christmas-snowfall var(--snow-duration) linear var(--snow-delay) infinite;
+}
+@keyframes christmas-snowfall {
+    0% { transform:translate3d(-12px,-40px,0) rotate(-15deg); opacity:0; }
+    12% { opacity:.48; }
+    85% { opacity:.36; }
+    100% { transform:translate3d(16px,calc(100vh + 70px),0) rotate(95deg); opacity:0; }
+}
+.christmas-snow.is-paused i { animation-play-state:paused; }
+.christmas-snow.is-exam,
+body.modal-open > .christmas-snow { visibility:hidden; }
+.christmas-snow.is-exam i,
+body.modal-open > .christmas-snow i { animation-play-state:paused; }
+@media(max-width:767px) {
+    .christmas-snow i:nth-child(n+7) { display:none; }
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero {
+        background-size:140px auto,auto !important;
+    }
+}
+@media(prefers-reduced-motion:reduce) {
+    .christmas-snow { display:none; }
+    .christmas-snow i { animation:none; }
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { animation:none; opacity:.8; }
+}
+@media print {
+    .christmas-snow { display:none !important; }
+    html.ieltsroom-christmas.ieltsroom-christmas nav::before,
+    html.ieltsroom-christmas.ieltsroom-christmas nav::after { display:none !important; }
+}

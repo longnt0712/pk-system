@@ -25,7 +25,7 @@ before(async () => {
 after(async () => { if (browser) await browser.close(); });
 
 async function open(shared, options = {}) {
-    const context = await browser.newContext({viewport:options.viewport || {width:1180, height:820}, hasTouch:true, reducedMotion:'reduce'});
+    const context = await browser.newContext({viewport:options.viewport || {width:1180, height:820}, hasTouch:true, reducedMotion:options.motion || 'reduce'});
     const page = await context.newPage();
     page.setDefaultTimeout(7000);
     const errors = [], calls = [];
@@ -60,7 +60,7 @@ async function open(shared, options = {}) {
         }
         if (/\/troop(?:-1)?\.jpg$/.test(url.pathname)) return route.fulfill({contentType:'image/jpeg', body:fs.readFileSync(path.join(app, 'assets/images', url.pathname.endsWith('troop-1.jpg') ? 'troop-1.jpg' : 'troop.jpg'))});
         if (/fontawesome-webfont\.woff2/.test(url.pathname)) return route.fulfill({contentType:'font/woff2', body:fs.readFileSync(path.join(app, 'assets/fonts/fontawesome-webfont.woff2'))});
-        if (url.pathname.startsWith('/assets/images/halloween/')) {
+        if (/^\/assets\/images\/(halloween|christmas)\//.test(url.pathname)) {
             const asset = path.join(app, url.pathname.slice(1));
             if (fs.existsSync(asset)) return route.fulfill({contentType:'image/svg+xml', body:fs.readFileSync(asset)});
         }
@@ -88,7 +88,7 @@ async function open(shared, options = {}) {
     }, {header, publicHeader, dashboard, guest:!!options.guest});
     // Inline test CSS resolves relative URLs against the document instead of
     // assets/css, so keep the production image URLs pointing at their real files.
-    const halloweenCss = read('assets/css/ieltsroom-halloween.css').replace(/\.\.\/images\//g, '/assets/images/');
+    const halloweenCss = (read('assets/css/ieltsroom-halloween.css') + read('assets/css/ieltsroom-christmas.css')).replace(/\.\.\/images\//g, '/assets/images/');
     await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + styles + read('assets/css/site-theme-control.css') + '</style><style id="site-theme-style">' + halloweenCss + '</style></head><body class="page-container-bg-solid">' + content + '</body></html>');
     await page.evaluate(() => {
         window.qaHidden = false;
@@ -140,6 +140,130 @@ async function choose(page, theme) {
     await dialog.locator('.site-theme-option.is-selected input[value="' + theme + '"]').waitFor({state:'attached'});
     return dialog;
 }
+
+test('Christmas is an opt-in shared admin choice and switching off restores Normal exactly', async () => {
+    const shared = {theme:'NORMAL'};
+    const admin = await open(shared, {admin:true});
+    const guest = await open(shared, {guest:true});
+    const learner = await open(shared);
+    try {
+        for (const fixture of [admin,guest,learner]) await loaded(fixture.page);
+        const paint = () => admin.page.evaluate(async () => {
+            await new Promise(requestAnimationFrame);
+            await Promise.all(document.getAnimations().filter(animation => animation instanceof CSSTransition).map(animation => animation.finished.catch(()=>{})));
+            return ['.learning-login-nav','.learning-hub-hero','.learning-tile-daily'].map(selector => {
+            const css = getComputedStyle(document.querySelector(selector));
+            return [css.backgroundImage,css.backgroundColor,css.color];
+            });
+        });
+        const normal = await paint();
+        const dialog = await choose(admin.page, 'CHRISTMAS');
+        assert.equal(await admin.page.locator('.christmas-snow').count(),0,'unsaved choice has no effects');
+        assert.equal(shared.theme,'NORMAL');
+        await dialog.getByRole('button',{name:'Lưu áp dụng',exact:true}).click();
+        await admin.page.waitForFunction(() => siteTheme.state.theme === 'CHRISTMAS' && !siteTheme.state.saving);
+        for (const fixture of [guest,learner]) {
+            await poll(fixture.page);
+            await fixture.page.waitForFunction(() => siteTheme.state.theme === 'CHRISTMAS');
+            assert.equal(await fixture.page.locator('.christmas-snow').count(),1);
+            assert.equal(await fixture.page.locator('.site-theme-open').count(),0);
+        }
+        const fresh = await open(shared,{guest:true});
+        try { await loaded(fresh.page); assert.equal(await fresh.page.locator('.christmas-snow i').count(),10); }
+        finally { await fresh.context.close(); }
+        await admin.page.locator('.site-theme-open').click();
+        assert.match(await admin.page.locator('.site-theme-current').innerText(),/Christmas/);
+        await admin.page.getByRole('button',{name:'Hủy',exact:true}).click();
+        await admin.page.evaluate(() => siteTheme.save('HALLOWEEN'));
+        assert.equal(await admin.page.locator('html.ieltsroom-christmas').count(),0);
+        assert.equal(await admin.page.locator('.christmas-snow').count(),0);
+        await admin.page.evaluate(() => siteTheme.save('NORMAL'));
+        await admin.page.waitForFunction(normal => JSON.stringify(['.learning-login-nav','.learning-hub-hero','.learning-tile-daily'].map(selector=>{
+            const css=getComputedStyle(document.querySelector(selector));
+            return [css.backgroundImage,css.backgroundColor,css.color];
+        })) === JSON.stringify(normal),normal);
+        assert.deepEqual(await paint(),normal,'Normal retains all original colors and artwork');
+        for (const fixture of [guest,learner]) {
+            await poll(fixture.page);
+            await fixture.page.waitForFunction(() => siteTheme.state.theme === 'NORMAL');
+            assert.equal(await fixture.page.locator('.christmas-snow').count(),0);
+        }
+        for (const fixture of [admin,guest,learner]) assert.deepEqual(fixture.errors,[]);
+    } finally { for (const fixture of [admin,guest,learner]) await fixture.context.close(); }
+});
+
+test('Christmas decorations stay light, non-interactive and bounded on phones, iPad and desktop', async () => {
+    for (const guest of [false,true]) {
+        const shared = {theme:'CHRISTMAS'};
+        const fixture = await open(shared,{admin:!guest,guest,motion:'no-preference'});
+        const page = fixture.page;
+        try {
+            await loaded(page);
+            for (const width of [320,390,820,1180]) {
+                await page.setViewportSize({width,height:820});
+                const info = await page.evaluate(() => {
+                    const snow = document.querySelector('.christmas-snow');
+                    const nav = document.querySelector('nav');
+                    const hero = document.querySelector('.learning-hub-hero');
+                    return {scroll:document.documentElement.scrollWidth,width:innerWidth,
+                        visible:[...snow.children].filter(node => getComputedStyle(node).display !== 'none').length,
+                        filters:[...snow.children].map(node => [getComputedStyle(node).filter,getComputedStyle(node).backdropFilter || 'none']),
+                        pointer:getComputedStyle(snow).pointerEvents,
+                        lights:getComputedStyle(nav,'::after').backgroundImage,
+                        lightsWidth:parseFloat(getComputedStyle(nav,'::after').width),
+                        hero:getComputedStyle(hero).backgroundImage};
+                });
+                assert.ok(info.scroll<=width+1,'no horizontal overflow at '+width);
+                assert.equal(info.visible,width<768?6:10);
+                assert.equal(info.pointer,'none');
+                assert.ok(info.filters.every(pair=>pair.every(value=>value==='none')),'flakes have no blur or backdrop sampling');
+                assert.match(info.lights,/christmas\/lights.svg/);
+                assert.ok(info.lightsWidth>width*.8,'garland spans the header instead of collapsing with the Bootstrap clearfix');
+                assert.match(info.hero,/christmas\/winter-village.svg/);
+                const control = page.locator(width<768?'.navbar-toggle':guest?'.learning-desktop-login .learning-public-theme-toggle':'.user-dropdown-mobile > a');
+                assert.equal(await control.evaluate(node=>{
+                    const r=node.getBoundingClientRect();
+                    return node.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));
+                }),true,'snow and garland never cover header controls: '+JSON.stringify({guest,width}));
+                if (process.env.SITE_THEME_SCREENSHOT_DIR && [390,1180].includes(width) && !guest) {
+                    fs.mkdirSync(process.env.SITE_THEME_SCREENSHOT_DIR,{recursive:true});
+                    await page.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'christmas-'+width+'.png')});
+                }
+            }
+            await poll(page); await poll(page);
+            assert.equal(await page.locator('.christmas-snow').count(),1,'polling does not duplicate decorations');
+            await page.evaluate(()=>{qaHidden=true;document.dispatchEvent(new Event('visibilitychange'));});
+            assert.equal(await page.locator('.christmas-snow i').first().evaluate(node=>getComputedStyle(node).animationPlayState),'paused');
+            await page.evaluate(()=>{qaHidden=false;document.dispatchEvent(new Event('visibilitychange'));});
+            assert.equal(await page.locator('.christmas-snow i').first().evaluate(node=>getComputedStyle(node).animationPlayState),'running');
+            await page.evaluate(()=>qaScope.$broadcast('$stateChangeSuccess',{name:'application.ielts_listening_actual_test'}));
+            assert.equal(await page.locator('.christmas-snow').isVisible(),false,'exam hides falling flakes');
+            await page.evaluate(()=>qaScope.$broadcast('$stateChangeSuccess',{name:'application.dashboard'}));
+            await page.emulateMedia({reducedMotion:'reduce'});
+            assert.equal(await page.locator('.christmas-snow').isVisible(),false);
+            assert.equal(await page.locator('nav').evaluate(node=>getComputedStyle(node,'::after').animationName),'none');
+            await page.emulateMedia({reducedMotion:'no-preference'});
+            if (!guest) {
+                await page.locator('.site-theme-open').click();
+                assert.equal(await page.locator('.christmas-snow').isVisible(),false,'snow stays below and pauses for modals');
+                const dialog=page.getByRole('dialog');
+                assert.equal(await dialog.locator('input[name="siteThemeChoice"]').count(),3);
+                const box=await dialog.boundingBox();
+                assert.ok(box.x>=0 && box.x+box.width<=1181);
+                await dialog.getByRole('button',{name:'Hủy',exact:true}).click();
+            }
+            await page.evaluate(()=>siteTheme.stop());
+            assert.equal(await page.locator('.christmas-snow').count(),0,'stop cleans all effects');
+            assert.deepEqual(fixture.errors,[]);
+        } finally { await fixture.context.close(); }
+    }
+    const excluded=await open({theme:'CHRISTMAS'},{hostname:'tnttphungkhoang.com',admin:true});
+    try {
+        assert.equal(await excluded.page.locator('.christmas-snow').count(),0);
+        assert.equal(await excluded.page.locator('html.ieltsroom-christmas').count(),0);
+        assert.equal(excluded.calls.length,0);
+    } finally { await excluded.context.close(); }
+});
 
 test('Halloween header surroundings reveal the page background and Normal restores the original shell', async () => {
     for (const guest of [false,true]) for (const dark of [false,true]) {

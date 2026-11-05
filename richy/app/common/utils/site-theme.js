@@ -6,15 +6,45 @@
             var document = $window.document;
             var allowed = /^(www\.)?ieltsroom\.com$/i.test($window.location.hostname || '');
             var state = {theme: 'NORMAL', loaded: false, loading: false, saving: false, error: '', readError: ''};
-            var started = false, timer = null, reading = null, writing = null, revision = 0;
+            var started = false, timer = null, reading = null, writing = null, revision = 0, snow = null, routeListener = null;
             settings.siteThemeEnabled = allowed;
 
-            function valid(theme) { return theme === 'NORMAL' || theme === 'HALLOWEEN'; }
+            function valid(theme) { return theme === 'NORMAL' || theme === 'HALLOWEEN' || theme === 'CHRISTMAS'; }
+            function pauseSnow(stateName) {
+                if (snow) {
+                    if (typeof stateName === 'string') { snow.classList.toggle('is-exam', /actual_test|test_results|speaking_shared/.test(stateName)); }
+                    snow.classList.toggle('is-paused', !!document.hidden);
+                }
+            }
+            function updateSnow() {
+                if (state.theme !== 'CHRISTMAS') {
+                    if (snow && snow.parentNode) { snow.parentNode.removeChild(snow); }
+                    snow = null;
+                    return;
+                }
+                if (!snow && document.body) {
+                    snow = document.createElement('div');
+                    snow.className = 'christmas-snow';
+                    snow.setAttribute('aria-hidden', 'true');
+                    for (var i = 0; i < 10; i += 1) {
+                        var flake = document.createElement('i');
+                        flake.style.setProperty('--snow-x', (4 + i * 9.5) + '%');
+                        flake.style.setProperty('--snow-size', (16 + (i % 4) * 5) + 'px');
+                        flake.style.setProperty('--snow-duration', (19 + (i % 5) * 4) + 's');
+                        flake.style.setProperty('--snow-delay', (-i * 4.3) + 's');
+                        snow.appendChild(flake);
+                    }
+                    document.body.appendChild(snow);
+                }
+                pauseSnow(($rootScope.$state && $rootScope.$state.current || {}).name);
+            }
             function url(path) { return (settings.api.baseUrl || '').replace(/\/?$/, '/') + path; }
             function apply(theme) {
                 state.theme = allowed && valid(theme) ? theme : 'NORMAL';
                 document.documentElement.classList.toggle('ieltsroom-halloween', state.theme === 'HALLOWEEN');
+                document.documentElement.classList.toggle('ieltsroom-christmas', state.theme === 'CHRISTMAS');
                 document.documentElement.setAttribute('data-site-theme', state.theme);
+                updateSnow();
             }
             function options() { return {cache: false, timeout: 10000, skipNetworkNotice: true, backgroundSessionCheck: true}; }
             function responseTheme(response) {
@@ -71,6 +101,7 @@
                 return writing;
             }
             function refreshVisible() {
+                pauseSnow();
                 if (!document.hidden) { $rootScope.$evalAsync(function () { refresh(); }); }
             }
             function start() {
@@ -81,6 +112,7 @@
                 document.addEventListener('visibilitychange', refreshVisible);
                 $window.addEventListener('focus', refreshVisible);
                 $window.addEventListener('online', refreshVisible);
+                routeListener = $rootScope.$on('$stateChangeSuccess', function (event, state) { pauseSnow(state.name); });
             }
             function stop() {
                 started = false;
@@ -91,6 +123,7 @@
                 document.removeEventListener('visibilitychange', refreshVisible);
                 $window.removeEventListener('focus', refreshVisible);
                 $window.removeEventListener('online', refreshVisible);
+                if (routeListener) { routeListener(); routeListener = null; }
                 apply('NORMAL');
             }
             return {state: state, enabled: function () { return allowed; }, start: start, stop: stop, refresh: refresh, save: save};
@@ -115,8 +148,9 @@
                             '<div class="modal-header"><button type="button" class="site-theme-close" ng-click="themeEditor.cancel()" aria-label="Đóng" ng-disabled="themeEditor.state.saving">×</button><span class="site-theme-kicker">IELTS ROOM</span><h2 id="site-theme-title">Giao diện IELTS Room</h2><p>Chọn giao diện dùng chung cho tất cả mọi người.</p></div>' +
                             '<div class="modal-body"><div class="site-theme-options" role="radiogroup" aria-label="Giao diện dùng chung">' +
                             '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'NORMAL\'}"><input type="radio" name="siteThemeChoice" value="NORMAL" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--normal" aria-hidden="true"><i></i><i></i><i></i></span><strong>Normal</strong><span>Giao diện quen thuộc</span></label>' +
-                            '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'HALLOWEEN\'}"><input type="radio" name="siteThemeChoice" value="HALLOWEEN" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--halloween" aria-hidden="true"><i></i><i></i><i></i></span><strong>Halloween</strong><span>Sắc cam bí ngô và tím đêm</span></label></div>' +
-                            '<p class="site-theme-current" ng-if="themeEditor.state.loaded">Đang áp dụng: <strong>{{themeEditor.state.theme === "HALLOWEEN" ? "Halloween" : "Normal"}}</strong></p>' +
+                            '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'HALLOWEEN\'}"><input type="radio" name="siteThemeChoice" value="HALLOWEEN" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--halloween" aria-hidden="true"><i></i><i></i><i></i></span><strong>Halloween</strong><span>Sắc cam bí ngô và tím đêm</span></label>' +
+                            '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'CHRISTMAS\'}"><input type="radio" name="siteThemeChoice" value="CHRISTMAS" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--christmas" aria-hidden="true"><i></i><i></i><i></i></span><strong>Christmas</strong><span>Đèn Noel và tuyết pha lê nhẹ</span></label></div>' +
+                            '<p class="site-theme-current" ng-if="themeEditor.state.loaded">Đang áp dụng: <strong>{{themeEditor.state.theme === "CHRISTMAS" ? "Christmas" : themeEditor.state.theme === "HALLOWEEN" ? "Halloween" : "Normal"}}</strong></p>' +
                             '<p role="status" ng-if="themeEditor.state.loading">Đang tải giao diện…</p>' +
                             '<div class="alert alert-danger" role="alert" ng-if="themeEditor.state.error">{{themeEditor.state.error}} <button type="button" class="site-theme-retry" ng-click="themeEditor.retry()" ng-disabled="themeEditor.state.loading || themeEditor.state.saving">Tải lại lựa chọn</button></div>' +
                             '<div class="alert alert-warning" role="alert" ng-if="themeEditor.state.readError">{{themeEditor.state.readError}} <button type="button" class="site-theme-retry" ng-click="themeEditor.retry()" ng-disabled="themeEditor.state.loading || themeEditor.state.saving">Thử lại</button></div></div>' +
