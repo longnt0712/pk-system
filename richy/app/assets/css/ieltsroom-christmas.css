@@ -21,14 +21,13 @@ html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after {
     right:12px;
     height:28px;
     border-radius:16px 16px 0 0;
-    background:url('../images/christmas/lights.svg') left top / 240px 28px repeat-x;
+    background:url('../images/christmas/lights.svg?v=20261105-sparkle-1') left top / 240px 28px repeat-x;
     pointer-events:none;
 }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::before,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before { opacity:.45; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before { opacity:.16; }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { animation:christmas-lights 4.8s ease-in-out infinite alternate; }
-@keyframes christmas-lights { from {opacity:.35} to {opacity:1} }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { opacity:1; }
 
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card,
@@ -36,7 +35,7 @@ html.ieltsroom-christmas.ieltsroom-christmas .reading-library-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .reading-builder-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .battle-online-hero {
     border-color:#7eaaa4 !important;
-    background:url('../images/christmas/winter-village.svg') right bottom / 460px auto no-repeat,
+    background:url('../images/christmas/winter-village.svg?v=20261105-sparkle-1') right bottom / 460px auto no-repeat,
         linear-gradient(115deg,#153e48,#21665c 68%,#194b4d) !important;
     box-shadow:0 12px 30px #1a52451f,inset 0 1px 0 #f4ffff40 !important;
 }
@@ -53,6 +52,34 @@ html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero::before {
     background:radial-gradient(circle at 15% 10%,#b6eeee26,transparent 55%) !important;
 }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-star { color:#f2d69a !important; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles {
+    position:relative;
+    display:inline-block;
+    transform-origin:center;
+    text-shadow:0 0 10px #ffe8a880;
+    animation:christmas-title-sparkle 3.6s ease-in-out infinite;
+    pointer-events:none;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::before,
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after {
+    content:"✦";
+    position:absolute;
+    color:#fff8d8;
+    font:700 12px/1 system-ui,sans-serif;
+    text-shadow:0 0 6px #ffe5a7;
+    pointer-events:none;
+    animation:christmas-title-glint 3.2s ease-in-out infinite;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::before { top:0; right:-3px; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after { bottom:0; left:-3px; animation-delay:-1.6s; font-size:9px; }
+@keyframes christmas-title-sparkle {
+    0%,100% { opacity:.78; transform:scale(1); }
+    50% { opacity:1; transform:scale(1.12); }
+}
+@keyframes christmas-title-glint {
+    0%,25%,75%,100% { opacity:0; transform:scale(.45); }
+    50% { opacity:1; transform:scale(1); }
+}
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-kicker-dot { background:#f0d09c !important; box-shadow:0 0 0 5px #f0d09c20 !important; }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-book {
     border:1px solid #ffffff96;
@@ -111,6 +138,11 @@ body.modal-open > .christmas-snow i { animation-play-state:paused; }
 @media(prefers-reduced-motion:reduce) {
     .christmas-snow { display:none; }
     .christmas-snow i { animation:none; }
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles,
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::before,
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after { animation:none; }
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::before,
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after { opacity:0; }
     html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
     html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { animation:none; opacity:.8; }
 }

@@ -55,7 +55,7 @@
 .site-theme-preview--halloween i:first-child { background:linear-gradient(90deg,#eb7d25,#f8ba5c); }
 .site-theme-preview--christmas { background:#e6f3f3; }
 .site-theme-preview--christmas i { background:#a8d6cf; }
-.site-theme-preview--christmas i:first-child { background:url('../images/christmas/lights.svg') top / 150px auto repeat-x,linear-gradient(90deg,#164a48,#26786a); }
+.site-theme-preview--christmas i:first-child { background:url('../images/christmas/lights.svg?v=20261105-sparkle-1') top / 150px auto repeat-x,linear-gradient(90deg,#164a48,#26786a); }
 .site-theme-current { margin:16px 0 0; color:#73687f; font-size:13px; }
 .site-theme-editor .alert { margin:14px 0 0; font-size:13px; }
 .site-theme-retry { border:0; padding:0 4px; background:transparent; color:inherit; text-decoration:underline; }

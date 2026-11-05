@@ -2,19 +2,42 @@
   <style>
     .window-lights { animation:warm-lights 4.6s ease-in-out infinite alternate; }
     .roof-lights { animation:warm-lights 3.8s ease-in-out -1.8s infinite alternate; }
-    .tree-star { animation:star-light 5s ease-in-out infinite alternate; transform-box:fill-box; transform-origin:center; }
-    .banner-snow { animation:local-snow 11s linear infinite; }
+    .tree-star { animation:star-light 3.6s ease-in-out infinite alternate; }
+    .star-glints { animation:star-glints 4.1s ease-in-out infinite; }
+    .tree-lights { animation:tree-lights 3.6s ease-in-out infinite alternate; }
+    .tree-lights-cool { animation-delay:-2s; }
+    .banner-snow { animation:local-snow 8s linear infinite; }
     @keyframes warm-lights { from {opacity:.55} to {opacity:1} }
-    @keyframes star-light { from {opacity:.65} to {opacity:1} }
+    @keyframes star-light { from {opacity:.72} to {opacity:1} }
+    @keyframes star-glints { 0%,20%,80%,100% {opacity:.1} 50% {opacity:1} }
+    @keyframes tree-lights { from {opacity:.35} to {opacity:1} }
     @keyframes local-snow { from {transform:translateY(-8px);opacity:.25} 35% {opacity:.7} to {transform:translateY(29px);opacity:.2} }
-    @media(prefers-reduced-motion:reduce) { .window-lights,.roof-lights,.tree-star,.banner-snow {animation:none} }
+    @media(prefers-reduced-motion:reduce) { .window-lights,.roof-lights,.tree-star,.star-glints,.tree-lights,.banner-snow {animation:none} }
   </style>
-  <defs><linearGradient id="snow" x2="0" y2="1"><stop stop-color="#f2fbff"/><stop offset="1" stop-color="#a9d3de"/></linearGradient><linearGradient id="fir" x2="1" y2="1"><stop stop-color="#458e7b"/><stop offset="1" stop-color="#143d40"/></linearGradient><g id="tree"><path d="M0-83-28-39h15L-39-4h26L-47 24h94L13-4h26L13-39h15Z" fill="url(#fir)"/><path d="m0-83-17 27 17-6 17 6Zm-20 55-13 18 21-6 12 4 12-4 21 6-13-18-20 8Z" fill="#dcf3f6"/><path d="M-5 24H5V42H-5Z" fill="#63524d"/></g></defs>
+  <defs>
+    <linearGradient id="snow" x2="0" y2="1"><stop stop-color="#f2fbff"/><stop offset="1" stop-color="#a9d3de"/></linearGradient>
+    <linearGradient id="fir" x2="1" y2="1"><stop stop-color="#458e7b"/><stop offset="1" stop-color="#143d40"/></linearGradient>
+    <g id="bulb"><circle r="5" fill="currentColor" opacity=".16"/><circle r="2.2" fill="currentColor"/><circle cx="-.5" cy="-.6" r=".7" fill="#fffbe9"/></g>
+    <g id="bauble"><path d="M0-8v4" stroke="#f5d99a" stroke-width=".9"/><rect x="-1.4" y="-4.5" width="2.8" height="2" rx=".5" fill="#e6c48d"/><circle r="3.8" fill="currentColor" stroke="#ffe7b1" stroke-width=".65"/><circle cx="-1.1" cy="-1.2" r="1" fill="#fff" opacity=".65"/></g>
+    <g id="tree">
+      <path d="M0-83-28-39h15L-39-4h26L-47 24h94L13-4h26L13-39h15Z" fill="url(#fir)"/>
+      <path d="m0-83-17 27 17-6 17 6Zm-20 55-13 18 21-6 12 4 12-4 21 6-13-18-20 8Z" fill="#dcf3f6"/>
+      <path d="M-5 24H5V42H-5Z" fill="#63524d"/>
+      <path d="M-15-43q15 13 30 0M-25-14q25 18 50 0M-34 11q34 18 68 0" fill="none" stroke="#f2d28d" stroke-width="1.1" opacity=".85"/>
+      <g class="tree-lights" color="#ffe292"><use href="#bulb" x="-14" y="-42"/><use href="#bulb" x="13" y="-42"/><use href="#bulb" x="0" y="-5"/><use href="#bulb" x="-32" y="12"/><use href="#bulb" x="31" y="12"/></g>
+      <g class="tree-lights tree-lights-cool" color="#a5f6ef"><use href="#bulb" x="0" y="-36"/><use href="#bulb" x="-23" y="-13"/><use href="#bulb" x="23" y="-13"/><use href="#bulb" x="-12" y="22"/><use href="#bulb" x="13" y="22"/></g>
+      <g color="#f0738b"><use href="#bauble" x="-7" y="-47"/><use href="#bauble" x="18" y="3"/></g>
+      <g color="#f7cb71"><use href="#bauble" x="12" y="-22"/><use href="#bauble" x="-25" y="14"/></g>
+      <path d="M-12 8V-1c0-5-7-5-7 0" fill="none" stroke="#fff4dc" stroke-width="3" stroke-linecap="round"/>
+      <path d="m-14 4 4-2m-4-3 3-1m-6-2-2-2" fill="none" stroke="#ec7183" stroke-width="1.4"/>
+    </g>
+  </defs>
   <g fill="#d5f5ff" opacity=".75"><circle cx="90" cy="36" r="2"/><circle cx="200" cy="15" r="1.4"/><circle cx="300" cy="30" r="1.8"/><circle cx="424" cy="17" r="1.6"/><circle cx="157" cy="59" r="1.5"/><circle cx="382" cy="72" r="1.5"/><path d="m356 24 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z"/></g>
   <circle cx="263" cy="50" r="27" fill="#e6f6ee" opacity=".9"/><circle cx="274" cy="41" r="26" fill="#215b59"/>
   <path d="M70 209Q170 173 260 200T460 190V240H0Z" fill="#8dc5cf" opacity=".3"/>
   <use href="#tree" transform="translate(378 178) scale(1.15)"/><use href="#tree" transform="translate(429 177) scale(.75)"/><use href="#tree" transform="translate(161 170) scale(.75)"/>
-  <g class="tree-star"><circle cx="378" cy="77" r="21" fill="#f8d16c" opacity=".1"/><circle cx="378" cy="77" r="14" fill="#f8d16c" opacity=".15"/><path d="m378 63 4.2 9 9.8 1.4-7.1 6.8 1.7 9.7-8.6-4.6-8.6 4.6 1.7-9.7-7.1-6.8 9.8-1.4Z" fill="#ffe4a1" stroke="#fff6d5" stroke-width=".9"/><path d="m378 68 2.4 8 6.6 1-6 2.6-3 6.5-.7-6.8-4.3-3.3 4.7.2Z" fill="#fff9d8" opacity=".8"/></g>
+  <g class="tree-star"><circle cx="378" cy="77" r="23" fill="#f8d16c" opacity=".16"/><circle cx="378" cy="77" r="15" fill="#ffe4a1" opacity=".25"/><path d="m378 63 4.2 9 9.8 1.4-7.1 6.8 1.7 9.7-8.6-4.6-8.6 4.6 1.7-9.7-7.1-6.8 9.8-1.4Z" fill="#ffe4a1" stroke="#fff6d5" stroke-width=".9"/><path d="m378 68 2.4 8 6.6 1-6 2.6-3 6.5-.7-6.8-4.3-3.3 4.7.2Z" fill="#fff9d8" opacity=".9"/></g>
+  <g class="star-glints" fill="#fff8d8"><path d="m358 61 1.4 4.6 4.6 1.4-4.6 1.4-1.4 4.6-1.4-4.6-4.6-1.4 4.6-1.4Z"/><path d="m397 85 1 3.4 3.4 1-3.4 1-1 3.4-1-3.4-3.4-1 3.4-1Z"/></g>
   <path d="M213 136h89v74h-89Z" fill="#c16466"/><path d="m200 137 59-51 58 51Z" fill="#e5f5f6"/><path d="m212 135 47-40 46 40Z" fill="#7a3d47"/><path d="M282 99V79h13v32" fill="#a45757"/><path d="M279 77h19v7h-19Z" fill="#e4f5f8"/>
   <g class="window-lights"><ellipse cx="259" cy="183" rx="59" ry="35" fill="#ffd995" opacity=".1"/><g fill="#ffe6a3" stroke="#a45a57" stroke-width="3"><path d="M227 153h20v23h-20Zm42 0h20v23h-20Z"/><path d="M252 183h16v27h-16Z"/></g></g><path d="M237 154v21m-10-10h20m32-11v21m-10-10h20" stroke="#87525a" stroke-width="2"/>
   <path d="m207 136 52-44 52 44" fill="none" stroke="#dbc58a" stroke-width="1.3"/>
