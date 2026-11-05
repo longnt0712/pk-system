@@ -44,7 +44,11 @@ async function open(browser, {width = 390, mode = 'lookup', station = {name: 'N�
             state.options.push(saved);
             return json(saved);
         }
-        if (pathname === '/service/api/fairs/7/items/1/photo') return route.fulfill({contentType: 'image/png', body: photo});
+        if (pathname === '/service/api/fairs/7/items/1/photo') {
+            return state.badPhotoResponse
+                ? route.fulfill({contentType: 'image/jpeg', body: JSON.stringify(photo.toString('base64'))})
+                : route.fulfill({contentType: 'image/png', body: photo});
+        }
         if (pathname === '/service/api/fairs/7/items' || pathname === '/service/api/fairs/7/items/1') {
             if (request.method() === 'GET') return json(state.items);
             if (request.method() === 'DELETE') {
@@ -114,11 +118,27 @@ test('education management can configure categories and edit fair items with pho
         await page.getByText('Phụ kiện', {exact: true}).waitFor();
         await click('Thêm mặt hàng');
         const editRow = page.locator('.fair-inventory-table tbody tr.is-editing');
+        const price = editRow.getByLabel('Đơn giá (đ)', {exact: true});
         await editRow.getByLabel('Tên mặt hàng', {exact: true}).fill('Móc khóa');
-        await editRow.getByLabel('Đơn giá (đ)').fill('12000');
+        await price.fill('1000000');
+        assert.equal(await price.inputValue(), '1,000,000');
+        await price.press('End');
+        await price.press('Backspace');
+        assert.equal(await price.inputValue(), '100,000');
         await editRow.getByLabel('Số lượng', {exact: true}).fill('3');
         await editRow.getByLabel('Thể loại', {exact: true}).selectOption({label: 'Phụ kiện'});
         await editRow.getByLabel('Mức độ', {exact: true}).selectOption({label: 'Dễ'});
+        await price.fill('1,000,000,001');
+        assert.equal(await editRow.getByRole('button', {name: 'Lưu mặt hàng'}).isDisabled(), true);
+        await price.fill('12.34');
+        assert.equal(await editRow.getByRole('button', {name: 'Lưu mặt hàng'}).isDisabled(), true);
+        await price.fill('12.000');
+        assert.equal(await price.inputValue(), '12,000');
+        await price.evaluate(input => input.setSelectionRange(3, 3));
+        await price.press('Backspace');
+        assert.equal(await price.inputValue(), '12,000');
+        assert.equal(await price.evaluate(input => input.selectionStart), 2);
+        await editRow.getByText('36,000 đ', {exact: true}).waitFor();
         const drop = await page.evaluateHandle(() => {
             const data = new DataTransfer();
             const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII='), char => char.charCodeAt(0));
@@ -129,17 +149,40 @@ test('education management can configure categories and edit fair items with pho
         await editRow.getByAltText('Ảnh vừa chọn').waitFor();
         await click('Lưu mặt hàng');
         const total = page.locator('.fair-inventory-table tfoot');
-        await total.getByText('36.000 đ', {exact: true}).waitFor();
+        await total.getByText('36,000 đ', {exact: true}).waitFor();
+        assert.equal(state.items[0].unitPrice, 12000);
         assert.equal(state.upload.name, 'moc-khoa.png');
         assert.equal(state.items[0].categoryId, 3);
+        const thumbnail = page.locator('.fair-item-thumbnail img[src]');
+        await thumbnail.evaluate(img => img.decode());
+        assert.equal(await thumbnail.evaluate(img => img.naturalWidth > 0), true);
         await click('Phóng to ảnh Móc khóa');
         const dialog = page.getByRole('dialog', {name: 'Móc khóa'});
-        await dialog.getByAltText('Móc khóa').waitFor();
-        await dialog.getByAltText('Móc khóa').evaluate(img => img.decode());
+        const image = dialog.getByAltText('Móc khóa');
+        await image.waitFor();
+        const bounds = await dialog.boundingBox(), viewport = page.viewportSize();
+        assert.ok(Math.abs(bounds.width - viewport.width) <= 1 && Math.abs(bounds.height - viewport.height) <= 1);
+        const fitted = await image.boundingBox();
+        await dialog.getByRole('button', {name: 'Phóng to ảnh', exact: true}).click();
+        await dialog.getByText('125%', {exact: true}).waitFor();
+        assert.ok((await image.boundingBox()).width > fitted.width);
+        await dialog.getByRole('button', {name: 'Thu nhỏ ảnh', exact: true}).click();
+        await dialog.getByText('100%', {exact: true}).waitFor();
+        await dialog.getByRole('button', {name: 'Thu nhỏ ảnh', exact: true}).click();
+        await dialog.getByText('75%', {exact: true}).waitFor();
+        await dialog.getByRole('button', {name: 'Vừa màn hình', exact: true}).click();
+        await dialog.getByText('100%', {exact: true}).waitFor();
         await page.keyboard.press('Escape');
         await dialog.waitFor({state: 'hidden'});
+        state.badPhotoResponse = true;
+        await click('Phóng to ảnh Móc khóa');
+        await dialog.getByRole('alert').filter({hasText: 'Không tải được ảnh'}).waitFor();
+        assert.equal(await image.count(), 0);
+        await dialog.getByRole('button', {name: 'Đóng ảnh', exact: true}).click();
+        state.badPhotoResponse = false;
         await click('Sửa mặt hàng Móc khóa');
         assert.equal(await editRow.locator('td').first().innerText(), '1');
+        assert.equal(await price.inputValue(), '12,000');
         await editRow.getByLabel('Số lượng', {exact: true}).fill('-1');
         assert.equal(await editRow.getByRole('button', {name: 'Lưu mặt hàng'}).isDisabled(), true);
         await editRow.getByRole('button', {name: 'Hủy', exact: true}).click();
@@ -148,7 +191,7 @@ test('education management can configure categories and edit fair items with pho
         await click('Sửa mặt hàng Móc khóa');
         await editRow.getByLabel('Số lượng', {exact: true}).fill('4');
         await click('Lưu mặt hàng');
-        await total.getByText('48.000 đ', {exact: true}).waitFor();
+        await total.getByText('48,000 đ', {exact: true}).waitFor();
         assert.equal(await total.locator('td').nth(1).innerText(), '4');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         page.once('dialog', confirm => confirm.accept());

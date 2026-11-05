@@ -81,7 +81,7 @@
                                 <td class="fair-inventory-number">
                                     <span ng-if="!inventory.isEditing(item)">{{inventory.price(item.unitPrice)}}</span>
                                     <input ng-if="inventory.isEditing(item)" class="fair-item-input fair-item-price-input" aria-label="Đơn giá (đ)"
-                                        type="number" inputmode="numeric" step="1" min="0" max="1000000000"
+                                        type="text" inputmode="numeric" fair-price-input
                                         ng-model="inventory.itemForm.unitPrice" required ng-disabled="inventory.busy">
                                 </td>
                                 <td class="fair-inventory-number">
@@ -146,10 +146,23 @@
     <dialog class="fair-photo-dialog" aria-labelledby="fair-photo-title">
         <header>
             <h3 id="fair-photo-title">{{inventory.preview.name}}</h3>
-            <button type="button" class="fair-button" ng-click="inventory.closePhoto()" autofocus>Đóng ảnh</button>
+            <div class="fair-photo-controls" role="group" aria-label="Thu phóng ảnh">
+                <button type="button" class="fair-button" ng-click="inventory.zoomPhoto(-25)"
+                    ng-disabled="!inventory.preview.image || inventory.preview.zoom <= 50" aria-label="Thu nhỏ ảnh" title="Thu nhỏ">−</button>
+                <output aria-live="polite">{{inventory.preview.zoom}}%</output>
+                <button type="button" class="fair-button" ng-click="inventory.zoomPhoto(25)"
+                    ng-disabled="!inventory.preview.image || inventory.preview.zoom >= 400" aria-label="Phóng to ảnh" title="Phóng to">+</button>
+                <button type="button" class="fair-button" ng-click="inventory.fitPhoto()" ng-disabled="!inventory.preview.image">Vừa màn hình</button>
+                <button type="button" class="fair-button" ng-click="inventory.closePhoto()" autofocus>Đóng ảnh</button>
+            </div>
         </header>
-        <p role="status" ng-if="inventory.preview.loading">Đang tải ảnh…</p>
-        <p role="alert" ng-if="inventory.preview.error">{{inventory.preview.error}}</p>
-        <img ng-if="inventory.preview.url" ng-src="{{inventory.preview.url}}" alt="{{inventory.preview.name}}">
+        <div class="fair-photo-viewport" role="region" aria-label="Ảnh mặt hàng" tabindex="0">
+            <p class="fair-photo-message" role="status" ng-if="inventory.preview.loading">Đang tải ảnh…</p>
+            <p class="fair-photo-message" role="alert" ng-if="inventory.preview.error">{{inventory.preview.error}}</p>
+            <div class="fair-photo-stage" ng-if="inventory.preview.image">
+                <img ng-src="{{inventory.preview.image.url}}" alt="{{inventory.preview.name}}"
+                    ng-style="{width: (inventory.preview.fitWidth * inventory.preview.zoom / 100) + 'px'}">
+            </div>
+        </div>
     </dialog>
 </section>

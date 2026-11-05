@@ -97,6 +97,7 @@ fair-inventory { display: block; }
     cursor: zoom-in;
 }
 .fair-item-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fair-item-thumbnail img:not([src]), .fair-photo-drop img:not([src]) { visibility: hidden; }
 .fair-item-thumbnail span { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 4px; background: #fff; color: var(--fair-ink); }
 .fair-inventory label.fair-photo-drop {
     position: relative;
@@ -130,19 +131,37 @@ fair-inventory { display: block; }
 }
 .fair-photo-drop img { width: 46px; height: 42px; border-radius: 4px; object-fit: contain; }
 .fair-photo-dialog {
-    width: max-content;
-    max-width: min(94vw, 980px);
-    max-height: 94vh;
-    padding: 14px;
-    border: 1px solid var(--fair-line);
-    border-radius: 15px;
-    background: #fff;
-    color: var(--fair-ink);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    background: #111e1a;
+    color: #fff;
 }
+.fair-photo-dialog[open] { display: flex; flex-direction: column; }
 .fair-photo-dialog::backdrop { background: rgba(17, 31, 27, .72); }
-.fair-photo-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
-.fair-photo-dialog h3 { margin: 0; overflow-wrap: anywhere; }
-.fair-photo-dialog img { display: block; margin: auto; max-width: 100%; max-height: 78vh; object-fit: contain; }
+.fair-photo-dialog header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 10px 12px;
+    padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+    background: #21332d;
+}
+.fair-photo-dialog h3 { flex: 1 1 140px; min-width: 0; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fair-photo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.fair-photo-controls output { min-width: 44px; text-align: center; color: inherit; font-variant-numeric: tabular-nums; }
+.fair-inventory .fair-photo-controls .fair-button { min-height: 38px; min-width: 36px; padding: 6px 9px; font-size: 13px; }
+.fair-photo-viewport { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.fair-photo-stage { display: grid; place-items: center; width: max-content; min-width: 100%; min-height: 100%; padding: 12px; }
+.fair-photo-stage img { display: block; max-width: none; height: auto; }
+.fair-photo-dialog .fair-photo-message { margin: 24px; text-align: center; }
 @media (max-width: 520px) {
     .fair-inventory-option-groups { grid-template-columns: 1fr; }
 }

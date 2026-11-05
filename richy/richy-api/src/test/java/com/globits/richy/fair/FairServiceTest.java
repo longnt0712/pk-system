@@ -13,12 +13,18 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.globits.core.domain.Person;
 import com.globits.security.domain.*;
 import com.globits.security.repository.UserRepository;
 import com.globits.richy.domain.*;
 import com.globits.richy.dto.FairDto;
 import com.globits.richy.dto.FairItemRow;
+import com.globits.richy.rest.RestFairInventoryController;
 import com.globits.richy.service.impl.FairInventoryService;
 import com.globits.richy.service.impl.FairService;
 
@@ -105,6 +111,19 @@ public class FairServiceTest {
         assertEquals(12000L, inventory("ROLE_ADMIN", service -> service.items(event).get(0)).unitPrice);
         byte[] saved = inventory("ROLE_ADMIN", service -> service.photo(event, first.id));
         assertEquals(4, javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(saved)).getWidth());
+        MvcResult photoResponse = inventory("ROLE_EDUCATION_MANAGEMENT", service -> {
+            try {
+                return MockMvcBuilders.standaloneSetup(new RestFairInventoryController(service))
+                    .setMessageConverters(new StringHttpMessageConverter(), new MappingJackson2HttpMessageConverter())
+                    .build().perform(MockMvcRequestBuilders.get("/api/fairs/" + event + "/items/" + first.id + "/photo"))
+                    .andReturn();
+            } catch (Exception error) {
+                throw new AssertionError(error);
+            }
+        });
+        assertEquals(200, photoResponse.getResponse().getStatus());
+        assertEquals("image/jpeg", photoResponse.getResponse().getContentType());
+        assertArrayEquals(saved, photoResponse.getResponse().getContentAsByteArray());
         assertFalse(run("teacher", "ROLE_EDUCATION_MANAGEMENT", service -> service.management()).canManageFair);
         assertTrue(run("admin", "ROLE_ADMIN", service -> service.management()).canManageFair);
         forbidden(() -> run("gift", "ROLE_GIFT", service -> service.management()));
