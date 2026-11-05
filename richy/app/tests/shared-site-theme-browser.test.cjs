@@ -215,6 +215,10 @@ test('admin selects multiple School IDs and other domains update independently w
         const dialog=await choose(admin.page,'CHRISTMAS');
         await dialog.locator('.site-theme-school-list label').first().waitFor();
         const schools=dialog.locator('.site-theme-school-list label');
+        for(const item of await dialog.locator('.modal-header h2,.modal-header p').all()) {
+            const colors=await item.evaluate(node=>({text:getComputedStyle(node).color,background:getComputedStyle(node.closest('.modal-header')).backgroundColor}));
+            assert.ok(contrast(colors.text,colors.background)>=4.5,'dialog headings stay readable with dark preference');
+        }
         for(const item of await dialog.locator('.site-theme-school-list strong,.site-theme-school-list small,.site-theme-option strong').all()) {
             const color=await item.evaluate(node=>getComputedStyle(node).color);
             assert.ok(contrast(color,'rgb(255,255,255)')>=4.5,'school and theme labels stay readable with dark preference');

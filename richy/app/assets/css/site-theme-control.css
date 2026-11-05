@@ -13,6 +13,11 @@
 .site-theme-editor .modal-header,.site-theme-editor .modal-footer { flex:0 0 auto; color:#2b2543 !important; background:#fff !important; }
 .site-theme-editor .modal-body { flex:1 1 auto; min-height:0; overflow:auto; color:#2b2543 !important; background:#fff !important; }
 .site-theme-editor .site-theme-option,.site-theme-editor .site-theme-option strong,.site-theme-editor .site-theme-school-list label,.site-theme-editor .site-theme-schools legend { color:#342b46 !important; }
+.site-theme-dialog.site-theme-dialog.site-theme-dialog .modal-content,
+.site-theme-dialog.site-theme-dialog .site-theme-editor .modal-header,
+.site-theme-dialog.site-theme-dialog .site-theme-editor .modal-body,
+.site-theme-dialog.site-theme-dialog .site-theme-editor .modal-footer { color:#2b2543 !important; background:#fff !important; }
+.site-theme-dialog.site-theme-dialog .site-theme-editor .modal-header h2 { color:#2b2543 !important; }
 .site-theme-editor .modal-header { position:relative; padding:24px 28px 18px; border-bottom:1px solid #eee8f8; }
 .site-theme-kicker { color:#7963a2; font:800 11px system-ui,sans-serif; letter-spacing:2px; }
 .site-theme-editor h2 { margin:7px 0; font-size:24px; font-weight:800; color:inherit; }
