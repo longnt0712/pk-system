@@ -4,8 +4,9 @@
     angular.module('Hrm').factory('SiteTheme', ['$http', '$q', '$window', '$rootScope', 'settings',
         function ($http, $q, $window, $rootScope, settings) {
             var document = $window.document;
-            var allowed = /^(www\.)?ieltsroom\.com$/i.test($window.location.hostname || '');
-            var state = {theme: 'NORMAL', loaded: false, loading: false, saving: false, error: '', readError: ''};
+            var hostname = String($window.location.hostname || '').toLowerCase().replace(/^www\./, '').replace(/\.$/, '');
+            var allowed = hostname === 'ieltsroom.com';
+            var state = {theme: 'NORMAL', schoolId: null, domain: hostname, loaded: false, loading: false, saving: false, error: '', readError: ''};
             var started = false, timer = null, reading = null, writing = null, revision = 0, snow = null, routeListener = null;
             settings.siteThemeEnabled = allowed;
 
@@ -52,14 +53,30 @@
                 if (!valid(theme)) { throw new Error('Invalid site theme response'); }
                 return theme;
             }
+            function currentRequest() {
+                return $http.get(url('public/site-theme'), angular.extend(options(), {params:{domain:hostname}})).catch(function (error) {
+                    if (error.status !== 404 || hostname !== 'ieltsroom.com') { return $q.reject(error); }
+                    return $http.get(url('public/site-theme/ieltsroom'), options()).then(function (response) {
+                        response.data.configured = true; response.data.legacy = true;
+                        response.data.domain = hostname; response.data.name = 'IELTS Room';
+                        return response;
+                    });
+                });
+            }
             function refresh() {
-                if (!allowed || !started || state.saving) { return $q.when(state); }
+                if (!started || state.saving) { return $q.when(state); }
                 if (reading) { return reading; }
                 var requestRevision = revision;
                 state.loading = !state.loaded;
-                var request = $http.get(url('public/site-theme/ieltsroom'), options()).then(function (response) {
+                var request = currentRequest().then(function (response) {
                     var theme = responseTheme(response);
                     if (started && revision === requestRevision) {
+                        allowed = response.data.configured === true;
+                        settings.siteThemeEnabled = allowed;
+                        state.schoolId = response.data.schoolId || null;
+                        state.domain = response.data.domain || hostname;
+                        state.name = response.data.name || state.domain;
+                        state.legacy = response.data.legacy === true;
                         apply(theme);
                         state.loaded = true;
                         state.readError = '';
@@ -77,6 +94,7 @@
                 return request;
             }
             function save(theme) {
+                if (state.schoolId) { return saveSchools(theme, [state.schoolId]); }
                 if (!allowed || settings.isAdmin !== true) { return $q.reject(new Error('Chỉ admin IELTS Room được đổi giao diện.')); }
                 if (!valid(theme)) { return $q.reject(new Error('Giao diện không hợp lệ.')); }
                 if (writing) { return writing; }
@@ -100,12 +118,38 @@
                 }).finally(function () { state.saving = false; writing = null; });
                 return writing;
             }
+            function schools() {
+                if (settings.isAdmin !== true) { return $q.reject(new Error('Chỉ admin được chọn trường.')); }
+                if (state.legacy) { return $q.when([]); }
+                return $http.get(url('api/site-theme/schools'), options()).then(function (response) { return response.data; });
+            }
+            function saveSchools(theme, schoolIds) {
+                if (settings.isAdmin !== true || !allowed) { return $q.reject(new Error('Chỉ admin được cấu hình giao diện.')); }
+                if (!valid(theme) || !schoolIds || !schoolIds.length) { return $q.reject(new Error('Chọn trường và giao diện.')); }
+                if (writing) { return writing; }
+                revision += 1;
+                var requestRevision = revision;
+                state.saving = true; state.error = '';
+                writing = $http.put(url('api/site-theme/schools'), {theme:theme,schoolIds:schoolIds}, options()).then(function (response) {
+                    if (started && revision === requestRevision) {
+                        angular.forEach(response.data, function (row) {
+                            if (row.schoolId === state.schoolId && valid(row.theme)) { apply(row.theme); }
+                        });
+                        state.loaded = true; state.readError = '';
+                    }
+                    return response.data;
+                }).catch(function (error) {
+                    state.error = error && error.data && error.data.message || 'Chưa lưu được giao diện cho các trường đã chọn. Vui lòng thử lại.';
+                    return $q.reject(error);
+                }).finally(function () { state.saving = false; writing = null; });
+                return writing;
+            }
             function refreshVisible() {
                 pauseSnow();
                 if (!document.hidden) { $rootScope.$evalAsync(function () { refresh(); }); }
             }
             function start() {
-                if (started || !allowed) { if (!allowed) { apply('NORMAL'); } return; }
+                if (started) { return; }
                 started = true;
                 refresh();
                 timer = $window.setInterval(refreshVisible, 15000);
@@ -126,12 +170,12 @@
                 if (routeListener) { routeListener(); routeListener = null; }
                 apply('NORMAL');
             }
-            return {state: state, enabled: function () { return allowed; }, start: start, stop: stop, refresh: refresh, save: save};
+            return {state: state, enabled: function () { return allowed; }, start: start, stop: stop, refresh: refresh, save: save, schools: schools, saveSchools: saveSchools};
         }
     ]).directive('siteThemeControl', ['SiteTheme', '$uibModal', 'settings', function (siteTheme, modal, settings) {
         return {
             restrict: 'E',
-            template: '<button type="button" class="site-theme-open" ng-if="canChooseTheme()" ng-click="openSiteTheme()" aria-label="Chọn giao diện cho IELTS Room" title="Giao diện dùng chung cho IELTS Room"><i class="fa fa-paint-brush" aria-hidden="true"></i><span>Giao diện</span></button>',
+            template: '<button type="button" class="site-theme-open" ng-if="canChooseTheme()" ng-click="openSiteTheme()" aria-label="Chọn giao diện theo trường" title="Giao diện dùng chung theo trường"><i class="fa fa-paint-brush" aria-hidden="true"></i><span>Giao diện</span></button>',
             scope: true,
             link: function (scope) {
                 var dialog = null;
@@ -145,25 +189,38 @@
                         backdrop: 'static',
                         size: 'md',
                         template: '<div class="site-theme-editor">' +
-                            '<div class="modal-header"><button type="button" class="site-theme-close" ng-click="themeEditor.cancel()" aria-label="Đóng" ng-disabled="themeEditor.state.saving">×</button><span class="site-theme-kicker">IELTS ROOM</span><h2 id="site-theme-title">Giao diện IELTS Room</h2><p>Chọn giao diện dùng chung cho tất cả mọi người.</p></div>' +
-                            '<div class="modal-body"><div class="site-theme-options" role="radiogroup" aria-label="Giao diện dùng chung">' +
+                            '<div class="modal-header"><button type="button" class="site-theme-close" ng-click="themeEditor.cancel()" aria-label="Đóng" ng-disabled="themeEditor.state.saving">×</button><span class="site-theme-kicker">GIAO DIỆN DÙNG CHUNG</span><h2 id="site-theme-title">Giao diện theo trường</h2><p>Chọn một hoặc nhiều trường, rồi chọn giao diện áp dụng cho người dùng của các trường đó.</p></div>' +
+                            '<div class="modal-body"><fieldset class="site-theme-schools" ng-if="!themeEditor.state.legacy"><legend>Trường áp dụng</legend><div class="site-theme-school-actions"><button type="button" ng-click="themeEditor.selectAll(true)" ng-disabled="themeEditor.state.saving">Chọn tất cả</button><button type="button" ng-click="themeEditor.selectAll(false)" ng-disabled="themeEditor.state.saving">Bỏ chọn</button></div><div class="site-theme-school-list"><label ng-repeat="school in themeEditor.schools track by school.schoolId"><input type="checkbox" ng-model="school.selected" ng-disabled="themeEditor.state.saving"><span><strong>{{school.name}} · #{{school.schoolId}}</strong><small>{{school.domain}}</small></span><em>{{school.theme === "CHRISTMAS" ? "Christmas" : school.theme === "HALLOWEEN" ? "Halloween" : "Normal"}}</em></label></div><p ng-if="themeEditor.schoolsLoaded && !themeEditor.schools.length">Chưa có trường đang hoạt động. Thêm trường trong Quản lý School trước khi áp dụng giao diện.</p><p role="alert" ng-if="themeEditor.schoolError">{{themeEditor.schoolError}} <button type="button" ng-click="themeEditor.loadSchools()">Thử lại</button></p></fieldset><div class="site-theme-options" role="radiogroup" aria-label="Giao diện dùng chung">' +
                             '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'NORMAL\'}"><input type="radio" name="siteThemeChoice" value="NORMAL" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--normal" aria-hidden="true"><i></i><i></i><i></i></span><strong>Normal</strong><span>Giao diện quen thuộc</span></label>' +
                             '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'HALLOWEEN\'}"><input type="radio" name="siteThemeChoice" value="HALLOWEEN" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--halloween" aria-hidden="true"><i></i><i></i><i></i></span><strong>Halloween</strong><span>Sắc cam bí ngô và tím đêm</span></label>' +
                             '<label class="site-theme-option" ng-class="{\'is-selected\':themeEditor.selection===\'CHRISTMAS\'}"><input type="radio" name="siteThemeChoice" value="CHRISTMAS" ng-model="themeEditor.selection" ng-change="themeEditor.edited=true" ng-disabled="themeEditor.state.saving"><span class="site-theme-preview site-theme-preview--christmas" aria-hidden="true"><i></i><i></i><i></i></span><strong>Christmas</strong><span>Đèn Noel và tuyết pha lê nhẹ</span></label></div>' +
-                            '<p class="site-theme-current" ng-if="themeEditor.state.loaded">Đang áp dụng: <strong>{{themeEditor.state.theme === "CHRISTMAS" ? "Christmas" : themeEditor.state.theme === "HALLOWEEN" ? "Halloween" : "Normal"}}</strong></p>' +
+                            '<p class="site-theme-current" ng-if="themeEditor.state.loaded">Trang hiện tại ({{themeEditor.state.domain}}): <strong>{{themeEditor.state.theme === "CHRISTMAS" ? "Christmas" : themeEditor.state.theme === "HALLOWEEN" ? "Halloween" : "Normal"}}</strong></p>' +
                             '<p role="status" ng-if="themeEditor.state.loading">Đang tải giao diện…</p>' +
                             '<div class="alert alert-danger" role="alert" ng-if="themeEditor.state.error">{{themeEditor.state.error}} <button type="button" class="site-theme-retry" ng-click="themeEditor.retry()" ng-disabled="themeEditor.state.loading || themeEditor.state.saving">Tải lại lựa chọn</button></div>' +
                             '<div class="alert alert-warning" role="alert" ng-if="themeEditor.state.readError">{{themeEditor.state.readError}} <button type="button" class="site-theme-retry" ng-click="themeEditor.retry()" ng-disabled="themeEditor.state.loading || themeEditor.state.saving">Thử lại</button></div></div>' +
-                            '<div class="modal-footer"><button type="button" class="btn btn-default" ng-click="themeEditor.cancel()" ng-disabled="themeEditor.state.saving">Hủy</button><button type="button" class="btn btn-primary site-theme-save" ng-click="themeEditor.save()" ng-disabled="!themeEditor.state.loaded || themeEditor.state.saving"><i class="fa fa-spinner fa-spin" ng-if="themeEditor.state.saving" aria-hidden="true"></i>{{themeEditor.state.saving ? "Đang lưu…" : "Lưu áp dụng"}}</button></div></div>',
+                            '<div class="modal-footer"><button type="button" class="btn btn-default" ng-click="themeEditor.cancel()" ng-disabled="themeEditor.state.saving">Hủy</button><button type="button" class="btn btn-primary site-theme-save" ng-click="themeEditor.save()" ng-disabled="!themeEditor.state.loaded || themeEditor.state.saving || !themeEditor.hasSelection()"><i class="fa fa-spinner fa-spin" ng-if="themeEditor.state.saving" aria-hidden="true"></i>{{themeEditor.state.saving ? "Đang lưu…" : "Lưu áp dụng"}}</button></div></div>',
                         controllerAs: 'themeEditor',
                         controller: ['$uibModalInstance', '$scope', function (instance, editorScope) {
                             var editor = this;
                             editor.state = siteTheme.state;
                             editor.selection = siteTheme.state.theme;
+                            editor.schools = []; editor.schoolsLoaded = false;
+                            editor.hasSelection = function () { return editor.state.legacy || editor.schools.some(function (school) { return school.selected; }); };
+                            editor.selectAll = function (selected) { angular.forEach(editor.schools, function (school) { school.selected = selected; }); };
+                            editor.loadSchools = function () {
+                                editor.schoolError = ''; editor.schoolsLoaded = false;
+                                siteTheme.schools().then(function (rows) {
+                                    editor.schools = rows.map(function (row) { return angular.extend({}, row, {selected:row.schoolId === editor.state.schoolId}); });
+                                    editor.schoolsLoaded = true;
+                                }, function () { editor.schoolError = 'Chưa tải được danh sách trường.'; });
+                            };
                             editor.cancel = function () { if (!editor.state.saving) { instance.dismiss('cancel'); } };
-                            editor.retry = function () { editor.edited = false; siteTheme.refresh().then(function () { if (!editor.edited) { editor.selection = editor.state.theme; } if (!editor.state.readError) { editor.state.error = ""; } }); };
+                            editor.retry = function () { editor.edited = false; siteTheme.refresh().then(function () { if (!editor.edited) { editor.selection = editor.state.theme; } if (!editor.state.readError) { editor.state.error = ""; } if (!editor.schoolsLoaded) { editor.loadSchools(); } }); };
                             editor.save = function () {
-                                siteTheme.save(editor.selection).then(function () { instance.close(); }, angular.noop);
+                                if (!editor.hasSelection()) { return; }
+                                var work = editor.state.legacy ? siteTheme.save(editor.selection) : siteTheme.saveSchools(editor.selection,
+                                    editor.schools.filter(function (school) { return school.selected; }).map(function (school) { return school.schoolId; }));
+                                work.then(function () { instance.close(); }, angular.noop);
                             };
                             editorScope.$on('modal.closing', function (event) {
                                 if (editor.state.saving) { event.preventDefault(); }

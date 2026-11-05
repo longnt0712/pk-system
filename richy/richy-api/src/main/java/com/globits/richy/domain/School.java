@@ -10,6 +10,7 @@ public class School extends BaseObject {
     @Column(name = "domain", nullable = false, length = 253) private String domain;
     @Column(name = "active", nullable = false) private boolean active = true;
     @Column(name = "show_attendance", nullable = false) private boolean showAttendance = true;
+    @Column(name = "site_theme", length = 16) private String siteTheme;
     public String getName() { return name; }
     public void setName(String value) { name = value; }
     public String getDomain() { return domain; }
@@ -18,4 +19,6 @@ public class School extends BaseObject {
     public void setActive(boolean value) { active = value; }
     public boolean isShowAttendance() { return showAttendance; }
     public void setShowAttendance(boolean value) { showAttendance = value; }
+    public String getSiteTheme() { return siteTheme; }
+    public void setSiteTheme(String value) { siteTheme = value; }
 }

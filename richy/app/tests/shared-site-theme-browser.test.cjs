@@ -31,26 +31,39 @@ async function open(shared, options = {}) {
     const errors = [], calls = [];
     page.on('pageerror', error => errors.push(error.stack));
     const hostname = options.hostname || 'ieltsroom.com';
+    const schoolRows = () => (shared.schools || [
+        {schoolId:1,name:'IELTS Room',domain:'ieltsroom.com'},
+        {schoolId:2,name:'TNTT Phùng Khoang',domain:'tnttphungkhoang.com'},
+        {schoolId:3,name:'New school',domain:'academy.example'}
+    ]).map(row=>({...row,configured:true,theme:row.schoolId===1?shared.theme:(shared.schoolThemes||{})[row.schoolId]||'NORMAL'}));
     await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
-        if (url.pathname === '/service/public/site-theme/ieltsroom') {
+        if (url.pathname === '/service/public/site-theme' || url.pathname === '/service/public/site-theme/ieltsroom') {
             calls.push({method:request.method(), path:url.pathname});
+            if (shared.legacy && url.pathname === '/service/public/site-theme') return route.fulfill({status:404,json:{}});
+            const domain=(url.searchParams.get('domain')||'ieltsroom.com').replace(/^www\./,'');
+            const payload=url.pathname.endsWith('/ieltsroom')?{theme:shared.theme}:schoolRows().find(row=>row.domain===domain)||{theme:'NORMAL',domain,configured:false};
             if (shared.holdRead) {
-                const theme = shared.theme;
                 return new Promise(resolve => {
                     shared.pendingReads = shared.pendingReads || [];
-                    shared.pendingReads.push(async () => { await route.fulfill({json:{theme}}); resolve(); });
+                    shared.pendingReads.push(async () => { await route.fulfill({json:payload}); resolve(); });
                 });
             }
-            return route.fulfill({status:shared.readFailure ? 503 : 200, json:shared.readFailure ? {message:'Offline'} : {theme:shared.theme}});
+            return route.fulfill({status:shared.readFailure ? 503 : 200, json:shared.readFailure ? {message:'Offline'} : payload});
         }
-        if (url.pathname === '/service/api/site-theme/ieltsroom') {
+        if (url.pathname === '/service/api/site-theme/schools' && request.method()==='GET') {
+            return route.fulfill({json:schoolRows()});
+        }
+        if (url.pathname === '/service/api/site-theme/ieltsroom' || url.pathname === '/service/api/site-theme/schools') {
             calls.push({method:request.method(), path:url.pathname, body:request.postDataJSON()});
             const reply = () => {
                 if (!options.admin) return route.fulfill({status:403, json:{message:'Forbidden'}});
                 if (shared.saveFailure) return route.fulfill({status:503, json:{message:'Không lưu được giao diện.'}});
-                shared.theme = request.postDataJSON().theme;
-                return route.fulfill({json:{theme:shared.theme}});
+                const payload=request.postDataJSON();
+                const ids=payload.schoolIds||[1];
+                shared.schoolThemes=shared.schoolThemes||{};
+                for(const id of ids) { if(id===1)shared.theme=payload.theme;else shared.schoolThemes[id]=payload.theme; }
+                return route.fulfill({json:url.pathname.endsWith('/schools')?schoolRows().filter(row=>ids.includes(row.schoolId)):{theme:shared.theme}});
             };
             if (shared.holdSave) return new Promise(resolve => {
                 shared.pendingSaves = shared.pendingSaves || [];
@@ -192,6 +205,63 @@ test('Christmas is an opt-in shared admin choice and switching off restores Norm
     } finally { for (const fixture of [admin,guest,learner]) await fixture.context.close(); }
 });
 
+test('admin selects multiple School IDs and other domains update independently without changing the current school',async()=>{
+    const shared={theme:'NORMAL'};
+    const admin=await open(shared,{admin:true,dark:true,viewport:{width:820,height:1180}});
+    const chapter=await open(shared,{hostname:'tnttphungkhoang.com',guest:true});
+    const third=await open(shared,{hostname:'academy.example'});
+    try {
+        for(const fixture of [admin,chapter,third])await loaded(fixture.page);
+        const dialog=await choose(admin.page,'CHRISTMAS');
+        await dialog.locator('.site-theme-school-list label').first().waitFor();
+        const schools=dialog.locator('.site-theme-school-list label');
+        for(const item of await dialog.locator('.site-theme-school-list strong,.site-theme-school-list small,.site-theme-option strong').all()) {
+            const color=await item.evaluate(node=>getComputedStyle(node).color);
+            assert.ok(contrast(color,'rgb(255,255,255)')>=4.5,'school and theme labels stay readable with dark preference');
+        }
+        await schools.filter({hasText:'IELTS Room'}).getByRole('checkbox').uncheck();
+        await schools.filter({hasText:'TNTT Phùng Khoang'}).getByRole('checkbox').check();
+        await schools.filter({hasText:'New school'}).getByRole('checkbox').check();
+        assert.equal(await admin.page.locator('.christmas-snow').count(),0,'checkboxes are a draft');
+        await dialog.getByRole('button',{name:'Lưu áp dụng',exact:true}).click();
+        await admin.page.waitForFunction(()=>!siteTheme.state.saving);
+        const saved=admin.calls.filter(call=>call.method==='PUT').at(-1).body;
+        assert.deepEqual(saved,{theme:'CHRISTMAS',schoolIds:[2,3]});
+        assert.equal(shared.theme,'NORMAL');
+        assert.equal(await admin.page.locator('.christmas-snow').count(),0,'unselected current school remains Normal');
+        for(const fixture of [chapter,third]) {
+            await poll(fixture.page);await fixture.page.waitForFunction(()=>siteTheme.state.theme==='CHRISTMAS');
+            assert.equal(await fixture.page.locator('.christmas-snow').count(),1);
+        }
+        await admin.page.locator('.site-theme-open').click();
+        await admin.page.getByRole('button',{name:'Bỏ chọn',exact:true}).click();
+        assert.equal(await admin.page.getByRole('button',{name:'Lưu áp dụng',exact:true}).isEnabled(),false,'empty scope cannot save');
+        if(process.env.SITE_THEME_SCREENSHOT_DIR)await admin.page.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'christmas-school-config.png')});
+        await admin.page.getByRole('button',{name:'Hủy',exact:true}).click();
+        const off=await choose(admin.page,'NORMAL');
+        await off.getByRole('button',{name:'Chọn tất cả',exact:true}).click();
+        await off.getByRole('button',{name:'Lưu áp dụng',exact:true}).click();
+        await admin.page.waitForFunction(()=>!siteTheme.state.saving);
+        for(const fixture of [chapter,third]){await poll(fixture.page);await fixture.page.waitForFunction(()=>siteTheme.state.theme==='NORMAL');assert.equal(await fixture.page.locator('.christmas-snow').count(),0);}
+        for(const fixture of [admin,chapter,third])assert.deepEqual(fixture.errors,[]);
+    } finally{for(const fixture of [admin,chapter,third])await fixture.context.close();}
+});
+
+test('a rolling backend deployment keeps the older IELTS endpoint usable',async()=>{
+    const shared={theme:'NORMAL',legacy:true};
+    const fixture=await open(shared,{admin:true});
+    try {
+        await loaded(fixture.page);
+        assert.equal(await fixture.page.evaluate(()=>siteTheme.state.legacy),true);
+        const dialog=await choose(fixture.page,'CHRISTMAS');
+        await dialog.getByRole('button',{name:'Lưu áp dụng',exact:true}).click();
+        await fixture.page.waitForFunction(()=>siteTheme.state.theme==='CHRISTMAS'&&!siteTheme.state.saving);
+        assert.equal(shared.theme,'CHRISTMAS');
+        assert.equal(fixture.calls.filter(call=>call.method==='PUT').at(-1).path,'/service/api/site-theme/ieltsroom');
+        assert.deepEqual(fixture.errors,[]);
+    }finally{await fixture.context.close();}
+});
+
 test('Christmas decorations stay light, non-interactive and bounded on phones, iPad and desktop', async () => {
     for (const guest of [false,true]) {
         const shared = {theme:'CHRISTMAS'};
@@ -257,11 +327,11 @@ test('Christmas decorations stay light, non-interactive and bounded on phones, i
             assert.deepEqual(fixture.errors,[]);
         } finally { await fixture.context.close(); }
     }
-    const excluded=await open({theme:'CHRISTMAS'},{hostname:'tnttphungkhoang.com',admin:true});
+    const excluded=await open({theme:'CHRISTMAS'},{hostname:'unregistered-school.example',admin:true});
     try {
         assert.equal(await excluded.page.locator('.christmas-snow').count(),0);
         assert.equal(await excluded.page.locator('html.ieltsroom-christmas').count(),0);
-        assert.equal(excluded.calls.length,0);
+        assert.equal(excluded.calls.filter(call=>call.method==='PUT').length,0);
     } finally { await excluded.context.close(); }
 });
 
@@ -381,20 +451,20 @@ test('admin header controls stay vertically aligned on desktop and tablets in bo
     } finally { await fixture.context.close(); }
 });
 
-test('only the exact IELTS Room domain and its www alias load the shared theme or expose admin editing', async () => {
+test('only registered school domains and their www aliases enable editing; unknown hosts stay Normal', async () => {
     const shared = {theme:'HALLOWEEN'};
     for (const hostname of ['ieltsroom.com', 'www.ieltsroom.com', 'localhost', 'tnttphungkhoang.com', 'sub.ieltsroom.com', 'ieltsroom.com.evil.test', 'richywine.com']) {
         const fixture = await open(shared, {hostname, admin:true});
         try {
-            const allowed = /^(www\.)?ieltsroom\.com$/.test(hostname);
-            if (allowed) await loaded(fixture.page);
+            const allowed = /^(www\.)?(ieltsroom|tnttphungkhoang)\.com$/.test(hostname);
+            await loaded(fixture.page);
             assert.equal(await fixture.page.evaluate(() => siteTheme.enabled()), allowed, hostname);
-            assert.equal(await isHalloween(fixture.page), allowed, hostname);
+            assert.equal(await isHalloween(fixture.page), /^(www\.)?ieltsroom\.com$/.test(hostname), hostname);
             assert.equal(await fixture.page.locator('.site-theme-open').count(), allowed ? 1 : 0, hostname);
             if (!allowed) {
                 const result = await fixture.page.evaluate(() => siteTheme.save('NORMAL').then(() => 'saved', () => 'blocked'));
                 assert.equal(result, 'blocked', hostname);
-                assert.equal(fixture.calls.length, 0, 'excluded domain never reads or writes shared configuration: ' + hostname);
+                assert.equal(fixture.calls.filter(call=>call.method==='PUT').length, 0, 'unknown domain never writes a school theme: ' + hostname);
             }
             assert.deepEqual(fixture.errors, []);
         } finally { await fixture.context.close(); }

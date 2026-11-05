@@ -1,16 +1,20 @@
-# Shared IELTS Room appearance
+# Shared school appearance
 
-The theme applies only to `ieltsroom.com` and `www.ieltsroom.com`. Other hosts,
-including Chapter and localhost, keep their existing interface and do not load
-or save the shared theme setting.
+Themes are configured by School ID and resolved through each active School's
+registered domain. `www` resolves to the same school. Unknown and inactive
+domains keep Normal. New schools default to Normal; the existing IELTS Room
+selection remains the fallback until an admin saves a choice for that school.
 
-Admins open **Giao diện** in the signed-in header, choose **Normal** or
-**Halloween** or **Christmas**, then select **Lưu áp dụng**. The choice is saved in the database
-and applies to signed-in learners and public visitors. Open, visible pages check
+Admins open **Giao diện** in the signed-in header, select one or more schools,
+choose **Normal**, **Halloween** or **Christmas**, then select **Lưu áp dụng**.
+The list shows each school's name, ID, domain and current theme. The current
+school is selected initially. Only the checked schools change, in one database
+transaction; an invalid or inactive target rejects the entire batch. The choice
+applies to signed-in learners and public visitors of each school. Visible pages check
 for updates every 15 seconds and refresh when returning to the tab or going
 online. A failed save leaves the displayed theme in place and shows an error.
 
-An installation with no saved setting defaults to Halloween. Normal removes all
+The legacy IELTS setting with no saved row defaults to Halloween. Normal removes all
 seasonal overrides and restores the existing interface and personal dark-mode
 preference. Halloween retains the test view's accessibility contrast modes.
 
@@ -23,9 +27,24 @@ and the tree's golden star brighten slowly using opacity animation.
 There is no canvas loop, per-flake blur or external animation library. Snow
 pauses on hidden tabs and disappears while a modal, exam or reduced-motion
 preference is active. Reduced-motion keeps the garland lit without blinking.
-Choose Normal and save to remove every Christmas effect for all visitors.
+Choose Normal and save for selected schools to remove their Christmas effects.
 
 ## Deployment
+
+School choices use nullable `tbl_school.site_theme`; Hibernate schema update
+adds it without changing existing choices. For explicit migrations use
+`school-site-theme.sql`. Changing a school's registered domain keeps its theme
+on the same School ID. The public resolver never uses suffix/substring matching.
+
+- `GET /service/public/site-theme?domain=example.com` returns only the active
+  school identity and theme, anonymously and without caching.
+- `GET /service/api/site-theme/schools` lists active schools and current themes
+  for admins only.
+- `PUT /service/api/site-theme/schools` accepts
+  `{ "theme":"CHRISTMAS", "schoolIds":[1,2] }`, for admins only. Empty batches,
+  unsupported themes and invalid/inactive IDs return 400, with no partial save.
+- Legacy `/site-theme/ieltsroom` endpoints stay available for older clients.
+  Saving school `ieltsroom.com` also updates that legacy selection atomically.
 
 Deploy the backend and frontend together, with the backend available first.
 The Hibernate entity creates `tbl_site_theme` when schema updates are enabled.
@@ -46,7 +65,7 @@ backend before the frontend. For manual deployment the same SQL is in
   or `{ "theme": "NORMAL" }` or `{ "theme": "CHRISTMAS" }` without authentication or HTTP caching.
 - `PUT /service/api/site-theme/ieltsroom` saves the same payload. The controller
   and service require `ROLE_ADMIN`; unsupported values return 400.
-- The database key is fixed to `ieltsroom.com`. Concurrent writes can return
+- The legacy database key is fixed to `ieltsroom.com`. Concurrent writes can return
   409; the admin can refresh the current setting and try again.
 
 The frontend uses the server response as the shared source of truth. The theme
@@ -59,5 +78,7 @@ They cover domain restrictions, multiple independent visitors, admin controls,
 save failures, stale reads, polling and responsive dialogs. Set
 `SITE_THEME_BROWSER=webkit` to run the same checks with WebKit.
 
-Backend checks are in `SiteThemeServiceTest.java`, including a Hibernate/H2
-commit followed by a separate database session to verify persistence.
+Backend checks are in `SiteThemeServiceTest.java`, `SchoolSiteThemeServiceTest.java`
+and `SiteThemeSchemaUpgradeTest.java`. They cover exact domain resolution,
+selected-school isolation, batch validation, admin authorization, compatibility
+with older IELTS clients and Hibernate commits read from separate sessions.

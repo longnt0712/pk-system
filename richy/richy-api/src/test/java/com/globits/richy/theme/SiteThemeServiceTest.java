@@ -2,12 +2,14 @@ package com.globits.richy.theme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.globits.richy.domain.SiteTheme;
+import com.globits.richy.domain.School;
 import com.globits.richy.dto.SiteThemeDto;
 import com.globits.richy.repository.SiteThemeRepository;
 import com.globits.richy.rest.RestSiteThemeController;
 import com.globits.richy.service.impl.SiteThemeServiceImpl;
 import java.util.Collections;
 import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.After;
@@ -33,12 +35,19 @@ public class SiteThemeServiceTest {
     private SiteThemeServiceImpl service;
     private SiteThemeRepository repository;
     private SiteTheme stored;
+    private TypedQuery<School> schoolQuery;
 
     @Before public void setup() {
         SecurityContextHolder.clearContext();
         service = new SiteThemeServiceImpl();
         repository = mock(SiteThemeRepository.class);
         ReflectionTestUtils.setField(service, "repository", repository);
+        EntityManager em = mock(EntityManager.class);
+        schoolQuery = mock(TypedQuery.class);
+        when(em.createQuery(anyString(),eq(School.class))).thenReturn(schoolQuery);
+        when(schoolQuery.setParameter(anyString(),any())).thenReturn(schoolQuery);
+        when(schoolQuery.getResultList()).thenReturn(Collections.<School>emptyList());
+        ReflectionTestUtils.setField(service,"em",em);
         when(repository.findOne("ieltsroom.com")).thenAnswer(call -> stored);
         when(repository.saveAndFlush(any(SiteTheme.class))).thenAnswer(call -> {
             stored = (SiteTheme) call.getArguments()[0];
@@ -69,6 +78,7 @@ public class SiteThemeServiceTest {
         assertNotNull(stored.getModifyDate());
         SiteThemeServiceImpl otherDevice = new SiteThemeServiceImpl();
         ReflectionTestUtils.setField(otherDevice, "repository", repository);
+        ReflectionTestUtils.setField(otherDevice,"em",ReflectionTestUtils.getField(service,"em"));
         SecurityContextHolder.clearContext();
         assertEquals("NORMAL", otherDevice.getIeltsRoomTheme().getTheme());
         role("ROLE_ADMIN");
@@ -77,6 +87,17 @@ public class SiteThemeServiceTest {
         assertEquals("CHRISTMAS", service.saveIeltsRoomTheme(new SiteThemeDto("CHRISTMAS")).getTheme());
         SecurityContextHolder.clearContext();
         assertEquals("CHRISTMAS", otherDevice.getIeltsRoomTheme().getTheme());
+    }
+
+    @Test public void oldIeltsEndpointsReadAndWriteTheSameChoiceAsTheRegisteredSchool() {
+        School school = new School();school.setId(1L);school.setName("IELTS Room");school.setDomain("ieltsroom.com");school.setSiteTheme("CHRISTMAS");
+        when(schoolQuery.getResultList()).thenReturn(Collections.singletonList(school));
+        assertEquals("CHRISTMAS",service.getIeltsRoomTheme().getTheme());
+        role("ROLE_ADMIN");service.saveIeltsRoomTheme(new SiteThemeDto("NORMAL"));
+        assertEquals("NORMAL",school.getSiteTheme());assertEquals("NORMAL",stored.getTheme());
+        verify(schoolQuery).setLockMode(javax.persistence.LockModeType.PESSIMISTIC_WRITE);
+        school.setActive(false);assertEquals("NORMAL",service.getIeltsRoomTheme().getTheme());
+        try{service.saveIeltsRoomTheme(new SiteThemeDto("CHRISTMAS"));fail();}catch(IllegalArgumentException expected){}
     }
 
     @Test public void onlyAnAuthenticatedAdminCanWriteEvenWhenServiceIsInvokedDirectly() {

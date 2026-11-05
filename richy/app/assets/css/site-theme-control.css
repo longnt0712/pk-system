@@ -8,7 +8,11 @@
     .learning-login-nav .site-theme-open { margin-top:0; margin-bottom:0; }
 }
 .site-theme-dialog .modal-dialog { width:700px; max-width:calc(100vw - 24px); margin:30px auto; }
-.site-theme-dialog .modal-content { max-height:calc(100vh - 60px); max-height:calc(100dvh - 60px); overflow:auto; border:1px solid #e3def1; border-radius:22px; color:#2b2543; background:#fff; }
+.site-theme-dialog .modal-content { max-height:calc(100vh - 60px); max-height:calc(100dvh - 60px); overflow:hidden; border:1px solid #e3def1; border-radius:22px; color:#2b2543 !important; background:#fff !important; }
+.site-theme-editor { display:flex; flex-direction:column; min-height:0; max-height:inherit; }
+.site-theme-editor .modal-header,.site-theme-editor .modal-footer { flex:0 0 auto; color:#2b2543 !important; background:#fff !important; }
+.site-theme-editor .modal-body { flex:1 1 auto; min-height:0; overflow:auto; color:#2b2543 !important; background:#fff !important; }
+.site-theme-editor .site-theme-option,.site-theme-editor .site-theme-option strong,.site-theme-editor .site-theme-school-list label,.site-theme-editor .site-theme-schools legend { color:#342b46 !important; }
 .site-theme-editor .modal-header { position:relative; padding:24px 28px 18px; border-bottom:1px solid #eee8f8; }
 .site-theme-kicker { color:#7963a2; font:800 11px system-ui,sans-serif; letter-spacing:2px; }
 .site-theme-editor h2 { margin:7px 0; font-size:24px; font-weight:800; color:inherit; }
@@ -16,6 +20,19 @@
 .site-theme-close { position:absolute; top:16px; right:18px; width:36px; height:36px; border:0; border-radius:50%; background:#f5f1fa; color:#625772; font-size:24px; }
 .site-theme-editor .modal-body { padding:22px 28px; }
 .site-theme-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.site-theme-schools { min-width:0; margin:0 0 18px; padding:0; border:0; }
+.site-theme-schools legend { margin:0 0 6px; border:0; font-size:15px; font-weight:700; }
+.site-theme-school-actions { display:flex; gap:12px; margin-bottom:8px; }
+.site-theme-school-actions button { padding:2px 0; border:0; color:#65469c; background:transparent; text-decoration:underline; font-size:12px; }
+.site-theme-school-list { max-height:180px; overflow:auto; border:1px solid #e8e3f0; border-radius:12px; }
+.site-theme-school-list label { display:flex; align-items:center; gap:10px; margin:0; padding:10px 12px; border-bottom:1px solid #eee8f8; cursor:pointer; }
+.site-theme-school-list label:last-child { border-bottom:0; }
+.site-theme-school-list input { flex:0 0 18px; width:18px; height:18px; margin:0; accent-color:#7955d6; }
+.site-theme-school-list label > span { min-width:0; flex:1; }
+.site-theme-school-list strong,.site-theme-school-list small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.site-theme-school-list strong { color:#342b46; font-size:13px; }
+.site-theme-editor .site-theme-school-list small { color:#73687f !important; font-size:12px; }
+.site-theme-school-list em { color:#65469c; font:600 11px system-ui,sans-serif; }
 .site-theme-option { position:relative; display:flex; flex-direction:column; align-items:flex-start; min-width:0; margin:0; padding:13px; border:2px solid #e8e3f0; border-radius:16px; background:#fff; color:#342b46; cursor:pointer; }
 .site-theme-option.is-selected { border-color:#7955d6; background:#f7f3ff; }
 .site-theme-option:focus-within { outline:2px solid #9978e2; outline-offset:3px; }
