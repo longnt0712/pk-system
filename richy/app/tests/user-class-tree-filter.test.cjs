@@ -47,6 +47,7 @@ function setup(schoolId = 2) {
         ['vm.getClassAndDescendantIds = function', 'vm.genders ='],
         ['function getDirectorySearchRoles()', 'function isEducationManagedRole'],
         ["vm.directoryAccountType = 'STUDENT';", 'function toCalendarDate'],
+        ['vm.getAdvancedSearchClasses = function', 'function getAllAdvancedSearchClassIds'],
         ['vm.hasAnyFilterValue = function', 'vm.syncModalEnrollmentClassToFilter ='],
         ['vm.search = function', 'vm.searchByCreatedDate =']
     ]) nodeVm.runInContext(section(start, end), context);
@@ -68,6 +69,40 @@ test('account tabs send a server-side filter and reset pagination', async () => 
     assert.equal(h.calls.requests[1].filter.directoryAccountType, 'STAFF');
     assert.equal(h.calls.requests[1].pageIndex, 1);
     assert.equal(h.calls.requests[1].filter.withoutEnrollmentClass, false);
+});
+
+test('church account tabs filter both class pickers and clear the previous class without losing dates', async () => {
+    const h = setup(2);
+    h.calls.loads[0].resolve(tree(2).concat([
+        {id: 20, name: 'Lớp phụ trách A', schoolId: 2, parentId: null, staffClass: true},
+        {id: 21, name: 'Đội phụ trách', schoolId: 2, parentId: 20, staffClass: true},
+        {id: 30, name: 'Lớp tiếng Anh', schoolId: 1, parentId: null}
+    ]));
+    await tick();
+    h.vm.advancedSearchDraft = {schoolId: 2};
+    function quickIds() { return Array.from(h.vm.enrollmentClasses.filter(h.vm.filterQuickEnrollmentClass), row => row.id); }
+    function advancedIds() { return Array.from(h.vm.getAdvancedSearchClasses(), row => row.id); }
+
+    assert.deepEqual(quickIds(), [10, 11, 111]);
+    assert.deepEqual(advancedIds(), [10, 11, 111]);
+    h.vm.filter.enrollmentClass = 11;
+    h.vm.advancedSearchApplied.classIds = [10, 11, 111];
+
+    h.vm.selectDirectoryAccountType('STAFF');
+    assert.deepEqual(quickIds(), [20, 21]);
+    assert.deepEqual(advancedIds(), [20, 21]);
+    assert.equal(h.calls.requests[0].filter.enrollmentClass, null);
+    assert.deepEqual(Array.from(h.calls.requests[0].filter.enrollmentClassIds), []);
+    assert.equal(h.calls.requests[0].filter.startDate, 10);
+    assert.equal(h.calls.requests[0].filter.endDate, 20);
+    assert.equal(h.calls.requests[0].filter.keyword, 'Maria');
+
+    h.vm.filter.enrollmentClass = 20;
+    h.vm.searchByQuickEnrollmentClass();
+    assert.deepEqual(Array.from(h.calls.requests[1].filter.enrollmentClassIds), [20, 21]);
+    h.vm.selectDirectoryAccountType('STUDENT');
+    assert.equal(h.calls.requests[2].filter.enrollmentClass, null);
+    assert.deepEqual(quickIds(), [10, 11, 111]);
 });
 
 test('User class picker loader retains the domain school and builds existing class paths', async () => {

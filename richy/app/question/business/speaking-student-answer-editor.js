@@ -191,11 +191,15 @@
     angular.module('Hrm.Question').directive('speakingStudentAnswerEditor', ['$window', '$timeout', 'SpeakingStudentAnswerStore', function ($window, $timeout, store) {
         return {
             restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?'},
-            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span><button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
-                '<div class="sp-answer-format" ng-if="!readOnly" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker &amp;&amp; !ed.selectionMarker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span>' +
+                '<button type="button" class="sp-button sp-answer-edit-mode" ng-if="ed.touchMode && !readOnly" ng-click="ed.toggleEditing()" ng-disabled="!ed.state.ready || ed.state.loading"><i class="fa" ng-class="ed.editing ? \'fa-check\' : \'fa-pencil\'" aria-hidden="true"></i> {{ed.editing ? \'Xong\' : \'Sửa câu trả lời\'}}</button>' +
+                '<button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
+                '<div class="sp-answer-format" ng-if="!readOnly && (!ed.touchMode || ed.editing)" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker &amp;&amp; !ed.selectionMarker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
-                '<div class="sp-answer-editable" ng-attr-contenteditable="{{readOnly ? false : true}}" role="textbox" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
-                '<div class="sp-answer-selection" ng-if="!readOnly && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+                '<div class="sp-answer-editable" contenteditable="false" role="textbox" aria-readonly="true" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
+                '<small class="sp-muted" ng-if="ed.touchMode && !readOnly && !ed.editing && ed.state.ready">Nhấn giữ một từ rồi kéo để chọn cả đoạn.</small>' +
+                '<span class="sp-answer-touch-highlight" ng-repeat="rect in ed.selectionRects track by $index" ng-style="rect" aria-hidden="true"></span>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && (!ed.touchMode || !ed.editing) && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
                 '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
@@ -208,6 +212,12 @@
                 var touchSelection = !!($window.matchMedia && $window.matchMedia('(pointer: coarse)').matches);
                 var visual = $window.visualViewport, selectionTimer, touchHighlight, detachedSelection = false;
                 var highlights = $window.CSS && $window.CSS.highlights, highlightName = 'speaking-touch-selection';
+                var canPaintSelection = !!(highlights && typeof $window.Highlight === 'function');
+                var navigator = $window.navigator || {};
+                var appleTouch = navigator.maxTouchPoints > 0 && /iPhone|iPad|iPod|Mac/.test(navigator.platform || '');
+                ed.touchMode = !!((touchSelection || appleTouch) && (doc.caretPositionFromPoint || doc.caretRangeFromPoint));
+                ed.editing = false;
+                var touchGesture, touchHoldTimer, positionTimer;
                 function stopSpeech() {
                     speechRequest++; ed.speaking = false;
                     if ($window.EnglishSpeech) { $window.EnglishSpeech.cancel(speechOwner); }
@@ -260,7 +270,38 @@
                     }
                     scrub(container); var serialized = doc.createElement('div'); serialized.appendChild(container.cloneNode(true)); return {html: serialized.innerHTML, notes: result};
                 }
-                function render() { clearSelection(); editable.innerHTML = ed.state.html || ''; editable.setAttribute('contenteditable', scope.readOnly || ed.state.loading || ed.state.status === 'Chưa tải được' ? 'false' : 'true'); }
+                function selectingByTouch() { return ed.touchMode && !ed.editing && !scope.readOnly && ed.state.ready && !ed.state.loading; }
+                function updateEditability() {
+                    var editableNow = !scope.readOnly && ed.state.ready && !ed.state.loading && (!ed.touchMode || ed.editing);
+                    editable.setAttribute('contenteditable', String(!!editableNow));
+                    editable.setAttribute('aria-readonly', String(!editableNow));
+                    if (ed.touchMode) { editable.classList.toggle('is-touch-select', selectingByTouch()); }
+                }
+                function render() {
+                    endTouchGesture(); clearSelection();
+                    editable.innerHTML = ed.state.html || '';
+                    updateEditability();
+                }
+                ed.toggleEditing = function () {
+                    if (!ed.touchMode || scope.readOnly || !ed.state.ready || ed.state.loading) { return; }
+                    var selection = $window.getSelection();
+                    endTouchGesture();
+                    if (ed.editing) {
+                        editable.blur();
+                        if (selection.rangeCount && editable.contains(selection.getRangeAt(0).commonAncestorContainer)) { selection.removeAllRanges(); }
+                        ed.editing = false;
+                        clearSelection(); updateEditability();
+                        return;
+                    }
+                    var caret = selectedRange && editable.contains(selectedRange.commonAncestorContainer) ? selectedRange.cloneRange() : null;
+                    if (!caret) { caret = doc.createRange(); caret.selectNodeContents(editable); }
+                    caret.collapse(false);
+                    clearSelection(); ed.activeNote = null;
+                    ed.editing = true; updateEditability();
+                    // iOS opens its keyboard when the editable is focused in the button's click handler.
+                    editable.focus({preventScroll: true});
+                    selection.removeAllRanges(); selection.addRange(caret);
+                };
                 function renderIncoming() {
                     var noteId = ed.activeNote && ed.activeNote.id, selection = $window.getSelection(), offsets = null;
                     if (selection && selection.rangeCount && editable.contains(selection.getRangeAt(0).commonAncestorContainer)) {
@@ -280,9 +321,10 @@
                 function changed() { if (scope.readOnly) { return; } if (!current || ed.state.loading || !ed.state.ready) { return; } var activeId = ed.activeNote && ed.activeNote.id; current.change(editable.innerHTML, ed.state.notes); if (activeId) { ed.activeNote = ed.state.notes.filter(function (note) { return note.id === activeId; })[0] || null; } schedule(); }
                 function clearSelection() {
                     $timeout.cancel(selectionTimer); selectionTimer = null;
+                    $timeout.cancel(positionTimer); positionTimer = null;
                     if (touchHighlight && highlights.get(highlightName) === touchHighlight) { highlights.delete(highlightName); }
                     touchHighlight = null; detachedSelection = false;
-                    selectedRange = null; ed.hasSelection = false; ed.selectionMarker = null;
+                    selectedRange = null; ed.hasSelection = false; ed.selectionMarker = null; ed.selectionRects = [];
                 }
                 function positionSelection() {
                     if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
@@ -290,7 +332,18 @@
                     var left = visual ? visual.offsetLeft : 0, top = visual ? visual.offsetTop : 0;
                     var width = visual ? visual.width : $window.innerWidth || doc.documentElement.clientWidth;
                     var height = visual ? visual.height : $window.innerHeight || doc.documentElement.clientHeight;
-                    var bottom = top + height, gap = 8;
+                    var right = left + width, bottom = top + height, gap = 8;
+                    if (selectingByTouch()) {
+                        var surface = editable.getBoundingClientRect();
+                        if (bounds.bottom <= surface.top || bounds.top >= surface.bottom) { ed.selectionStyle = {visibility: 'hidden'}; ed.selectionRects = []; return; }
+                        if (!canPaintSelection) {
+                            ed.selectionRects = Array.from(selectedRange.getClientRects()).map(function (rect) {
+                                var x = Math.max(left, surface.left, rect.left), y = Math.max(top, surface.top, rect.top);
+                                var w = Math.min(right, surface.right, rect.right) - x, h = Math.min(bottom, surface.bottom, rect.bottom) - y;
+                                return w > 0 && h > 0 ? {left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px'} : null;
+                            }).filter(Boolean);
+                        }
+                    }
                     var below = bottom - bounds.bottom - gap * 2, above = bounds.top - top - gap * 2;
                     var popupWidth = Math.min(480, Math.max(0, width - gap * 2));
                     var popup = root.querySelector('.sp-answer-selection');
@@ -298,36 +351,119 @@
                     var useAbove = below < popupHeight && above > below;
                     var available = useAbove ? above : below;
                     ed.selectionStyle = {
-                        visibility: bounds.bottom <= top || bounds.top >= bottom || available < 24 ? 'hidden' : 'visible',
+                        visibility: bounds.bottom <= top || bounds.top >= bottom || bounds.right <= left || bounds.left >= right || available < 24 ? 'hidden' : 'visible',
                         left: Math.max(left + gap, Math.min(bounds.left, left + width - popupWidth - gap)) + 'px',
                         top: (useAbove ? bounds.top - gap : bounds.bottom + gap) + 'px',
                         transform: useAbove ? 'translateY(-100%)' : 'none', maxWidth: popupWidth + 'px',
                         maxHeight: Math.max(0, available) + 'px'
                     };
                 }
+                function showSelection(range) {
+                    var opening = !ed.hasSelection;
+                    selectedRange = range; ed.hasSelection = true;
+                    ed.selectionMarker = markerAt(range.commonAncestorContainer);
+                    positionSelection();
+                    if (opening && !(ed.touchMode && ed.editing)) {
+                        positionTimer = $timeout(function () { positionTimer = null; positionSelection(); }, 0);
+                    }
+                }
+                function paintSelection(range) {
+                    if (!canPaintSelection) { return; }
+                    touchHighlight = new $window.Highlight(range);
+                    highlights.set(highlightName, touchHighlight);
+                }
                 function capture() {
-                    if (scope.readOnly || !ed.state.ready || ed.state.loading || composing) { return; }
+                    if (scope.readOnly || !ed.state.ready || ed.state.loading || composing || selectingByTouch()) { return; }
                     var selection = $window.getSelection(), range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
                     if ((!range || range.collapsed) && detachedSelection) { return; }
                     clearSelection();
                     if (!range || range.collapsed || !editable.contains(range.commonAncestorContainer) || !range.toString().trim()) { return; }
-                    selectedRange = range.cloneRange(); ed.hasSelection = true;
-                    ed.selectionMarker = markerAt(range.commonAncestorContainer);
-                    positionSelection();
-                    if (touchSelection && highlights && typeof $window.Highlight === 'function') {
+                    showSelection(range.cloneRange());
+                    if (!ed.touchMode && touchSelection && canPaintSelection) {
                         var captured = selectedRange;
                         selectionTimer = $timeout(function () {
                             selectionTimer = null;
                             if (captured !== selectedRange || !editable.contains(captured.commonAncestorContainer)) { return; }
                             var nativeRange = selection.rangeCount && selection.getRangeAt(0);
                             if (!nativeRange || nativeRange.collapsed || !editable.contains(nativeRange.commonAncestorContainer)) { return; }
-                            touchHighlight = new $window.Highlight(captured);
-                            highlights.set(highlightName, touchHighlight);
+                            paintSelection(captured);
                             detachedSelection = true;
                             selection.removeAllRanges();
                             positionSelection();
                         }, 180);
                     }
+                }
+                function caretAt(x, y) {
+                    var point = doc.caretPositionFromPoint && doc.caretPositionFromPoint(x, y), node, offset;
+                    if (point) { node = point.offsetNode; offset = point.offset; }
+                    else if (doc.caretRangeFromPoint) {
+                        // Older WebKit skips unselectable text during this lookup.
+                        editable.classList.add('is-finding-caret');
+                        try { point = doc.caretRangeFromPoint(x, y); }
+                        finally { editable.classList.remove('is-finding-caret'); }
+                        if (point) { node = point.startContainer; offset = point.startOffset; }
+                    }
+                    return node && node.nodeType === 3 && editable.contains(node) ? {node: node, offset: offset} : null;
+                }
+                function wordAt(point, x, y) {
+                    if (!point) { return null; }
+                    var words = /[\p{L}\p{M}\p{N}]+(?:['’-][\p{L}\p{M}\p{N}]+)*/gu, word;
+                    while ((word = words.exec(point.node.nodeValue)) && word.index <= point.offset) {
+                        if (words.lastIndex < point.offset) { continue; }
+                        var range = doc.createRange();
+                        range.setStart(point.node, word.index); range.setEnd(point.node, words.lastIndex);
+                        var hits = Array.from(range.getClientRects()).some(function (rect) {
+                            return x >= rect.left - 4 && x <= rect.right + 4 && y >= rect.top - 4 && y <= rect.bottom + 4;
+                        });
+                        if (hits) { return range; }
+                    }
+                    return null;
+                }
+                function endTouchGesture() {
+                    $timeout.cancel(touchHoldTimer); touchHoldTimer = null; touchGesture = null;
+                }
+                function touchStart(event) {
+                    if (!selectingByTouch()) { return; }
+                    endTouchGesture(); clearSelection();
+                    scope.$evalAsync(angular.noop);
+                    if (event.touches.length !== 1) { return; }
+                    var finger = event.touches[0];
+                    var gesture = touchGesture = {id: finger.identifier, x: finger.clientX, y: finger.clientY};
+                    touchHoldTimer = $timeout(function () {
+                        touchHoldTimer = null;
+                        if (gesture !== touchGesture || !selectingByTouch()) { return; }
+                        var word = wordAt(caretAt(gesture.x, gesture.y), gesture.x, gesture.y);
+                        if (!word) { return; }
+                        gesture.word = word; ed.activeNote = null; ed.marker = null;
+                        showSelection(word); paintSelection(word);
+                    }, 400);
+                }
+                function touchMove(event) {
+                    var gesture = touchGesture;
+                    if (!gesture) { return; }
+                    var finger = event.touches[0];
+                    if (event.touches.length !== 1 || finger.identifier !== gesture.id) {
+                        endTouchGesture(); clearSelection(); scope.$evalAsync(angular.noop); return;
+                    }
+                    if (!gesture.word) {
+                        if (Math.hypot(finger.clientX - gesture.x, finger.clientY - gesture.y) > 9) { endTouchGesture(); }
+                        return;
+                    }
+                    if (event.cancelable) { event.preventDefault(); }
+                    var point = caretAt(finger.clientX, finger.clientY);
+                    if (!point) { return; }
+                    var range = gesture.word.cloneRange(), edge = range.comparePoint(point.node, point.offset);
+                    if (edge < 0) { range.setStart(point.node, point.offset); }
+                    if (edge > 0) { range.setEnd(point.node, point.offset); }
+                    showSelection(range); paintSelection(range); scope.$evalAsync(angular.noop);
+                }
+                function touchFinish(event) {
+                    var gesture = touchGesture;
+                    if (!gesture) { return; }
+                    endTouchGesture();
+                    if (!gesture.word) { return; }
+                    if (event.type === 'touchcancel') { clearSelection(); scope.$evalAsync(angular.noop); }
+                    else if (event.cancelable) { event.preventDefault(); }
                 }
                 function restoreSelection() { if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return false; } var selection = $window.getSelection(); editable.focus(); selection.removeAllRanges(); selection.addRange(selectedRange); return true; }
                 function markerAt(target) { while (target && target !== editable) { if (target.nodeType === 1 && /\bielts-annotation\b/.test(target.className || '')) { return target; } target = target.parentNode; } return null; }
@@ -372,7 +508,7 @@
                     });
                     ed.state.notes = ed.state.notes.filter(function (note) { return note.id !== id; }); ed.activeNote = null; ed.marker = null; changed();
                 };
-                ed.format = function (command) { if (scope.readOnly) { return; } if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
+                ed.format = function (command) { if (scope.readOnly || (ed.touchMode && !ed.editing)) { return; } if (ed.state.loading || !ed.state.ready) { return; } restoreSelection(); editable.focus(); doc.execCommand(command, false, null); capture(); changed(); };
                 ed.annotate = function (withNote) { if (scope.readOnly) { return; }
                     if (!ed.state.ready || !ed.hasSelection || !selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
                     if (withNote && ed.state.notes.length >= 200) { ed.state.error = 'Mỗi câu trả lời có tối đa 200 note. Hãy xoá note cũ trước khi thêm.'; return; }
@@ -470,17 +606,17 @@
                 function click(event) { var marker = markerAt(event.target); scope.$evalAsync(function () { ed.marker = marker; var id = marker && marker.getAttribute('data-note-id'), note = id && ed.state.notes.filter(function (item) { return item.id === id; })[0]; if (note && (!ed.activeNote || ed.activeNote.id !== id)) { openNote(note, marker); } else { ed.activeNote = null; } }); }
                 function outside(event) {
                     if (!root.contains(event.target)) {
-                        scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; clearSelection(); });
+                        scope.$evalAsync(function () { ed.activeNote = null; ed.marker = null; endTouchGesture(); clearSelection(); });
                         return;
                     }
                     var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
                     if (editable.contains(event.target)) {
                         touchSelection = touch;
-                        if (detachedSelection) { scope.$evalAsync(clearSelection); }
+                        if (detachedSelection || (!touch && selectingByTouch())) { scope.$evalAsync(clearSelection); }
                         return;
                     }
                     if (event.target.closest('.sp-answer-format, .sp-answer-selection')) {
-                        if (touch && ed.hasSelection && !detachedSelection && event.cancelable) { event.preventDefault(); }
+                        if (touch && ed.hasSelection && !detachedSelection && !selectingByTouch() && event.cancelable) { event.preventDefault(); }
                         return;
                     }
                     if (!event.target.closest('.sp-answer-note')) { scope.$evalAsync(function () { ed.activeNote = null; }); }
@@ -489,7 +625,8 @@
                 function selectionChanged() { scope.$evalAsync(capture); }
                 function selectionViewportChanged() { if (ed.hasSelection) { scope.$evalAsync(positionSelection); } }
                 function contextMenu(event) {
-                    if (scope.readOnly || !ed.state.ready || !event.cancelable || !highlights || typeof $window.Highlight !== 'function'
+                    if (selectingByTouch() && event.cancelable) { event.preventDefault(); return; }
+                    if (scope.readOnly || ed.touchMode || !ed.state.ready || !event.cancelable || !canPaintSelection
                         || (!touchSelection && event.pointerType !== 'touch' && event.pointerType !== 'pen')) { return; }
                     var selection = $window.getSelection(), range = selection && selection.rangeCount && selection.getRangeAt(0);
                     if (detachedSelection || (range && !range.collapsed && editable.contains(range.commonAncestorContainer))) {
@@ -500,23 +637,37 @@
                 function compositionEnd() { composing = false; input(); }
                 function paste(event) { event.preventDefault(); if (scope.readOnly) { return; } var text = event.clipboardData ? event.clipboardData.getData('text/plain') : ''; doc.execCommand('insertText', false, text); input(); }
                 function drop(event) { event.preventDefault(); }
-                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { clearSelection(); ed.activeNote = null; ed.closeHistory(); }); } }
+                function escape(event) { if (event.key === 'Escape') { scope.$evalAsync(function () { endTouchGesture(); clearSelection(); ed.activeNote = null; ed.closeHistory(); }); } }
                 function leaving() { if (current) { current.backup(); } }
                 editable.addEventListener('input', input); editable.addEventListener('click', click); editable.addEventListener('mouseup', selectionChanged); editable.addEventListener('touchend', selectionChanged); editable.addEventListener('keyup', selectionChanged); editable.addEventListener('compositionstart', compositionStart); editable.addEventListener('compositionend', compositionEnd); editable.addEventListener('paste', paste); editable.addEventListener('drop', drop); doc.addEventListener('pointerdown', outside); doc.addEventListener('selectionchange', selectionChanged); doc.addEventListener('keydown', escape); doc.addEventListener('visibilitychange', visible); $window.addEventListener('focus', visible); $window.addEventListener('resize', resizeHistory); $window.addEventListener('pagehide', leaving);
                 editable.addEventListener('contextmenu', contextMenu);
+                if (ed.touchMode) {
+                    editable.addEventListener('touchstart', touchStart, {passive: true});
+                    editable.addEventListener('touchmove', touchMove, {passive: false});
+                    editable.addEventListener('touchend', touchFinish, {passive: false});
+                    editable.addEventListener('touchcancel', touchFinish);
+                }
                 doc.addEventListener('scroll', selectionViewportChanged, true);
                 $window.addEventListener('resize', selectionViewportChanged);
                 if (visual) { visual.addEventListener('resize', selectionViewportChanged); visual.addEventListener('scroll', selectionViewportChanged); }
                 scope.$watchGroup(['setId', 'studentId', 'questionId', 'userId'], function (values) {
                     var next = ++generation; stopSpeech(); ed.speechError = ''; ed.phoneticError = ''; ed.lookupText = ''; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
+                    if (ed.editing) { editable.blur(); ed.editing = false; }
+                    endTouchGesture(); clearSelection();
                     if (!values.every(function (id) { return Number.isInteger(Number(id)) && Number(id) > 0; })) { return; }
                     current = store.open({setId: Number(values[0]), studentId: Number(values[1]), questionId: Number(values[2]), userId: Number(values[3]), readOnly: scope.readOnly === true}, clean); ed.state = current.state; render();
                     current.load().then(function () { if (!destroyed && generation === next) { render(); if (ed.state.dirty && !ed.state.conflict) { schedule(); } poll(); } });
                 });
                 scope.$on('$destroy', function () {
-                    destroyed = true; generation++; clearSelection(); stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); }
+                    destroyed = true; generation++; endTouchGesture(); clearSelection(); stopSpeech(); cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); }
                     editable.removeEventListener('input', input); editable.removeEventListener('click', click); editable.removeEventListener('mouseup', selectionChanged); editable.removeEventListener('touchend', selectionChanged); editable.removeEventListener('keyup', selectionChanged); editable.removeEventListener('compositionstart', compositionStart); editable.removeEventListener('compositionend', compositionEnd); editable.removeEventListener('paste', paste); editable.removeEventListener('drop', drop); doc.removeEventListener('pointerdown', outside); doc.removeEventListener('selectionchange', selectionChanged); doc.removeEventListener('keydown', escape); doc.removeEventListener('visibilitychange', visible); $window.removeEventListener('focus', visible); $window.removeEventListener('resize', resizeHistory); $window.removeEventListener('pagehide', leaving);
                     editable.removeEventListener('contextmenu', contextMenu);
+                    if (ed.touchMode) {
+                        editable.removeEventListener('touchstart', touchStart);
+                        editable.removeEventListener('touchmove', touchMove);
+                        editable.removeEventListener('touchend', touchFinish);
+                        editable.removeEventListener('touchcancel', touchFinish);
+                    }
                     doc.removeEventListener('scroll', selectionViewportChanged, true);
                     $window.removeEventListener('resize', selectionViewportChanged);
                     if (visual) { visual.removeEventListener('resize', selectionViewportChanged); visual.removeEventListener('scroll', selectionViewportChanged); }

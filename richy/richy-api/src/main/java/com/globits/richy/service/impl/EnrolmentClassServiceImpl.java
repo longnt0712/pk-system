@@ -285,6 +285,13 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		
         domain.setSchoolId(targetSchoolId);
 		domain.setParent(parent);
+        if (EDUCATION_MANAGER_SCHOOL_ID.equals(targetSchoolId)) {
+            if (parent != null) {
+                domain.setStaffClass(null);
+            } else if (dto.getStaffClass() != null) {
+                domain.setStaffClass(dto.getStaffClass());
+            }
+        }
 
 		domain.setTeachers(teachers);
 		domain.setPrimaryTeacherId(primaryTeacherId);
@@ -2026,6 +2033,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			Map<Long, Integer> childCounts,
 			User currentUser) {
 		EnrolmentClassDto dto = new EnrolmentClassDto(domain);
+        if (EDUCATION_MANAGER_SCHOOL_ID.equals(domain.getSchoolId())) {
+            dto.setStaffClass(isStaffClass(domain));
+        }
 		if (domain.getParent() != null && (!domain.getSchoolId().equals(domain.getParent().getSchoolId())
                 || !canViewClass(currentUser, domain.getParent()))) {
 			dto.setParentId(null);
@@ -2040,6 +2050,19 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		dto.setCanAddChild(canEdit);
 		return dto;
 	}
+
+    private boolean isStaffClass(EnrolmentClass domain) {
+        EnrolmentClass current = domain;
+        Set<Long> visited = new HashSet<Long>();
+        while (visited.add(current.getId())) {
+            EnrolmentClass parent = current.getParent();
+            if (parent == null || !domain.getSchoolId().equals(parent.getSchoolId())) {
+                return Boolean.TRUE.equals(current.getStaffClass());
+            }
+            current = parent;
+        }
+        return false;
+    }
 
 	private void sortClasses(List<EnrolmentClass> classes) {
 		Collections.sort(classes, new Comparator<EnrolmentClass>() {

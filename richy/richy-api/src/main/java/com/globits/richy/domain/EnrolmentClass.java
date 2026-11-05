@@ -32,6 +32,9 @@ public class EnrolmentClass extends BaseObject{
 	@Column(name="school_id")
 	private Integer schoolId;
 
+	@Column(name = "staff_class")
+	private Boolean staffClass;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "parent_id")
 	private EnrolmentClass parent;
@@ -84,6 +87,14 @@ public class EnrolmentClass extends BaseObject{
 
 	public void setSchoolId(Integer schoolId) {
 		this.schoolId = schoolId;
+	}
+
+	public Boolean getStaffClass() {
+		return staffClass;
+	}
+
+	public void setStaffClass(Boolean staffClass) {
+		this.staffClass = staffClass;
 	}
 
 	public String getName() {

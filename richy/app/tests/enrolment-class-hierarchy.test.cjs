@@ -159,10 +159,33 @@ test('valid class and team saves retain their names, parent IDs and responsible-
         vm.saveObject();
         await tick();
         assert.equal(calls.saves.length, 1);
-        assert.deepEqual(calls.saves[0], {...value, schoolId, teacherIds: [2, 1], isNew: true});
+        const classType = schoolId === 2 ? {staffClass: false} : {};
+        assert.deepEqual(calls.saves[0], {...value, ...classType, schoolId, teacherIds: [2, 1], isNew: true});
         assert.equal(calls.closed, 1);
         assert.deepEqual(calls.trees, [schoolId]);
     }
+});
+
+test('the church editor sends the selected type when adding or changing a root class', async () => {
+    const rows = tree().map(row => row.id === 20 ? {...row, staffClass: true} : row);
+    const {vm, calls} = setup(2, rows);
+    vm.openEditor(null);
+    await tick();
+    assert.equal(vm.enrolmentClass.staffClass, false);
+    vm.enrolmentClass.name = 'Lớp mới';
+    vm.enrolmentClass.staffClass = true;
+    vm.saveObject();
+    await tick();
+    assert.equal(calls.saves[0].staffClass, true);
+
+    vm.openEditor(vm.findClass(20));
+    await tick();
+    assert.equal(vm.enrolmentClass.staffClass, true);
+    vm.enrolmentClass.staffClass = false;
+    vm.saveObject();
+    await tick();
+    assert.equal(calls.saves[1].id, 20);
+    assert.equal(calls.saves[1].staffClass, false);
 });
 
 test('editing an old nested team saves its unchanged legacy relationship without rewriting user data', async () => {

@@ -87,6 +87,10 @@
         vm.expanded = {};
         vm.searchText = '';
         vm.enrolmentClass = {};
+        vm.churchClassTypes = [
+            {value: false, label: 'Lớp học sinh'},
+            {value: true, label: 'Lớp phụ trách'}
+        ];
         vm.saving = false;
         vm.modalInstance = null;
         vm.teamBoard = null;
@@ -2993,6 +2997,9 @@
         vm.showEditor = function (object) {
             vm.enrolmentClass = angular.copy(object || {});
             vm.enrolmentClass.isNew = !vm.enrolmentClass.id;
+            if (vm.schoolId === 2) {
+                vm.enrolmentClass.staffClass = vm.enrolmentClass.staffClass === true;
+            }
             vm.enrolmentClass.teacherIds = vm.enrolmentClass.teacherIds || [];
             vm.enrolmentClass.primaryTeacherId = vm.enrolmentClass.primaryTeacherId || null;
             vm.enrolmentClass.deputyTeacherIds = angular.isArray(vm.enrolmentClass.deputyTeacherIds)

@@ -52,10 +52,10 @@ function node(name,value=''){
  return result;
 }
 
-function editorFixture(touch=false){
+function editorFixture(touch=false, mobile={}){
  let definition,identity,destroy,selected='memorising',inside=true,rangeClears=0,changes=0,saves=0,owner=null;const requests=[],cancelled=[],opened=[],timers=new Map(),listeners={};let timerId=0;
  const module={factory(){return this;},directive(name,dep){if(name==='speakingStudentAnswerEditor'){definition=dep.at(-1);}return this;}};
- vm.runInNewContext(fs.readFileSync(path.join(app,'question/business/speaking-student-answer-editor.js'),'utf8'),{angular:{module:()=>module},JSON,Date,Number,Array,Math});
+ vm.runInNewContext(fs.readFileSync(path.join(app,'question/business/speaking-student-answer-editor.js'),'utf8'),{angular:{module:()=>module,noop(){}},JSON,Date,Number,Array,Math});
  const bounds={left:20,top:12,bottom:30};
  const textNode=node('#text','memorising'),range={commonAncestorContainer:textNode,startContainer:textNode,endContainer:textNode,startOffset:0,get endOffset(){return textNode.nodeValue.length;},collapsed:false,toString:()=>selected,cloneRange(){return this;},intersectsNode:target=>target===textNode||target.contains(textNode),getBoundingClientRect:()=>bounds};
  const selection={rangeCount:1,toString:()=>selected,getRangeAt:()=>range,removeAllRanges(){rangeClears++;this.rangeCount=0;},addRange(){this.rangeCount=1;}};
@@ -65,13 +65,102 @@ function editorFixture(touch=false){
  const speech={isSupported:()=>true,speak(text,options){owner=options.owner;requests.push({text,options});return true;},cancel(target){if(owner===target){cancelled.push(target);owner=null;return true;}return false;}};
  const win={document:doc,innerWidth:1024,innerHeight:768,EnglishSpeech:speech,open(...args){opened.push(args);},getSelection:()=>selection,addEventListener(){},removeEventListener(){}};
  if(touch){win.matchMedia=()=>({matches:true});win.CSS={highlights:new Map()};win.Highlight=function(value){this.range=value;};win.visualViewport={offsetTop:0,offsetLeft:0,width:1024,height:768,addEventListener(){},removeEventListener(){}};}
- const state={ready:true,loading:false,dirty:false,html:'memorising',notes:[],history:{versions:[]}};
+ const state={ready:true,loading:false,dirty:false,html:mobile.text || 'memorising',notes:[],history:{versions:[]}};
  const session={state,load:()=>Promise.resolve(),save(){saves++;return Promise.resolve();},change(html,notes){changes++;state.html=html;state.notes=notes;state.dirty=true;},destroy(){},backup(){}};
  const timeout=(fn,delay)=>{const key=++timerId;timers.set(key,{fn,delay});return key;};timeout.cancel=key=>timers.delete(key);
- const scope={$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
+ const scope={readOnly:!!mobile.readOnly,$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
+ const classes = new Set();
+ editable.classList = {add: name => classes.add(name), remove: name => classes.delete(name),
+  toggle(name, on) { if (on) { classes.add(name); } else { classes.delete(name); } }};
+ editable.focus = () => { doc.activeElement = editable; };
+ editable.blur = () => { doc.activeElement = null; };
+ if (mobile.text) {
+  selection.rangeCount = 0;
+  editable.getBoundingClientRect = () => ({top:70,bottom:660,left:0,right:350});
+  win.navigator = {platform:'MacIntel',maxTouchPoints:5};
+  if (mobile.legacy) { delete win.CSS; delete win.Highlight; }
+  function caretAt(x) { return Math.min(textNode.nodeValue.length, Math.max(0, Math.round((x - 20) / 8))); }
+  function rectFor(start, end) { return {left:20 + start * 8, right:20 + end * 8, top:bounds.top, bottom:bounds.bottom}; }
+  if (mobile.legacy) {
+   doc.caretRangeFromPoint = x => ({startContainer:textNode,startOffset:classes.has('is-finding-caret') ? caretAt(x) : 0});
+  } else { doc.caretPositionFromPoint = x => ({offsetNode:textNode,offset:caretAt(x)}); }
+  doc.createRange = function () {
+   return {
+    commonAncestorContainer:textNode,startContainer:textNode,endContainer:textNode,startOffset:0,endOffset:0,
+    setStart(node, offset) { this.startContainer = node; this.startOffset = offset; },
+    setEnd(node, offset) { this.endContainer = node; this.endOffset = offset; },
+    selectNodeContents() { this.endOffset = textNode.nodeValue.length; },
+    collapse() { this.startOffset = this.endOffset; },
+    comparePoint(node, offset) { return offset < this.startOffset ? -1 : offset > this.endOffset ? 1 : 0; },
+    cloneRange() { return {...this}; },
+    intersectsNode(node) { return node === textNode; },
+    getBoundingClientRect() { return rectFor(this.startOffset,this.endOffset); },
+    getClientRects() { return [this.getBoundingClientRect()]; },
+    toString() { return textNode.nodeValue.slice(this.startOffset,this.endOffset); }
+   };
+  };
+  selection.getRangeAt = () => selection.activeRange || range;
+  selection.addRange = newRange => { selection.activeRange = newRange; selection.rangeCount = 1; };
+  selection.toString = () => selection.activeRange ? selection.activeRange.toString() : '';
+ }
  const directive=definition(win,timeout,{open:()=>session});directive.link(scope,[root]);
- return{scope,state,requests,cancelled,opened,speech,win,directive,timers,identity,destroy,editable,range,bounds,listeners,select(text,valid=true){selected=text;inside=valid;selection.rangeCount=1;listeners[touch?'touchend':'mouseup']();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
+ return{scope,state,requests,cancelled,opened,speech,win,doc,directive,timers,identity,destroy,editable,range,bounds,listeners,classes,selection,select(text,valid=true){selected=text;inside=valid;selection.rangeCount=1;listeners[touch?'touchend':'mouseup']();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
 }
+
+function touchEvent(type, x, y) {
+ const finger = {identifier:1,clientX:x,clientY:y};
+ return {type,touches:type === 'touchend' ? [] : [finger],changedTouches:[finger],cancelable:true,
+  prevented:false,preventDefault() { this.prevented = true; }};
+}
+function runEditorTimer(fixture, delay) {
+ const pending = [...fixture.timers].find(([,timer]) => timer.delay === delay);
+ if (!pending) { return false; }
+ fixture.timers.delete(pending[0]); pending[1].fn(); return true;
+}
+
+test('iPad touch selection reads and extends a word without a native selection, focus or a saved edit',async()=>{
+ const f = editorFixture(true, {text:'Playing or experimenting today'});
+ const ed = f.scope.ed;
+ f.identity([11,7,42,9]); await settle();
+ Object.assign(f.win.visualViewport,{offsetTop:80,offsetLeft:0,width:380,height:470});
+ Object.assign(f.bounds,{top:340,bottom:360});
+ assert.equal(f.editable.getAttribute('contenteditable'),'false');
+ assert.equal(f.classes.has('is-touch-select'),true);
+ const contextMenu = touchEvent('contextmenu',130,350); f.listeners.contextmenu(contextMenu);
+ assert.equal(contextMenu.prevented,true);
+ f.listeners.touchstart(touchEvent('touchstart',130,350)); assert.equal(runEditorTimer(f,400),true);
+ assert.equal(ed.selectionStyle.top,'368px'); assert.equal(ed.selectionStyle.transform,'none');
+ const expand = touchEvent('touchmove',268,350); f.listeners.touchmove(expand);
+ const finish = touchEvent('touchend',268,350); f.listeners.touchend(finish); f.listeners.selectionchange();
+ assert.equal(expand.prevented,true); assert.equal(finish.prevented,true);
+ assert.equal(f.selection.rangeCount,0); assert.equal(f.doc.activeElement,undefined);
+ assert.equal(f.win.CSS.highlights.get('speaking-touch-selection').range.toString(),'experimenting today');
+ assert.equal(f.changes,0); assert.equal(f.state.html,'Playing or experimenting today');
+ ed.readSelection(); assert.equal(f.requests[0].text,'experimenting today');
+ ed.toggleEditing();
+ assert.equal(f.doc.activeElement,f.editable); assert.equal(f.editable.getAttribute('contenteditable'),'true');
+ assert.equal(f.selection.activeRange.startOffset,f.state.html.length);
+ assert.equal(f.win.CSS.highlights.size,0);
+ const editMenu = touchEvent('contextmenu',130,350); f.listeners.contextmenu(editMenu); assert.equal(editMenu.prevented,false);
+ ed.toggleEditing();
+ assert.equal(f.doc.activeElement,null); assert.equal(f.editable.getAttribute('contenteditable'),'false');
+ assert.equal(f.selection.rangeCount,0); f.destroy();
+});
+
+test('touch scroll cancels a pending hold and older WebKit can paint an unsaved range',async()=>{
+ const f = editorFixture(true, {text:'Stay on task',legacy:true});
+ f.identity([11,7,42,9]); await settle();
+ Object.assign(f.bounds,{top:110,bottom:130});
+ f.listeners.touchstart(touchEvent('touchstart',35,120));
+ const scroll = touchEvent('touchmove',35,151); f.listeners.touchmove(scroll);
+ assert.equal(scroll.prevented,false); assert.equal(runEditorTimer(f,400),false);
+ f.listeners.touchstart(touchEvent('touchstart',56,120)); assert.equal(runEditorTimer(f,400),true);
+ assert.equal(f.scope.ed.hasSelection,true); assert.equal(f.classes.has('is-finding-caret'),false);
+ assert.equal(JSON.stringify(f.scope.ed.selectionRects),JSON.stringify([{left:'60px',top:'110px',width:'16px',height:'20px'}]));
+ assert.equal(f.selection.rangeCount,0); assert.equal(f.changes,0);
+ f.listeners.touchcancel(touchEvent('touchcancel',56,120));
+ assert.equal(f.scope.ed.hasSelection,false); assert.equal(f.scope.ed.selectionRects.length,0); f.destroy();
+});
 
 test('touch selection keeps its toolbar by the text after the native range is cleared',async()=>{
  const f=editorFixture(true);f.identity([11,7,42,9]);await settle();

@@ -243,8 +243,8 @@
         };
 
         vm.filterQuickEnrollmentClass = function (enrollmentClass) {
-            return enrollmentClass &&
-                Number(enrollmentClass.schoolId) === vm.directorySchoolId;
+            return enrollmentClass && Number(enrollmentClass.schoolId) === vm.directorySchoolId &&
+                (vm.isIeltsRoomDomain || (enrollmentClass.staffClass === true) === (vm.directoryAccountType === 'STAFF'));
         };
 
         vm.searchByQuickEnrollmentClass = function () {
@@ -949,6 +949,11 @@
         vm.selectDirectoryAccountType = function (type) {
             if (type === vm.directoryAccountType) { return; }
             vm.directoryAccountType = type;
+            if (!vm.isIeltsRoomDomain) {
+                vm.filter.enrollmentClass = null;
+                vm.advancedSearchApplied.classIds = [];
+                vm.advancedSearchApplied.active = !!(vm.appliedCreatedDateFrom || vm.appliedCreatedDateTo);
+            }
             vm.showUnassignedStudents = false;
             vm.users = [];
             vm.selectedUsers = [];
@@ -2219,8 +2224,8 @@
             var schoolId = toNumberOrNull(vm.advancedSearchDraft.schoolId);
 
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
-                return enrollmentClass &&
-                    toNumberOrNull(enrollmentClass.schoolId) === schoolId;
+                return vm.filterQuickEnrollmentClass(enrollmentClass) &&
+                    Number(enrollmentClass.schoolId) === schoolId;
             });
         };
 
@@ -2652,9 +2657,10 @@
         };
 
         vm.reloadUserListFromModal = function () {
-            // Nếu trong modal đang chọn lớp, lấy lớp đó làm filter cho bảng phía sau
-            if (vm.user && vm.user.person && vm.user.person.enrollmentClassId) {
-                vm.filter.enrollmentClass = vm.user.person.enrollmentClassId;
+            // Apply the class from the account editor only if it belongs to the current tab.
+            var classId = vm.user && vm.user.person && vm.user.person.enrollmentClassId;
+            if (classId && (vm.isIeltsRoomDomain || vm.filterQuickEnrollmentClass(vm.findEnrollmentClass(classId)))) {
+                vm.filter.enrollmentClass = classId;
             }
 
             vm.pageIndex = 1;

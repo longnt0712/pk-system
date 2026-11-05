@@ -878,6 +878,10 @@
                                         {{row.name}}
                                     </button>
                                     <span data-ng-if="!row.canManageTeams">{{row.name}}</span>
+                                    <span class="label child-badge" data-ng-if="vm.schoolId === 2 && !row.parentId"
+                                          data-ng-class="row.staffClass ? 'label-info' : 'label-default'">
+                                        {{row.staffClass ? 'Lớp phụ trách' : 'Lớp học sinh'}}
+                                    </span>
                                     <span class="badge badge-info child-badge" data-ng-if="row.childCount">{{row.childCount}}</span>
                                 </div>
                             </td>
@@ -1853,6 +1857,12 @@
                     <span class="help-block">
                         Mã trường được giữ theo {{vm.listTitle.toLowerCase()}}.
                     </span>
+                </div>
+                <div class="col-md-4 form-group" data-ng-if="vm.schoolId === 2 && !vm.enrolmentClass.parentId">
+                    <label class="bold" for="church-class-type">Loại lớp</label>
+                    <select id="church-class-type" class="form-control" data-ng-model="vm.enrolmentClass.staffClass"
+                            data-ng-options="type.value as type.label for type in vm.churchClassTypes"
+                            data-ng-disabled="vm.saving"></select>
                 </div>
                 <div class="col-md-12 form-group">
                     <label class="bold">

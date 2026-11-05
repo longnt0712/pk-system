@@ -23,7 +23,7 @@
                             ng-click="vm.selectDirectoryAccountType('STUDENT')">Danh sách học sinh</button>
                     <button type="button" class="btn" ng-class="vm.directoryAccountType === 'STAFF' ? 'btn-primary' : 'btn-default'"
                             ng-attr-aria-pressed="{{vm.directoryAccountType === 'STAFF'}}"
-                            ng-click="vm.selectDirectoryAccountType('STAFF')">Danh sách nhân viên</button>
+                            ng-click="vm.selectDirectoryAccountType('STAFF')">{{vm.isIeltsRoomDomain ? 'Danh sách nhân viên' : 'Danh sách phụ trách'}}</button>
                 </div>
                 <div class="row margin-bottom-10 margin-right-10">
                     <div class="col-sm-6 col-xs-12 margin-top-10">
@@ -87,7 +87,7 @@
                                            load-error="vm.enrollmentClassesError"
                                            on-retry="vm.loadEnrollmentClasses()"
                                            on-change="vm.searchByQuickEnrollmentClass()"
-                                           placeholder="LỚP HỌC"
+                                           placeholder="{{vm.isIeltsRoomDomain ? 'LỚP HỌC' : (vm.directoryAccountType === 'STAFF' ? 'LỚP PHỤ TRÁCH' : 'LỚP HỌC SINH')}}"
                                            label="Chọn lớp để lọc"></class-tree-picker>
                     </div>
                     <div class="col-md-4">
@@ -477,7 +477,7 @@
 
                     <div class="alert alert-warning"
                          ng-if="vm.getAdvancedSearchClasses().length === 0">
-                        Không có lớp thuộc trường đã chọn.
+                        Không có lớp phù hợp với danh sách đang mở.
                     </div>
                 </div>
 

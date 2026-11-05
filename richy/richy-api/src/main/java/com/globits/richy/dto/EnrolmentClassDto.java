@@ -24,6 +24,7 @@ public class EnrolmentClassDto implements Serializable {
     private String name;
     private String code;
     private Integer schoolId;
+    private Boolean staffClass;
     private Long parentId;
     private String parentName;
     private Set<Long> teacherIds = new LinkedHashSet<Long>();
@@ -96,6 +97,14 @@ public class EnrolmentClassDto implements Serializable {
 
     public void setSchoolId(Integer schoolId) {
         this.schoolId = schoolId;
+    }
+
+    public Boolean getStaffClass() {
+        return staffClass;
+    }
+
+    public void setStaffClass(Boolean staffClass) {
+        this.staffClass = staffClass;
     }
 
     public Long getParentId() {
