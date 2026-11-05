@@ -27,6 +27,16 @@ public class FairService {
     @Transactional(readOnly = true)
     public List<FairEvent> events(boolean includeClosed) {
         if (includeClosed) { require("ROLE_ADMIN"); }
+        return listEvents(includeClosed);
+    }
+
+    @Transactional(readOnly = true)
+    public FairDto.Management management() {
+        requireInventoryManager();
+        return new FairDto.Management(listEvents(true), has("ROLE_ADMIN"));
+    }
+
+    private List<FairEvent> listEvents(boolean includeClosed) {
         return em.createQuery("from FairEvent" + (includeClosed ? "" : " where active=true") + " order by id desc", FairEvent.class).getResultList();
     }
 
@@ -275,7 +285,7 @@ public class FairService {
         return code;
     }
     private static String clean(String value) { return value == null ? "" : value.trim(); }
-    private static String text(String value, int max, String message) {
+    static String text(String value, int max, String message) {
         String result = clean(value);
         if (result.isEmpty() || result.length() > max || result.chars().anyMatch(Character::isISOControl)) { throw invalid(message); }
         return result;
@@ -287,6 +297,9 @@ public class FairService {
     }
     private static String actor() { return authentication().getName(); }
     private static boolean has(String role) { return authentication().getAuthorities().stream().anyMatch(value -> role.equals(value.getAuthority())); }
+    static void requireInventoryManager() {
+        require("ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT");
+    }
     private static void require(String... roles) {
         for (String role : roles) { if (has(role)) { return; } }
         throw new AccessDeniedException("Tài khoản không có quyền thực hiện thao tác này.");

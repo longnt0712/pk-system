@@ -210,10 +210,13 @@
         };
         function load(event) {
             vm.event = event; vm.selectedEvent = event.id; vm.tiers = core.tiers(event); vm.eventForm = angular.copy(event);
-            if (vm.mode === 'lookup') { return; }
+            if (vm.mode === 'lookup' || (vm.mode === 'admin' && !vm.canManageFair)) { return; }
             return api.operator(event.id).then(function (response) {
                 applyOperator(response.data);
-                if (vm.mode === 'admin' && !vm.operator.admin) { throw Error('Chỉ quản trị viên được mở trang quản lý hội chợ.'); }
+                if (vm.mode === 'admin' && !vm.operator.admin) {
+                    vm.canManageFair = vm.canManageItems = false;
+                    throw Error('Quyền quản lý hội chợ đã thay đổi. Hãy tải lại trang.');
+                }
                 pendingKey = 'fair.pending.' + event.id + '.' + vm.operator.username;
                 vm.pending = storageGet(pendingKey);
                 if (vm.pending) { vm.error = 'Có một lượt chưa xác nhận kết quả. Hãy bấm “Kiểm tra kết quả” trước khi tiếp tục.'; }
@@ -227,9 +230,15 @@
                 }
             });
         }
-        api.events(vm.mode === 'admin').then(function (response) {
-            vm.events = response.data;
-            var selected = $stateParams.id ? api.event($stateParams.id).then(function (result) { return result.data; }) : Promise.resolve(vm.events[0]);
+        (vm.mode === 'admin' ? api.management() : api.events(false)).then(function (response) {
+            if (vm.mode === 'admin') {
+                vm.canManageItems = true;
+                vm.canManageFair = response.data.canManageFair === true;
+                vm.events = response.data.events;
+            } else { vm.events = response.data; }
+            var selected = $stateParams.id
+                ? api.event($stateParams.id).then(function (result) { return result.data; })
+                : Promise.resolve(vm.events[0]);
             return selected.then(function (event) { if (event) { return load(event); } });
         }).catch(failure).finally(function () {
             vm.loading = false;

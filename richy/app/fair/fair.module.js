@@ -11,7 +11,7 @@
                 templateUrl: 'fair/fair.html?v=' + version,
                 controller: 'FairController as vm',
                 resolve: {deps: ['$ocLazyLoad', function ($ocLazyLoad) {
-                    return $ocLazyLoad.load({name: 'Hrm.Fair', files: [
+                    var files = [
                         'fair/fair.css?v=' + version,
                         'assets/scripts/external/html5-qrcode.min.js?v=' + version,
                         'assets/scripts/external/qrcode.min.js?v=' + version,
@@ -19,7 +19,11 @@
                         'fair/FairService.js?v=' + version,
                         'fair/FairScanner.js?v=' + version,
                         'fair/FairController.js?v=' + version
-                    ]});
+                    ];
+                    if (mode === 'admin') {
+                        files.push('fair/FairInventory.js?v=' + version, 'fair/fair-inventory.css?v=' + version);
+                    }
+                    return $ocLazyLoad.load({name: 'Hrm.Fair', files: files});
                 }]}
             };
         }

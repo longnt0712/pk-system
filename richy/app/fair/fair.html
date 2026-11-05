@@ -5,7 +5,7 @@
             <a ng-if="vm.mode !== 'lookup'" ng-href="{{vm.lookupLink()}}">Tra cứu</a>
             <a ng-if="vm.mode === 'lookup'" ui-sref="fair_work">Người trực</a>
             <a ng-if="vm.operator.admin && vm.mode !== 'admin'" ui-sref="fair_admin">Quản lý</a>
-            <a ng-if="vm.mode === 'admin'" ui-sref="fair_work">Quét thẻ</a>
+            <a ng-if="vm.mode === 'admin' && vm.canManageFair" ui-sref="fair_work">Quét thẻ</a>
         </nav>
     </header>
     <div class="fair-content">
@@ -84,8 +84,12 @@
             <p class="fair-footnote">Phiếu giấy được đổi riêng tại gian hàng, không tính vào số phiếu trong thẻ.</p>
         </section>
 
-        <section ng-if="vm.mode === 'admin' && !vm.loading && !vm.needLogin" class="fair-admin">
-            <section class="fair-panel">
+        <section ng-if="vm.mode === 'admin' && vm.canManageItems && !vm.loading && !vm.needLogin" class="fair-admin">
+            <div ng-if="vm.event">
+                <fair-inventory ng-repeat="fairId in [vm.event.id] track by fairId" event-id="fairId" open-on-load="!vm.canManageFair"></fair-inventory>
+            </div>
+            <p class="fair-panel" ng-if="!vm.event && !vm.canManageFair && !vm.error">Chưa có hội chợ. Liên hệ Admin để tạo hội chợ.</p>
+            <section class="fair-panel" ng-if="vm.canManageFair">
                 <h2>{{vm.eventForm.id ? 'Cấu hình hội chợ' : 'Tạo hội chợ'}}</h2>
                 <form ng-submit="vm.saveEvent()">
                     <label>Tên hội chợ<input ng-model="vm.eventForm.name" maxlength="150" required></label>
@@ -101,7 +105,7 @@
                 <p ng-if="vm.event"><a ng-href="{{vm.lookupLink()}}" target="_blank" rel="noopener">Mở đường link tra cứu công khai ↗</a></p>
                 <button type="button" class="fair-text-button" ng-if="vm.eventForm.id" ng-click="vm.newEvent()" ng-disabled="vm.busy || vm.pending">Tạo hội chợ mới</button>
             </section>
-            <section class="fair-panel" ng-if="vm.event && vm.showStationSetup">
+            <section class="fair-panel" ng-if="vm.canManageFair && vm.event && vm.showStationSetup">
                 <h2>Gán người trực gian hàng</h2>
                 <p>Gán ROLE_PLAY hoặc ROLE_GIFT là có thể sử dụng ngay. Có thể thêm tên gian hàng tại đây để nhận biết trong lịch sử.</p>
                 <form ng-submit="vm.saveStation()">
@@ -112,12 +116,12 @@
                 </form>
                 <ul class="fair-list"><li ng-repeat="station in vm.stations"><div><strong>{{station.name}}</strong><span>{{station.operatorName}} · {{station.operation === 'PLAY' ? 'Thưởng' : 'Đổi quà'}} · Chọn mức sau khi quét</span></div><button type="button" class="fair-text-button" ng-click="vm.editStation(station)">Sửa</button></li></ul>
             </section>
-            <section class="fair-panel" ng-if="vm.event">
+            <section class="fair-panel" ng-if="vm.canManageFair && vm.event">
                 <h2>Thẻ khách</h2><p>Mỗi thẻ có một mã QR riêng và bắt đầu với 0 phiếu. Hiện có <strong>{{vm.guests.length}}</strong> thẻ.</p>
                 <form ng-submit="vm.generateGuests()" class="fair-guest-form"><label>Số thẻ tạo thêm<input type="number" ng-model="vm.guestCount" min="1" max="500" step="1" required></label><button type="submit" class="fair-button" ng-disabled="vm.busy || vm.pending">Tạo thẻ khách</button></form>
                 <button type="button" class="fair-button fair-button--light" ng-if="vm.guests.length" ng-click="vm.printGuests()" ng-disabled="vm.busy">In {{vm.guests.length}} thẻ QR</button>
             </section>
-            <section class="fair-panel" ng-if="vm.event">
+            <section class="fair-panel" ng-if="vm.canManageFair && vm.event">
                 <h2>Lịch sử cộng và đổi phiếu</h2>
                 <form class="fair-code-form" ng-submit="vm.refreshHistory()"><label for="fair-history-code">Lọc theo mã thẻ · để trống để xem tất cả</label><div><input id="fair-history-code" ng-model="vm.historyCode" maxlength="100" autocapitalize="off"><button type="submit" class="fair-button" ng-disabled="vm.busy">Xem</button></div></form>
                 <p ng-if="!vm.transactions.length" class="fair-muted">Chưa có giao dịch.</p>
@@ -135,7 +139,7 @@
         </section>
     </div>
     <footer class="fair-footer">Hội chợ tổng kết · Mỗi lượt quét, một niềm vui</footer>
-    <section class="fair-print-cards" ng-if="vm.mode === 'admin'" aria-label="Thẻ khách để in">
+    <section class="fair-print-cards" ng-if="vm.mode === 'admin' && vm.canManageFair" aria-label="Thẻ khách để in">
         <article ng-repeat="guest in vm.guests"><h2>{{vm.event.name}}</h2><strong>{{guest.displayName}}</strong><div fair-qr="guest.cardCode"></div><small>{{guest.cardCode}}</small><p>Giữ thẻ để nhận phiếu và đổi quà</p></article>
     </section>
 </main>
