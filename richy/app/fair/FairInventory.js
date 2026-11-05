@@ -8,19 +8,32 @@
         bindings: {eventId: '<', openOnLoad: '<'},
         templateUrl: 'fair/fair-inventory.html?v=' + window.APP_VERSION,
         controllerAs: 'inventory',
-        controller: ['$http', '$q', '$window', '$element', '$scope', 'settings', 'FairItemImage',
-            function ($http, $q, win, element, scope, settings, images) {
+        controller: ['$http', '$q', '$window', '$element', '$scope', 'settings', 'FairItemImage', '$ocLazyLoad',
+            function ($http, $q, win, element, scope, settings, images, lazyLoad) {
             var vm = this;
-            var base = settings.api.baseUrl + 'api/fairs', dialog, photoViewport, disposed = false;
+            var base = settings.api.baseUrl + 'api/fairs', dialog, statsDialog, photoViewport, disposed = false;
             var countFormat = new Intl.NumberFormat('vi-VN');
+            var nameOrder = new Intl.Collator('vi', {numeric: true, sensitivity: 'base'});
             vm.items = [];
-            vm.groups = [{kind: 'CATEGORY', label: 'Thể loại'}, {kind: 'DIFFICULTY', label: 'Mức độ'}];
+            vm.visibleItems = [];
+            vm.filters = {};
+            vm.groups = [
+                {kind: 'CATEGORY', field: 'categoryId', label: 'Thể loại', all: 'Tất cả thể loại'},
+                {kind: 'DIFFICULTY', field: 'difficultyId', label: 'Mức độ', all: 'Tất cả mức độ'}
+            ];
+            vm.columns = [
+                {label: 'STT'}, {label: 'Mặt hàng', field: 'name'}, {label: 'Ảnh'},
+                {label: 'Đơn giá', field: 'unitPrice'}, {label: 'Số lượng', field: 'quantity'},
+                {label: 'Thể loại', field: 'categoryId'}, {label: 'Mức độ', field: 'difficultyId'},
+                {label: 'Thành tiền', field: 'amount'}
+            ];
 
             vm.$onInit = function () {
                 if (vm.openOnLoad) { vm.load(); }
             };
             vm.$postLink = function () {
-                dialog = element[0].querySelector('dialog');
+                dialog = element[0].querySelector('.fair-photo-dialog');
+                statsDialog = element[0].querySelector('.fair-stats-dialog');
                 photoViewport = dialog.querySelector('.fair-photo-viewport');
                 dialog.addEventListener('close', onDialogClose);
                 win.addEventListener('resize', resizePhoto);
@@ -43,17 +56,44 @@
                 vm.groups.forEach(function (group) {
                     group.options = options.filter(function (option) { return option.kind === group.kind; });
                     group.options.forEach(function (option) { vm.optionsById[option.id] = option.name; });
+                    if (vm.filters[group.field] != null && !vm.optionsById[vm.filters[group.field]]) {
+                        vm.filters[group.field] = null;
+                    }
                 });
             }
-            function updateTotals() {
-                var quantity = BigInt(0), prices = BigInt(0), value = BigInt(0);
-                vm.items.forEach(function (item) {
-                    var count = BigInt(item.quantity), price = BigInt(item.unitPrice);
-                    quantity += count;
-                    prices += price;
-                    value += count * price;
+            function searchName(value) {
+                return (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+            }
+            function sortValue(item) {
+                switch (vm.sortField) {
+                    case 'categoryId': return vm.optionsById[item.categoryId] || '';
+                    case 'difficultyId': return vm.optionsById[item.difficultyId] || '';
+                    case 'amount': return item.unitPrice * item.quantity;
+                    default: return item[vm.sortField];
+                }
+            }
+            function updateTable() {
+                var query = searchName(vm.filters.name).trim();
+                vm.visibleItems = vm.items.filter(function (item) {
+                    return (!query || searchName(item.name).includes(query)) &&
+                        vm.groups.every(function (group) {
+                            return vm.filters[group.field] == null || vm.filters[group.field] === item[group.field];
+                        });
                 });
-                vm.totals = {quantity: vm.count(quantity), prices: vm.price(prices), value: vm.price(value)};
+                if (vm.sortField) {
+                    vm.visibleItems.sort(function (first, second) {
+                        var a = sortValue(first), b = sortValue(second);
+                        return vm.sortDirection * (typeof a === 'number' ? a - b : nameOrder.compare(a, b));
+                    });
+                }
+                var totals = {quantity: BigInt(0), prices: BigInt(0), value: BigInt(0)};
+                vm.visibleItems.forEach(function (item) {
+                    var count = BigInt(item.quantity), price = BigInt(item.unitPrice);
+                    totals.quantity += count;
+                    totals.prices += price;
+                    totals.value += count * price;
+                });
+                vm.totals = totals;
             }
             function change(operation, apply, fallback) {
                 if (vm.busy) { return; }
@@ -73,15 +113,28 @@
                 }, function (responses) {
                     vm.items = responses[0].data;
                     setOptions(responses[1].data);
-                    updateTotals();
+                    updateTable();
                     vm.loaded = true;
                 }, 'Không tải được mặt hàng và danh mục. Hãy thử lại.');
             };
             vm.count = function (value) { return countFormat.format(value); };
             vm.price = function (value) { return priceFormat.format(value) + ' đ'; };
             vm.photoUrl = function (item) { return itemPath(item.id) + '/photo?v=' + item.revision; };
+            vm.updateTable = updateTable;
+            vm.clearFilters = function () {
+                vm.filters = {};
+                updateTable();
+            };
+            vm.sortBy = function (field) {
+                vm.sortDirection = vm.sortField === field ? -vm.sortDirection : 1;
+                vm.sortField = field;
+                updateTable();
+            };
+            vm.sortState = function (field) {
+                return field && vm.sortField === field ? (vm.sortDirection === 1 ? 'ascending' : 'descending') : undefined;
+            };
             vm.tableItems = function () {
-                return vm.itemForm && !vm.itemForm.id ? vm.items.concat(vm.itemForm) : vm.items;
+                return vm.itemForm && !vm.itemForm.id ? vm.visibleItems.concat(vm.itemForm) : vm.visibleItems;
             };
             vm.isEditing = function (item) {
                 return !!vm.itemForm && item.id === vm.itemForm.id;
@@ -89,6 +142,111 @@
             vm.amount = function (item) {
                 var row = vm.isEditing(item) ? vm.itemForm : item;
                 return row.unitPrice == null || row.quantity == null ? '—' : vm.price(row.unitPrice * row.quantity);
+            };
+            vm.closeTools = function () {
+                var tools = element[0].querySelector('.fair-inventory-tools[open]');
+                if (tools) {
+                    tools.open = false;
+                    tools.querySelector('summary').focus();
+                }
+            };
+            vm.openStatistics = function () {
+                vm.closeTools();
+                vm.statistics = vm.groups.map(function (group) {
+                    var counts = new Map();
+                    vm.visibleItems.forEach(function (item) {
+                        var id = item[group.field], row = counts.get(id);
+                        if (!row) {
+                            row = {name: vm.optionsById[id] || 'Chưa phân loại', items: 0, quantity: BigInt(0)};
+                            counts.set(id, row);
+                        }
+                        row.items++;
+                        row.quantity += BigInt(item.quantity);
+                    });
+                    return {
+                        label: group.label,
+                        rows: Array.from(counts.values()).sort(function (a, b) { return nameOrder.compare(a.name, b.name); })
+                    };
+                });
+                statsDialog.showModal();
+            };
+            vm.closeStatistics = function () { statsDialog.close(); };
+
+            function makeWorkbook(xlsx, items) {
+                function excelTotal(value) {
+                    // Excel preserves up to 15 significant digits in numeric cells.
+                    return value <= BigInt(999999999999999) ? Number(value) : value.toString();
+                }
+                var rows = [vm.columns.map(function (column) { return column.label; })];
+                items.forEach(function (item, index) {
+                    rows.push([index + 1, item.name, null, item.unitPrice, item.quantity, vm.optionsById[item.categoryId],
+                        vm.optionsById[item.difficultyId], item.unitPrice * item.quantity]);
+                });
+                rows.push(['Tổng', null, null, excelTotal(vm.totals.prices), excelTotal(vm.totals.quantity),
+                    null, null, excelTotal(vm.totals.value)]);
+                var sheet = xlsx.utils.aoa_to_sheet(rows);
+                sheet['!cols'] = [{wch: 8}, {wch: 38}, {wpx: 96}, {wch: 17}, {wch: 13}, {wch: 24}, {wch: 16}, {wch: 23}];
+                sheet['!rows'] = [{hpt: 20}].concat(items.map(function (item) { return {hpt: item.hasPhoto ? 70 : 20}; }));
+                for (var row = 2; row <= rows.length; row++) {
+                    sheet['D' + row].z = sheet['H' + row].z = '#,##0" đ"';
+                    sheet['E' + row].z = '#,##0';
+                }
+                var workbook = xlsx.utils.book_new();
+                xlsx.utils.book_append_sheet(workbook, sheet, 'Mặt hàng hội chợ');
+                return workbook;
+            }
+            function collectWorkbookPhotos(items) {
+                var jobs = [];
+                items.forEach(function (item, index) {
+                    if (item.hasPhoto) { jobs.push({item: item, row: index + 1}); }
+                });
+                var progress = vm.exportProgress = {done: 0, total: jobs.length};
+                var photos = [];
+                // Use a 2x canvas for the workbook writer's 90 px square anchor.
+                var canvas = win.document.createElement('canvas');
+                canvas.width = canvas.height = 180;
+                var context = canvas.getContext('2d');
+                return jobs.reduce(function (pending, job) {
+                    return pending.then(function () {
+                        if (disposed) { return; }
+                        return images.load(vm.photoUrl(job.item)).then(function (image) {
+                            try {
+                                var scale = 168 / Math.max(image.width, image.height);
+                                var width = image.width * scale, height = image.height * scale;
+                                context.clearRect(0, 0, canvas.width, canvas.height);
+                                context.drawImage(image.element, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+                                photos.push({row: job.row, col: 2, dataUrl: canvas.toDataURL('image/png')});
+                                progress.done++;
+                            } finally { win.URL.revokeObjectURL(image.url); }
+                        }).catch(function (error) {
+                            if (!disposed) { vm.error = 'Không tải được ảnh của “' + job.item.name + '”. Hãy thử xuất lại.'; }
+                            return $q.reject(error);
+                        });
+                    });
+                }, $q.when()).then(function () { return photos; });
+            }
+            vm.exportExcel = function () {
+                if (vm.busy || vm.itemForm || !vm.visibleItems.length) { return; }
+                vm.closeTools();
+                vm.busy = vm.exporting = true;
+                vm.error = '';
+                var items = vm.visibleItems;
+                var loadWriter = win.StudentQrWorkbook ? $q.when() : lazyLoad.load('users/StudentQrWorkbook.js?v=' + win.APP_VERSION);
+                return loadWriter.then(function () {
+                    if (disposed) { return; }
+                    if (!win.XLSX || !win.StudentQrWorkbook) { throw new Error('Missing Excel writer'); }
+                    var workbook = makeWorkbook(win.XLSX, items);
+                    return collectWorkbookPhotos(items).then(function (photos) {
+                        if (disposed) { return; }
+                        var bytes = win.StudentQrWorkbook.withImages(win.XLSX, workbook, photos);
+                        win.StudentQrWorkbook.download(bytes, 'mat_hang_hoi_cho_' + vm.eventId + '.xlsx');
+                    });
+                }).catch(function () {
+                    if (!disposed && !vm.error) { vm.error = 'Không xuất được Excel. Hãy tải lại trang và thử lại.'; }
+                }).finally(function () {
+                    vm.busy = vm.exporting = false;
+                    vm.exportProgress = null;
+                });
             };
             vm.startItem = function (item) {
                 if (vm.busy || vm.itemForm) { return; }
@@ -139,7 +297,7 @@
                 }, function (saved) {
                     if (item.id) { vm.items = vm.items.map(function (row) { return row.id === saved.id ? saved : row; }); }
                     else { vm.items.push(saved); }
-                    updateTotals();
+                    updateTable();
                     vm.cancelItem();
                 }, 'Chưa xác nhận được việc lưu. Hãy tải lại bảng để kiểm tra.');
             };
@@ -150,7 +308,7 @@
                 }, function () {
                     vm.items = vm.items.filter(function (row) { return row.id !== item.id; });
                     if (vm.itemForm && vm.itemForm.id === item.id) { vm.cancelItem(); }
-                    updateTotals();
+                    updateTable();
                 }, 'Không xóa được mặt hàng.');
             };
             vm.startOption = function (group, option) {
@@ -167,6 +325,7 @@
                     }, []);
                 } else { all.push(saved); }
                 setOptions(all);
+                updateTable();
             }
             vm.saveOption = function (valid) {
                 if (!valid) { return; }
@@ -251,7 +410,7 @@
                     var url = win.URL.createObjectURL(blob), image = new win.Image();
                     image.src = url;
                     return $q.when(image.decode()).then(function () {
-                        return {url: url, width: image.naturalWidth, height: image.naturalHeight};
+                        return {url: url, width: image.naturalWidth, height: image.naturalHeight, element: image};
                     }, function (error) {
                         win.URL.revokeObjectURL(url);
                         return $q.reject(error);

@@ -10,8 +10,16 @@
         <div ng-if="inventory.loaded">
             <div class="fair-inventory-actions">
                 <button type="button" class="fair-button fair-button--primary" ng-click="inventory.config=false; inventory.startItem()" ng-disabled="inventory.busy || inventory.itemForm">Thêm mặt hàng</button>
-                <button type="button" class="fair-button" ng-click="inventory.config=!inventory.config; inventory.error=''" ng-attr-aria-expanded="{{!!inventory.config}}">{{inventory.config ? 'Về bảng mặt hàng' : 'Cấu hình danh mục'}}</button>
+                <button type="button" class="fair-button" ng-click="inventory.config=!inventory.config; inventory.error=''" ng-disabled="inventory.exporting" ng-attr-aria-expanded="{{!!inventory.config}}">{{inventory.config ? 'Về bảng mặt hàng' : 'Cấu hình danh mục'}}</button>
                 <button type="button" class="fair-text-button" ng-click="inventory.load()" ng-disabled="inventory.busy || inventory.itemForm">Tải lại bảng</button>
+                <details class="fair-inventory-tools" ng-if="!inventory.config" ng-keydown="$event.key === 'Escape' && inventory.closeTools()">
+                    <summary class="fair-button">Tiện ích <span aria-hidden="true">▾</span></summary>
+                    <div class="fair-inventory-tools-menu">
+                        <button type="button" ng-click="inventory.openStatistics()" ng-disabled="inventory.busy || inventory.itemForm">Thống kê</button>
+                        <button type="button" ng-click="inventory.exportExcel()"
+                            ng-disabled="inventory.busy || inventory.itemForm || !inventory.visibleItems.length">Xuất Excel</button>
+                    </div>
+                </details>
             </div>
 
             <section ng-if="inventory.config" aria-label="Danh mục mặt hàng">
@@ -44,11 +52,38 @@
             </section>
 
             <div ng-if="!inventory.config">
+                <fieldset class="fair-inventory-filters" aria-label="Lọc mặt hàng" ng-disabled="inventory.busy || inventory.itemForm">
+                    <label class="fair-inventory-search">Tìm theo tên
+                        <input type="search" placeholder="Nhập tên mặt hàng…" ng-model="inventory.filters.name" ng-change="inventory.updateTable()">
+                    </label>
+                    <label ng-repeat="group in inventory.groups track by group.field">{{group.label}}
+                        <select ng-model="inventory.filters[group.field]" ng-change="inventory.updateTable()"
+                            ng-options="option.id as option.name for option in group.options">
+                            <option value="">{{group.all}}</option>
+                        </select>
+                    </label>
+                    <button class="fair-button" type="button" ng-click="inventory.clearFilters()"
+                        ng-disabled="!inventory.filters.name && !inventory.filters.categoryId && !inventory.filters.difficultyId">Xóa lọc</button>
+                </fieldset>
+                <p class="fair-muted fair-inventory-status" role="status">
+                    <span ng-if="!inventory.exporting">Hiển thị {{inventory.count(inventory.visibleItems.length)}} / {{inventory.count(inventory.items.length)}} mặt hàng</span>
+                    <span ng-if="inventory.exporting">
+                        Đang xuất Excel<span ng-if="inventory.exportProgress.total"> · {{inventory.exportProgress.done}} / {{inventory.exportProgress.total}} ảnh</span>…
+                    </span>
+                </p>
                 <p class="fair-muted" ng-if="inventory.itemForm && (!inventory.groups[0].options.length || !inventory.groups[1].options.length)">Thêm thể loại và mức độ trong mục Cấu hình danh mục trước khi lưu.</p>
                 <div class="fair-inventory-table-wrap" tabindex="0" role="region" aria-label="Bảng mặt hàng, cuộn ngang để xem đủ cột">
                     <table class="fair-inventory-table">
                         <caption class="sr-only">Mặt hàng của hội chợ</caption>
-                        <thead><tr><th scope="col" class="fair-inventory-order">STT</th><th scope="col">Mặt hàng</th><th scope="col">Ảnh</th><th scope="col">Đơn giá</th><th scope="col">Số lượng</th><th scope="col">Thể loại</th><th scope="col">Mức độ</th><th scope="col">Thành tiền</th><th scope="col" class="fair-inventory-sticky">Thao tác</th></tr></thead>
+                        <thead><tr>
+                            <th scope="col" ng-repeat="column in inventory.columns track by column.label"
+                                ng-class="{'fair-inventory-order': $first}" ng-attr-aria-sort="{{inventory.sortState(column.field)}}">
+                                <span ng-if="!column.field">{{column.label}}</span>
+                                <button type="button" class="fair-inventory-sort" ng-if="column.field" ng-click="inventory.sortBy(column.field)"
+                                    ng-disabled="inventory.busy || inventory.itemForm">{{column.label}} <span aria-hidden="true"></span></button>
+                            </th>
+                            <th scope="col" class="fair-inventory-sticky">Thao tác</th>
+                        </tr></thead>
                         <tbody>
                             <tr ng-repeat-start="item in inventory.tableItems() track by (item.id || 'new')"
                                 ng-form="itemRowForm" ng-class="{'is-editing': inventory.isEditing(item)}">
@@ -131,18 +166,42 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr ng-if="!inventory.items.length && !inventory.itemForm"><td colspan="9">Hội chợ này chưa có mặt hàng.</td></tr>
+                            <tr ng-if="!inventory.visibleItems.length && !inventory.itemForm">
+                                <td colspan="9">{{inventory.items.length ? 'Không tìm thấy mặt hàng phù hợp.' : 'Hội chợ này chưa có mặt hàng.'}}</td>
+                            </tr>
                         </tbody>
                         <tfoot><tr>
                             <th scope="row" colspan="3">Tổng</th>
-                            <td class="fair-inventory-number">{{inventory.totals.prices}}</td><td class="fair-inventory-number">{{inventory.totals.quantity}}</td>
-                            <td colspan="2"></td><td class="fair-inventory-number">{{inventory.totals.value}}</td><td class="fair-inventory-sticky"></td>
+                            <td class="fair-inventory-number">{{inventory.price(inventory.totals.prices)}}</td>
+                            <td class="fair-inventory-number">{{inventory.count(inventory.totals.quantity)}}</td>
+                            <td colspan="2"></td><td class="fair-inventory-number">{{inventory.price(inventory.totals.value)}}</td><td class="fair-inventory-sticky"></td>
                         </tr></tfoot>
                     </table>
                 </div>
             </div>
         </div>
     </div>
+    <dialog class="fair-stats-dialog" aria-labelledby="fair-stats-title">
+        <header>
+            <h3 id="fair-stats-title">Thống kê mặt hàng</h3>
+            <button class="fair-button" type="button" ng-click="inventory.closeStatistics()" autofocus>Đóng</button>
+        </header>
+        <p>Đang hiển thị <strong>{{inventory.count(inventory.visibleItems.length)}}</strong> mặt hàng với
+            tổng số lượng <strong>{{inventory.count(inventory.totals.quantity)}}</strong>.</p>
+        <p ng-if="!inventory.visibleItems.length">Không có mặt hàng để thống kê.</p>
+        <div class="fair-stats-groups" ng-if="inventory.visibleItems.length">
+            <table ng-repeat="group in inventory.statistics track by group.label">
+                <caption>Theo {{group.label | lowercase}}</caption>
+                <thead><tr><th scope="col">{{group.label}}</th><th scope="col">Mặt hàng</th><th scope="col">Số lượng</th></tr></thead>
+                <tbody>
+                    <tr ng-repeat="row in group.rows">
+                        <th scope="row">{{row.name}}</th>
+                        <td>{{inventory.count(row.items)}}</td><td>{{inventory.count(row.quantity)}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </dialog>
     <dialog class="fair-photo-dialog" aria-labelledby="fair-photo-title">
         <header>
             <h3 id="fair-photo-title">{{inventory.preview.name}}</h3>
