@@ -2,15 +2,17 @@
     'use strict';
     var module = angular.module('Hrm.Fair');
     var photoLimit = 8 * 1024 * 1024;
+    var priceFormat = new Intl.NumberFormat('en-US');
 
     module.component('fairInventory', {
         bindings: {eventId: '<', openOnLoad: '<'},
         templateUrl: 'fair/fair-inventory.html?v=' + window.APP_VERSION,
         controllerAs: 'inventory',
-        controller: ['$http', '$q', '$window', '$element', 'settings', function ($http, $q, win, element, settings) {
+        controller: ['$http', '$q', '$window', '$element', '$scope', 'settings', 'FairItemImage',
+            function ($http, $q, win, element, scope, settings, images) {
             var vm = this;
-            var base = settings.api.baseUrl + 'api/fairs', dialog, disposed = false;
-            var money = new Intl.NumberFormat('vi-VN');
+            var base = settings.api.baseUrl + 'api/fairs', dialog, photoViewport, disposed = false;
+            var countFormat = new Intl.NumberFormat('vi-VN');
             vm.items = [];
             vm.groups = [{kind: 'CATEGORY', label: 'Thể loại'}, {kind: 'DIFFICULTY', label: 'Mức độ'}];
 
@@ -19,11 +21,14 @@
             };
             vm.$postLink = function () {
                 dialog = element[0].querySelector('dialog');
+                photoViewport = dialog.querySelector('.fair-photo-viewport');
                 dialog.addEventListener('close', onDialogClose);
+                win.addEventListener('resize', resizePhoto);
             };
             vm.$onDestroy = function () {
                 disposed = true;
                 if (dialog) { dialog.removeEventListener('close', onDialogClose); }
+                win.removeEventListener('resize', resizePhoto);
                 clearPreview();
                 vm.cancelItem();
             };
@@ -48,7 +53,7 @@
                     prices += price;
                     value += count * price;
                 });
-                vm.totals = {quantity: money.format(quantity), prices: vm.price(prices), value: vm.price(value)};
+                vm.totals = {quantity: vm.count(quantity), prices: vm.price(prices), value: vm.price(value)};
             }
             function change(operation, apply, fallback) {
                 if (vm.busy) { return; }
@@ -72,8 +77,8 @@
                     vm.loaded = true;
                 }, 'Không tải được mặt hàng và danh mục. Hãy thử lại.');
             };
-            vm.count = function (value) { return money.format(value); };
-            vm.price = function (value) { return money.format(value) + ' đ'; };
+            vm.count = function (value) { return countFormat.format(value); };
+            vm.price = function (value) { return priceFormat.format(value) + ' đ'; };
             vm.photoUrl = function (item) { return itemPath(item.id) + '/photo?v=' + item.revision; };
             vm.tableItems = function () {
                 return vm.itemForm && !vm.itemForm.id ? vm.items.concat(vm.itemForm) : vm.items;
@@ -183,7 +188,7 @@
                 }, 'Không xóa được danh mục.');
             };
             function clearPreview() {
-                if (vm.preview && vm.preview.url) { win.URL.revokeObjectURL(vm.preview.url); }
+                if (vm.preview && vm.preview.image) { win.URL.revokeObjectURL(vm.preview.image.url); }
                 vm.preview = null;
             }
             function onDialogClose() {
@@ -191,19 +196,114 @@
             }
             vm.openPhoto = function (item) {
                 clearPreview();
-                var preview = vm.preview = {name: item.name, loading: true};
+                var preview = vm.preview = {name: item.name, loading: true, zoom: 100};
                 dialog.showModal();
-                $http.get(vm.photoUrl(item), {responseType: 'blob', timeout: 15000}).then(function (response) {
-                    if (vm.preview === preview) { preview.url = win.URL.createObjectURL(response.data); }
+                return images.load(vm.photoUrl(item)).then(function (image) {
+                    if (vm.preview !== preview) { win.URL.revokeObjectURL(image.url); return; }
+                    preview.image = image;
+                    vm.fitPhoto();
                 }).catch(function () {
                     preview.error = 'Không tải được ảnh. Hãy đóng và thử lại.';
                 }).finally(function () { preview.loading = false; });
             };
             vm.closePhoto = function () { dialog.close(); };
+            function updateFitWidth(preview) {
+                var width = Math.max(1, photoViewport.clientWidth - 24);
+                var height = Math.max(1, photoViewport.clientHeight - 24);
+                preview.fitWidth = Math.min(width, height * preview.image.width / preview.image.height);
+            }
+            function resizePhoto() {
+                if (!vm.preview || !vm.preview.image || !dialog.open) { return; }
+                scope.$evalAsync(function () {
+                    if (vm.preview && vm.preview.image && dialog.open) { updateFitWidth(vm.preview); }
+                });
+            }
+            vm.fitPhoto = function () {
+                var preview = vm.preview;
+                if (!preview || !preview.image) { return; }
+                preview.zoom = 100;
+                updateFitWidth(preview);
+                photoViewport.scrollLeft = photoViewport.scrollTop = 0;
+            };
+            vm.zoomPhoto = function (delta) {
+                var preview = vm.preview;
+                if (!preview || !preview.image) { return; }
+                var x = (photoViewport.scrollLeft + photoViewport.clientWidth / 2) / photoViewport.scrollWidth;
+                var y = (photoViewport.scrollTop + photoViewport.clientHeight / 2) / photoViewport.scrollHeight;
+                preview.zoom = Math.min(400, Math.max(50, preview.zoom + delta));
+                win.requestAnimationFrame(function () {
+                    if (vm.preview !== preview || !dialog.open) { return; }
+                    photoViewport.scrollLeft = x * photoViewport.scrollWidth - photoViewport.clientWidth / 2;
+                    photoViewport.scrollTop = y * photoViewport.scrollHeight - photoViewport.clientHeight / 2;
+                });
+            };
         }]
     });
 
-    module.directive('fairItemPhoto', ['$http', '$window', function ($http, win) {
+    module.factory('FairItemImage', ['$http', '$q', '$window', function ($http, $q, win) {
+        return {
+            load: function (path) {
+                return $http.get(path, {responseType: 'blob', timeout: 15000}).then(function (response) {
+                    var blob = response.data;
+                    if (!blob || !blob.size || !/^image\/(jpeg|png)(;|$)/i.test(blob.type)) {
+                        return $q.reject(new Error('Invalid item image response'));
+                    }
+                    var url = win.URL.createObjectURL(blob), image = new win.Image();
+                    image.src = url;
+                    return $q.when(image.decode()).then(function () {
+                        return {url: url, width: image.naturalWidth, height: image.naturalHeight};
+                    }, function (error) {
+                        win.URL.revokeObjectURL(url);
+                        return $q.reject(error);
+                    });
+                });
+            }
+        };
+    }]);
+
+    module.directive('fairPriceInput', function () {
+        return {
+            require: 'ngModel',
+            link: function (scope, element, attrs, model) {
+                var input = element[0];
+                function parsePrice(text) {
+                    if (model.$isEmpty(text)) { return null; }
+                    text = text.trim();
+                    if (!text) { return null; }
+                    if (/^[\d,]*\d[\d,]*$/.test(text)) { return Number(text.replace(/,/g, '')); }
+                    // Amounts copied from the previous display can contain Vietnamese grouping dots.
+                    if (/^\d{1,3}(\.\d{3})+$/.test(text)) { return Number(text.replace(/\./g, '')); }
+                }
+                model.$formatters.push(function (value) {
+                    return model.$isEmpty(value) ? '' : priceFormat.format(value);
+                });
+                model.$parsers.push(parsePrice);
+                model.$validators.priceRange = function (value, text) {
+                    return model.$isEmpty(text) || Number.isInteger(value) && value >= 0 && value <= 1000000000;
+                };
+
+                function formatInput(event) {
+                    var text = input.value, value = parsePrice(text);
+                    if (!Number.isSafeInteger(value)) { return; }
+                    var formatted = priceFormat.format(value);
+                    if (formatted === text) { return; }
+                    var digitsAfter = text.slice(input.selectionEnd).replace(/\D/g, '').length;
+                    var caret = formatted.length;
+                    while (digitsAfter && caret > 0) {
+                        if (formatted.charAt(--caret) !== ',') { digitsAfter--; }
+                    }
+                    if (event.inputType === 'deleteContentBackward' && formatted.charAt(caret - 1) === ',') { caret--; }
+                    input.value = formatted;
+                    input.setSelectionRange(caret, caret);
+                }
+                // Format before Angular's input listener parses the displayed text.
+                input.addEventListener('input', formatInput, true);
+                scope.$on('$destroy', function () { input.removeEventListener('input', formatInput, true); });
+            }
+        };
+    });
+
+    module.directive('fairItemPhoto', ['FairItemImage', '$window', function (images, win) {
         return function (scope, element, attrs) {
             var observer, url, sequence = 0;
             function reset() {
@@ -217,9 +317,9 @@
                 if (!path) { return; }
                 var request = sequence;
                 function load() {
-                    $http.get(path, {responseType: 'blob', timeout: 15000}).then(function (response) {
-                        if (request !== sequence) { return; }
-                        url = win.URL.createObjectURL(response.data);
+                    images.load(path).then(function (image) {
+                        if (request !== sequence) { win.URL.revokeObjectURL(image.url); return; }
+                        url = image.url;
                         element.attr('src', url);
                     }).catch(angular.noop);
                 }

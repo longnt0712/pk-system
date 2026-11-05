@@ -4,10 +4,12 @@ import com.globits.richy.domain.FairItemOption;
 import com.globits.richy.dto.FairItemRow;
 import com.globits.richy.service.impl.FairInventoryService;
 import com.globits.richy.service.impl.FairService;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import javax.persistence.OptimisticLockException;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -29,9 +31,15 @@ public class RestFairInventoryController {
     }
 
     @GetMapping("/{event}/items/{id}/photo")
-    public ResponseEntity<byte[]> photo(@PathVariable("event") Long event, @PathVariable("id") Long id) {
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).cacheControl(CacheControl.noStore())
-                .header("X-Content-Type-Options", "nosniff").body(inventory.photo(event, id));
+    public void photo(@PathVariable("event") Long event, @PathVariable("id") Long id,
+            HttpServletResponse response) throws IOException {
+        byte[] bytes = inventory.photo(event, id);
+        // This application's MVC configuration only registers text and JSON converters.
+        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+        response.setContentLength(bytes.length);
+        response.setHeader("Cache-Control", "private, no-store");
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.getOutputStream().write(bytes);
     }
 
     @PostMapping(value = {"/{event}/items", "/{event}/items/{id}"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
