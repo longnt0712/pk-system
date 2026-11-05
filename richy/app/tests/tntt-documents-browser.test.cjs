@@ -139,6 +139,7 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
   assert.equal(await f.page.locator('.study-notebook-text').inputValue(),'Nội dung đã công bố');
   assert.equal(await f.page.locator('.study-notebook-tools').count(),0);
   assert.equal(await f.page.getByRole('button',{name:'Màu chữ và bút',exact:true}).count(),0);
+  assert.equal(await f.page.getByRole('button',{name:'Khoanh vùng',exact:true}).count(),0);
   assert.deepEqual(f.server.errors,[]);
  }finally{await f.context.close();}
 });
@@ -221,6 +222,94 @@ test('saved pen and highlighter ink is visible on reopening before any zoom or t
    }
    await f.page.screenshot({path:path.join(app,`../../.tmp/tntt-notebook-reopen-${width}.png`)});
    assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
+});
+
+test('TNTT lasso moves outlined handwriting as one edit and keeps its position after reopening',async()=>{
+ const original={...blank(),text:'Nội dung đã gõ',strokes:[
+  {id:'pen',tool:'pen',color:'#315bbe',width:4,points:[[105,188,.31],[147,215,.82],[170,217,.55]]},
+  {id:'marker',tool:'highlighter',color:'#ffd032',width:16,points:[[70,237],[260,237]]},
+  {id:'outside-outline',tool:'pen',color:'#bc2844',width:4,points:[[213,265],[220,270]]}
+ ]};
+ for(const width of [1440,390]){
+  const f=await fixture({width});try{
+   const {page,server}=f;
+   server.entry.document=structuredClone(original);
+   const button=name=>page.getByRole('button',{name,exact:true});
+   await button('Soạn nội dung').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='ready');
+   await button('Phóng to trang giấy').click();
+   await page.locator('.study-notebook-zoom output').getByText('125%').waitFor();
+   const canvas=page.locator('.study-notebook-canvas');
+   const lasso=button('Khoanh vùng');
+   assert.equal(await page.locator('.study-notebook-color + .study-notebook-lasso-toggle').count(),1);
+   await lasso.click();
+   assert.equal(await lasso.getAttribute('aria-pressed'),'true');
+   const box=await canvas.boundingBox(),scale=box.width/794;
+   async function pointer(type,[x,y]){
+    const clientX=box.x+x*scale,clientY=box.y+y*scale;
+    if(width===390){
+     await canvas.dispatchEvent(type,{clientX,clientY,pointerId:21,pointerType:'pen',pressure:.6,bubbles:true,cancelable:true});
+    }else{
+     await page.mouse.move(clientX,clientY);
+     if(type==='pointerdown')await page.mouse.down();
+     if(type==='pointerup')await page.mouse.up();
+    }
+   }
+   async function inkAt(x,y){
+    return canvas.evaluate((node,[logicalX,logicalY])=>{
+     const factor=node.width/794;
+     const pixels=node.getContext('2d').getImageData(Math.round(logicalX*factor)-2,Math.round(logicalY*factor)-2,5,5).data;
+     return pixels.some((value,index)=>index%4===3&&value>0);
+    },[x,y]);
+   }
+   await pointer('pointerdown',[90,165]);
+   await pointer('pointermove',[225,170]);
+   await pointer('pointermove',[155,290]);
+   await pointer('pointerup',[90,165]);
+   await page.getByText('Kéo vùng nét đã chọn đến vị trí mới.',{exact:true}).waitFor();
+   assert.equal(await button('Hoàn tác nét vẽ').isDisabled(),true);
+   if(width===390){
+    await pointer('pointerdown',[148,213]);
+    await pointer('pointermove',[328,308]);
+    await pointer('pointercancel',[328,308]);
+    assert.deepEqual(await page.evaluate(()=>window.vm.session.document),original);
+   }
+   await pointer('pointerdown',[148,213]);
+   await pointer('pointermove',[328,308]);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   assert.equal(await inkAt(130,237),false,'The original ink is hidden during the drag preview');
+   assert.equal(await inkAt(310,332),true,'The selected marker is visible at its preview position');
+   assert.deepEqual(await page.evaluate(()=>window.vm.session.document),original,'Dragging only previews until pointer-up');
+   await pointer('pointerup',[328,308]);
+   await page.waitForFunction(()=>window.vm.session?.status==='saved');
+   const moved=structuredClone(server.entry.document);
+   assert.equal(moved.text,original.text);
+   assert.deepEqual(moved.strokes[2],original.strokes[2],'A stroke inside the bounding box but outside the lasso stays put');
+   for(const [index,stroke] of moved.strokes.slice(0,2).entries()){
+    const {points,...style}=original.strokes[index],{points:after,...savedStyle}=stroke;
+    assert.deepEqual(savedStyle,style);
+    assert.equal(after.length,points.length);
+    for(const [i,point] of after.entries()){
+     assert.ok(Math.abs(point[0]-points[i][0]-180)<2.5);
+     assert.ok(Math.abs(point[1]-points[i][1]-95)<2.5);
+     assert.deepEqual(point.slice(2),points[i].slice(2));
+    }
+   }
+   await button('Hoàn tác nét vẽ').click();
+   assert.deepEqual(await page.evaluate(()=>window.vm.session.document),original);
+   await button('Khôi phục nét vẽ').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='saved');
+   await page.locator('.study-notebook-close').click();
+   await page.waitForFunction(()=>!window.vm.active);
+   await button('Soạn nội dung').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='saved');
+   assert.deepEqual(await page.evaluate(()=>window.vm.session.document),moved);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   assert.equal(await inkAt(130,237),false);
+   assert.equal(await inkAt(310,332),true,'Reopening paints the moved ink before any tool or zoom change');
+   assert.deepEqual(server.errors,[]);
   }finally{await f.context.close();}
  }
 });
@@ -351,7 +440,7 @@ test('twelve teams scroll vertically beside the fixed unassigned list and leader
    window.teamCalls=[];
    const service={getTree:()=>q.when([]),updateTeamSettings:(classId,teamId,payload)=>{window.teamCalls.push({classId,teamId,payload});const col=board.teams.find(t=>t.id===teamId);if(payload.gender)col.gender=payload.gender;if(payload.role==='CAPTAIN')col.captainId=payload.userId;col.leadershipKey+='x';return q.when(angular.copy(board));}};
    const state={current:{name:'application.class',data:{enrolmentSchoolId:2}}};
-   scope.vm=extra.get('$controller')('EnrolmentClassController',{$rootScope:root,$scope:scope,toastr:{error:msg=>{throw new Error(msg);},warning(){},success(){}},$uibModal:original.get('$uibModal'),EnrolmentClassService:service,$state:state,$stateParams:{},ComprehensiveFolders:{},ClassAssignmentPicker:{}});
+   scope.vm=extra.get('$controller')('EnrolmentClassController',{$rootScope:root,$scope:scope,toastr:{error:msg=>{throw new Error(msg);},warning(){},success(){}},$uibModal:original.get('$uibModal'),EnrolmentClassService:service,$state:state,$stateParams:{},ComprehensiveFolders:{},ClassAssignmentPicker:{},TeachingPdf:null});
    scope.vm.decorateTeamBoard(angular.copy(board));window.teamVm=scope.vm;
    original.get('$templateCache').put('team_board_column.html',column);
    const host=angular.element('<div class="modal class-management-modal-window team-board-modal-window in" style="display:block"><div class="modal-dialog"><div class="modal-content">'+template+'</div></div></div>');
