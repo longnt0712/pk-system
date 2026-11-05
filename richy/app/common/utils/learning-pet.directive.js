@@ -66,6 +66,8 @@
             var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
             var sparklingLightningUrl = 'assets/images/learning-pets/sparkling-lightning/pet-level-20.png?v=' + version;
             var halloweenPumpkinUrl = 'assets/images/learning-pets/halloween-pumpkin/pet.png?v=' + version;
+            var christmasTreeUrl = 'assets/images/learning-pets/christmas-tree/pet.svg?v=' + version;
+            var santaReindeerUrl = 'assets/images/learning-pets/santa-reindeer/pet.svg?v=' + version;
             var aragondaUrl = 'assets/images/learning-pets/aragonda/pet.svg?v=' + version;
             var gokuKidEggUrl = 'assets/images/learning-pets/goku-kid/egg-level-21.png?v=' + version;
             var gokuKidPetUrl = 'assets/images/learning-pets/goku-kid/pet-level-22.png?v=' + version;
@@ -137,6 +139,11 @@
                 return date.getUTCMonth() === 9 || (date.getUTCMonth() === 10 && date.getUTCDate() <= 5);
             }
 
+            function isChristmasPetSeason() {
+                var date = new Date(Date.now() + 7 * 60 * 60 * 1000);
+                return date.getUTCMonth() === 11 || (date.getUTCMonth() === 10 && date.getUTCDate() >= 5);
+            }
+
             function schedulePetSeasonUpdate() {
                 if (petSeasonTimer) { $timeout.cancel(petSeasonTimer); }
                 var now = Date.now();
@@ -157,7 +164,11 @@
                 if (admin) { level = Math.max(level, 26); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 var halloweenAvailable = admin || isHalloweenPetSeason();
+                var christmasAvailable = admin || isChristmasPetSeason();
                 if (selectedPet === 'HALLOWEEN_PUMPKIN' && !halloweenAvailable) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if ((selectedPet === 'CHRISTMAS_TREE' || selectedPet === 'SANTA_REINDEER') && !christmasAvailable) {
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
@@ -219,6 +230,21 @@
                     description: admin ? 'Admin · chọn quanh năm' : 'Mở từ 1/10 đến hết 5/11 hằng năm',
                     image: halloweenPumpkinUrl,
                     locked: !halloweenAvailable
+                });
+                vm.availablePets.push({
+                    key: 'CHRISTMAS_TREE',
+                    name: 'Cây thông Noel',
+                    description: admin ? 'Admin · chọn quanh năm' : 'Mở từ 5/11 đến hết 31/12 hằng năm',
+                    image: christmasTreeUrl,
+                    lockedLabel: 'Chưa đến mùa Noel',
+                    locked: !christmasAvailable
+                }, {
+                    key: 'SANTA_REINDEER',
+                    name: 'Ông già Noel cưỡi tuần lộc',
+                    description: admin ? 'Admin · chọn quanh năm' : 'Mở từ 5/11 đến hết 31/12 hằng năm',
+                    image: santaReindeerUrl,
+                    lockedLabel: 'Chưa đến mùa Noel',
+                    locked: !christmasAvailable
                 });
                 if (level >= 3) {
                     var capybaraStageImage = level >= 5
@@ -400,6 +426,16 @@
                 if (selectedPet === 'ARAGONDA') {
                     vm.petForm = 'aragonda';
                     vm.petImage = aragondaUrl;
+                    return;
+                }
+                if (selectedPet === 'CHRISTMAS_TREE') {
+                    vm.petForm = 'christmas-tree';
+                    vm.petImage = christmasTreeUrl;
+                    return;
+                }
+                if (selectedPet === 'SANTA_REINDEER') {
+                    vm.petForm = 'santa-reindeer';
+                    vm.petImage = santaReindeerUrl;
                     return;
                 }
                 if (selectedPet === 'GOKU_KID') {
@@ -713,6 +749,13 @@
                     updatePetForm(readCurrentUser());
                     updateMessage();
                     vm.petSelectionError = 'Bí ngô Halloween chỉ mở từ 1/10 đến hết 5/11 hằng năm (UTC+7).';
+                    return;
+                }
+                if ((petKey === 'CHRISTMAS_TREE' || petKey === 'SANTA_REINDEER') &&
+                        !hasAdminRole(readCurrentUser()) && !isChristmasPetSeason()) {
+                    updatePetForm(readCurrentUser());
+                    updateMessage();
+                    vm.petSelectionError = 'Pet Noel chỉ mở từ 5/11 đến hết 31/12 hằng năm (UTC+7).';
                     return;
                 }
                 if (petKey === vm.selectedPetKey) {

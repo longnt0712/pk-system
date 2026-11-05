@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="360" viewBox="0 0 320 360" role="img" aria-labelledby="title desc">
+  <title id="title">Cây thông Noel</title>
+  <desc id="desc">Cây thông xanh có gương mặt vui vẻ, dây đèn nhiều màu nhấp nháy, quả châu và ngôi sao vàng lấp lánh.</desc>
+  <defs>
+    <linearGradient id="pine" x1="0" y1="0" x2="1" y2=".8">
+      <stop stop-color="#6aebae"/>
+      <stop offset=".4" stop-color="#20a77d"/>
+      <stop offset="1" stop-color="#08614e"/>
+    </linearGradient>
+    <linearGradient id="gold" x2=".8" y2="1">
+      <stop stop-color="#fff6b9"/>
+      <stop offset=".35" stop-color="#ffdc64"/>
+      <stop offset="1" stop-color="#ee991f"/>
+    </linearGradient>
+    <linearGradient id="pot" x2="1" y2="1">
+      <stop stop-color="#f97881"/>
+      <stop offset=".5" stop-color="#d93655"/>
+      <stop offset="1" stop-color="#a72745"/>
+    </linearGradient>
+    <radialGradient id="red" cx=".3" cy=".25">
+      <stop stop-color="#ffb3a1"/>
+      <stop offset=".4" stop-color="#fa6771"/>
+      <stop offset="1" stop-color="#b31b47"/>
+    </radialGradient>
+    <radialGradient id="blue" cx=".3" cy=".25">
+      <stop stop-color="#e6fcff"/>
+      <stop offset=".4" stop-color="#6bd9ef"/>
+      <stop offset="1" stop-color="#218ca9"/>
+    </radialGradient>
+    <radialGradient id="star-halo">
+      <stop stop-color="#fff1a0" stop-opacity=".65"/>
+      <stop offset="1" stop-color="#ffd35a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="light" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="2.6"/>
+    </filter>
+    <g id="twinkle"><path d="M0-7 2-2 7 0 2 2 0 7-2 2-7 0-2-2Z" fill="#fff2ad"/><circle r="1.3" fill="#fff"/></g>
+    <g id="bulb"><circle r="7" opacity=".55" filter="url(#light)"/><circle r="3.8"/><circle cx="-1.1" cy="-1.2" r="1.2" fill="#fff"/></g>
+  </defs>
+  <style>
+    .star { animation: star-glow 3.2s ease-in-out infinite; transform-origin: 160px 47px; }
+    .bulbs-a { animation: lights 3.1s ease-in-out infinite; }
+    .bulbs-b { animation: lights 3.1s -1.55s ease-in-out infinite; }
+    .sparkle { animation: sparkle 3.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    .late { animation-delay: -1.7s; }
+    @keyframes star-glow { 0%,100% { opacity:.82; transform:scale(.97); } 50% { opacity:1; transform:scale(1.04); } }
+    @keyframes lights { 0%,100% { opacity:.55; } 45%,65% { opacity:1; } }
+    @keyframes sparkle { 0%,15%,85%,100% { opacity:.18; transform:scale(.65); } 45%,55% { opacity:1; transform:scale(1); } }
+    @media (prefers-reduced-motion:reduce) { .star,.bulbs-a,.bulbs-b,.sparkle { animation:none; } }
+  </style>
+  <ellipse cx="160" cy="338" rx="84" ry="10" fill="#286d60" opacity=".12"/>
+  <path d="M139 282h42v30h-42z" fill="#85513c" stroke="#583b34" stroke-width="3"/>
+  <path d="m119 302 8 32q33 13 66 0l8-32" fill="url(#pot)" stroke="#8d2943" stroke-width="3"/>
+  <path d="M117 299q43-8 86 0l-2 13q-41 8-82 0Z" fill="url(#pot)" stroke="#8d2943" stroke-width="3"/>
+  <path d="M153 301h14v40h-14z" fill="url(#gold)"/>
+  <path d="M160 316c-28-26-35 4-15 7l15-7c28-26 35 4 15 7Z" fill="#ffe6a0" stroke="#b87828" stroke-width="1.7"/>
+  <path d="M160 130c-22 55-61 104-108 146 15 5 26 5 38 4l-10 14c59 21 108 21 161 0l-10-15c15 3 28 2 37-3-48-40-85-91-108-146Z" fill="url(#pine)" stroke="#0b5e4d" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M160 91c-20 43-48 82-83 115l20 1-10 15c49 17 97 17 146 0l-10-15 20-1c-35-33-63-72-83-115Z" fill="url(#pine)" stroke="#0b5e4d" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M160 55c-17 36-36 65-63 90l16 1-8 12c36 14 74 14 110 0l-8-12 16-1c-27-25-46-54-63-90Z" fill="url(#pine)" stroke="#0b5e4d" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="none" stroke="#bafbd1" stroke-linecap="round" opacity=".48">
+    <path d="M151 84c-8 18-19 34-31 49" stroke-width="5"/>
+    <path d="m114 178-16 21m11 49-25 25" stroke-width="4"/>
+  </g>
+  <path d="M119 127q32 30 81 14M100 197q52 33 121 15M78 265q78 38 159 9" fill="none" stroke="#8a622b" stroke-width="4"/>
+  <path d="M119 125q32 30 81 14M100 195q52 33 121 15M78 263q78 38 159 9" fill="none" stroke="url(#gold)" stroke-width="2.4"/>
+  <g stroke="#734f30" stroke-width="1.5">
+    <path d="M127 151v9m64 25v9m-70 46v8m84 4v8"/>
+    <circle cx="127" cy="168" r="11" fill="url(#red)"/>
+    <circle cx="191" cy="203" r="11" fill="url(#blue)"/>
+    <circle cx="121" cy="256" r="11" fill="url(#blue)"/>
+    <circle cx="205" cy="269" r="11" fill="url(#red)"/>
+  </g>
+  <g fill="#fff" opacity=".82"><ellipse cx="123" cy="164" rx="3" ry="2" transform="rotate(-35 123 164)"/><ellipse cx="187" cy="199" rx="3" ry="2" transform="rotate(-35 187 199)"/><ellipse cx="117" cy="252" rx="3" ry="2" transform="rotate(-35 117 252)"/><ellipse cx="201" cy="265" rx="3" ry="2" transform="rotate(-35 201 265)"/></g>
+  <g class="bulbs-a">
+    <use href="#bulb" x="124" y="128" fill="#ff879a"/>
+    <use href="#bulb" x="170" y="144" fill="#fff0a0"/>
+    <use href="#bulb" x="108" y="199" fill="#b8eaff"/>
+    <use href="#bulb" x="185" y="218" fill="#ff94bf"/>
+    <use href="#bulb" x="85" y="267" fill="#ffdb70"/>
+    <use href="#bulb" x="156" y="285" fill="#b4f4ff"/>
+    <use href="#bulb" x="230" y="277" fill="#ffe283"/>
+  </g>
+  <g class="bulbs-b">
+    <use href="#bulb" x="145" y="140" fill="#c5edff"/>
+    <use href="#bulb" x="193" y="142" fill="#ffc086"/>
+    <use href="#bulb" x="141" y="212" fill="#fff3a5"/>
+    <use href="#bulb" x="215" y="213" fill="#b6f9d2"/>
+    <use href="#bulb" x="120" y="280" fill="#ffa7cb"/>
+    <use href="#bulb" x="197" y="284" fill="#d6bdff"/>
+  </g>
+  <g fill="#143f38">
+    <ellipse cx="144" cy="182" rx="4.5" ry="6"/>
+    <ellipse cx="172" cy="182" rx="4.5" ry="6"/>
+  </g>
+  <g fill="#fff"><circle cx="143" cy="180" r="1.6"/><circle cx="171" cy="180" r="1.6"/></g>
+  <g fill="#f5aa9e" opacity=".75"><ellipse cx="133" cy="192" rx="7" ry="4"/><ellipse cx="183" cy="192" rx="7" ry="4"/></g>
+  <path d="M152 192q6 8 12 0" fill="none" stroke="#143f38" stroke-width="2.8" stroke-linecap="round"/>
+  <g class="star">
+    <circle cx="160" cy="47" r="39" fill="url(#star-halo)"/>
+    <path d="m160 19 8.5 17.5 19.5 3-14 13.5 3.2 19-17.2-9-17.2 9 3.2-19-14-13.5 19.5-3Z" fill="url(#gold)" stroke="#d38e29" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="m160 25 1 21-19-5 13-2Z" fill="#fffce2" opacity=".9"/>
+    <path d="m161 47 12 20-13-7-12 6Z" fill="#ecaa26" opacity=".58"/>
+    <circle cx="160" cy="46" r="3" fill="#fff9c9"/>
+  </g>
+  <g class="sparkle"><use href="#twinkle" x="214" y="85"/><use href="#twinkle" x="67" y="221"/></g>
+  <g class="sparkle late"><use href="#twinkle" x="104" y="65"/><use href="#twinkle" x="252" y="240"/></g>
+</svg>

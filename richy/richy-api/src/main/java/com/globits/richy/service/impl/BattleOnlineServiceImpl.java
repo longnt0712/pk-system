@@ -119,6 +119,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_GOKU_SSJ2 = "GOKU_SSJ2";
     private static final String PET_GOKU_SSJ4 = "GOKU_SSJ4";
     private static final String PET_HALLOWEEN_PUMPKIN = "HALLOWEEN_PUMPKIN";
+    private static final String PET_CHRISTMAS_TREE = "CHRISTMAS_TREE";
+    private static final String PET_SANTA_REINDEER = "SANTA_REINDEER";
     private static final String PET_ARAGONDA = "ARAGONDA";
     private static final ZoneId PET_SEASON_ZONE = ZoneId.of("Asia/Bangkok");
     private Clock petSeasonClock = Clock.systemUTC();
@@ -416,6 +418,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
                     "Bí ngô Halloween chỉ được chọn từ ngày 1/10 đến hết ngày 5/11 hằng năm (UTC+7).");
         }
+        if (!allPetsUnlocked && isChristmasPet(selectedPet) && !isChristmasPetSeason()) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
+                    "Pet Giáng sinh chỉ được chọn từ ngày 5/11 đến hết ngày 31/12 hằng năm (UTC+7).");
+        }
 
         if (!allPetsUnlocked && PET_CAPYBARA_EGG.equals(selectedPet) && level < CAPYBARA_UNLOCK_LEVEL) {
             throw new BattleOnlineException(
@@ -533,6 +539,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || isHalloweenPetSeason()) {
             unlocked.add(PET_HALLOWEEN_PUMPKIN);
         }
+        if (allPetsUnlocked || isChristmasPetSeason()) {
+            unlocked.add(PET_CHRISTMAS_TREE);
+            unlocked.add(PET_SANTA_REINDEER);
+        }
         if (allPetsUnlocked || level >= CAPYBARA_UNLOCK_LEVEL) {
             unlocked.add(PET_CAPYBARA_EGG);
         }
@@ -628,6 +638,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (PET_HALLOWEEN_PUMPKIN.equals(normalized)) {
             return PET_HALLOWEEN_PUMPKIN;
         }
+        if (isChristmasPet(normalized)) { return normalized; }
         return PET_CUTE_PIKACHU.equals(normalized)
                 ? PET_CUTE_PIKACHU : PET_MAM_HOC;
     }
@@ -639,8 +650,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private String effectiveSeasonalPetKey(String petKey, boolean allPetsUnlocked) {
         String normalized = normalizePetKey(petKey);
-        return PET_HALLOWEEN_PUMPKIN.equals(normalized) && !allPetsUnlocked && !isHalloweenPetSeason()
-                ? PET_MAM_HOC : normalized;
+        if (allPetsUnlocked) { return normalized; }
+        if (PET_HALLOWEEN_PUMPKIN.equals(normalized) && !isHalloweenPetSeason()) { return PET_MAM_HOC; }
+        if (isChristmasPet(normalized) && !isChristmasPetSeason()) { return PET_MAM_HOC; }
+        return normalized;
+    }
+
+    private boolean isChristmasPet(String petKey) {
+        return PET_CHRISTMAS_TREE.equals(petKey) || PET_SANTA_REINDEER.equals(petKey);
+    }
+
+    private boolean isChristmasPetSeason() {
+        LocalDate today = LocalDate.now(petSeasonClock.withZone(PET_SEASON_ZONE));
+        return today.getMonthValue() == 12 || (today.getMonthValue() == 11 && today.getDayOfMonth() >= 5);
     }
 
 

@@ -1059,6 +1059,7 @@
         vm.savingBattlePet = false;
         var battlePetOptionsLevel = null;
         var battlePetOptionsHalloween = null;
+        var battlePetOptionsChristmas = null;
         var battlePetOptions = [];
 
         vm.currentUserDisplayName =
@@ -1497,6 +1498,12 @@
             return month === 10 || (month === 11 && date.getUTCDate() <= 5);
         }
 
+        function isChristmasPetSeason() {
+            var date = new Date(serverNow() + 7 * 60 * 60 * 1000);
+            var month = date.getUTCMonth() + 1;
+            return month === 12 || (month === 11 && date.getUTCDate() >= 5);
+        }
+
 
         function getPlayerPetImage(player) {
             var version = $window.APP_VERSION || '';
@@ -1516,6 +1523,11 @@
             if (petKey === 'HALLOWEEN_PUMPKIN' &&
                     (isHalloweenPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
                 return 'assets/images/learning-pets/halloween-pumpkin/pet.png' + suffix;
+            }
+            if ((petKey === 'CHRISTMAS_TREE' || petKey === 'SANTA_REINDEER') &&
+                    (isChristmasPetSeason() || (player && player.allPetsUnlocked === true) || ownAdminPet)) {
+                return 'assets/images/learning-pets/' +
+                    (petKey === 'CHRISTMAS_TREE' ? 'christmas-tree' : 'santa-reindeer') + '/pet.svg' + suffix;
             }
             if (petKey === 'ARAGONDA' && level >= 26) {
                 return 'assets/images/learning-pets/aragonda/pet.svg' + suffix;
@@ -1626,6 +1638,7 @@
             );
             var adminAccess = (me && me.allPetsUnlocked === true) || hasAdminPetAccess();
             var halloweenAvailable = !!adminAccess || isHalloweenPetSeason();
+            var christmasAvailable = !!adminAccess || isChristmasPetSeason();
             if (adminAccess) {
                 level = Math.max(level, 26);
             }
@@ -1639,12 +1652,17 @@
             if (!halloweenAvailable && vm.selectedBattlePetKey === 'HALLOWEEN_PUMPKIN') {
                 vm.selectedBattlePetKey = 'MAM_HOC';
             }
-            if (battlePetOptionsLevel === level && battlePetOptionsHalloween === halloweenAvailable) {
+            if (!christmasAvailable && (vm.selectedBattlePetKey === 'CHRISTMAS_TREE' || vm.selectedBattlePetKey === 'SANTA_REINDEER')) {
+                vm.selectedBattlePetKey = 'MAM_HOC';
+            }
+            if (battlePetOptionsLevel === level && battlePetOptionsHalloween === halloweenAvailable &&
+                    battlePetOptionsChristmas === christmasAvailable) {
                 return battlePetOptions;
             }
 
             battlePetOptionsLevel = level;
             battlePetOptionsHalloween = halloweenAvailable;
+            battlePetOptionsChristmas = christmasAvailable;
             battlePetOptions = [{
                 key: 'MAM_HOC',
                 label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
@@ -1652,6 +1670,10 @@
             if (level >= 26) { battlePetOptions.push({key: 'ARAGONDA', label: 'Aragonda'}); }
             if (halloweenAvailable) {
                 battlePetOptions.push({key: 'HALLOWEEN_PUMPKIN', label: 'Bí ngô Halloween'});
+            }
+            if (christmasAvailable) {
+                battlePetOptions.push({key: 'CHRISTMAS_TREE', label: 'Cây thông Noel'},
+                    {key: 'SANTA_REINDEER', label: 'Ông già Noel cưỡi tuần lộc'});
             }
             if (level >= 3) {
                 battlePetOptions.push({
@@ -1788,6 +1810,10 @@
                 'MAM_HOC'
             ).toUpperCase();
             if (previousPetKey === 'HALLOWEEN_PUMPKIN' && !isHalloweenPetSeason() &&
+                    !(me && me.allPetsUnlocked === true) && !hasAdminPetAccess()) {
+                previousPetKey = 'MAM_HOC';
+            }
+            if ((previousPetKey === 'CHRISTMAS_TREE' || previousPetKey === 'SANTA_REINDEER') && !isChristmasPetSeason() &&
                     !(me && me.allPetsUnlocked === true) && !hasAdminPetAccess()) {
                 previousPetKey = 'MAM_HOC';
             }

@@ -197,6 +197,8 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CUTE_PERRY', 'pet-level-4.png'],
         ['SPARKLING_LIGHTNING', 'sparkling-lightning/pet-level-20.png'],
         ['HALLOWEEN_PUMPKIN', 'halloween-pumpkin/pet.png'],
+        ['CHRISTMAS_TREE', 'christmas-tree/pet.svg'],
+        ['SANTA_REINDEER', 'santa-reindeer/pet.svg'],
         ['GOKU_KID', 'goku-kid/pet-level-22.png'],
         ['GOKU_SSJ1', 'goku-kid/pet-level-23.png'],
         ['GOKU_SSJ2', 'goku-kid/pet-level-24.svg'],
@@ -204,7 +206,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 22);
+        assert.equal(h.pet.availablePets.length, 24);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -220,7 +222,7 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 22);
+    assert.equal(options.length, 24);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
@@ -586,6 +588,108 @@ test('the lightning collectible packages transparent artwork without changing th
     assert.equal(battle.getGiftRewardImage(-4, null, {rewardImage: 'assets/images/battle-lightning.svg'}),
         'assets/images/battle-lightning.svg?v=pet-test', 'the game keeps its own server-supplied reward artwork');
     assert.equal(battle.getGiftRewardImage(21), 'assets/images/learning-pets/perry/pet-level-4.png?v=pet-test');
+});
+
+test('both Christmas pets open at level zero from November 5 through December 31 in UTC+7 every year', () => {
+    for (const [iso, available] of [
+        ['2026-11-04T16:59:59.999Z', false],
+        ['2026-11-04T17:00:00.000Z', true],
+        ['2026-11-30T17:00:00.000Z', true],
+        ['2026-12-31T16:59:59.999Z', true],
+        ['2026-12-31T17:00:00.000Z', false],
+        ['2027-06-15T00:00:00.000Z', false],
+        ['2027-11-04T17:00:00.000Z', true],
+        ['2027-12-31T17:00:00.000Z', false]
+    ]) {
+        for (const [key, form, directory] of [
+            ['CHRISTMAS_TREE', 'christmas-tree', 'christmas-tree'],
+            ['SANTA_REINDEER', 'santa-reindeer', 'santa-reindeer']
+        ]) {
+            const clock = petClock(iso);
+            const {pet} = setupLearningPet(0, key, new Map(), [], clock);
+            const card = pet.availablePets.find(item => item.key === key);
+            assert.ok(card, 'everyone owns both Christmas pets while seasonally locked');
+            assert.equal(card.locked, !available, key + iso);
+            assert.match(card.description, /5\/11.*31\/12/);
+            assert.equal(card.lockedLabel, 'Chưa đến mùa Noel');
+            assert.equal(pet.selectedPetKey, available ? key : 'MAM_HOC', key + iso);
+            assert.equal(pet.petForm, available ? form : 'egg-intact', key + iso);
+            const battle = setupBattle(0, [], clock);
+            const options = battle.getBattlePetOptions();
+            assert.strictEqual(battle.getBattlePetOptions(), options);
+            assert.equal(options.some(item => item.key === key), available, key + iso);
+            assert.equal(battle.getPlayerPetImage({selectedPetKey: key, vocabularyExperienceLevel: 0}), available
+                ? 'assets/images/learning-pets/' + directory + '/pet.svg?v=pet-test'
+                : 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=pet-test', key + iso);
+        }
+    }
+});
+
+test('each Christmas pet saves as a complete pet at level zero and keeps the chosen pet until selected', async () => {
+    for (const key of ['CHRISTMAS_TREE', 'SANTA_REINDEER']) {
+        const h = setupLearningPet(0, 'MAM_HOC', new Map(), [], petClock('2026-11-05T00:00:00Z'));
+        assert.equal(h.pet.selectedPetKey, 'MAM_HOC');
+        h.pet.selectPet(key);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.requests[0].body.petKey, key);
+        assert.equal(h.user().selectedLearningPet, key);
+        assert.equal(h.user().vocabularyExperienceLevel, 0);
+        assert.equal(h.pet.selectedPetKey, key);
+        assert.equal(h.pet.petImage, h.pet.availablePets.find(item => item.key === key).image);
+        assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', key]]);
+    }
+});
+
+test('Christmas cards and Battle selections expire at midnight even when left open', () => {
+    for (const key of ['CHRISTMAS_TREE', 'SANTA_REINDEER']) {
+        const clock = petClock('2026-12-31T16:59:59.999Z');
+        const h = setupLearningPet(20, key, new Map(), [], clock);
+        const battle = setupBattle(0, [], clock);
+        const inSeason = battle.getBattlePetOptions();
+        battle.selectedBattlePetKey = key;
+        h.hooks.scheduleSeason();
+        const expiry = h.scheduled.at(-1);
+        assert.equal(expiry.delay, 1);
+        clock.set('2026-12-31T17:00:00.000Z');
+        expiry.fn();
+        assert.equal(h.pet.selectedPetKey, 'MAM_HOC');
+        assert.equal(h.pet.petForm, 'hatched');
+        assert.equal(h.pet.availablePets.find(item => item.key === key).locked, true);
+        h.pet.selectPet(key);
+        assert.equal(h.requests.length, 0);
+        assert.match(h.pet.petSelectionError, /5\/11.*31\/12.*UTC\+7/);
+        assert.equal(h.user().selectedLearningPet, key, 'expiry preserves the saved choice for next season');
+        const outsideSeason = battle.getBattlePetOptions();
+        assert.notStrictEqual(outsideSeason, inSeason);
+        assert.strictEqual(battle.getBattlePetOptions(), outsideSeason);
+        assert.equal(outsideSeason.some(item => item.key === key), false);
+        assert.equal(battle.selectedBattlePetKey, 'MAM_HOC');
+        assert.doesNotThrow(() => battle.selectBattlePet(key));
+        clock.set('2027-11-04T17:00:00.000Z');
+        assert.ok(battle.getBattlePetOptions().some(item => item.key === key));
+    }
+});
+
+test('admins can use both Christmas pets all year while students and unrelated roles remain seasonally locked', async () => {
+    const clock = petClock('2027-06-15T10:00:00Z');
+    const roles = [{name: 'ROLE_ADMIN'}];
+    for (const key of ['CHRISTMAS_TREE', 'SANTA_REINDEER']) {
+        const h = setupLearningPet(0, 'MAM_HOC', new Map(), roles, clock);
+        assert.equal(h.pet.availablePets.find(item => item.key === key).locked, false);
+        h.pet.selectPet(key);
+        await new Promise(resolve => setImmediate(resolve));
+        const expected = h.pet.petImage;
+        const battle = setupBattle(0, roles, clock);
+        assert.ok(battle.getBattlePetOptions().some(item => item.key === key));
+        assert.equal(battle.getPlayerPetImage({username: 'student', selectedPetKey: key, vocabularyExperienceLevel: 0}), expected);
+        assert.notEqual(battle.getPlayerPetImage({username: 'other-student', selectedPetKey: key, vocabularyExperienceLevel: 50}), expected);
+        assert.equal(setupBattle(0, [], clock).getPlayerPetImage({selectedPetKey: key, vocabularyExperienceLevel: 0, allPetsUnlocked: true}), expected);
+        const unrelatedRole = setupLearningPet(50, key, new Map(), [{name: 'ROLE_ADMINISTRATOR'}], clock).pet;
+        assert.equal(unrelatedRole.availablePets.find(item => item.key === key).locked, true);
+        assert.equal(unrelatedRole.selectedPetKey, 'MAM_HOC');
+        battle.currentUser.roles = [];
+        assert.equal(battle.getBattlePetOptions().some(item => item.key === key), false);
+    }
 });
 
 test('Halloween pumpkin opens for everyone from October 1 through November 5 in UTC+7 every year', () => {

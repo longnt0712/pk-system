@@ -27,7 +27,7 @@
             <small>{{item.description}}</small>
             <span class="learning-pet-picker-selection">
                 <i class="fa" ng-class="item.locked ? 'fa-lock' : (pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-paw')" aria-hidden="true"></i>
-                {{item.locked ? 'Chưa đến mùa Halloween' : (pet.selectedPetKey === item.key ? 'Đang dùng' : 'Chọn pet này')}}
+                {{item.locked ? (item.lockedLabel || 'Chưa đến mùa Halloween') : (pet.selectedPetKey === item.key ? 'Đang dùng' : 'Chọn pet này')}}
             </span>
         </button>
     </div>

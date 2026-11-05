@@ -31,6 +31,18 @@
     height: 108px;
 }
 
+.learning-pet-character.is-christmas-tree,
+.learning-pet-egg.is-christmas-tree {
+    width: 110px;
+    height: 124px;
+}
+
+.learning-pet-character.is-santa-reindeer,
+.learning-pet-egg.is-santa-reindeer {
+    width: 152px;
+    height: 108px;
+}
+
 /* The reference pose stays still; only its original lightning pixels flash. */
 .learning-pet-pikachu {
     position: relative;
@@ -267,6 +279,8 @@ img[src*="assets/images/learning-pets/tuffy-mouse/"],
 img[src*="assets/images/learning-pets/pikachu/"],
 img[src*="assets/images/learning-pets/perry/"],
 img[src*="assets/images/learning-pets/halloween-pumpkin/"],
+img[src*="assets/images/learning-pets/christmas-tree/"],
+img[src*="assets/images/learning-pets/santa-reindeer/"],
 img[src*="assets/images/learning-pets/aragonda/"],
 img[src*="assets/images/learning-pets/goku-kid/"],
 img[src*="assets/images/learning-pets/dragon-ball-"] {
