@@ -71,8 +71,22 @@
                 <li ng-if="settings.campaignsEnabled === true" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
                     <a ui-sref="campaigns" href="campaigns">CHIẾN DỊCH</a>
                 </li>
-                <li ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)" ng-class="{'is-route-active': $state.includes('application.tntt_documents') && $state.params.tab !== 'notices'}">
-                    <a ui-sref="application.tntt_documents({tab:null,notice:null})" href="tai-lieu">TÀI LIỆU</a>
+                <li class="menu-dropdown tntt-documents-nav"
+                    ng-if="(settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)) || (settings.fairsEnabled === true && (settings.isAdmin || settings.isEducationManagerment))"
+                    ng-class="{'is-route-active': ($state.includes('application.tntt_documents') && $state.params.tab !== 'notices') || $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        TÀI LIỆU <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)"
+                            ng-class="{'active': $state.includes('application.tntt_documents') && $state.params.tab !== 'notices'}">
+                            <a ui-sref="application.tntt_documents({tab:null,notice:null,document:null,mode:null})" href="/tai-lieu"><i class="fa fa-folder-open" aria-hidden="true"></i> Tài liệu</a>
+                        </li>
+                        <li ng-if="settings.fairsEnabled === true && (settings.isAdmin || settings.isEducationManagerment)"
+                            ng-class="{'active': $state.includes('fair_admin') || $state.includes('fair_admin_event')}">
+                            <a ui-sref="fair_admin" href="/hoi-cho/quan-tri"><i class="fa fa-caret-right" aria-hidden="true"></i> Mặt hàng hội chợ</a>
+                        </li>
+                    </ul>
                 </li>
                 <li ng-if="settings.campaignsEnabled && (settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.tnttDocumentAccess)" ng-class="{'is-route-active': $state.includes('application.tntt_documents') && $state.params.tab === 'notices'}">
                     <a ui-sref="application.tntt_documents({tab:'notices',notice:null})" href="tai-lieu?tab=notices">THÔNG BÁO <span class="badge" ng-if="settings.tnttUnreadCount">{{settings.tnttUnreadCount}}</span></a>
@@ -232,9 +246,6 @@
                         ĐÀO TẠO <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li ng-if="settings.fairsEnabled === true && (settings.isAdmin || settings.isEducationManagerment)">
-                            <a ui-sref="fair_admin" href="/hoi-cho/quan-tri"><i class="fa fa-caret-right" aria-hidden="true"></i> Mặt hàng hội chợ</a>
-                        </li>
                         <li ng-if="settings.isAdmin || settings.schoolAccess.education.length">
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo

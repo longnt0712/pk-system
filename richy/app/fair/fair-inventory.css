@@ -1,6 +1,16 @@
 fair-inventory { display: block; }
+.fair-app--admin .fair-content { max-width: none; }
+.fair-app--admin .fair-content > .fair-intro,
+.fair-app--admin .fair-content > .fair-notice,
+.fair-app--admin .fair-content > .fair-alert,
+.fair-app--admin .fair-admin > .fair-panel {
+    max-width: 868px;
+    margin-inline: auto;
+}
+.fair-panel.fair-inventory { padding: clamp(12px, 2vw, 24px); }
 .fair-inventory h3 { margin: 0 0 12px; font-size: 18px; }
 .fair-inventory .fair-button { min-height: 42px; padding: 9px 13px; font-size: 14px; }
+.fair-inventory .fair-inventory-actions > .fair-button { width: auto; }
 .fair-inventory-actions, .fair-inventory-row-actions {
     align-items: center;
     gap: 10px;
@@ -15,17 +25,65 @@ fair-inventory { display: block; }
     border-radius: 15px;
     background: #f7faf7;
 }
-.fair-inventory-fields, .fair-inventory-option-groups {
+.fair-inventory-option-groups {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
 }
 .fair-inventory-table-wrap { max-width: 100%; overflow: auto; border: 1px solid var(--fair-line); border-radius: 12px; }
-.fair-inventory-table { min-width: 690px; width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
-.fair-inventory-table th, .fair-inventory-table td { padding: 10px; border-bottom: 1px solid var(--fair-line); vertical-align: middle; }
+.fair-inventory-table { min-width: 760px; width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; text-align: left; }
+.fair-inventory-table th, .fair-inventory-table td { padding: 8px; border-bottom: 1px solid var(--fair-line); vertical-align: middle; overflow-wrap: anywhere; }
 .fair-inventory-table thead, .fair-inventory-table tfoot { background: #eaf4ed; font-weight: 700; }
 .fair-inventory-table tfoot > tr > * { border-bottom: 0; }
+.fair-inventory-table .fair-inventory-order { white-space: nowrap; }
 .fair-inventory-number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fair-inventory-table .fair-inventory-sticky {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: #fff;
+    box-shadow: -1px 0 var(--fair-line);
+    white-space: nowrap;
+}
+.fair-inventory-table thead .fair-inventory-sticky, .fair-inventory-table tfoot .fair-inventory-sticky { background: #eaf4ed; }
+.fair-inventory-table .is-editing > * { background: #f0f8f3; }
+.fair-inventory-table .is-editing .fair-inventory-sticky { background: #f0f8f3; }
+.fair-inventory-table input.fair-item-input, .fair-inventory-table select.fair-item-input {
+    margin: 0;
+    min-height: 38px;
+    padding: 5px 7px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 400;
+}
+.fair-inventory-table input.fair-item-name-input { min-width: 116px; }
+.fair-inventory-table input.fair-item-price-input { min-width: 87px; }
+.fair-inventory-table input.fair-item-quantity-input { min-width: 61px; }
+.fair-inventory-table select.fair-item-input { min-width: 94px; }
+.fair-item-actions { display: flex; align-items: center; gap: 7px; }
+.fair-inventory .fair-item-actions .fair-text-button { min-height: 36px; padding: 6px 4px; }
+.fair-item-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 4px 7px;
+    border: 1px solid #bfd8cb;
+    border-radius: 8px;
+    color: var(--fair-green);
+    background: #e8f4ed;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.fair-item-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fair-item-action:focus-visible { outline: 2px solid var(--fair-green); outline-offset: 2px; }
+.fair-item-action:disabled { opacity: .55; cursor: default; }
+.fair-item-save { color: #fff; background: var(--fair-green); }
+.fair-inventory-row-feedback { position: sticky; left: 0; max-width: min(640px, calc(100vw - 84px)); }
+.fair-inventory .fair-inventory-row-feedback p { margin: 0; }
+.fair-inventory .fair-inventory-row-feedback p + p { margin-top: 6px; }
 .fair-item-thumbnail {
     position: relative;
     display: block;
@@ -41,20 +99,36 @@ fair-inventory { display: block; }
 .fair-item-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .fair-item-thumbnail span { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 4px; background: #fff; color: var(--fair-ink); }
 .fair-inventory label.fair-photo-drop {
+    position: relative;
     display: grid;
     justify-items: center;
-    gap: 5px;
-    margin: 12px 0;
-    padding: 14px;
-    border: 2px dashed #94baa9;
-    border-radius: 12px;
+    place-content: center;
+    gap: 3px;
+    width: 70px;
+    min-height: 53px;
+    margin: 0;
+    padding: 4px;
+    border: 1px dashed #82ad9b;
+    border-radius: 8px;
     text-align: center;
+    font-size: 12px;
     background: #fff;
+    cursor: pointer;
 }
 .fair-inventory label.fair-photo-drop.is-over { border-color: var(--fair-green); background: #dcf2e5; }
-.fair-inventory .fair-photo-drop input { max-width: 100%; width: auto; min-height: 0; padding: 4px; border: 0; }
-.fair-inventory-current-photo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.fair-inventory-current-photo img { width: 70px; height: 70px; border-radius: 8px; object-fit: contain; background: #fff; }
+.fair-inventory label.fair-photo-drop:focus-within { outline: 2px solid var(--fair-green); outline-offset: 2px; }
+.fair-inventory label.fair-photo-drop input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.fair-photo-drop img { width: 46px; height: 42px; border-radius: 4px; object-fit: contain; }
 .fair-photo-dialog {
     width: max-content;
     max-width: min(94vw, 980px);
@@ -70,5 +144,5 @@ fair-inventory { display: block; }
 .fair-photo-dialog h3 { margin: 0; overflow-wrap: anywhere; }
 .fair-photo-dialog img { display: block; margin: auto; max-width: 100%; max-height: 78vh; object-fit: contain; }
 @media (max-width: 520px) {
-    .fair-inventory-fields, .fair-inventory-option-groups { grid-template-columns: 1fr; }
+    .fair-inventory-option-groups { grid-template-columns: 1fr; }
 }

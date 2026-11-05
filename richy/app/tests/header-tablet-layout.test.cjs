@@ -50,18 +50,29 @@ for (const viewport of [
         await page.evaluate(() => angular.bootstrap(document.body, ['HeaderLayoutTest']));
         if (viewport.width === 390) {
             for (const variant of [
-                {enabled: false, admin: true, visible: false},
-                {enabled: true, play: true, visible: true},
-                {enabled: true, gift: true, visible: true},
-                {enabled: true, visible: false},
-                {enabled: true, admin: true, visible: true}
+                {enabled: false, admin: true, navigation: true, visible: false, documents: 0},
+                {enabled: true, play: true, navigation: true, visible: true, documents: 0},
+                {enabled: true, gift: true, navigation: true, visible: true, documents: 0},
+                {enabled: true, visible: false, documents: 0},
+                {enabled: true, education: true, visible: false, documents: 2},
+                {enabled: true, studentManagement: true, visible: false, documents: 1},
+                {enabled: true, documentAccess: true, visible: false, documents: 1},
+                {enabled: true, admin: true, visible: false, documents: 2}
             ]) {
                 await page.evaluate(variant => {
                     const root = angular.element(document.body).scope();
                     root.$apply(() => Object.assign(root.settings, {fairsEnabled: variant.enabled,
-                        isAdmin: !!variant.admin, isFairPlay: !!variant.play, isFairGift: !!variant.gift}));
+                        campaignsEnabled: variant.enabled, fairNavigationVisible: !!variant.navigation,
+                        isAdmin: !!variant.admin, isFairPlay: !!variant.play, isFairGift: !!variant.gift,
+                        isEducationManagerment: !!variant.education, isStudentManagerment: !!variant.studentManagement,
+                        tnttDocumentAccess: !!variant.documentAccess}));
                 }, variant);
                 assert.equal(await page.locator('.fair-nav').count(), variant.visible ? 1 : 0, 'fair menu respects domain and role: ' + JSON.stringify(variant));
+                const links = await page.locator('.tntt-documents-nav .dropdown-menu a').evaluateAll(links =>
+                    links.map(link => [link.textContent.trim(), link.getAttribute('href')]));
+                assert.deepEqual(links, [['Tài liệu', '/tai-lieu'], ['Mặt hàng hội chợ', '/hoi-cho/quan-tri']].slice(0, variant.documents));
+                assert.equal(await page.locator('.navbar-nav > li:not(.tntt-documents-nav) .dropdown-menu a')
+                    .filter({hasText: 'Mặt hàng hội chợ'}).count(), 0);
             }
         }
         assert.equal(await page.locator('.learning-nav-brand--ielts .learning-brand-text').isVisible(),

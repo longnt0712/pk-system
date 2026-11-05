@@ -75,15 +75,31 @@
             vm.count = function (value) { return money.format(value); };
             vm.price = function (value) { return money.format(value) + ' đ'; };
             vm.photoUrl = function (item) { return itemPath(item.id) + '/photo?v=' + item.revision; };
+            vm.tableItems = function () {
+                return vm.itemForm && !vm.itemForm.id ? vm.items.concat(vm.itemForm) : vm.items;
+            };
+            vm.isEditing = function (item) {
+                return !!vm.itemForm && item.id === vm.itemForm.id;
+            };
+            vm.amount = function (item) {
+                var row = vm.isEditing(item) ? vm.itemForm : item;
+                return row.unitPrice == null || row.quantity == null ? '—' : vm.price(row.unitPrice * row.quantity);
+            };
             vm.startItem = function (item) {
-                vm.cancelItem();
+                if (vm.busy || vm.itemForm) { return; }
                 vm.error = '';
-                vm.itemForm = item ? angular.copy(item) : {unitPrice: 0, quantity: 1};
+                var draft = vm.itemForm = item ? angular.copy(item) : {unitPrice: 0, quantity: 1};
+                win.requestAnimationFrame(function () {
+                    if (disposed || vm.itemForm !== draft) { return; }
+                    var input = element[0].querySelector('.fair-item-name-input');
+                    if (input) { input.focus(); }
+                });
             };
             vm.cancelItem = function () {
                 if (vm.filePreview) { win.URL.revokeObjectURL(vm.filePreview); }
                 vm.itemForm = vm.file = vm.filePreview = null;
                 vm.fileError = '';
+                vm.error = '';
             };
             vm.choosePhoto = function (file) {
                 if (vm.busy || !vm.itemForm) { return; }
@@ -104,7 +120,7 @@
                 vm.itemForm.removePhoto = true;
             };
             vm.saveItem = function (valid) {
-                if (!valid || vm.fileError) { return; }
+                if (!vm.itemForm || !valid || vm.fileError) { return; }
                 var item = vm.itemForm;
                 return change(function () {
                     var data = new win.FormData();
