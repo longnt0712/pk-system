@@ -7,11 +7,10 @@ html.ieltsroom-christmas.ieltsroom-christmas {
 html.ieltsroom-christmas.ieltsroom-christmas:not(.global-dark-mode) body {
     background:radial-gradient(ellipse at 12% 0%,#dcedf4,transparent 55%),#f4f8f6 !important;
 }
-html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::before,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before,
+.christmas-garland-glow { display:none; }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after {
-    content:"";
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after,
+html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow {
     display:block;
     clear:none;
     position:absolute;
@@ -21,13 +20,34 @@ html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after {
     right:12px;
     height:28px;
     border-radius:16px 16px 0 0;
-    background:url('../images/christmas/lights.svg?v=20261105-sparkle-1') left top / 240px 28px repeat-x;
     pointer-events:none;
 }
-html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::before,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::before { opacity:.16; }
 html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
-html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { opacity:1; }
+html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after {
+    content:"";
+    background:url('../images/christmas/lights.svg?v=20261105-sparkle-2') left top / 240px 28px repeat-x;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow { z-index:3; overflow:hidden; }
+html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow i {
+    position:absolute;
+    inset:0;
+    background:url('../images/christmas/lights-glow.svg') left top / 240px 84px repeat-x;
+    animation:christmas-garland-glow 2.8s ease-in-out infinite;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow i:nth-child(2) {
+    background-position:left -28px;
+    animation-duration:3.2s;
+    animation-delay:-1.4s;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow i:nth-child(3) {
+    background-position:left -56px;
+    animation-duration:3s;
+    animation-delay:-.8s;
+}
+@keyframes christmas-garland-glow {
+    0%,100% { opacity:.08; }
+    50% { opacity:1; }
+}
 
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card,
@@ -143,11 +163,10 @@ body.modal-open > .christmas-snow i { animation-play-state:paused; }
     html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after { animation:none; }
     html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::before,
     html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-title-sparkles::after { opacity:0; }
-    html.ieltsroom-christmas.ieltsroom-christmas .learning-login-nav::after,
-    html.ieltsroom-christmas.ieltsroom-christmas .learning-public-nav::after { animation:none; opacity:.8; }
+    html.ieltsroom-christmas.ieltsroom-christmas .christmas-garland-glow i { animation:none; opacity:.45; }
 }
 @media print {
-    .christmas-snow { display:none !important; }
+    .christmas-snow,.christmas-garland-glow { display:none !important; }
     html.ieltsroom-christmas.ieltsroom-christmas nav::before,
     html.ieltsroom-christmas.ieltsroom-christmas nav::after { display:none !important; }
 }

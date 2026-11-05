@@ -1,14 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="28" viewBox="0 0 240 28">
-  <style>
-    .bulbs { animation:bulb-glow 2.8s ease-in-out infinite; }
-    .bulbs-gold { animation-duration:3.2s; animation-delay:-1.4s; }
-    .bulbs-ice { animation-duration:3s; animation-delay:-.8s; }
-    @keyframes bulb-glow { 0%,100% {opacity:.2} 50% {opacity:1} }
-    @media(prefers-reduced-motion:reduce) { .bulbs {animation:none;opacity:1} }
-  </style>
   <path d="M-4 4Q30 23 60 6Q90-8 120 6Q150 23 180 6Q210-8 244 6" fill="none" stroke="#51766b" stroke-width="1.5"/>
-  <g stroke="#526b62" stroke-width="2"><path d="M20 12v4m40-10v5m40-11v6m40 8v4m40-12v5m40-11v6"/></g>
-  <g class="bulbs" fill="#f26078"><g opacity=".18"><ellipse cx="20" cy="20" rx="8" ry="9"/><ellipse cx="140" cy="22" rx="8" ry="9"/></g><ellipse cx="20" cy="20" rx="4" ry="6"/><ellipse cx="140" cy="22" rx="4" ry="6"/><g fill="#fff" opacity=".8"><ellipse cx="19" cy="18" rx="1.1" ry="2.5"/><ellipse cx="139" cy="20" rx="1.1" ry="2.5"/></g></g>
-  <g class="bulbs bulbs-gold" fill="#eaba55"><g opacity=".2"><ellipse cx="60" cy="15" rx="8" ry="9"/><ellipse cx="180" cy="15" rx="8" ry="9"/></g><ellipse cx="60" cy="15" rx="4" ry="6"/><ellipse cx="180" cy="15" rx="4" ry="6"/><g fill="#fff" opacity=".8"><ellipse cx="59" cy="13" rx="1.1" ry="2.5"/><ellipse cx="179" cy="13" rx="1.1" ry="2.5"/></g></g>
-  <g class="bulbs bulbs-ice" fill="#5bc7d5"><g opacity=".18"><ellipse cx="100" cy="10" rx="8" ry="9"/><ellipse cx="220" cy="10" rx="8" ry="9"/></g><ellipse cx="100" cy="10" rx="4" ry="6"/><ellipse cx="220" cy="10" rx="4" ry="6"/><g fill="#fff" opacity=".8"><ellipse cx="99" cy="8" rx="1.1" ry="2.5"/><ellipse cx="219" cy="8" rx="1.1" ry="2.5"/></g></g>
+  <path d="M20 12v4m40-10v5m40-11v6m40 8v4m40-12v5m40-11v6" stroke="#526b62" stroke-width="2"/>
+  <g opacity=".68">
+    <g fill="#cf5268"><ellipse cx="20" cy="20" rx="4" ry="6"/><ellipse cx="140" cy="22" rx="4" ry="6"/></g>
+    <g fill="#c99c3d"><ellipse cx="60" cy="15" rx="4" ry="6"/><ellipse cx="180" cy="15" rx="4" ry="6"/></g>
+    <g fill="#3eabb8"><ellipse cx="100" cy="10" rx="4" ry="6"/><ellipse cx="220" cy="10" rx="4" ry="6"/></g>
+  </g>
 </svg>

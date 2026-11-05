@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="84" viewBox="0 0 240 84">
+  <!-- Each 28px row follows the wire's bulb positions. CSS fades the rows separately. -->
+  <defs>
+    <g id="glow">
+      <ellipse rx="8" ry="6" fill="currentColor" opacity=".22"/>
+      <ellipse rx="4" ry="6" fill="currentColor"/>
+      <ellipse cx="-1" cy="-2" rx="1.1" ry="2.5" fill="#fff" opacity=".85"/>
+    </g>
+  </defs>
+  <g color="#ff7193"><use href="#glow" x="20" y="20"/><use href="#glow" x="140" y="22"/></g>
+  <g color="#ffd977"><use href="#glow" x="60" y="43"/><use href="#glow" x="180" y="43"/></g>
+  <g color="#76e5ef"><use href="#glow" x="100" y="66"/><use href="#glow" x="220" y="66"/></g>
+</svg>
