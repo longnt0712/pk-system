@@ -49,6 +49,11 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-color-toggle > span { display: block; width: 17px; height: 17px; border: 1px solid #0002; }
 .study-notebook-color-toggle > svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .study-notebook-color-toggle[aria-expanded="true"] { border-color: #879bdf; box-shadow: 0 0 0 2px #dfe7ff; }
+.study-notebook-lasso-toggle { display: inline-flex; align-items: center; gap: 4px; height: 25px; padding: 3px 6px; border: 1px solid #dce3f0; border-radius: 5px; background: #fff; color: #546580; font: 600 11px Arial,sans-serif; white-space: nowrap; cursor: pointer; }
+.study-notebook-lasso-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.study-notebook-lasso-toggle[aria-pressed="true"] { background: #eaf0ff; color: #3154b8; border-color: #879bdf; }
+.study-notebook-lasso-toggle:focus-visible { outline: 2px solid #4369d3; outline-offset: 1px; }
+.study-notebook-lasso-toggle:disabled { opacity: .55; cursor: default; }
 .study-notebook-palette { position: absolute; z-index: 10; box-sizing: border-box; width: 252px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; padding: 12px; border: 1px solid #dce1ea; border-radius: 5px; background: #fff; color: #334155; box-shadow: 0 4px 18px #17243b38; font: 12px/1.4 Arial,sans-serif; text-align: left; }
 .study-notebook-palette-grid, .study-notebook-custom-colors { display: grid; grid-template-columns: repeat(10,minmax(0,1fr)); gap: 3px; }
 .study-notebook-palette .study-notebook-swatch { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 20px; min-width: 0; margin: 0; padding: 0; border: 1px solid #0002; border-radius: 50%; cursor: pointer; }
@@ -147,4 +152,6 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
     .study-notebook-text { font-size: 16px; }
     .study-notebook-footer { padding: 3px 10px; gap: 4px 8px; }
     .study-notebook-tip { display: none; }
+    .study-notebook-footer.is-selecting-ink { flex-wrap: wrap; }
+    .study-notebook-footer > .study-notebook-lasso-tip { display: block; flex-basis: 100%; white-space: normal; }
 }

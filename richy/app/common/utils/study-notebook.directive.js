@@ -7,7 +7,8 @@
             return {
                 restrict: 'E',
                 scope: { testId: '=', testMode: '@', userId: '=', enabled: '=', sessionOpener: '&?', sessionKey: '@?',
-                    hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?', readOnly: '<?', title: '@?', placeholder: '@?' },
+                    hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?', readOnly: '<?', title: '@?', placeholder: '@?',
+                    inkSelection: '<?' },
                 bindToController: true, controllerAs: 'notebook', controller: function () {}, require: 'studyNotebook',
                 template: [
                     '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
@@ -21,6 +22,7 @@
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
                     '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette()" ng-disabled="notebook.isLocked()" aria-label="Màu chữ và bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu cho chữ và bút"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
+                    '<button type="button" class="study-notebook-lasso-toggle" ng-if="notebook.inkSelection" ng-click="notebook.setTool(\'lasso\')" ng-disabled="notebook.isLocked()" ng-attr-aria-pressed="{{notebook.tool===\'lasso\'}}" title="Khoanh vùng để di chuyển nét viết tay"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 15C2 14 1 8 4 5c3-3 10-3 13 1 3 5-3 10-8 9H6" stroke-dasharray="2 2"/><path d="M8 14c-3 0-4 3-2 4s4-1 2-4Z"/></svg><span>Khoanh vùng</span></button>',
                     '<label class="study-notebook-stroke"><span>Nét bút</span><select ng-model="notebook.inkWidth" aria-label="Độ rộng nét bút"><option value="2">Mảnh</option><option value="4">Vừa</option><option value="7">Đậm</option></select></label>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div>',
@@ -36,7 +38,7 @@
                     '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
                     '</div></div></div>',
-                    '<footer class="study-notebook-footer"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span></footer>',
+                    '<footer class="study-notebook-footer" ng-class="{\'is-selecting-ink\':notebook.tool===\'lasso\'}"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip" ng-if="notebook.tool!==\'lasso\'">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span><span class="study-notebook-tip study-notebook-lasso-tip" ng-if="notebook.tool===\'lasso\'" aria-live="polite">{{notebook.inkSelected ? \'Kéo vùng nét đã chọn đến vị trí mới.\' : \'Vẽ vòng quanh các nét cần di chuyển.\'}}</span></footer>',
                     '</section>',
                     '<div class="study-notebook-palette ng-hide" ng-if="notebook.isOpen && !notebook.readOnly" ng-show="notebook.paletteOpen" role="dialog" aria-label="Bảng màu chữ và bút" ng-attr-id="{{notebook.dialogId}}-palette">',
                     '<div class="study-notebook-palette-grid" role="group" aria-label="Màu có sẵn"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.paletteColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-keydown="notebook.paletteKey($event,$index)" ng-attr-tabindex="{{notebook.paletteFocusColor===color?0:-1}}" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button></div>',
@@ -54,6 +56,7 @@
                     var cacheDirty = true, inkBounds = [];
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
                     var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null, composing = false;
+                    var selectedInk = null, inkGesture = null;
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null, palette = null, paletteTimer = null;
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
@@ -186,7 +189,7 @@
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
                         ui.closePalette(false);
-                        flushText(); finishStroke(true); compositionEnd(); saveNow(); ui.isOpen = false;
+                        flushText(); finishStroke(true); setInkSelection(null); compositionEnd(); saveNow(); ui.isOpen = false;
                         if (ui.session && ui.session.setVisible) { ui.session.setVisible(false); }
                         openNotebooks = Math.max(0, openNotebooks - 1);
                         if (!openNotebooks) { document.body.classList.remove('study-notebook-open'); }
@@ -203,11 +206,16 @@
                     ui.resolve = function (method) {
                         flushText(); finishStroke(true);
                         if (ui.session && typeof ui.session[method] === 'function') {
-                            undo = []; redo = []; preventPromiseNoise(ui.session[method]()); scheduleLayout();
+                            undo = []; redo = []; setInkSelection(null); preventPromiseNoise(ui.session[method]()); scheduleLayout();
                         }
                     };
                     ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); markChanged(); scheduleLayout(); } };
-                    ui.setTool = function (tool) { ui.closePalette(false); finishStroke(true); ui.tool = tool; scheduleDraw(); };
+                    ui.setTool = function (tool) {
+                        if (tool === 'lasso' && (!ui.inkSelection || ui.isLocked())) { return; }
+                        ui.closePalette(false); finishStroke(true);
+                        if (tool !== ui.tool) { setInkSelection(null); }
+                        ui.tool = tool; scheduleDraw();
+                    };
                     function captureZoomAnchor() {
                         if (!visible() || !scale) { return null; }
                         var viewport = scroller.getBoundingClientRect(), bounds = paper.getBoundingClientRect();
@@ -233,8 +241,8 @@
                         if (history) { undo.push(previous); if (undo.length > 30) { undo.shift(); } redo = []; }
                         ui.session.document.strokes = next; knownStrokes = next; cacheDirty = true; markChanged(); scheduleLayout(); digest();
                     }
-                    ui.undo = function () { finishStroke(true); if (ui.canUndo()) { redo.push(strokes()); replaceStrokes(undo.pop(), false); } };
-                    ui.redo = function () { finishStroke(true); if (ui.canRedo()) { undo.push(strokes()); replaceStrokes(redo.pop(), false); } };
+                    ui.undo = function () { finishStroke(true); if (ui.canUndo()) { setInkSelection(null); redo.push(strokes()); replaceStrokes(undo.pop(), false); } };
+                    ui.redo = function () { finishStroke(true); if (ui.canRedo()) { setInkSelection(null); undo.push(strokes()); replaceStrokes(redo.pop(), false); } };
 
                     function extent() {
                         var doc = ui.session && ui.session.document;
@@ -334,31 +342,168 @@
                             }
                         }
                     }
+                    function boundsFor(points) {
+                        var box = [Infinity, Infinity, -Infinity, -Infinity];
+                        points.forEach(function (point) {
+                            box[0] = Math.min(box[0], point[0]); box[1] = Math.min(box[1], point[1]);
+                            box[2] = Math.max(box[2], point[0]); box[3] = Math.max(box[3], point[1]);
+                        });
+                        return box;
+                    }
+                    function drawInkSelection() {
+                        var path = inkGesture && inkGesture.path;
+                        if (!selectedInk && !path) { return; }
+                        context.save();
+                        context.strokeStyle = '#4369d3'; context.lineWidth = 1.5 / scale; context.setLineDash([5 / scale, 4 / scale]);
+                        if (path) {
+                            context.beginPath();
+                            context.moveTo(path[0][0], path[0][1]);
+                            for (var i = 1; i < path.length; i++) { context.lineTo(path[i][0], path[i][1]); }
+                            if (path.length > 2) {
+                                context.closePath(); context.fillStyle = 'rgba(67,105,211,.12)'; context.fill('evenodd');
+                            }
+                            context.stroke();
+                        } else {
+                            var box = selectedInk.bounds, padding = selectionPadding();
+                            if (inkGesture) { context.translate(inkGesture.dx, inkGesture.dy); }
+                            context.strokeRect(box[0] - padding, box[1] - padding, box[2] - box[0] + 2 * padding, box[3] - box[1] + 2 * padding);
+                        }
+                        context.restore();
+                    }
                     function draw() {
                         raf = null;
                         if (!visible() || !context) { return; }
+                        var moving = inkGesture && inkGesture.origin && selectedInk;
                         context.setTransform(1, 0, 0, 1, 0, 0); context.clearRect(0, 0, canvas.width, canvas.height);
                         if (cacheDirty && cacheContext) {
                             cacheContext.setTransform(1, 0, 0, 1, 0, 0); cacheContext.clearRect(0, 0, inkCache.width, inkCache.height);
                             cacheContext.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0); inkBounds = [];
                             strokes().forEach(function (stroke) {
-                                paintStroke(stroke, cacheContext);
-                                var box = [Infinity, Infinity, -Infinity, -Infinity];
-                                (stroke.points || []).forEach(function (point) { box[0] = Math.min(box[0], point[0]); box[1] = Math.min(box[1], point[1]); box[2] = Math.max(box[2], point[0]); box[3] = Math.max(box[3], point[1]); }); inkBounds.push(box);
+                                if (!moving || !selectedInk.strokes.has(stroke)) { paintStroke(stroke, cacheContext); }
+                                inkBounds.push(boundsFor(stroke.points || []));
                             }); cacheDirty = false;
                         }
                         if (!erasing && cacheContext) { context.drawImage(inkCache, 0, 0); }
                         context.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-                        if (erasing || !cacheContext) { strokes().forEach(function (stroke, index) { if (!erasing || !erasing[index]) { paintStroke(stroke); } }); }
+                        if (erasing || !cacheContext) {
+                            strokes().forEach(function (stroke, index) {
+                                if ((!erasing || !erasing[index]) && (!moving || !selectedInk.strokes.has(stroke))) { paintStroke(stroke); }
+                            });
+                        }
+                        if (moving) {
+                            context.save(); context.translate(inkGesture.dx, inkGesture.dy);
+                            selectedInk.strokes.forEach(function (stroke) { paintStroke(stroke); });
+                            context.restore();
+                        }
                         if (drawing) { paintStroke(drawing); }
                         context.globalAlpha = 1;
+                        drawInkSelection();
                     }
                     function scheduleDraw() { if (visible() && !raf) { raf = requestFrame.call($window, draw); } }
+                    function roundCoordinate(value) { return Math.round(value * 100) / 100; }
                     function position(event) {
                         var box = canvas.getBoundingClientRect();
-                        return [Math.round(Math.max(0, Math.min(logicalWidth, (event.clientX - box.left) / scale)) * 100) / 100,
-                            Math.round(Math.max(0, Math.min(logicalHeight, (event.clientY - box.top) / scale)) * 100) / 100,
+                        return [roundCoordinate(Math.max(0, Math.min(logicalWidth, (event.clientX - box.left) / scale))),
+                            roundCoordinate(Math.max(0, Math.min(logicalHeight, (event.clientY - box.top) / scale))),
                             event.pointerType === 'pen' && event.pressure > 0 ? Math.round(Math.min(1, event.pressure) * 1000) / 1000 : 0.5];
+                    }
+                    function selectionPadding() { return selectedInk.radius + 6 / scale; }
+                    function insideBounds(point, box, padding) {
+                        return point[0] >= box[0] - padding && point[0] <= box[2] + padding &&
+                            point[1] >= box[1] - padding && point[1] <= box[3] + padding;
+                    }
+                    function segmentOverlaps(a, b, box) {
+                        return Math.max(a[0], b[0]) >= box[0] && Math.min(a[0], b[0]) <= box[2] &&
+                            Math.max(a[1], b[1]) >= box[1] && Math.min(a[1], b[1]) <= box[3];
+                    }
+                    function sideOf(a, b, point) {
+                        return (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
+                    }
+                    function insideOutline(point, path) {
+                        var inside = false;
+                        for (var i = 0, j = path.length - 1; i < path.length; j = i++) {
+                            var a = path[j], b = path[i];
+                            if ((a[1] > point[1]) !== (b[1] > point[1]) &&
+                                point[0] < a[0] + (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1])) { inside = !inside; }
+                        }
+                        return inside;
+                    }
+                    function selectOutlinedInk(path) {
+                        var box = boundsFor(path);
+                        if (path.length < 3 || Math.min(box[2] - box[0], box[3] - box[1]) * scale < 4) { return null; }
+                        var edges = path.map(function (point, index) {
+                            var previous = path[index ? index - 1 : path.length - 1];
+                            return {a: previous, b: point, bounds: boundsFor([previous, point])};
+                        });
+                        var source = strokes(), selected = new Set(), bounds = [Infinity, Infinity, -Infinity, -Infinity], radius = 0;
+                        source.forEach(function (stroke, index) {
+                            var limits = (!cacheDirty && inkBounds[index]) || boundsFor(stroke.points);
+                            if (limits[2] < box[0] || limits[0] > box[2] || limits[3] < box[1] || limits[1] > box[3]) { return; }
+                            var hit = stroke.points.some(function (point, i) {
+                                if (insideBounds(point, box, 0) && insideOutline(point, path)) { return true; }
+                                var previous = stroke.points[Math.max(0, i - 1)];
+                                // A sparse legacy stroke can cross the outline with both endpoints outside.
+                                return segmentOverlaps(previous, point, box) && edges.some(function (edge) {
+                                    return segmentOverlaps(previous, point, edge.bounds) &&
+                                        sideOf(previous, point, edge.a) * sideOf(previous, point, edge.b) <= 0 &&
+                                        sideOf(edge.a, edge.b, previous) * sideOf(edge.a, edge.b, point) <= 0;
+                                });
+                            });
+                            if (hit) {
+                                selected.add(stroke); radius = Math.max(radius, stroke.width * 0.7);
+                                bounds = [Math.min(bounds[0], limits[0]), Math.min(bounds[1], limits[1]), Math.max(bounds[2], limits[2]), Math.max(bounds[3], limits[3])];
+                            }
+                        });
+                        return selected.size ? {source: source, strokes: selected, bounds: bounds, radius: radius} : null;
+                    }
+                    function setInkSelection(selection) {
+                        var changed = !!selection !== !!selectedInk;
+                        selectedInk = selection; ui.inkSelected = !!selection;
+                        if (!selection && changed) { canvas.style.cursor = ''; }
+                        if (changed) { digest(); scheduleDraw(); }
+                    }
+                    function beginInkGesture(point) {
+                        if (selectedInk && selectedInk.source === strokes() && insideBounds(point, selectedInk.bounds, selectionPadding())) {
+                            inkGesture = {origin: point, dx: 0, dy: 0};
+                            cacheDirty = true; canvas.style.cursor = 'grabbing';
+                        } else {
+                            setInkSelection(null); inkGesture = {path: [point]};
+                        }
+                    }
+                    function updateInkGesture(point, force) {
+                        if (inkGesture.path) {
+                            var path = inkGesture.path, last = path[path.length - 1];
+                            var distance = Math.abs(point[0] - last[0]) + Math.abs(point[1] - last[1]);
+                            if (distance && (force || distance * scale >= 3)) {
+                                if (path.length >= 256) { path = inkGesture.path = thinPoints(path); }
+                                path.push(point);
+                            }
+                        } else {
+                            var box = selectedInk.bounds, maxCoordinate = 100000;
+                            inkGesture.dx = Math.max(-box[0], Math.min(Math.min(logicalWidth, maxCoordinate) - box[2], point[0] - inkGesture.origin[0]));
+                            inkGesture.dy = Math.max(-box[1], Math.min(Math.min(logicalHeight, maxCoordinate) - box[3], point[1] - inkGesture.origin[1]));
+                        }
+                    }
+                    function completeInkGesture() {
+                        if (ui.readOnly) { return; }
+                        if (inkGesture.path) { setInkSelection(selectOutlinedInk(inkGesture.path)); return; }
+                        if (!selectedInk || selectedInk.source !== strokes()) { setInkSelection(null); return; }
+                        var dx = inkGesture.dx, dy = inkGesture.dy;
+                        if ((Math.abs(dx) + Math.abs(dy)) * scale < 2) { return; }
+                        var shifted = new Set();
+                        var next = selectedInk.source.map(function (stroke) {
+                            if (!selectedInk.strokes.has(stroke)) { return stroke; }
+                            var moved = Object.assign({}, stroke, {points: stroke.points.map(function (point) {
+                                var copy = point.slice();
+                                copy[0] = roundCoordinate(point[0] + dx); copy[1] = roundCoordinate(point[1] + dy);
+                                return copy;
+                            })});
+                            shifted.add(moved);
+                            return moved;
+                        });
+                        var bounds = selectedInk.bounds.map(function (value, index) { return roundCoordinate(value + (index % 2 ? dy : dx)); });
+                        setInkSelection({source: next, strokes: shifted, bounds: bounds, radius: selectedInk.radius});
+                        replaceStrokes(next, true);
                     }
                     function distanceToSegment(point, a, b) {
                         var dx = b[0] - a[0], dy = b[1] - a[1], length = dx * dx + dy * dy;
@@ -375,10 +520,8 @@
                             for (var i = 0; i < points.length; i++) {
                                 var a = points[Math.max(0, i - 1)], b = points[i], hit = distanceToSegment(point, a, b) <= radius * radius;
                                 if (erasePrevious && !hit) {
-                                    var first = (point[0] - erasePrevious[0]) * (a[1] - erasePrevious[1]) - (point[1] - erasePrevious[1]) * (a[0] - erasePrevious[0]);
-                                    var second = (point[0] - erasePrevious[0]) * (b[1] - erasePrevious[1]) - (point[1] - erasePrevious[1]) * (b[0] - erasePrevious[0]);
-                                    var third = (b[0] - a[0]) * (erasePrevious[1] - a[1]) - (b[1] - a[1]) * (erasePrevious[0] - a[0]);
-                                    var fourth = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
+                                    var first = sideOf(erasePrevious, point, a), second = sideOf(erasePrevious, point, b);
+                                    var third = sideOf(a, b, erasePrevious), fourth = sideOf(a, b, point);
                                     hit = (first * second < 0 && third * fourth < 0) || distanceToSegment(erasePrevious, a, b) <= radius * radius ||
                                         distanceToSegment(a, erasePrevious, point) <= radius * radius || distanceToSegment(b, erasePrevious, point) <= radius * radius;
                                 }
@@ -386,19 +529,21 @@
                             }
                         }); erasePrevious = point;
                     }
+                    function thinPoints(points) {
+                        // Decimate the whole old curve while retaining both endpoints.
+                        var compact = [points[0]];
+                        for (var index = 2; index < points.length - 1; index += 2) { compact.push(points[index]); }
+                        compact.push(points[points.length - 1]);
+                        return compact;
+                    }
                     function addPoint(event, force) {
                         var point = position(event);
+                        if (inkGesture) { updateInkGesture(point, force); return; }
                         if (erasing) { eraseAt(point); return; }
                         if (!drawing) { return; }
                         var previous = drawing.points[drawing.points.length - 1];
                         if (force || !previous || Math.abs(point[0] - previous[0]) + Math.abs(point[1] - previous[1]) >= 0.8 || Math.abs(point[2] - previous[2]) > 0.15) {
-                            if (drawing.points.length >= 2500) {
-                                // Decimate the whole old curve, retaining both endpoints;
-                                // never replace a long new tail with a single straight line.
-                                var compact = [drawing.points[0]];
-                                for (var pointIndex = 2; pointIndex < drawing.points.length - 1; pointIndex += 2) { compact.push(drawing.points[pointIndex]); }
-                                compact.push(drawing.points[drawing.points.length - 1]); drawing.points = compact;
-                            }
+                            if (drawing.points.length >= 2500) { drawing.points = thinPoints(drawing.points); }
                             drawing.points.push(point);
                         }
                     }
@@ -407,13 +552,17 @@
                             (event.pointerType === 'touch' && !ui.touchDrawing) || (event.button !== undefined && event.button !== 0)) { return; }
                         event.preventDefault(); event.stopPropagation(); pointer = event.pointerId;
                         if (ui.session.setInteraction) { ui.session.setInteraction(true, 'pen'); }
-                        if (ui.tool === 'eraser') { erasing = {}; erasePrevious = null; }
+                        if (ui.tool === 'lasso') { beginInkGesture(position(event)); }
+                        else if (ui.tool === 'eraser') { erasing = {}; erasePrevious = null; }
                         else { drawing = { id: 'ink-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9), tool: ui.tool,
                             color: ui.inkColor, width: Number(ui.inkWidth) * (ui.tool === 'highlighter' ? 4 : 1), points: [] }; }
                         try { canvas.setPointerCapture(pointer); } catch (ignoreCapture) { /* Pointer delivery still works while inside canvas. */ }
                         addPoint(event, true); scheduleDraw();
                     }
                     function pointerMove(event) {
+                        if (pointer === null && selectedInk) {
+                            canvas.style.cursor = insideBounds(position(event), selectedInk.bounds, selectionPadding()) ? 'grab' : '';
+                        }
                         if (pointer === null || event.pointerId !== pointer) { return; }
                         event.preventDefault(); event.stopPropagation();
                         var events = event.getCoalescedEvents ? event.getCoalescedEvents() : null;
@@ -429,17 +578,32 @@
                             else if (erasing && Object.keys(erasing).length) { next = strokes().filter(function (stroke, index) { return !erasing[index]; }); }
                         }
                         drawing = null; erasing = null; erasePrevious = null;
+                        if (inkGesture) {
+                            if (inkGesture.origin) { cacheDirty = true; }
+                            inkGesture = null; canvas.style.cursor = '';
+                        }
                         try { if (canvas.hasPointerCapture && canvas.hasPointerCapture(pointerId)) { canvas.releasePointerCapture(pointerId); } } catch (ignoreRelease) {}
                         if (next) { replaceStrokes(next, true); } else { scheduleDraw(); }
                         if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(false, 'pen'); }
                     }
-                    function pointerUp(event) { if (pointer !== null && event.pointerId === pointer) { addPoint(event, true); finishStroke(true); } }
+                    function pointerUp(event) {
+                        if (pointer === null || event.pointerId !== pointer) { return; }
+                        addPoint(event, true);
+                        try { if (inkGesture) { completeInkGesture(); } }
+                        finally { finishStroke(true); }
+                    }
                     function pointerCancel(event) { if (pointer !== null && event.pointerId === pointer) { finishStroke(true); } }
 
                     function keydown(event) {
                         if (!visible()) { return; }
                         event.stopPropagation();
-                        if ((event.key === 'Escape' || event.keyCode === 27) && !event.isComposing) { event.preventDefault(); digest(ui.paletteOpen ? ui.closePalette : ui.close); return; }
+                        if ((event.key === 'Escape' || event.keyCode === 27) && !event.isComposing) {
+                            event.preventDefault();
+                            if (ui.paletteOpen) { digest(ui.closePalette); }
+                            else if (inkGesture || selectedInk) { digest(function () { finishStroke(false); setInkSelection(null); }); }
+                            else { digest(ui.close); }
+                            return;
+                        }
                         if ((event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 's') { event.preventDefault(); digest(ui.save); return; }
                         if (event.key !== 'Tab' && event.keyCode !== 9) { return; }
                         var controls = Array.prototype.slice.call(dialog.querySelectorAll('button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex="0"]'));
@@ -476,7 +640,11 @@
                     }
                     var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled', 'notebook.sessionKey'], identityChanged);
                     var unwatchStrokes = scope.$watchCollection(function () { return strokes(); }, function (value) {
-                        if (value !== knownStrokes) { knownStrokes = value; cacheDirty = true; undo = []; redo = []; scheduleLayout(); }
+                        if (value !== knownStrokes) {
+                            knownStrokes = value; cacheDirty = true; undo = []; redo = [];
+                            if (inkGesture) { finishStroke(false); }
+                            setInkSelection(null); scheduleLayout();
+                        }
                     });
                     var unwatchStatus = scope.$watch(function () { return ui.session && ui.session.status; }, function () { scheduleLayout(); });
                     var unwatchTextColor = scope.$watch(function () { return ui.session && ui.session.document && ui.session.document.textColor; }, function (color) {
