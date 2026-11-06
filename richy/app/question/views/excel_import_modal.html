@@ -1,0 +1,372 @@
+<div>
+        <div class="modal-header">
+            <button type="button" class="close" aria-hidden="true" ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" ng-click="importVm.cancel()">
+                &times;
+            </button>
+
+            <h4 class="modal-title bold">
+                <i class="fa fa-file-excel-o"></i> IMPORT WORDS FROM EXCEL </h4>
+        </div>
+
+        <div class="modal-body">
+            <div class="alert alert-info" ng-if="importVm.loadingPreview || importVm.loadingConfirm" role="status" aria-live="polite">
+                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                {{importVm.loadingConfirm ? 'Đang nhập các dòng đã chọn...' : (importVm.savingTopic ? 'Đang tạo topic...' : 'Đang đọc và đối chiếu file Excel...')}}
+            </div>
+            <div ng-if="!importVm.preview">
+                <div class="alert alert-info">
+                    <strong>Excel format</strong>
+                    <div style="margin-top: 6px">
+                        Row 1: <strong>word | pronounce | first language | CEFR level</strong>
+                    </div>
+                    <div>Data starts from row 2.</div>
+                    <div>CEFR level accepts A1, A2, B1, B2, C1 or C2 and may be left blank.</div>
+                    <div>Chọn topic có sẵn hoặc tạo topic mới bên dưới; file Excel không cần Topic ID.</div>
+                </div>
+
+                <fieldset ng-disabled="importVm.loadingPreview || importVm.loadingConfirm">
+                    <legend class="bold" style="font-size: 16px; margin-bottom: 10px;">Bài từ vựng nhận dữ liệu</legend>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="existing"
+                                   ng-change="importVm.onTopicModeChanged()"> Bài từ vựng có sẵn
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="new"
+                                   ng-change="importVm.onTopicModeChanged()"> Tạo bài từ vựng mới
+                        </label>
+                    </div>
+
+                    <div class="form-group" ng-if="importVm.topicMode === 'existing'">
+                        <label class="bold" for="excel-import-topic-search">Bài từ vựng</label>
+                        <ui-select id="excel-import-topic" input-id="excel-import-topic-search" ng-model="importVm.selectedTopic"
+                                   theme="bootstrap" search-enabled="true" reset-search-input="true" style="width: 100%"
+                                   ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" title="Tìm và chọn bài từ vựng">
+                            <ui-select-match allow-clear="true" placeholder="Gõ để tìm bài từ vựng...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="topic in importVm.topics | filter: {name: $select.search} track by topic.id">
+                                <div ng-bind="topic.name"></div>
+                            </ui-select-choices>
+                            <ui-select-no-choice>Không tìm thấy bài từ vựng phù hợp.</ui-select-no-choice>
+                        </ui-select>
+                        <div class="help-block" ng-if="!importVm.topics.length">
+                            Chưa có topic. Chọn “Tạo bài từ vựng mới” để tạo ngay trong cửa sổ này.
+                        </div>
+                    </div>
+
+                    <div ng-if="importVm.topicMode === 'new'">
+                        <div class="form-group">
+                            <label class="bold" for="excel-import-topic-name">Tên bài từ vựng mới <span class="text-danger">*</span></label>
+                            <input id="excel-import-topic-name" type="text" class="form-control" maxlength="100"
+                                   ng-model="importVm.newTopic.name" placeholder="Nhập tên topic" aria-required="true">
+                        </div>
+                        <div class="form-group">
+                            <label class="bold" for="excel-import-topic-category-search">Nhóm bài từ vựng <span class="text-danger">*</span></label>
+                            <ui-select id="excel-import-topic-category" input-id="excel-import-topic-category-search"
+                                       ng-model="importVm.newTopic.topicCategory" theme="bootstrap" search-enabled="true"
+                                       reset-search-input="true" style="width: 100%" title="Tìm và chọn category"
+                                       ng-disabled="importVm.loadingCategories || importVm.categoryLoadError || importVm.loadingPreview || importVm.loadingConfirm">
+                                <ui-select-match allow-clear="true" placeholder="Gõ để tìm category...">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat="category in importVm.topicCategories | filter: {name: $select.search} track by category.id">
+                                    <div ng-bind="category.name"></div>
+                                </ui-select-choices>
+                                <ui-select-no-choice>Không tìm thấy category phù hợp.</ui-select-no-choice>
+                            </ui-select>
+                            <p class="help-block" ng-if="importVm.loadingCategories" role="status">
+                                <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải category...
+                            </p>
+                            <div class="text-danger" ng-if="importVm.categoryLoadError" role="alert">
+                                {{importVm.categoryLoadError}}
+                                <button type="button" class="btn btn-link" ng-click="importVm.loadTopicCategories()">Thử lại</button>
+                            </div>
+                            <p class="help-block" ng-if="!importVm.loadingCategories && !importVm.categoryLoadError && !importVm.topicCategories.length">
+                                Chưa có nhóm bài từ vựng để chọn. Vui lòng thêm nhóm trước khi tạo bài mới.
+                            </p>
+                        </div>
+                        <p class="help-block">Bài từ vựng được lưu khi bấm “Tạo bài từ vựng và xem trước” và có thể dùng lại nếu bạn đổi file hoặc đóng cửa sổ.</p>
+                    </div>
+                </fieldset>
+
+                <div class="alert alert-success" ng-if="importVm.createdTopic" role="status">
+                    Đã tạo bài từ vựng <strong>{{importVm.createdTopic.name}}</strong>. Bạn có thể chọn lại bài từ vựng này để tiếp tục import.
+                </div>
+
+                <div class="form-group">
+                    <label class="bold">Excel template</label>
+
+                    <div>
+                        <button type="button" class="btn btn-default" ng-click="importVm.downloadStaticTemplate($event)">
+                            <i class="fa fa-download"></i> Download Excel template
+                        </button>
+                    </div>
+
+                    <p class="help-block">
+                        Tải file mẫu, nhập dữ liệu từ dòng 2 rồi upload lại. Tối đa: Word 200 ký tự, phiên âm 200 ký tự, nghĩa tiếng Việt 500 ký tự. </p>
+                </div>
+
+                <div class="form-group">
+                    <label class="bold">Excel file (.xlsx or .xls)</label>
+
+                    <input type="file" class="form-control" ng-disabled="importVm.loadingPreview || importVm.loadingConfirm"
+                           accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" question-file-select="importVm.onFileSelected(file)">
+                </div>
+
+                <div class="alert alert-default" ng-if="importVm.fileName" style="border: 1px solid #ddd;">
+                    Selected file: <strong>{{importVm.fileName}}</strong>
+                </div>
+            </div>
+
+            <div ng-if="importVm.preview">
+                <div class="row margin-bottom-10">
+                    <div class="col-md-6">
+                        <strong>Topic:</strong> {{importVm.preview.topicName || 'Unknown'}}
+                    </div>
+
+                    <div class="col-md-6 text-right">
+                        <strong>Mã bài từ vựng:</strong> {{importVm.preview.topicId}}
+                    </div>
+                </div>
+
+                <div class="row margin-bottom-10">
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold">{{importVm.preview.summary.total}}</div>
+                            <small>Total</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-success">
+                                {{importVm.preview.summary.newCount}}
+                            </div>
+                            <small>New</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-info">
+                                {{importVm.preview.summary.addTopicCount}}
+                            </div>
+                            <small>Add topic</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold">
+                                {{importVm.preview.summary.alreadyInTopicCount}}
+                            </div>
+                            <small>Already added</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-warning">
+                                {{importVm.preview.summary.duplicateInFileCount}}
+                            </div>
+                            <small>Duplicate</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-danger">
+                                {{importVm.preview.summary.invalidCount + importVm.preview.summary.conflictCount}}
+                            </div>
+                            <small>Invalid</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" ng-model="importVm.updateEmptyFields" ng-disabled="importVm.loadingConfirm"> Fill pronounce, first language and CEFR level only when existing values are empty
+                    </label>
+                </div>
+
+                <div class="table-responsive question-import-scroll" style="max-height: 420px;
+            overflow-y: auto;
+            border: 1px solid #ddd;">
+
+                    <table class="table table-bordered table-striped table-hover" style="margin-bottom: 0;">
+
+                        <thead>
+                        <tr>
+                            <!-- Checkbox chọn dòng -->
+                            <th class="text-center" style="width: 45px; min-width: 45px;">
+
+                                <input type="checkbox" ng-model="importVm.selectAll" ng-disabled="importVm.loadingConfirm" ng-change="importVm.toggleAllRows()">
+                            </th>
+
+                            <!-- Số dòng trong Excel -->
+                            <th style="width: 65px; min-width: 65px;">
+                                Row
+                            </th>
+
+                            <!-- Dữ liệu từ file -->
+                            <th style="min-width: 140px;">
+                                Word
+                            </th>
+
+                            <th style="min-width: 140px;">
+                                Pronounce
+                            </th>
+
+                            <th style="min-width: 180px;">
+                                First language
+                            </th>
+
+                            <th style="width: 110px; min-width: 110px;">
+                                CEFR level
+                            </th>
+
+                            <!-- Cột mới dùng khi có nhiều dữ liệu trùng -->
+                            <th style="min-width: 420px;">
+                                Choose existing flashcard
+                            </th>
+
+                            <th style="width: 190px; min-width: 190px;">
+                                Status
+                            </th>
+
+                            <th style="min-width: 220px;">
+                                Message
+                            </th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr ng-repeat="row in importVm.preview.displayRows | limitTo:importVm.previewLimit track by $index">
+
+                            <!-- Checkbox chỉ mở khi dòng có thể import -->
+                            <td class="text-center" style="vertical-align: middle;">
+
+                                <input type="checkbox" ng-model="row.selected" ng-disabled="importVm.loadingConfirm || !importVm.isImportable(row)" ng-change="importVm.onRowSelectionChanged()">
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.rowNumber}}
+                            </td>
+
+                            <td class="bold" style="vertical-align: middle;">
+                                {{row.word}}
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.pronounce}}
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.firstLanguage}}
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.level || '--'}}
+                            </td>
+
+                            <!-- Dropdown chỉ xuất hiện khi status = CONFLICT -->
+                            <td style="vertical-align: middle;">
+
+                                <div ng-if="row.status === 'CONFLICT'">
+
+                                    <select class="form-control" ng-disabled="importVm.loadingConfirm" ng-model="row.selectedExistingQuestionId" ng-change="importVm.onConflictCandidateChanged(row)" ng-options="candidate.id as candidate.displayText
+                                        for candidate in row.candidates
+                                        track by candidate.id">
+
+                                        <option value="">
+                                            -- Choose a flashcard --
+                                        </option>
+                                    </select>
+
+                                    <!-- Không có candidate -->
+                                    <div class="text-danger" ng-if="!row.candidates || row.candidates.length === 0" style="margin-top: 5px;">
+
+                                        Không tìm thấy flashcard để lựa chọn.
+                                    </div>
+
+                                    <!-- Đã chọn candidate -->
+                                    <div class="text-success" ng-if="row.selectedExistingQuestionId" style="margin-top: 5px;">
+
+                                        Đã chọn Question ID: <strong> {{row.selectedExistingQuestionId}} </strong>
+                                    </div>
+
+                                    <!-- Chưa chọn candidate -->
+                                    <div class="text-warning" ng-if="!row.selectedExistingQuestionId
+                                && row.candidates
+                                && row.candidates.length > 0" style="margin-top: 5px;">
+
+                                        Chọn một flashcard để mở checkbox lưu.
+                                    </div>
+                                </div>
+
+                                <!-- Những dòng không conflict không cần dropdown -->
+                                <span ng-if="row.status !== 'CONFLICT'" class="text-muted">
+                                    -
+                                </span>
+                            </td>
+
+                            <td style="vertical-align: middle;">
+
+                                <span ng-class="importVm.getStatusClass(row)">
+                                    {{importVm.getStatusText(row)}}
+                                </span>
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.message}}
+                            </td>
+                        </tr>
+
+                        <tr ng-if="importVm.previewLimit < importVm.preview.displayRows.length"
+                            question-import-load-more="importVm.loadMorePreviewRows()"
+                            question-import-load-more-items="importVm.preview.displayRows"
+                            question-import-load-more-count="importVm.previewLimit"
+                            question-import-load-more-enabled="!importVm.loadingPreview && !importVm.loadingConfirm">
+                            <td colspan="9" class="text-center" style="padding:12px">
+                                <span role="status">Đã hiện {{importVm.previewLimit}}/{{importVm.preview.displayRows.length}} dòng.</span>
+                                <button type="button" class="btn btn-default btn-sm" ng-disabled="importVm.loadingConfirm" ng-click="importVm.loadMorePreviewRows()">Hiện thêm 40 dòng</button>
+                            </td>
+                        </tr>
+
+                        <!-- Không có dữ liệu -->
+                        <tr ng-if="!importVm.preview.rows
+                            || importVm.preview.rows.length === 0">
+
+                            <td colspan="9" class="text-center text-muted">
+
+                                No data found in the Excel file.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info" style="margin-top: 10px; margin-bottom: 0;">
+                    Selected: <strong>{{importVm.getSelectedCount()}}</strong> valid row(s).
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" ng-click="importVm.cancel()">
+                Close
+            </button>
+
+            <button type="button" class="btn btn-default" ng-if="importVm.preview" ng-disabled="importVm.loadingConfirm" ng-click="importVm.backToFileSelection()">
+                <i class="fa fa-arrow-left"></i> Choose another file
+            </button>
+
+            <button type="button" class="btn btn-primary" ng-if="!importVm.preview" ng-disabled="!importVm.canPreview()" ng-click="importVm.loadPreview()">
+                <i class="fa fa-spinner fa-spin" ng-if="importVm.loadingPreview" aria-hidden="true"></i>
+                <i class="fa fa-search" ng-if="!importVm.loadingPreview" aria-hidden="true"></i>
+                {{importVm.savingTopic ? 'Đang tạo topic...' : (importVm.loadingPreview ? 'Đang đọc file...' : (importVm.topicMode === 'new' ? 'Tạo bài từ vựng và xem trước' : 'Read and preview'))}}
+            </button>
+
+            <button type="button" class="btn btn-success" ng-if="importVm.preview" ng-disabled="importVm.getSelectedCount() === 0 || importVm.loadingConfirm" ng-click="importVm.confirmImport()">
+                <i class="fa fa-spinner fa-spin" ng-if="importVm.loadingConfirm"></i>
+                <i class="fa fa-check" ng-if="!importVm.loadingConfirm"></i> Confirm import ({{importVm.getSelectedCount()}})
+            </button>
+        </div>
+    </div>

@@ -47,6 +47,12 @@ public class RestQuestionController {
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/vocabulary/get_page/{page}/{size}", method = RequestMethod.POST)
+    public Page<QuestionDto> getVocabularyPage(@RequestBody QuestionDto search, @PathVariable int page, @PathVariable int size) {
+        return service.getVocabularyPage(search, page, size);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
     public Page<QuestionDto> getPage(
             @RequestBody QuestionDto searchDto,

@@ -420,6 +420,9 @@ public class TopicServiceImpl implements TopicService {
 						|| !domain.getUser().getId().equals(((User) authentication.getPrincipal()).getId())))) {
 			throw new AccessDeniedException("Bạn chỉ được xóa bài từ vựng do chính mình tạo.");
 		}
+		// Removing a vocabulary lesson must never remove its flashcards.
+		manager.createQuery("delete from QuestionTopic link where link.topic.id = :lesson")
+				.setParameter("lesson", id).executeUpdate();
 		topicRepository.delete(domain);
 		return true;
 	}

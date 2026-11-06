@@ -44,6 +44,7 @@ public class VocabularyAccessTest {
         ReflectionTestUtils.setField(cards, "questionTypeRepository", types);
         ReflectionTestUtils.setField(lessons, "topicRepository", topics);
         ReflectionTestUtils.setField(lessons, "userRepository", users);
+        ReflectionTestUtils.setField(lessons, "manager", mock(EntityManager.class, RETURNS_DEEP_STUBS));
         ReflectionTestUtils.setField(lessons, "topicCategoryRepository", mock(TopicCategoryRepository.class));
         ReflectionTestUtils.setField(lessons, "topicCategoryVisibilityService", mock(TopicCategoryVisibilityService.class));
         when(users.findForVocabularyUpdate(7L)).thenReturn(owner);
@@ -227,5 +228,39 @@ public class VocabularyAccessTest {
         verify(questions, never()).delete(card); verify(topics, never()).delete(lesson);
         card.setUser(owner); lesson.setUser(owner);
         assertTrue(cards.deleteObject(31L)); assertTrue(lessons.deleteObject(11L));
+    }
+    @Test public void vocabularyWorkspaceReturnsOnlyOwnRootCardsAndSupportsAllStatusesAndUnassigned() {
+        EntityManager manager = mock(EntityManager.class); TypedQuery<QuestionDto> rows = mock(TypedQuery.class);
+        javax.persistence.Query count = mock(javax.persistence.Query.class);
+        ReflectionTestUtils.setField(cards, "manager", manager);
+        when(manager.createQuery(anyString(), eq(QuestionDto.class))).thenReturn(rows);
+        when(manager.createQuery(anyString())).thenReturn(count);
+        when(rows.getResultList()).thenReturn(Collections.emptyList()); when(count.getSingleResult()).thenReturn(0L);
+        QuestionDto filter = new QuestionDto(); filter.setUserId(99L); filter.setStatus(0); filter.setWithoutTopics(true);
+        assertTrue(cards.getVocabularyPage(filter, 1, 12).getContent().isEmpty());
+        org.mockito.ArgumentCaptor<String> hql = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(manager).createQuery(hql.capture(), eq(QuestionDto.class));
+        assertTrue(hql.getValue().contains("q.questionType.id = 6 and q.parent is null and q.user.id = :owner"));
+        assertTrue(hql.getValue().contains("not exists")); assertFalse(hql.getValue().contains("q.status"));
+        verify(rows).setParameter("owner", 7L); verify(count).setParameter("owner", 7L);
+        verify(rows, never()).setParameter("owner", 99L);
+    }
+    @Test public void vocabularyWorkspaceFiltersByLessonListeningAndMeaningAndClampsPageSize() {
+        EntityManager manager = mock(EntityManager.class); TypedQuery<QuestionDto> rows = mock(TypedQuery.class);
+        javax.persistence.Query count = mock(javax.persistence.Query.class);
+        ReflectionTestUtils.setField(cards, "manager", manager);
+        when(manager.createQuery(anyString(), eq(QuestionDto.class))).thenReturn(rows);
+        when(manager.createQuery(anyString())).thenReturn(count);
+        when(rows.getResultList()).thenReturn(Collections.emptyList()); when(count.getSingleResult()).thenReturn(0L);
+        QuestionDto filter = new QuestionDto(); filter.setTopicId(11L); filter.setStatus(5); filter.setTextSearch("  APPLE  ");
+        cards.getVocabularyPage(filter, 0, 10000);
+        org.mockito.ArgumentCaptor<String> hql = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(manager).createQuery(hql.capture(), eq(QuestionDto.class));
+        assertTrue(hql.getValue().contains("link.topic.id = :lesson")); assertTrue(hql.getValue().contains("q.status = 5"));
+        assertTrue(hql.getValue().contains("lower(q.motherTongue) like :term"));
+        for (javax.persistence.Query query : Arrays.asList(rows, count)) {
+            verify(query).setParameter("owner", 7L); verify(query).setParameter("lesson", 11L); verify(query).setParameter("term", "%apple%");
+        }
+        verify(rows).setFirstResult(0); verify(rows).setMaxResults(500);
     }
 }

@@ -1426,6 +1426,39 @@ public class QuestionServiceImpl implements QuestionService {
 	/** Editor boundary: learners save personal word fields, staff retain test editing. */
 	@Override
 	@Transactional(readOnly = true)
+	public Page<QuestionDto> getVocabularyPage(QuestionDto search, int page, int size) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
+				|| ((User) authentication.getPrincipal()).getId() == null) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để xem từ vựng.");
+		}
+		VocabularyPolicy.role(authentication);
+		if (search == null) { search = new QuestionDto(); }
+		int pageIndex = Math.max(0, page - 1), pageSize = Math.max(1, Math.min(500, size));
+		String where = " from Question q where q.questionType.id = 6 and q.parent is null and q.user.id = :owner";
+		if (search.isWithoutTopics()) {
+			where += " and not exists (select link.id from QuestionTopic link where link.question.id = q.id)";
+		} else if (search.getTopicId() != null) {
+			where += " and exists (select link.id from QuestionTopic link where link.question.id = q.id and link.topic.id = :lesson)";
+		}
+		if (search.getStatus() == 5) { where += " and q.status = 5"; }
+		else if (search.getStatus() == 4) { where += " and q.status = 4"; }
+		else if (search.getStatus() == 3) { where += " and (q.status is null or q.status <> 5)"; }
+		String term = search.getTextSearch() == null ? "" : search.getTextSearch().trim().toLowerCase(Locale.ROOT);
+		if (!term.isEmpty()) { where += " and (lower(q.question) like :term or lower(q.motherTongue) like :term)"; }
+		Query rows = manager.createQuery("select new com.globits.richy.dto.QuestionDto(q)" + where + " order by q.createDate desc, q.id desc", QuestionDto.class);
+		Query count = manager.createQuery("select count(q.id)" + where);
+		for (Query query : new Query[]{rows, count}) {
+			query.setParameter("owner", ((User) authentication.getPrincipal()).getId());
+			if (!search.isWithoutTopics() && search.getTopicId() != null) { query.setParameter("lesson", search.getTopicId()); }
+			if (!term.isEmpty()) { query.setParameter("term", "%" + term + "%"); }
+		}
+		rows.setFirstResult(pageIndex * pageSize); rows.setMaxResults(pageSize);
+		return new PageImpl<QuestionDto>(rows.getResultList(), new PageRequest(pageIndex, pageSize), (Long) count.getSingleResult());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)

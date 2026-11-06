@@ -51,6 +51,8 @@
             restrict: 'A',
             scope: {
                 topics: '=',
+                importTemplateUrl: '@?',
+                initialTopic: '=?',
                 userId: '=',
                 onTopicCreated: '&',
                 onImported: '&'
@@ -61,14 +63,16 @@
                         animation: true,
                         backdrop: 'static',
                         keyboard: false,
+                        windowClass: scope.importTemplateUrl ? 'vocab-import-dialog' : undefined,
                         size: 'lg',
-                        templateUrl: 'question_excel_import_modal.html',
+                        templateUrl: scope.importTemplateUrl || 'question_excel_import_modal.html',
                         controller: 'QuestionExcelImportModalController',
                         controllerAs: 'importVm',
                         resolve: {
                             importTopics: function () {
                                 return angular.copy(scope.topics || []);
                             },
+                            importInitialTopic: function () { return angular.copy(scope.initialTopic || null); },
                             importUserId: function () {
                                 return scope.userId;
                             },
@@ -138,7 +142,8 @@
         'toastr',
         'importTopics',
         'importUserId',
-        'onImportTopicCreated'
+        'onImportTopicCreated',
+        'importInitialTopic'
     ];
 
     function QuestionExcelImportModalController(
@@ -148,14 +153,17 @@
         toastr,
         importTopics,
         importUserId,
-        onImportTopicCreated
+        onImportTopicCreated,
+        importInitialTopic
     ) {
         var importVm = this;
 
         importVm.file = null;
         importVm.fileName = '';
         importVm.topics = importTopics || [];
-        importVm.selectedTopic = null;
+        importVm.selectedTopic = importVm.topics.filter(function (topic) {
+            return importInitialTopic && topic.id === importInitialTopic.id;
+        })[0] || null;
         importVm.topicMode = importVm.topics.length ? 'existing' : 'new';
         importVm.newTopic = {name: '', topicCategory: null};
         importVm.topicCategories = [];

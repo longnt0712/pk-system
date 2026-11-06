@@ -52,6 +52,10 @@
         self.getVocabularyUsage = function () {
             return $http.get(baseUrl + 'question/vocabulary_usage').then(function (response) { return response.data; });
         };
+        self.getVocabularyPage = function (search, page, size) {
+            return $http.post(baseUrl + 'question/vocabulary/get_page/' + page + '/' + size, search)
+                .then(function (response) { return response.data; });
+        };
         self.updateTestStatus = updateTestStatus;
         self.updateTestTitle = updateTestTitle;
         self.getFlashCardLevels = getFlashCardLevels;

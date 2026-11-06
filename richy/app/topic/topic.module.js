@@ -16,19 +16,22 @@
 
             // Event priority
             .state('application.topic', {
-                url: '/topics',
-                templateUrl: 'topic/views/listing.html',
-                data: {pageTitle: 'Topic'},
-                controller: 'TopicController as vm',
+                url: '/topics?lesson',
+                reloadOnSearch: false,
+                templateUrl: 'topic/views/vocabulary.html',
+                data: {pageTitle: 'Bài từ vựng'},
+                controller: 'VocabularyController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                         return $ocLazyLoad.load({
                             name: 'Hrm.Topic',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'topic/controllers/TopicController.js',
-                                'topic/business/TopicService.js',
-                                'question/business/QuestionService.js'
+                                'topic/vocabulary.css?v=' + window.APP_VERSION,
+                                'topic/controllers/VocabularyController.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'question/controllers/QuestionExcelImportController.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]

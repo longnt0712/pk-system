@@ -1,0 +1,31 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const app = path.resolve(__dirname, '..');
+
+test('vocabulary has one navigation entry and the old flashcard URL opens the same workspace', () => {
+    const states = {};
+    const provider = {state(name, definition) { states[name] = definition; return this; }};
+    const module = {filter() { return this; }, config(definition) { definition.at(-1)(provider); return this; }};
+    const context = vm.createContext({Hrm: {}, angular: {module: () => module}, window: {APP_VERSION: 'test'}});
+    for (const file of ['topic/topic.module.js', 'question/question.module.js']) vm.runInContext(fs.readFileSync(path.join(app, file), 'utf8'), context);
+    const primary = states['application.topic'];
+    assert.equal(primary.templateUrl, 'topic/views/vocabulary.html');
+    assert.equal(primary.controller, 'VocabularyController as vm');
+    assert.equal(primary.reloadOnSearch, false);
+    const destinations = [], enter = states['application.question'].onEnter.at(-1);
+    const state = {go(...args) { destinations.push(args); }};
+    enter(state, {listFlashCard: '3', lesson: '101'});
+    assert.equal(destinations[0][0], 'application.topic'); assert.equal(destinations[0][1].lesson, '101');
+    assert.equal(destinations[0][2].location, 'replace');
+    enter(state, {listFlashCard: '1'}); assert.equal(destinations.length, 1);
+    const nav = fs.readFileSync(path.join(app, 'common/views/navs/header-hoz.html'), 'utf8');
+    assert.equal((nav.match(/href="topics"/g) || []).length, 1);
+    assert.ok(!nav.includes('YOUR FLASHCARDS'));
+    let dependencies;
+    primary.resolve.deps.at(-1)({load(config) { dependencies = config.files; }});
+    assert.ok(dependencies.includes('topic/vocabulary.css?v=test'));
+    assert.ok(dependencies.includes('question/controllers/QuestionExcelImportController.js?v=test'));
+});

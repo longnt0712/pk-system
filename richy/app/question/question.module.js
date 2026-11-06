@@ -49,7 +49,12 @@
 
         // Event priority
             .state('application.question', {
-                url: '/question/:listFlashCard',
+                url: '/question/:listFlashCard?lesson',
+                onEnter: ['$state', '$stateParams', function ($state, $stateParams) {
+                    if (String($stateParams.listFlashCard) === '3') {
+                        $state.go('application.topic', {lesson: $stateParams.lesson || null}, {location: 'replace'});
+                    }
+                }],
                 templateUrl: 'question/views/listing.html',
                 data: {pageTitle: 'Flash Card'},
                 controller: 'QuestionController as vm',
