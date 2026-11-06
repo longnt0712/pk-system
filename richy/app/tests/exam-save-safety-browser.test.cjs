@@ -379,7 +379,7 @@ test('expired, unsupported or changed assignment eligibility preserves the faile
                     ieltsParts:[1],...(problem==='changed'?{canStartNewAttempt:true}:{})});
             },problem);
             await f.page.getByRole('button',{name:'Làm lượt mới',exact:true}).click();
-            await f.page.waitForFunction(()=>!!qaVm.writingNewAttemptError);
+            await f.page.waitForFunction(()=>!!qaVm.newAttemptError);
             assert.equal(await f.page.evaluate(()=>qaVm.passageNumber),4);
             assert.equal(await f.page.evaluate(()=>JSON.parse(localStorage.getItem(draftKey)).clientAttemptKey),key);
             assert.equal(await f.page.evaluate(()=>angular.element(document.getElementById('qa')).scope().counter),0);

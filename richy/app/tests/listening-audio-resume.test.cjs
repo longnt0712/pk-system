@@ -35,7 +35,7 @@ function fixture(options = {}) {
         readingAnnotationsRestoring: false, readingDraftSubmitted: false, readingAttemptKey: 'a'.repeat(32),
         readingSubmissionState: null, readingAttemptMayReplaceLocalDraft: false,
         legacyModeDraftStorageKey: '', legacyReadingDraftStorageKey: '',
-        syncTimerForPersistence() {}, getActiveDurationSeconds: () => 90,
+        syncTimerForPersistence() {}, getActiveDurationSeconds: () => 90, usesHomeworkPracticeTimer: () => false,
         serializeReadingDraftResults: () => [{ordinalNumber: 1, clientAnswer: 'My answer'}],
         serializeReadingQuestionStates: () => [{ordinalNumber: 1, needReview: true}], serializeCompleteListStates: () => [],
         serializeReadingAnnotations: () => [{start: 1, end: 8, color: 'yellow'}],
@@ -121,4 +121,15 @@ test('Preview and other test types never write native Listening positions, and d
     }
     const f = fixture(); f.play(); f.audio.metadata(); f.destroy(); assert.equal(f.listenerCount(), 0);
     f.audio.emit('pause'); assert.equal(f.cloud.length, 0); f.play(); assert.equal(f.plays(), 1);
+});
+
+
+test('explicit Listening retake clears prior source positions before reloading the player at the first second', () => {
+    const f = fixture({mode: 'SERIOUS'}); f.restore([{source: 'full.mp3', seconds: 300}, {source: 'part4.mp3', seconds: 180}]);
+    f.play(); f.audio.metadata(); assert.equal(f.audio.currentTime, 300);
+    f.context.detachMainListeningAudioResume(); f.restore([]); assert.deepEqual(f.records(), []);
+    f.play(); f.audio.metadata(); assert.equal(f.audio.currentTime, 0);
+    assert.deepEqual(f.records(), [{source: 'full.mp3', seconds: 0}]); assert.equal(f.listenerCount(), 7);
+    f.vm.isPartAssignment = true; f.vm.assignedPart = 4; f.vm.listeningPartAudioUrls = ['', '', '', 'part4.mp3'];
+    f.play(); f.audio.metadata(); assert.equal(f.audio.currentTime, 0, 'Another Part never inherits the old attempt position');
 });

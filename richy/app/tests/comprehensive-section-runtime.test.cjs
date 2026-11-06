@@ -72,7 +72,7 @@ test('Finish submits only this section with its shared task ID, stable key, orig
  const c=settings();c.vm.configureComprehensiveAssignment(task(0));
  Object.assign(c,{readingDraftSubmitted:false,readingAttemptKey:null,readingSubmissionState:null,restoredExpiredReadingDraft:false,
   $scope:{counter:4500},document:{getElementById:()=>({innerHTML:'<p>Kept notes</p>'})},toastr:{error:message=>{throw Error(message);}},
-  saveReadingDraft(){},syncTimerForPersistence(){},getActiveDurationSeconds:()=>4500,formatTimerClock:s=>String(s),getWritingTaskPackages:()=>[],buildIeltsLearningState:()=>({}),
+  saveReadingDraft(){},syncTimerForPersistence(){},usesHomeworkPracticeTimer:()=>false,getActiveDurationSeconds:()=>4500,formatTimerClock:s=>String(s),getWritingTaskPackages:()=>[],buildIeltsLearningState:()=>({}),
   newReadingAttemptKey:()=> 'a'.repeat(32),submitReadingAttemptSnapshot(){c.sent=plain(c.readingSubmissionState.payload);}});
  c.vm.isVideoHomeworkPractice=()=>false;c.vm.testResult={user:{id:7},testTakerName:'Learner',questionAnswerTestResult:[]};
  nodeVm.runInContext(chunk('        function restrictComprehensiveAssignmentSection(','        function normalizeLocalReadingPreview('),c);

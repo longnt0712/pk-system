@@ -36,7 +36,7 @@ const commonFunctions=['normalizeAssignedParts','readingDraftStorageKey','mergeS
   'findDraftQuestionState','findDraftResult','findDraftResults','findQuestionAnswer','findCompleteListDraftState','findCompleteListWord',
   'restoreMatchingHeadingDraft','restoreReadingDraft','serializeReadingDraftResults','serializeReadingQuestionStates',
   'serializeCompleteListStates','serializeListeningAudioPositions','mainListeningPosition','rememberMainListeningAudioPosition',
-  'serializeMainListeningAudioPositions','restoreMainListeningAudioPositions','getReadingDraftPartNumbers','saveReadingDraft',
+  'serializeMainListeningAudioPositions','restoreMainListeningAudioPositions','getReadingDraftPartNumbers','usesHomeworkPracticeTimer','saveReadingDraft',
   'persistReadingSubmissionState','submitReadingAttemptSnapshot'];
 function fixture(options={}){
   const type=options.type||4,mode=options.mode||'STUDY',task=options.assignment?238:null;

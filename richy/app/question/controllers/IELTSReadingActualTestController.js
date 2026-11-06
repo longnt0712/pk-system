@@ -3609,8 +3609,8 @@
             return result.testTime;
         };
 
-        var writingGradingGeneration = 0, writingRetakeGeneration = 0;
-        vm.isStartingNewWritingAttempt = false; vm.writingNewAttemptBlocked = false; vm.writingNewAttemptError = '';
+        var writingGradingGeneration = 0, retakeGeneration = 0;
+        vm.isStartingNewAttempt = false; vm.newAttemptBlocked = false; vm.newAttemptError = '';
         vm.isWritingGrading = false;
         vm.isRetryingWritingGrade = false;
         vm.writingGradingError = '';
@@ -3666,34 +3666,41 @@
         vm.hasPendingReadingSubmission = function () {
             return !!readingSubmissionState && readingSubmissionState.status === 'PENDING';
         };
-        vm.hasFailedWritingReceipt = function () {
-            return (vm.isWritingRoute || vm.isComprehensiveRoute) && !vm.isSubmittingTest && readingDraftSubmitted
-                && readingSubmissionState && readingSubmissionState.status === 'SAVED'
-                && readingSubmissionState.result && readingSubmissionState.result.resultStatus === 'FAILED';
+        vm.hasRetakeReceipt = function () {
+            if (vm.isPreviewMode || vm.isSubmittingTest || !readingDraftSubmitted || !readingSubmissionState
+                    || readingSubmissionState.status !== 'SAVED' || !readingSubmissionState.result) { return false; }
+            if (readingSubmissionState.result.resultStatus === 'FAILED') {
+                return vm.isWritingRoute || vm.isComprehensiveRoute || vm.testSessionMode === 'SERIOUS';
+            }
+            // A saved timeout can be retried even when it met the score threshold.
+            // The receipt clock also works when returning to a saved results screen.
+            return !vm.isWritingRoute && !vm.isComprehensiveRoute && vm.testSessionMode === 'SERIOUS'
+                && readingSubmissionState.payload
+                && /^0+:00$/.test(String(readingSubmissionState.payload.testTime || ''));
         };
-        vm.canStartNewWritingAttempt = function () {
-            return vm.hasFailedWritingReceipt() && !vm.isStartingNewWritingAttempt && !vm.writingNewAttemptBlocked;
+        vm.canStartNewAttempt = function () {
+            return vm.hasRetakeReceipt() && !vm.isStartingNewAttempt && !vm.newAttemptBlocked;
         };
-        vm.startNewWritingAttempt = function () {
-            if (!vm.canStartNewWritingAttempt()) { return; }
-            vm.writingNewAttemptError = '';
-            if (!vm.assignmentTaskId) { beginNewWritingAttempt(); return; }
-            var state = readingSubmissionState, generation = ++writingRetakeGeneration;
-            vm.isStartingNewWritingAttempt = true;
+        vm.startNewAttempt = function () {
+            if (!vm.canStartNewAttempt()) { return; }
+            vm.newAttemptError = '';
+            if (!vm.assignmentTaskId) { beginNewAttempt(); return; }
+            var state = readingSubmissionState, generation = ++retakeGeneration;
+            vm.isStartingNewAttempt = true;
             function unavailable(message, blocked) {
-                vm.isStartingNewWritingAttempt = false; vm.writingNewAttemptBlocked = blocked === true;
-                vm.writingNewAttemptError = message;
+                vm.isStartingNewAttempt = false; vm.newAttemptBlocked = blocked === true;
+                vm.newAttemptError = message;
             }
             if (!angular.isFunction(service.getAssignedTask)) {
                 unavailable('Cần cập nhật backend để xác nhận thời hạn trước khi mở lượt mới.', true); return;
             }
             service.getAssignedTask(vm.assignmentTaskId).then(function (task) {
-                if (readingDraftDestroyed || generation !== writingRetakeGeneration || readingSubmissionState !== state) { return; }
+                if (readingDraftDestroyed || generation !== retakeGeneration || readingSubmissionState !== state) { return; }
                 if (!task || typeof task.canStartNewAttempt !== 'boolean') {
                     unavailable('Cần cập nhật backend để xác nhận thời hạn trước khi mở lượt mới.', true); return;
                 }
                 var taskParts = angular.isArray(task.ieltsParts) ? task.ieltsParts : [task.ieltsPart];
-                if (String(task.taskId) !== String(state.payload.assignmentTaskId) || task.activityType !== (vm.isComprehensiveRoute ? 'COMPREHENSIVE' : 'IELTS_WRITING')
+                if (String(task.taskId) !== String(state.payload.assignmentTaskId) || task.activityType !== (vm.isComprehensiveRoute ? 'COMPREHENSIVE' : vm.isWritingRoute ? 'IELTS_WRITING' : vm.isListeningRoute ? 'IELTS_LISTENING' : 'IELTS_READING')
                         || String(task.ieltsTestId) !== String(state.payload.sourceQuestionId)
                         || (state.payload.completedParts || []).some(function (part) { return taskParts.map(Number).indexOf(Number(part)) < 0; })) {
                     unavailable('Bài được giao đã thay đổi. Hãy mở lại bài từ danh sách bài được giao.', true); return;
@@ -3712,14 +3719,14 @@
                         configuredWritingSeconds = (vm.comprehensiveAssignmentMinutes == null ? 60 : vm.comprehensiveAssignmentMinutes) * 60;
                     } catch (changedAssignment) { unavailable(changedAssignment.message, true); return; }
                 }
-                vm.isStartingNewWritingAttempt = false;
-                beginNewWritingAttempt();
+                vm.isStartingNewAttempt = false;
+                beginNewAttempt();
             }, function () {
-                if (readingDraftDestroyed || generation !== writingRetakeGeneration || readingSubmissionState !== state) { return; }
+                if (readingDraftDestroyed || generation !== retakeGeneration || readingSubmissionState !== state) { return; }
                 unavailable('Chưa kiểm tra được thời hạn bài được giao. Bài làm vẫn được giữ; hãy thử lại.', false);
             });
         };
-        function beginNewWritingAttempt() {
+        function beginNewAttempt() {
             var previousPayload = readingSubmissionState.payload;
             var key = readingDraftStorageKey(vm.ieltsReadingActualTest.id, vm.testSessionMode);
             // The base slot may now belong to another tab. Read the selected receipt's
@@ -3740,14 +3747,16 @@
             vm.isLearningReview = false; vm.isShowDetail = false;
             vm.passageNumber = vm.isPartAssignment ? displayPassageForAssignedPart() : 1;
             $timeout.cancel(mytimeout); countdownEndsAt = null;
-            seriousTotalSeconds = configuredWritingSeconds; timerRestoredFromDraft = false; timerStarted = false;
+            seriousTotalSeconds = (vm.isWritingRoute || vm.isComprehensiveRoute) ? configuredWritingSeconds : seriousTotalSeconds;
+            timerRestoredFromDraft = false; timerStarted = false;
             videoHomeworkTimeNoticeShown = false;
             if (vm.testSessionMode === 'STUDY' || (vm.isUntimedComprehensiveAssignment && vm.isUntimedComprehensiveAssignment())) { setStudyElapsedSeconds(0); }
             else { setCountdownSeconds(seriousTotalSeconds); }
             var newDraft = angular.copy(previousDraft);
             newDraft.version = 5; newDraft.userId = vm.currentUser.id; newDraft.testId = vm.ieltsReadingActualTest.id;
             newDraft.title = vm.ieltsReadingActualTest.title;
-            newDraft.testMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : 'WRITING'; newDraft.sessionMode = vm.testSessionMode;
+            newDraft.testMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : vm.isWritingRoute ? 'WRITING' : vm.isListeningRoute ? 'LISTENING' : 'READING';
+            newDraft.isListening = vm.isListeningRoute === true; newDraft.sessionMode = vm.testSessionMode;
             newDraft.assignmentTaskId = vm.assignmentTaskId || null; newDraft.isPartAssignment = vm.isPartAssignment === true;
             newDraft.assignmentSectionKey = vm.assignmentSectionKey || null;
             newDraft.sectionNumber = vm.comprehensiveAssignedSection ? vm.comprehensiveAssignedSection.number : null;
@@ -3766,11 +3775,19 @@
             newDraft.comprehensiveShuffle = angular.copy(vm.comprehensiveShuffleState || previousDraft.comprehensiveShuffle || null);
             newDraft.annotations = readingAnnotationsRestoring ? angular.copy(previousDraft.annotations || []) : serializeReadingAnnotations();
             newDraft.completeListStates = serializeCompleteListStates();
+            if (vm.isListeningRoute) {
+                // Rewind every source for this fresh attempt; the old receipt keeps its own draft.
+                detachMainListeningAudioResume(); restoreMainListeningAudioPositions([]);
+                var firstEntry = getReadingQuestionEntries()[0];
+                vm.tempQuestion = firstEntry ? firstEntry.question : null;
+                vm.tempOrdinalNumber = firstEntry ? firstEntry.question.ordinalNumber : null;
+            }
             newDraft.listeningAudioPositions = serializeListeningAudioPositions();
             newDraft.results = serializeReadingDraftResults(); newDraft.questionStates = serializeReadingQuestionStates();
             newDraft.savedAt = new Date().toISOString();
             storeReadingDraft(key, newDraft, true); saveReadingLearningDraft(key, newDraft);
             $scope.startCount(); startReadingDraftAutosave(); saveReadingDraft();
+            if (vm.isListeningRoute) { vm.setUpAudio(); }
             toastr.info('Đã mở lượt mới và giữ ' + (vm.isWritingRoute ? 'bài viết' : 'câu trả lời') + ' để bạn sửa.' + (vm.assignmentTaskId
                 ? ' Hạn bài được giao không thay đổi; nộp ngoài hạn có thể không được tính tiến độ.' : ''), 'Làm lượt mới');
         }
