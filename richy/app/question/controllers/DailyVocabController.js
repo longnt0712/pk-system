@@ -15,7 +15,8 @@
         'QuestionService',
         '$stateParams',
         'blockUI',
-        '$cookies'
+        '$cookies',
+        '$uibModal'
     ];
 
     function DailyVocabController(
@@ -27,7 +28,8 @@
         service,
         $stateParams,
         blockUI,
-        $cookies
+        $cookies,
+        modal
     ) {
         var vm = this;
 
@@ -951,6 +953,10 @@
         var dailyLazyPrepareTimer = null;
         var dailyLazyRetryTimer = null;
         var dailyLazyRetryCount = 0;
+        var dailyWordPreviewModal = null;
+        var dailyWordPreviewLocked = false;
+        var dailyLessonCategory = null;
+        var dailyChurchFeedback = false;
 
         vm.loadedCardCount = 0;
         vm.loadingMoreQuestions = false;
@@ -958,6 +964,46 @@
         vm.allQuestionsLoaded = false;
         vm.dailyLazyLoadError = false;
         vm.dailyBufferWaiting = false;
+
+        vm.canPreviewDailyWords = function () {
+            return !dailyWordPreviewLocked && !vm.dailyVocabRunning && !vm.dailyAssignmentChecking &&
+                !vm.assignmentLaunch.invalid && !vm.dailyVocabPendingResult && !vm.dailyDraftRecoveryBlocked &&
+                vm.rawQuestions.length > 0;
+        };
+
+        vm.openDailyWordPreview = function () {
+            if (!vm.canPreviewDailyWords() || dailyWordPreviewModal) { return; }
+            vm.dailyWordPreviewLimit = DAILY_LAZY_PAGE_SIZE;
+            vm.dailyWordPreviewError = false;
+            var opened = modal.open({
+                templateUrl: 'daily-vocab-word-preview.html',
+                scope: $scope,
+                size: 'lg',
+                ariaLabelledBy: 'daily-vocab-word-preview-title'
+            });
+            dailyWordPreviewModal = opened;
+            function clearDialog() {
+                if (dailyWordPreviewModal === opened) { dailyWordPreviewModal = null; }
+            }
+            opened.result.then(clearDialog, clearDialog);
+        };
+
+        function closeDailyWordPreview() {
+            if (dailyWordPreviewModal) {
+                var opened = dailyWordPreviewModal;
+                dailyWordPreviewModal = null;
+                opened.dismiss('daily-vocab-state-changed');
+            }
+        }
+
+        vm.loadMoreDailyPreviewWords = function () {
+            if (!dailyWordPreviewModal || !vm.canPreviewDailyWords() || vm.loadingMoreQuestions) { return; }
+            if (vm.dailyWordPreviewLimit < vm.rawQuestions.length) {
+                vm.dailyWordPreviewLimit += DAILY_LAZY_PAGE_SIZE;
+                return;
+            }
+            return loadNextDailyQuestionPage(true);
+        };
 
         function cancelDailyLazyTimers() {
             if (dailyLazyPrepareTimer !== null) {
@@ -978,6 +1024,7 @@
         }
 
         function stopDailyLazyBackgroundWork() {
+            closeDailyWordPreview();
             /*
              * Invalidate callback/request của RUN cũ.
              * Request HTTP có thể vẫn hoàn tất ở browser,
@@ -1028,6 +1075,7 @@
         function resetDailyLazyState(
             clearQuestions
         ) {
+            closeDailyWordPreview();
             dailyLazyGeneration =
                 dailyLazyGeneration + 1;
 
@@ -1046,6 +1094,8 @@
             dailyPreparedRawCount = 0;
 
             if (clearQuestions === true) {
+                dailyLessonCategory = null;
+                dailyChurchFeedback = false;
                 vm.rawQuestions = [];
                 vm.questions = [];
                 vm.currentCard = {};
@@ -1409,11 +1459,9 @@
                 );
         }
 
-        function loadNextDailyQuestionPage() {
-            if (
-                vm.loadingMoreQuestions === true ||
-                vm.dailyVocabRunning !== true
-            ) {
+        function loadNextDailyQuestionPage(forPreview) {
+            if (vm.loadingMoreQuestions === true) { return; }
+            if (forPreview ? !dailyWordPreviewModal || !vm.canPreviewDailyWords() : !vm.dailyVocabRunning) {
                 return;
             }
 
@@ -1424,9 +1472,7 @@
              * Nếu cache từ lượt trước còn dữ liệu chưa prepare,
              * dùng RAM trước, không request server lại.
              */
-            if (
-                hasCachedDailyQuestionsToPrepare()
-            ) {
+            if (!forPreview && hasCachedDailyQuestionsToPrepare()) {
                 var cachedBatch =
                     getNextCachedDailyBatch();
 
@@ -1475,12 +1521,13 @@
             vm.loadingMoreQuestions = true;
             vm.dailyLazyHttpPending = true;
             vm.dailyLazyLoadError = false;
+            if (forPreview) { vm.dailyWordPreviewError = false; }
 
             /*
              * Background request:
              * KHÔNG blockUI để gameplay không bị che/giật.
              */
-            service.getPageForDailyVocab(
+            return service.getPageForDailyVocab(
                 vm.searchDto,
                 page,
                 DAILY_LAZY_PAGE_SIZE
@@ -1534,6 +1581,22 @@
                         content.length <
                             DAILY_LAZY_PAGE_SIZE ||
                         content.length === 0;
+
+                    if (forPreview) {
+                        vm.loadingMoreQuestions = false;
+                        if (reachedLastPage) {
+                            vm.allQuestionsLoaded = true;
+                            vm.totalCard = vm.rawQuestions.length;
+                        }
+                        if (dailyWordPreviewModal) {
+                            if (appended.length) {
+                                vm.dailyWordPreviewLimit += DAILY_LAZY_PAGE_SIZE;
+                            } else if (!reachedLastPage) {
+                                return loadNextDailyQuestionPage(true);
+                            }
+                        }
+                        return;
+                    }
 
                     if (appended.length === 0) {
                         vm.loadingMoreQuestions = false;
@@ -1601,6 +1664,10 @@
 
                     vm.dailyLazyHttpPending = false;
                     vm.loadingMoreQuestions = false;
+                    if (forPreview) {
+                        vm.dailyWordPreviewError = true;
+                        return;
+                    }
                     vm.dailyLazyLoadError = true;
 
                     scheduleDailyLazyRetry();
@@ -1632,7 +1699,13 @@
         }
 
         function loadInitialDailyQuestionPage() {
-            var requestedTopicIds = (vm.searchDto.questionTopics || []).map(function (link) { return link.topic.id; });
+            var requestedTopics = (vm.searchDto.questionTopics || []).map(function (link) { return link.topic; });
+            // Keep feedback tied to the loaded lesson when the category picker changes.
+            var selectedCategory = vm.searchTopicDto.topicCategory;
+            var lessonCategory = (requestedTopics[0] || {}).topicCategory || selectedCategory;
+            var useChurchFeedback = requestedTopics.some(function (topic) {
+                return normalizeCategoryText((topic.topicCategory || selectedCategory || {}).name) === 'church';
+            });
             var requestGeneration =
                 dailyLazyGeneration;
 
@@ -1661,7 +1734,9 @@
 
                     vm.rawQuestions =
                         getPlayableDailyQuestions(content);
-                    vm.resultTopicIds = requestedTopicIds;
+                    vm.resultTopicIds = requestedTopics.map(function (topic) { return topic.id; });
+                    dailyLessonCategory = lessonCategory;
+                    dailyChurchFeedback = useChurchFeedback;
 
                     vm.totalCard =
                         data &&
@@ -1933,8 +2008,8 @@
             }
             var now = Date.now();
             if (force !== true && now - activeDailyLastPersistAt < 3000) { return; }
-            var category = vm.searchTopicDto && vm.searchTopicDto.topicCategory;
-            var topicIds = (vm.selectedTopicToSearch || []).map(function (topic) { return topic.id; });
+            var category = dailyLessonCategory;
+            var topicIds = vm.resultTopicIds || [];
             if (!topicIds.length) { return; }
             var draft = {
                 version: 1,
@@ -2024,6 +2099,7 @@
             vm.runningManDifficulty = draft.runningManDifficulty || vm.runningManDifficulty;
             if (angular.isDefined(draft.runningManGap)) { vm.runningManGap = Number(draft.runningManGap); }
             vm.finishDailyVocab = 'Unfinished';
+            dailyWordPreviewLocked = true;
             vm.dailyVocabRunning = true;
             vm.dailyVocabAnswersEnabled = true;
             vm.dailyBufferWaiting = false;
@@ -2669,6 +2745,7 @@
         vm.resetDailyVocabTimer = function () {
             var wasRunning = vm.dailyVocabRunning === true;
             vm.stopDailyVocabTimer();
+            dailyWordPreviewLocked = false;
 
             if (wasRunning) { removeActiveDailyDraft(vm.currentUser.id); }
 
@@ -2798,6 +2875,7 @@
                 getDefaultDailyVocabTimerSeconds() ||
                 900;
 
+            dailyWordPreviewLocked = true;
             vm.dailyVocabRunning = true;
             vm.dailyVocabAnswersEnabled = true;
             setDailyVocabCountdown(vm.dailyVocabCounter);
@@ -3079,7 +3157,23 @@
             }
         };
 
+        var churchEncouragements = [
+            'Cố lên!',
+            'Bạn làm được!',
+            'Một chút nữa thôi.',
+            'Chúa ở cùng bạn.',
+            'Yên tâm.'
+        ];
+
         vm.sayingWhenWrong = function () {
+            if (dailyChurchFeedback) {
+                if (vm.voiceEnabled) {
+                    var encouragement = churchEncouragements[Math.floor(Math.random() * churchEncouragements.length)];
+                    speakEnglish(encouragement, {lang: 'vi-VN', plainText: true});
+                }
+                return;
+            }
+
             var wrongAudioIds = [
                 'sai',
                 'phai-chiu',
@@ -3916,7 +4010,7 @@
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();
-            cancelDailyLazyTimers();
+            stopDailyLazyBackgroundWork();
 
             stopBackgroundMusic();
             shutUp();

@@ -318,6 +318,7 @@
         <!-- TIMER -->
         <div
             class="daily-timer-zone"
+            ng-class="{'has-word-preview': vm.canPreviewDailyWords()}"
             ng-show="vm.showTimer">
 
             <button
@@ -364,6 +365,15 @@
                 ng-click="vm.resetDailyVocabTimer()"
                 aria-label="Reset timer">
                 <i class="fa fa-rotate-right"></i>
+            </button>
+
+            <button type="button"
+                    class="daily-word-preview-btn"
+                    ng-if="vm.canPreviewDailyWords()"
+                    ng-click="vm.openDailyWordPreview()"
+                    aria-haspopup="dialog">
+                <i class="fa fa-list-ul" aria-hidden="true"></i>
+                Xem danh sách từ
             </button>
         </div>
 
@@ -911,6 +921,45 @@
 </div>
 
 
+<script type="text/ng-template" id="daily-vocab-word-preview.html">
+    <div class="daily-word-preview" ng-class="{'is-dark': vm.darkModeEnabled}">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-label="Đóng">
+                <span aria-hidden="true">×</span>
+            </button>
+            <h2 class="modal-title" id="daily-vocab-word-preview-title">Từ vựng bạn sẽ học</h2>
+            <p class="daily-word-preview-topic" ng-if="vm.title">{{vm.title}}</p>
+        </div>
+        <div class="modal-body">
+            <ol class="daily-word-preview-list">
+                <li ng-repeat="word in vm.rawQuestions | limitTo:vm.dailyWordPreviewLimit track by $index">
+                    <div class="daily-word-preview-row">
+                        <div>
+                            <strong>{{word.question}}</strong>
+                            <small ng-if="word.pronounce">{{word.pronounce}}</small>
+                        </div>
+                        <span>{{word.motherTongue}}</span>
+                    </div>
+                </li>
+            </ol>
+            <p ng-if="vm.loadingMoreQuestions" role="status">Đang tải thêm từ…</p>
+            <p ng-if="vm.dailyWordPreviewError" class="text-danger" role="alert">Chưa tải được các từ tiếp theo. Bạn có thể thử lại.</p>
+        </div>
+        <div class="modal-footer daily-word-preview-footer">
+            <span class="daily-word-preview-count" aria-live="polite">
+                {{vm.rawQuestions.length < vm.dailyWordPreviewLimit ? vm.rawQuestions.length : vm.dailyWordPreviewLimit}} / {{vm.totalCard}} từ
+            </span>
+            <button type="button" class="btn btn-default"
+                    ng-if="!vm.allQuestionsLoaded || vm.dailyWordPreviewLimit < vm.rawQuestions.length"
+                    ng-click="vm.loadMoreDailyPreviewWords()"
+                    ng-disabled="vm.loadingMoreQuestions">
+                {{vm.dailyWordPreviewError ? 'Thử lại' : 'Xem thêm từ'}}
+            </button>
+            <button type="button" class="btn btn-primary" ng-click="$dismiss()">Đóng</button>
+        </div>
+    </div>
+</script>
+
 <!-- =====================================================
      AUDIO CHỈ CỦA DAILY VOCAB
      ===================================================== -->
@@ -1452,6 +1501,113 @@
         background: #f1f3f9;
         font-size: 16px;
         box-shadow: 0 4px 10px rgba(68,77,106,.08);
+    }
+
+    .daily-vocab-page .daily-timer-zone.has-word-preview {
+        flex-wrap: wrap;
+    }
+
+    .daily-vocab-page .daily-word-preview-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 44px;
+        padding: 8px 12px;
+        border: 1px solid #dfe4ff;
+        border-radius: 14px;
+        background: #eef2ff;
+        color: #4036a6;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .daily-vocab-page .daily-word-preview-btn:hover {
+        background: #e2e8ff;
+    }
+
+    .daily-word-preview {
+        --word-list-ink: #26324b;
+        --word-list-muted: #536581;
+        --word-list-line: #e3e8f7;
+        --word-list-paper: #fff;
+        --word-list-row: #f5f7fe;
+        border-radius: inherit;
+        color: var(--word-list-ink);
+        background: var(--word-list-paper);
+    }
+
+    .daily-word-preview.is-dark {
+        --word-list-ink: #eef2ff;
+        --word-list-muted: #c0cce3;
+        --word-list-line: #3a4863;
+        --word-list-paper: #1c2940;
+        --word-list-row: #26354e;
+    }
+
+    .daily-word-preview .modal-header,
+    .daily-word-preview .modal-footer {
+        border-color: var(--word-list-line);
+    }
+
+    .daily-word-preview .modal-title {
+        margin: 0;
+        color: var(--word-list-ink);
+        font-size: 20px;
+    }
+
+    .daily-word-preview-topic {
+        margin: 5px 0 0;
+        color: var(--word-list-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .daily-word-preview .modal-body {
+        max-height: 58vh;
+        max-height: 58dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .daily-word-preview-list {
+        margin: 0;
+        padding-inline-start: 28px;
+    }
+
+    .daily-word-preview-list li {
+        margin-bottom: 6px;
+        border-radius: 10px;
+        background: var(--word-list-row);
+    }
+
+    .daily-word-preview-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: baseline;
+        gap: 4px 16px;
+        padding: 8px 10px;
+        overflow-wrap: anywhere;
+    }
+
+    .daily-word-preview-row small {
+        display: block;
+        color: var(--word-list-muted);
+    }
+
+    .daily-word-preview-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .daily-word-preview-count {
+        margin-inline-end: auto;
+        color: var(--word-list-muted);
+    }
+
+    @media (max-width: 480px) {
+        .daily-word-preview-row { grid-template-columns: minmax(0, 1fr); }
     }
 
     /* ---------- QUESTION ---------- */

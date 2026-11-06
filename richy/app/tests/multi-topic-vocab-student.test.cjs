@@ -41,7 +41,7 @@ function dailySetup(topicId = 200, taskId = 55) {
     const window = {localStorage, navigator: {onLine: true}};
     const context = nodeVm.createContext({vm, service, angular, window,
         toastr: {error(message) { warnings.push(message); }, info() {}, warning() {}},
-        getCurrentUser() { return {id: 7}; }, dailySaveDestroyed: false, dailyCloudDrafts: {}, activeDailyRunId: null, activeDailyLastPersistAt: 0, dailyLazyNextPage: 2, dailyPreparedRawCount: 0, $rootScope: {$emit() {}}});
+        getCurrentUser() { return {id: 7}; }, dailyLessonCategory: {id: 2}, dailySaveDestroyed: false, dailyCloudDrafts: {}, activeDailyRunId: null, activeDailyLastPersistAt: 0, dailyLazyNextPage: 2, dailyPreparedRawCount: 0, $rootScope: {$emit() {}}});
     const helpers = ['dailyAssignmentIdentity', 'dailyAssignmentSuffix', 'dailyDraftMatchesLaunch',
         'dailyDraftValue', 'validDailyPendingDraft', 'readDailyScopedDraft', 'dailyDraftTimestamp', 'loadDailyLearningDrafts', 'saveDailyLearningDraft', 'deleteDailyLearningDraft',
         'activeDailyDraftKey', 'removeActiveDailyDraft', 'readActiveDailyDraft', 'dailyDraftKey', 'removeDailyDraft',
@@ -379,7 +379,7 @@ test('late cloud writes and deletes for A cannot overwrite or remove B active or
     h.context.syncDailyVocabCountdown = () => {};
     nodeVm.runInContext(functionSource(daily, 'function persistActiveDailySession('), h.context);
     Object.assign(h.vm, {dailyVocabRunning: true, dailyVocabCounter: 400, questions: [{id: 1}], currentCard: {id: 1},
-        selectedTopicToSearch: [{id: 200}], searchTopicDto: {topicCategory: {id: 2}}});
+        resultTopicIds: [200]});
     h.localStorage.setItem = () => { throw Error('Blocked'); };
     h.context.activeDailyRunId = 'run-a';
     h.context.persistActiveDailySession(true);
@@ -523,7 +523,7 @@ test('local quota fallback keeps full cloud questions, real totals, and full run
     const questions = Array.from({length: 12}, (_, index) => ({id: index + 1}));
     Object.assign(h.vm, {dailyVocabRunning: true, dailyVocabCounter: 400, questions, rawQuestions: questions, currentCard: questions[4],
         currentPosition: 4, totalCard: 12, loadedCardCount: 12, allQuestionsLoaded: true,
-        selectedTopicToSearch: [{id: 200}], searchTopicDto: {topicCategory: {id: 2}}});
+        resultTopicIds: [200]});
     h.context.activeDailyRunId = 'quota-run'; h.context.syncDailyVocabCountdown = () => {};
     const originalSet = h.localStorage.setItem;
     h.localStorage.setItem = (key, value) => { if (JSON.parse(value).questions.length > 1) { throw Error('Quota exceeded'); } originalSet(key, value); };

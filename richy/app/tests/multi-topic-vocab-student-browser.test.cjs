@@ -140,6 +140,7 @@ test('full Daily Vocab controller restores a cloud-only retry and rejects a wron
                 .value('$cookies', {get: () => JSON.stringify({id: 7, roles: [{name: 'ROLE_VIEWER'}]})})
                 .value('$stateParams', {listFlashCard: 0, assignmentTaskId: 55, assignmentTopicId: 200, assignmentCategoryId: 2})
                 .value('blockUI', {start() {}, stop() {}})
+                .value('$uibModal', {open() { throw Error('A pending retry cannot open the word preview'); }})
                 .value('toastr', Object.fromEntries(['success', 'error', 'warning', 'info'].map(level => [level, message => toasts.push({level, message})])))
                 .factory('QuestionService', ['$q', q => ({
                     getAssignedTask: () => q.when({taskId: 55, activityType: 'DAILY_VOCAB', topicId: 100, topicIds: [100, 200, 300], topics: [{topicId: 200, categoryId: 2}]}),
