@@ -4,6 +4,7 @@ import com.globits.richy.domain.SpeakingRecording;
 import com.globits.richy.dto.SpeakingDto.*;
 import com.globits.richy.service.impl.SpeakingServiceImpl;
 import com.globits.richy.service.impl.SpeakingRecordingService;
+import com.globits.richy.service.impl.SpeakingRecordingPolicy;
 import java.io.*;
 import java.util.*;
 import org.apache.poi.ss.usermodel.*;
@@ -84,6 +85,12 @@ public class RestSpeakingController {
             headers.set("Content-Disposition","attachment; filename=\"speaking-"+set.get("year")+"-bo-"+set.get("number")+".xlsx\"");return new ResponseEntity<byte[]>(out.toByteArray(),headers,HttpStatus.OK);
         }
     }
+    @ExceptionHandler(SpeakingRecordingPolicy.Expired.class)
+    @ResponseStatus(HttpStatus.GONE)
+    public Map<String,Object> recordingExpired(SpeakingRecordingPolicy.Expired error){return SpeakingServiceImpl.map("code","SPEAKING_RECORDING_EXPIRED","message",error.getMessage());}
+    @ExceptionHandler(SpeakingRecordingPolicy.Limit.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public Map<String,Object> recordingLimit(SpeakingRecordingPolicy.Limit error){return SpeakingServiceImpl.map("code","SPEAKING_RECORDING_LIMIT","message",error.getMessage(),"recordingQuota",error.getQuota());}
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String,Object> invalid(IllegalArgumentException error){return SpeakingServiceImpl.map("message",error.getMessage());}

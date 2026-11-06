@@ -28,6 +28,7 @@ import static org.mockito.Mockito.*;
 /** Production services, mappings, JPQL, Excel parser and chunk storage against an isolated H2 database. */
 public class SpeakingPersistenceTest {
     private static SessionFactory factory;
+    private static Path schemaPath(){Path schema=Paths.get("richy/database/speaking-studio.sql");return Files.exists(schema)?schema:Paths.get("../database/speaking-studio.sql");}
     private EntityManager em;
     private SpeakingServiceImpl service;
     private SpeakingRecordingService recordings;
@@ -51,7 +52,7 @@ public class SpeakingPersistenceTest {
         // Run every service test on the supplied deployment DDL, not only Hibernate-generated tables.
         try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()){
             for(String table:Arrays.asList("recording","pass","set_entry","practice","question","set"))s.execute("DROP TABLE dbo.tbl_speaking_"+table);
-            java.util.regex.Matcher ddl=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_.*?\\n    \\);").matcher(new String(Files.readAllBytes(Paths.get("richy/database/speaking-studio.sql")),StandardCharsets.UTF_8));while(ddl.find())s.execute(ddl.group());
+            java.util.regex.Matcher ddl=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_.*?\\n    \\);").matcher(new String(Files.readAllBytes(schemaPath()),StandardCharsets.UTF_8));while(ddl.find())s.execute(ddl.group());
         }
     }
     @AfterClass public static void closeDatabase(){if(factory!=null)factory.close();}
@@ -212,11 +213,92 @@ public class SpeakingPersistenceTest {
         }finally{go.countDown();workers.shutdownNow();}
     }
     @Test public void migrationCreatesSixTablesWithTheDeployedColumns()throws Exception{
-        String sql=new String(Files.readAllBytes(Paths.get("richy/database/speaking-studio.sql")),StandardCharsets.UTF_8);java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_.*?\\n    \\);").matcher(sql);int count=0;
+        String sql=new String(Files.readAllBytes(schemaPath()),StandardCharsets.UTF_8);java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?s)CREATE TABLE dbo\\.tbl_speaking_.*?\\n    \\);").matcher(sql);int count=0;
         try(java.sql.Connection c=java.sql.DriverManager.getConnection("jdbc:h2:mem:speaking_migration;MODE=MSSQLServer");java.sql.Statement s=c.createStatement()){
             s.execute("CREATE SCHEMA dbo");while(matcher.find()){s.execute(matcher.group());count++;}assertEquals(6,count);
             s.execute("insert into dbo.tbl_speaking_set(create_date,created_by,owner_id,season_year,set_number,name,revision) values(CURRENT_TIMESTAMP,'test',1,2026,1,N'Bộ 1',0)");
             try{s.execute("insert into dbo.tbl_speaking_set(create_date,created_by,owner_id,season_year,set_number,name) values(CURRENT_TIMESTAMP,'test',1,2026,1,'duplicate')");fail();}catch(java.sql.SQLException expected){assertEquals("23505",expected.getSQLState());}
         }
     }
+    private Long audioPractice(String key)throws Exception{
+        PracticeRequest request=request();request.clientKey=key;return ((Number)service.startPractice(request).get("id")).longValue();
+    }
+    private RecordingRequest recordingRequest(String key){RecordingRequest request=new RecordingRequest();request.uploadKey=key;request.contentType="audio/webm";request.questionIndex=0;return request;}
+    private Long audio(Long practice,String key,boolean complete)throws Exception{
+        Long id=((Number)recordings.create(practice,recordingRequest(key)).get("id")).longValue();
+        recordings.chunk(id,0,new byte[]{0x1a,0x45,(byte)0xdf,(byte)0xa3,0,0,0,0,0,0,0,0});
+        if(complete){RecordingFinish request=new RecordingFinish();request.chunkCount=1;recordings.finish(id,request);}return id;
+    }
+    @Test public void threeDayCleanupRemovesCompleteAndIncompleteAudioAndRetainsPracticePassAndUploadIdentity()throws Exception{
+        seed();Long question=((Number)bank(setId).get(0).get("id")).longValue();service.markPass(setId,pass(question));as(student);
+        Long practice=audioPractice("retention_practice_123"),old=audio(practice,"old_audio_12345",true),pending=audio(practice,"pending_audio_12345",false),fresh=audio(practice,"fresh_audio_12345",true);
+        org.joda.time.LocalDateTime now=org.joda.time.LocalDateTime.now();
+        ReflectionTestUtils.setField(recordings,"recordingClock",java.time.Clock.fixed(java.time.Instant.ofEpochMilli(now.toDate().getTime()),java.time.ZoneId.systemDefault()));
+        SpeakingRecording oldRow=em.find(SpeakingRecording.class,old),pendingRow=em.find(SpeakingRecording.class,pending),freshRow=em.find(SpeakingRecording.class,fresh);
+        oldRow.setCreateDate(now.minusDays(3));pendingRow.setCreateDate(now.minusDays(4));freshRow.setCreateDate(now.minusDays(3).plusMillis(1));
+        em.find(SpeakingPractice.class,practice).setStatus("DONE");em.flush();
+        Path oldDirectory=folder.getRoot().toPath().resolve(oldRow.getStorageKey()),pendingDirectory=folder.getRoot().toPath().resolve(pendingRow.getStorageKey()),freshDirectory=folder.getRoot().toPath().resolve(freshRow.getStorageKey());
+        assertTrue(Files.exists(oldDirectory.resolve("recording.audio")));assertTrue(Files.exists(oldDirectory.resolve("0.chunk")));
+        assertTrue(recordings.expiredRecordingIds().containsAll(Arrays.asList(old,pending)));assertFalse(recordings.expiredRecordingIds().contains(fresh));
+        assertTrue(recordings.purgeExpiredRecording(old));assertTrue(recordings.purgeExpiredRecording(pending));assertFalse(recordings.purgeExpiredRecording(old));assertFalse(recordings.purgeExpiredRecording(fresh));
+        assertFalse(Files.exists(oldDirectory));assertFalse(Files.exists(pendingDirectory));assertTrue(Files.exists(freshDirectory.resolve("recording.audio")));
+        assertNull(oldRow.getChunksJson());assertNull(oldRow.getSha256());assertEquals(Long.valueOf(0),oldRow.getByteCount());assertFalse(oldRow.getComplete());
+        assertFalse(recordings.expiredRecordingIds().contains(old));assertEquals("DONE",em.find(SpeakingPractice.class,practice).getStatus());
+        assertEquals(1L,(long)em.createQuery("select count(p) from SpeakingPass p where p.studentId=:id",Long.class).setParameter("id",student.getId()).getSingleResult());
+        try{recordings.file(old);fail("Expired audio cannot be downloaded");}catch(SpeakingRecordingPolicy.Expired expected){}
+        try{recordings.create(practice,recordingRequest("old_audio_12345"));fail("Old offline retry cannot recreate audio");}catch(SpeakingRecordingPolicy.Expired expected){}
+        try{recordings.chunk(pending,1,new byte[]{1});fail("Expired partial uploads cannot be continued");}catch(SpeakingRecordingPolicy.Expired expected){}
+        RecordingFinish finish=new RecordingFinish();finish.chunkCount=1;try{recordings.finish(old,finish);fail();}catch(SpeakingRecordingPolicy.Expired expected){}
+        assertEquals(true,SpeakingServiceImpl.recordingDto(oldRow,now).get("expired"));assertEquals(false,SpeakingServiceImpl.recordingDto(oldRow,now).get("complete"));
+        assertNotNull(audio(practice,"new_audio_after_expiry",true));
+    }
+    @Test public void unsafeCleanupPathsLeaveMetadataAndUnrelatedFilesIntact()throws Exception{
+        seed();as(student);Long practice=audioPractice("unsafe_cleanup_practice"),id=audio(practice,"unsafe_audio_12345",true);
+        SpeakingRecording row=em.find(SpeakingRecording.class,id);row.setCreateDate(org.joda.time.LocalDateTime.now().minusDays(4));row.setStorageKey("../must-not-delete");em.flush();
+        Path unrelated=folder.getRoot().toPath().resolve("keep.txt");Files.write(unrelated,new byte[]{7});
+        try{recordings.purgeExpiredRecording(id);fail("Invalid storage key must stop deletion");}catch(AccessDeniedException expected){}
+        assertTrue(Files.exists(unrelated));assertTrue(row.getComplete());assertNotNull(row.getChunksJson());assertTrue(row.getByteCount()>0);
+    }
+    @Test public void tenRecordingQuotaCoversAllPracticesAndRetriesDoNotConsumeAnotherSlot()throws Exception{
+        seed();grantRole(student,"ROLE_USER");as(student);Long first=audioPractice("quota_first_practice"),second=audioPractice("quota_second_practice");Long receipt=null;
+        for(int index=0;index<10;index++){Long id=((Number)recordings.create(index%2==0?first:second,recordingRequest("quota_record_"+index)).get("id")).longValue();if(index==0)receipt=id;}
+        assertEquals(10L,((Number)service.recordingQuota(student,org.joda.time.LocalDateTime.now()).get("used")).longValue());
+        assertEquals(receipt,recordings.create(first,recordingRequest("quota_record_0")).get("id"));
+        byte[] bytes={0x1a,0x45,(byte)0xdf,(byte)0xa3,0,0,0,0,0,0,0,0};recordings.chunk(receipt,0,bytes);recordings.chunk(receipt,0,bytes);
+        RecordingFinish finish=new RecordingFinish();finish.chunkCount=1;recordings.finish(receipt,finish);recordings.finish(receipt,finish);
+        try{recordings.create(second,recordingRequest("quota_eleventh_record"));fail("Teachers without admin are also limited");}catch(SpeakingRecordingPolicy.Limit expected){assertEquals(0L,((Number)expected.getQuota().get("remaining")).longValue());assertNotNull(expected.getQuota().get("nextAvailableAt"));}
+        assertEquals(10L,((Number)service.recordingQuota(student,org.joda.time.LocalDateTime.now()).get("used")).longValue());
+        as(teacher);Long adminPractice=audioPractice("admin_quota_practice");for(int index=0;index<11;index++)assertNotNull(recordings.create(adminPractice,recordingRequest("admin_record_"+index)).get("id"));
+        assertEquals(true,service.recordingQuota(teacher,org.joda.time.LocalDateTime.now()).get("unlimited"));
+    }
+    @Test public void quotaSlotsReopenAtTheExactRollingThreeDayBoundary()throws Exception{
+        seed();as(student);Long practice=audioPractice("rolling_quota_practice");List<SpeakingRecording> rows=new ArrayList<SpeakingRecording>();
+        for(int index=0;index<10;index++){Long id=((Number)recordings.create(practice,recordingRequest("rolling_record_"+index)).get("id")).longValue();rows.add(em.find(SpeakingRecording.class,id));}
+        org.joda.time.LocalDateTime now=org.joda.time.LocalDateTime.now();for(SpeakingRecording row:rows)row.setCreateDate(now.minusHours(2));
+        rows.get(0).setCreateDate(now.minusDays(3).plusMillis(1));em.flush();
+        assertEquals(false,service.recordingQuota(student,now).get("canRecord"));assertEquals(now.plusMillis(1).toString(),service.recordingQuota(student,now).get("nextAvailableAt"));
+        rows.get(0).setCreateDate(now.minusDays(3));em.flush();assertEquals(true,service.recordingQuota(student,now).get("canRecord"));assertEquals(1L,((Number)service.recordingQuota(student,now).get("remaining")).longValue());
+        assertEquals(true,service.recordingQuota(stranger,now).get("canRecord"));assertEquals(10L,((Number)service.recordingQuota(stranger,now).get("remaining")).longValue());
+    }
+    @Test public void simultaneousUploadsToDifferentPracticesCannotExceedOneStudentsQuota()throws Exception{
+        seed();as(student);final Long first=audioPractice("parallel_quota_first"),second=audioPractice("parallel_quota_second"),studentId=student.getId();
+        for(int index=0;index<9;index++)recordings.create(first,recordingRequest("parallel_quota_seed_"+index));em.getTransaction().commit();
+        java.util.concurrent.CountDownLatch ready=new java.util.concurrent.CountDownLatch(2),go=new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService workers=java.util.concurrent.Executors.newFixedThreadPool(2);List<java.util.concurrent.Future<Boolean>> results=new ArrayList<java.util.concurrent.Future<Boolean>>();
+        try{
+            for(int index=0;index<2;index++){final int requestIndex=index;results.add(workers.submit(()->{
+                EntityManager local=factory.createEntityManager();try{local.getTransaction().begin();User actor=local.find(User.class,studentId);as(actor);
+                    UserRepository users=mock(UserRepository.class);when(users.findByUsernameAndPerson(anyString())).thenReturn(actor);
+                    SpeakingServiceImpl endpoint=new SpeakingServiceImpl();ReflectionTestUtils.setField(endpoint,"em",local);ReflectionTestUtils.setField(endpoint,"users",users);
+                    SpeakingRecordingService upload=new SpeakingRecordingService();ReflectionTestUtils.setField(upload,"em",local);ReflectionTestUtils.setField(upload,"speaking",endpoint);
+                    ready.countDown();assertTrue(go.await(10,java.util.concurrent.TimeUnit.SECONDS));
+                    try{upload.create(requestIndex==0?first:second,recordingRequest("parallel_quota_new_"+requestIndex));local.getTransaction().commit();return true;}
+                    catch(SpeakingRecordingPolicy.Limit expected){local.getTransaction().rollback();return false;}
+                }finally{if(local.getTransaction().isActive())local.getTransaction().rollback();local.close();SecurityContextHolder.clearContext();}
+            }));}
+            assertTrue(ready.await(10,java.util.concurrent.TimeUnit.SECONDS));go.countDown();int accepted=0;for(java.util.concurrent.Future<Boolean> result:results)if(result.get(20,java.util.concurrent.TimeUnit.SECONDS))accepted++;
+            assertEquals(1,accepted);em.getTransaction().begin();em.clear();assertEquals(10L,(long)em.createQuery("select count(r) from SpeakingRecording r where r.studentId=:student",Long.class).setParameter("student",studentId).getSingleResult());
+        }finally{go.countDown();workers.shutdownNow();}
+    }
+
 }

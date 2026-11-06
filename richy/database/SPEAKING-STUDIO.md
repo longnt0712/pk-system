@@ -14,7 +14,13 @@ Luyện tập hỗ trợ nhiều bộ của cùng giáo viên, các Part tuỳ c
 
 Ghi âm là tuỳ chọn. Dữ liệu được sao lưu IndexedDB theo tài khoản và gửi từng đoạn có mã chống trùng. Chỉ báo lưu thành công sau khi server xác nhận đủ các đoạn. Khi mất mạng, giữ trang mở rồi bấm thử đồng bộ; bản thu gián đoạn có nút khôi phục. Việc đổi câu, rời trang, chuyển ứng dụng sẽ dừng microphone. Trình duyệt và thiết bị có thể ngắt ghi khi khoá màn hình; nên thử một bản ngắn trên thiết bị học sinh trước khi dùng cả buổi.
 
-Giới hạn: 64 MB/bản thu, 128 MB/lượt luyện, 64 bản thu/lượt, tối đa 10.000 câu và 4 triệu ký tự/lần import (file nén tối đa 8 MB). Sao lưu **cả database và thư mục ghi âm**; các đoạn tạm hiện được giữ để phục vụ thử tải lại, nên dự trù dung lượng lưu trữ. API nghe lại yêu cầu đăng nhập, không cung cấp URL public. Không có thao tác tự xoá ghi âm hoặc tự đổi Pass.
+Ghi âm được giữ **3 ngày từ lúc tạo bản thu trên server**, áp dụng cả bản thu đã có trước khi cập nhật và cả bản chưa tải đủ. Hết hạn sẽ chặn nghe/tải tiếp ngay; tác vụ chạy mỗi 15 phút (lần đầu sau khi khởi động 1 phút) xoá file hoàn chỉnh, các đoạn tải lên và file tạm. Mỗi bản được xử lý riêng; lỗi ổ đĩa được ghi log để thử lại. Tiến độ luyện tập, câu trả lời, ghi chú và Pass vẫn được giữ. Chỉ giữ metadata nhận diện bản thu đã hết hạn để việc thử gửi lại bản cũ không tạo lại file.
+
+Mỗi tài khoản được tạo tối đa **10 bản thu trong 3 ngày gần nhất**, tính chung các lượt luyện và các tab. `ROLE_ADMIN` được miễn giới hạn số bản; thời gian lưu 3 ngày vẫn áp dụng. Gửi từng đoạn hoặc thử tải lại cùng mã bản thu chỉ tính một lần. Server khoá theo tài khoản để các yêu cầu đồng thời không vượt hạn mức. Bản sao IndexedDB quá 3 ngày được dọn khi mở lại trang hoặc thử đồng bộ; bản chưa được server nhận vì đầy hạn mức được giữ tạm trên thiết bị và không tự gửi lại trước khi có lượt trống.
+
+Giới hạn dung lượng hiện có: 64 MB/bản thu, 128 MB/lượt luyện, 64 bản thu/lượt, tối đa 10.000 câu và 4 triệu ký tự/lần import (file nén tối đa 8 MB). API nghe lại yêu cầu đăng nhập, không cung cấp URL public. Nếu có bản sao lưu database hoặc thư mục ghi âm riêng, cần đặt thời hạn giữ bản sao phù hợp; tác vụ này chỉ dọn kho ghi âm đang chạy.
+
+Cập nhật chính sách ghi âm 3 ngày/10 bản cần **deploy JAR backend mới và frontend**, **không cần SQL mới**. Kiểm tra quyền xoá trong thư mục `speaking.storage.directory`; thư mục của bản thu phải là UUID nằm ngay dưới thư mục này, không chấp nhận liên kết tượng trưng thay cho thư mục bản thu.
 
 Chấm GPT đang **tắt** ở giao diện và backend (`aiEnabled=false`, `aiStatus=DISABLED`). Không gọi API, không dùng token. Bản này có trạng thái chờ tích hợp; khi bật chấm cần triển khai bộ chuyển đổi ghi âm và đánh giá trước.
 

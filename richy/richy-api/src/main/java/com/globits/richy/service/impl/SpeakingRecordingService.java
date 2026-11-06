@@ -9,6 +9,9 @@ import com.globits.richy.dto.SpeakingDto.RecordingFinish;
 import java.io.*;
 import java.nio.file.*;
 import java.security.MessageDigest;
+import java.time.Clock;
+import org.joda.time.LocalDateTime;
+import com.globits.security.domain.User;
 import java.util.*;
 import javax.persistence.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,8 @@ public class SpeakingRecordingService {
     @Autowired private SpeakingServiceImpl speaking;
     @Value("${speaking.storage.directory:}") private String storageDirectory;
     private final ObjectMapper json=new ObjectMapper();
+    private Clock recordingClock=Clock.systemDefaultZone();
+    private LocalDateTime now(){return SpeakingRecordingPolicy.now(recordingClock);}
     private static final long MAX_RECORDING=64L*1024*1024,MAX_PRACTICE=128L*1024*1024;
     private static final TypeReference<Map<String,Chunk>> MANIFEST=new TypeReference<Map<String,Chunk>>(){};
     public static class Chunk { public String sha256;public int bytes;public Chunk(){}public Chunk(String hash,int size){sha256=hash;bytes=size;} }
@@ -31,10 +36,7 @@ public class SpeakingRecordingService {
         return recording.getChunksJson()==null?new LinkedHashMap<String,Chunk>():json.readValue(recording.getChunksJson(),MANIFEST);
     }
     private Path directory(SpeakingRecording recording) throws IOException {
-        Path root=(storageDirectory==null||storageDirectory.trim().isEmpty()?Paths.get(System.getProperty("user.home"),".ieltsroom","speaking-recordings"):Paths.get(storageDirectory)).toAbsolutePath().normalize();
-        if(recording.getStorageKey()==null||!recording.getStorageKey().matches("[a-f0-9-]{36}"))throw new IllegalStateException("Mã lưu ghi âm không hợp lệ.");
-        Path result=root.resolve(recording.getStorageKey()).normalize();if(!result.startsWith(root))throw new AccessDeniedException("Đường dẫn không hợp lệ.");
-        Files.createDirectories(result);if(Files.isSymbolicLink(result))throw new AccessDeniedException("Đường dẫn không hợp lệ.");return result;
+        return SpeakingRecordingFiles.directory(storageDirectory,recording,true);
     }
     public static String sha256(byte[] bytes) {
         try{MessageDigest digest=MessageDigest.getInstance("SHA-256");byte[] hashed=digest.digest(bytes);StringBuilder result=new StringBuilder();for(byte b:hashed)result.append(String.format(Locale.ROOT,"%02x",b&255));return result.toString();}
@@ -47,10 +49,15 @@ public class SpeakingRecordingService {
         SpeakingRecording locked=em.find(SpeakingRecording.class,id,LockModeType.PESSIMISTIC_WRITE);
         // The initial ownership lookup may predate another chunk's commit while
         // this request waited for the practice lock. Reload its latest manifest.
-        em.refresh(locked,LockModeType.PESSIMISTIC_WRITE);return locked;
+        em.refresh(locked,LockModeType.PESSIMISTIC_WRITE);
+        SpeakingRecordingPolicy.requireAvailable(locked,now());return locked;
     }
     public Map<String,Object> create(Long practiceId,RecordingRequest request) {
-        SpeakingPractice practice=speaking.accessiblePractice(practiceId,true);Long student=speaking.currentUser().getId();
+        User actor=speaking.currentUser();
+        // All practices and tabs of one student share this database lock. A practice
+        // lock alone would permit parallel uploads to bypass the rolling quota.
+        em.find(User.class,actor.getId(),LockModeType.PESSIMISTIC_WRITE);
+        SpeakingPractice practice=speaking.accessiblePractice(practiceId,true);Long student=actor.getId();
         // A locally backed-up recording may arrive after the practice was finished offline.
         if(!student.equals(practice.getStudentId()))throw new AccessDeniedException("Chỉ chủ lượt luyện được gửi ghi âm.");
         if(request==null||request.uploadKey==null||!request.uploadKey.matches("[A-Za-z0-9_-]{8,80}"))throw new IllegalArgumentException("Mã ghi âm không hợp lệ.");
@@ -58,11 +65,17 @@ public class SpeakingRecordingService {
         if(!Arrays.asList("audio/webm","audio/mp4","audio/ogg").contains(type))throw new IllegalArgumentException("Trình duyệt chưa hỗ trợ định dạng ghi âm phù hợp.");
         if(request.questionIndex==null||request.questionIndex<0||request.questionIndex>=speaking.practiceQuestionCount(practice))throw new IllegalArgumentException("Câu ghi âm không hợp lệ.");
         List<SpeakingRecording> prior=em.createQuery("select r from SpeakingRecording r where r.practiceId=:practice and r.uploadKey=:key",SpeakingRecording.class).setParameter("practice",practiceId).setParameter("key",request.uploadKey).getResultList();
-        if(!prior.isEmpty()){SpeakingRecording r=prior.get(0);if(!type.equals(r.getContentType())||!request.questionIndex.equals(r.getQuestionIndex()))throw new IllegalArgumentException("Mã ghi âm đã dùng cho nội dung khác.");return SpeakingServiceImpl.recordingDto(r);}
+        if(!prior.isEmpty()){SpeakingRecording r=prior.get(0);if(!type.equals(r.getContentType())||!request.questionIndex.equals(r.getQuestionIndex()))throw new IllegalArgumentException("Mã ghi âm đã dùng cho nội dung khác.");SpeakingRecordingPolicy.requireAvailable(r,now());return receipt(r,actor);}
+        Map<String,Object> quota=speaking.recordingQuota(actor,now());
+        if(!Boolean.TRUE.equals(quota.get("canRecord")))throw new SpeakingRecordingPolicy.Limit(quota);
         long count=em.createQuery("select count(r) from SpeakingRecording r where r.practiceId=:id",Long.class).setParameter("id",practiceId).getSingleResult();
         if(count>=64)throw new IllegalArgumentException("Một lượt luyện tối đa 64 bản ghi âm.");
         SpeakingRecording r=new SpeakingRecording();r.setPracticeId(practiceId);r.setStudentId(student);r.setUploadKey(request.uploadKey);r.setStorageKey(UUID.randomUUID().toString());r.setContentType(type);
-        r.setQuestionIndex(request.questionIndex);r.setChunksJson("{}");r.setByteCount(0L);r.setComplete(false);em.persist(r);em.flush();return SpeakingServiceImpl.recordingDto(r);
+        r.setQuestionIndex(request.questionIndex);r.setChunksJson("{}");r.setByteCount(0L);r.setComplete(false);em.persist(r);em.flush();return receipt(r,actor);
+    }
+    private Map<String,Object> receipt(SpeakingRecording recording,User actor){
+        Map<String,Object> receipt=SpeakingServiceImpl.recordingDto(recording,now());
+        receipt.put("recordingQuota",speaking.recordingQuota(actor,now()));return receipt;
     }
     public Map<String,Object> chunk(Long id,int index,byte[] bytes) throws IOException {
         if(index<0||index>=2048||bytes==null||bytes.length==0||bytes.length>512*1024)throw new IllegalArgumentException("Mỗi đoạn ghi âm tối đa 512 KB.");
@@ -88,7 +101,7 @@ public class SpeakingRecordingService {
         SpeakingRecording r=writable(id);Map<String,Chunk> chunks=manifest(r);
         if(request==null||request.chunkCount==null||request.chunkCount<1||request.chunkCount>2048||chunks.size()!=request.chunkCount)throw new IllegalArgumentException("Ghi âm còn thiếu đoạn. Hãy thử đồng bộ lại.");
         for(int index=0;index<request.chunkCount;index++)if(!chunks.containsKey(String.valueOf(index)))throw new IllegalArgumentException("Ghi âm còn thiếu đoạn số "+index+".");
-        if(Boolean.TRUE.equals(r.getComplete()))return SpeakingServiceImpl.recordingDto(r);
+        if(Boolean.TRUE.equals(r.getComplete()))return SpeakingServiceImpl.recordingDto(r,now());
         Path folder=directory(r),target=folder.resolve("recording.audio"),temporary=folder.resolve("assemble-"+UUID.randomUUID()+".tmp");
         ByteArrayOutputStream initial=new ByteArrayOutputStream();long size=0;MessageDigest digest;
         try{digest=MessageDigest.getInstance("SHA-256");}catch(java.security.NoSuchAlgorithmException error){throw new IllegalStateException(error);}
@@ -100,13 +113,40 @@ public class SpeakingRecordingService {
         if(size!=r.getByteCount()||!signature(initial.toByteArray(),r.getContentType())){Files.deleteIfExists(temporary);throw new IllegalArgumentException("Bản ghi âm chưa đúng định dạng hoặc thiếu dữ liệu.");}
         try{Files.move(temporary,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);}catch(AtomicMoveNotSupportedException error){Files.move(temporary,target,StandardCopyOption.REPLACE_EXISTING);}
         StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(Locale.ROOT,"%02x",b&255));r.setSha256(hash.toString());r.setComplete(true);em.flush();
-        return SpeakingServiceImpl.recordingDto(r);
+        return SpeakingServiceImpl.recordingDto(r,now());
     }
     public SpeakingRecording readable(Long id) {
-        SpeakingRecording r=id==null?null:em.find(SpeakingRecording.class,id);if(r==null)throw new IllegalArgumentException("Không tìm thấy bản ghi âm.");speaking.accessiblePractice(r.getPracticeId(),false);return r;
+        SpeakingRecording r=id==null?null:em.find(SpeakingRecording.class,id);if(r==null)throw new IllegalArgumentException("Không tìm thấy bản ghi âm.");speaking.accessiblePractice(r.getPracticeId(),false);SpeakingRecordingPolicy.requireAvailable(r,now());return r;
     }
     public File file(Long id) throws IOException {
         SpeakingRecording r=readable(id);if(!Boolean.TRUE.equals(r.getComplete()))throw new IllegalArgumentException("Bản ghi âm chưa được đồng bộ đủ.");
         Path file=directory(r).resolve("recording.audio");if(!Files.isRegularFile(file)||Files.isSymbolicLink(file))throw new IOException("Chưa đọc được bản ghi âm đã lưu.");return file.toFile();
     }
+
+    @Transactional(readOnly=true)
+    public List<Long> expiredRecordingIds() {
+        return em.createQuery("select r.id from SpeakingRecording r where r.createDate<=:cutoff and "
+                + "(r.chunksJson is not null or r.byteCount>0 or r.complete=true or r.sha256 is not null) order by r.createDate,r.id",Long.class)
+            .setParameter("cutoff",now().minusDays(SpeakingRecordingPolicy.RETENTION_DAYS)).setMaxResults(1000).getResultList();
+    }
+
+    public boolean purgeExpiredRecording(Long id) throws IOException {
+        SpeakingRecording initial=em.find(SpeakingRecording.class,id);
+        if(initial==null)return false;
+        // Match upload lock order. Never remove files while a chunk/finalization
+        // transaction holds this practice and recording.
+        em.find(SpeakingPractice.class,initial.getPracticeId(),LockModeType.PESSIMISTIC_WRITE);
+        SpeakingRecording recording=em.find(SpeakingRecording.class,id,LockModeType.PESSIMISTIC_WRITE);
+        if(recording==null)return false;
+        em.refresh(recording,LockModeType.PESSIMISTIC_WRITE);
+        if(!SpeakingRecordingPolicy.expired(recording,now()))return false;
+        if(recording.getChunksJson()==null&&Long.valueOf(0).equals(recording.getByteCount())
+                &&!Boolean.TRUE.equals(recording.getComplete())&&recording.getSha256()==null)return false;
+        SpeakingRecordingFiles.delete(storageDirectory,recording);
+        // Retain the upload identity as a tombstone: an old offline retry must not
+        // recreate the audio or consume a new slot after its retention period.
+        recording.setChunksJson(null);recording.setByteCount(0L);recording.setComplete(false);recording.setSha256(null);
+        em.flush();return true;
+    }
+
 }

@@ -9,6 +9,7 @@ import com.globits.security.domain.User;
 import com.globits.security.repository.UserRepository;
 import java.io.IOException;
 import java.security.SecureRandom;
+import org.joda.time.LocalDateTime;
 import java.util.*;
 import javax.persistence.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -412,9 +413,32 @@ public class SpeakingServiceImpl {
         for(SpeakingRecording r:em.createQuery("select r from SpeakingRecording r where r.practiceId=:id order by r.id",SpeakingRecording.class).setParameter("id",practice.getId()).getResultList())recordings.add(recordingDto(r));
         User student=users.findOne(practice.getStudentId());
         return map("id",practice.getId(),"studentId",practice.getStudentId(),"studentName",student==null?"Học sinh":displayName(student),"bankOwnerId",practice.getBankOwnerId(),"status",practice.getStatus(),"currentIndex",practice.getCurrentIndex(),
-            "elapsedSeconds",practice.getElapsedSeconds(),"createdAt",practice.getCreateDate()==null?null:practice.getCreateDate().toString(),"snapshot",data,"recordings",recordings,"aiEnabled",false,"aiStatus","DISABLED");
+            "elapsedSeconds",practice.getElapsedSeconds(),"createdAt",practice.getCreateDate()==null?null:practice.getCreateDate().toString(),"snapshot",data,"recordings",recordings,"recordingQuota",recordingQuota(student,LocalDateTime.now()),"aiEnabled",false,"aiStatus","DISABLED");
     }
-    public static Map<String,Object> recordingDto(SpeakingRecording r){return map("id",r.getId(),"uploadKey",r.getUploadKey(),"questionIndex",r.getQuestionIndex(),"contentType",r.getContentType(),"complete",r.getComplete(),"byteCount",r.getByteCount());}
+    public Map<String,Object> recordingQuota(User student,LocalDateTime now) {
+        if(student==null)return map("canRecord",false,"unlimited",false,"limit",SpeakingRecordingPolicy.RECORDING_LIMIT,"used",0,"remaining",0);
+        boolean unlimited=SpeakingRecordingPolicy.isAdmin(student);
+        if(unlimited)return map("studentId",student.getId(),"checkedAt",now.toDate().getTime(),"unlimited",true,"limit",null,"used",null,"remaining",null,"canRecord",true,"retentionDays",SpeakingRecordingPolicy.RETENTION_DAYS);
+        Long used=em.createQuery("select count(r) from SpeakingRecording r where r.studentId=:student and r.createDate>:cutoff",Long.class)
+            .setParameter("student",student.getId()).setParameter("cutoff",now.minusDays(SpeakingRecordingPolicy.RETENTION_DAYS)).getSingleResult();
+        String nextAvailable=null;
+        if(used>=SpeakingRecordingPolicy.RECORDING_LIMIT){
+            List<LocalDateTime> latest=em.createQuery("select r.createDate from SpeakingRecording r where r.studentId=:student and r.createDate>:cutoff order by r.createDate desc,r.id desc",LocalDateTime.class)
+                .setParameter("student",student.getId()).setParameter("cutoff",now.minusDays(SpeakingRecordingPolicy.RETENTION_DAYS))
+                .setFirstResult(SpeakingRecordingPolicy.RECORDING_LIMIT-1).setMaxResults(1).getResultList();
+            if(!latest.isEmpty())nextAvailable=latest.get(0).plusDays(SpeakingRecordingPolicy.RETENTION_DAYS).toString();
+        }
+        return map("studentId",student.getId(),"checkedAt",now.toDate().getTime(),"unlimited",false,"limit",SpeakingRecordingPolicy.RECORDING_LIMIT,"used",used,
+            "remaining",Math.max(0,SpeakingRecordingPolicy.RECORDING_LIMIT-used),"canRecord",used<SpeakingRecordingPolicy.RECORDING_LIMIT,
+            "nextAvailableAt",nextAvailable,"retentionDays",SpeakingRecordingPolicy.RETENTION_DAYS);
+    }
+    public static Map<String,Object> recordingDto(SpeakingRecording r){return recordingDto(r,LocalDateTime.now());}
+    public static Map<String,Object> recordingDto(SpeakingRecording r,LocalDateTime now){
+        boolean expired=SpeakingRecordingPolicy.expired(r,now);LocalDateTime expires=SpeakingRecordingPolicy.expiresAt(r);
+        return map("id",r.getId(),"uploadKey",r.getUploadKey(),"questionIndex",r.getQuestionIndex(),"contentType",r.getContentType(),
+            "complete",!expired&&Boolean.TRUE.equals(r.getComplete()),"byteCount",expired?0L:r.getByteCount(),
+            "expired",expired,"expiresAt",expires==null?null:expires.toString());
+    }
     public Map<String,Object> getPractice(Long id){return practiceDto(accessiblePractice(id,false),currentUser());}
     public Map<String,Object> exportSet(Long id){ownedSet(id,false);return bank(id,null);}
     public int practiceQuestionCount(SpeakingPractice practice){Object value=snapshot(practice).get("questions");return value instanceof List?((List<?>)value).size():0;}

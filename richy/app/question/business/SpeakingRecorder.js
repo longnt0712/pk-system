@@ -3,7 +3,8 @@
     angular.module('Hrm.Question').factory('SpeakingRecorder', ['$window', '$q', '$rootScope', '$cookies', 'SpeakingService',
         function ($window, $q, $rootScope, $cookies, api) {
             var jobs = {}, uploads = {}, database, capture = null, stopWait = null, sequence = $q.when(), generation = 0;
-            var state = {active: false, starting: false, pending: [], message: '', error: '', storageError: false};
+            var state = {active: false, starting: false, pending: [], message: '', error: '', storageError: false, recordingQuota: null};
+            var retentionMilliseconds = 3 * 24 * 60 * 60 * 1000;
             function notify() { $rootScope.$evalAsync(); }
             function currentUserId() { try { return Number(JSON.parse($cookies.get('education.user') || '{}').id) || 0; } catch (ignore) { return 0; } }
             function key() {
@@ -35,12 +36,13 @@
             function snapshot(job) {
                 return {key: job.key, userId: job.userId, practiceId: job.practiceId, questionIndex: job.questionIndex,
                     uploadKey: job.uploadKey, contentType: job.contentType, recordingId: job.recordingId || null,
-                    parts: job.parts.slice(), uploaded: job.uploaded, stopped: job.stopped, bytes: job.bytes, updatedAt: Date.now()};
+                    parts: job.parts.slice(), uploaded: job.uploaded, stopped: job.stopped, bytes: job.bytes, createdAt: job.createdAt, quotaBlockedUntil: job.quotaBlockedUntil, updatedAt: Date.now()};
             }
             function pendingState() {
                 var user = currentUserId(); state.pending = Object.keys(jobs).map(function (id) { return jobs[id]; }).filter(function (job) { return job.userId === user; }); notify();
             }
             function persist(job) {
+                if (job.expired) { return $q.when(false); }
                 return dbAction('readwrite', function (store) { return store.put(snapshot(job)); }).then(function () { job.durable = true; return true; }, function () {
                     job.durable = false; state.storageError = true; state.error = 'Chưa sao lưu được trên thiết bị. Hãy giữ trang mở để tải bản ghi lên server.'; notify(); return false;
                 });
@@ -54,14 +56,25 @@
                 if (blob.arrayBuffer) { return $q.when(blob.arrayBuffer()); }
                 var deferred = $q.defer(), reader = new $window.FileReader(); reader.onload = function () { deferred.resolve(reader.result); }; reader.onerror = function () { deferred.reject(reader.error); }; reader.readAsArrayBuffer(blob); return deferred.promise;
             }
+            function expired(job) {
+                var created = Number(job.createdAt || job.updatedAt);
+                return isFinite(created) && created > 0 && Date.now() - created >= retentionMilliseconds;
+            }
+            function removeExpired(job) {
+                job.expired = true; if (capture && capture.job === job) { stop(); }
+                state.error = ''; state.message = 'Bản ghi âm đã hết hạn lưu 3 ngày và được xoá khỏi bản sao trên thiết bị.';
+                return forget(job).then(function () { return false; });
+            }
             function flush(job) {
                 if (uploads[job.key]) { return uploads[job.key]; }
+                if (expired(job)) { return removeExpired(job); }
+                if (job.quotaBlockedUntil && Date.parse(job.quotaBlockedUntil) > Date.now()) { return $q.when(false); }
                 if (!job.parts.length) { return $q.when(false); }
                 var failed = false, work = $q.when().then(function () {
                     sameUser(job);
                     if (job.recordingId) { return; }
                     return api.initRecording(job.practiceId, {uploadKey: job.uploadKey, contentType: job.contentType, questionIndex: job.questionIndex}).then(function (result) {
-                        sameUser(job); if (!result || !(Number(result.id) > 0) || result.uploadKey !== job.uploadKey || Number(result.questionIndex) !== Number(job.questionIndex)) { throw new Error('Chưa xác nhận được mã bản ghi.'); } job.recordingId = result.id; return persist(job);
+                        sameUser(job); if (!result || !(Number(result.id) > 0) || result.uploadKey !== job.uploadKey || Number(result.questionIndex) !== Number(job.questionIndex)) { throw new Error('Chưa xác nhận được mã bản ghi.'); } job.recordingId = result.id; if (result.recordingQuota) { state.recordingQuota = result.recordingQuota; } return persist(job);
                     });
                 });
                 function next() {
@@ -81,6 +94,12 @@
                 }
                 work = work.then(next).catch(function (error) {
                     failed = true;
+                    if (error && error.status === 410 && error.data && error.data.code === 'SPEAKING_RECORDING_EXPIRED') { return removeExpired(job); }
+                    if (error && error.data && error.data.code === 'SPEAKING_RECORDING_LIMIT') {
+                        state.recordingQuota = error.data.recordingQuota || null;
+                        job.quotaBlockedUntil = state.recordingQuota && state.recordingQuota.nextAvailableAt;
+                        if (capture && capture.job === job) { stop(); }
+                    }
                     job.error = (error.data && error.data.message) || error.message || 'Chưa đồng bộ được ghi âm. Bạn có thể thử lại.';
                     state.error = job.error; state.message = job.durable ? 'Bản ghi còn trên thiết bị, chưa xác nhận lưu đủ trên server.' : 'Bản ghi còn trong trang này; hãy giữ trang mở và thử tải lại.'; pendingState(); return false;
                 }).finally(function () { delete uploads[job.key]; pendingState(); if (!failed && jobs[job.key] && (job.stopped || job.uploaded < job.parts.length)) { $q.when().then(function () { flush(job); }); } });
@@ -98,10 +117,16 @@
                 return result;
             }
             function supported() { return !!($window.MediaRecorder && $window.navigator && $window.navigator.mediaDevices && $window.navigator.mediaDevices.getUserMedia); }
-            function start(userId, practiceId, questionIndex) {
+            function start(userId, practiceId, questionIndex, quota) {
                 if (capture || state.starting) { return $q.reject(new Error('Đang có một bản ghi âm.')); }
                 if (!supported()) { state.error = 'Trình duyệt chưa hỗ trợ ghi âm. Bạn vẫn có thể luyện câu hỏi.'; return $q.reject(new Error(state.error)); }
                 if (Number(userId) !== currentUserId()) { return $q.reject(new Error('Tài khoản đã thay đổi.')); }
+                var latestQuota = state.recordingQuota;
+                if (latestQuota && Number(latestQuota.studentId) === Number(userId) && (!quota || Number(latestQuota.checkedAt) >= Number(quota.checkedAt))) { quota = latestQuota; }
+                if (quota && quota.canRecord === false && !quota.unlimited && !(quota.nextAvailableAt && Date.parse(quota.nextAvailableAt) <= Date.now())) {
+                    state.error = 'Bạn đã gửi đủ 10 bản ghi âm trong 3 ngày gần nhất. Hãy chờ đến khi có lượt mới.'; notify();
+                    return $q.reject(new Error(state.error));
+                }
                 state.starting = true; state.error = ''; state.message = 'Đang xin quyền microphone…'; notify();
                 var startedGeneration = ++generation;
                 // Call directly from the student's click, before any network wait.
@@ -118,7 +143,7 @@
                     var actualType = String(recorder.mimeType || type || '').split(';')[0];
                     if (['audio/webm', 'audio/mp4', 'audio/ogg'].indexOf(actualType) < 0) { stopTracks(stream); throw new Error('Trình duyệt chưa hỗ trợ định dạng ghi âm phù hợp.'); }
                     var uploadKey = key(), job = {key: userId + ':' + uploadKey, userId: Number(userId), practiceId: practiceId, questionIndex: questionIndex,
-                        uploadKey: uploadKey, contentType: actualType, parts: [], uploaded: 0, stopped: false, bytes: 0, durable: false};
+                        uploadKey: uploadKey, contentType: actualType, parts: [], uploaded: 0, stopped: false, bytes: 0, createdAt: Date.now(), durable: false};
                     jobs[job.key] = job; sequence = $q.when(); var finished = false;
                     var active = {recorder: recorder, stream: stream, job: job}; capture = active;
                     function finish() {
@@ -130,7 +155,7 @@
                     }
                     active.finish = finish;
                     recorder.ondataavailable = function (event) {
-                        if (!event.data || !event.data.size) { return; }
+                        if (job.expired || !event.data || !event.data.size) { return; }
                         var blob = event.data;
                         sequence = sequence.then(function () {
                             if (job.bytes + blob.size > 64 * 1024 * 1024) { state.error = 'Bản ghi đạt giới hạn 64 MB; phần đã ghi được giữ lại.'; stop(); return; }
@@ -152,7 +177,16 @@
             function loadPending() {
                 var userId = currentUserId();
                 return dbAction('readonly', function (store) { return store.getAll(); }).then(function (saved) {
-                    (saved || []).forEach(function (job) { if (job.userId === userId && !jobs[job.key]) { job.durable = true; jobs[job.key] = job; } }); pendingState(); return state.pending;
+                    var removals = [];
+                    (saved || []).forEach(function (job) {
+                        if (job.userId !== userId || jobs[job.key]) { return; }
+                        if (expired(job)) { removals.push(removeExpired(job)); return; }
+                        // Legacy backups have only updatedAt; preserve that age instead of
+                        // extending their lifetime every time a retry updates the backup.
+                        job.createdAt = Number(job.createdAt || job.updatedAt) || Date.now();
+                        job.durable = true; jobs[job.key] = job;
+                    });
+                    return $q.all(removals).then(function () { pendingState(); return state.pending; });
                 }, function () { pendingState(); return state.pending; });
             }
             function retry() { return loadPending().then(function () { return $q.all(state.pending.filter(function (job) { return job.stopped || (capture && capture.job === job); }).map(flush)); }); }

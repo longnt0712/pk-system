@@ -440,7 +440,7 @@
                     return api.progress(id, payload).then(function (ack) {
                         if (!ack || Number(ack.id) !== Number(id) || (finished && ack.status !== 'DONE')) { throw new Error('Chưa xác nhận được tiến độ luyện tập.'); }
                         if (alive && vm.practice && vm.practice.id === id) {
-                            vm.progressError = ''; if (ack.status === 'DONE') { vm.practice = ack; try { $window.localStorage.removeItem(backupKey(id)); } catch (ignore) {} }
+                            vm.progressError = ''; if (ack.recordingQuota) { vm.practice.recordingQuota = ack.recordingQuota; } if (ack.recordings) { vm.practice.recordings = ack.recordings; } if (ack.status === 'DONE') { vm.practice = ack; try { $window.localStorage.removeItem(backupKey(id)); } catch (ignore) {} }
                         } return ack;
                     }).catch(function (error) { if (alive) { vm.progressError = 'Chưa đồng bộ tiến độ, bản nháp vẫn được giữ trên thiết bị. Hãy thử lưu lại.'; } return $q.reject(error); });
                 }
@@ -459,12 +459,22 @@
             vm.leavePractice = function () {
                 updateClock(); backupPractice(); recorder.stop(); saveProgress(false).catch(angular.noop); practiceGeneration++; vm.practice = null; clearAudio(); $location.search('practice', null); vm.loadHistory();
             };
-            vm.startRecording = function () { if (ownPractice() && vm.practice.status === 'ACTIVE') { recorder.start(vm.userId, vm.practice.id, vm.practice.currentIndex).catch(angular.noop); } };
+            vm.currentRecordingQuota = function () {
+                var quota = vm.practice && vm.practice.recordingQuota, latest = recorder.state.recordingQuota;
+                if (latest && Number(latest.studentId) === Number(vm.userId) && (!quota || Number(latest.checkedAt) >= Number(quota.checkedAt))) { return latest; }
+                return quota;
+            };
+            vm.canRecord = function () {
+                var quota = vm.currentRecordingQuota();
+                return !quota || quota.unlimited || quota.canRecord !== false || !!(quota.nextAvailableAt && Date.parse(quota.nextAvailableAt) <= Date.now());
+            };
+            vm.startRecording = function () { if (ownPractice() && vm.practice.status === 'ACTIVE' && vm.canRecord()) { recorder.start(vm.userId, vm.practice.id, vm.practice.currentIndex, vm.currentRecordingQuota()).catch(angular.noop); } };
             vm.playRecording = function (recording) {
+                if (!recording || recording.expired) { return; }
                 vm.audioLoading = recording.id; clearAudio(); var id = vm.practice && vm.practice.id;
                 api.audio(recording.id).then(function (blob) { if (!alive || !vm.practice || vm.practice.id !== id) { return; } audioUrl = $window.URL.createObjectURL(blob); vm.audioSource = $sce.trustAsResourceUrl(audioUrl); vm.audioLabel = 'Bản thu câu ' + (recording.questionIndex + 1); }).catch(fail).finally(function () { vm.audioLoading = null; });
             };
-            vm.refreshPractice = function () { if (!vm.practice) { return; } var id = vm.practice.id; api.practice(id).then(function (data) { if (vm.practice && vm.practice.id === id) { vm.practice.recordings = data.recordings; } }).catch(fail); };
+            vm.refreshPractice = function () { if (!vm.practice) { return; } var id = vm.practice.id; api.practice(id).then(function (data) { if (vm.practice && vm.practice.id === id) { vm.practice.recordings = data.recordings; vm.practice.recordingQuota = data.recordingQuota; } }).catch(fail); };
             vm.recoverRecording = function (job) { recorder.recover(job).then(vm.refreshPractice); };
             function refresh(preferred) {
                 return api.bootstrap().then(function (data) {

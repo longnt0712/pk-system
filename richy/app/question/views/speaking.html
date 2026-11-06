@@ -95,13 +95,19 @@
             <details ng-if="question.sample && vm.practice.status==='DONE'"><summary>Sample tham khảo</summary><p class="sp-preserve sp-sample">{{question.sample}}</p></details>
         </div>
         <div class="sp-record" ng-if="vm.ownPractice() && vm.practice.status==='ACTIVE'">
-            <button class="sp-button sp-record-start" ng-if="!vm.recorder.state.active && !vm.recorder.state.starting" ng-click="vm.startRecording()" ng-disabled="!vm.recorder.supported()"><i class="fa fa-microphone"></i> Ghi âm câu này</button>
+            <button class="sp-button sp-record-start" ng-if="!vm.recorder.state.active && !vm.recorder.state.starting" ng-click="vm.startRecording()" ng-disabled="!vm.recorder.supported() || !vm.canRecord()"><i class="fa fa-microphone"></i> Ghi âm câu này</button>
             <button class="sp-button sp-record-stop" ng-if="vm.recorder.state.active || vm.recorder.state.starting" ng-click="vm.recorder.stop()"><i class="fa fa-stop"></i> Dừng ghi âm</button>
             <span>Ghi âm là tuỳ chọn. Chuyển câu hoặc rời trang sẽ dừng bản thu hiện tại.</span>
         </div>
         <div class="sp-toolbar sp-pagination"><button class="sp-button" ng-disabled="vm.practice.currentIndex===0 || vm.moving" ng-click="vm.moveQuestion(-1)">← Câu trước</button><button class="sp-button" ng-disabled="vm.practice.currentIndex+1>=vm.practice.snapshot.questions.length || vm.moving" ng-click="vm.moveQuestion(1)">Câu tiếp →</button><button class="sp-button sp-primary" ng-if="vm.ownPractice() && vm.practice.status==='ACTIVE'" ng-disabled="vm.finishing" ng-click="vm.finishPractice()">{{vm.finishing ? 'Đang lưu…' : 'Kết thúc luyện tập'}}</button></div>
+        <p class="sp-muted">Bản ghi âm được lưu 3 ngày rồi tự xoá. Lịch sử luyện tập và dấu Pass vẫn được giữ.</p>
+        <p class="sp-muted" ng-if="vm.ownPractice() && vm.currentRecordingQuota()">
+            <span ng-if="vm.currentRecordingQuota().unlimited">Admin được miễn giới hạn 10 bản thu trong 3 ngày.</span>
+            <span ng-if="!vm.currentRecordingQuota().unlimited">Đã gửi {{vm.currentRecordingQuota().used}} / {{vm.currentRecordingQuota().limit}} bản thu trong 3 ngày gần nhất.</span>
+            <span ng-if="!vm.canRecord() && vm.currentRecordingQuota().nextAvailableAt"> Có lượt mới từ {{vm.currentRecordingQuota().nextAvailableAt | date:'dd/MM/yyyy HH:mm'}}.</span>
+        </p>
         <h3>Bản ghi âm</h3><p class="sp-muted" ng-if="!vm.practice.recordings.length">Chưa có bản thu được gửi lên.</p>
-        <div class="sp-history" ng-repeat="recording in vm.practice.recordings track by recording.id"><span class="sp-grow">Câu {{recording.questionIndex+1}} · {{recording.complete ? 'Đã lưu đủ' : 'Chưa tải đủ'}}</span><button class="sp-button" ng-disabled="!recording.complete || vm.audioLoading" ng-click="vm.playRecording(recording)">Nghe lại</button></div>
+        <div class="sp-history" ng-repeat="recording in vm.practice.recordings track by recording.id"><span class="sp-grow">Câu {{recording.questionIndex+1}} · {{recording.expired ? 'Đã hết hạn lưu 3 ngày' : recording.complete ? 'Đã lưu đủ' : 'Chưa tải đủ'}}</span><button class="sp-button" ng-if="!recording.expired" ng-disabled="!recording.complete || vm.audioLoading" ng-click="vm.playRecording(recording)">Nghe lại</button></div>
         <div ng-if="vm.audioSource" class="sp-playback"><span>{{vm.audioLabel}}</span><audio controls ng-src="{{vm.audioSource}}" preload="metadata"></audio></div>
     </section>
     <aside class="sp-panel sp-sync" ng-if="vm.recorder.state.pending.length || vm.recorder.state.error || vm.recorder.state.message">
