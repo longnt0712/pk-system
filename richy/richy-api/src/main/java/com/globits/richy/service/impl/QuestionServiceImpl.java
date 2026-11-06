@@ -20,11 +20,13 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.richy.test;
+import com.globits.richy.question.VocabularyPolicy;
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.CategoryQuestion;
 import com.globits.richy.domain.Question;
@@ -1254,28 +1256,33 @@ public class QuestionServiceImpl implements QuestionService {
 
 	@Override
 	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto) {
-		if(searchDto == null || searchDto.getQuestionTopics() == null
-				|| searchDto.getQuestionTopics().isEmpty()) {
-			return Collections.emptyList();
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof User)
+				|| ((User) authentication.getPrincipal()).getId() == null) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để xuất từ vựng.");
 		}
+		if (searchDto == null) { searchDto = new QuestionDto(); }
+		boolean isAdmin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
+		Long ownerId = isAdmin ? searchDto.getUserId() : ((User) authentication.getPrincipal()).getId();
 
 		List<Long> topicIds = new ArrayList<Long>();
-		for(QuestionTopicDto item : searchDto.getQuestionTopics()) {
+		if (searchDto.getQuestionTopics() != null) for(QuestionTopicDto item : searchDto.getQuestionTopics()) {
 			if(item != null && item.getTopic() != null && item.getTopic().getId() != null) {
 				topicIds.add(item.getTopic().getId());
 			}
 		}
-		if(topicIds.isEmpty()) {
+		if(isAdmin && topicIds.isEmpty()) {
 			return Collections.emptyList();
 		}
 
 		String hql = "select new com.globits.richy.dto.QuestionLevelDto("
 				+ "q.id, q.question, q.pronounce, q.motherTongue, q.level) "
 				+ "from Question q "
-				+ "where q.questionType.id = 6 "
-				+ "and exists (select qt.id from QuestionTopic qt "
-				+ "where qt.question.id = q.id and qt.topic.id in :topicIds) ";
-		if(searchDto.getUserId() != null) {
+				+ "where q.questionType.id = 6 and q.parent is null ";
+		if (!topicIds.isEmpty()) {
+			hql += "and exists (select qt.id from QuestionTopic qt where qt.question.id = q.id and qt.topic.id in :topicIds) ";
+		}
+		if(ownerId != null) {
 			hql += "and q.user.id = :userId ";
 		}
 		if(searchDto.getWebsite() != null) {
@@ -1284,9 +1291,9 @@ public class QuestionServiceImpl implements QuestionService {
 		hql += "order by q.ordinalNumber, q.createDate desc";
 
 		Query query = manager.createQuery(hql, QuestionLevelDto.class);
-		query.setParameter("topicIds", topicIds);
-		if(searchDto.getUserId() != null) {
-			query.setParameter("userId", searchDto.getUserId());
+		if (!topicIds.isEmpty()) { query.setParameter("topicIds", topicIds); }
+		if(ownerId != null) {
+			query.setParameter("userId", ownerId);
 		}
 		if(searchDto.getWebsite() != null) {
 			query.setParameter("website", searchDto.getWebsite());
@@ -1416,6 +1423,127 @@ public class QuestionServiceImpl implements QuestionService {
 		return result;
 	}
 
+	/** Editor boundary: learners save personal word fields, staff retain test editing. */
+	@Override
+	@Transactional(readOnly = true)
+	public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
+				|| ((User) authentication.getPrincipal()).getId() == null) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để xem hạn mức từ vựng.");
+		}
+		String role = VocabularyPolicy.role(authentication);
+		Long userId = ((User) authentication.getPrincipal()).getId();
+		Long words = questionRepository.countFlashCardsByUserId(userId), topics = topicRepository.countByUserId(userId);
+		return new com.globits.richy.dto.VocabularyUsageDto(role, words == null ? 0 : words,
+				VocabularyPolicy.wordLimit(authentication), topics == null ? 0 : topics, VocabularyPolicy.lessonLimit(authentication));
+	}
+
+	@Override
+	@Transactional
+	public QuestionDto saveForCurrentUser(QuestionDto dto) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated()
+				|| !(authentication.getPrincipal() instanceof User)) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để lưu từ.");
+		}
+		if (hasQuestionRole(authentication, "ROLE_ADMIN")) {
+			return saveObject(dto);
+		}
+		boolean isUser = hasQuestionRole(authentication, "ROLE_USER");
+		if (!isUser && !hasQuestionRole(authentication, "ROLE_VIEWER")) {
+			throw new AccessDeniedException("Bạn không có quyền lưu từ.");
+		}
+		if (dto == null) { throw new IllegalArgumentException("Chưa có dữ liệu từ cần lưu."); }
+		Question stored = dto.getId() == null ? null : questionRepository.findOne(dto.getId());
+		boolean requestsFlashCard = dto.getQuestionType() != null && Long.valueOf(6L).equals(dto.getQuestionType().getId());
+		boolean storedFlashCard = stored != null && stored.getQuestionType() != null
+				&& Long.valueOf(6L).equals(stored.getQuestionType().getId());
+		if (requestsFlashCard || storedFlashCard) {
+			return saveBasicFlashCard(dto, stored, (User) authentication.getPrincipal());
+		}
+		if (isUser) { return saveObject(dto); }
+		throw new AccessDeniedException("Bạn chỉ được thêm và lưu flashcard cá nhân.");
+	}
+
+	private boolean hasQuestionRole(Authentication authentication, String role) {
+		return authentication.getAuthorities() != null && authentication.getAuthorities().stream()
+				.anyMatch(authority -> role.equals(authority.getAuthority()));
+	}
+
+	private QuestionDto saveBasicFlashCard(QuestionDto dto, Question stored, User currentUser) {
+		Long currentUserId = currentUser.getId();
+		if (currentUserId == null || (dto.getUserId() != null && !currentUserId.equals(dto.getUserId()))) {
+			throw new AccessDeniedException("Bạn chỉ được lưu từ của chính mình.");
+		}
+		if (dto.getQuestionType() != null && !Long.valueOf(6L).equals(dto.getQuestionType().getId())) {
+			throw new AccessDeniedException("Không thể đổi loại dữ liệu của flashcard.");
+		}
+		if (dto.getParent() != null || (dto.getSubQuestions() != null && !dto.getSubQuestions().isEmpty())
+				|| dto.getTestFolderId() != null || (dto.getTestFormat() != null && !dto.getTestFormat().trim().isEmpty())) {
+			throw new AccessDeniedException("Bạn chỉ được lưu các trường cơ bản của flashcard.");
+		}
+		if (dto.getId() != null && (stored == null || stored.getQuestionType() == null
+				|| !Long.valueOf(6L).equals(stored.getQuestionType().getId()) || stored.getParent() != null
+				|| stored.getUser() == null || !currentUserId.equals(stored.getUser().getId()))) {
+			throw new AccessDeniedException("Bạn chỉ được sửa flashcard do chính mình tạo.");
+		}
+		String word = dto.getQuestion() == null ? "" : dto.getQuestion().trim();
+		QuestionDto result = new QuestionDto();
+		String validation = VocabularyPolicy.validateText(word, dto.getPronounce(), dto.getMotherTongue(), null, false);
+		if (validation != null) { result.setMessage(validation); return result; }
+		String message = "Successfully";
+		LocalDateTime now = LocalDateTime.now();
+		if (stored == null) {
+			Set<QuestionTopic> lessonLinks = new HashSet<QuestionTopic>();
+			Set<Long> lessonIds = new HashSet<Long>();
+			if (dto.getQuestionTopics() != null) {
+				for (QuestionTopicDto link : dto.getQuestionTopics()) {
+					if (link == null || link.getTopic() == null || link.getTopic().getId() == null) { continue; }
+					Long lessonId = link.getTopic().getId();
+					if (!lessonIds.add(lessonId)) { continue; }
+					com.globits.richy.domain.Topic lesson = topicRepository.findOne(lessonId);
+					if (lesson == null || lesson.getUser() == null || !currentUserId.equals(lesson.getUser().getId())) {
+						throw new AccessDeniedException("Bạn chỉ được thêm từ vào bài từ vựng của chính mình.");
+					}
+					QuestionTopic newLink = new QuestionTopic();
+					newLink.setTopic(lesson); newLink.setCreateDate(now); newLink.setCreatedBy(currentUser.getUsername());
+					lessonLinks.add(newLink);
+				}
+			}
+			// Serialize creates for this account so simultaneous requests cannot exceed the quota.
+			User owner = userRepository.findForVocabularyUpdate(currentUserId);
+			if (owner == null) { throw new AccessDeniedException("Không xác định được chủ sở hữu flashcard."); }
+			long limit = VocabularyPolicy.wordLimit(SecurityContextHolder.getContext().getAuthentication());
+			Long count = questionRepository.countFlashCardsByUserId(currentUserId);
+			if (limit >= 0 && count != null && count >= limit) {
+				result.setMessage(VocabularyPolicy.wordLimitMessage(count, limit)); return result;
+			}
+			QuestionType flashCardType = questionTypeRepository.findOne(6L);
+			if (flashCardType == null) { throw new IllegalStateException("Flashcard type is unavailable"); }
+			List<Question> duplicates = questionRepository.findByQuestion(word, currentUserId);
+			if (duplicates != null && !duplicates.isEmpty()) { message += ", but there is another card like this"; }
+			stored = new Question();
+			stored.setUser(owner);
+			stored.setQuestionType(flashCardType);
+			stored.setType(1);
+			stored.setStatus(1);
+			stored.setCreateDate(now);
+			stored.setCreatedBy(currentUser.getUsername());
+			for (QuestionTopic link : lessonLinks) { link.setQuestion(stored); }
+			stored.setQuestionTopics(lessonLinks);
+		}
+		// Do not copy associations, description, CEFR level, status or learning history.
+		stored.setQuestion(word);
+		stored.setPronounce(dto.getPronounce());
+		stored.setMotherTongue(dto.getMotherTongue());
+		stored.setModifyDate(now);
+		stored.setModifiedBy(currentUser.getUsername());
+		result = new QuestionDto(questionRepository.save(stored));
+		result.setMessage(message);
+		return result;
+	}
+
 	@Override
 	@Transactional
 	public QuestionDto saveObject(QuestionDto dto) {
@@ -1435,6 +1563,12 @@ public class QuestionServiceImpl implements QuestionService {
 		String message = "Successfully";
 		if(dto == null) {
 			return null;
+		}
+		boolean flashCardRequest = dto.getQuestionType() != null && Long.valueOf(6L).equals(dto.getQuestionType().getId())
+				&& dto.getParent() == null && (dto.getTestFormat() == null || dto.getTestFormat().trim().isEmpty());
+		if (flashCardRequest) {
+			String textValidation = VocabularyPolicy.validateText(dto.getQuestion(), dto.getPronounce(), dto.getMotherTongue(), dto.getDescription(), true);
+			if (textValidation != null) { ret.setMessage(textValidation); return ret; }
 		}
 		String videoValidation = com.globits.richy.question.ComprehensiveVideoValidation.validate(dto);
 		if (videoValidation != null) {
@@ -1495,9 +1629,14 @@ public class QuestionServiceImpl implements QuestionService {
 			// Tài khoản thường bị giới hạn số từ; ADMIN không bị giới hạn.
 			Long numberOfQuestions = (long) 0;
 			if(!isAdmin && modifiedUser != null && modifiedUser.getId() != null) {
-				numberOfQuestions = questionRepository.countByUserId(modifiedUser.getId());
-				if(numberOfQuestions >= 20000) {
-					ret.setMessage("You can only create no more than 20.000 words");
+				long wordLimit = 20000L;
+				if (flashCardRequest) {
+					userRepository.findForVocabularyUpdate(modifiedUser.getId());
+					wordLimit = VocabularyPolicy.wordLimit(authentication);
+					numberOfQuestions = questionRepository.countFlashCardsByUserId(modifiedUser.getId());
+				} else { numberOfQuestions = questionRepository.countByUserId(modifiedUser.getId()); }
+				if(numberOfQuestions != null && numberOfQuestions >= wordLimit) {
+					ret.setMessage(flashCardRequest ? VocabularyPolicy.wordLimitMessage(numberOfQuestions, wordLimit) : "You can only create no more than 20.000 words");
 					return ret;
 				}
 			}
@@ -1538,7 +1677,7 @@ public class QuestionServiceImpl implements QuestionService {
 			return ret;
 		}
 		
-		if(test.isShortEnoughString(dto.getMotherTongue())) {
+		if(flashCardRequest || test.isShortEnoughString(dto.getMotherTongue())) {
 			domain.setMotherTongue(dto.getMotherTongue());
 		}else {
 			message = "Should be less than 200 characters";
@@ -1655,7 +1794,12 @@ public class QuestionServiceImpl implements QuestionService {
 //			}
 //		}
 		
-		if (dto.getQuestionAnswers() != null && dto.getQuestionAnswers().size() > 0) {
+		// Flashcard editors no longer create/edit answer options. Keep legacy
+		// links intact because historical learning results may still reference them.
+		boolean editAnswerOptions = domain.getQuestionType() == null
+				|| !Long.valueOf(6L).equals(domain.getQuestionType().getId()) || domain.getParent() != null
+				|| (domain.getTestFormat() != null && !domain.getTestFormat().trim().isEmpty());
+		if (editAnswerOptions && dto.getQuestionAnswers() != null && dto.getQuestionAnswers().size() > 0) {
 
 		    int validAnswerCount = 0;
 
@@ -1739,7 +1883,7 @@ public class QuestionServiceImpl implements QuestionService {
 		        domain.setQuestionAnswers(childrens);
 		    }
 
-		} else {
+		} else if (editAnswerOptions) {
 		    if (domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
 		        domain.getQuestionAnswers().clear();
 		    }
@@ -1788,6 +1932,7 @@ public class QuestionServiceImpl implements QuestionService {
 	}
 
 	@Override
+	@Transactional
 	public boolean deleteObject(Long id) {
 		if(id == null) {
 			return false;
@@ -1795,6 +1940,13 @@ public class QuestionServiceImpl implements QuestionService {
 		Question domain = questionRepository.getOne(id);
 		if(domain == null) {
 			return false;
+		}
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof User)
+				|| (!VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN")
+					&& (domain.getUser() == null || domain.getUser().getId() == null
+						|| !domain.getUser().getId().equals(((User) authentication.getPrincipal()).getId())))) {
+			throw new AccessDeniedException("Bạn chỉ được xóa dữ liệu do chính mình tạo.");
 		}
 		questionRepository.delete(domain);
 		return true;
@@ -2171,6 +2323,7 @@ public class QuestionServiceImpl implements QuestionService {
 	}
 
 	@Override
+	@Transactional
 	public QuestionDto saveMaterial(QuestionDto dto) {
 		
 		QuestionDto ret = new QuestionDto();
@@ -2181,7 +2334,7 @@ public class QuestionServiceImpl implements QuestionService {
 		}
 		
 //		if(dto != null) {
-			ret = saveObject(dto);
+			ret = saveForCurrentUser(dto);
 //		}
 		
 		

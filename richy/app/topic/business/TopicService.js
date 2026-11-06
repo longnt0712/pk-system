@@ -117,10 +117,13 @@
         function getTableDefinition() {
 
             var _tableOperation = function (value, row, index) {
-                return '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="icon-pencil margin-right-5"></i>Edit</a>'
-                    + '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.createGaps(' + "'" + row.id + "'" + ')"><i class="fa fa-pencil margin-right-5"></i>Create gaps</a>'
-                    + '<a class="green-dark margin-right-20" target="_blank" href="topics/' + row.id + '" ><i class="fa fa-pencil margin-right-5"></i>Create normal</a>'
-                    + '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash margin-right-5"></i>Delete</a>';
+                var actions = '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="icon-pencil margin-right-5"></i>Sửa</a>';
+                if (settings.isAdmin) {
+                    actions += '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.createGaps(' + "'" + row.id + "'" + ')"><i class="fa fa-pencil margin-right-5"></i>Create gaps</a>'
+                        + '<a class="green-dark margin-right-20" target="_blank" href="topics/' + row.id + '" ><i class="fa fa-pencil margin-right-5"></i>Create normal</a>';
+                }
+                if (settings.isAdmin || settings.isFlashCardUser) actions += '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash margin-right-5"></i>Xóa</a>';
+                return actions;
             };
 
             var _cellNowrap = function (value, row, index, field) {
@@ -132,6 +135,7 @@
 
             var _isShowFormatter = function (value, row, index) {
                 var isShow = row.isShow !== false;
+                if (!settings.isAdmin) { return isShow ? 'Hiển thị' : 'Đang ẩn'; }
                 var checked = isShow ? 'checked="checked"' : '';
                 var nextValue = !isShow;
 
@@ -155,7 +159,7 @@
                 },
                 {
                     field: 'name',
-                    title: 'name',
+                    title: 'Tên bài từ vựng',
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap

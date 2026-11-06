@@ -311,6 +311,7 @@
                 authSession.logout();
                 settings.isAdmin = false;
                 settings.isViewer = false;
+                settings.isFlashCardUser = false;
                 settings.isStaff = false;
                 settings.isStudentManagerment = false;
                 settings.isEducationManagerment = false;

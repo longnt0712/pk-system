@@ -22,6 +22,8 @@ public interface QuestionService {
 	public List<QuestionDto> getListObject(QuestionDto searchDto, int pageIndex, int pageSize);
 	public QuestionDto getObjectById(Long id);
 	public QuestionDto saveObject(QuestionDto dto);
+	public QuestionDto saveForCurrentUser(QuestionDto dto);
+	public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage();
 	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto);
 	public QuestionLevelDto updateFlashCardLevel(Long id, String level);
 	public QuestionForTestsDto updateTestStatus(Long id, int status);

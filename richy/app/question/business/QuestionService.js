@@ -49,6 +49,9 @@
         self.confirmExcelImport = confirmExcelImport;
         
         self.saveObject = saveObject;
+        self.getVocabularyUsage = function () {
+            return $http.get(baseUrl + 'question/vocabulary_usage').then(function (response) { return response.data; });
+        };
         self.updateTestStatus = updateTestStatus;
         self.updateTestTitle = updateTestTitle;
         self.getFlashCardLevels = getFlashCardLevels;

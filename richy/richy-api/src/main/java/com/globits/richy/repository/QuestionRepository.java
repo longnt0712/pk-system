@@ -14,6 +14,8 @@ import com.globits.richy.dto.QuestionForTestsDto;
 public interface QuestionRepository extends JpaRepository<Question, Long> {
 	@Query("select count(u.id) from Question u where u.user.id = ?1")
 	Long countByUserId(Long userId);
+	@Query("select count(q.id) from Question q where q.user.id = ?1 and q.questionType.id = 6 and q.parent is null")
+	Long countFlashCardsByUserId(Long userId);
 	
 	@Query("select u from Question u where u.question = ?1 and u.user.id = ?2")
 	List<Question> findByQuestion(String question, Long userId);

@@ -214,6 +214,36 @@
 
 
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
+        vm.canManageFullFlashCards = settings.isAdmin === true;
+        vm.canDeleteFlashCards = vm.canManageFullFlashCards || (vm.currentUser.roles || []).some(function (role) {
+            return role.name === 'ROLE_USER';
+        });
+        vm.flashCardTextLimits = {question: 200, pronounce: 200, motherTongue: 500, description: 2000};
+        vm.descriptionLength = function (value) {
+            var element = document.createElement('template');
+            element.innerHTML = value || '';
+            return (element.content.textContent || '').length;
+        };
+        vm.flashCardTextError = function (card) {
+            if (!card || !card.question || !card.question.trim()) { return 'Vui lòng nhập từ cần lưu.'; }
+            if (card.question.trim().length > vm.flashCardTextLimits.question) { return 'Word vượt quá 200 ký tự.'; }
+            if ((card.pronounce || '').length > vm.flashCardTextLimits.pronounce) { return 'Phiên âm vượt quá 200 ký tự.'; }
+            if ((card.motherTongue || '').length > vm.flashCardTextLimits.motherTongue) { return 'Nghĩa tiếng Việt vượt quá 500 ký tự.'; }
+            if (vm.canManageFullFlashCards && vm.descriptionLength(card.description) > vm.flashCardTextLimits.description) {
+                return 'Description vượt quá 2.000 ký tự nội dung.';
+            }
+            return '';
+        };
+        vm.loadVocabularyUsage = function () {
+            if (!service.getVocabularyUsage) { return; }
+            vm.vocabularyUsageError = '';
+            return service.getVocabularyUsage().then(function (data) {
+                vm.vocabularyUsage = data;
+            }, function () {
+                vm.vocabularyUsageError = 'Chưa tải được hạn mức từ vựng. Bạn có thể thử lại; máy chủ vẫn kiểm tra hạn mức khi lưu.';
+            });
+        };
+        vm.loadVocabularyUsage();
         // console.log(vm.currentUser);
         
         vm.question = {};
@@ -373,6 +403,7 @@
                         toastr.error('Không thể xóa ' + failedCount + ' thẻ. Vui lòng thử lại.');
                     }
                     if (deletedCount > 0) {
+                        vm.loadVocabularyUsage();
                         toastr.success('Đã xóa ' + deletedCount + ' flashcard.');
                         var remaining = Math.max(0, vm.searchDto.totalItems - deletedCount);
                         var lastPage = Math.max(1, Math.ceil(remaining / vm.searchDto.pageSize));
@@ -542,7 +573,7 @@
         };
 
         vm.exportFlashCardsExcel = function () {
-            if(!vm.searchDto.questionTopics || vm.searchDto.questionTopics.length === 0) {
+            if(vm.canManageFullFlashCards && (!vm.searchDto.questionTopics || vm.searchDto.questionTopics.length === 0)) {
                 toastr.warning('Vui lòng chọn ít nhất một topic trước khi xuất Excel.');
                 return;
             }
@@ -558,7 +589,7 @@
             levelSearch.userId = vm.currentUser.id;
             blockUI.start();
 
-            service.getFlashCardLevels(levelSearch).then(function (data) {
+            return service.getFlashCardLevels(levelSearch).then(function (data) {
                 var words = data || [];
                 var workbook = new ExcelJS.Workbook();
                 var worksheet = workbook.addWorksheet('Flashcards');
@@ -929,8 +960,7 @@
                 },
                 status: 1,
                 questionTopics: pushTopic(vm.selectedTopicToAdd),
-                userId: vm.currentUser.id,
-                questionAnswers: []
+                userId: vm.currentUser.id
             };
 
             if (settings.isAdmin == true) {
@@ -941,58 +971,6 @@
         }
 
         vm.newCard = buildNewCard();
-
-        vm.MAX_QUESTION_ANSWERS = 30;
-
-        vm.addQuestionAnswer = function (card) {
-            if (!card.questionAnswers) {
-                card.questionAnswers = [];
-            }
-
-            if (card.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS) {
-                toastr.warning('Chỉ được thêm tối đa 30 answer');
-                return;
-            }
-
-            card.questionAnswers.push({
-                answer: {
-                    answer: ''
-                },
-                correct: card.questionAnswers.length === 0,
-                ordinalNumberQuestionAnswer: card.questionAnswers.length + 1
-            });
-        };
-
-        vm.deleteQuestionAnswer = function (card, index) {
-            if (!card || !card.questionAnswers) {
-                return;
-            }
-
-            card.questionAnswers.splice(index, 1);
-
-            angular.forEach(card.questionAnswers, function (item, key) {
-                item.ordinalNumberQuestionAnswer = key + 1;
-            });
-        };
-
-        vm.normalizeQuestionAnswers = function (card) {
-            if (!card.questionAnswers) {
-                card.questionAnswers = [];
-                return;
-            }
-
-            card.questionAnswers = card.questionAnswers.filter(function (item) {
-                return item.answer && item.answer.answer && item.answer.answer.trim().length > 0;
-            });
-
-            angular.forEach(card.questionAnswers, function (item, key) {
-                item.ordinalNumberQuestionAnswer = key + 1;
-
-                if (angular.isUndefined(item.correct)) {
-                    item.correct = false;
-                }
-            });
-        };
 
 
         vm.selectedTopicToAdd = [];
@@ -1126,25 +1104,26 @@
         // };
 
         vm.newFlashCard = function () {
-            if (vm.newCard.question == null || angular.isUndefined(vm.newCard.question)) {
-                toastr.warning('Please fill in the word');
+            if (vm.newCardSaving) { return; }
+            var textError = vm.flashCardTextError(vm.newCard);
+            if (textError) {
+                toastr.warning(textError);
+                return;
+            }
+            if (vm.vocabularyUsage && vm.vocabularyUsage.wordLimitReached) {
+                toastr.warning(vm.vocabularyUsage.wordLimitMessage);
                 return;
             }
 
-            vm.normalizeQuestionAnswers(vm.newCard);
-
-            if (vm.newCard.questionAnswers.length > vm.MAX_QUESTION_ANSWERS) {
-                toastr.warning('Chỉ được thêm tối đa 30 answer');
-                return;
-            }
-
+            vm.newCardSaving = true;
             blockUI.start();
-            service.saveObject(vm.newCard).then(function (data) {
-                blockUI.stop();
-                vm.getPageFlashCard();
-
+            return service.saveObject(vm.newCard).then(function (data) {
+                if (!data || !data.id) {
+                    toastr.error(data && data.message || 'Không thể lưu từ mới.');
+                    vm.loadVocabularyUsage();
+                    return;
+                }
                 vm.newCard = buildNewCard();
-
                 if (data.message != null) {
                     if (data.message === 'Successfully, but there is another card like this') {
                         toastr.warning(data.message, 'Warning');
@@ -1152,8 +1131,15 @@
                         toastr.info(data.message, 'Notification');
                     }
                 } else {
-                    toastr.error('Error.', 'Warning');
+                    toastr.success('Đã thêm từ mới.');
                 }
+                vm.loadVocabularyUsage();
+                return vm.getPageFlashCard();
+            }, function (error) {
+                toastr.error(error && error.data && error.data.message || 'Không thể lưu từ mới. Vui lòng thử lại.');
+            }).finally(function () {
+                vm.newCardSaving = false;
+                blockUI.stop();
             });
         };
 
@@ -1164,19 +1150,14 @@
             if (!item || item._rowSaving) {
                 return;
             }
-
-            vm.normalizeQuestionAnswers(item);
-
-            if (item.questionAnswers.length > vm.MAX_QUESTION_ANSWERS) {
-                toastr.warning('Chỉ được thêm tối đa 30 answer');
-                return;
-            }
+            var textError = vm.flashCardTextError(item);
+            if (textError) { toastr.warning(textError); return; }
 
             item._rowSaving = true;
             item._rowSaved = false;
             item._rowSaveError = false;
 
-            service.saveObject(item).then(function (data) {
+            return service.saveObject(item).then(function (data) {
                 if(data && data.id) {
                     // API /save trả về chính flashcard vừa được đọc lại từ database.
                     // Cập nhật object hiện tại để Angular chỉ render lại đúng dòng này.
@@ -1260,7 +1241,7 @@
         };
 
         vm.duplicateFlashCard = function (item) {
-            if (!item) return;
+            if (!vm.canManageFullFlashCards || !item) return;
 
             var newItem = {
                 question: item.question,
@@ -1271,8 +1252,7 @@
                 status: item.status || 1,
                 questionType: item.questionType || { id: 6 },
                 userId: vm.currentUser.id,
-                questionTopics: [],
-                questionAnswers: []
+                questionTopics: []
             };
 
             // copy topic, KHÔNG copy id của QuestionTopic
@@ -1284,21 +1264,6 @@
                                 id: qt.topic.id,
                                 name: qt.topic.name
                             }
-                        });
-                    }
-                });
-            }
-
-            // copy answer, KHÔNG copy id
-            if (item.questionAnswers && item.questionAnswers.length > 0) {
-                angular.forEach(item.questionAnswers, function (qa) {
-                    if (qa && qa.answer && qa.answer.answer) {
-                        newItem.questionAnswers.push({
-                            answer: {
-                                answer: qa.answer.answer
-                            },
-                            correct: qa.correct,
-                            ordinalNumberQuestionAnswer: qa.ordinalNumberQuestionAnswer
                         });
                     }
                 });

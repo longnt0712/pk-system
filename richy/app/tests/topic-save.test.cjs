@@ -100,3 +100,16 @@ test('the service keeps the HTTP failure for callers and snapshots the submitted
     assert.equal(callbackFailure, failure);
     assert.equal(h.requests[0].data.content, 'Keep this input');
 });
+
+test('a full lesson quota explains the restriction and blocks only new lessons', async () => {
+    const h = harness(() => ({data: {id: 10}}));
+    h.controller.vocabularyUsage = {topicLimitReached: true,
+        topicLimitMessage: 'Bạn đã có 50/50 bài từ vựng. Bạn vẫn sửa và học các bài đã có. Liên hệ quản trị viên.'};
+    h.controller.saveObjectValidate();
+    assert.equal(h.requests.length, 0);
+    assert.match(h.messages.at(-1).message, /50\/50.*sửa và học.*quản trị viên/);
+    h.controller.topic.id = 10;
+    await h.controller.saveObjectValidate();
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.closes.length, 1);
+});

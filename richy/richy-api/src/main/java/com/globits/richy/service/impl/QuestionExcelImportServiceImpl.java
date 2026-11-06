@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.globits.richy.domain.Question;
+import com.globits.richy.question.VocabularyPolicy;
 import com.globits.richy.domain.QuestionTopic;
 import com.globits.richy.domain.QuestionType;
 import com.globits.richy.domain.Topic;
@@ -50,7 +51,6 @@ public class QuestionExcelImportServiceImpl
 
     private static final Long FLASH_CARD_TYPE_ID = 6L;
     private static final int MAX_IMPORT_ROWS = 5000;
-    private static final int MAX_TEXT_LENGTH = 200;
     private static final long MAX_QUESTIONS_PER_USER = 20000L;
 
     @Autowired
@@ -987,14 +987,14 @@ public class QuestionExcelImportServiceImpl
         }
 
         if (cleanText(row.getWord()).length()
-                > MAX_TEXT_LENGTH) {
+                > VocabularyPolicy.WORD_LENGTH) {
 
             return "Word vượt quá 200 ký tự";
         }
 
         if (!isBlank(row.getPronounce())
                 && cleanText(row.getPronounce()).length()
-                > MAX_TEXT_LENGTH) {
+                > VocabularyPolicy.PRONOUNCE_LENGTH) {
 
             return "Pronounce vượt quá 200 ký tự";
         }
@@ -1004,9 +1004,9 @@ public class QuestionExcelImportServiceImpl
 
         if (!isBlank(motherTongue)
                 && cleanText(motherTongue).length()
-                > MAX_TEXT_LENGTH) {
+                > VocabularyPolicy.MEANING_LENGTH) {
 
-            return "First language vượt quá 200 ký tự";
+            return "Nghĩa tiếng Việt vượt quá 500 ký tự";
         }
 
         if (!isBlank(row.getLevel())

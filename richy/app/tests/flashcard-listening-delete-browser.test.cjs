@@ -12,7 +12,7 @@ const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
 const source = fs.readFileSync(path.join(app, 'question/controllers/QuestionController.js'), 'utf8');
 const template = fs.readFileSync(path.join(app, 'question/views/listing.html'), 'utf8');
 const feature = source.slice(source.indexOf('vm.selectedFlashCardIds = {};'), source.indexOf('// $scope.setPage'));
-const loadPage = source.slice(source.indexOf('vm.getPageFlashCard = function ()'), source.indexOf('vm.clickShowListFlashCard = function'));
+const loadPage = source.slice(source.indexOf('var flashCardPageRequest = 0;'), source.indexOf('vm.clickShowListFlashCard = function'));
 const listStart = template.indexOf('<div class="flashcard-delete-toolbar"');
 const listEnd = template.indexOf('<!--<div  id="flashcards"', listStart);
 // The app's jQuery template loader expands these legacy self-closing textareas.
@@ -39,6 +39,7 @@ async function fixture(browser, width = 1440) {
     page.setDefaultTimeout(10000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await page.route('**/*', route => {
         const url = new URL(route.request().url());
         if (url.pathname.includes('/webfonts/')) {
@@ -70,6 +71,8 @@ async function fixture(browser, width = 1440) {
         angular.module('FixtureApp', ['ui.bootstrap', 'ngSanitize'])
             .controller('Fixture', ['$scope', '$uibModal', '$q', function ($scope, modal, $q) {
                 const vm = this;
+                vm.canManageFullFlashCards = true;
+                vm.canDeleteFlashCards = true;
                 vm.status = {id: 3};
                 vm.statuses = [{id: 3, name: 'Tất cả (no listening)'}, {id: 4, name: 'Đánh dấu'}, {id: 5, name: 'Listening'}];
                 vm.searchDto = {status: 3, pageIndex: 1, pageSize: 5};
@@ -77,6 +80,7 @@ async function fixture(browser, width = 1440) {
                 vm.showListFlashCard = true;
                 vm.createQuiz = () => {};
                 vm.loadLevelTable = () => {};
+                vm.loadVocabularyUsage = () => {};
                 const toastr = {};
                 for (const type of ['error', 'success']) toastr[type] = message => window.messages.push({type, message});
                 const service = {
@@ -104,6 +108,8 @@ async function fixture(browser, width = 1440) {
             }]);
         angular.bootstrap(document, ['FixtureApp']);
     }, {feature, loadPage});
+    assert.deepEqual(errors, []);
+    await page.locator('.flashcard-delete-toolbar').waitFor();
     return {page, errors};
 }
 

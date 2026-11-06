@@ -93,7 +93,7 @@
                 </li>
                 <li class="dropdown vocabulary-nav"
                     ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category')}"
-                    ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
+                    ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin || settings.isFlashCardUser)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         Vocabulary <span class="caret"></span>
                     </a>
@@ -107,8 +107,8 @@
                         </li>
                         <li ng-class="{'active': $state.includes('application.question')}"><a href="question/3"><i class="fa fa-clone"></i> YOUR FLASHCARDS</a></li>
                         <li ng-class="{'active': $state.includes('application.view')}"><a href="view/3"><i class="fa fa-gamepad"></i> GAME MODES</a></li>
-                        <li ng-class="{'active': $state.includes('application.topic')}"><a href="topics"><i class="fa fa-list-ul"></i> TOPIC</a></li>
-                        <li ng-class="{'active': $state.includes('application.topic_category')}" ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-folder-open"></i> TOPIC CATEGORIES</a></li>
+                        <li ng-class="{'active': $state.includes('application.topic')}"><a href="topics"><i class="fa fa-list-ul"></i> BÀI TỪ VỰNG</a></li>
+                        <li ng-class="{'active': $state.includes('application.topic_category')}" ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-folder-open"></i> NHÓM BÀI TỪ VỰNG</a></li>
                     </ul>
                 </li>
 

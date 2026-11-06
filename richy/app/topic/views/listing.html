@@ -5,9 +5,16 @@
     
         <div class="portlet light bordered">
             <div class="portlet-body">
+                <div class="alert" ng-if="vm.vocabularyUsage && vm.vocabularyUsage.topicLimit >= 0"
+                     ng-class="vm.vocabularyUsage.topicLimitReached ? 'alert-warning' : 'alert-info'" aria-live="polite">
+                    <strong>{{vm.vocabularyUsage.role}}: {{vm.vocabularyUsage.topicCount | number:0}} / {{vm.vocabularyUsage.topicLimit | number:0}} bài từ vựng.</strong>
+                    <p ng-if="vm.vocabularyUsage.topicLimitReached" role="alert">{{vm.vocabularyUsage.topicLimitMessage}}</p>
+                    <p ng-if="!vm.vocabularyUsage.topicLimitReached">Đạt hạn mức sẽ tạm dừng tạo bài mới; bạn vẫn sửa và học các bài đã có.</p>
+                </div>
+                <div ng-if="vm.vocabularyUsageError" role="status">{{vm.vocabularyUsageError}} <button type="button" class="btn btn-link" ng-click="vm.loadVocabularyUsage()">Thử lại</button></div>
                 <div class="row">
-                    <div class="col-md-1 margin-bottom-10">
-                        <button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Add Topic</button>
+                    <div class="col-md-2 margin-bottom-10">
+                        <button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm bài từ vựng</button>
                     </div>
                     <div class="col-md-3 margin-bottom-10">
                         <div class="input-group" style="padding-left: 10px">
@@ -26,7 +33,7 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
-                    <div class="col-md-5 margin-bottom-10">
+                    <div class="col-md-4 margin-bottom-10">
                         <div class="input-group" style="padding-left: 10px">
                             <input ng-model="vm.searchDto.contentSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by content......">
                             <div class="input-group-btn">
@@ -36,24 +43,24 @@
                     </div>
 
                 </div>
-                <h3 id="topic-list-title">Danh sách topic</h3>
-                <p class="text-muted">Tìm topic theo tên, nội dung hoặc loại. Chọn thao tác trên từng dòng để quản lý topic.</p>
+                <h3 id="topic-list-title">Danh sách bài từ vựng</h3>
+                <p class="text-muted">Tìm bài từ vựng theo tên, nội dung hoặc nhóm. Chọn thao tác trên từng dòng để quản lý bài.</p>
                 <table id="bsTableControl" aria-labelledby="topic-list-title" bs-table-control="vm.bsTableControl"></table>
 
                 <div class="row margin-top-10">
                     <table class="table table-hover table-bordered product-table">
-                        <caption>Phân loại topic trong trang này — chọn Loại để cập nhật từng topic.</caption>
+                        <caption>Phân nhóm bài từ vựng trong trang này — chọn nhóm để cập nhật từng bài.</caption>
                         <thead>
                         <tr>
                             <th>STT</th>
                             <th>THAO TÁC</th>
-                            <th>NAME</th>
-                            <th>LOẠI</th>
+                            <th>TÊN BÀI TỪ VỰNG</th>
+                            <th>NHÓM BÀI TỪ VỰNG</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr ng-if="!vm.topics.length">
-                            <td colspan="4" class="text-center text-muted">Chưa có topic phù hợp. Thêm topic mới hoặc thay đổi bộ lọc tìm kiếm.</td>
+                            <td colspan="4" class="text-center text-muted">Chưa có bài từ vựng phù hợp. Thêm bài mới hoặc thay đổi bộ lọc tìm kiếm.</td>
                         </tr>
                         <tr ng-repeat="topic in vm.topics">
                             <th>{{$index + 1}}</th>
@@ -85,17 +92,18 @@
     <div modal-movable>
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title" data-ng-if="vm.topic.isNew == true"><i class="icon-plus"></i>Add Topic</h4>
-            <h4 class="modal-title" data-ng-if="vm.topic.isNew == false"><i class="fa fa-pencil-square-o"></i>Edit Topic</h4>
+            <h4 class="modal-title" data-ng-if="vm.topic.isNew == true"><i class="icon-plus"></i>Thêm bài từ vựng</h4>
+            <h4 class="modal-title" data-ng-if="vm.topic.isNew == false"><i class="fa fa-pencil-square-o"></i>Sửa bài từ vựng</h4>
         </div>
         <div class="modal-body">
+            <div class="alert alert-warning" ng-if="vm.topic.isNew && vm.vocabularyUsage.topicLimitReached" role="alert">{{vm.vocabularyUsage.topicLimitMessage}}</div>
             <div class="row">
                 <div class="col-md-12">
-                    <label class="bold">Tên</label>
+                    <label class="bold">Tên bài từ vựng</label>
                     <input data-ng-model="vm.topic.name" type="text" autofocus="autofocus" class="form-control" />
                 </div>
                 <div class="col-md-12">
-                    <label class="bold">Loại</label>
+                    <label class="bold">Nhóm bài từ vựng</label>
                     <ui-select ng-model="vm.topic.topicCategory" sortable="true" close-on-select="true">
                         <ui-select-match allow-clear="false" placeholder="Loại...">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
@@ -103,31 +111,31 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <div class="col-md-12">
+                <div class="col-md-12" ng-if="vm.canManageFullVocabularyLessons">
                     <label class="bold">Content</label>
                     <textarea rows="12" class="form-control" ng-model="vm.topic.content"  />
                 </div>
-                <div class="col-md-12">
+                <div class="col-md-12" ng-if="vm.canManageFullVocabularyLessons">
                     <label class="bold">Content HTML</label>
                     <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.topic.contentHtml"  />
                 </div>
-                <div class="col-md-12 margin-top-10">
+                <div class="col-md-12 margin-top-10" ng-if="vm.canManageFullVocabularyLessons">
                     <label class="bold">Trạng thái hiển thị</label>
                     <div>
                         <label>
                             <input type="checkbox" ng-model="vm.topic.isShow">
-                            Hiển thị topic
+                            Hiển thị bài từ vựng
                         </label>
                     </div>
                     <small class="text-muted">
-                        {{vm.topic.isShow ? 'Topic đang được hiển thị' : 'Topic đang bị ẩn'}}
+                        {{vm.topic.isShow ? 'Bài từ vựng đang được hiển thị' : 'Bài từ vựng đang bị ẩn'}}
                     </small>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
-            <button type="button" ng-click="vm.saveObjectValidate();" ng-disabled="vm.savingTopic" class="btn btn-primary">{{vm.savingTopic ? 'Đang lưu...' : 'Lưu'}}</button>
+            <button type="button" ng-click="vm.saveObjectValidate();" ng-disabled="vm.savingTopic || (vm.topic.isNew && vm.vocabularyUsage.topicLimitReached)" class="btn btn-primary">{{vm.savingTopic ? 'Đang lưu...' : 'Lưu'}}</button>
         </div>
     </div>
 </script>

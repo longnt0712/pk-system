@@ -36,13 +36,13 @@ public class RestTopicController {
 	public List<TopicForListAllDto> getAllTopics(@RequestBody TopicDto searchDto) {
 		return service.getAllTopics(searchDto);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public TopicDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public TopicDto saveOne(@RequestBody TopicDto searchDto) {
 		return service.saveObject(searchDto);

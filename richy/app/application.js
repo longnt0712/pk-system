@@ -314,6 +314,7 @@
             settings.permissionsLoaded = false;
             settings.isAdmin = false;
             settings.isViewer = false;
+            settings.isFlashCardUser = false;
             settings.isStaff = false;
             settings.isStudentManagerment = false;
             settings.isEducationManagerment = false;
@@ -323,6 +324,7 @@
                 settings.isFairGift = false;
                 settings.isAdmin = false;
                 settings.isViewer = false;
+                settings.isFlashCardUser = false;
                 settings.isStaff = false;
                 settings.isStudentManagerment = false;
                 settings.isEducationManagerment = false;
@@ -336,6 +338,7 @@
                 }
 
                 angular.forEach(user.roles, function (value) {
+                    if (value.name === 'ROLE_USER') { settings.isFlashCardUser = true; }
                     if (value.name === 'ROLE_PLAY') { settings.isFairPlay = true; }
                     if (value.name === 'ROLE_GIFT') { settings.isFairGift = true; }
                     if (value.name === "ROLE_ADMIN") {

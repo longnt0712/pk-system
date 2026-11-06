@@ -23,7 +23,7 @@
                     <!--</div>-->
                     <div class="col-md-2" style="margin-bottom: 10px">
                         <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
-                            <ui-select-match allow-clear="true" placeholder="Loại topic...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-match allow-clear="true" placeholder="Nhóm bài từ vựng...">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
                                 <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
                             </ui-select-choices>
@@ -31,7 +31,7 @@
                     </div>
                     <div class="col-md-3 margin-bottom-10">
                         <ui-select multiple ng-change="vm.searchTopicChange()" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
-                            <ui-select-match allow-clear="true" placeholder="Search by topic...">{{$item.name}}</ui-select-match>
+                            <ui-select-match allow-clear="true" placeholder="Tìm bài từ vựng...">{{$item.name}}</ui-select-match>
                             <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
                                 <div class="bold ui-select-pre-wrap" ng-bind-html="t.name | highlight: $select.search"></div>
                             </ui-select-choices>
@@ -305,14 +305,14 @@
 
                     <div class="row margin-bottom-10">
                         <div class="col-md-12">
-                            <button class="btn btn-brown level-table-toggle" ng-click="vm.toggleLevelTable()">
+                            <button class="btn btn-brown level-table-toggle" ng-if="vm.canManageFullFlashCards" ng-click="vm.toggleLevelTable()">
                                 <i class="fa-solid" ng-class="vm.showLevelTable ? 'fa-eye-slash' : 'fa-table-list'"></i>
                                 {{vm.showLevelTable ? 'Ẩn bảng level' : 'Hiển thị bảng level của topic'}}
                             </button>
                         </div>
                     </div>
 
-                    <div class="level-table-panel" ng-if="vm.showLevelTable">
+                    <div class="level-table-panel" ng-if="vm.canManageFullFlashCards && vm.showLevelTable">
                         <div class="level-table-loading" ng-if="vm.levelTableLoading">
                             <i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ từ của topic...
                         </div>
@@ -369,7 +369,7 @@
                     <div class="text-muted" ng-if="vm.flashCardsLoading" role="status" aria-live="polite" style="padding:8px 12px">
                         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang cập nhật danh sách flashcard...
                     </div>
-                    <div class="flashcard-delete-toolbar" ng-if="vm.showListFlashCard"
+                    <div class="flashcard-delete-toolbar" ng-if="vm.showListFlashCard && vm.canDeleteFlashCards"
                          role="group" aria-label="Xóa flashcard đã chọn">
                         <button type="button" class="btn btn-default" ng-click="vm.toggleAllFlashCards()"
                                 ng-disabled="vm.flashCardsLoading || vm.flashCardDeleteBusy || vm.flashCardDeleteConfirmOpen || !vm.questions.length">
@@ -391,20 +391,25 @@
                         <div class="row hover-item">
 
                             <div class="col-md-3 hover-item flashcard-word-cell">
-                                <input type="checkbox" ng-if="item.id"
+                                <input type="checkbox" ng-if="item.id && vm.canDeleteFlashCards"
                                        ng-model="vm.selectedFlashCardIds[item.id]"
                                        ng-disabled="vm.flashCardsLoading || vm.flashCardDeleteBusy || vm.flashCardDeleteConfirmOpen || item._rowSaving || item._levelSaving"
                                        aria-label="Chọn flashcard {{item.question}} (ID {{item.id}})">
-                                <input ng-model="item.question" type="text" class="form-control input-underline-only" placeholder="word..">
+                                <div style="flex:1;min-width:0">
+                                    <input ng-model="item.question" ng-model-options="{allowInvalid:true}" ng-maxlength="200" type="text" class="form-control input-underline-only" placeholder="Word" aria-label="Word">
+                                    <small ng-class="{'text-danger': item.question.trim().length > 200}" class="text-muted">{{(item.question || '').trim().length}}/200</small>
+                                </div>
                             </div>
                             <div class="col-md-1 hover-item">
-                                <input placeholder="pronounce..." class="form-control input-underline-only" ng-model="item.pronounce"/>
+                                <input placeholder="Phiên âm" aria-label="Phiên âm" class="form-control input-underline-only" ng-model="item.pronounce" ng-model-options="{allowInvalid:true}" ng-maxlength="200"/>
+                                <small ng-class="{'text-danger': item.pronounce.length > 200}" class="text-muted">{{(item.pronounce || '').length}}/200</small>
                             </div>
                             <div class="hover-item" ng-class="vm.isListeningFlashCardList() ? 'col-md-4' : 'col-md-5'">
-                                <input ng-model="item.motherTongue" type="text" class="form-control input-underline-only" placeholder="First language...">
+                                <input ng-model="item.motherTongue" ng-model-options="{allowInvalid:true}" ng-maxlength="500" type="text" class="form-control input-underline-only" placeholder="Nghĩa tiếng Việt" aria-label="Nghĩa tiếng Việt">
+                                <small ng-class="{'text-danger': item.motherTongue.length > 500}" class="text-muted">{{(item.motherTongue || '').length}}/500</small>
                             </div>
                             <div class="col-md-1 hover-item">
-                                <select class="form-control input-underline-only" ng-model="item.level" title="CEFR level">
+                                <select ng-if="vm.canManageFullFlashCards" class="form-control input-underline-only" ng-model="item.level" title="CEFR level">
                                     <option value="">--</option>
                                     <option value="A1">A1</option>
                                     <option value="A2">A2</option>
@@ -413,6 +418,7 @@
                                     <option value="C1">C1</option>
                                     <option value="C2">C2</option>
                                 </select>
+                                <span ng-if="!vm.canManageFullFlashCards" class="form-control-static" title="CEFR level">{{item.level || '--'}}</span>
                             </div>
                             <!--<div class="col-md-1 hover-item">-->
                             <!--<input ng-if="settings.isAdmin == true" placeholder="website..." class="form-control input-underline-only" ng-model="item.website"  />-->
@@ -423,26 +429,27 @@
                                 <!--<i ng-show="item.showDetail == true" class="fa fa-eye" style="color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>-->
 
                                 <i ng-if="!item._rowSaving && !item._rowSaved" class="fa-solid fa-floppy-disk"
-                                   title="Lưu riêng dòng này" style="cursor:pointer;font-size: 18px; padding-top: 12px"
+                                   title="{{vm.flashCardTextError(item) || 'Lưu riêng dòng này'}}" style="cursor:pointer;font-size: 18px; padding-top: 12px"
                                    data-ng-click="vm.editFlashCard(item)"></i>
+                                <span class="text-danger" ng-if="vm.flashCardTextError(item)">{{vm.flashCardTextError(item)}}</span>
                                 <i ng-if="item._rowSaving" class="fa fa-spinner fa-spin"
                                    title="Đang lưu dòng này" style="font-size:18px; padding-top:12px"></i>
                                 <i ng-if="item._rowSaved" class="fa fa-check-circle text-success"
                                    title="Đã lưu" style="font-size:18px; padding-top:12px"></i>
                                 <i ng-if="item._rowSaveError" class="fa fa-exclamation-circle text-danger"
                                    title="Lưu lỗi - bấm lại biểu tượng lưu" style="font-size:18px; padding-top:12px; margin-left:5px"></i>
-                                <i ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
-                                <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
+                                <i ng-if="vm.canManageFullFlashCards" ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
+                                <i ng-if="vm.canManageFullFlashCards" ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
                                 <!--&nbsp; &nbsp;-->
                                 <!--<i ng-if="item.status === 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>-->
                                 <!--<i ng-if="item.status != 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveImportant(item)"></i>-->&nbsp; &nbsp;
-                                <i ng-if="item.status === 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>
-                                <i ng-if="item.status != 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveListening(item)"></i> &nbsp; &nbsp;
+                                <i ng-if="vm.canManageFullFlashCards && item.status === 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>
+                                <i ng-if="vm.canManageFullFlashCards && item.status != 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveListening(item)"></i> &nbsp; &nbsp;
                                 <i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i> &nbsp; &nbsp;
 
-                                <i class="fa fa-copy" title="Duplicate" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="vm.duplicateFlashCard(item)"> </i>
+                                <i ng-if="vm.canManageFullFlashCards" class="fa fa-copy" title="Duplicate" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="vm.duplicateFlashCard(item)"> </i>
                                 <button type="button" class="btn btn-link listening-card-delete text-danger"
-                                        ng-if="vm.isListeningFlashCardList() && item.status === 5"
+                                        ng-if="vm.canDeleteFlashCards && vm.isListeningFlashCardList() && item.status === 5"
                                         ng-click="vm.deleteListeningCard(item)"
                                         ng-disabled="vm.flashCardsLoading || vm.flashCardDeleteBusy || vm.flashCardDeleteConfirmOpen || item._rowSaving || item._levelSaving"
                                         title="Xóa flashcard" aria-label="Xóa flashcard {{item.question}} (ID {{item.id}})">
@@ -451,10 +458,11 @@
                             </div>
 
 
-                            <div class="col-md-12" ng-if="item.showDetail == true">
+                            <div class="col-md-12" ng-if="vm.canManageFullFlashCards && item.showDetail == true">
                                 <div class="col-md-12 margin-bottom-10 margin-top-10">
                                     <label class="bold">Definition - Description</label>
                                     <textarea ui-tinymce="tinymceOptionsToReview" rows="6" class="form-control" ng-model="item.description"/>
+                                    <small ng-class="{'text-danger': vm.descriptionLength(item.description) > 2000}" class="text-muted">{{vm.descriptionLength(item.description)}}/2.000 ký tự nội dung</small>
                                 </div>
                                 <!--<div class="col-md-12 margin-bottom-10" >-->
                                 <!--<label class="bold">Examples</label>-->
@@ -468,47 +476,6 @@
                                             <div class="bold" ng-bind-html="t.name | highlight: $select.search"></div>
                                         </ui-select-choices>
                                     </ui-select>
-                                </div>
-
-                                <div class="col-md-12 margin-bottom-10">
-                                    <label class="bold">Question Answers</label>
-
-                                    <table class="table table-striped table-bordered">
-                                        <thead>
-                                        <tr>
-                                            <th style="width: 50px">#</th>
-                                            <th>Answer</th>
-                                            <th style="width: 90px">Correct</th>
-                                            <th style="width: 70px">Action</th>
-                                        </tr>
-                                        </thead>
-
-                                        <tbody>
-                                        <tr ng-repeat="qa in item.questionAnswers track by $index">
-                                            <td>{{$index + 1}}</td>
-
-                                            <td>
-                                                <input type="text" class="form-control input-underline-only" ng-model="qa.answer.answer">
-                                            </td>
-
-                                            <td class="text-center">
-                                                <input type="checkbox" ng-model="qa.correct">
-                                            </td>
-
-                                            <td class="text-center">
-                                                <i class="fa-solid fa-trash" style="cursor:pointer" ng-click="vm.deleteQuestionAnswer(item, $index)"> </i>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-
-                                    <button type="button" class="btn btn-default" ng-disabled="item.questionAnswers && item.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS" ng-click="vm.addQuestionAnswer(item)">
-                                        <i class="fa fa-plus"></i> Add answer {{item.questionAnswers ? item.questionAnswers.length : 0}}/30
-                                    </button>
-
-                                    <span ng-if="item.questionAnswers && item.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS" class="text-danger" style="margin-left: 10px;">
-                                        Đã đạt tối đa 30 answer
-                                    </span>
                                 </div>
 
                                 <!--<div class="col-md-12 margin-bottom-10">-->
@@ -644,7 +611,7 @@
         <!--</div>-->
 
         <!--<div class="col-md-10">-->
-        <!--<input data-ng-model="vm.topic.name" type="text" placeholder="Topic name (Ex: Science, Environment...)"  class="form-control input-underline-only" />-->
+        <!--<input data-ng-model="vm.topic.name" type="text" placeholder="Tên bài từ vựng (Ex: Science, Environment...)"  class="form-control input-underline-only" />-->
         <!--</div>-->
         <!--<div class="col-md-2 text-center">-->
         <!--<i style="padding-top: 17px; cursor: pointer; color: #0978b1" class="fa fa-plus" ng-click="vm.saveTopic()"></i>-->
@@ -669,11 +636,21 @@
                     <div class="col-md-12  text-center margin-bottom-10">
                         <h4 class="bold">NEW WORD</h4>
                     </div>
+                    <div class="col-md-12" ng-if="vm.vocabularyUsage && vm.vocabularyUsage.wordLimit >= 0">
+                        <div class="alert" ng-class="vm.vocabularyUsage.wordLimitReached ? 'alert-warning' : 'alert-info'" aria-live="polite">
+                            <strong>{{vm.vocabularyUsage.role}}: {{vm.vocabularyUsage.wordCount | number:0}} / {{vm.vocabularyUsage.wordLimit | number:0}} thẻ từ vựng.</strong>
+                            <p ng-if="vm.vocabularyUsage.wordLimitReached" role="alert">{{vm.vocabularyUsage.wordLimitMessage}}</p>
+                            <p ng-if="!vm.vocabularyUsage.wordLimitReached">Đạt hạn mức sẽ tạm dừng thêm từ mới; bạn vẫn sửa và học các thẻ đã có.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-12" ng-if="vm.vocabularyUsageError" role="status">
+                        {{vm.vocabularyUsageError}} <button type="button" class="btn btn-link" ng-click="vm.loadVocabularyUsage()">Thử lại</button>
+                    </div>
                     <div class="col-md-12">
                         <div class="row">
                             <div class="col-md-12" style="margin-bottom: 10px">
                                 <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
-                                    <ui-select-match allow-clear="true" placeholder="Loại topic...">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-match allow-clear="true" placeholder="Nhóm bài từ vựng...">{{$select.selected.name}}</ui-select-match>
                                     <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
                                         <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
                                     </ui-select-choices>
@@ -681,7 +658,7 @@
                             </div>
                             <div class="col-md-12" style="margin-bottom: 10px">
                                 <ui-select multiple ng-change="vm.topicChange()" data-ng-model="vm.selectedTopicToAdd" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                    <ui-select-match allow-clear="true" placeholder="Choose topic (Optional)">{{$item.name}}</ui-select-match>
+                                    <ui-select-match allow-clear="true" placeholder="Chọn bài từ vựng (không bắt buộc)">{{$item.name}}</ui-select-match>
                                     <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
                                         <div class="bold ui-select-pre-wrap" ng-bind-html="t.name | highlight: $select.search"></div>
                                     </ui-select-choices>
@@ -694,19 +671,22 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <!--<label class="bold">Word</label>-->
-                                        <input placeholder="Word" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.question" ng-mouseup="vm.getSelectedText()"/>
+                                        <input placeholder="Word" aria-label="Word mới" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.question" ng-model-options="{allowInvalid:true}" ng-maxlength="200" ng-mouseup="vm.getSelectedText()"/>
+                                        <small class="text-muted" ng-class="{'text-danger': vm.newCard.question.trim().length > 200}">{{(vm.newCard.question || '').trim().length}}/200</small>
                                     </div>
                                     <div class="col-md-6">
                                         <!--<label class="bold">Pronounce</label>-->
-                                        <input placeholder="Pronounce" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.pronounce"/>
+                                        <input placeholder="Phiên âm" aria-label="Phiên âm mới" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.pronounce" ng-model-options="{allowInvalid:true}" ng-maxlength="200"/>
+                                        <small class="text-muted" ng-class="{'text-danger': vm.newCard.pronounce.length > 200}">{{(vm.newCard.pronounce || '').length}}/200</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-12" style="margin-bottom: 10px">
                                 <!--<label class="bold">First language </label>-->
-                                <input placeholder="First language" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.motherTongue"/>
+                                <input placeholder="Nghĩa tiếng Việt" aria-label="Nghĩa tiếng Việt mới" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.motherTongue" ng-model-options="{allowInvalid:true}" ng-maxlength="500"/>
+                                <small class="text-muted" ng-class="{'text-danger': vm.newCard.motherTongue.length > 500}">{{(vm.newCard.motherTongue || '').length}}/500</small>
                             </div>
-                            <div class="col-md-12" style="margin-bottom: 10px">
+                            <div class="col-md-12" ng-if="vm.canManageFullFlashCards" style="margin-bottom: 10px">
                                 <label class="bold">CEFR level</label>
                                 <select class="form-control" ng-model="vm.newCard.level">
                                     <option value="">-- Chưa xác định --</option>
@@ -718,9 +698,10 @@
                                     <option value="C2">C2</option>
                                 </select>
                             </div>
-                            <div class="col-md-12" style="margin-bottom: 10px">
+                            <div class="col-md-12" ng-if="vm.canManageFullFlashCards" style="margin-bottom: 10px">
                                 <label class="bold">Definition - Description</label>
                                 <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.newCard.description"/>
+                                <small class="text-muted" ng-class="{'text-danger': vm.descriptionLength(vm.newCard.description) > 2000}">{{vm.descriptionLength(vm.newCard.description)}}/2.000 ký tự nội dung</small>
                             </div>
                             <!--<div class="col-md-12" style="margin-bottom: 10px">-->
                             <!--&lt;!&ndash;<label class="bold">Pronounce</label>&ndash;&gt;-->
@@ -741,47 +722,10 @@
                             <!--</ui-select>-->
                             <!--</div>-->
 
-                            <div class="col-md-12" style="margin-bottom: 10px">
-                                <label class="bold">Question Answers</label>
-
-                                <table class="table table-striped table-bordered">
-                                    <thead>
-                                    <tr>
-                                        <th style="width: 50px">#</th>
-                                        <th>Answer</th>
-                                        <th style="width: 90px">Correct</th>
-                                        <th style="width: 70px">Action</th>
-                                    </tr>
-                                    </thead>
-
-                                    <tbody>
-                                    <tr ng-repeat="qa in vm.newCard.questionAnswers track by $index">
-                                        <td>{{$index + 1}}</td>
-
-                                        <td>
-                                            <input type="text" class="form-control input-underline-only" placeholder="Answer..." ng-model="qa.answer.answer">
-                                        </td>
-
-                                        <td class="text-center">
-                                            <input type="checkbox" ng-model="qa.correct">
-                                        </td>
-
-                                        <td class="text-center">
-                                            <i class="fa-solid fa-trash" style="cursor:pointer" ng-click="vm.deleteQuestionAnswer(vm.newCard, $index)"> </i>
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-
-                                <button type="button" class="btn btn-default" ng-click="vm.addQuestionAnswer(vm.newCard)">
-                                    <i class="fa fa-plus"></i> Add answer
-                                </button>
-                            </div>
-
                             <div class="col-md-12" style="margin-top: 10px">
                                 <div class="row">
                                     <div class="col-xs-8 text-left">
-                                        <button type="button" class="btn btn-success" question-excel-import topics="vm.topics"
+                                        <button type="button" class="btn btn-success" ng-if="vm.canManageFullFlashCards" question-excel-import topics="vm.topics"
                                                 user-id="vm.currentUser.id" on-topic-created="vm.getTopics()" on-imported="vm.onFlashCardImported()">
                                             <i class="fa fa-file-excel-o"></i> Import Excel
                                         </button>
@@ -792,7 +736,8 @@
                                     </div>
 
                                     <div class="col-xs-4 text-right">
-                                        <button type="button" class="btn btn-brown margin-left-10" data-ng-click="vm.newFlashCard()">
+                                        <p class="text-danger" ng-if="vm.flashCardTextError(vm.newCard)">{{vm.flashCardTextError(vm.newCard)}}</p>
+                                        <button type="button" class="btn btn-brown margin-left-10" ng-disabled="vm.newCardSaving || vm.vocabularyUsage.wordLimitReached || vm.flashCardTextError(vm.newCard)" data-ng-click="vm.newFlashCard()">
                                             <i class="fa-solid fa-file-circle-plus"></i> <strong>New card</strong>
                                         </button>
                                     </div>
@@ -878,42 +823,42 @@
                 </div>
 
                 <fieldset ng-disabled="importVm.loadingPreview || importVm.loadingConfirm">
-                    <legend class="bold" style="font-size: 16px; margin-bottom: 10px;">Topic nhận dữ liệu</legend>
+                    <legend class="bold" style="font-size: 16px; margin-bottom: 10px;">Bài từ vựng nhận dữ liệu</legend>
                     <div class="form-group">
                         <label class="radio-inline">
                             <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="existing"
-                                   ng-change="importVm.onTopicModeChanged()"> Topic có sẵn
+                                   ng-change="importVm.onTopicModeChanged()"> Bài từ vựng có sẵn
                         </label>
                         <label class="radio-inline">
                             <input type="radio" name="excel-import-topic-mode" ng-model="importVm.topicMode" value="new"
-                                   ng-change="importVm.onTopicModeChanged()"> Tạo topic mới
+                                   ng-change="importVm.onTopicModeChanged()"> Tạo bài từ vựng mới
                         </label>
                     </div>
 
                     <div class="form-group" ng-if="importVm.topicMode === 'existing'">
-                        <label class="bold" for="excel-import-topic-search">Topic</label>
+                        <label class="bold" for="excel-import-topic-search">Bài từ vựng</label>
                         <ui-select id="excel-import-topic" input-id="excel-import-topic-search" ng-model="importVm.selectedTopic"
                                    theme="bootstrap" search-enabled="true" reset-search-input="true" style="width: 100%"
-                                   ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" title="Tìm và chọn topic">
-                            <ui-select-match allow-clear="true" placeholder="Gõ để tìm topic...">{{$select.selected.name}}</ui-select-match>
+                                   ng-disabled="importVm.loadingPreview || importVm.loadingConfirm" title="Tìm và chọn bài từ vựng">
+                            <ui-select-match allow-clear="true" placeholder="Gõ để tìm bài từ vựng...">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="topic in importVm.topics | filter: {name: $select.search} track by topic.id">
                                 <div ng-bind="topic.name"></div>
                             </ui-select-choices>
-                            <ui-select-no-choice>Không tìm thấy topic phù hợp.</ui-select-no-choice>
+                            <ui-select-no-choice>Không tìm thấy bài từ vựng phù hợp.</ui-select-no-choice>
                         </ui-select>
                         <div class="help-block" ng-if="!importVm.topics.length">
-                            Chưa có topic. Chọn “Tạo topic mới” để tạo ngay trong cửa sổ này.
+                            Chưa có topic. Chọn “Tạo bài từ vựng mới” để tạo ngay trong cửa sổ này.
                         </div>
                     </div>
 
                     <div ng-if="importVm.topicMode === 'new'">
                         <div class="form-group">
-                            <label class="bold" for="excel-import-topic-name">Tên topic mới <span class="text-danger">*</span></label>
+                            <label class="bold" for="excel-import-topic-name">Tên bài từ vựng mới <span class="text-danger">*</span></label>
                             <input id="excel-import-topic-name" type="text" class="form-control" maxlength="100"
                                    ng-model="importVm.newTopic.name" placeholder="Nhập tên topic" aria-required="true">
                         </div>
                         <div class="form-group">
-                            <label class="bold" for="excel-import-topic-category-search">Category (loại topic) <span class="text-danger">*</span></label>
+                            <label class="bold" for="excel-import-topic-category-search">Nhóm bài từ vựng <span class="text-danger">*</span></label>
                             <ui-select id="excel-import-topic-category" input-id="excel-import-topic-category-search"
                                        ng-model="importVm.newTopic.topicCategory" theme="bootstrap" search-enabled="true"
                                        reset-search-input="true" style="width: 100%" title="Tìm và chọn category"
@@ -932,15 +877,15 @@
                                 <button type="button" class="btn btn-link" ng-click="importVm.loadTopicCategories()">Thử lại</button>
                             </div>
                             <p class="help-block" ng-if="!importVm.loadingCategories && !importVm.categoryLoadError && !importVm.topicCategories.length">
-                                Chưa có category để chọn. Vui lòng thêm category trước khi tạo topic mới.
+                                Chưa có nhóm bài từ vựng để chọn. Vui lòng thêm nhóm trước khi tạo bài mới.
                             </p>
                         </div>
-                        <p class="help-block">Topic được lưu khi bấm “Tạo topic và xem trước” và có thể dùng lại nếu bạn đổi file hoặc đóng cửa sổ.</p>
+                        <p class="help-block">Bài từ vựng được lưu khi bấm “Tạo bài từ vựng và xem trước” và có thể dùng lại nếu bạn đổi file hoặc đóng cửa sổ.</p>
                     </div>
                 </fieldset>
 
                 <div class="alert alert-success" ng-if="importVm.createdTopic" role="status">
-                    Đã tạo topic <strong>{{importVm.createdTopic.name}}</strong>. Bạn có thể chọn lại topic này để tiếp tục import.
+                    Đã tạo bài từ vựng <strong>{{importVm.createdTopic.name}}</strong>. Bạn có thể chọn lại bài từ vựng này để tiếp tục import.
                 </div>
 
                 <div class="form-group">
@@ -953,7 +898,7 @@
                     </div>
 
                     <p class="help-block">
-                        Tải file mẫu, nhập dữ liệu từ dòng 2 rồi upload lại. </p>
+                        Tải file mẫu, nhập dữ liệu từ dòng 2 rồi upload lại. Tối đa: Word 200 ký tự, phiên âm 200 ký tự, nghĩa tiếng Việt 500 ký tự. </p>
                 </div>
 
                 <div class="form-group">
@@ -975,7 +920,7 @@
                     </div>
 
                     <div class="col-md-6 text-right">
-                        <strong>Topic ID:</strong> {{importVm.preview.topicId}}
+                        <strong>Mã bài từ vựng:</strong> {{importVm.preview.topicId}}
                     </div>
                 </div>
 
@@ -1214,7 +1159,7 @@
             <button type="button" class="btn btn-primary" ng-if="!importVm.preview" ng-disabled="!importVm.canPreview()" ng-click="importVm.loadPreview()">
                 <i class="fa fa-spinner fa-spin" ng-if="importVm.loadingPreview" aria-hidden="true"></i>
                 <i class="fa fa-search" ng-if="!importVm.loadingPreview" aria-hidden="true"></i>
-                {{importVm.savingTopic ? 'Đang tạo topic...' : (importVm.loadingPreview ? 'Đang đọc file...' : (importVm.topicMode === 'new' ? 'Tạo topic và xem trước' : 'Read and preview'))}}
+                {{importVm.savingTopic ? 'Đang tạo topic...' : (importVm.loadingPreview ? 'Đang đọc file...' : (importVm.topicMode === 'new' ? 'Tạo bài từ vựng và xem trước' : 'Read and preview'))}}
             </button>
 
             <button type="button" class="btn btn-success" ng-if="importVm.preview" ng-disabled="importVm.getSelectedCount() === 0 || importVm.loadingConfirm" ng-click="importVm.confirmImport()">
@@ -1250,7 +1195,7 @@
                     </div>
 
                 </div>
-                <div class="col-md-12 margin-bottom">
+                <div class="col-md-12 margin-bottom" ng-if="vm.canManageFullFlashCards">
                     <label class="bold">Definition - Description</label>
                     <textarea rows="6" data-ng-disabled="true" class="form-control" ng-model="vm.question.description"/>
                 </div>
@@ -1305,24 +1250,28 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="bold">Word</label>
-                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.question"/>
+                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.question" ng-model-options="{allowInvalid:true}" ng-maxlength="200"/>
+                            <small>{{(vm.currentCard.question || '').trim().length}}/200</small>
                         </div>
                         <div class="col-md-6">
                             <label class="bold">Pronounce</label>
-                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.pronounce"/>
+                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.pronounce" ng-model-options="{allowInvalid:true}" ng-maxlength="200"/>
+                            <small>{{(vm.currentCard.pronounce || '').length}}/200</small>
                         </div>
                     </div>
 
                 </div>
-                <div class="col-md-12 margin-bottom-10">
+                <div class="col-md-12 margin-bottom-10" ng-if="vm.canManageFullFlashCards">
                     <label class="bold">Definition - Description</label>
                     <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.description"/>
+                    <small>{{vm.descriptionLength(vm.currentCard.description)}}/2.000 ký tự nội dung</small>
                 </div>
                 <div class="col-md-12" style="margin-bottom: 10px">
-                    <label class="bold">The meaning of your first language </label>
-                    <textarea rows="2" class="form-control" ng-model="vm.currentCard.motherTongue"/>
+                    <label class="bold">Nghĩa tiếng Việt</label>
+                    <textarea rows="2" class="form-control" ng-model="vm.currentCard.motherTongue" ng-model-options="{allowInvalid:true}" ng-maxlength="500"/>
+                    <small>{{(vm.currentCard.motherTongue || '').length}}/500</small>
                 </div>
-                <div class="col-md-12" style="margin-bottom: 10px">
+                <div class="col-md-12" ng-if="vm.canManageFullFlashCards" style="margin-bottom: 10px">
                     <label class="bold">CEFR level</label>
                     <select class="form-control" ng-model="vm.currentCard.level">
                         <option value="">-- Chưa xác định --</option>
@@ -1338,7 +1287,7 @@
                 <!--<label class="bold">Examples</label>-->
                 <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.examples"  />-->
                 <!--</div>-->
-                <div class="col-md-12 margin-bottom-10">
+                <div class="col-md-12 margin-bottom-10" ng-if="vm.canManageFullFlashCards">
                     <ui-select multiple ng-change="vm.topicChange()" data-ng-model="vm.selectedTopicToEdit" sortable="true" close-on-select="true" style="width: 100% !important;">
                         <ui-select-match allow-clear="true" placeholder="Topic...">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
@@ -1360,7 +1309,8 @@
             Chưa Thuộc
             <i ng-show="vm.currentCard.status == 1" class="fa fa-times-circle"> - </i><i ng-show="vm.currentCard.status == 2" class="fa fa-check-circle"> - </i> Số lần xem lại: {{vm.currentCard.timeReviewd}}/Số lần đúng: {{vm.currentCard.correctAnswer}}/Số lần sai: {{vm.currentCard.wrongAnswer}}
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
-            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+            <p class="text-danger" ng-if="vm.flashCardTextError(vm.currentCard)">{{vm.flashCardTextError(vm.currentCard)}}</p>
+            <button type="button" ng-click="$close('yes');" ng-disabled="vm.flashCardTextError(vm.currentCard)" class="btn btn-primary" data-dismiss="modal">Lưu</button>
         </div>
     </div>
 </script>

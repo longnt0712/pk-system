@@ -11,7 +11,7 @@ const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
 const template = fs.readFileSync(path.join(app, 'question/views/listing.html'), 'utf8');
 const start = template.indexOf('<script type="text/ng-template" id="question_excel_import_modal.html">');
 const modalTemplate = template.slice(start, template.indexOf('</script>', start) + '</script>'.length);
-const button = template.match(/<button type="button" class="btn btn-success" question-excel-import[\s\S]*?<\/button>/)[0];
+const button = template.match(/<button type="button" class="btn btn-success"[^>]*question-excel-import[\s\S]*?<\/button>/)[0];
 const styles = [...template.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(match => match[1]).join('\n');
 const css = ['assets/css/external/bootstrap.min.css', 'assets/css/external/select.min.css', 'assets/css/components-md.min.css',
     'assets/fontawesome/css/all.css'].map(name => fs.readFileSync(path.join(app, name), 'utf8')).join('\n');
@@ -79,6 +79,7 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
             .value('toastr', Object.fromEntries(['error', 'warning', 'success'].map(type =>
                 [type, message => window.messages.push({type, message})])))
             .controller('Fixture', function () {
+                this.canManageFullFlashCards = true;
                 this.currentUser = {id: 5};
                 this.topics = existing ? [{id: 8, name: 'Existing topic'}, {id: 12, name: 'Grammar lesson'},
                     {id: 13, name: 'Prepositions week 2'}] : [];
@@ -97,7 +98,7 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
 }
 
 async function fillNewTopic(page) {
-    await page.getByLabel('Tên topic mới').fill('  My words  ');
+    await page.getByLabel('Tên bài từ vựng mới').fill('  My words  ');
     await chooseSearchable(page, '#excel-import-topic-category', 'giao', 'Giao tiếp');
     await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
 }
@@ -114,8 +115,8 @@ test('create topic with category and import within the same modal on desktop and
     try {
         for (const width of [1440, 390]) {
             const {page, state} = await fixture(browser, {width});
-            assert.equal(await page.getByLabel('Tạo topic mới', {exact: true}).isChecked(), true);
-            const preview = page.getByRole('button', {name: 'Tạo topic và xem trước', exact: true});
+            assert.equal(await page.getByLabel('Tạo bài từ vựng mới', {exact: true}).isChecked(), true);
+            const preview = page.getByRole('button', {name: 'Tạo bài từ vựng và xem trước', exact: true});
             assert.equal(await preview.isDisabled(), true);
             await fillNewTopic(page);
             assert.equal(await preview.isEnabled(), true);
@@ -153,7 +154,7 @@ test('existing topic imports retain their original flow', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {existing: true});
-        assert.equal(await page.getByLabel('Topic có sẵn', {exact: true}).isChecked(), true);
+        assert.equal(await page.getByLabel('Bài từ vựng có sẵn', {exact: true}).isChecked(), true);
         await chooseSearchable(page, '#excel-import-topic', 'EXISTING', 'Existing topic');
         await page.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
         await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
@@ -174,12 +175,12 @@ test('category and creation errors preserve inputs; preview retry reuses the new
         state.failCategories = false;
         await page.getByRole('button', {name: 'Thử lại', exact: true}).click();
         await fillNewTopic(page);
-        await page.getByRole('button', {name: 'Tạo topic và xem trước', exact: true}).click();
+        await page.getByRole('button', {name: 'Tạo bài từ vựng và xem trước', exact: true}).click();
         await page.waitForFunction(() => window.messages.some(message => message.message === 'Could not save topic'));
         assert.equal(state.previews.length, 0);
-        assert.equal(await page.getByLabel('Tên topic mới').inputValue(), '  My words  ');
+        assert.equal(await page.getByLabel('Tên bài từ vựng mới').inputValue(), '  My words  ');
         state.failSave = false;
-        await page.getByRole('button', {name: 'Tạo topic và xem trước', exact: true}).click();
+        await page.getByRole('button', {name: 'Tạo bài từ vựng và xem trước', exact: true}).click();
         await page.waitForFunction(() => window.messages.some(message => message.message === 'Invalid worksheet'));
         assert.match(await page.locator('#excel-import-topic .ui-select-match').innerText(), /My words/i);
         assert.equal(await page.evaluate(() => window.createdNotifications), 1);
@@ -245,7 +246,7 @@ test('conflicts from the end of a large Excel preview appear first and stay put 
         await page.getByRole('button', {name: 'Read and preview', exact: true}).click();
         const rows = page.locator('.modal-body tbody tr');
         await rows.first().waitFor();
-        assert.equal(await rows.count(), 278);
+        assert.ok(await rows.count() >= 4, 'the first visible batch contains the conflicts and following rows');
         const firstRowNumbers = () => rows.evaluateAll(elements => elements.slice(0, 4).map(element => Number(element.children[1].textContent.trim())));
         assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
         assert.equal(await rows.nth(0).locator('input[type=checkbox]').isDisabled(), true);

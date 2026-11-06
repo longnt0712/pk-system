@@ -14,7 +14,7 @@ function setup(outcomes = {}) {
     const cards = [1, 2, 3].map(id => ({id, question: 'Mirror ' + id, motherTongue: 'Answer ' + id, status: 5}));
     const vm = {questions: cards, status: {id: 5}, searchDto: {status: 5, pageIndex: 2, pageSize: 5, totalItems: 8},
         getPageFlashCard() {calls.reload++; vm.selectedFlashCardIds = {};},
-        loadLevelTable() {calls.levels++;}};
+        loadLevelTable() {calls.levels++;}, loadVocabularyUsage() {}};
     const context = nodeVm.createContext({vm, $scope: {},
         angular: {copy: structuredClone, forEach(items, callback) {(items || []).forEach(callback);}},
         blockUI: {start() {calls.blocks++;}, stop() {calls.blocks--; }},

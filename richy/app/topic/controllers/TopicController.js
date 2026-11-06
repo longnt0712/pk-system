@@ -127,6 +127,15 @@
         vm.searchDto = {};
 
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
+        vm.canManageFullVocabularyLessons = settings.isAdmin === true;
+        vm.loadVocabularyUsage = function () {
+            if (!questionService || !questionService.getVocabularyUsage) { return; }
+            vm.vocabularyUsageError = '';
+            return questionService.getVocabularyUsage().then(function (data) { vm.vocabularyUsage = data; }, function () {
+                vm.vocabularyUsageError = 'Chưa tải được hạn mức bài từ vựng. Máy chủ vẫn kiểm tra hạn mức khi lưu.';
+            });
+        };
+        vm.loadVocabularyUsage();
         vm.searchDto.username = vm.currentUser.username;
         vm.searchDto.userId = vm.currentUser.id;
 
@@ -608,6 +617,7 @@
          */
 
         vm.newObject = function () {
+            vm.loadVocabularyUsage();
             vm.topic = {
                 isNew: true,
                 userId: vm.currentUser.id,
@@ -631,24 +641,29 @@
 
         vm.saveObjectValidate = function () {
             if (vm.savingTopic) { return; }
+            if (!vm.topic.id && vm.vocabularyUsage && vm.vocabularyUsage.topicLimitReached) {
+                toastr.warning(vm.vocabularyUsage.topicLimitMessage, 'Hạn mức bài từ vựng'); return;
+            }
             if(vm.topic.name == null || vm.topic.name.length <= 0){
-                toastr.warning('Xin mời nhập tên topic', 'cảnh báo');
+                toastr.warning('Xin mời nhập tên bài từ vựng', 'cảnh báo');
                 return;
             }
             if(vm.topic.topicCategory == null){
-                toastr.warning('Xin mời chọn loại topic', 'cảnh báo');
+                toastr.warning('Xin mời chọn nhóm bài từ vựng', 'cảnh báo');
                 return;
             }
 
             vm.savingTopic = true;
             return service.saveObject(vm.topic).then(function (data) {
                 if (data && data.id != null) {
+                    vm.loadVocabularyUsage();
                     vm.getPage();
                     vm.topic = {};
-                    toastr.info(data.message || 'Đã lưu Topic.', 'Notification');
+                    toastr.info(data.message || 'Đã lưu bài từ vựng.', 'Notification');
                     vm.modalInstance.close(data);   // đóng modal ở đây
                 } else {
-                    toastr.error(data && data.message || 'Máy chủ chưa xác nhận lưu Topic. Vui lòng kiểm tra lại.', 'Lưu Topic');
+                    vm.loadVocabularyUsage();
+                    toastr.error(data && data.message || 'Máy chủ chưa xác nhận lưu bài từ vựng. Vui lòng kiểm tra lại.', 'Lưu bài từ vựng');
                 }
             }, showTopicSaveError).finally(function () {
                 vm.savingTopic = false;
@@ -658,12 +673,12 @@
         function showTopicSaveError(error) {
             var message = error && error.data && error.data.message;
             if (error && (error.status === -1 || error.status === 0 || error.status === 504)) {
-                message = 'Máy chủ không phản hồi khi lưu Topic. Hãy kiểm tra danh sách trước khi thử lưu lại.';
+                message = 'Máy chủ không phản hồi khi lưu bài từ vựng. Hãy kiểm tra danh sách trước khi thử lưu lại.';
             } else if (error && error.status === 403) {
-                message = 'Tài khoản không có quyền lưu Topic (HTTP 403).';
+                message = 'Tài khoản không có quyền lưu bài từ vựng (HTTP 403).';
             }
             toastr.error(message || 'Không lưu được Topic' +
-                (error && error.status > 0 ? ' (HTTP ' + error.status + ')' : '') + '.', 'Lưu Topic');
+                (error && error.status > 0 ? ' (HTTP ' + error.status + ')' : '') + '.', 'Lưu bài từ vựng');
         }
 
         /**

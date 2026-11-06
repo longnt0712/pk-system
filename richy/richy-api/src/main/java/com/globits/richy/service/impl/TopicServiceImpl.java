@@ -16,6 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
+import com.globits.richy.question.VocabularyPolicy;
 
 import com.globits.richy.test;
 import com.globits.richy.domain.Topic;
@@ -306,26 +309,52 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
+	@Transactional
 	public TopicDto saveObject(TopicDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
+		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để lưu bài từ vựng.");
+		}
+		User modifiedUser = (User) authentication.getPrincipal();
+		boolean isAdmin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
+		VocabularyPolicy.role(authentication);
 		LocalDateTime currentDate = LocalDateTime.now();
-		String currentUserName = "Unknown User";
+		String currentUserName = modifiedUser.getUsername();
 		
 		TopicDto ret = new TopicDto();
 		String message = "Successfully";
 		
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-			currentUserName = modifiedUser.getUsername();
-		}
-		
 		if(dto == null) {
 			return ret;
+		}
+		if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+			ret.setMessage("Vui lòng nhập tên bài từ vựng."); return ret;
+		}
+		if (!isAdmin && (modifiedUser.getId() == null
+				|| (dto.getUserId() != null && !modifiedUser.getId().equals(dto.getUserId())))) {
+			throw new AccessDeniedException("Bạn chỉ được lưu bài từ vựng của chính mình.");
 		}
 		Topic domain = null;
 		if(dto.getId() != null) {
 			domain = topicRepository.getOne(dto.getId());
+		}
+		if (!isAdmin && dto.getId() != null && (domain == null || domain.getUser() == null
+				|| !modifiedUser.getId().equals(domain.getUser().getId()))) {
+			throw new AccessDeniedException("Bạn chỉ được sửa bài từ vựng do chính mình tạo.");
+		}
+		if (!isAdmin && dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
+			Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+			if (allowed != null && !allowed.contains(dto.getTopicCategory().getId())) {
+				throw new AccessDeniedException("Bạn không có quyền chọn nhóm bài từ vựng này.");
+			}
+		}
+		User newOwner = null;
+		if (domain == null && !isAdmin) {
+			newOwner = userRepository.findForVocabularyUpdate(modifiedUser.getId());
+			if (newOwner == null) { throw new AccessDeniedException("Không xác định được chủ sở hữu bài từ vựng."); }
+			Long count = topicRepository.countByUserId(modifiedUser.getId());
+			long limit = VocabularyPolicy.lessonLimit(authentication);
+			if (count != null && count >= limit) { ret.setMessage(VocabularyPolicy.lessonLimitMessage(count, limit)); return ret; }
 		}
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
@@ -336,18 +365,10 @@ public class TopicServiceImpl implements TopicService {
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 			
-			//1 người chỉ được 150 topic mà thôi
-			Long numberOfTopics = (long) 0;
-			if(modifiedUser.getId() != null) {
-				numberOfTopics = topicRepository.countByUserId(modifiedUser.getId());
-				if(numberOfTopics > 7000) {
-					ret.setMessage("You can only create no more than 7000 topics");
-					return ret;
-				}
-			}
+			if (!isAdmin) { domain.setUser(newOwner); domain.setIsShow(true); }
 		}
 		
-		if(dto.getUserId() != null) {
+		if(isAdmin && dto.getUserId() != null) {
 			User user = userRepository.getOne(dto.getUserId());
 			if(user != null) {
 				domain.setUser(user);
@@ -361,9 +382,11 @@ public class TopicServiceImpl implements TopicService {
 		}
 		
 //		domain.setWebsite(dto.getWebsite());
-		domain.setContent(dto.getContent());
-		domain.setContentHtml(dto.getContentHtml());
-		domain.setIsShow(dto.getIsShow());
+		if (isAdmin) {
+			domain.setContent(dto.getContent());
+			domain.setContentHtml(dto.getContentHtml());
+			domain.setIsShow(dto.getIsShow());
+		}
 		
 		if(dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
 			TopicCategory topicCategory = topicCategoryRepository.getOne(dto.getTopicCategory().getId());
@@ -381,6 +404,7 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
+	@Transactional
 	public boolean deleteObject(Long id) {
 		if(id == null) {
 			return false;
@@ -388,6 +412,13 @@ public class TopicServiceImpl implements TopicService {
 		Topic domain = topicRepository.getOne(id);
 		if(domain == null) {
 			return false;
+		}
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof User)
+				|| (!VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN")
+					&& (domain.getUser() == null || domain.getUser().getId() == null
+						|| !domain.getUser().getId().equals(((User) authentication.getPrincipal()).getId())))) {
+			throw new AccessDeniedException("Bạn chỉ được xóa bài từ vựng do chính mình tạo.");
 		}
 		topicRepository.delete(domain);
 		return true;

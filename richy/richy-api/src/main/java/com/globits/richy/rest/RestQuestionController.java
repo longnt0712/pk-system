@@ -41,6 +41,12 @@ public class RestQuestionController {
     QuestionExcelImportService questionExcelImportService;
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/vocabulary_usage", method = RequestMethod.GET)
+    public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage() {
+        return service.getVocabularyUsage();
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
     public Page<QuestionDto> getPage(
             @RequestBody QuestionDto searchDto,
@@ -86,10 +92,10 @@ public class RestQuestionController {
         return service.getObjectById(id);
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(value = "/save", method = RequestMethod.POST)
     public QuestionDto saveOne(@RequestBody QuestionDto searchDto) {
-        return service.saveObject(searchDto);
+        return service.saveForCurrentUser(searchDto);
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
@@ -98,7 +104,7 @@ public class RestQuestionController {
         return service.getFlashCardLevels(searchDto);
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @Secured({"ROLE_ADMIN"})
     @RequestMapping(value = "/update_level/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> updateFlashCardLevel(
             @PathVariable Long id,
@@ -197,7 +203,7 @@ public class RestQuestionController {
         return service.getPageObjectOnlyQuestion(searchDto, pageIndex, pageSize);
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @Secured({"ROLE_ADMIN"})
     @RequestMapping(
             value = "/import_excel/preview",
             method = RequestMethod.POST,
@@ -236,7 +242,7 @@ public class RestQuestionController {
         }
     }
 
-    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @Secured({"ROLE_ADMIN"})
     @RequestMapping(
             value = "/import_excel/confirm",
             method = RequestMethod.POST,
