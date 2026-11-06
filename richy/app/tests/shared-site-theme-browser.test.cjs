@@ -75,7 +75,7 @@ async function open(shared, options = {}) {
         if (/fontawesome-webfont\.woff2/.test(url.pathname)) return route.fulfill({contentType:'font/woff2', body:fs.readFileSync(path.join(app, 'assets/fonts/fontawesome-webfont.woff2'))});
         if (/^\/assets\/images\/(halloween|christmas)\//.test(url.pathname)) {
             const asset = path.join(app, url.pathname.slice(1));
-            if (fs.existsSync(asset)) return route.fulfill({contentType:'image/svg+xml', body:fs.readFileSync(asset)});
+            if (fs.existsSync(asset)) return route.fulfill({path:asset});
         }
         return route.fulfill({contentType:'text/html', body:'<!doctype html><html><body></body></html>'});
     });
@@ -203,6 +203,48 @@ test('Christmas is an opt-in shared admin choice and switching off restores Norm
         }
         for (const fixture of [admin,guest,learner]) assert.deepEqual(fixture.errors,[]);
     } finally { for (const fixture of [admin,guest,learner]) await fixture.context.close(); }
+});
+
+test('Daily Vocab shows the Christmas picture without blocking Game khác', async () => {
+    const fixture = await open({theme:'CHRISTMAS'},{admin:true});
+    const page = fixture.page;
+    try {
+        await loaded(page);
+        const daily = read('question/views/daily_vocab.html');
+        await page.addStyleTag({content:inlineStyles(daily)});
+        await page.evaluate(daily => {
+            const source = new DOMParser().parseFromString(daily, 'text/html');
+            const dailyPage = source.querySelector('.daily-vocab-page').cloneNode(false);
+            const hero = source.querySelector('.daily-hero-card');
+            hero.querySelector('.user-learning-level-badge').lastChild.textContent = 'TRÌNH ĐỘ CHƯA XẾP';
+            hero.querySelector('.user-learning-progress-label').lastChild.textContent = 'LEVEL 1';
+            hero.querySelector('.user-learning-progress-fill').style.width = '28%';
+            dailyPage.append(hero);
+            document.querySelector('#qa-main').prepend(dailyPage);
+        },daily);
+        const hero = page.locator('.daily-hero-card');
+        const button = hero.locator('.daily-other-games-btn');
+        const picture = await hero.evaluate(async node => {
+            const art = getComputedStyle(node,'::after');
+            const image = new Image();
+            image.src = art.backgroundImage.match(/^url\("(.+)"\)$/)[1];
+            await image.decode();
+            return {src:image.src,width:image.naturalWidth,height:image.naturalHeight};
+        });
+        assert.match(picture.src,/\/christmas\/daily-vocab-nativity\.png$/);
+        assert.equal(picture.width,736);
+        assert.equal(picture.height,414);
+        for (const width of [320,390,820,1180]) {
+            await page.setViewportSize({width,height:820});
+            await button.click({trial:true});
+            const box = await hero.boundingBox();
+            assert.ok(box.x>=0 && box.x+box.width<=width+1,'banner fits at '+width);
+            if (process.env.SITE_THEME_SCREENSHOT_DIR) {
+                await hero.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'daily-vocab-nativity-'+width+'.png')});
+            }
+        }
+        assert.deepEqual(fixture.errors,[]);
+    } finally { await fixture.context.close(); }
 });
 
 test('admin selects multiple School IDs and other domains update independently without changing the current school',async()=>{

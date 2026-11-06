@@ -59,6 +59,32 @@ html.ieltsroom-christmas.ieltsroom-christmas .battle-online-hero {
         linear-gradient(115deg,#153e48,#21665c 68%,#194b4d) !important;
     box-shadow:0 12px 30px #1a52451f,inset 0 1px 0 #f4ffff40 !important;
 }
+html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card {
+    background:linear-gradient(115deg,#153e48,#21665c 68%,#194b4d) !important;
+}
+html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card::after {
+    top:0;
+    right:clamp(16px,8vw,96px);
+    bottom:auto;
+    width:auto;
+    height:calc(100% - 38px);
+    max-width:54%;
+    aspect-ratio:16 / 9;
+    border-radius:0;
+    background:url('../images/christmas/daily-vocab-nativity.png') center top / contain no-repeat;
+    mask-image:linear-gradient(90deg,transparent,#000 16%,#000 82%,transparent),linear-gradient(#000 72%,transparent);
+    mask-composite:intersect;
+    pointer-events:none;
+}
+@media(max-width:599px) {
+    html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card::after {
+        right:12px;
+        width:54%;
+        height:auto;
+        max-height:calc(100% - 32px);
+        opacity:.62;
+    }
+}
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero h1,
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero p,
 html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-kicker,
