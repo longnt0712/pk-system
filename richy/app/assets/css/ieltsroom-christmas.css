@@ -161,9 +161,14 @@ body.modal-open > .christmas-snow i { animation-play-state:paused; }
     html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card {
         background-position:right clamp(56px,7vw,116px) center,center !important;
     }
-    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero > .user-learning-level,
-    html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card > .user-learning-level {
-        flex-basis:min(62%,calc(100% - 372px));
+    html.ieltsroom-christmas.ieltsroom-christmas :is(.learning-hub-hero,.daily-hero-card) > .user-learning-level {
+        --christmas-progress-width:max(280px,calc(min(62%,100% - 372px) * 2 / 3));
+        flex-basis:var(--christmas-progress-width);
+        /* Reserve the rest of the row so the bar stays below the title. */
+        margin-inline-end:calc(100% - var(--christmas-progress-width));
+    }
+    html.ieltsroom-christmas.ieltsroom-christmas :is(.learning-hub-hero,.daily-hero-card) .user-learning-progress-track {
+        min-width:56px;
     }
 }
 @media(max-width:767px) {
