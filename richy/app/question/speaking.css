@@ -126,6 +126,8 @@
 .speaking-page .sp-answer-selection button { border:0; border-radius:6px; background:transparent; color:#675087; padding:7px 10px; font:inherit; font-size:12px; touch-action:manipulation; }
 .speaking-page .sp-answer-selection button:hover { background:#f2edfc; }
 .speaking-page .sp-answer-selection button[aria-pressed="true"] { background:#eee7ff; color:#5939bd; }
+.speaking-page .sp-answer-editor.is-touch-selecting>small,
+.speaking-page .sp-answer-selection { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 ::highlight(speaking-touch-selection) { background-color:#c5dbff; color:#172c4d; }
 .speaking-page .sp-answer-touch-highlight { position:fixed; z-index:10064; pointer-events:none; background:#7cacff55; }
 .speaking-page .sp-note-lookup { display:grid; gap:5px; margin:9px 0; min-width:0; }

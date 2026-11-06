@@ -930,7 +930,7 @@
             <h2 class="modal-title" id="daily-vocab-word-preview-title">Từ vựng bạn sẽ học</h2>
             <p class="daily-word-preview-topic" ng-if="vm.title">{{vm.title}}</p>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" tabindex="0" role="region" aria-label="Danh sách từ vựng">
             <ol class="daily-word-preview-list">
                 <li ng-repeat="word in vm.rawQuestions | limitTo:vm.dailyWordPreviewLimit track by $index">
                     <div class="daily-word-preview-row">
@@ -1526,7 +1526,20 @@
         background: #e2e8ff;
     }
 
+    .daily-word-preview-window .modal-dialog {
+        max-width: calc(100% - 24px);
+        margin: 12px auto !important;
+    }
+
+    .daily-word-preview-window .modal-content {
+        overflow: hidden !important;
+    }
+
     .daily-word-preview {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
         --word-list-ink: #26324b;
         --word-list-muted: #536581;
         --word-list-line: #e3e8f7;
@@ -1545,8 +1558,9 @@
         --word-list-row: #26354e;
     }
 
-    .daily-word-preview .modal-header,
-    .daily-word-preview .modal-footer {
+    .daily-word-preview > .modal-header,
+    .daily-word-preview > .modal-footer {
+        flex: 0 0 auto;
         border-color: var(--word-list-line);
     }
 
@@ -1562,10 +1576,10 @@
         overflow-wrap: anywhere;
     }
 
-    .daily-word-preview .modal-body {
-        max-height: 58vh;
-        max-height: 58dvh;
-        overflow-y: auto;
+    .daily-word-preview > .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto !important;
         overscroll-behavior: contain;
     }
 

@@ -111,6 +111,7 @@ test('the word list uses the playable cached words and fetches remaining pages o
     assert.equal(vm.canPreviewDailyWords(), true);
     vm.openDailyWordPreview();
     assert.equal(calls.dialogs[0].options.templateUrl, 'daily-vocab-word-preview.html');
+    assert.equal(calls.dialogs[0].options.windowClass, 'daily-word-preview-window');
     assert.equal(vm.dailyWordPreviewLimit, 50);
     assert.deepEqual(calls.pages.map(call => call.page), [1]);
 
@@ -204,4 +205,12 @@ test('the preview UI is hidden when locked and displays words, pronunciation and
     assert.match(view, /ng-if="vm\.canPreviewDailyWords\(\)"\s+ng-click="vm\.openDailyWordPreview\(\)"/);
     for (const field of ['question', 'pronounce', 'motherTongue']) assert.ok(view.includes('{{word.' + field + '}}'));
     assert.match(view, /id="daily-vocab-word-preview-title"/);
+});
+
+test('the vocabulary dialog keeps scrolling inside the list despite the global modal overflow rule', () => {
+    assert.match(view, /\.daily-word-preview-window \.modal-content\s*\{[^}]*overflow:\s*hidden !important/);
+    assert.match(view, /\.daily-word-preview\s*\{[^}]*flex-direction:\s*column;[^}]*max-height:\s*calc\(100dvh - 24px\)/);
+    assert.match(view, /\.daily-word-preview > \.modal-header,\s*\.daily-word-preview > \.modal-footer\s*\{[^}]*flex:\s*0 0 auto/);
+    assert.match(view, /\.daily-word-preview > \.modal-body\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*auto !important/);
+    assert.match(view, /class="modal-body" tabindex="0" role="region"[^>]*>\s*<ol class="daily-word-preview-list"/);
 });

@@ -977,6 +977,7 @@
             vm.dailyWordPreviewError = false;
             var opened = modal.open({
                 templateUrl: 'daily-vocab-word-preview.html',
+                windowClass: 'daily-word-preview-window',
                 scope: $scope,
                 size: 'lg',
                 ariaLabelledBy: 'daily-vocab-word-preview-title'

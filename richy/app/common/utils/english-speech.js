@@ -120,12 +120,10 @@
             activeUtterance = null;
         }
 
-        delay = options.delay;
-        if (delay == null) { delay = options.interrupt !== false && hadQueuedSpeech ? 120 : 20; }
-        pendingTimer = window.setTimeout(function () {
+        function startUtterance() {
             var utterance;
             var selectedVoice;
-            if (token !== requestToken) { return; }
+            if (token !== requestToken) { return false; }
             pendingTimer = null;
             utterance = new Utterance(text);
             utterance.lang = options.lang || 'en-US';
@@ -153,7 +151,13 @@
                 return false;
             }
             return true;
-        }, Math.max(0, Number(delay) || 0));
+        }
+
+        // WebKit on iOS may require the first utterance to start inside a tap.
+        if (options.immediate === true) { return startUtterance(); }
+        delay = options.delay;
+        if (delay == null) { delay = options.interrupt !== false && hadQueuedSpeech ? 120 : 20; }
+        pendingTimer = window.setTimeout(startUtterance, Math.max(0, Number(delay) || 0));
         return true;
     }
 

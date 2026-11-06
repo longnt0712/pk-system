@@ -191,7 +191,7 @@
     angular.module('Hrm.Question').directive('speakingStudentAnswerEditor', ['$window', '$timeout', 'SpeakingStudentAnswerStore', function ($window, $timeout, store) {
         return {
             restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?'},
-            template: '<section class="sp-answer-editor"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span>' +
+            template: '<section class="sp-answer-editor" ng-class="{\'is-touch-selecting\': ed.touchMode && !readOnly && !ed.editing}"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span>' +
                 '<button type="button" class="sp-button sp-answer-edit-mode" ng-if="ed.touchMode && !readOnly" ng-click="ed.toggleEditing()" ng-disabled="!ed.state.ready || ed.state.loading"><i class="fa" ng-class="ed.editing ? \'fa-check\' : \'fa-pencil\'" aria-hidden="true"></i> {{ed.editing ? \'Xong\' : \'Sửa câu trả lời\'}}</button>' +
                 '<button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
                 '<div class="sp-answer-format" ng-if="!readOnly && (!ed.touchMode || ed.editing)" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker &amp;&amp; !ed.selectionMarker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
@@ -199,7 +199,7 @@
                 '<div class="sp-answer-editable" contenteditable="false" role="textbox" aria-readonly="true" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
                 '<small class="sp-muted" ng-if="ed.touchMode && !readOnly && !ed.editing && ed.state.ready">Nhấn giữ một từ rồi kéo để chọn cả đoạn.</small>' +
                 '<span class="sp-answer-touch-highlight" ng-repeat="rect in ed.selectionRects track by $index" ng-style="rect" aria-hidden="true"></span>' +
-                '<div class="sp-answer-selection" ng-if="!readOnly && (!ed.touchMode || !ed.editing) && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && (!ed.touchMode || !ed.editing) && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ" ng-mousedown="!ed.touchMode && $event.preventDefault()"><button type="button" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
                 '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
@@ -239,7 +239,7 @@
                     }
                     ed.speaking = true;
                     try {
-                        if (!speech.speak(text, {lang: 'en-GB', plainText: true, owner: speechOwner, onend: function () { complete(); }, onerror: complete})) {
+                        if (!speech.speak(text, {lang: 'en-GB', plainText: true, immediate: true, owner: speechOwner, onend: function () { complete(); }, onerror: complete})) {
                             ed.speaking = false; ed.speechError = 'Chưa đọc được đoạn chữ. Bạn thử lại nhé.';
                         }
                     } catch (error) { complete({error: 'synthesis-failed'}); }
@@ -336,13 +336,12 @@
                     if (selectingByTouch()) {
                         var surface = editable.getBoundingClientRect();
                         if (bounds.bottom <= surface.top || bounds.top >= surface.bottom) { ed.selectionStyle = {visibility: 'hidden'}; ed.selectionRects = []; return; }
-                        if (!canPaintSelection) {
-                            ed.selectionRects = Array.from(selectedRange.getClientRects()).map(function (rect) {
-                                var x = Math.max(left, surface.left, rect.left), y = Math.max(top, surface.top, rect.top);
-                                var w = Math.min(right, surface.right, rect.right) - x, h = Math.min(bottom, surface.bottom, rect.bottom) - y;
-                                return w > 0 && h > 0 ? {left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px'} : null;
-                            }).filter(Boolean);
-                        }
+                        // Paint the same detached range that anchors the menu, even on WebKit with CSS Highlights.
+                        ed.selectionRects = Array.from(selectedRange.getClientRects()).map(function (rect) {
+                            var x = Math.max(left, surface.left, rect.left), y = Math.max(top, surface.top, rect.top);
+                            var w = Math.min(right, surface.right, rect.right) - x, h = Math.min(bottom, surface.bottom, rect.bottom) - y;
+                            return w > 0 && h > 0 ? {left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px'} : null;
+                        }).filter(Boolean);
                     }
                     var below = bottom - bounds.bottom - gap * 2, above = bounds.top - top - gap * 2;
                     var popupWidth = Math.min(480, Math.max(0, width - gap * 2));
@@ -373,8 +372,14 @@
                     highlights.set(highlightName, touchHighlight);
                 }
                 function capture() {
-                    if (scope.readOnly || !ed.state.ready || ed.state.loading || composing || selectingByTouch()) { return; }
+                    if (scope.readOnly || !ed.state.ready || ed.state.loading || composing) { return; }
                     var selection = $window.getSelection(), range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+                    if (selectingByTouch()) {
+                        if ((touchGesture || ed.hasSelection) && range && !range.collapsed && root.contains(range.commonAncestorContainer)) {
+                            selection.removeAllRanges();
+                        }
+                        return;
+                    }
                     if ((!range || range.collapsed) && detachedSelection) { return; }
                     clearSelection();
                     if (!range || range.collapsed || !editable.contains(range.commonAncestorContainer) || !range.toString().trim()) { return; }
@@ -435,7 +440,7 @@
                         var word = wordAt(caretAt(gesture.x, gesture.y), gesture.x, gesture.y);
                         if (!word) { return; }
                         gesture.word = word; ed.activeNote = null; ed.marker = null;
-                        showSelection(word); paintSelection(word);
+                        showSelection(word);
                     }, 400);
                 }
                 function touchMove(event) {
@@ -455,7 +460,7 @@
                     var range = gesture.word.cloneRange(), edge = range.comparePoint(point.node, point.offset);
                     if (edge < 0) { range.setStart(point.node, point.offset); }
                     if (edge > 0) { range.setEnd(point.node, point.offset); }
-                    showSelection(range); paintSelection(range); scope.$evalAsync(angular.noop);
+                    showSelection(range); scope.$evalAsync(angular.noop);
                 }
                 function touchFinish(event) {
                     var gesture = touchGesture;
@@ -702,7 +707,7 @@
                         });
                     }
                     try {
-                        if (!speech.speak(scope.text, {lang: 'en-GB', plainText: true, owner: owner, onerror: onError})) { onError(); }
+                        if (!speech.speak(scope.text, {lang: 'en-GB', plainText: true, immediate: true, owner: owner, onerror: onError})) { onError(); }
                     } catch (error) { onError(); }
                 };
                 scope.$watch('text', cancel);

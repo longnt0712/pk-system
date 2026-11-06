@@ -36,6 +36,24 @@ test('selected plain text bypasses HTML parsing even when it contains literal ma
  f.api.speak(literal,{plainText:true});f.flush();assert.equal(f.spoken[0].text,literal);assert.equal(f.htmlParses,0);
 });
 
+test('a Speaking tap starts synthesis during the gesture and replaces a pending request',()=>{
+ const f = speechFixture(), previous = {}, current = {};
+ f.api.speak('Queued from elsewhere', {owner:previous});
+ assert.equal(f.timers.size, 1);
+ let gestureActive = true;
+ const speak = f.synthesis.speak;
+ f.synthesis.speak = utterance => {
+  assert.equal(gestureActive, true);
+  speak(utterance);
+ };
+ assert.equal(f.api.speak('Read the selected text', {owner:current, immediate:true}), true);
+ gestureActive = false;
+ f.flush();
+ assert.deepEqual(f.spoken.map(utterance => utterance.text), ['Read the selected text']);
+ assert.equal(f.api.cancel(previous), false);
+ assert.equal(f.api.cancel(current), true);
+});
+
 function node(name,value=''){
  const attrs={},children=[];
  const result={nodeName:name,nodeType:name==='#text'?3:1,nodeValue:value,childNodes:children,parentNode:null,className:'',
@@ -61,7 +79,10 @@ function editorFixture(touch=false, mobile={}){
  const selection={rangeCount:1,toString:()=>selected,getRangeAt:()=>range,removeAllRanges(){rangeClears++;this.rangeCount=0;},addRange(){this.rangeCount=1;}};
  const editable=node('DIV'),nativeContains=editable.contains;editable.appendChild(textNode);Object.defineProperty(editable,'innerHTML',{get:()=>editable.childNodes.map(child=>child.nodeType===3?child.nodeValue:'<'+child.nodeName.toLowerCase()+(child.className?' class="'+child.className+'"':'')+Object.entries(child.attrs).map(([key,text])=>' '+key+'="'+text+'"').join('')+'>'+child.innerHTML+'</'+child.nodeName.toLowerCase()+'>').join(''),set(text){editable.childNodes.splice(0);textNode.nodeValue=text;editable.appendChild(textNode);}});
  editable.contains=target=>inside&&nativeContains.call(editable,target);editable.focus=()=>{};editable.addEventListener=(name,fn)=>listeners[name]=fn;editable.removeEventListener=()=>{};
- const root={querySelector:selector=>selector==='.sp-answer-editable'?editable:null,contains:()=>true},doc={hidden:false,documentElement:{clientWidth:1024,clientHeight:768},createElement:name=>node(name.toUpperCase()),createTreeWalker(parent){const texts=[];function walk(current){if(current.nodeType===3){texts.push(current);}else{current.childNodes.forEach(walk);}}walk(parent);let index=0;return{nextNode:()=>texts[index++]||null};},addEventListener(name,fn){listeners[name]=fn;},removeEventListener(){}};
+ const root = node('SPEAKING-STUDENT-ANSWER-EDITOR');
+ root.appendChild(editable);
+ root.querySelector = selector => selector === '.sp-answer-editable' ? editable : null;
+ const doc={hidden:false,documentElement:{clientWidth:1024,clientHeight:768},createElement:name=>node(name.toUpperCase()),createTreeWalker(parent){const texts=[];function walk(current){if(current.nodeType===3){texts.push(current);}else{current.childNodes.forEach(walk);}}walk(parent);let index=0;return{nextNode:()=>texts[index++]||null};},addEventListener(name,fn){listeners[name]=fn;},removeEventListener(){}};
  const speech={isSupported:()=>true,speak(text,options){owner=options.owner;requests.push({text,options});return true;},cancel(target){if(owner===target){cancelled.push(target);owner=null;return true;}return false;}};
  const win={document:doc,innerWidth:1024,innerHeight:768,EnglishSpeech:speech,open(...args){opened.push(args);},getSelection:()=>selection,addEventListener(){},removeEventListener(){}};
  if(touch){win.matchMedia=()=>({matches:true});win.CSS={highlights:new Map()};win.Highlight=function(value){this.range=value;};win.visualViewport={offsetTop:0,offsetLeft:0,width:1024,height:768,addEventListener(){},removeEventListener(){}};}
@@ -77,7 +98,7 @@ function editorFixture(touch=false, mobile={}){
  if (mobile.text) {
   selection.rangeCount = 0;
   editable.getBoundingClientRect = () => ({top:70,bottom:660,left:0,right:350});
-  win.navigator = {platform:'MacIntel',maxTouchPoints:5};
+  win.navigator = {platform:mobile.platform || 'MacIntel',maxTouchPoints:5};
   if (mobile.legacy) { delete win.CSS; delete win.Highlight; }
   function caretAt(x) { return Math.min(textNode.nodeValue.length, Math.max(0, Math.round((x - 20) / 8))); }
   function rectFor(start, end) { return {left:20 + start * 8, right:20 + end * 8, top:bounds.top, bottom:bounds.bottom}; }
@@ -104,7 +125,7 @@ function editorFixture(touch=false, mobile={}){
   selection.toString = () => selection.activeRange ? selection.activeRange.toString() : '';
  }
  const directive=definition(win,timeout,{open:()=>session});directive.link(scope,[root]);
- return{scope,state,requests,cancelled,opened,speech,win,doc,directive,timers,identity,destroy,editable,range,bounds,listeners,classes,selection,select(text,valid=true){selected=text;inside=valid;selection.rangeCount=1;listeners[touch?'touchend':'mouseup']();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
+ return{scope,state,requests,cancelled,opened,speech,win,doc,directive,timers,identity,destroy,root,editable,range,bounds,listeners,classes,selection,select(text,valid=true){selected=text;inside=valid;selection.rangeCount=1;listeners[touch?'touchend':'mouseup']();},existingNote(){const span=node('SPAN'),bold=node('B');span.className='ielts-annotation has-note is-highlighted';span.setAttribute('data-note-id','existing-note');span.setAttribute('data-annotation-group','existing-group');editable.insertBefore(span,textNode);span.appendChild(bold);bold.appendChild(textNode);state.notes=[{id:'existing-note',text:'Keep this teacher note'}];state.html=editable.innerHTML;return span;},steal(){owner={external:true};},get rangeClears(){return rangeClears;},get changes(){return changes;},get saves(){return saves;}};
 }
 
 function touchEvent(type, x, y) {
@@ -118,8 +139,8 @@ function runEditorTimer(fixture, delay) {
  fixture.timers.delete(pending[0]); pending[1].fn(); return true;
 }
 
-test('iPad touch selection reads and extends a word without a native selection, focus or a saved edit',async()=>{
- const f = editorFixture(true, {text:'Playing or experimenting today'});
+test('iPhone touch selection paints and reads the English range even if the browser selects the nearby hint',async()=>{
+ const f = editorFixture(true, {text:'Playing or experimenting today',platform:'iPhone'});
  const ed = f.scope.ed;
  f.identity([11,7,42,9]); await settle();
  Object.assign(f.win.visualViewport,{offsetTop:80,offsetLeft:0,width:380,height:470});
@@ -130,17 +151,25 @@ test('iPad touch selection reads and extends a word without a native selection, 
  assert.equal(contextMenu.prevented,true);
  f.listeners.touchstart(touchEvent('touchstart',130,350)); assert.equal(runEditorTimer(f,400),true);
  assert.equal(ed.selectionStyle.top,'368px'); assert.equal(ed.selectionStyle.transform,'none');
+ assert.equal(ed.selectionRects[0].left,'108px'); assert.equal(ed.selectionRects[0].width,'104px');
  const expand = touchEvent('touchmove',268,350); f.listeners.touchmove(expand);
  const finish = touchEvent('touchend',268,350); f.listeners.touchend(finish); f.listeners.selectionchange();
  assert.equal(expand.prevented,true); assert.equal(finish.prevented,true);
  assert.equal(f.selection.rangeCount,0); assert.equal(f.doc.activeElement,undefined);
- assert.equal(f.win.CSS.highlights.get('speaking-touch-selection').range.toString(),'experimenting today');
+ assert.equal(f.win.CSS.highlights.size,0);
+ assert.equal(ed.selectionRects[0].width,'152px');
+ const hint = f.root.appendChild(node('SMALL')).appendChild(node('#text','Nhấn giữ một từ rồi kéo để chọn cả đoạn.'));
+ f.selection.addRange({commonAncestorContainer:hint,collapsed:false});
+ f.listeners.selectionchange();
+ assert.equal(f.selection.rangeCount,0); assert.equal(f.rangeClears,1);
+ assert.equal(ed.hasSelection,true); assert.equal(ed.selectionRects[0].width,'152px');
  assert.equal(f.changes,0); assert.equal(f.state.html,'Playing or experimenting today');
  ed.readSelection(); assert.equal(f.requests[0].text,'experimenting today');
+ assert.equal(f.requests[0].options.immediate,true);
  ed.toggleEditing();
  assert.equal(f.doc.activeElement,f.editable); assert.equal(f.editable.getAttribute('contenteditable'),'true');
  assert.equal(f.selection.activeRange.startOffset,f.state.html.length);
- assert.equal(f.win.CSS.highlights.size,0);
+ assert.equal(ed.selectionRects.length,0);
  const editMenu = touchEvent('contextmenu',130,350); f.listeners.contextmenu(editMenu); assert.equal(editMenu.prevented,false);
  ed.toggleEditing();
  assert.equal(f.doc.activeElement,null); assert.equal(f.editable.getAttribute('contenteditable'),'false');
@@ -242,6 +271,7 @@ test('question speaker uses the current English prompt and cancels only its own 
  const speaker=definition({EnglishSpeech:speech});
  speaker.link(scope);scope.readQuestion();
  assert.equal(requests[0].text,scope.text);assert.equal(requests[0].options.lang,'en-GB');assert.equal(requests[0].options.plainText,true);
+ assert.equal(requests[0].options.immediate,true);
  onChange();requests[0].options.onerror({error:'old-error'});assert.equal(scope.speechError,'');
  scope.text='What car would you choose?';scope.readQuestion();assert.equal(requests[1].text,scope.text);
  onDestroy();assert.equal(cancelled.length,2);assert.equal(cancelled[1],requests[1].options.owner);
