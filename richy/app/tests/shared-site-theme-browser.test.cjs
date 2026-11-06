@@ -205,7 +205,7 @@ test('Christmas is an opt-in shared admin choice and switching off restores Norm
     } finally { for (const fixture of [admin,guest,learner]) await fixture.context.close(); }
 });
 
-test('Daily Vocab shows the Christmas picture without blocking Game khác', async () => {
+test('Daily Vocab shows the shared Holy Family artwork without blocking Game khác', async () => {
     const fixture = await open({theme:'CHRISTMAS'},{admin:true});
     const page = fixture.page;
     try {
@@ -225,22 +225,21 @@ test('Daily Vocab shows the Christmas picture without blocking Game khác', asyn
         const hero = page.locator('.daily-hero-card');
         const button = hero.locator('.daily-other-games-btn');
         const picture = await hero.evaluate(async node => {
-            const art = getComputedStyle(node,'::after');
             const image = new Image();
-            image.src = art.backgroundImage.match(/^url\("(.+)"\)$/)[1];
+            image.src = getComputedStyle(node).backgroundImage.match(/^url\("([^"]+)"\)/)[1];
             await image.decode();
             return {src:image.src,width:image.naturalWidth,height:image.naturalHeight};
         });
-        assert.match(picture.src,/\/christmas\/daily-vocab-nativity\.png$/);
-        assert.equal(picture.width,736);
-        assert.equal(picture.height,414);
+        assert.match(picture.src,/\/christmas\/holy-family\.svg$/);
+        assert.equal(picture.width,460);
+        assert.equal(picture.height,220);
         for (const width of [320,390,820,1180]) {
             await page.setViewportSize({width,height:820});
             await button.click({trial:true});
             const box = await hero.boundingBox();
             assert.ok(box.x>=0 && box.x+box.width<=width+1,'banner fits at '+width);
             if (process.env.SITE_THEME_SCREENSHOT_DIR) {
-                await hero.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'daily-vocab-nativity-'+width+'.png')});
+                await hero.screenshot({path:path.join(process.env.SITE_THEME_SCREENSHOT_DIR,'holy-family-daily-vocab-'+width+'.png')});
             }
         }
         assert.deepEqual(fixture.errors,[]);
@@ -335,7 +334,7 @@ test('Christmas decorations stay light, non-interactive and bounded on phones, i
                 assert.ok(info.filters.every(pair=>pair.every(value=>value==='none')),'flakes have no blur or backdrop sampling');
                 assert.match(info.lights,/christmas\/lights.svg/);
                 assert.ok(info.lightsWidth>width*.8,'garland spans the header instead of collapsing with the Bootstrap clearfix');
-                assert.match(info.hero,/christmas\/winter-village.svg/);
+                assert.match(info.hero,/christmas\/holy-family\.svg/);
                 const control = page.locator(width<768?'.navbar-toggle':guest?'.learning-desktop-login .learning-public-theme-toggle':'.user-dropdown-mobile > a');
                 assert.equal(await control.evaluate(node=>{
                     const r=node.getBoundingClientRect();
