@@ -55,7 +55,7 @@ html.ieltsroom-christmas.ieltsroom-christmas .reading-library-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .reading-builder-hero,
 html.ieltsroom-christmas.ieltsroom-christmas .battle-online-hero {
     border-color:#7eaaa4 !important;
-    background:url('../images/christmas/holy-family.svg') right center / auto min(100%,220px) no-repeat,
+    background:url('../images/christmas/holy-family.svg?v=20261106-snow-pines') right center / auto min(100%,220px) no-repeat,
         linear-gradient(115deg,#153e48,#21665c 68%,#194b4d) !important;
     box-shadow:0 12px 30px #1a52451f,inset 0 1px 0 #f4ffff40 !important;
 }
@@ -150,12 +150,15 @@ body.modal-open > .christmas-snow { visibility:hidden; }
 .christmas-snow.is-exam i,
 body.modal-open > .christmas-snow i { animation-play-state:paused; }
 @media(min-width:768px) {
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero {
+        background-position:right clamp(86px,8vw,112px) center,center !important;
+    }
     html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card {
         background-position:right clamp(56px,7vw,116px) center,center !important;
     }
     html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero > .user-learning-level,
     html.ieltsroom-christmas.ieltsroom-christmas .daily-hero-card > .user-learning-level {
-        flex-basis:min(68%,calc(100% - 272px));
+        flex-basis:min(62%,calc(100% - 372px));
     }
 }
 @media(max-width:767px) {
@@ -172,6 +175,9 @@ body.modal-open > .christmas-snow i { animation-play-state:paused; }
     }
     html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero h1 {
         font-size:clamp(18px,5vw,24px);
+    }
+    html.ieltsroom-christmas.ieltsroom-christmas .learning-hub-hero p {
+        text-shadow:0 1px 4px #153e48;
     }
 }
 @media(max-width:374px) {

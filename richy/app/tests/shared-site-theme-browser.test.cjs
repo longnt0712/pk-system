@@ -230,7 +230,7 @@ test('Daily Vocab shows the shared Holy Family artwork without blocking Game kh√
             await image.decode();
             return {src:image.src,width:image.naturalWidth,height:image.naturalHeight};
         });
-        assert.match(picture.src,/\/christmas\/holy-family\.svg$/);
+        assert.match(new URL(picture.src).pathname,/\/christmas\/holy-family\.svg$/);
         assert.equal(picture.width,460);
         assert.equal(picture.height,220);
         for (const width of [320,390,820,1180]) {
