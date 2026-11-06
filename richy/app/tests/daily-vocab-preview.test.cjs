@@ -26,7 +26,7 @@ function storage() {
 }
 
 async function setup({category = church, resume = false, legacyTopic = false, assigned = false} = {}) {
-    let Controller;
+    let Controller, previewScroll;
     const calls = {pages: [], dialogs: [], speech: [], audio: [], drafts: [], errors: [], timers: []};
     const topic = {id: 101, name: 'Bài 1', ...(legacyTopic ? {} : {topicCategory: category})};
     const first = cards(1, resume ? 1 : 50);
@@ -51,7 +51,10 @@ async function setup({category = church, resume = false, legacyTopic = false, as
     const listeners = {};
     const scope = {$on(event, callback) { listeners[event] = callback; }, $evalAsync(callback) { callback(); }};
     const angular = {
-        module() { return {controller(name, value) { Controller = value; }}; },
+        module() { return {
+            controller(name, value) { Controller = value; return this; },
+            directive(name, factory) { if (name === 'dailyWordPreviewScroll') previewScroll = factory; return this; }
+        }; },
         isArray: Array.isArray, isFunction: value => typeof value === 'function',
         isDefined: value => value !== undefined, copy: structuredClone, noop() {},
         forEach(values, callback) { Object.entries(values || {}).forEach(([key, value]) => callback(value, key)); }
@@ -103,30 +106,74 @@ async function setup({category = church, resume = false, legacyTopic = false, as
         await tick();
     }
     assert.deepEqual(calls.errors, []);
-    return {vm, calls, random, destroy: listeners.$destroy};
+    return {vm, calls, random, previewScroll, destroy: listeners.$destroy};
 }
 
-test('the word list uses the playable cached words and fetches remaining pages only on request', async () => {
-    const {vm, calls} = await setup();
+function attachPreviewScroll(vm, factory) {
+    const body = Object.assign(new EventTarget(), {clientHeight: 500, scrollHeight: 500, scrollTop: 0});
+    const viewport = new EventTarget();
+    const timers = [];
+    let afterRender, destroy;
+    const scope = {
+        vm,
+        $evalAsync(callback) { callback(); },
+        $watchGroup(expressions, callback) { afterRender = callback; },
+        $on(event, callback) { if (event === '$destroy') destroy = callback; }
+    };
+    function timeout(callback) {
+        const timer = {callback, cancelled: false};
+        timers.push(timer);
+        return timer;
+    }
+    timeout.cancel = timer => { timer.cancelled = true; };
+    factory(timeout, viewport).link(scope, [body]);
+    return {
+        render(height) { body.scrollHeight = height; afterRender(); },
+        scrollTo(top) { body.scrollTop = top; body.dispatchEvent(new Event('scroll')); },
+        resize() { viewport.dispatchEvent(new Event('resize')); },
+        flush() { timers.splice(0).forEach(timer => { if (!timer.cancelled) timer.callback(); }); },
+        destroy() { destroy(); }
+    };
+}
+
+test('the word list loads one batch when scrolling near the end and shares the cache with the round', async () => {
+    const {vm, calls, previewScroll} = await setup();
     assert.equal(vm.canPreviewDailyWords(), true);
     vm.openDailyWordPreview();
     assert.equal(calls.dialogs[0].options.templateUrl, 'daily-vocab-word-preview.html');
     assert.equal(calls.dialogs[0].options.windowClass, 'daily-word-preview-window');
     assert.equal(vm.dailyWordPreviewLimit, 50);
+    const scroll = attachPreviewScroll(vm, previewScroll);
+    scroll.render(3000);
+    scroll.flush();
+    scroll.scrollTo(400);
+    scroll.flush();
     assert.deepEqual(calls.pages.map(call => call.page), [1]);
 
-    const secondPage = vm.loadMoreDailyPreviewWords();
-    vm.loadMoreDailyPreviewWords();
+    scroll.scrollTo(2375);
+    scroll.scrollTo(2390);
+    scroll.flush();
+    scroll.scrollTo(2500);
+    scroll.flush();
     assert.deepEqual(calls.pages.map(call => call.page), [1, 2]);
     calls.pages[1].resolve({content: cards(51, 50), totalPages: 3, totalElements: 102});
-    await secondPage;
+    await tick();
+    scroll.render(5500);
+    scroll.flush();
+    assert.equal(calls.pages.length, 2);
     assert.equal(vm.rawQuestions.length, 100);
     assert.equal(vm.dailyWordPreviewLimit, 100);
     assert.equal(vm.loadedCardCount, 50, 'preview does not build game questions');
 
-    const lastPage = vm.loadMoreDailyPreviewWords();
+    scroll.scrollTo(4900);
+    scroll.flush();
+    assert.deepEqual(calls.pages.map(call => call.page), [1, 2, 3]);
     calls.pages[2].resolve({content: [cards(101, 1)[0], {id: 102, question: 'incomplete'}, cards(25, 1)[0]], last: true});
-    await lastPage;
+    await tick();
+    scroll.render(5550);
+    scroll.scrollTo(5050);
+    scroll.flush();
+    assert.equal(calls.pages.length, 3);
     assert.equal(vm.totalCard, 101);
     assert.equal(vm.allQuestionsLoaded, true);
     assert.equal(vm.rawQuestions.at(-1).question, 'word 101');
@@ -144,6 +191,23 @@ test('the word list uses the playable cached words and fetches remaining pages o
     assert.equal(vm.canPreviewDailyWords(), true);
 });
 
+test('a short preview can load without a scrollbar and teardown cancels a scheduled check', async () => {
+    const {vm, calls, previewScroll} = await setup();
+    vm.openDailyWordPreview();
+    const scroll = attachPreviewScroll(vm, previewScroll);
+    scroll.render(500);
+    scroll.flush();
+    assert.deepEqual(calls.pages.map(call => call.page), [1, 2]);
+    calls.pages[1].resolve({content: cards(51, 50), totalPages: 3});
+    await tick();
+    scroll.render(500);
+    scroll.destroy();
+    scroll.scrollTo(0);
+    scroll.resize();
+    scroll.flush();
+    assert.equal(calls.pages.length, 2);
+});
+
 test('preview failure can retry, and starting while a page is pending ignores the old response', async () => {
     const {vm, calls} = await setup({assigned: true});
     vm.openDailyWordPreview();
@@ -153,7 +217,9 @@ test('preview failure can retry, and starting while a page is pending ignores th
     assert.equal(vm.dailyWordPreviewError, true);
     assert.equal(vm.dailyLazyLoadError, false);
 
-    const retried = vm.loadMoreDailyPreviewWords();
+    vm.loadMoreDailyPreviewWords();
+    assert.equal(calls.pages.length, 2, 'scrolling does not keep retrying failed pages');
+    const retried = vm.loadMoreDailyPreviewWords(true);
     assert.equal(calls.pages[2].page, 2);
     await vm.startDailyVocab();
     assert.equal(calls.dialogs[0].dismissed, true);
@@ -212,5 +278,7 @@ test('the vocabulary dialog keeps scrolling inside the list despite the global m
     assert.match(view, /\.daily-word-preview\s*\{[^}]*flex-direction:\s*column;[^}]*max-height:\s*calc\(100dvh - 24px\)/);
     assert.match(view, /\.daily-word-preview > \.modal-header,\s*\.daily-word-preview > \.modal-footer\s*\{[^}]*flex:\s*0 0 auto/);
     assert.match(view, /\.daily-word-preview > \.modal-body\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*auto !important/);
-    assert.match(view, /class="modal-body" tabindex="0" role="region"[^>]*>\s*<ol class="daily-word-preview-list"/);
+    assert.match(view, /class="modal-body" tabindex="0" role="region"[^>]*daily-word-preview-scroll>\s*<ol class="daily-word-preview-list"/);
+    assert.doesNotMatch(view, /Xem thêm từ/);
+    assert.match(view, /ng-if="vm\.dailyWordPreviewError"\s+ng-click="vm\.loadMoreDailyPreviewWords\(true\)">\s*Thử lại/);
 });

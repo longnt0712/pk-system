@@ -930,7 +930,7 @@
             <h2 class="modal-title" id="daily-vocab-word-preview-title">Từ vựng bạn sẽ học</h2>
             <p class="daily-word-preview-topic" ng-if="vm.title">{{vm.title}}</p>
         </div>
-        <div class="modal-body" tabindex="0" role="region" aria-label="Danh sách từ vựng">
+        <div class="modal-body" tabindex="0" role="region" aria-label="Danh sách từ vựng" daily-word-preview-scroll>
             <ol class="daily-word-preview-list">
                 <li ng-repeat="word in vm.rawQuestions | limitTo:vm.dailyWordPreviewLimit track by $index">
                     <div class="daily-word-preview-row">
@@ -950,10 +950,9 @@
                 {{vm.rawQuestions.length < vm.dailyWordPreviewLimit ? vm.rawQuestions.length : vm.dailyWordPreviewLimit}} / {{vm.totalCard}} từ
             </span>
             <button type="button" class="btn btn-default"
-                    ng-if="!vm.allQuestionsLoaded || vm.dailyWordPreviewLimit < vm.rawQuestions.length"
-                    ng-click="vm.loadMoreDailyPreviewWords()"
-                    ng-disabled="vm.loadingMoreQuestions">
-                {{vm.dailyWordPreviewError ? 'Thử lại' : 'Xem thêm từ'}}
+                    ng-if="vm.dailyWordPreviewError"
+                    ng-click="vm.loadMoreDailyPreviewWords(true)">
+                Thử lại
             </button>
             <button type="button" class="btn btn-primary" ng-click="$dismiss()">Đóng</button>
         </div>

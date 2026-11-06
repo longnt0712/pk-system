@@ -1,10 +1,48 @@
 (function () {
     'use strict';
 
-    angular.module('Hrm.Question').controller(
-        'DailyVocabController',
-        DailyVocabController
-    );
+    angular.module('Hrm.Question')
+        .controller('DailyVocabController', DailyVocabController)
+        .directive('dailyWordPreviewScroll', dailyWordPreviewScroll);
+
+    dailyWordPreviewScroll.$inject = ['$timeout', '$window'];
+    function dailyWordPreviewScroll($timeout, $window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element) {
+                var vm = scope.vm;
+                var body = element[0];
+                var checkTimer = null;
+                var destroyed = false;
+
+                function scheduleCheck() {
+                    if (destroyed || checkTimer !== null || !vm.canLoadMoreDailyPreviewWords()) { return; }
+                    checkTimer = $timeout(function () {
+                        var remaining = body.scrollHeight - body.clientHeight - body.scrollTop;
+                        if (!body.clientHeight || remaining > 160) {
+                            checkTimer = null;
+                            return;
+                        }
+                        scope.$evalAsync(function () {
+                            checkTimer = null;
+                            if (!destroyed) { vm.loadMoreDailyPreviewWords(); }
+                        });
+                    }, 0, false);
+                }
+
+                body.addEventListener('scroll', scheduleCheck, {passive: true});
+                $window.addEventListener('resize', scheduleCheck);
+                // Recheck after each batch in case the list still fits without a scrollbar.
+                scope.$watchGroup(['vm.canLoadMoreDailyPreviewWords()', 'vm.dailyWordPreviewLimit'], scheduleCheck);
+                scope.$on('$destroy', function () {
+                    destroyed = true;
+                    if (checkTimer !== null) { $timeout.cancel(checkTimer); }
+                    body.removeEventListener('scroll', scheduleCheck);
+                    $window.removeEventListener('resize', scheduleCheck);
+                });
+            }
+        };
+    }
 
     DailyVocabController.$inject = [
         '$rootScope',
@@ -997,8 +1035,14 @@
             }
         }
 
-        vm.loadMoreDailyPreviewWords = function () {
-            if (!dailyWordPreviewModal || !vm.canPreviewDailyWords() || vm.loadingMoreQuestions) { return; }
+        vm.canLoadMoreDailyPreviewWords = function (retry) {
+            return !!dailyWordPreviewModal && vm.canPreviewDailyWords() && !vm.loadingMoreQuestions &&
+                (!vm.dailyWordPreviewError || retry === true) &&
+                (!vm.allQuestionsLoaded || vm.dailyWordPreviewLimit < vm.rawQuestions.length);
+        };
+
+        vm.loadMoreDailyPreviewWords = function (retry) {
+            if (!vm.canLoadMoreDailyPreviewWords(retry)) { return; }
             if (vm.dailyWordPreviewLimit < vm.rawQuestions.length) {
                 vm.dailyWordPreviewLimit += DAILY_LAZY_PAGE_SIZE;
                 return;
