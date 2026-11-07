@@ -7,25 +7,41 @@ import java.util.UUID;
 public final class GiftLightningGame {
     public static final long DURATION_MS = 30000L;
     private static final long PERIOD_MS = 150000L;
+    private static final long MIN_DELAY_MS = 10000L;
     private final String id = UUID.randomUUID().toString();
     private final long stageStartsAt;
     private final Random random;
-    private long stageEndsAt, startsAt, endsAt;
+    private long stageEndsAt, startsAt, endsAt, nextEligibleAt, nextWindowStartsAt;
     private int collectedCount;
     private String username, displayName;
 
     public GiftLightningGame(long stageStartsAt, long stageEndsAt, Random random) {
         this.stageStartsAt = stageStartsAt; this.stageEndsAt = stageEndsAt; this.random = random;
+        scheduleNext(stageStartsAt);
     }
-    public void extendTo(long deadline) { stageEndsAt = Math.max(stageEndsAt, deadline); }
+    private void scheduleNext(long windowStartsAt) {
+        nextWindowStartsAt = windowStartsAt;
+        long availableDelay = Math.min(PERIOD_MS - DURATION_MS, stageEndsAt - windowStartsAt - DURATION_MS);
+        if (availableDelay <= 0L) { nextEligibleAt = Long.MAX_VALUE; return; }
+        long minimumDelay = Math.min(MIN_DELAY_MS, availableDelay);
+        // Choose once per window, not once per egg or room refresh. A crowd of
+        // early clicks cannot turn the first seconds into a guaranteed bonus.
+        nextEligibleAt = windowStartsAt + minimumDelay + random.nextInt((int) (availableDelay - minimumDelay + 1L));
+    }
+    public void extendTo(long deadline) {
+        if (deadline <= stageEndsAt) { return; }
+        stageEndsAt = deadline;
+        if (nextEligibleAt == Long.MAX_VALUE) { scheduleNext(nextWindowStartsAt); }
+    }
     public boolean isActive(long now) { return now >= startsAt && endsAt > now && now < stageEndsAt; }
     public boolean tryCollect(long now, String username, String displayName) {
         long duration = Math.max(0L, stageEndsAt - stageStartsAt);
         long budget = duration < DURATION_MS ? 0L : Math.max(1L, Math.round(duration / (double) PERIOD_MS));
         if (now < stageStartsAt || isActive(now) || now + DURATION_MS > stageEndsAt || collectedCount >= budget ||
-                now < stageStartsAt + collectedCount * PERIOD_MS || random.nextInt(5) != 0) { return false; }
+                now < nextEligibleAt || random.nextInt(5) != 0) { return false; }
         this.username = username; this.displayName = displayName;
         startsAt = now; endsAt = now + DURATION_MS; collectedCount++;
+        scheduleNext(Math.max(endsAt, stageStartsAt + collectedCount * PERIOD_MS));
         return true;
     }
     public void stop() { endsAt = 0L; }

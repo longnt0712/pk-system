@@ -39,6 +39,11 @@ public class BattleOnlineGiftDropTest {
     }
     @After public void cleanup() { service.destroy(); }
     private BattleOnlineGiftClaimDto request(String id) { BattleOnlineGiftClaimDto d=new BattleOnlineGiftClaimDto(); d.setGiftId(id); return d; }
+    private int firstHatTicket() {
+        GiftDropGame probability = new GiftDropGame(10,new Random(1));
+        int[] weights = ReflectionTestUtils.invokeMethod(probability,"weightsForEffects",false,false,0,System.currentTimeMillis());
+        return weights[0];
+    }
     @SuppressWarnings("unchecked") private int firstTicketForReward(int level) {
         GiftDropGame probability = new GiftDropGame(10,new Random(1));
         int[] weights = ReflectionTestUtils.invokeMethod(probability,"weightsForEffects",false,false,0,System.currentTimeMillis());
@@ -250,7 +255,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void perryHatScoresExactlyOnePointEvenForTheDoubleCarrierAndKeepsPrivateRewardsHidden() throws Exception {
-        final int hatTicket = (Integer)get(new GiftDropGame(10000,new Random(1)),"rottenWeight");
+        final int hatTicket = firstHatTicket();
         pool = new GiftDropGame(10000,new Random() { @Override public int nextInt(int bound) { return hatTicket; } });
         set(room,"giftDrop",pool);
         BattleOnlineRoomDto before = service.getRoom("GIFTS1","alice");
@@ -290,7 +295,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void aClaimedHatProtectsOnlyItsOwnerAcrossReloadsAndCannotBeRefreshedByReplayingTheClaim() {
-        final int[] ticket = {(Integer)get(new GiftDropGame(10,new Random(1)),"rottenWeight")};
+        final int[] ticket = {firstHatTicket()};
         pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return ticket[0]; } });
         set(room,"giftDrop",pool); set(alice,"giftCredits",3); set(bob,"giftCredits",3);
         String hatId = service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id;
@@ -311,11 +316,11 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void aHatReplacedByRoomLightningDoesNotGrantPersonalProtection() {
-        final int ticket = (Integer)get(new GiftDropGame(10,new Random(1)),"rottenWeight");
+        final int ticket = firstHatTicket();
         pool = new GiftDropGame(10,new Random() { @Override public int nextInt(int bound) { return ticket; } });
         set(room,"giftDrop",pool); set(room,"giftOpening",false); set(alice,"giftCredits",2);
         long now = System.currentTimeMillis(); set(room,"matchEndsAt",now+300000L);
-        set(room,"giftLightning",new GiftLightningGame(now,now+300000L,new Random() { @Override public int nextInt(int bound) { return 0; } }));
+        set(room,"giftLightning",new GiftLightningGame(now-20000L,now+300000L,new Random() { @Override public int nextInt(int bound) { return 0; } }));
         String id = service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id;
         BattleOnlineGiftClaimResultDto reward = service.claimGift("GIFTS1","alice",request(id));
         assertEquals(GiftDropGame.LIGHTNING_LEVEL,reward.getRewardLevel());

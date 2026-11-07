@@ -61,7 +61,7 @@ public class BattleOnlineLightningTest extends BattleOnlineGiftDropTest {
             ReflectionTestUtils.setField(room,"lumLuckyAppearance",appearance);
             ReflectionTestUtils.setField(room,"giftOpening",false);ReflectionTestUtils.setField(room,"matchEndsAt",now+300000L);
             ReflectionTestUtils.setField(alice,"giftCredits",2);
-            ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now,now+300000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
+            ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now-20000L,now+300000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
             BattleOnlineGiftClaimDto claim=new BattleOnlineGiftClaimDto();claim.setGiftId(service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id);
             BattleOnlineGiftClaimResultDto reward=service.claimGift("GIFTS1","alice",claim);
             assertEquals(GiftDropGame.LIGHTNING_LEVEL,reward.getRewardLevel());assertEquals(0D,reward.getPoints(),0D);
@@ -82,7 +82,7 @@ public class BattleOnlineLightningTest extends BattleOnlineGiftDropTest {
         Object room=ReflectionTestUtils.getField(this,"room"),alice=ReflectionTestUtils.getField(this,"alice");
         long now=System.currentTimeMillis();
         ReflectionTestUtils.setField(alice,"giftCredits",1);
-        ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now,now+180000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
+        ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now-20000L,now+180000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
         BattleOnlineGiftClaimDto claim=new BattleOnlineGiftClaimDto();claim.setGiftId(service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id);
         BattleOnlineGiftClaimResultDto reward=service.claimGift("GIFTS1","alice",claim);
         assertNotEquals(GiftDropGame.LIGHTNING_LEVEL,reward.getRewardLevel());
@@ -94,7 +94,7 @@ public class BattleOnlineLightningTest extends BattleOnlineGiftDropTest {
         long now=System.currentTimeMillis();
         ReflectionTestUtils.setField(room,"giftOpening",false);ReflectionTestUtils.setField(room,"matchEndsAt",now+300000L);
         ReflectionTestUtils.setField(alice,"giftCredits",2);ReflectionTestUtils.setField(bob,"giftCredits",2);
-        ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now,now+300000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
+        ReflectionTestUtils.setField(room,"giftLightning",new GiftLightningGame(now-20000L,now+300000L,new Random(){@Override public int nextInt(int bound){return 0;}}));
         BattleOnlineGiftClaimDto claim=new BattleOnlineGiftClaimDto();claim.setGiftId(service.getRoom("GIFTS1","alice").getGiftDrop().gifts.get(0).id);
         BattleOnlineGiftClaimResultDto reward=service.claimGift("GIFTS1","alice",claim);
         assertEquals(GiftDropGame.LIGHTNING_LEVEL,reward.getRewardLevel());assertEquals(0D,reward.getPoints(),0D);
