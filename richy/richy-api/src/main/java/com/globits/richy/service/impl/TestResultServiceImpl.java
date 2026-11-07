@@ -3,10 +3,11 @@ package com.globits.richy.service.impl;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.regex.Matcher;
@@ -19,6 +20,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import javax.persistence.LockModeType;
 
 import org.joda.time.LocalDateTime;
@@ -265,186 +267,100 @@ public class TestResultServiceImpl implements TestResultService {
 	    );
 	}
 	
-	public class sortByTimes implements Comparator<TestResultDto> {
-		public int compare(TestResultDto a, TestResultDto b)
-	    {
-	        return b.getTimes() - a.getTimes();
-	    }
-	}
-	
-	public class sortByWords implements Comparator<TestResultDto> {
-		public int compare(TestResultDto a, TestResultDto b)
-	    {
-	        return b.getNumberOfWords() - a.getNumberOfWords();
-	    }
-	}
-	
 	@Override
+	@Transactional(readOnly = true)
 	public List<TestResultDto> getRanking(TestResultDto searchDto) {
+		Integer requestedLimit = searchDto.getNumberOfRanking();
+		int limit = requestedLimit == null ? 10 : requestedLimit;
+		if (limit <= 0) {
+			return new ArrayList<>();
+		}
 
-	    String grade = searchDto.getGrade();
-	    Integer enrollmentClassId = searchDto.getEnrollmentClassId();
+		String grade = searchDto.getGrade();
+		Integer enrollmentClassId = searchDto.getEnrollmentClassId();
+		boolean filterGrade = grade != null && !grade.isEmpty();
+		boolean filterClass = enrollmentClassId != null && enrollmentClassId != 0;
+		boolean filterDates = searchDto.getStartDate() != null && searchDto.getEndDate() != null;
 
-	    Authentication authentication =
-	            SecurityContextHolder.getContext().getAuthentication();
+		// Keep active users with no matching Daily Vocab result in the ranking.
+		StringBuilder hql = new StringBuilder(
+				"select u.id, u.username, p.id, p.firstName, p.lastName, p.enrollmentClassId, "
+				+ "count(s.id), sum(s.numberOfWords) "
+				+ "from User u left join u.person p "
+				+ "left join TestResult s on s.user = u and s.testType = 1 "
+				+ "and (s.resultStatus is null or s.resultStatus = 'SUCCESS')");
+		if (filterDates) {
+			hql.append(" and s.createDate >= :startDate and s.createDate < :endDate");
+		}
+		hql.append(" where u.active = true");
+		if (filterClass) {
+			hql.append(" and p.enrollmentClassId = :enrollmentClassId");
+		}
+		if (filterGrade) {
+			hql.append(" and p.displayName like :grade");
+		}
+		hql.append(" group by u.id, u.username, p.id, p.firstName, p.lastName, p.enrollmentClassId order by u.id");
 
-	    User modifiedUser = null;
+		TypedQuery<Object[]> query = manager.createQuery(hql.toString(), Object[].class);
+		if (filterDates) {
+			query.setParameter("startDate", searchDto.getStartDate().plusDays(1).withHourOfDay(0));
+			query.setParameter("endDate", searchDto.getEndDate().plusDays(2).withHourOfDay(0));
+		}
+		if (filterClass) {
+			query.setParameter("enrollmentClassId", enrollmentClassId);
+		}
+		if (filterGrade) {
+			query.setParameter("grade", "%" + grade + "%");
+		}
 
-	    if (authentication != null) {
-	        modifiedUser = (User) authentication.getPrincipal();
-	    }
+		List<TestResultDto> scores = new ArrayList<>();
+		for (Object[] row : query.getResultList()) {
+			UserDto user = new UserDto();
+			user.setId((Long) row[0]);
+			user.setUsername((String) row[1]);
+			if (row[2] != null) {
+				user.setFirstName((String) row[3]);
+				user.setLastName((String) row[4]);
+				user.setDisplayName(user.getFirstName() + " " + user.getLastName());
+			}
+			if (row[5] != null) {
+				user.getEnrollmentClassIds().add(((Number) row[5]).longValue());
+			}
+			TestResultDto score = new TestResultDto();
+			score.setUser(user);
+			score.setTestTakerName(user.getDisplayName());
+			score.setTimes(((Number) row[6]).intValue());
+			score.setNumberOfWords(row[7] == null ? 0 : ((Number) row[7]).intValue());
+			scores.add(score);
+		}
 
-	    List<TestResultDto> ret = new ArrayList<TestResultDto>();
-	    List<UserDto> users = new ArrayList<UserDto>();
+		int size = Math.min(limit, scores.size());
+		scores.sort(Comparator.comparingInt(TestResultDto::getTimes).reversed());
+		List<TestResultDto> ranking = new ArrayList<>(scores.subList(0, size));
+		scores.sort(Comparator.comparingInt(TestResultDto::getNumberOfWords).reversed());
+		ranking.addAll(scores.subList(0, size));
+		loadRankingMemberships(ranking);
+		return ranking;
+	}
 
-	    if (grade != null && grade.length() > 0) {
-	        users = userRepository.getAllUserWithDisplayNameAndUsername(grade);
-	    } else {
-	        users = userRepository.getAllUserWithDisplayNameAndUsername();
-	    }
-
-	    for (UserDto userDto : users) {
-
-	        // ===============================
-	        // FILTER THEO LỚP
-	        // ===============================
-	        if (enrollmentClassId != null && enrollmentClassId != 0) {
-
-	            User user = userRepository.getOne(userDto.getId());
-
-	            if (user == null
-	                    || user.getPerson() == null
-	                    || user.getPerson().getEnrollmentClassId() == null
-	                    || !enrollmentClassId.equals(
-	                            user.getPerson().getEnrollmentClassId())) {
-
-	                continue;
-	            }
-	        }
-
-	        TestResultDto dto = new TestResultDto();
-
-	        dto.setUser(userDto);
-	        dto.setTestTakerName(userDto.getDisplayName());
-
-	        String sqlCount =
-	                "select count(s.id) from TestResult s where (1=1)";
-
-	        String sqlSum =
-	                "select sum(s.numberOfWords) from TestResult s where (1=1)";
-
-	        String whereClause = "";
-
-	        if (userDto != null) {
-	            whereClause += " and s.user.id = :userId ";
-	        }
-
-	        // ===============================
-	        // FILTER THEO LỚP
-	        // ===============================
-	        if (enrollmentClassId != null && enrollmentClassId != 0) {
-	            whereClause +=
-	                    " and s.user.person.enrollmentClassId = :enrollmentClassId ";
-	        }
-
-	        whereClause += " and s.testType = 1 and (s.resultStatus is null or s.resultStatus = 'SUCCESS') ";
-
-	        if (searchDto != null
-	                && searchDto.getStartDate() != null
-	                && searchDto.getEndDate() != null) {
-
-	            whereClause +=
-	                    " and (s.createDate >= :startDate "
-	                    + "and s.createDate < :endDate)";
-	        }
-
-	        sqlCount += whereClause;
-	        sqlSum += whereClause;
-
-	        Query qCount = manager.createQuery(sqlCount);
-	        Query qSum = manager.createQuery(sqlSum);
-
-	        if (userDto != null) {
-	            qCount.setParameter("userId", userDto.getId());
-	            qSum.setParameter("userId", userDto.getId());
-	        }
-
-	        // ===============================
-	        // PARAMETER LỚP
-	        // ===============================
-	        if (enrollmentClassId != null && enrollmentClassId != 0) {
-	            qCount.setParameter(
-	                    "enrollmentClassId",
-	                    enrollmentClassId
-	            );
-
-	            qSum.setParameter(
-	                    "enrollmentClassId",
-	                    enrollmentClassId
-	            );
-	        }
-
-	        if (searchDto != null
-	                && searchDto.getStartDate() != null
-	                && searchDto.getEndDate() != null) {
-
-	            LocalDateTime startDate = searchDto.getStartDate();
-	            startDate = startDate.plusDays(1).withHourOfDay(0);
-
-	            LocalDateTime endDate = searchDto.getEndDate();
-	            endDate = endDate.plusDays(2).withHourOfDay(0);
-
-	            qSum.setParameter("startDate", startDate);
-	            qCount.setParameter("startDate", startDate);
-
-	            qSum.setParameter("endDate", endDate);
-	            qCount.setParameter("endDate", endDate);
-	        }
-
-	        Integer times = null;
-	        Integer sum = null;
-
-	        Long a = (Long) qCount.getSingleResult();
-
-	        if (a != null) {
-	            times = a.intValue();
-	        }
-
-	        Long b = (Long) qSum.getSingleResult();
-
-	        if (b != null) {
-	            sum = b.intValue();
-	        }
-
-	        if (sum == null) {
-	            sum = 0;
-	        }
-
-	        dto.setTimes(times);
-	        dto.setNumberOfWords(sum);
-
-	        ret.add(dto);
-	    }
-
-	    Collections.sort(ret, new sortByTimes());
-
-	    List<TestResultDto> ret2 = new ArrayList<TestResultDto>();
-
-	    if (ret.size() < searchDto.getNumberOfRanking()) {
-	        searchDto.setNumberOfRanking(ret.size());
-	    }
-
-	    for (int i = 0; i < searchDto.getNumberOfRanking(); i++) {
-	        ret2.add(ret.get(i));
-	    }
-
-	    Collections.sort(ret, new sortByWords());
-
-	    for (int i = 0; i < searchDto.getNumberOfRanking(); i++) {
-	        ret2.add(ret.get(i));
-	    }
-
-	    return ret2;
+	private void loadRankingMemberships(List<TestResultDto> ranking) {
+		Map<Long, UserDto> users = new HashMap<>();
+		for (TestResultDto score : ranking) {
+			UserDto user = score.getUser();
+			users.put(user.getId(), user);
+		}
+		List<Long> ids = new ArrayList<>(users.keySet());
+		// Batch only when a caller requests a ranking large enough to approach SQL Server's parameter limit.
+		for (int start = 0; start < ids.size(); start += 1000) {
+			List<Object[]> memberships = manager.createQuery(
+					"select u.id, classId from User u join u.enrollmentClassIds classId where u.id in :ids",
+					Object[].class)
+					.setParameter("ids", ids.subList(start, Math.min(start + 1000, ids.size())))
+					.getResultList();
+			for (Object[] membership : memberships) {
+				users.get((Long) membership[0]).getEnrollmentClassIds().add((Long) membership[1]);
+			}
+		}
 	}
 
 	@Override
