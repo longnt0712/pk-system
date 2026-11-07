@@ -185,7 +185,7 @@ test('pen pressure and coalesced points are persisted in page coordinates rather
     h.pointer('pointermove', {getCoalescedEvents: () => [{pointerType: 'pen', clientX: 140, clientY: 130, pressure: .7}]});
     h.pointer('pointerup', {clientX: 190, clientY: 180, pressure: .9}); await h.flush();
     assert.equal(session.document.strokes.length, 1); const stroke = session.document.strokes[0];
-    assert.equal(stroke.tool, 'pen'); assert.equal(stroke.width, 4); assert.equal(stroke.color, '#315bbe');
+    assert.equal(stroke.tool, 'pen'); assert.equal(stroke.width, 2); assert.equal(stroke.color, '#315bbe');
     assert.deepEqual(clone(stroke.points), [[100, 100, .2], [200, 200, .7], [300, 300, .9]]);
     assert.equal(session.changedCalls, 1); assert.equal(h.captures.size, 0);
 });
@@ -228,7 +228,7 @@ test('closing or destroying the notebook commits an unfinished stroke before sav
         h.pointer('pointerdown'); h.pointer('pointermove', {clientX: 240, clientY: 230});
         if (action === 'close') h.ui.close(); else h.scope.destroy();
         assert.equal(session.document.strokes.length, 1); assert.equal(session.document.strokes[0].tool, 'highlighter');
-        assert.equal(session.document.strokes[0].width, 16); assert.equal(session.saved.at(-1).strokes.length, 1); assert.equal(h.captures.size, 0);
+        assert.equal(session.document.strokes[0].width, 8); assert.equal(session.saved.at(-1).strokes.length, 1); assert.equal(h.captures.size, 0);
         if (action === 'destroy') {
             assert.equal(session.destroyed, 1); assert.equal(h.overlay.parentNode, null); assert.equal(h.timers.size + h.frames.size, 0);
             assert.ok(h.resizeObservers.every(observer => observer.targets.size === 0));

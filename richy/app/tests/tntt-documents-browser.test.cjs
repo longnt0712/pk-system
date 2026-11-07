@@ -129,6 +129,7 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
   await f.page.locator('.study-notebook-text').fill('BIÊN BẢN HỌP\nThiếu nhi cùng sống yêu thương.');
   await f.page.getByRole('button',{name:'Bút',exact:true}).click();
+  await f.page.locator('.study-notebook-heading__copy').click();
   const box=await f.page.locator('.study-notebook-canvas').boundingBox();
   await f.page.mouse.move(box.x+70,box.y+110);await f.page.mouse.down();await f.page.mouse.move(box.x+160,box.y+140,{steps:8});await f.page.mouse.up();
   await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='saved');
@@ -144,48 +145,75 @@ test('shared minutes type and draw with the existing A4 editor, autosave togethe
  }finally{await f.context.close();}
 });
 
-test('the pen palette fits desktop and phone, supports preset and custom colors, and preserves existing ink',async()=>{
+test('tools open independent palettes with thin strokes, zoom resets on double click and page controls stay fixed',async()=>{
  for(const width of [1440,390]){
   const f=await fixture({width});try{
    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status!=='loading');
    await f.page.locator('.study-notebook-text').fill('abc · Chữ và bút cùng màu');
    await f.page.getByRole('button',{name:'Bút',exact:true}).click();
-   async function draw(offset){const box=await f.page.locator('.study-notebook-canvas').boundingBox();await f.page.mouse.move(box.x+40,box.y+70+offset);await f.page.mouse.down();await f.page.mouse.move(box.x+120,box.y+90+offset,{steps:5});await f.page.mouse.up();}
+   async function draw(offset){await f.page.locator('.study-notebook-heading__copy').click();const box=await f.page.locator('.study-notebook-canvas').boundingBox();await f.page.mouse.move(box.x+40,box.y+70+offset);await f.page.mouse.down();await f.page.mouse.move(box.x+120,box.y+90+offset,{steps:5});await f.page.mouse.up();}
    await draw(0);
-   await f.page.getByRole('button',{name:'Gõ chữ',exact:true}).click();
    const trigger=f.page.getByRole('button',{name:'Màu chữ và bút',exact:true}),palette=f.page.getByRole('dialog',{name:'Bảng màu chữ và bút',exact:true});
-   await trigger.click();await palette.waitFor({state:'visible'});
+   await f.page.getByRole('button',{name:'Bút',exact:true}).click();await palette.waitFor({state:'visible'});
+   assert.equal(await palette.locator('.study-notebook-palette-heading').innerText(),'Bút');
+   assert.equal(await palette.getByRole('button',{name:'Mảnh',exact:true}).getAttribute('aria-pressed'),'true');
    const bounds=await palette.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width&&bounds.y>=0&&bounds.y+bounds.height<=950);
    assert.equal(await palette.locator('.study-notebook-palette-grid button').count(),80);
    const unobscured=await palette.evaluate(e=>{const swatch=e.querySelector('button'),r=swatch.getBoundingClientRect();return swatch.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));});
    assert.equal(unobscured,true,'The palette opens outside the scrolling toolbar without clipping');
    await f.page.screenshot({path:path.join(app,`../../.tmp/notebook-palette-${width}.png`)});
+   await palette.getByRole('button',{name:'Vừa',exact:true}).click();
    await palette.getByRole('button',{name:'Màu #FF0000',exact:true}).click();
    await palette.waitFor({state:'hidden'});
-   assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(255, 0, 0)');
-   await f.page.getByRole('button',{name:'Bút',exact:true}).click();await draw(35);
-   await trigger.click();
+   assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(39, 54, 77)');
+   await draw(35);
+   await f.page.getByRole('button',{name:'Gõ chữ',exact:true}).click();
+   await palette.waitFor({state:'visible'});
+   assert.equal(await palette.locator('.study-notebook-palette-heading').innerText(),'Gõ chữ');
+   assert.equal(await palette.locator('.study-notebook-palette-widths').count(),0);
+   await palette.getByRole('button',{name:'Thêm màu tùy chỉnh'}).click();
+   const hex=palette.getByRole('textbox',{name:'Mã màu HEX'});
+   await hex.fill('#ZZZZZZ');assert.equal(await palette.getByRole('button',{name:'Áp dụng',exact:true}).isDisabled(),true);
+   await hex.fill('#123ABC');await palette.getByRole('button',{name:'Áp dụng',exact:true}).click();
+   await palette.waitFor({state:'hidden'});
+   await f.page.getByRole('button',{name:'Đánh dấu',exact:true}).click();
+   await palette.waitFor({state:'visible'});
+   assert.equal(await palette.locator('.study-notebook-palette-heading').innerText(),'Đánh dấu');
+   assert.equal(await palette.getByRole('button',{name:'Mảnh',exact:true}).getAttribute('aria-pressed'),'true');
+   await palette.getByRole('button',{name:'Màu #FFFF00',exact:true}).click();await draw(70);
+   await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.deepEqual(f.server.entry.document.strokes.map(s=>s.color),['#315bbe','#ff0000','#ffff00']);
+   assert.deepEqual(f.server.entry.document.strokes.map(s=>s.width),[2,4,8]);
+   assert.equal(f.server.entry.document.textColor,'#123abc');assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
+   await f.page.getByRole('button',{name:'Bút',exact:true}).click();
+   await palette.waitFor({state:'visible'});
+   assert.equal(await palette.getByRole('button',{name:'Vừa',exact:true}).getAttribute('aria-pressed'),'true');
    const red=palette.getByRole('button',{name:'Màu #FF0000',exact:true});
    assert.equal(await red.getAttribute('aria-pressed'),'true');
    await red.press('ArrowRight');await f.page.keyboard.press('Enter');
    await palette.waitFor({state:'hidden'});
-   await trigger.click();await palette.getByRole('button',{name:'Thêm màu tùy chỉnh'}).click();
-   const hex=palette.getByRole('textbox',{name:'Mã màu HEX'});
-   await hex.fill('#ZZZZZZ');assert.equal(await palette.getByRole('button',{name:'Áp dụng',exact:true}).isDisabled(),true);
-   await hex.fill('#123ABC');await palette.getByRole('button',{name:'Áp dụng',exact:true}).click();
-   await palette.waitFor({state:'hidden'});await draw(70);
-   await f.page.waitForFunction(()=>window.vm.session.status==='saved');
-   assert.deepEqual(f.server.entry.document.strokes.map(s=>s.color),['#315bbe','#ff0000','#123abc']);
-   assert.equal(f.server.entry.document.textColor,'#123abc');assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
-   await trigger.click();assert.equal(await palette.getByRole('button',{name:'Màu tùy chỉnh #123ABC',exact:true}).getAttribute('aria-pressed'),'true');
+   await f.page.getByRole('button',{name:'Gõ chữ',exact:true}).click();
+   await palette.waitFor({state:'visible'});
+   assert.equal(await palette.getByRole('button',{name:'Màu tùy chỉnh #123ABC',exact:true}).getAttribute('aria-pressed'),'true');
    await f.page.keyboard.press('Escape');await palette.waitFor({state:'hidden'});
    assert.equal(await f.page.locator('.study-notebook-overlay').isVisible(),true,'Escape first closes the palette and keeps the document open');
    await trigger.click();await f.page.locator('.study-notebook-heading__copy').click();await palette.waitFor({state:'hidden'});
+   assert.equal(await f.page.locator('.study-notebook-heading__settings .study-notebook-zoom').count(),1);
+   assert.equal(await f.page.getByRole('button',{name:'Vừa trang',exact:true}).count(),0);
+   await f.page.getByRole('button',{name:'Phóng to trang giấy',exact:true}).click();
+   await f.page.locator('.study-notebook-zoom output').getByText('125%').waitFor();
+   await f.page.getByRole('slider',{name:'Kéo để thu phóng trang giấy'}).dblclick();
+   await f.page.locator('.study-notebook-zoom output').getByText('100%').waitFor();
+   const pageControls=f.page.locator('.study-notebook-pages'),before=await pageControls.boundingBox();
+   await f.page.locator('.study-notebook-scroll').evaluate(node=>{node.scrollTop=600;});
+   const after=await pageControls.boundingBox();
+   assert.ok(Math.abs(after.y-before.y)<1,'Page controls stay fixed when the document scrolls');
+   assert.ok(after.x>=0&&after.x+after.width<=width&&after.y>650,'Page controls fit the lower right of the editor');
    await f.page.locator('.study-notebook-close').click();await f.page.waitForFunction(()=>!window.vm.active);
    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='saved');
-   assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document.strokes.map(s=>s.color)),['#315bbe','#ff0000','#123abc']);
+   assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document.strokes.map(s=>s.color)),['#315bbe','#ff0000','#ffff00']);
    assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
    assert.deepEqual(f.server.errors,[]);
   }finally{await f.context.close();}
@@ -200,6 +228,8 @@ test('saved pen and highlighter ink is visible on reopening before any zoom or t
    await f.page.locator('.study-notebook-text').fill('Biên bản có chữ gõ và nét bút đã lưu.');
    for(const tool of ['Bút','Đánh dấu']){
     await f.page.getByRole('button',{name:tool,exact:true}).click();
+    await f.page.locator('.study-notebook-heading__copy').click();
+    await f.page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const box=await f.page.locator('.study-notebook-canvas').boundingBox();
     await f.page.mouse.move(box.x+40,box.y+70);await f.page.mouse.down();await f.page.mouse.move(box.x+130,box.y+100,{steps:8});await f.page.mouse.up();
    }
@@ -239,6 +269,7 @@ test('TNTT documents open with three A4 pages and save added pages with handwrit
    assert.equal(await page.locator('.study-notebook-page-boundary').count(),3);
    await page.locator('.study-notebook-text').fill('Biên bản gõ chữ và viết tay trên các trang.');
    await button('Bút').click();
+   await page.locator('.study-notebook-heading__copy').click();
    await chooser.selectOption({label:'2'});
    async function draw(){
     const canvas=page.locator('.study-notebook-canvas');
