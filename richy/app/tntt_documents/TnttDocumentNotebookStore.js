@@ -31,6 +31,25 @@
                 })};
                 if (value.textColor !== undefined) { result.textColor = value.textColor; }
                 if (value.pageCount !== undefined) { result.pageCount = value.pageCount; }
+                if (value.textDelta !== undefined) {
+                    var delta = value.textDelta, text = '';
+                    if (!delta || !Array.isArray(delta.ops) || !delta.ops.length || delta.ops.length > 10000) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
+                    result.textDelta = {ops: delta.ops.map(function (op) {
+                        if (!op || typeof op.insert !== 'string' || !op.insert.length) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
+                        text += op.insert;
+                        var clean = {insert: op.insert}, attributes = {};
+                        if (op.attributes !== undefined) {
+                            if (!op.attributes || typeof op.attributes !== 'object' || Array.isArray(op.attributes) ||
+                                Object.keys(op.attributes).some(function (key) { return ['bold', 'italic'].indexOf(key) < 0 || typeof op.attributes[key] !== 'boolean'; })) {
+                                throw new Error('Định dạng chữ tài liệu không hợp lệ.');
+                            }
+                            ['bold', 'italic'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = true; } });
+                        }
+                        if (Object.keys(attributes).length) { clean.attributes = attributes; }
+                        return clean;
+                    })};
+                    if (text !== value.text + '\n') { throw new Error('Định dạng chữ không khớp nội dung tài liệu.'); }
+                }
                 return result;
             }
             function equal(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
@@ -101,7 +120,10 @@
                     if (!dirty || conflict || interaction || !authenticated()) { return $q.when(session); }
                     if (!loaded) { return session.refresh(true).then(function () { return loaded && !conflict ? session.save() : session; }); }
                     var payload;
-                    try { payload = {revision: session.revision, document: documentValue(session.document)}; }
+                    try {
+                        payload = {revision: session.revision, document: documentValue(session.document)};
+                        if (payload.document.textDelta) { session.document.textDelta = copy(payload.document.textDelta); }
+                    }
                     catch (error) { persist(); fail(error); return $q.when(session); }
                     session.status = 'saving'; session.error = ''; persist();
                     operation = api.save(context.documentId, payload).then(function (row) {

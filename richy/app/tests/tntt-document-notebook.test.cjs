@@ -73,3 +73,16 @@ test('document page counts survive autosave and legacy documents keep their orig
  assert.deepEqual(plain(f.store.validDocument(blank())),blank());
  s.destroy();
 });
+
+test('selected text formatting is saved with matching plain text and rejects embedded content',async()=>{
+ const f=fixture(),s=f.session();await s.ready;
+ s.document.text='Abba Cha ơi';
+ s.document.textDelta={ops:[{insert:'Abba',attributes:{italic:true,bold:true}},{insert:' Cha ơi\n'}]};
+ s.changed();await s.save();
+ assert.equal(s.status,'saved');
+ assert.deepEqual(plain(f.remote().document.textDelta),{ops:[{insert:'Abba',attributes:{bold:true,italic:true}},{insert:' Cha ơi\n'}]});
+ for(const textDelta of [{ops:[{insert:'Khác\n'}]},{ops:[{insert:{image:'bad'}}]},{ops:[{insert:'Abba Cha ơi\n',attributes:{link:'bad'}}]}]){
+  assert.throws(()=>f.store.validDocument({...blank(),text:'Abba Cha ơi',textDelta}),/Định dạng/);
+ }
+ s.destroy();
+});

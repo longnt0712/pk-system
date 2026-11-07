@@ -8,7 +8,7 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
  const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:null,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:editor,document:blank()},extraEntries:[],archivedEntries:[],notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
- const css=['assets/css/external/bootstrap.min.css','assets/css/study-notebook.css','tntt_documents/notices.css','tntt_documents/documents.css'].map(read).join('\n');
+ const css=['assets/css/external/bootstrap.min.css','assets/css/external/quill.snow-2.0.3.css','assets/css/study-notebook.css','tntt_documents/notices.css','tntt_documents/documents.css'].map(read).join('\n');
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());const reply=(obj,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(obj)});
   if(u.pathname==='/tai-lieu'||u.pathname==='/dashboard')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="vi"'+(dark?' class="global-dark-mode"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div ng-controller="TnttDocumentsController as vm">'+read('tntt_documents/documents.html')+'</div><tntt-notification-pet></tntt-notification-pet></body></html>'});
   if(u.pathname.startsWith('/assets/images/tntt-notices/'))return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(app,u.pathname.slice(1)))});
@@ -39,6 +39,7 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  });
  await page.goto('https://tnttphungkhoang.test/'+(dashboard?'dashboard':'tai-lieu'));
  for(const f of ['angular.min.js','angular-cookies.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',f)});
+ await page.addScriptTag({path:path.join(app,'assets/scripts/external/quill-2.0.3.js')});
  await page.evaluate(({student,editor,gender,dashboard})=>{
   window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGEMENT'}],person:{gender}};
   document.cookie='education.user='+encodeURIComponent(JSON.stringify(window.user))+';path=/';
@@ -358,7 +359,7 @@ test('TNTT lasso moves outlined handwriting as one edit and keeps its position a
    await pointer('pointermove',[155,290]);
    await pointer('pointerup',[90,165]);
    await page.getByText('Kéo vùng nét đã chọn đến vị trí mới.',{exact:true}).waitFor();
-   assert.equal(await button('Hoàn tác nét vẽ').isDisabled(),true);
+   assert.equal(await button('Hoàn tác ghi chú').isDisabled(),true);
    if(width===390){
     await pointer('pointerdown',[148,213]);
     await pointer('pointermove',[328,308]);
@@ -386,9 +387,9 @@ test('TNTT lasso moves outlined handwriting as one edit and keeps its position a
      assert.deepEqual(point.slice(2),points[i].slice(2));
     }
    }
-   await button('Hoàn tác nét vẽ').click();
+   await button('Hoàn tác ghi chú').click();
    assert.deepEqual(await page.evaluate(()=>window.vm.session.document),original);
-   await button('Khôi phục nét vẽ').click();
+   await button('Khôi phục ghi chú').click();
    await page.waitForFunction(()=>window.vm.session?.status==='saved');
    await page.locator('.study-notebook-close').click();
    await page.waitForFunction(()=>!window.vm.active);
@@ -401,6 +402,66 @@ test('TNTT lasso moves outlined handwriting as one edit and keeps its position a
    assert.deepEqual(server.errors,[]);
   }finally{await f.context.close();}
  }
+});
+
+test('text shortcuts, selected bold and italic formatting and ink share undo history and persist together',async()=>{
+ for(const width of [1440,390]){const f=await fixture({width});try{
+  const {page,server}=f,button=name=>page.getByRole('button',{name,exact:true});
+  await button('Soạn nội dung').click();
+  const text=page.locator('.study-notebook-text');
+  await text.fill('Abba Cha ơi');
+  await text.evaluate(node=>{node.focus();node.setSelectionRange(0,0);});
+  await text.press('Tab');
+  assert.equal(await text.inputValue(),'     Abba Cha ơi');
+  await text.press('Shift+Space');
+  assert.equal(await text.inputValue(),'Abba Cha ơi');
+  await text.press('Control+z');
+  assert.equal(await text.inputValue(),'     Abba Cha ơi');
+  await text.press('Control+y');
+  assert.equal(await text.inputValue(),'Abba Cha ơi');
+  await text.press('Shift+Space');
+  assert.equal(await text.inputValue(),'Abba Cha ơi','Outdent must not delete a letter');
+  await text.evaluate(node=>{node.focus();node.setSelectionRange(0,4);});
+  await button('In đậm').click();
+  const rich=page.locator('.study-notebook-rich-text .ql-editor');
+  await rich.locator('strong').getByText('Abba',{exact:true}).waitFor();
+  await button('In nghiêng').click();
+  await rich.locator('strong em, em strong').getByText('Abba',{exact:true}).waitFor();
+  await rich.press('Control+Home');await rich.press('Tab');
+  await page.waitForFunction(()=>window.vm.session.document.text==='     Abba Cha ơi');
+  await rich.press('Shift+Space');
+  await page.waitForFunction(()=>window.vm.session.document.text==='Abba Cha ơi');
+  await button('Bút').click();await page.locator('.study-notebook-heading__copy').click();
+  const box=await page.locator('.study-notebook-canvas').boundingBox();
+  await page.mouse.move(box.x+200,box.y+130);await page.mouse.down();
+  await page.mouse.move(box.x+250,box.y+150,{steps:5});await page.mouse.up();
+  await page.waitForFunction(()=>window.vm.session.document.strokes.length===1);
+  await button('Hoàn tác ghi chú').click();
+  assert.equal(await page.evaluate(()=>window.vm.session.document.strokes.length),0);
+  assert.equal(await rich.locator('strong em, em strong').count(),1);
+  await button('Khôi phục ghi chú').click();
+  await page.waitForFunction(()=>window.vm.session.status==='saved');
+  const saved=structuredClone(server.entry.document);
+  assert.equal(saved.text,'Abba Cha ơi');assert.equal(saved.strokes.length,1);
+  assert.ok(saved.textDelta.ops.some(op=>op.insert==='Abba'&&op.attributes.bold&&op.attributes.italic));
+  const popupPromise=page.waitForEvent('popup');
+  await page.evaluate(()=>window.injector.get('TnttDocumentPrint').open('Biên bản',window.vm.session.document));
+  const popup=await popupPromise;await popup.locator('strong, em').first().waitFor();
+  assert.equal(await popup.locator('strong em, em strong').innerText(),'Abba');await popup.close();
+  await page.locator('.study-notebook-close').click();await page.waitForFunction(()=>!window.vm.active);
+  await button('Soạn nội dung').click();
+  await rich.locator('strong em, em strong').getByText('Abba',{exact:true}).waitFor();
+  assert.deepEqual(await page.evaluate(()=>window.vm.session.document),saved);
+  await page.evaluate(()=>{
+   const editor=document.querySelector('.study-notebook-rich-text .ql-editor');
+   editor.querySelector('p').appendChild(document.createTextNode(' Tiếng Việt'));
+   angular.element(document.querySelector('study-notebook')).controller('studyNotebook').close();
+  });
+  await page.waitForFunction(()=>!window.vm.active);
+  await page.waitForFunction(()=>!window.vm.session||window.vm.session.status==='saved');
+  assert.match(server.entry.document.text,/Tiếng Việt$/);
+  assert.deepEqual(server.errors,[]);
+ }finally{await f.context.close();}}
 });
 
 test('the document explorer navigates nested folders, toggles views and finds nested files without mixing root contents',async()=>{

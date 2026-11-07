@@ -433,6 +433,28 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void formattedTextSurvivesSavingAndRejectsEmbedsOrMismatchedContent() {
+        Long id = create("DOCUMENT", null);
+        TnttDocumentRequest save = new TnttDocumentRequest();
+        save.revision = revision(id);
+        save.document = blank();
+        save.document.put("text", "Abba Cha ơi");
+        Map<String, Object> delta = map("ops", Arrays.asList(
+                map("insert", "Abba", "attributes", map("bold", true, "italic", true)),
+                map("insert", " Cha ơi\n")));
+        save.document.put("textDelta", delta);
+        service.save(id, save);
+        assertEquals(delta, ((Map<?, ?>) service.read(id, null).get("document")).get("textDelta"));
+        for (Map<String, Object> invalidDelta : Arrays.asList(
+                map("ops", Arrays.asList(map("insert", "Khác\n"))),
+                map("ops", Arrays.asList(map("insert", map("image", "bad")))),
+                map("ops", Arrays.asList(map("insert", "Abba Cha ơi\n", "attributes", map("link", "bad")))))) {
+            save.document.put("textDelta", invalidDelta);
+            invalid(() -> validate(save.document));
+        }
+    }
+
+    @Test
     public void payloadRejectsInvalidInkInsteadOfSavingAPartialDocument() {
         final Map<String, Object> v = blank();
         v.put(

@@ -24,17 +24,19 @@
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id,$event)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
+                    '<div class="study-notebook-text-options" ng-if="notebook.paged && !notebook.readOnly"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'bold\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.bold}}" aria-label="In đậm" title="In đậm (Ctrl+B)"><strong>B</strong></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'italic\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.italic}}" aria-label="In nghiêng" title="In nghiêng (Ctrl+I)"><em>I</em></button></div>',
                     '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette($event)" ng-disabled="notebook.isLocked()" aria-label="Màu chữ và bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu cho công cụ đang dùng"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
                     '<button type="button" class="study-notebook-lasso-toggle" ng-if="notebook.inkSelection" ng-click="notebook.setTool(\'lasso\')" ng-disabled="notebook.isLocked()" ng-attr-aria-pressed="{{notebook.tool===\'lasso\'}}" title="Khoanh vùng để di chuyển nét viết tay"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 15C2 14 1 8 4 5c3-3 10-3 13 1 3 5-3 10-8 9H6" stroke-dasharray="2 2"/><path d="M8 14c-3 0-4 3-2 4s4-1 2-4Z"/></svg><span>Khoanh vùng</span></button>',
-                    '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác nét vẽ" aria-label="Hoàn tác nét vẽ"><i class="fa fa-undo" aria-hidden="true"></i></button>',
-                    '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục nét vẽ" aria-label="Khôi phục nét vẽ"><i class="fa fa-repeat" aria-hidden="true"></i></button></div></div>',
+                    '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác chữ và nét vẽ" aria-label="Hoàn tác ghi chú"><i class="fa fa-undo" aria-hidden="true"></i></button>',
+                    '<button type="button" class="study-notebook-history" ng-click="notebook.redo()" ng-disabled="!notebook.canRedo()" title="Khôi phục chữ và nét vẽ" aria-label="Khôi phục ghi chú"><i class="fa fa-repeat" aria-hidden="true"></i></button></div></div>',
                     '<div class="study-notebook-notice" ng-if="notebook.session.error || notebook.session.status===\'conflict\'">',
                     '<span>{{notebook.session.error || \'Có bản ghi chú khác vừa được đồng bộ. Chọn bản bạn muốn giữ.\'}}</span>',
                     '<button type="button" ng-if="notebook.session.status!==\'conflict\'" ng-click="notebook.refresh()">Thử đồng bộ lại</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'keepLocal\')">Giữ bản trên máy</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'useRemote\')">Dùng bản đồng bộ</button></div>',
                     '<div class="study-notebook-scroll" ng-class="{\'has-page-controls\':notebook.paged}"><div class="study-notebook-page-frame"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
-                    '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
+                    '<textarea class="study-notebook-text" ng-hide="notebook.richActive" ng-trim="false" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
+                    '<div class="study-notebook-rich-text ng-hide" ng-show="notebook.richActive"></div>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
                     '<div class="study-notebook-page-boundary" ng-if="notebook.paged" ng-repeat="page in notebook.pages track by page" ng-style="{top:((page-1)*notebook.pageStep)+\'px\'}" aria-hidden="true"><span>Trang {{page}}</span></div>',
                     '</div></div></div>',
@@ -55,11 +57,13 @@
                     var scroller = host.querySelector('.study-notebook-scroll'), pageFrame = host.querySelector('.study-notebook-page-frame');
                     var paper = host.querySelector('.study-notebook-paper'), textarea = host.querySelector('.study-notebook-text');
                     var canvas = host.querySelector('.study-notebook-canvas'), context = canvas.getContext && canvas.getContext('2d');
+                    var richHost = host.querySelector('.study-notebook-rich-text'), richEditor = null, richState = '', renderingRich = false;
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
                     var cacheDirty = true, inkBounds = [];
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
                     var pointer = null, drawing = null, erasing = null, erasePrevious = null, undo = [], redo = [], knownStrokes = null, restoreFocus = null, composing = false;
                     var selectedInk = null, inkGesture = null;
+                    var knownContent = null, lastTextEdit = 0, lastHistoryKind = '';
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null, palette = null, paletteTimer = null, paletteTrigger = null, backdropPressed = false;
                     ui.pages = []; ui.currentPage = 1;
@@ -72,6 +76,7 @@
                         highlighter: {label: 'Đánh dấu', color: '#ffff00', width: '2'}
                     };
                     ui.strokeWidths = [{value: '2', label: 'Mảnh'}, {value: '4', label: 'Vừa'}, {value: '7', label: 'Đậm'}];
+                    ui.richActive = false; ui.textFormatting = {};
                     ui.tool = ui.colorTool = 'text'; ui.inkColor = ui.colorTools.text.color; ui.inkWidth = '2'; ui.touchDrawing = false;
                     ui.paletteOpen = false; ui.customColorOpen = false; ui.customColors = [ui.colorTools.text.color, ui.colorTools.pen.color];
                     ui.paletteColors = $window.AppColorPalette ? $window.AppColorPalette.colors.slice() : [];
@@ -83,6 +88,10 @@
                     document.body.appendChild(overlay);
 
                     function digest(callback) { if (alive) { scope.$evalAsync(callback || angular.noop); } }
+                    function applyInput(callback) {
+                        if (scope.$apply && !(scope.$root && scope.$root.$$phase)) { scope.$apply(callback); }
+                        else { callback(); digest(); }
+                    }
                     function preventPromiseNoise(result) { if (result && result.catch) { result.catch(angular.noop); } }
                     function strokes() { return (ui.session && ui.session.document && ui.session.document.strokes) || []; }
                     function visible() { return alive && ui.isOpen; }
@@ -158,8 +167,92 @@
                     };
                     function saveNow() { if (ui.session && !ui.isLocked()) { preventPromiseNoise(ui.session.save()); } }
                     function markChanged() { if (ui.session && ui.session.document) { ui.session.changed(); } }
+                    function contentSnapshot() {
+                        var doc = ui.session.document;
+                        return {text: doc.text, textDelta: doc.textDelta, strokes: doc.strokes};
+                    }
+                    function rememberContent(previous, kind) {
+                        var now = Date.now();
+                        if (kind !== 'typing' || lastHistoryKind !== kind || now - lastTextEdit > 700) {
+                            undo.push(previous); if (undo.length > 30) { undo.shift(); }
+                        }
+                        redo = []; lastHistoryKind = kind; lastTextEdit = now;
+                    }
+                    function recordTextEdit(kind) {
+                        var current = contentSnapshot();
+                        if (knownContent && (knownContent.text !== current.text || JSON.stringify(knownContent.textDelta) !== JSON.stringify(current.textDelta))) {
+                            rememberContent(knownContent, kind || 'typing');
+                        }
+                        knownContent = current;
+                    }
+                    ui.canFormatText = function () { return !!ui.paged && typeof $window.Quill === 'function'; };
+                    function richDocumentState() {
+                        var doc = ui.session.document;
+                        return JSON.stringify([doc.text, doc.textDelta]);
+                    }
+                    function richSelectionChanged(range) {
+                        if (range) { ui.textFormatting = richEditor.getFormat(range.index, range.length); digest(); }
+                    }
+                    function richTextChanged() {
+                        if (renderingRich || !ui.session || ui.readOnly) { return; }
+                        var doc = ui.session.document;
+                        doc.text = richEditor.getText().slice(0, -1);
+                        doc.textDelta = {ops: richEditor.getContents().ops.map(function (op) {
+                            var value = {insert: op.insert}, attributes = {};
+                            ['bold', 'italic'].forEach(function (name) {
+                                if (op.attributes && op.attributes[name]) { attributes[name] = true; }
+                            });
+                            if (Object.keys(attributes).length) { value.attributes = attributes; }
+                            return value;
+                        })};
+                        richState = richDocumentState(); recordTextEdit();
+                        markChanged(); scheduleLayout(); digest();
+                    }
+                    function syncRichEditor() {
+                        if (!ui.session || !ui.paged || !richHost || (!richEditor && !ui.session.document.textDelta)) { return; }
+                        if (!richEditor) { createRichEditor(); }
+                        if (!richEditor) { return; }
+                        richEditor.enable(!ui.isLocked());
+                        var state = richDocumentState();
+                        if (richState !== state) {
+                            renderingRich = true;
+                            try {
+                                richEditor.setContents(ui.session.document.textDelta || {ops: [{insert: ui.session.document.text + '\n'}]}, 'silent');
+                                richState = state;
+                            } finally { renderingRich = false; }
+                        }
+                    }
+                    function createRichEditor() {
+                        if (richEditor || !ui.canFormatText() || !richHost) { return; }
+                        ui.richActive = true; richHost.classList.remove('ng-hide'); textarea.classList.add('ng-hide');
+                        richEditor = new $window.Quill(richHost, {formats: ['bold', 'italic'], modules: {toolbar: false, history: false}});
+                        richEditor.root.setAttribute('aria-label', 'Nội dung ghi chú');
+                        richEditor.root.setAttribute('spellcheck', 'false');
+                        richEditor.root.addEventListener('compositionstart', compositionStart);
+                        richEditor.root.addEventListener('compositionend', compositionEnd);
+                        richEditor.on('text-change', richTextChanged);
+                        richEditor.on('selection-change', richSelectionChanged);
+                        syncRichEditor(); digest();
+                    }
+                    ui.formatText = function (format) {
+                        if (ui.isLocked() || !ui.canFormatText() || ['bold', 'italic'].indexOf(format) < 0) { return; }
+                        var range = richEditor ? richEditor.getSelection() : {index: textarea.selectionStart, length: textarea.selectionEnd - textarea.selectionStart};
+                        ui.closePalette(false); flushText(); finishStroke(true); ui.tool = 'text'; lastHistoryKind = '';
+                        createRichEditor();
+                        if (!richEditor) { return; }
+                        range = range || {index: richEditor.getLength() - 1, length: 0};
+                        richEditor.setSelection(range.index, range.length, 'silent');
+                        var active = !!richEditor.getFormat(range.index, range.length)[format];
+                        if (range.length) { richEditor.formatText(range.index, range.length, format, !active, 'user'); }
+                        else { richEditor.format(format, !active, 'user'); }
+                        lastHistoryKind = 'format'; richSelectionChanged(range); scheduleLayout();
+                    };
                     function flushText() {
                         if (!ui.session || !ui.session.document) { return; }
+                        if (richEditor && ui.richActive) {
+                            if (richState === richDocumentState()) { richEditor.update('silent'); richTextChanged(); }
+                            return;
+                        }
                         var wrapped = angular.element && angular.element(textarea);
                         var control = wrapped && wrapped.controller && wrapped.controller('ngModel');
                         var value = textarea.value;
@@ -168,7 +261,7 @@
                         if (control && ui.session.document.text !== control.$modelValue) { return; }
                         if (value !== ui.session.document.text) {
                             if (control) { control.$setViewValue(value); if (control.$commitViewValue) { control.$commitViewValue(); } }
-                            ui.session.document.text = value; markChanged();
+                            ui.session.document.text = value; recordTextEdit(); markChanged();
                         }
                     }
                     function positionOverlay() {
@@ -181,11 +274,11 @@
                         if (!ui.session) {
                             try { ui.session = ui.sessionOpener ? ui.sessionOpener() : $injector.get('StudyNotebookStore').open({ userId: ui.userId, testId: ui.testId, testMode: ui.testMode }); }
                             catch (error) { return; }
-                            knownStrokes = strokes();
+                            knownStrokes = strokes(); knownContent = contentSnapshot();
                             if (ui.session.ready && ui.session.ready.then) {
                                 ui.session.ready.then(function () {
                                     if (alive) {
-                                        undo = []; redo = []; knownStrokes = strokes();
+                                        undo = []; redo = []; knownStrokes = strokes(); knownContent = contentSnapshot(); lastHistoryKind = '';
                                         // Loading may finish after a blank frame was cached.
                                         // Invalidate it even when the page dimensions stay the same.
                                         cacheDirty = true; scheduleLayout();
@@ -225,10 +318,10 @@
                             undo = []; redo = []; setInkSelection(null); preventPromiseNoise(ui.session[method]()); scheduleLayout();
                         }
                     };
-                    ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); markChanged(); scheduleLayout(); } };
+                    ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); recordTextEdit(); markChanged(); scheduleLayout(); } };
                     ui.setTool = function (tool, event) {
                         if (tool === 'lasso' && (!ui.inkSelection || ui.isLocked())) { return; }
-                        ui.closePalette(false); finishStroke(true);
+                        ui.closePalette(false); flushText(); finishStroke(true); lastHistoryKind = '';
                         if (tool !== ui.tool) { setInkSelection(null); }
                         ui.tool = tool; scheduleDraw();
                         if (ui.colorTools[tool]) {
@@ -274,12 +367,25 @@
                     ui.canUndo = function () { return undo.length > 0 && !ui.isLocked(); };
                     ui.canRedo = function () { return redo.length > 0 && !ui.isLocked(); };
                     function replaceStrokes(next, history) {
-                        var previous = strokes();
-                        if (history) { undo.push(previous); if (undo.length > 30) { undo.shift(); } redo = []; }
-                        ui.session.document.strokes = next; knownStrokes = next; cacheDirty = true; markChanged(); scheduleLayout(); digest();
+                        if (history) { rememberContent(contentSnapshot(), 'ink'); }
+                        ui.session.document.strokes = next; knownStrokes = next; knownContent = contentSnapshot();
+                        cacheDirty = true; markChanged(); scheduleLayout(); digest();
                     }
-                    ui.undo = function () { finishStroke(true); if (ui.canUndo()) { setInkSelection(null); redo.push(strokes()); replaceStrokes(undo.pop(), false); } };
-                    ui.redo = function () { finishStroke(true); if (ui.canRedo()) { setInkSelection(null); undo.push(strokes()); replaceStrokes(redo.pop(), false); } };
+                    function restoreContent(value) {
+                        var doc = ui.session.document;
+                        doc.text = value.text;
+                        if (value.textDelta === undefined) { delete doc.textDelta; } else { doc.textDelta = value.textDelta; }
+                        doc.strokes = value.strokes; knownStrokes = doc.strokes; knownContent = contentSnapshot();
+                        lastHistoryKind = ''; setInkSelection(null); cacheDirty = true; markChanged(); scheduleLayout(); digest();
+                    }
+                    ui.undo = function () {
+                        flushText(); finishStroke(true);
+                        if (ui.canUndo()) { redo.push(contentSnapshot()); restoreContent(undo.pop()); }
+                    };
+                    ui.redo = function () {
+                        flushText(); finishStroke(true);
+                        if (ui.canRedo()) { undo.push(contentSnapshot()); restoreContent(redo.pop()); }
+                    };
 
                     function extent() {
                         var doc = ui.session && ui.session.document;
@@ -293,6 +399,8 @@
                     }
                     function layout() {
                         if (!visible() || !ui.session || !ui.session.document) { return; }
+                        syncRichEditor();
+                        var textSurface = ui.richActive && richEditor ? richEditor.root : textarea;
                         var previousScale = scale, previousDpr = dpr;
                         positionOverlay(); extent();
                         var viewport = scroller.getBoundingClientRect();
@@ -325,19 +433,19 @@
                         paper.style.setProperty('--notebook-text-line-height', (lineHeight * scale) + 'px');
                         paper.style.setProperty('--notebook-rule-offset-y', '0px');
                         paper.style.minHeight = Math.round(logicalHeight * scale) + 'px';
-                        textarea.style.fontSize = (17 * scale) + 'px';
-                        textarea.style.lineHeight = (lineHeight * scale) + 'px';
-                        textarea.style.padding = (40 * scale) + 'px';
-                        textarea.style.paddingTop = (paddingTop * scale) + 'px';
-                        textarea.style.color = /^#[0-9a-f]{6}$/i.test(ui.session.document.textColor || '') ? ui.session.document.textColor : '#27364d';
-                        textarea.style.height = '0px';
-                        var textHeight = textarea.scrollHeight;
-                        textarea.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
-                        var height = Math.max(logicalHeight * scale, textarea.getBoundingClientRect().height);
+                        textSurface.style.fontSize = (17 * scale) + 'px';
+                        textSurface.style.lineHeight = (lineHeight * scale) + 'px';
+                        textSurface.style.padding = (40 * scale) + 'px';
+                        textSurface.style.paddingTop = (paddingTop * scale) + 'px';
+                        textSurface.style.color = /^#[0-9a-f]{6}$/i.test(ui.session.document.textColor || '') ? ui.session.document.textColor : '#27364d';
+                        textSurface.style.height = '0px';
+                        var textHeight = textSurface.scrollHeight;
+                        textSurface.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
+                        var height = Math.max(logicalHeight * scale, textSurface.getBoundingClientRect().height);
                         if (ui.paged) {
                             var count = Math.max(1, Math.ceil((height / scale - 0.1) / pageHeight));
                             height = count * pageHeight * scale;
-                            textarea.style.height = height + 'px';
+                            textSurface.style.height = height + 'px';
                             ui.pageStep = pageHeight * scale;
                             // A phone can show more than one A4 page at once.
                             // Leave enough room to bring the final page to the top.
@@ -672,6 +780,54 @@
                         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
                         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
                     }
+                    function textShortcut(event) {
+                        if (!visible() || ui.isLocked() || event.isComposing || composing) { return; }
+                        var key = String(event.key || '').toLowerCase();
+                        var inText = event.target === textarea || !!richEditor && richEditor.root.contains(event.target);
+                        if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && (key === 'b' || key === 'i') && ui.canFormatText()) {
+                            event.preventDefault(); event.stopImmediatePropagation();
+                            applyInput(function () { ui.formatText(key === 'b' ? 'bold' : 'italic'); }); return;
+                        }
+                        if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'z' || key === 'y')) {
+                            if (event.target.tagName === 'INPUT' && !inText) { return; }
+                            event.preventDefault(); event.stopImmediatePropagation();
+                            applyInput(key === 'y' || event.shiftKey ? ui.redo : ui.undo); return;
+                        }
+                        if (!inText || event.ctrlKey || event.metaKey || event.altKey) { return; }
+                        var tab = event.key === 'Tab' && !event.shiftKey;
+                        var unindent = event.shiftKey && (event.key === ' ' || event.code === 'Space');
+                        if (!tab && !unindent) { return; }
+                        event.preventDefault(); event.stopImmediatePropagation();
+                        if (richEditor && ui.richActive) {
+                            var range = richEditor.getSelection();
+                            if (!range) { return; }
+                            var prefix = richEditor.getText(0, range.index), spaces = prefix.match(/ {1,5}$/);
+                            if (unindent && !spaces) { return; }
+                            lastHistoryKind = 'indent';
+                            if (tab) {
+                                if (range.length) { richEditor.deleteText(range.index, range.length, 'user'); }
+                                richEditor.insertText(range.index, '     ', richEditor.getFormat(range.index, 0), 'user');
+                                richEditor.setSelection(range.index + 5, 0, 'silent');
+                            } else {
+                                richEditor.deleteText(range.index - spaces[0].length, spaces[0].length, 'user');
+                                richEditor.setSelection(range.index - spaces[0].length, range.length, 'silent');
+                            }
+                            lastHistoryKind = 'indent'; return;
+                        }
+                        var text = textarea.value, start = textarea.selectionStart, end = textarea.selectionEnd;
+                        var cut = start;
+                        if (unindent) { while (cut > 0 && start - cut < 5 && text.charAt(cut - 1) === ' ') { cut--; } }
+                        if (unindent && cut === start) { return; }
+                        var value = tab ? text.slice(0, start) + '     ' + text.slice(end) : text.slice(0, cut) + text.slice(start);
+                        var caret = tab ? start + 5 : cut;
+                        applyInput(function () {
+                            ui.session.document.text = value; recordTextEdit('indent');
+                            var model = angular.element(textarea).controller('ngModel');
+                            if (model) { model.$setViewValue(value); if (model.$commitViewValue) { model.$commitViewValue(); } }
+                            textarea.value = value; textarea.setSelectionRange(caret, tab ? caret : end - (start - cut));
+                            lastHistoryKind = 'indent'; markChanged(); scheduleLayout();
+                        });
+                    }
                     function stopKeys(event) { if (visible()) { event.stopPropagation(); } }
                     function backdropPointerDown(event) { backdropPressed = event.target === overlay; }
                     function backdrop(event) { if (event.target === overlay && backdropPressed) { digest(ui.close); } }
@@ -696,14 +852,14 @@
                         if (identity === next) { return; }
                         identity = next; ui.close();
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
-                        undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
+                        undo = []; redo = []; knownStrokes = null; knownContent = null; lastHistoryKind = ''; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
                         ui.pages = []; ui.currentPage = 1;
                         if (ui.autoOpen && ui.canOpen()) { digest(open); }
                     }
                     var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled', 'notebook.sessionKey'], identityChanged);
                     var unwatchStrokes = scope.$watchCollection(function () { return strokes(); }, function (value) {
                         if (value !== knownStrokes) {
-                            knownStrokes = value; cacheDirty = true; undo = []; redo = [];
+                            knownStrokes = value; knownContent = ui.session && contentSnapshot(); lastHistoryKind = ''; cacheDirty = true; undo = []; redo = [];
                             if (inkGesture) { finishStroke(false); }
                             setInkSelection(null); scheduleLayout();
                         }
@@ -719,6 +875,7 @@
                     canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerCancel);
                     canvas.addEventListener('lostpointercapture', pointerCancel);
                     overlay.addEventListener('keydown', keydown); overlay.addEventListener('keyup', stopKeys); overlay.addEventListener('keypress', stopKeys);
+                    overlay.addEventListener('keydown', textShortcut, true);
                     overlay.addEventListener('click', backdrop); document.addEventListener('click', blockBackground, true);
                     overlay.addEventListener('pointerdown', backdropPointerDown);
                     document.addEventListener('pointerdown', blockBackground, true); document.addEventListener('mousedown', blockBackground, true);
@@ -734,11 +891,17 @@
                         $timeout.cancel(paletteTimer); if (toolbar) { toolbar.removeEventListener('scroll', positionPalette); }
                         if (observer) { observer.disconnect(); }
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
+                        if (richEditor) {
+                            richEditor.off('text-change', richTextChanged); richEditor.off('selection-change', richSelectionChanged);
+                            richEditor.root.removeEventListener('compositionstart', compositionStart);
+                            richEditor.root.removeEventListener('compositionend', compositionEnd);
+                        }
                         textarea.removeEventListener('compositionstart', compositionStart); textarea.removeEventListener('compositionend', compositionEnd);
                         canvas.removeEventListener('pointerdown', pointerDown); canvas.removeEventListener('pointermove', pointerMove);
                         canvas.removeEventListener('pointerup', pointerUp); canvas.removeEventListener('pointercancel', pointerCancel);
                         canvas.removeEventListener('lostpointercapture', pointerCancel);
                         overlay.removeEventListener('keydown', keydown); overlay.removeEventListener('keyup', stopKeys); overlay.removeEventListener('keypress', stopKeys);
+                        overlay.removeEventListener('keydown', textShortcut, true);
                         overlay.removeEventListener('click', backdrop); document.removeEventListener('click', blockBackground, true);
                         overlay.removeEventListener('pointerdown', backdropPointerDown);
                         document.removeEventListener('pointerdown', blockBackground, true); document.removeEventListener('mousedown', blockBackground, true);

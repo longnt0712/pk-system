@@ -135,6 +135,44 @@ public final class TnttDocumentPayload {
                 throw new IllegalArgumentException("Số trang tài liệu phải từ 1 đến 80.");
             document.put("pageCount", ((Number) pageCount).intValue());
         }
+        if (value.containsKey("textDelta")) {
+            Object delta = value.get("textDelta");
+            if (!(delta instanceof Map) || !(((Map<?, ?>) delta).get("ops") instanceof List))
+                throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+            List<?> operations = (List<?>) ((Map<?, ?>) delta).get("ops");
+            if (operations.isEmpty() || operations.size() > 10000)
+                throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+            List<Object> formatted = new ArrayList<>();
+            StringBuilder plain = new StringBuilder();
+            for (Object raw : operations) {
+                if (!(raw instanceof Map) || !(((Map<?, ?>) raw).get("insert") instanceof String))
+                    throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+                Map<?, ?> op = (Map<?, ?>) raw;
+                String insert = (String) op.get("insert");
+                if (insert.isEmpty() || plain.length() + insert.length() > 500001)
+                    throw new IllegalArgumentException("Nội dung định dạng quá dài.");
+                plain.append(insert);
+                Map<String, Object> cleanOp = map("insert", insert);
+                if (op.containsKey("attributes")) {
+                    if (!(op.get("attributes") instanceof Map))
+                        throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+                    Map<?, ?> attributes = (Map<?, ?>) op.get("attributes");
+                    for (Map.Entry<?, ?> entry : attributes.entrySet()) {
+                        if (!Arrays.asList("bold", "italic").contains(entry.getKey())
+                                || !(entry.getValue() instanceof Boolean))
+                            throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+                    }
+                    Map<String, Object> cleanAttributes = new LinkedHashMap<>();
+                    for (String key : Arrays.asList("bold", "italic"))
+                        if (Boolean.TRUE.equals(attributes.get(key))) cleanAttributes.put(key, true);
+                    if (!cleanAttributes.isEmpty()) cleanOp.put("attributes", cleanAttributes);
+                }
+                formatted.add(cleanOp);
+            }
+            if (!plain.toString().equals(value.get("text") + "\n"))
+                throw new IllegalArgumentException("Định dạng chữ không khớp nội dung tài liệu.");
+            document.put("textDelta", map("ops", formatted));
+        }
         String data = encode(document);
         if (data.getBytes(StandardCharsets.UTF_8).length > 8 * 1024 * 1024)
             throw new IllegalArgumentException("Tài liệu vượt dung lượng 8 MB.");

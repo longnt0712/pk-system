@@ -6,6 +6,7 @@
         states.state('application.tntt_documents', {url: '/tai-lieu?tab&notice&document&mode', data: {pageTitle: 'Tài liệu TNTT'},
             templateUrl: 'tntt_documents/documents.html?v=' + v, controller: 'TnttDocumentsController as vm',
             resolve: {deps: ['$ocLazyLoad', function (loader) { return loader.load({name: 'Hrm.TnttDocuments', files: [
+                'assets/scripts/external/quill-2.0.3.js?v=' + v, 'assets/css/external/quill.snow-2.0.3.css?v=' + v,
                 'tntt_documents/TnttDocumentNotebookStore.js?v=' + v, 'tntt_documents/TnttDocumentPrint.js?v=' + v,
                 'tntt_documents/documents.css?v=' + v, 'tntt_documents/TnttDocumentsController.js?v=' + v
             ]}); }]}});

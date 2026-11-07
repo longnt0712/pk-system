@@ -2,6 +2,17 @@
     'use strict';
     angular.module('Hrm.TnttDocuments').factory('TnttDocumentPrint', ['$window', '$q', function (window, q) {
         function escape(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+        function formattedText(doc) {
+            if (!doc.textDelta || !Array.isArray(doc.textDelta.ops)) { return escape(doc.text); }
+            var remaining = doc.text.length;
+            return doc.textDelta.ops.map(function (op) {
+                var text = String(op.insert || '').slice(0, remaining); remaining -= text.length;
+                var html = escape(text);
+                if (op.attributes && op.attributes.bold) { html = '<strong>' + html + '</strong>'; }
+                if (op.attributes && op.attributes.italic) { html = '<em>' + html + '</em>'; }
+                return html;
+            }).join('');
+        }
         function markup(title, doc) {
             var landscape = doc.orientation === 'landscape';
             var width = landscape ? 1123 : 794, pageHeight = landscape ? 794 : 1123;
@@ -16,7 +27,7 @@
             // Physical A4 dimensions prevent pixel rounding from adding a blank PDF page.
             var printHeight = (height / pageHeight) * (landscape ? 210 : 297) - 0.1;
             var textColor = /^#[0-9a-f]{6}$/i.test(doc.textColor || '') ? doc.textColor : '#17263c';
-            return '<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>' + escape(title) + '</title><style>@page{size:A4 ' + (landscape ? 'landscape' : 'portrait') + ';margin:0}*{box-sizing:border-box}body{margin:0;color:#17263c;font-family:Arial,sans-serif}header{max-width:' + width + 'px;margin:auto;padding:18px 30px;background:#f3eff7;display:flex;justify-content:space-between;align-items:center;gap:20px}h1{font-size:20px;margin:0}.paper{position:relative;margin:auto;width:' + width + 'px;min-height:' + height + 'px;background:white}.text{color:' + textColor + ';margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:17px/28px Arial,sans-serif;padding:40px;position:relative;z-index:1}.ink{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}button{padding:9px 14px}@media print{header{display:none}.paper{width:100%;min-height:' + printHeight + 'mm;margin:0}.text{font-size:17px}.ink{overflow:visible}}</style></head><body><header><h1>' + escape(title) + '</h1><button type="button" onclick="window.print()">In / Lưu PDF</button></header><article class="paper"><pre class="text">' + escape(doc.text) + '</pre><svg class="ink" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="xMinYMin meet" xmlns="http://www.w3.org/2000/svg">' + marks + '</svg></article></body></html>';
+            return '<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>' + escape(title) + '</title><style>@page{size:A4 ' + (landscape ? 'landscape' : 'portrait') + ';margin:0}*{box-sizing:border-box}body{margin:0;color:#17263c;font-family:Arial,sans-serif}header{max-width:' + width + 'px;margin:auto;padding:18px 30px;background:#f3eff7;display:flex;justify-content:space-between;align-items:center;gap:20px}h1{font-size:20px;margin:0}.paper{position:relative;margin:auto;width:' + width + 'px;min-height:' + height + 'px;background:white}.text{color:' + textColor + ';margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:17px/28px Arial,sans-serif;padding:40px;position:relative;z-index:1}.ink{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}button{padding:9px 14px}@media print{header{display:none}.paper{width:100%;min-height:' + printHeight + 'mm;margin:0}.text{font-size:17px}.ink{overflow:visible}}</style></head><body><header><h1>' + escape(title) + '</h1><button type="button" onclick="window.print()">In / Lưu PDF</button></header><article class="paper"><pre class="text">' + formattedText(doc) + '</pre><svg class="ink" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="xMinYMin meet" xmlns="http://www.w3.org/2000/svg">' + marks + '</svg></article></body></html>';
         }
         function create() { var popup = window.open('', '_blank'); if (!popup) { throw new Error('Cho phép mở cửa sổ in để lưu PDF.'); } popup.opener = null; return popup; }
         function render(popup, title, doc) { popup.document.open(); popup.document.write(markup(title, doc)); popup.document.close(); }
