@@ -8,7 +8,7 @@
                 restrict: 'E',
                 scope: { testId: '=', testMode: '@', userId: '=', enabled: '=', sessionOpener: '&?', sessionKey: '@?',
                     hideSave: '<?', hideToggle: '<?', autoOpen: '<?', footerLabel: '@?', onClose: '&?', readOnly: '<?', title: '@?', placeholder: '@?',
-                    inkSelection: '<?' },
+                    inkSelection: '<?', paged: '<?' },
                 bindToController: true, controllerAs: 'notebook', controller: function () {}, require: 'studyNotebook',
                 template: [
                     '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
@@ -29,6 +29,7 @@
                     '<div class="study-notebook-paper-options"><label><span>Khổ giấy A4</span><select ng-model="notebook.session.document.orientation" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Hướng giấy A4"><option value="portrait">Dọc</option><option value="landscape">Ngang</option></select></label>',
                     '<label><span>Kiểu giấy</span><select ng-model="notebook.session.document.pattern" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Kiểu kẻ giấy"><option value="blank">Giấy trơn</option><option value="lined">Dòng kẻ ngang</option><option value="vertical">Dòng kẻ dọc</option><option value="grid">Ô ly</option><option value="squares">Ô vuông lớn</option><option value="sketch">Giấy nhám phác thảo</option></select></label></div>',
                     '<div class="study-notebook-zoom" role="group" aria-label="Thu phóng trang giấy"><button type="button" ng-click="notebook.zoomOut()" ng-disabled="notebook.zoomPercent<=50" aria-label="Thu nhỏ trang giấy" title="Thu nhỏ"><i class="fa fa-search-minus" aria-hidden="true"></i></button><input type="range" class="study-notebook-zoom__slider" min="50" max="200" step="5" ng-model="notebook.zoomSliderValue" ng-change="notebook.setZoom(notebook.zoomSliderValue)" aria-label="Kéo để thu phóng trang giấy" ng-attr-aria-valuetext="{{notebook.zoomPercent}} phần trăm"><output aria-live="polite" aria-label="Mức thu phóng">{{notebook.zoomPercent}}%</output><button type="button" ng-click="notebook.zoomIn()" ng-disabled="notebook.zoomPercent>=200" aria-label="Phóng to trang giấy" title="Phóng to"><i class="fa fa-search-plus" aria-hidden="true"></i></button><button type="button" class="study-notebook-zoom__fit" ng-click="notebook.fitZoom()" title="Đưa trang giấy về vừa màn hình">Vừa trang</button></div></div>',
+                    '<nav class="study-notebook-pages" ng-if="notebook.paged" aria-label="Các trang tài liệu"><button type="button" ng-click="notebook.goToPage(notebook.currentPage-1)" ng-disabled="notebook.currentPage<=1" aria-label="Trang trước">‹</button><label>Trang<select ng-model="notebook.currentPage" ng-change="notebook.goToPage(notebook.currentPage)" ng-options="page as page for page in notebook.pages" aria-label="Chọn trang tài liệu"></select><span>/ {{notebook.pages.length}}</span></label><button type="button" ng-click="notebook.goToPage(notebook.currentPage+1)" ng-disabled="notebook.currentPage>=notebook.pages.length" aria-label="Trang sau">›</button><button type="button" class="study-notebook-add-page" ng-if="!notebook.readOnly" ng-click="notebook.addPage()" ng-disabled="notebook.isLocked() || notebook.pages.length>=80" title="Thêm trang A4, tối đa 80 trang">+ Thêm trang</button></nav>',
                     '<div class="study-notebook-notice" ng-if="notebook.session.error || notebook.session.status===\'conflict\'">',
                     '<span>{{notebook.session.error || \'Có bản ghi chú khác vừa được đồng bộ. Chọn bản bạn muốn giữ.\'}}</span>',
                     '<button type="button" ng-if="notebook.session.status!==\'conflict\'" ng-click="notebook.refresh()">Thử đồng bộ lại</button>',
@@ -37,6 +38,7 @@
                     '<div class="study-notebook-scroll"><div class="study-notebook-page-frame"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
                     '<textarea class="study-notebook-text" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
+                    '<div class="study-notebook-page-boundary" ng-if="notebook.paged" ng-repeat="page in notebook.pages track by page" ng-style="{top:((page-1)*notebook.pageStep)+\'px\'}" aria-hidden="true"><span>Trang {{page}}</span></div>',
                     '</div></div></div>',
                     '<footer class="study-notebook-footer" ng-class="{\'is-selecting-ink\':notebook.tool===\'lasso\'}"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip" ng-if="notebook.tool!==\'lasso\'">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span><span class="study-notebook-tip study-notebook-lasso-tip" ng-if="notebook.tool===\'lasso\'" aria-live="polite">{{notebook.inkSelected ? \'Kéo vùng nét đã chọn đến vị trí mới.\' : \'Vẽ vòng quanh các nét cần di chuyển.\'}}</span></footer>',
                     '</section>',
@@ -59,6 +61,7 @@
                     var selectedInk = null, inkGesture = null;
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null, palette = null, paletteTimer = null;
+                    ui.pages = []; ui.currentPage = 1;
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
@@ -234,6 +237,22 @@
                     ui.zoomIn = function () { ui.setZoom(ui.zoomPercent + 25); };
                     ui.zoomOut = function () { ui.setZoom(ui.zoomPercent - 25); };
                     ui.fitZoom = function () { ui.setZoom(100); };
+                    ui.goToPage = function (page) {
+                        if (!ui.paged || !ui.session || !ui.session.document) { return; }
+                        page = Number(page);
+                        if (!Number.isInteger(page) || page < 1 || page > ui.pages.length) { return; }
+                        flushText(); finishStroke(true); layout();
+                        var paperTop = paper.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+                        scroller.scrollTop += paperTop + (page - 1) * pageHeight * scale - 10;
+                        ui.currentPage = page;
+                    };
+                    ui.addPage = function () {
+                        if (!ui.paged || ui.isLocked()) { return; }
+                        flushText(); finishStroke(true); layout();
+                        if (ui.pages.length >= 80) { return; }
+                        ui.session.document.pageCount = ui.pages.length + 1;
+                        markChanged(); layout(); ui.goToPage(ui.pages.length);
+                    };
                     ui.canUndo = function () { return undo.length > 0 && !ui.isLocked(); };
                     ui.canRedo = function () { return redo.length > 0 && !ui.isLocked(); };
                     function replaceStrokes(next, history) {
@@ -248,7 +267,8 @@
                         var doc = ui.session && ui.session.document;
                         pageWidth = doc && doc.orientation === 'landscape' ? 1123 : 794;
                         pageHeight = doc && doc.orientation === 'landscape' ? 794 : 1123;
-                        logicalWidth = pageWidth; logicalHeight = pageHeight;
+                        var count = ui.paged ? Number(doc && doc.pageCount) || 3 : 1;
+                        logicalWidth = pageWidth; logicalHeight = pageHeight * count;
                         strokes().forEach(function (stroke) { (stroke.points || []).forEach(function (point) {
                             logicalWidth = Math.max(logicalWidth, point[0] + 24); logicalHeight = Math.max(logicalHeight, point[1] + 24);
                         }); });
@@ -296,6 +316,20 @@
                         var textHeight = textarea.scrollHeight;
                         textarea.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
                         var height = Math.max(logicalHeight * scale, textarea.getBoundingClientRect().height);
+                        if (ui.paged) {
+                            var count = Math.max(1, Math.ceil((height / scale - 0.1) / pageHeight));
+                            height = count * pageHeight * scale;
+                            textarea.style.height = height + 'px';
+                            ui.pageStep = pageHeight * scale;
+                            // A phone can show more than one A4 page at once.
+                            // Leave enough room to bring the final page to the top.
+                            pageFrame.style.marginBottom = Math.max(0, scroller.clientHeight - ui.pageStep) + 'px';
+                            if (ui.pages.length !== count) {
+                                ui.pages = Array.from({length: count}, function (_, index) { return index + 1; });
+                                digest();
+                            }
+                            ui.currentPage = Math.min(count, Math.max(1, ui.currentPage));
+                        }
                         pageFrame.style.height = Math.ceil(height) + 'px';
                         logicalHeight = Math.max(logicalHeight, height / scale);
                         // Long notes must not allocate a giant iPad canvas. Uniform
@@ -319,6 +353,12 @@
                         if (!visible()) { return; }
                         $timeout.cancel(layoutTimer);
                         layoutTimer = $timeout(function () { layoutTimer = null; layout(); }, 0, false);
+                    }
+                    function pageScrolled() {
+                        if (!visible() || !ui.paged || !ui.pages.length || !scale) { return; }
+                        var viewport = scroller.getBoundingClientRect(), bounds = paper.getBoundingClientRect();
+                        var page = Math.max(1, Math.min(ui.pages.length, Math.floor((viewport.top + 12 - bounds.top) / (pageHeight * scale)) + 1));
+                        if (page !== ui.currentPage) { digest(function () { ui.currentPage = page; }); }
                     }
                     function paintStroke(stroke, target) {
                         target = target || context;
@@ -636,6 +676,7 @@
                         identity = next; ui.close();
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
                         undo = []; redo = []; knownStrokes = null; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
+                        ui.pages = []; ui.currentPage = 1;
                         if (ui.autoOpen && ui.canOpen()) { digest(open); }
                     }
                     var unwatchIdentity = scope.$watchGroup(['notebook.userId', 'notebook.testMode', 'notebook.testId', 'notebook.enabled', 'notebook.sessionKey'], identityChanged);
@@ -660,6 +701,7 @@
                     document.addEventListener('focusin', keepFocus, true);
                     $window.addEventListener('pagehide', flushBeforeLeave); document.addEventListener('visibilitychange', visibilityChanged);
                     $window.addEventListener('resize', scheduleLayout);
+                    scroller.addEventListener('scroll', pageScrolled, {passive: true});
                     var toolbar = dialog.querySelector('.study-notebook-toolbar'); if (toolbar) { toolbar.addEventListener('scroll', positionPalette); }
                     if ($window.ResizeObserver) { observer = new $window.ResizeObserver(scheduleLayout); observer.observe(paper); }
                     scope.$on('$destroy', function () {
@@ -678,6 +720,7 @@
                         document.removeEventListener('focusin', keepFocus, true);
                         $window.removeEventListener('pagehide', flushBeforeLeave); document.removeEventListener('visibilitychange', visibilityChanged);
                         $window.removeEventListener('resize', scheduleLayout);
+                        scroller.removeEventListener('scroll', pageScrolled);
                         if (overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
                     });
                 }

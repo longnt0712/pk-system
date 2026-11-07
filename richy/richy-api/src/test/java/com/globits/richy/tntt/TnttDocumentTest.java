@@ -406,6 +406,33 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void pageCountSurvivesSavingAndPublishedSnapshotsAndRejectsInvalidCounts() {
+        assertEquals(3, blank().get("pageCount"));
+        Map<String, Object> legacy = blank();
+        legacy.remove("pageCount");
+        assertFalse(decode(validate(legacy)).containsKey("pageCount"));
+        for (Object count : Arrays.asList(0, -1, 81, 2.5, "3")) {
+            Map<String, Object> document = blank();
+            document.put("pageCount", count);
+            invalid(() -> validate(document));
+        }
+        Long id = create("DOCUMENT", null);
+        TnttDocumentRequest save = new TnttDocumentRequest();
+        save.revision = revision(id);
+        save.document = blank();
+        save.document.put("pageCount", 5);
+        service.save(id, save);
+        assertEquals(5, ((Map<?, ?>) service.read(id, null).get("document")).get("pageCount"));
+        Long notice = (Long) service.publish(id, publishRequest(id, false)).get("id");
+        save.revision = revision(id);
+        save.document.put("pageCount", 6);
+        service.save(id, save);
+        assertEquals(6, ((Map<?, ?>) service.read(id, null).get("document")).get("pageCount"));
+        actor(manager);
+        assertEquals(5, ((Map<?, ?>) service.notificationDocument(notice).get("document")).get("pageCount"));
+    }
+
+    @Test
     public void payloadRejectsInvalidInkInsteadOfSavingAPartialDocument() {
         final Map<String, Object> v = blank();
         v.put(

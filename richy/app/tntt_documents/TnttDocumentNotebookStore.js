@@ -5,7 +5,7 @@
             var entries = {}, serial = 0;
             function copy(value) { return JSON.parse(JSON.stringify(value)); }
             function positive(value) { return Number.isInteger(Number(value)) && Number(value) > 0; }
-            function blank() { return {text: '', orientation: 'portrait', pattern: 'lined', strokes: []}; }
+            function blank() { return {text: '', orientation: 'portrait', pattern: 'lined', strokes: [], pageCount: 3}; }
             function documentValue(value) {
                 if (!value || typeof value.text !== 'string' || value.text.length > 500000 ||
                     ['portrait', 'landscape'].indexOf(value.orientation) < 0 || ['blank', 'lined', 'vertical', 'grid', 'squares', 'sketch'].indexOf(value.pattern) < 0 ||
@@ -23,10 +23,15 @@
                 });
                 if (points > 200000 || JSON.stringify(value).length > 8000000) { throw new Error('Ghi chú vượt dung lượng đồng bộ. Bản đang viết vẫn được giữ.'); }
                 if (value.textColor !== undefined && (typeof value.textColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.textColor))) { throw new Error('Màu chữ tài liệu không hợp lệ.'); }
+                if (value.pageCount !== undefined && (!Number.isInteger(value.pageCount) || value.pageCount < 1 || value.pageCount > 80)) {
+                    throw new Error('Số trang tài liệu phải từ 1 đến 80.');
+                }
                 var result = {text: value.text, orientation: value.orientation, pattern: value.pattern, strokes: value.strokes.map(function (stroke) {
                     return {id: stroke.id, tool: stroke.tool, color: stroke.color, width: stroke.width, points: copy(stroke.points)};
                 })};
-                if (value.textColor !== undefined) { result.textColor = value.textColor; } return result;
+                if (value.textColor !== undefined) { result.textColor = value.textColor; }
+                if (value.pageCount !== undefined) { result.pageCount = value.pageCount; }
+                return result;
             }
             function equal(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
             function open(identity) {

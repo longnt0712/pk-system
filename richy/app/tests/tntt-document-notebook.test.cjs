@@ -59,3 +59,17 @@ test('an older GET completing after a save started cannot conflict with that ver
 });
 
 test('publication can detect a pending local document draft',async()=>{const f=fixture(),s=f.session();await s.ready;assert.equal(f.store.hasDraft(context),false);s.document.text='Pending';s.changed();assert.equal(f.store.hasDraft(context),true);await s.save();assert.equal(f.store.hasDraft(context),false);});
+
+test('document page counts survive autosave and legacy documents keep their original content',async()=>{
+ const f=fixture(),s=f.session();await s.ready;
+ assert.equal(s.document.pageCount,undefined);
+ s.document.pageCount=5;s.changed();await f.run(900);
+ assert.equal(f.remote().document.pageCount,5);
+ await s.refresh();assert.equal(s.document.pageCount,5);
+ assert.equal(f.store.validDocument({...blank(),pageCount:80}).pageCount,80);
+ for(const pageCount of [0,-1,81,1.5,'3',null]){
+  assert.throws(()=>f.store.validDocument({...blank(),pageCount}),/Số trang/);
+ }
+ assert.deepEqual(plain(f.store.validDocument(blank())),blank());
+ s.destroy();
+});

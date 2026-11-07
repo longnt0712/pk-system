@@ -8,11 +8,11 @@
     <title>Tài liệu được chia sẻ | TNTT Phùng Khoang</title>
     <link rel="stylesheet" href="/assets/css/external/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/external/font-awesome.min.css">
-    <link rel="stylesheet" href="/assets/css/study-notebook.css">
+    <link rel="stylesheet" href="/assets/css/study-notebook.css?v=20261107-document-pages">
     <link rel="stylesheet" href="/tntt_documents/documents.css">
     <script defer src="/assets/scripts/external/angular.min.js"></script>
     <script defer src="/tntt_documents/shared.js"></script>
-    <script defer src="/common/utils/study-notebook.directive.js?v=20261103-public-document"></script>
+    <script defer src="/common/utils/study-notebook.directive.js?v=20261107-document-pages"></script>
 </head>
 <body>
     <main class="td-page container" ng-controller="PublicDocumentController as vm" ng-cloak>
@@ -23,7 +23,7 @@
         <p ng-if="vm.loading" role="status">Đang tải tài liệu…</p>
         <p class="td-error" ng-if="vm.error" role="alert" ng-bind="vm.error"></p>
         <study-notebook ng-if="vm.document" test-id="1" test-mode="TNTT_PUBLIC" user-id="0" enabled="true"
-            session-opener="vm.openSession()" auto-open="true" read-only="true"
+            session-opener="vm.openSession()" auto-open="true" read-only="true" paged="true"
             title="{{vm.title}}" footer-label="Tài liệu được chia sẻ · Chỉ xem"></study-notebook>
     </main>
 </body>

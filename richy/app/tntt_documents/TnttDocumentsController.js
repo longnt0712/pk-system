@@ -11,7 +11,7 @@
             function request(operation) { if (vm.busy) { return; } vm.busy = true; vm.error = ''; return operation().catch(error).finally(function () { vm.busy = false; }); }
             function closeDialog() { if (dialog) { dialog.close(); dialog = null; } }
             function formDialog(id) { dialog = modal.open({templateUrl:id,scope:scope,size:'lg',backdrop:'static',keyboard:false}); dialog.result.catch(angular.noop); }
-            function blank() { return {text:'',orientation:'portrait',pattern:'lined',strokes:[]}; }
+            function blank() { return {text:'',orientation:'portrait',pattern:'lined',strokes:[],pageCount:3}; }
             function fresh(item) { return item.kind === 'DOCUMENT' && !item.archived ? api.read(item.id).then(function (row) { return angular.extend({},item,row); }) : q.when(item); }
             vm.switchTab = function (tab) { state.go('application.tntt_documents',{tab:tab==='notices'?'notices':null,notice:null,document:null,mode:null}); };
             vm.reload = function () {

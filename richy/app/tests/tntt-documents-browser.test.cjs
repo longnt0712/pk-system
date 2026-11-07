@@ -226,6 +226,64 @@ test('saved pen and highlighter ink is visible on reopening before any zoom or t
  }
 });
 
+test('TNTT documents open with three A4 pages and save added pages with handwriting and read-only navigation',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width});try{
+   const {page,server}=f;
+   const button=name=>page.getByRole('button',{name,exact:true});
+   await button('Soạn nội dung').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='ready');
+   const chooser=page.getByRole('combobox',{name:'Chọn trang tài liệu',exact:true});
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Chọn trang tài liệu"]')?.options.length===3);
+   assert.equal(await chooser.locator('option').count(),3,'Legacy documents also start with three pages');
+   assert.equal(await page.locator('.study-notebook-page-boundary').count(),3);
+   await page.locator('.study-notebook-text').fill('Biên bản gõ chữ và viết tay trên các trang.');
+   await button('Bút').click();
+   await chooser.selectOption({label:'2'});
+   async function draw(){
+    const canvas=page.locator('.study-notebook-canvas');
+    const view=await page.locator('.study-notebook-scroll').boundingBox();
+    const ink=await canvas.boundingBox();
+    await page.mouse.move(ink.x+65,view.y+70);await page.mouse.down();
+    await page.mouse.move(ink.x+135,view.y+100,{steps:8});await page.mouse.up();
+    await page.waitForFunction(()=>window.vm.session?.status==='saved');
+    assert.equal(await canvas.evaluate(node=>node.width*node.height<=4000000),true);
+   }
+   await draw();
+   assert.ok(server.entry.document.strokes[0].points[0][1]>1123);
+   await button('+ Thêm trang').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='saved');
+   assert.equal(await chooser.locator('option').count(),4);
+   assert.equal(await chooser.locator('option:checked').innerText(),'4');
+   assert.equal(server.entry.document.pageCount,4);
+   await draw();
+   assert.ok(server.entry.document.strokes[1].points[0][1]>3*1123);
+   const saved=structuredClone(server.entry.document);
+   await page.screenshot({path:path.join(app,'../../.tmp/tntt-document-pages-'+width+'.png')});
+   await page.locator('.study-notebook-close').click();await page.waitForFunction(()=>!window.vm.active);
+   await button('Soạn nội dung').click();
+   await page.waitForFunction(()=>window.vm.session?.status==='saved');
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Chọn trang tài liệu"]')?.options.length===4);
+   assert.equal(await chooser.locator('option').count(),4);
+   assert.deepEqual(await page.evaluate(()=>window.vm.session.document),saved);
+   await button('Trang sau').click();
+   assert.equal(await chooser.locator('option:checked').innerText(),'2');
+   await button('Trang trước').click();
+   assert.equal(await chooser.locator('option:checked').innerText(),'1');
+   await page.locator('.study-notebook-close').click();await page.waitForFunction(()=>!window.vm.active);
+   await page.evaluate(row=>{window.vm.active={id:12,title:row.title,readOnly:true,snapshot:row};window.injector.get('$rootScope').$digest();},server.entry);
+   await page.waitForFunction(()=>document.querySelector('.study-notebook-text')?.readOnly);
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Chọn trang tài liệu"]')?.options.length===4);
+   assert.equal(await chooser.locator('option').count(),4);
+   assert.equal(await button('+ Thêm trang').count(),0);
+   await chooser.selectOption({label:'4'});
+   assert.equal(await page.locator('.study-notebook-text').inputValue(),saved.text);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   assert.deepEqual(server.errors,[]);
+  }finally{await f.context.close();}
+ }
+});
+
 test('TNTT lasso moves outlined handwriting as one edit and keeps its position after reopening',async()=>{
  const original={...blank(),text:'Nội dung đã gõ',strokes:[
   {id:'pen',tool:'pen',color:'#315bbe',width:4,points:[[105,188,.31],[147,215,.82],[170,217,.55]]},
@@ -472,6 +530,20 @@ test('printing preserves plain text and ink across a multipage A4 PDF and escape
  }finally{await f.context.close();}
 });
 
+
+test('TNTT printing includes the three default pages and the requested number of blank A4 pages',async()=>{
+ const f=await fixture();try{
+  for(const [orientation,pageCount]of [['portrait',undefined],['portrait',5],['landscape',4]]){
+   const popupPromise=f.page.waitForEvent('popup');
+   await f.page.evaluate(({orientation,pageCount})=>window.injector.get('TnttDocumentPrint').open('Biên bản nhiều trang',
+    {text:'Nội dung',strokes:[],pattern:'lined',orientation,pageCount}),{orientation,pageCount});
+   const popup=await popupPromise;await popup.locator('.paper').waitFor();
+   const pdf=await popup.pdf({preferCSSPageSize:true});
+   assert.equal((pdf.toString('latin1').match(/\/Type \/Page\b/g)||[]).length,pageCount||3);
+   await popup.close();
+  }
+ }finally{await f.context.close();}
+});
 
 test('a disabled document feature explains the server setting to editors and avoids reading document tables',async()=>{
  for(const student of [false,true]){

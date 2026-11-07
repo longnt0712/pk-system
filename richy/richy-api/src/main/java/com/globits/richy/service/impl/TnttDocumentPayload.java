@@ -25,7 +25,9 @@ public final class TnttDocumentPayload {
                 "pattern",
                 "lined",
                 "strokes",
-                new ArrayList<>());
+                new ArrayList<>(),
+                "pageCount",
+                3);
     }
 
     public static String encode(Object value) {
@@ -125,6 +127,13 @@ public final class TnttDocumentPayload {
             if (!(textColor instanceof String) || !((String) textColor).matches("#[0-9a-fA-F]{6}"))
                 throw new IllegalArgumentException("Màu chữ tài liệu không hợp lệ.");
             document.put("textColor", textColor);
+        }
+        if (value.containsKey("pageCount")) {
+            Object pageCount = value.get("pageCount");
+            if (!number(pageCount, 1, 80)
+                    || ((Number) pageCount).doubleValue() != ((Number) pageCount).intValue())
+                throw new IllegalArgumentException("Số trang tài liệu phải từ 1 đến 80.");
+            document.put("pageCount", ((Number) pageCount).intValue());
         }
         String data = encode(document);
         if (data.getBytes(StandardCharsets.UTF_8).length > 8 * 1024 * 1024)
