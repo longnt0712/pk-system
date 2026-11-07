@@ -9,8 +9,9 @@ const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Pro
 const css = ['assets/css/external/bootstrap.min.css', 'assets/css/components-md.min.css', 'assets/css/external/select.min.css',
     'assets/fontawesome/css/all.css', 'topic/vocabulary.css'].map(file => fs.readFileSync(path.join(app, file), 'utf8')).join('\n');
 
-async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, holdInitial = false} = {}) {
+async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, holdInitial = false, clock = false} = {}) {
     const page = await browser.newPage({viewport: {width, height: 1120}});
+    if (clock) await page.clock.install();
     page.setDefaultTimeout(8000);
     const categories = [{id: 1, name: 'Đời sống hằng ngày'}, {id: 2, name: 'IELTS & học thuật'}];
     const lessons = [{id: 101, name: 'Little things, every day', topicCategory: categories[0]},
@@ -54,6 +55,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
         }
         if (url.pathname.startsWith('/api/question/vocabulary/get_page/')) {
             const dto = request.postDataJSON(), numbers = url.pathname.split('/').slice(-2).map(Number);
+            if (state.holdUnassigned && dto.withoutTopics) await new Promise(resolve => { state.releaseUnassigned = resolve; });
             if (state.holdLesson === dto.topicId) await new Promise(resolve => { state.releaseLesson = resolve; });
             const rows = state.cards.filter(card => (!dto.topicId || card.questionTopics.some(link => link.topic.id === dto.topicId)) &&
                 (!dto.withoutTopics || !card.questionTopics.length) && (!dto.status || (dto.status === 3 ? card.status !== 5 : card.status === dto.status)) &&
@@ -112,13 +114,80 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
         await page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).click();
         await page.getByLabel('Tên bài từ vựng', {exact: true}).fill('My new vocabulary');
         await page.locator('.modal-dialog .ui-select-toggle').click();
-        await page.locator('.modal-dialog input.ui-select-search').fill('IELTS');
+        await page.locator('body > .vw-overlay-select.open input.ui-select-search').fill('IELTS');
         await page.locator('.ui-select-choices-row').filter({hasText: 'IELTS & học thuật'}).click();
         await page.getByRole('button', {name: 'Lưu bài từ vựng', exact: true}).click();
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});
         assert.equal(state.saves[1].topicCategory.id, 2);
         assert.equal(await page.locator('#vocabulary-heading').innerText(), 'My new vocabulary');
         assert.match(await page.locator('.vw-empty').innerText(), /Từ mới sẽ được lưu ngay vào bài/);
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
+
+test('word modal stays compact and its searchable lesson dropdown is clickable above the footer on desktop and phone', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const width of [1366, 390]) {
+            const {page, state} = await fixture(browser, {width});
+            await page.setViewportSize({width, height: 640});
+            const target = {id: 120, name: 'iR.VOL5.4.PASSAGE2.Bristlecone Pines — A very long vocabulary lesson name', topicCategory: {id: 1}};
+            state.lessons.push(target);
+            await page.getByRole('button', {name: 'Thêm từ', exact: true}).click();
+            const header = page.locator('.modal-dialog .vw-modal-head');
+            assert.ok((await header.boundingBox()).height <= 75, 'header uses one compact row');
+            assert.equal(await header.locator('p').count(), 0);
+            assert.equal(await page.getByLabel('Nghĩa tiếng Việt', {exact: true}).evaluate(node => node.tagName), 'INPUT');
+            const cefr = page.getByLabel('Trình độ CEFR', {exact: true});
+            assert.equal(await cefr.isVisible(), true);
+            assert.match(await cefr.locator('option:checked').innerText(), /Chưa xác định/);
+            await cefr.selectOption({label: 'B2'});
+            await page.getByLabel('Từ / cụm từ', {exact: true}).fill('bristlecone');
+            await page.getByLabel('Nghĩa tiếng Việt', {exact: true}).fill('thông gai');
+            await page.locator('.modal-dialog .vw-overlay-select .ui-select-toggle').click();
+            const portal = page.locator('body > .vw-overlay-select.open');
+            await portal.locator('input.ui-select-search').fill('Bristlecone');
+            const option = portal.locator('.ui-select-choices-row').filter({hasText: target.name});
+            await option.waitFor();
+            await page.waitForTimeout(300);
+            const box = await option.boundingBox();
+            assert.ok(box.y >= 0 && box.y + box.height <= 640, 'the choice fits inside the viewport');
+            const hit = await option.evaluate(node => {
+                const box = node.getBoundingClientRect();
+                return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+            });
+            assert.equal(hit, true, 'the modal footer cannot cover the choice');
+            await page.screenshot({path: path.join(app, '../../.tmp/vocabulary-modal-' + width + '.png'), fullPage: false});
+            await option.click();
+            await page.getByRole('button', {name: 'Lưu từ vựng', exact: true}).click();
+            await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+            assert.equal(state.saves[0].level, 'B2');
+            assert.deepEqual(state.saves[0].questionTopics, [{topic: {id: 120}}]);
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
+test('a stalled unassigned request stops loading, shows retry, and can recover without refreshing the page', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser, {role: 'VIEWER', clock: true});
+        state.holdUnassigned = true;
+        const pendingRequest = page.waitForRequest(request => request.url().includes('/vocabulary/get_page/') && request.postDataJSON().withoutTopics);
+        await page.getByRole('button', {name: 'Chưa vào bài', exact: true}).click();
+        await pendingRequest;
+        await page.waitForFunction(() => window.vm.cardsLoading);
+        await page.clock.fastForward(31000);
+        await page.clock.runFor(100);
+        await page.getByRole('alert').filter({hasText: 'Tải từ vựng quá 30 giây'}).waitFor();
+        assert.equal(await page.locator('.vw-loading').count(), 0);
+        assert.equal(await page.evaluate(() => window.vm.total), 0);
+        state.holdUnassigned = false; state.releaseUnassigned();
+        await page.clock.resume();
+        await page.getByRole('button', {name: 'Thử lại', exact: true}).click();
+        await page.locator('.vw-word-card h3').filter({hasText: 'take a break'}).waitFor();
+        assert.equal(await page.locator('.vw-word-card').count(), 1);
         assert.deepEqual(state.errors, []);
     } finally { await browser.close(); }
 });

@@ -52,8 +52,9 @@
         self.getVocabularyUsage = function () {
             return $http.get(baseUrl + 'question/vocabulary_usage').then(function (response) { return response.data; });
         };
-        self.getVocabularyPage = function (search, page, size) {
-            return $http.post(baseUrl + 'question/vocabulary/get_page/' + page + '/' + size, search)
+        self.getVocabularyPage = function (search, page, size, options) {
+            return $http.post(baseUrl + 'question/vocabulary/get_page/' + page + '/' + size, search,
+                {timeout: options && options.timeout || 30000})
                 .then(function (response) { return response.data; });
         };
         self.updateTestStatus = updateTestStatus;

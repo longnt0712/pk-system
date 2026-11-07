@@ -1,9 +1,27 @@
 (function () {
     'use strict';
     angular.module('Hrm.Topic').controller('VocabularyController', VocabularyController);
-    VocabularyController.$inject = ['$scope', '$q', '$uibModal', '$cookies', '$location', 'settings', 'QuestionService', 'TopicService', 'toastr', '$window'];
-    function VocabularyController($scope, $q, modal, $cookies, $location, settings, cards, lessons, toastr, $window) {
+    angular.module('Hrm.Topic').directive('vocabularySelectPortal', ['$window', function ($window) {
+        return {require: 'uiSelect', link: function (scope, element, attrs, select) {
+            var scrollBody = angular.element(element[0].closest('.vw-modal-body'));
+            var viewport = angular.element($window), openedAt = 0;
+            scope.$watch(function () { return select.open; }, function (open) {
+                if (open && scrollBody[0]) { openedAt = scrollBody[0].scrollTop; }
+            });
+            function closeOnScroll() {
+                if (select.open && scrollBody[0] && scrollBody[0].scrollTop !== openedAt) {
+                    scope.$evalAsync(function () { select.close(); });
+                }
+            }
+            function closeOnResize() { if (select.open) { scope.$evalAsync(function () { select.close(); }); } }
+            scrollBody.on('scroll', closeOnScroll); viewport.on('resize', closeOnResize);
+            scope.$on('$destroy', function () { scrollBody.off('scroll', closeOnScroll); viewport.off('resize', closeOnResize); });
+        }};
+    }]);
+    VocabularyController.$inject = ['$scope', '$q', '$uibModal', '$cookies', '$location', 'settings', 'QuestionService', 'TopicService', 'toastr', '$window', '$timeout'];
+    function VocabularyController($scope, $q, modal, $cookies, $location, settings, cards, lessons, toastr, $window, $timeout) {
         var vm = this, cardRequest = 0, lessonRequest = 0, usageRequest = 0, lessonSelection = 0, alive = true;
+        var cardCancellation = null, cardDeadline = null;
         vm.user = JSON.parse($cookies.get('education.user') || '{}');
         vm.isAdmin = settings.isAdmin === true;
         vm.canDelete = vm.isAdmin || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_USER'; });
@@ -14,7 +32,11 @@
         vm.levels = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         $scope.vocabularyTinyMce = {height: 200, menubar: false, plugins: 'lists link', toolbar: 'bold italic | bullist numlist | link | removeformat'};
         vm.typeFilters = [{id: 0, name: 'Tất cả thẻ'}, {id: 3, name: 'Từ vựng'}, {id: 5, name: 'Listening'}, {id: 4, name: 'Đánh dấu'}];
-        $scope.$on('$destroy', function () { alive = false; cardRequest++; lessonRequest++; usageRequest++; });
+        $scope.$on('$destroy', function () {
+            alive = false; cardRequest++; lessonRequest++; usageRequest++;
+            if (cardCancellation) { cardCancellation.resolve(); }
+            if (cardDeadline) { $timeout.cancel(cardDeadline); }
+        });
         function errorMessage(error, fallback) { return error && error.data && error.data.message || fallback; }
         vm.describeLength = function (html) {
             var node = $window.document.createElement('template'); node.innerHTML = html || '';
@@ -60,13 +82,26 @@
         vm.loadCards = function (reset) {
             if (reset) { vm.page = 1; }
             var request = ++cardRequest; vm.cardsLoading = true; vm.cardLoadError = ''; vm.selected = {};
-            return cards.getVocabularyPage(vm.searchPayload(), vm.page, vm.pageSize).then(function (data) {
+            if (cardCancellation) { cardCancellation.resolve(); }
+            if (cardDeadline) { $timeout.cancel(cardDeadline); }
+            var cancellation = $q.defer(), timedOut = false;
+            cardCancellation = cancellation;
+            cardDeadline = $timeout(function () { timedOut = true; cancellation.resolve(); }, 30000);
+            vm.cards = []; vm.total = 0;
+            return cards.getVocabularyPage(vm.searchPayload(), vm.page, vm.pageSize, {timeout: cancellation.promise}).then(function (data) {
                 if (!alive || request !== cardRequest) { return; }
                 vm.cards = data && data.content || []; vm.total = data && data.totalElements || 0;
                 if (!vm.cards.length && vm.page > 1) { vm.page = Math.max(1, Math.ceil(vm.total / vm.pageSize)); return vm.loadCards(); }
             }, function (error) {
-                if (alive && request === cardRequest) { vm.cardLoadError = errorMessage(error, 'Không tải được từ vựng. Vui lòng thử lại.'); }
-            }).finally(function () { if (alive && request === cardRequest) { vm.cardsLoading = false; } });
+                if (alive && request === cardRequest) {
+                    vm.cardLoadError = timedOut ? 'Tải từ vựng quá 30 giây. Vui lòng bấm Thử lại hoặc chọn bài khác.' :
+                        'Chưa tải được từ vựng từ máy chủ. Vui lòng thử lại.';
+                }
+            }).finally(function () {
+                if (alive && request === cardRequest) {
+                    vm.cardsLoading = false; $timeout.cancel(cardDeadline); cardDeadline = null; cardCancellation = null;
+                }
+            });
         };
         vm.selectLesson = function (lesson, view) {
             lessonSelection++;
@@ -142,6 +177,7 @@
         vm.openCard = function (card) {
             vm.cardDraft = card ? angular.copy(card) : {question: '', pronounce: '', motherTongue: '',
                 userId: vm.user.id, questionType: {id: 6}, status: vm.isAdmin && vm.status === 5 ? 5 : 1};
+            vm.cardDraft.level = vm.cardDraft.level || '';
             vm.cardLesson = card ? null : vm.activeLesson;
             vm.cardLessonChoices = vm.lessons;
             vm.cardSaveError = ''; vm.advancedOpen = false; vm.cardDialog = openDialog('vocabulary_card_modal.html');
