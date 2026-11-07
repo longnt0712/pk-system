@@ -92,7 +92,7 @@
                     <a ui-sref="application.tntt_documents({tab:'notices',notice:null})" href="tai-lieu?tab=notices">THÔNG BÁO <span class="badge" ng-if="settings.tnttUnreadCount">{{settings.tnttUnreadCount}}</span></a>
                 </li>
                 <li class="dropdown vocabulary-nav"
-                    ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category')}"
+                    ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category') || $state.includes('application.vocabulary_duplicates')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin || settings.isFlashCardUser)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         Vocabulary <span class="caret"></span>
@@ -106,6 +106,7 @@
                             </a>
                         </li>
                         <li ng-class="{'active': $state.includes('application.topic') || $state.includes('application.question')}"><a href="topics"><i class="fa fa-book"></i> BÀI TỪ VỰNG</a></li>
+                        <li ng-if="settings.isAdmin || settings.isFlashCardUser" ng-class="{'active': $state.includes('application.vocabulary_duplicates')}"><a ui-sref="application.vocabulary_duplicates" href="vocabulary_duplicates"><i class="fa fa-object-group"></i> QUẢN LÝ TỪ TRÙNG</a></li>
                         <li ng-class="{'active': $state.includes('application.view')}"><a href="view/3"><i class="fa fa-gamepad"></i> GAME MODES</a></li>
                     </ul>
                 </li>

@@ -57,6 +57,18 @@
                 {timeout: options && options.timeout || 30000})
                 .then(function (response) { return response.data; });
         };
+        self.getVocabularyDuplicateGroups = function () {
+            return $http.get(baseUrl + 'question/vocabulary/duplicates', {timeout: 30000})
+                .then(function (response) { return response.data; });
+        };
+        self.getVocabularyDuplicateDetails = function (ids) {
+            return $http.post(baseUrl + 'question/vocabulary/duplicates/details', {ids: ids}, {timeout: 30000})
+                .then(function (response) { return response.data; });
+        };
+        self.mergeVocabularyDuplicates = function (payload) {
+            return $http.post(baseUrl + 'question/vocabulary/duplicates/merge', payload, {timeout: 90000})
+                .then(function (response) { return response.data; });
+        };
         self.updateTestStatus = updateTestStatus;
         self.updateTestTitle = updateTestTitle;
         self.getFlashCardLevels = getFlashCardLevels;

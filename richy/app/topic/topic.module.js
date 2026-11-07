@@ -38,6 +38,27 @@
                 }
             })
 
+            .state('application.vocabulary_duplicates', {
+                url: '/vocabulary_duplicates',
+                templateUrl: 'topic/views/vocabulary_duplicates.html',
+                data: {pageTitle: 'Quản lý từ trùng'},
+                controller: 'VocabularyDuplicateController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Topic',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'topic/vocabulary.css?v=' + window.APP_VERSION,
+                                'topic/vocabulary_duplicates.css?v=' + window.APP_VERSION,
+                                'topic/controllers/VocabularyDuplicateController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('content', {
                 url: '/topics/:topicId',
                 templateUrl: 'topic/views/create_content_normal.html',
