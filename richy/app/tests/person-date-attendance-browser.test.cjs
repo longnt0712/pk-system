@@ -27,6 +27,48 @@ const menu = template.match(/<li ng-if="vm.canManageAttendanceConfig\(\)">[\s\S]
 const defaults = {massStartTime: '08:00', massLateMinutes: 5, massAutoLate: true,
     classStartTime: '09:00', classLateMinutes: 15, classAutoLate: false, qrSwitchTime: '09:00'};
 
+test('daily statistics render choir members in an extracurricular section below their main classes', async () => {
+    const browser = await playwright.chromium.launch({headless: true, executablePath: chrome});
+    const statisticsCode = section('function createEmptyStudentCountStatistics(', 'vm.chooseStudentCountStatisticsMode =');
+    const statisticsView = modal('student_count_statistics_modal.html').replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+    try {
+        for (const width of [1366, 390]) {
+            const page = await browser.newPage({viewport: {width, height: 900}}), errors = [];
+            page.on('pageerror', error => errors.push(error.message));
+            await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>' +
+                css + styles + '</style></head><body><main ng-controller="Stats as vm">' + statisticsView + '</main></body></html>');
+            await page.addScriptTag({path: path.join(app, 'assets/scripts/external/angular.min.js')});
+            await page.evaluate(code => {
+                angular.module('Stats', []).controller('Stats', function () {
+                    const vm = this;
+                    Object.assign(vm, {directorySchoolId: 2, studentCountStatisticsMode: 'class',
+                        studentCountStatisticsStep: 'results', studentCountStatisticsResultTitle: 'Thống kê theo lớp',
+                        studentCountSelectedClassIds: [10, 20], enrollmentClasses: [
+                            {id: 10, name: 'ẤU NHI 1', schoolId: 2}, {id: 20, name: 'CA ĐOÀN', schoolId: 2}
+                        ]});
+                    const users = [1, 2].map(id => ({id, active: true, person: {enrollmentClassId: 10, gender: id === 1 ? 'F' : 'M'},
+                        roles: [{name: 'ROLE_STUDENT'}], enrollmentClassIds: [10, 20]}));
+                    const records = [{user: {id: 1}, statusClass: 1, extraClass: 2}, {user: {id: 2}, statusClass: 2, extraClass: 1}];
+                    vm.studentCountStatistics = new Function('vm', 'angular', 'isIeltsRoomDomain', 'users', 'records',
+                        code + ';return buildStudentCountStatistics(users,records);')(vm, angular, () => false, users, records);
+                });
+                angular.bootstrap(document, ['Stats']);
+            }, statisticsCode);
+            const sections = page.locator('section[ng-repeat]');
+            await sections.nth(1).getByRole('heading', {name: 'Lớp ngoại khóa'}).waitFor();
+            assert.equal(await sections.nth(0).locator('tbody tr').count(), 1);
+            assert.match(await sections.nth(0).locator('tbody').innerText(), /ẤU NHI 1/);
+            assert.doesNotMatch(await sections.nth(0).locator('tbody').innerText(), /CA ĐOÀN/);
+            assert.match(await sections.nth(1).locator('tbody').innerText(), /CA ĐOÀN/);
+            assert.deepEqual(await sections.nth(1).locator('tbody tr td').allTextContents(),
+                ['1', 'CA ĐOÀN', '2', '1', '1', '0', '1', '0', '1', '0', '0', '0']);
+            await page.screenshot({path: path.join(repo, '.tmp/person-date-choir-' + width + '.png'), fullPage: true});
+            assert.deepEqual(errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
 test('real Angular forms save settings, allow manual late and distinguish repeated QR scans on desktop and phone', async () => {
     const browser = await playwright.chromium.launch({headless: true, executablePath: chrome});
     try {

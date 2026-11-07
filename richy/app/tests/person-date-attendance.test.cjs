@@ -201,3 +201,68 @@ test('late attendance counts as present in both row totals and daily statistics'
     nodeVm.runInContext('vm.personDates.forEach(row => addAttendance(totals, row))', context);
     assert.deepEqual(totals, {present: 2, excused: 0, unexcused: 1, unmarked: 0, massPresent: 2, massExcused: 1});
 });
+
+function dailyStatistics({selected = [10, 20], users, records} = {}) {
+    const vm = {directorySchoolId: 2, studentCountStatisticsMode: 'class', studentCountSelectedClassIds: selected,
+        studentCountStatisticsResultTitle: 'Thống kê theo lớp', enrollmentClasses: [
+            {id: 10, name: 'ẤU NHI 1', schoolId: 2}, {id: 20, name: 'CA ĐOÀN', schoolId: 2},
+            {id: 21, name: 'Đội ca đoàn', schoolId: 2, parentId: 20}
+        ]};
+    const student = (id, primary, memberships, gender = 'M', active = true) => ({
+        id, active, person: {enrollmentClassId: primary, gender}, enrollmentClassIds: memberships,
+        roles: [{name: 'ROLE_STUDENT'}]
+    });
+    const context = nodeVm.createContext({vm, isIeltsRoomDomain: () => false, angular: {
+        forEach(values, callback) {
+            if (Array.isArray(values)) values.forEach(callback);
+            else Object.keys(values || {}).forEach(key => callback(values[key], key));
+        }
+    }});
+    nodeVm.runInContext(source.slice(source.indexOf('function createEmptyStudentCountStatistics('),
+        source.indexOf('vm.chooseStudentCountStatisticsMode =')), context);
+    context.users = users || [
+        student(1, 10, [10, 20, 21], 'F'), student(2, 20, [20, 10]),
+        student(3, 10, [10], 'U'), student(4, 20, [20], 'M', false),
+        student(5, 21, [21], 'F'), student(6, 10, [10, 20])
+    ];
+    context.records = records || [
+        {user: {id: 1}, statusClass: 1, extraClass: 6, statusMass: 1},
+        {user: {id: 1}, attendanceClassId: 20, statusClass: 2, extraClass: 3, statusMass: 3},
+        {user: {id: 2}, statusClass: 2, extraClass: 1, statusMass: 6},
+        {user: {id: 3}, statusClass: 6, statusMass: 1},
+        {user: {id: 5}, statusClass: 1, extraClass: 2},
+        {user: {id: 6}, attendanceClassId: 10, statusClass: 3, statusMass: 1}
+    ];
+    return JSON.parse(nodeVm.runInContext('JSON.stringify(buildStudentCountStatistics(users, records))', context));
+}
+
+test('daily statistics separate choir membership and count secondary classes without duplicating the overall total', () => {
+    const result = dailyStatistics();
+    assert.equal(result.total, 5);
+    assert.deepEqual(result.classes.map(row => row.id), [10]);
+    assert.deepEqual(result.extracurricularClasses.map(row => row.id), [20]);
+    const ordinary = result.classes[0], choir = result.extracurricularClasses[0];
+    assert.deepEqual([ordinary.total, ordinary.present, ordinary.excused, ordinary.unexcused], [4, 2, 1, 1]);
+    assert.deepEqual([choir.total, choir.male, choir.female, choir.present, choir.excused, choir.unexcused, choir.unmarked],
+        [4, 2, 2, 2, 0, 1, 1]);
+    assert.equal(result.sections[1].title, 'Lớp ngoại khóa');
+    assert.equal(result.sections[1].attendance, 'Học ngoại khóa');
+});
+
+test('choir-only daily statistics include pupils whose primary class is outside the selected classes', () => {
+    const result = dailyStatistics({selected: [20]});
+    assert.equal(result.total, 4);
+    assert.equal(result.classes.length, 0);
+    assert.equal(result.extracurricularClasses[0].total, 4);
+    assert.deepEqual([result.present, result.unexcused, result.unmarked], [2, 1, 1]);
+});
+
+test('a class-scoped choir register keeps its recorded attendance while ordinary unscoped class marks remain separate', () => {
+    const users = [1, 2].map(id => ({id, active: true, person: {enrollmentClassId: 20, gender: 'M'},
+        roles: [{name: 'ROLE_STUDENT'}], enrollmentClassIds: [20]}));
+    const result = dailyStatistics({selected: [20], users, records: [
+        {user: {id: 1}, attendanceClassId: 20, statusClass: 1},
+        {user: {id: 2}, statusClass: 1}
+    ]});
+    assert.deepEqual([result.present, result.unmarked], [1, 1]);
+});

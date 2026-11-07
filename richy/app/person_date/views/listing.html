@@ -1867,19 +1867,20 @@
                         </div>
                     </div>
 
-                    <h4 class="student-count-table-title">{{vm.studentCountStatisticsResultTitle}}</h4>
+                    <section class="student-count-statistic-section" ng-repeat="section in vm.studentCountStatistics.sections track by section.title" ng-if="section.rows.length">
+                    <h4 class="student-count-table-title">{{section.title}}</h4>
 
                     <div class="table-responsive student-count-table-wrap">
                         <table class="table table-bordered table-striped student-count-table">
                             <thead>
                             <tr>
                                 <th>STT</th>
-                                <th class="text-left">{{vm.studentCountStatisticsMode === 'team' ? 'Đội' : 'Lớp'}}</th>
+                                <th class="text-left">{{section.label}}</th>
                                 <th>Tổng</th>
                                 <th>Nam</th>
                                 <th>Nữ</th>
                                 <th>Chưa xác định</th>
-                                <th>Đi học</th>
+                                <th>{{section.attendance}}</th>
                                 <th>Nghỉ có phép</th>
                                 <th>Nghỉ không phép</th>
                                 <th>Chưa điểm danh / khác</th>
@@ -1888,7 +1889,7 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr ng-repeat="row in vm.studentCountStatistics.classes track by row.id">
+                            <tr ng-repeat="row in section.rows track by row.id">
                                 <td>{{$index + 1}}</td>
                                 <td class="text-left"><strong>{{row.name}}</strong></td>
                                 <td>{{row.total}}</td>
@@ -1905,6 +1906,10 @@
                             </tbody>
                         </table>
                     </div>
+                    </section>
+                    <p class="text-muted" ng-if="vm.studentCountStatistics.extracurricularClasses.length">
+                        Một học sinh có thể xuất hiện ở cả lớp chính và lớp ngoại khóa. Tổng học sinh đếm theo từng em.
+                    </p>
                 </div>
             </div>
         </div>
@@ -2705,6 +2710,7 @@
         color: #344054;
         font-weight: 700;
     }
+    .student-count-statistic-section + .student-count-statistic-section { margin-top: 20px; }
 
     .student-count-table-wrap {
         max-height: 420px;

@@ -1034,7 +1034,9 @@
                 unmarked: 0,
                 massPresent: 0,
                 massExcused: 0,
-                classes: []
+                classes: [],
+                extracurricularClasses: [],
+                sections: []
             };
         }
 
@@ -1242,9 +1244,14 @@
             var ids = getUserClassIds(user);
             for (var i = 0; i < ids.length; i++) {
                 var parentClass = getRootDirectorySchoolClass(findEnrollmentClass(ids[i]));
-                if (parentClass) return parentClass;
+                if (parentClass && !isExtracurricularClass(parentClass)) return parentClass;
             }
             return null;
+        }
+
+        function isExtracurricularClass(enrollmentClass) {
+            return !isIeltsRoomDomain() && !!enrollmentClass &&
+                /(^|\s)ca\s*doan(\s|$)/.test(classFilterText(enrollmentClass.name));
         }
 
         function userBelongsToParent(user, parentClassId) {
@@ -1314,8 +1321,13 @@
             else target.unknown += 1;
         }
 
-        function addAttendance(target, attendance) {
+        function addAttendance(target, attendance, extracurricular) {
             var status = attendance ? Number(attendance.statusClass) : null;
+            if (extracurricular) {
+                status = attendance && attendance.extraClass != null ? Number(attendance.extraClass) : null;
+                // A class-scoped choir register may have used the class attendance column.
+                if (status === null && attendance && attendance.attendanceClassId != null) { status = Number(attendance.statusClass); }
+            }
             if (status === 1 || status === 3) target.present += 1;
             else if (status === 6) target.excused += 1;
             else if (status === 2) target.unexcused += 1;
@@ -1334,15 +1346,34 @@
             var map = {};
             angular.forEach(records || [], function (record) {
                 var userId = record && record.user ? normalizeId(record.user.id) : null;
-                if (userId !== null) map[userId] = record;
+                if (userId === null) return;
+                var entry = map[userId] || (map[userId] = {classes: {}, legacy: null});
+                var classId = normalizeId(record.attendanceClassId);
+                if (classId === null) { entry.legacy = record; }
+                else {
+                    var root = getRootDirectorySchoolClass(findEnrollmentClass(classId));
+                    entry.classes[root ? normalizeId(root.id) : classId] = record;
+                }
             });
             return map;
+        }
+
+        function getStatisticAttendance(byUser, userId, classId) {
+            var entry = byUser[normalizeId(userId)];
+            return entry && (entry.classes[normalizeId(classId)] || entry.legacy);
+        }
+
+        function countStatisticStudent(target, user, attendance, extracurricular) {
+            target.total += 1;
+            addGender(target, user);
+            addAttendance(target, attendance, extracurricular);
         }
 
         function buildStudentCountStatistics(users, attendanceRecords) {
             var result = createEmptyStudentCountStatistics();
             var rowsById = {};
             var teamMode = vm.studentCountStatisticsMode === 'team';
+            var teamIsExtracurricular = teamMode && isExtracurricularClass(findEnrollmentClass(vm.studentCountSelectedParentClassId));
             var attendanceByUserId = buildAttendanceByUserId(attendanceRecords);
 
             if (teamMode) {
@@ -1363,7 +1394,17 @@
 
             angular.forEach(users || [], function (user) {
                 if (!isActiveStudent(user)) return;
-                var row;
+                var row, parentClass, extracurricularRows = [], seenClasses = {};
+
+                if (!teamMode) {
+                    angular.forEach(getUserClassIds(user), function (classId) {
+                        var root = getRootDirectorySchoolClass(findEnrollmentClass(classId));
+                        var rootId = root && normalizeId(root.id);
+                        if (root && isExtracurricularClass(root) && rowsById[rootId] && !seenClasses[rootId]) {
+                            extracurricularRows.push(rowsById[rootId]); seenClasses[rootId] = true;
+                        }
+                    });
+                }
 
                 if (teamMode) {
                     if (!userBelongsToParent(user, vm.studentCountSelectedParentClassId)) return;
@@ -1377,27 +1418,36 @@
                         }
                     }
                 } else {
-                    var parentClass = getUserParentClass(user);
+                    parentClass = getUserParentClass(user);
                     if (parentClass) row = rowsById[normalizeId(parentClass.id)];
                 }
 
-                if (!row) return;
-                var attendance = attendanceByUserId[normalizeId(user.id)];
-
-                result.total += 1;
-                row.total += 1;
-                addGender(result, user);
-                addGender(row, user);
-                addAttendance(result, attendance);
-                addAttendance(row, attendance);
+                if (!row && !extracurricularRows.length) return;
+                var attendanceClassId = teamMode ? vm.studentCountSelectedParentClassId : parentClass && parentClass.id;
+                var attendance = getStatisticAttendance(attendanceByUserId, user.id, row ? attendanceClassId : extracurricularRows[0].id);
+                countStatisticStudent(result, user, attendance, teamIsExtracurricular || !row);
+                if (row) { countStatisticStudent(row, user, attendance, teamIsExtracurricular); }
+                angular.forEach(extracurricularRows, function (extraRow) {
+                    countStatisticStudent(extraRow, user, getStatisticAttendance(attendanceByUserId, user.id, extraRow.id), true);
+                });
             });
 
-            angular.forEach(rowsById, function (row) { result.classes.push(row); });
-            result.classes.sort(function (a, b) {
+            angular.forEach(rowsById, function (row) {
+                var target = !teamMode && isExtracurricularClass(findEnrollmentClass(row.id))
+                    ? result.extracurricularClasses : result.classes;
+                target.push(row);
+            });
+            function rowOrder(a, b) {
                 if (a.id === 'unassigned') return 1;
                 if (b.id === 'unassigned') return -1;
                 return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
-            });
+            }
+            result.classes.sort(rowOrder);
+            result.extracurricularClasses.sort(rowOrder);
+            result.sections = [
+                {title: vm.studentCountStatisticsResultTitle, rows: result.classes, label: teamMode ? 'Đội' : 'Lớp', attendance: teamIsExtracurricular ? 'Học ngoại khóa' : 'Đi học'},
+                {title: 'Lớp ngoại khóa', rows: result.extracurricularClasses, label: 'Lớp', attendance: 'Học ngoại khóa'}
+            ];
             return result;
         }
 
@@ -1485,6 +1535,7 @@
                 enrollmentClassIds: requestedClassIds
             };
             var attendanceFilter = {
+                schoolId: vm.directorySchoolId,
                 startDate: selectedDate.getTime(),
                 endDate: selectedDate.getTime(),
                 user: {person: {}}
