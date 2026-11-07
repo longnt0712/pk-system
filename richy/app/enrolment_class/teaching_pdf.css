@@ -215,12 +215,12 @@
 .teaching-pdf-swatches button:hover, .teaching-pdf-swatches button[aria-pressed="true"] { outline: 2px solid #4358a5; outline-offset: 1px; }
 .teaching-pdf-inline-note {
     width: min(285px, calc(100% - 16px)); z-index: 7; padding: 10px;
-    background: #ffffffc9; border-color: #d5dff280; box-shadow: 0 2px 8px #263b641a;
+    background: #fff; border-color: #d5dff2; box-shadow: 0 2px 8px #263b641a;
 }
 .teaching-pdf-inline-note label { display: block; margin-bottom: 5px; font-weight: 700; }
 .teaching-pdf-inline-note textarea {
     display: block; width: 100%; padding: 7px; border: 1px solid #d5dff2; border-radius: 6px;
-    background: transparent; color: #27354d; resize: vertical;
+    background: #fff; color: #27354d; resize: vertical;
 }
 @media (max-width: 720px) {
     .teaching-pdf-window .modal-dialog { width: 98vw; margin: 1vh auto; }
