@@ -616,8 +616,14 @@
                             {name: 'Hồng tím', value: '#d5a6bd'}, {name: 'Xanh đậm', value: '#3c78d8'}
                         ];
                         vm.penColor = '#3c78d8';
+                        function annotationColor(value, fallback) {
+                            return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+                        }
                         vm.inkColor = function (mark) {
-                            return /^#[0-9a-f]{6}$/i.test(mark.inkColor || '') ? mark.inkColor : '#2654bd';
+                            return annotationColor(mark.inkColor, '#2654bd');
+                        };
+                        vm.textFontColor = function (mark) {
+                            return annotationColor(mark.fontColor, '#243e79');
                         };
                         vm.highlightOpacity = function (value) {
                             return vm.highlightColors.some(function (color) { return color.value === value; }) ? 1 : .38;
@@ -1073,7 +1079,11 @@
                             if (vm.addingText && !vm.run.completed) {
                                 scope.$evalAsync(function () {
                                     if (vm.editingText) { vm.finishText(vm.editingText); }
-                                    var mark = {page: page, x: position[0], y: position[1], text: '', fontSize: validTextSize(vm.state.newTextSize, defaultNewTextSize)};
+                                    var mark = {
+                                        page: page, x: position[0], y: position[1], text: '',
+                                        fontSize: validTextSize(vm.state.newTextSize, defaultNewTextSize),
+                                        fontColor: vm.penColor
+                                    };
                                     vm.state.marks.push(mark);
                                     vm.addingText = false;
                                     vm.editText(mark, event);

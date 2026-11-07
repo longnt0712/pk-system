@@ -164,10 +164,10 @@
                     <option value="7">{{pdf.inkTool === 'pen' ? 'Đậm' : 'To'}}</option>
                 </select>
             </label>
-            <button type="button" class="study-notebook-action teaching-pdf-pen-color" ng-if="pdf.inkTool === 'pen' && !pdf.run.completed"
+            <button type="button" class="study-notebook-action teaching-pdf-pen-color" ng-if="(pdf.inkTool === 'pen' || pdf.addingText) && !pdf.run.completed"
                     ng-click="pdf.penPaletteOpen = !pdf.penPaletteOpen" ng-attr-aria-expanded="{{!!pdf.penPaletteOpen}}"
                     aria-controls="teaching-pdf-pen-palette" ng-disabled="pdf.busy">
-                <span ng-style="{'background-color':pdf.penColor}" aria-hidden="true"></span> Màu bút
+                <span ng-style="{'background-color':pdf.penColor}" aria-hidden="true"></span> Màu bút và chữ
             </button>
             <div class="teaching-pdf-navigation">
                 <button type="button" class="study-notebook-action" ng-click="pdf.go(pdf.state.page - 1)" ng-disabled="pdf.busy || pdf.state.page <= 1"
@@ -197,8 +197,8 @@
             </button>
         </div>
         <div class="teaching-pdf-workspace">
-            <div id="teaching-pdf-pen-palette" class="teaching-pdf-pen-palette teaching-pdf-swatches" ng-if="pdf.penPaletteOpen && pdf.inkTool === 'pen' && !pdf.run.completed"
-                 role="group" aria-label="Màu bút Google Docs">
+            <div id="teaching-pdf-pen-palette" class="teaching-pdf-pen-palette teaching-pdf-swatches" ng-if="pdf.penPaletteOpen && (pdf.inkTool === 'pen' || pdf.addingText) && !pdf.run.completed"
+                 role="group" aria-label="Màu bút và chữ">
                 <button type="button" ng-repeat="color in pdf.penColors track by color.value" ng-style="{'background-color':color.value}"
                         ng-click="pdf.penColor = color.value; pdf.penPaletteOpen = false" ng-disabled="pdf.busy" ng-attr-aria-pressed="{{pdf.penColor === color.value}}"
                         title="{{color.name}}" aria-label="{{color.name}}"></button>
@@ -228,7 +228,7 @@
                         <div class="teaching-pdf-free-text" ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true"
                              ng-if="mark.text !== undefined"
                              ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
-                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}};">
+                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}}; color: {{pdf.textFontColor(mark)}};">
                             <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
                                       maxlength="4000" rows="1" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
                             <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
