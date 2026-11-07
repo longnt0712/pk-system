@@ -1123,7 +1123,7 @@
                 src="vm.eggHostTemplate"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
-         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-host-layout': vm.isHost() && vm.isClassicMode() && !vm.room.videoSynchronized}">
+         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-question-layout': vm.isClassicMode() && (!vm.isSpectator() || vm.isClassicHostPreview())}">
 
         <main class="battle-online-card battle-online-question-card"
               ng-if="!vm.isSpectator() || vm.isGuessWordMode() || vm.isClassicHostPreview()"
@@ -9808,12 +9808,21 @@
         box-shadow: 0 0 0 6px #8463ff22;
     }
     @media (min-width: 821px) {
-        .battle-online-game-layout.is-classic-host-layout {
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        .battle-online-game-layout.is-classic-question-layout {
+            width: 100%; max-width: none;
+            grid-template-columns: minmax(0, 4fr) minmax(0, 1fr);
             align-items: start;
         }
-        .battle-online-game-layout.is-classic-host-layout > * { min-width: 0; }
-        .is-classic-host-layout .battle-online-game-topline { flex-wrap: wrap; }
+        .battle-online-game-layout.is-classic-question-layout > * { min-width: 0; }
+        .is-classic-question-layout .battle-online-game-topline { flex-wrap: wrap; }
+        .is-classic-question-layout .battle-online-ranking-card { padding: 12px; }
+        .is-classic-question-layout .battle-online-ranking-row { grid-template-columns: 24px minmax(0, 1fr); padding: 8px; gap: 5px 6px; }
+        .is-classic-question-layout .battle-online-ranking-row .battle-online-ranking-player { grid-template-columns: 28px minmax(0, 1fr); gap: 6px; }
+        .is-classic-question-layout .battle-online-ranking-row .battle-online-ranking-pet { width: 28px; height: 28px; }
+        .is-classic-question-layout .battle-online-ranking-copy strong { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+        .is-classic-question-layout .battle-online-ranking-copy small { font-size: 10px; white-space: normal; }
+        .is-classic-question-layout .battle-online-ranking-row > .battle-online-score { grid-column: 2; grid-row: 2; font-size: 16px; }
+        .is-classic-question-layout .battle-online-ranking-row > .battle-online-ranking-actions { grid-column: 1 / -1; grid-row: 3; }
     }
 
     .battle-online-music-trigger {
