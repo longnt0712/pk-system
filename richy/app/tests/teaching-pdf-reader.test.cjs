@@ -6,7 +6,7 @@ const path = require('node:path');
 
 function fixture(saved = {}, completed = false, catalog = {}) {
     const input = {value: '1', matches: () => true};
-    const events = {}, documentEvents = {}, renders = [], reads = [], writes = [];
+    const events = {}, documentEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
     const ctrl = {};
     const sheets = new Map();
     const container = {
@@ -60,18 +60,37 @@ function fixture(saved = {}, completed = false, catalog = {}) {
                 async getPage(number) {
                     return {
                         getViewport({scale}) { return {width: 500 * scale, height: 700 * scale, userUnit: 1, rawDims: {pageWidth: 500, pageHeight: 700}}; },
-                        streamTextContent() {},
+                        streamTextContent() {
+                            return new ReadableStream({start(stream) {
+                                stream.enqueue({lang: number === 2 ? 'en-GB' : null, items: []});
+                                stream.enqueue({lang: null, items: []});
+                                stream.close();
+                            }});
+                        },
                         render() { renders.push(number); return {promise: Promise.resolve(), cancel() {}}; }
                     };
                 }
             };
             return {promise: Promise.resolve(pdf), destroy: async () => {}};
         },
-        TextLayer: function () { this.render = async () => {}; this.cancel = () => {}; }
+        TextLayer: function ({textContentSource, container}) {
+            const stream = textContentSource.getReader();
+            this.render = async () => {
+                const lang = [];
+                for (let item = await stream.read(); !item.done; item = await stream.read()) {
+                    lang.push([item.value.lang, container.lang]);
+                }
+                textLayers.push(lang);
+            };
+            this.cancel = () => { stream.cancel(); };
+        }
     };
     let factory, config;
-    const module = {factory(name, args) { factory = args.at(-1); return this; }, directive() { return this; }};
-    const document = {baseURI: 'https://example.test/', addEventListener: (name, fn) => { documentEvents[name] = fn; }};
+    const directives = {};
+    const module = {factory(name, args) { factory = args.at(-1); return this; },
+        directive(name, definition) { directives[name] = definition; return this; }};
+    const document = {baseURI: 'https://example.test/', documentElement: {lang: 'vi'},
+        addEventListener: (name, fn) => { documentEvents[name] = fn; }};
     root.closest = () => null;
     root.requestFullscreen = async () => {
         document.fullscreenElement = root;
@@ -89,7 +108,7 @@ function fixture(saved = {}, completed = false, catalog = {}) {
         constructor() { this.fields = new Map(); }
         append(key, value) { this.fields.set(key, value); }
     };
-    vm.runInNewContext(source, {window, document, URL, FormData, pdfEngineMock: engine,
+    vm.runInNewContext(source, {window, document, URL, FormData, TransformStream, pdfEngineMock: engine,
         angular: {module: () => module, extend: Object.assign, isArray: Array.isArray, copy: structuredClone, noop() {}}});
     const http = {
         async get(url) {
@@ -107,7 +126,7 @@ function fixture(saved = {}, completed = false, catalog = {}) {
     config.controller.at(-1).call(ctrl, {$on() {}, $evalAsync(fn) { fn(); }}, timer, {});
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
-    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http,
+    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers,
         select(number, top = 150) {
             const page = sheet(number);
             const rect = {top, bottom: top + 20, left: 90, right: 170, width: 80, height: 20};
@@ -273,7 +292,7 @@ test('only two taps open free text for editing, while dragging saves its positio
     assert.equal(readonly.ctrl.state.marks.length, 2);
 });
 
-test('PDF pen widths are saved and the eraser removes only the strokes swept on its page', async () => {
+test('PDF pen color and width are saved and the eraser removes only the strokes swept on its page', async () => {
     const older = {page: 1, points: [['0.2000', '0.2000'], ['0.8000', '0.2000']]};
     const otherPage = {page: 2, points: older.points};
     const highlight = {page: 1, highlight: true, rects: [{x: .4, y: .19, w: .2, h: .02}]};
@@ -298,12 +317,16 @@ test('PDF pen widths are saved and the eraser removes only the strokes swept on 
     }
     h.ctrl.toggleInk('pen');
     h.ctrl.inkSizes.pen = '7';
+    h.ctrl.penColor = '#dd7e6b';
     pointer('pointerdown', .2, .6);
     pointer('pointerup', .8, .6);
     await h.tick();
     const newStroke = h.writes.at(-1).state.marks.at(-1);
     assert.equal(newStroke.width, 7);
     assert.equal(h.ctrl.inkWidth(newStroke), 7);
+    h.ctrl.penColor = '#b4a7d6';
+    assert.equal(h.ctrl.inkColor(newStroke), '#dd7e6b');
+    assert.equal(h.ctrl.inkColor(older), '#2654bd');
     assert.equal(captured, null);
 
     h.ctrl.toggleInk('eraser');
@@ -494,4 +517,99 @@ test('the PDF explorer routes drags to the destination and keeps successful uplo
     assert.equal(h.ctrl.libraryNotice, 'Đã tải lên 2 PDF.');
     h.ctrl.browseFolder('class');
     assert.deepEqual(Array.from(h.ctrl.visibleFiles, file => file.name), ['Original.pdf', 'One.pdf', 'Two.pdf']);
+});
+
+// Each note change still travels through the existing revision-checked save.
+test('deleting an inline note saves the deletion and keeps its highlight', async () => {
+    const h = fixture({marks: [
+        {page: 1, note: 'Note only', noteAnchor: true, highlight: false, rects: []},
+        {page: 1, note: 'Keep the highlight', noteAnchor: true, highlight: true, highlightColor: '#fff2cc', rects: []}
+    ]});
+    await h.tick(); await h.ctrl.open('run'); await h.tick();
+    h.ctrl.context = {mark: h.ctrl.state.marks[0], showNote: true};
+    h.ctrl.removeInlineNote(); await h.tick();
+    assert.equal(h.ctrl.state.marks.length, 1);
+    assert.equal(h.ctrl.context, null);
+    const highlight = h.ctrl.state.marks[0];
+    h.ctrl.context = {mark: highlight, showNote: true};
+    h.ctrl.removeInlineNote(); await h.tick();
+    assert.equal(h.ctrl.context, null);
+    assert.equal(h.writes.at(-1).state.marks.length, 1);
+    assert.equal(h.writes.at(-1).state.marks[0].highlightColor, '#fff2cc');
+    assert.equal(h.writes.at(-1).state.marks[0].note, undefined);
+    assert.equal(h.writes.at(-1).state.marks[0].noteAnchor, undefined);
+    const locked = fixture({marks: [{page: 1, note: 'Read only'}]}, true);
+    await locked.tick(); await locked.ctrl.open('run');
+    locked.ctrl.context = {mark: locked.ctrl.state.marks[0], showNote: true};
+    locked.ctrl.removeInlineNote();
+    assert.equal(locked.ctrl.state.marks[0].note, 'Read only');
+    assert.equal(locked.writes.length, 0);
+});
+
+test('note input grows for Enter, shrinks after deleting lines, and refits when widened', async () => {
+    const h = fixture();
+    let resize, disconnect = false, destroy, initial;
+    const events = {};
+    const input = {offsetWidth: 200, scrollHeight: 32, style: {},
+        addEventListener: (name, fn) => { events[name] = fn; },
+        removeEventListener: name => { delete events[name]; }};
+    const timeout = fn => { initial = fn; return fn; };
+    timeout.cancel = () => {};
+    const directive = h.directives.teachingPdfNoteInput.at(-1)({
+        getComputedStyle: () => ({borderTopWidth: '1px', borderBottomWidth: '1px'}),
+        ResizeObserver: function (fn) { resize = fn; this.observe = () => {}; this.disconnect = () => { disconnect = true; }; }
+    }, timeout);
+    const model = {$render() {}};
+    directive.link({$on: (name, fn) => { destroy = fn; }}, [input], {}, model);
+    initial();
+    assert.equal(input.style.height, '34px');
+    input.scrollHeight = 50; events.input();
+    assert.equal(input.style.height, '52px');
+    input.scrollHeight = 32; model.$render();
+    assert.equal(input.style.height, '34px');
+    input.scrollHeight = 68; resize();
+    assert.equal(input.style.height, '70px');
+    input.offsetWidth = 400; input.scrollHeight = 32; resize();
+    assert.equal(input.style.height, '34px');
+    destroy();
+    assert.equal(events.input, undefined);
+    assert.equal(disconnect, true);
+    await h.tick();
+});
+
+test('PDF shortcuts apply the current or next selection and leave typed uppercase letters alone', async () => {
+    const h = fixture();
+    await h.tick(); await h.ctrl.open('run'); await h.tick();
+    function shortcut(key, editing = false) {
+        let handled = false;
+        h.events.keydown({key, shiftKey: true, target: {closest: () => editing ? {} : null},
+            preventDefault() { handled = true; }});
+        return handled;
+    }
+    h.select(1);
+    assert.equal(shortcut('H'), true);
+    await h.tick();
+    assert.equal(h.writes.at(-1).state.marks[0].highlight, true);
+    assert.equal(shortcut('H'), true);
+    assert.equal(h.ctrl.highlighting, true);
+    h.select(1, 220);
+    await h.tick();
+    assert.equal(h.ctrl.state.marks.length, 1);
+    h.events.pointerup({type: 'pointerup', pointerType: 'mouse', button: 0});
+    await h.tick();
+    assert.equal(h.writes.at(-1).state.marks.length, 2);
+    assert.equal(h.ctrl.highlighting, false);
+    assert.equal(shortcut('T', true), false);
+    assert.equal(shortcut('H', true), false);
+    assert.equal(shortcut('T'), true);
+    h.events.click({target: {closest: selector => selector === '[data-pdf-page]' ? h.sheet(1) : null},
+        clientX: 100, clientY: 100, stopPropagation() {}});
+    assert.equal(h.ctrl.editingText.text, '');
+});
+
+test('PDF selection uses the same language to measure and lay out text, even without PDF metadata', async () => {
+    const h = fixture();
+    await h.tick(); await h.ctrl.open('run'); await h.tick();
+    assert.deepEqual(h.textLayers.find(layer => layer[0][0] === 'vi'), [['vi', 'vi'], ['vi', 'vi']]);
+    assert.deepEqual(h.textLayers.find(layer => layer[0][0] === 'en-GB'), [['en-GB', 'en-GB'], ['en-GB', 'en-GB']]);
 });

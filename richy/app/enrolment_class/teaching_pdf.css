@@ -130,7 +130,8 @@
 .teaching-pdf-page .textLayer {
     position: absolute; inset: 0; overflow: clip; opacity: 1; z-index: 1; transform-origin: 0 0;
     line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; text-rendering: auto;
-    text-size-adjust: none; forced-color-adjust: none; -webkit-touch-callout: none;
+    font-style: normal; font-weight: normal; font-variant: normal; font-stretch: normal; text-transform: none;
+    -webkit-text-size-adjust: none; text-size-adjust: none; forced-color-adjust: none; -webkit-touch-callout: none;
 }
 .teaching-pdf-page .textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; user-select: text; }
 .teaching-pdf-page .textLayer > :not(.markedContent), .teaching-pdf-page .textLayer .markedContent span:not(.markedContent) {
@@ -149,13 +150,19 @@
 .teaching-pdf-note-line { stroke: #6472c7; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .teaching-pdf-scroll.is-adding-text .teaching-pdf-page, .teaching-pdf-scroll.is-adding-text .textLayer span { cursor: crosshair; }
 .teaching-pdf-free-text {
-    position: absolute; z-index: 2; width: max-content; max-width: min(30%, 320px);
+    position: absolute; left: var(--pdf-text-left); z-index: 2; width: max-content; max-width: min(30%, 320px);
     display: flex; align-items: center;
     transform: translate(var(--pdf-text-shift-x, 0), var(--pdf-text-shift-y, 0));
 }
 .teaching-pdf-free-text.is-right { --pdf-text-shift-x: -100%; }
 .teaching-pdf-free-text.is-bottom { --pdf-text-shift-y: -100%; }
 .teaching-pdf-free-text.is-dragging { z-index: 4; transform: none; }
+.teaching-pdf-free-text.is-editing {
+    /* Leave room for the editor's bottom-right resize handle near the page edge. */
+    --pdf-editor-left: min(var(--pdf-text-left), calc(100% - min(70%, 400px)));
+    --pdf-text-shift-x: 0px;
+    left: var(--pdf-editor-left); max-width: calc(100% - var(--pdf-editor-left)); z-index: 4;
+}
 .teaching-pdf-text-value, .teaching-pdf-free-text textarea {
     display: block; min-width: 0; padding: 3px 5px; border: 1px solid #8ba6e5; border-radius: 4px;
     background: #fffdf1; color: #243e79; font: 600 1em/1.3 Arial, sans-serif;
@@ -167,7 +174,10 @@
 }
 .teaching-pdf-text-value:not(:disabled) { cursor: grab; touch-action: none; user-select: none; }
 .teaching-pdf-free-text.is-dragging .teaching-pdf-text-value { cursor: grabbing; }
-.teaching-pdf-free-text textarea { width: min(220px, 50vw); max-width: 100%; resize: vertical; }
+.teaching-pdf-free-text textarea {
+    box-sizing: border-box; width: min(220px, 50vw); max-width: 100%; max-height: 50vh;
+    overflow: auto; resize: both; background: rgba(255, 253, 241, .8);
+}
 .teaching-pdf-text-remove {
     display: grid; place-items: center; flex: 0 0 24px;
     width: 24px; height: 24px; min-height: 0; padding: 0; border: 0;
@@ -213,15 +223,21 @@
     box-shadow: inset 0 1px 1px #ffffffa6;
 }
 .teaching-pdf-swatches button:hover, .teaching-pdf-swatches button[aria-pressed="true"] { outline: 2px solid #4358a5; outline-offset: 1px; }
+.teaching-pdf-pen-color span { width: 14px; height: 14px; border: 1px solid #1b2b5129; border-radius: 50%; }
+.teaching-pdf-pen-palette.teaching-pdf-swatches { position: absolute; top: 8px; left: 12px; z-index: 9; width: min(216px, calc(100% - 24px)); grid-template-columns: repeat(6, 1fr); gap: 9px; padding: 12px; border: 1px solid #d5dff2; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px #263b6426; }
 .teaching-pdf-inline-note {
     width: min(285px, calc(100% - 16px)); z-index: 7; padding: 10px;
     background: #fff; border-color: #d5dff2; box-shadow: 0 2px 8px #263b641a;
+    min-width: min(200px, 100%); resize: horizontal; overflow: auto;
 }
-.teaching-pdf-inline-note label { display: block; margin-bottom: 5px; font-weight: 700; }
+.teaching-pdf-inline-note-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.teaching-pdf-inline-note label { margin: 0; font-weight: 700; }
+.teaching-pdf-inline-note .teaching-pdf-inline-note-delete { color: #a23c4a; }
 .teaching-pdf-inline-note textarea {
     display: block; width: 100%; padding: 7px; border: 1px solid #d5dff2; border-radius: 6px;
-    background: #fff; color: #27354d; resize: vertical;
+    background: #fff; color: #27354d;
 }
+[teaching-pdf-note-input] { box-sizing: border-box; min-height: 34px; max-height: min(320px, 40vh); line-height: 18px; resize: none; overflow-y: auto; }
 @media (max-width: 720px) {
     .teaching-pdf-window .modal-dialog { width: 98vw; margin: 1vh auto; }
     .teaching-pdf-notes { top: auto; bottom: 8px; right: 8px; width: min(360px, calc(100% - 16px)); max-height: 55%; }

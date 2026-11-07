@@ -133,8 +133,13 @@
                 <i class="fa fa-folder-open-o" aria-hidden="true"></i> Kho PDF
             </button>
             <div class="study-notebook-tools" ng-if="!pdf.run.completed">
+                <button type="button" ng-class="{'is-active': pdf.highlighting}" ng-attr-aria-pressed="{{!!pdf.highlighting}}"
+                        ng-mousedown="$event.preventDefault()" ng-click="pdf.startHighlight()" ng-disabled="pdf.busy"
+                        title="Highlight (Shift+H)" aria-keyshortcuts="Shift+H">
+                    <i class="fa fa-paint-brush" aria-hidden="true"></i> Highlight
+                </button>
                 <button type="button" ng-class="{'is-active': pdf.addingText}" ng-attr-aria-pressed="{{!!pdf.addingText}}"
-                        ng-click="pdf.startText()" ng-disabled="pdf.busy">
+                        ng-click="pdf.startText()" ng-disabled="pdf.busy" title="Thêm text (Shift+T)" aria-keyshortcuts="Shift+T">
                     <i class="fa fa-font" aria-hidden="true"></i> Thêm text
                 </button>
                 <label>
@@ -159,6 +164,11 @@
                     <option value="7">{{pdf.inkTool === 'pen' ? 'Đậm' : 'To'}}</option>
                 </select>
             </label>
+            <button type="button" class="study-notebook-action teaching-pdf-pen-color" ng-if="pdf.inkTool === 'pen' && !pdf.run.completed"
+                    ng-click="pdf.penPaletteOpen = !pdf.penPaletteOpen" ng-attr-aria-expanded="{{!!pdf.penPaletteOpen}}"
+                    aria-controls="teaching-pdf-pen-palette" ng-disabled="pdf.busy">
+                <span ng-style="{'background-color':pdf.penColor}" aria-hidden="true"></span> Màu bút
+            </button>
             <div class="teaching-pdf-navigation">
                 <button type="button" class="study-notebook-action" ng-click="pdf.go(pdf.state.page - 1)" ng-disabled="pdf.busy || pdf.state.page <= 1"
                         aria-label="Trang trước"><i class="fa fa-chevron-left" aria-hidden="true"></i></button>
@@ -187,7 +197,13 @@
             </button>
         </div>
         <div class="teaching-pdf-workspace">
-            <div class="teaching-pdf-scroll" ng-class="{'is-adding-text': pdf.addingText}">
+            <div id="teaching-pdf-pen-palette" class="teaching-pdf-pen-palette teaching-pdf-swatches" ng-if="pdf.penPaletteOpen && pdf.inkTool === 'pen' && !pdf.run.completed"
+                 role="group" aria-label="Màu bút Google Docs">
+                <button type="button" ng-repeat="color in pdf.penColors track by color.value" ng-style="{'background-color':color.value}"
+                        ng-click="pdf.penColor = color.value; pdf.penPaletteOpen = false" ng-disabled="pdf.busy" ng-attr-aria-pressed="{{pdf.penColor === color.value}}"
+                        title="{{color.name}}" aria-label="{{color.name}}"></button>
+            </div>
+            <div class="teaching-pdf-scroll" ng-class="{'is-adding-text': pdf.addingText}" tabindex="0" aria-label="Trang tài liệu PDF" role="region">
                 <div class="teaching-pdf-page" ng-repeat="page in pdf.pages track by page.number"
                      ng-attr-data-pdf-page="{{page.number}}" ng-style="page.style">
                     <div class="teaching-pdf-page-content" ng-if="page.active">
@@ -201,16 +217,18 @@
                                           ng-attr-y1="{{(rect.y + rect.h) * 1000}}" ng-attr-y2="{{(rect.y + rect.h) * 1000}}" class="teaching-pdf-note-line"></line>
                                 </g>
                                 <polyline ng-if="mark.points && !pdf.inkErased(mark)" ng-attr-points="{{pdf.inkPoints(mark)}}"
+                                          ng-style="{stroke:pdf.inkColor(mark)}"
                                           ng-attr-stroke-width="{{pdf.inkWidth(mark)}}"></polyline>
                             </g>
                             <polyline ng-if="pdf.stroke.page === page.number" ng-attr-points="{{pdf.inkPoints(pdf.stroke)}}"
+                                      ng-style="{stroke:pdf.inkColor(pdf.stroke)}"
                                       ng-attr-stroke-width="{{pdf.inkWidth(pdf.stroke)}}"></polyline>
                         </svg>
                         <div class="textLayer"></div>
                         <div class="teaching-pdf-free-text" ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true"
                              ng-if="mark.text !== undefined"
-                             ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
-                             ng-style="{left:(pdf.textPosition(mark).x * 100) + '%', top:(pdf.textPosition(mark).y * 100) + '%', fontSize:pdf.textFontSize(mark)}">
+                             ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
+                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}};">
                             <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
                                       maxlength="4000" rows="2" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
                             <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
@@ -250,8 +268,14 @@
             </div>
             <div class="teaching-pdf-inline-note" ng-if="pdf.context.showNote"
                  ng-style="{left:pdf.context.note.x + 'px', top:pdf.context.note.y + 'px', visibility:pdf.context.note ? 'visible' : 'hidden'}">
-                <label for="teaching-pdf-inline-note-text">Ghi chú</label>
-                <textarea id="teaching-pdf-inline-note-text" rows="3" maxlength="4000" ng-model="pdf.context.mark.note"
+                <div class="teaching-pdf-inline-note-header">
+                    <label for="teaching-pdf-inline-note-text">Ghi chú</label>
+                    <button type="button" class="study-notebook-action teaching-pdf-inline-note-delete" ng-if="!pdf.run.completed"
+                            ng-click="pdf.removeInlineNote()" ng-disabled="pdf.busy">
+                        <i class="fa fa-trash-o" aria-hidden="true"></i> Xóa ghi chú
+                    </button>
+                </div>
+                <textarea id="teaching-pdf-inline-note-text" rows="1" teaching-pdf-note-input="pdf.repositionNote()" maxlength="4000" ng-model="pdf.context.mark.note"
                           ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"
                           placeholder="Gõ điều cần nhớ…"></textarea>
             </div>
@@ -265,7 +289,7 @@
                     <button type="button" class="teaching-pdf-note-title" ng-click="pdf.selectedMark = pdf.selectedMark === mark ? null : mark"
                             ng-class="{'is-active': pdf.selectedMark === mark}" ng-attr-aria-expanded="{{pdf.selectedMark === mark}}" ng-bind="mark.quote || (mark.points ? 'Nét bút' : (mark.text || mark.note || 'Ghi chú trang'))"></button>
                     <div ng-if="pdf.selectedMark === mark && mark.text === undefined">
-                        <textarea class="form-control" aria-label="Nội dung ghi chú" rows="3" maxlength="4000" ng-model="mark.note"
+                        <textarea class="form-control" aria-label="Nội dung ghi chú" rows="1" teaching-pdf-note-input maxlength="4000" ng-model="mark.note"
                                   ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"></textarea>
                         <button type="button" class="study-notebook-action" ng-if="!pdf.run.completed" ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">Xóa ghi chú</button>
                     </div>
@@ -274,7 +298,7 @@
         </div>
         <footer class="study-notebook-footer">
             <span><i class="fa fa-lock" aria-hidden="true"></i> Ghi chú riêng theo lớp</span>
-            <span class="teaching-pdf-tip" role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành.' : (pdf.inkTool === 'eraser' ? 'Chạm hoặc kéo qua nét bút để xóa cả nét.' : (pdf.inkTool === 'pen' ? 'Viết trực tiếp trên PDF.' : (pdf.addingText ? 'Bấm vào trang để đặt chữ.' : 'Bôi chọn chữ để highlight hoặc ghi chú.')))}}</span>
+            <span class="teaching-pdf-tip" role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành.' : (pdf.inkTool === 'eraser' ? 'Chạm hoặc kéo qua nét bút để xóa cả nét.' : (pdf.inkTool === 'pen' ? 'Viết trực tiếp trên PDF.' : (pdf.addingText ? 'Bấm vào trang để đặt chữ.' : (pdf.highlighting ? 'Bôi chọn đoạn cần highlight.' : 'Bôi chọn chữ để highlight hoặc ghi chú.'))))}}</span>
         </footer>
     </div>
 </div>

@@ -408,6 +408,19 @@
                                 if (item.active && !item.job && !item.ready) { startPage(item); }
                             }
                         }
+                        function textContentForLayer(page, container) {
+                            var language;
+                            return page.streamTextContent().pipeThrough(new TransformStream({
+                                transform: function (chunk, stream) {
+                                    // Use one locale for the measuring canvas and the selectable spans.
+                                    if (!language) {
+                                        language = chunk.lang || document.documentElement.lang || 'en';
+                                        container.lang = language;
+                                    }
+                                    stream.enqueue(angular.extend({}, chunk, {lang: language}));
+                                }
+                            }));
+                        }
                         function startPage(item) {
                             var job = item.job = {}, doc = pdf;
                             renderingPages++;
@@ -432,7 +445,7 @@
                                 canvas.height = Math.max(1, Math.floor(view.height * pixelRatio));
                                 text.replaceChildren();
                                 job.paint = page.render({canvas: canvas, viewport: view, transform: [pixelRatio, 0, 0, pixelRatio, 0, 0]});
-                                job.text = new api.TextLayer({textContentSource: page.streamTextContent(), container: text, viewport: view});
+                                job.text = new api.TextLayer({textContentSource: textContentForLayer(page, text), container: text, viewport: view});
                                 text.style.width = view.rawDims.pageWidth * scale * view.userUnit + 'px';
                                 text.style.height = view.rawDims.pageHeight * scale * view.userUnit + 'px';
                                 return $q.all([job.paint.promise, job.text.render()]).then(function () {
@@ -560,6 +573,7 @@
 
 
                         function release() {
+                            vm.highlighting = false;
                             endTextDrag();
                             finishInk(false);
                             lastTextTap = null;
@@ -592,6 +606,18 @@
                             {name: 'Xanh lam nhạt', value: '#c9daf8'}, {name: 'Xanh da trời nhạt', value: '#cfe2f3'},
                             {name: 'Tím nhạt', value: '#d9d2e9'}, {name: 'Hồng tím nhạt', value: '#ead1dc'}
                         ];
+                        vm.penColors = [
+                            {name: 'Đen', value: '#000000'}, {name: 'Đỏ đất', value: '#dd7e6b'},
+                            {name: 'Hồng', value: '#ea9999'}, {name: 'Cam', value: '#f9cb9c'},
+                            {name: 'Vàng', value: '#ffe599'}, {name: 'Xanh lá', value: '#b6d7a8'},
+                            {name: 'Xanh ngọc', value: '#a2c4c9'}, {name: 'Xanh lam', value: '#a4c2f4'},
+                            {name: 'Xanh da trời', value: '#9fc5e8'}, {name: 'Tím', value: '#b4a7d6'},
+                            {name: 'Hồng tím', value: '#d5a6bd'}, {name: 'Xanh đậm', value: '#3c78d8'}
+                        ];
+                        vm.penColor = '#3c78d8';
+                        vm.inkColor = function (mark) {
+                            return /^#[0-9a-f]{6}$/i.test(mark.inkColor || '') ? mark.inkColor : '#2654bd';
+                        };
                         vm.highlightOpacity = function (value) {
                             return vm.highlightColors.some(function (color) { return color.value === value; }) ? 1 : .38;
                         };
@@ -634,6 +660,7 @@
                             }
                             if (note) { context.note = placeContextPanel(note, bounds, area, false, 8); }
                         }
+                        vm.repositionNote = positionContext;
                         function anchorContext(mark, rect) {
                             vm.context = {mark: mark, rect: rect};
                             timer(positionContext);
@@ -674,6 +701,7 @@
                             anchorContext({page: Number(sheet.dataset.pdfPage), quote: quote, rects: rects, highlight: false, note: ''},
                                 range.getBoundingClientRect());
                             vm.context.draft = true;
+                            return true;
                         }
                         function queueSelection() {
                             if (selectionTimer) { timer.cancel(selectionTimer); }
@@ -690,6 +718,7 @@
                         }
                         vm.highlightSelection = function () {
                             if (!vm.context || vm.run.completed) { return; }
+                            vm.highlighting = false;
                             var mark = vm.context.mark;
                             mark.highlight = mark.highlight === false;
                             if (!mark.highlight && !mark.note && !mark.noteAnchor && !vm.context.draft) {
@@ -701,6 +730,7 @@
                         };
                         vm.colorSelection = function (color) {
                             if (!vm.context || vm.run.completed) { return; }
+                            vm.highlighting = false;
                             vm.context.mark.highlightColor = color;
                             vm.context.mark.highlight = true;
                             saveContextMark(); changed();
@@ -722,19 +752,52 @@
                             if (!vm.context) { return; }
                             vm.removeMark(vm.context.mark); closeContext();
                         };
+                        vm.removeInlineNote = function () {
+                            if (!vm.context || !vm.run || vm.run.completed || vm.busy) { return; }
+                            var mark = vm.context.mark;
+                            if (mark.highlight === false) {
+                                vm.removeMark(mark);
+                            } else {
+                                delete mark.note;
+                                delete mark.noteAnchor;
+                                changed();
+                            }
+                            closeContext();
+                        };
                         function clearTextSelection() {
                             var selection = window.getSelection();
                             if (selection && !selection.isCollapsed) { selection.removeAllRanges(); }
                         }
+                        function applySelectedHighlight() {
+                            if (!selectedTextContext()) { return false; }
+                            vm.highlightSelection();
+                            closeContext();
+                            return true;
+                        }
+                        vm.startHighlight = function () {
+                            if (!pdf || !vm.run || vm.run.completed || vm.busy) { return; }
+                            finishInk(false);
+                            vm.inkTool = null;
+                            vm.penPaletteOpen = false;
+                            vm.addingText = false;
+                            if (applySelectedHighlight()) { return; }
+                            vm.highlighting = !vm.highlighting;
+                            closeContext();
+                        };
                         vm.startText = function () {
+                            if (!pdf || !vm.run || vm.run.completed || vm.busy) { return; }
                             finishInk(false);
                             vm.addingText = !vm.addingText;
+                            vm.highlighting = false;
+                            vm.penPaletteOpen = false;
                             vm.inkTool = null;
                             clearTextSelection();
                             closeContext();
                         };
                         vm.toggleInk = function (tool) {
                             finishInk(false);
+                            vm.penPaletteOpen = false;
+                            vm.highlighting = false;
                             vm.inkTool = vm.inkTool === tool ? null : tool;
                             vm.addingText = false;
                             clearTextSelection();
@@ -832,10 +895,11 @@
                                 Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)).toFixed(4)];
                         }
                         function startInk(event, overlay) {
+                            vm.penPaletteOpen = false;
                             var page = Number(overlay.closest('[data-pdf-page]').dataset.pdfPage);
                             var gesture = inkGesture = {page: page, overlay: overlay, pointerId: event.pointerId};
                             if (vm.inkTool === 'pen') {
-                                gesture.stroke = {page: page, width: vm.inkWidth({width: vm.inkSizes.pen}), points: []};
+                                gesture.stroke = {page: page, width: vm.inkWidth({width: vm.inkSizes.pen}), inkColor: vm.penColor, points: []};
                                 vm.stroke = gesture.stroke;
                             } else {
                                 gesture.erased = new Set();
@@ -922,6 +986,9 @@
                                 textDragPointer(event, vm.textDrag);
                                 return;
                             }
+                            if (event.type === 'pointerup' && vm.highlighting && event.pointerType === 'mouse' && event.button === 0) {
+                                timer(function () { if (vm.highlighting) { applySelectedHighlight(); } });
+                            }
                             if (event.type === 'pointerdown') {
                                 var touch = event.pointerType === 'touch' || event.pointerType === 'pen';
                                 if (event.target.closest('.textLayer')) { touchSelection = touch; }
@@ -978,6 +1045,20 @@
                         }
 
                         var pointerEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'];
+                        var shortcutTarget;
+                        function onShortcut(event) {
+                            if (!pdf || !vm.run || vm.run.completed || vm.busy || event.defaultPrevented || event.isComposing ||
+                                    event.ctrlKey || event.altKey || event.metaKey || event.repeat || event.target.isContentEditable ||
+                                    event.target.closest('input, textarea, select, [role="textbox"]')) { return; }
+                            var key = (event.key || '').toLowerCase();
+                            var action = event.shiftKey && (key === 'h' ? vm.startHighlight : key === 't' ? vm.startText : null);
+                            if (!action && key === 'escape' && vm.highlighting) {
+                                action = function () { vm.highlighting = false; };
+                            }
+                            if (!action) { return; }
+                            event.preventDefault();
+                            scope.$evalAsync(action);
+                        }
                         function onPageClick(event) {
                             var selection = window.getSelection();
                             if (event.target.closest('.teaching-pdf-context, .teaching-pdf-inline-note, .teaching-pdf-free-text')) { return; }
@@ -1017,6 +1098,8 @@
                         }
                         vm.bindSurface = function (node) {
                             root = node;
+                            shortcutTarget = root.closest('.teaching-pdf-window') || root;
+                            shortcutTarget.addEventListener('keydown', onShortcut);
                             Object.keys(libraryDragEvents).forEach(function (name) { root.addEventListener(name, libraryDragEvents[name]); });
                             pointerEvents.forEach(function (name) { root.addEventListener(name, onPointer); });
                             root.addEventListener('scroll', onScroll, true);
@@ -1039,6 +1122,7 @@
                             if (saveTimer) { timer.cancel(saveTimer); }
                             window.removeEventListener('beforeunload', preventUnsavedExit);
                             if (root) {
+                                shortcutTarget.removeEventListener('keydown', onShortcut);
                                 endLibraryDrag();
                                 Object.keys(libraryDragEvents).forEach(function (name) { root.removeEventListener(name, libraryDragEvents[name]); });
                                 root.removeEventListener('scroll', onScroll, true);
@@ -1073,5 +1157,32 @@
             element[0].addEventListener('pointerdown', start);
             scope.$on('$destroy', function () { element[0].removeEventListener('pointerdown', start); });
         }};
-    });
+    }).directive('teachingPdfNoteInput', ['$window', '$timeout', function ($window, $timeout) {
+        return {require: 'ngModel', link: function (scope, element, attrs, model) {
+            var input = element[0], observer, lastWidth, pending;
+            function fit() {
+                var style = $window.getComputedStyle(input);
+                input.style.height = 'auto';
+                input.style.height = input.scrollHeight + (parseFloat(style.borderTopWidth) || 0) +
+                    (parseFloat(style.borderBottomWidth) || 0) + 'px';
+            }
+            var render = model.$render;
+            model.$render = function () { render.call(model); fit(); };
+            input.addEventListener('input', fit);
+            if ($window.ResizeObserver) {
+                observer = new $window.ResizeObserver(function () {
+                    var width = input.offsetWidth;
+                    if (width !== lastWidth) { lastWidth = width; fit(); }
+                    if (attrs.teachingPdfNoteInput) { scope.$evalAsync(attrs.teachingPdfNoteInput); }
+                });
+                observer.observe(input);
+            }
+            pending = $timeout(fit, 0, false);
+            scope.$on('$destroy', function () {
+                $timeout.cancel(pending);
+                input.removeEventListener('input', fit);
+                if (observer) { observer.disconnect(); }
+            });
+        }};
+    }]);
 })();
