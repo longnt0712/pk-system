@@ -26,7 +26,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
         ['curiosity', '/ˌkjʊə.riˈɒs.ə.ti/', 'Sự tò mò, ham tìm hiểu', 'B2'], ['take a break', '/teɪk ə breɪk/', 'Nghỉ ngơi một chút', 'A2'], ['slow down', '/sləʊ daʊn/', 'Chậm lại, thong thả hơn', 'A2']];
     const state = {requests: [], saves: [], errors: [], full, lessons, cards: words.map((word, index) =>
         ({id: index + 1, question: word[0], pronounce: word[1], motherTongue: word[2], level: word[3], status: index === 11 ? 5 : 1,
-            questionTopics: index === 10 ? [] : [{topic: {id: index === 4 ? 102 : 101}}]}))};
+            questionTopics: index === 10 ? [] : [{topic: lessons[index === 4 ? 1 : 0]}]}))};
     page.on('pageerror', error => state.errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error' && !message.text().includes('Failed to load resource')) state.errors.push(message.text()); });
     await page.route('**/*', async route => {
@@ -59,7 +59,8 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             if (state.holdLesson === dto.topicId) await new Promise(resolve => { state.releaseLesson = resolve; });
             const rows = state.cards.filter(card => (!dto.topicId || card.questionTopics.some(link => link.topic.id === dto.topicId)) &&
                 (!dto.withoutTopics || !card.questionTopics.length) && (!dto.status || (dto.status === 3 ? card.status !== 5 : card.status === dto.status)) &&
-                (!dto.textSearch || (card.question + ' ' + card.motherTongue).toLowerCase().includes(dto.textSearch.toLowerCase())));
+                (!dto.textSearch || (dto.findExactWord ? card.question.toLowerCase() === dto.textSearch.trim().toLowerCase() :
+                    (card.question + ' ' + card.motherTongue).toLowerCase().includes(dto.textSearch.toLowerCase()))));
             return json({content: rows.slice((numbers[0]-1)*numbers[1], numbers[0]*numbers[1]), totalElements: rows.length});
         }
         if (url.pathname === '/api/question/save') {

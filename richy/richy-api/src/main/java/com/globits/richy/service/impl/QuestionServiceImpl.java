@@ -1445,13 +1445,16 @@ public class QuestionServiceImpl implements QuestionService {
 		else if (search.getStatus() == 4) { where += " and q.status = 4"; }
 		else if (search.getStatus() == 3) { where += " and (q.status is null or q.status <> 5)"; }
 		String term = search.getTextSearch() == null ? "" : search.getTextSearch().trim().toLowerCase(Locale.ROOT);
-		if (!term.isEmpty()) { where += " and (lower(q.question) like :term or lower(q.motherTongue) like :term)"; }
+		if (!term.isEmpty()) {
+			where += search.isFindExactWord() ? " and lower(q.question) = :term"
+					: " and (lower(q.question) like :term or lower(q.motherTongue) like :term)";
+		}
 		Query rows = manager.createQuery("select new com.globits.richy.dto.QuestionDto(q)" + where + " order by q.createDate desc, q.id desc", QuestionDto.class);
 		Query count = manager.createQuery("select count(q.id)" + where);
 		for (Query query : new Query[]{rows, count}) {
 			query.setParameter("owner", ((User) authentication.getPrincipal()).getId());
 			if (!search.isWithoutTopics() && search.getTopicId() != null) { query.setParameter("lesson", search.getTopicId()); }
-			if (!term.isEmpty()) { query.setParameter("term", "%" + term + "%"); }
+			if (!term.isEmpty()) { query.setParameter("term", search.isFindExactWord() ? term : "%" + term + "%"); }
 		}
 		rows.setFirstResult(pageIndex * pageSize); rows.setMaxResults(pageSize);
 		return new PageImpl<QuestionDto>(rows.getResultList(), new PageRequest(pageIndex, pageSize), (Long) count.getSingleResult());

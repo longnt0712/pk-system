@@ -29,3 +29,49 @@ test('vocabulary has one navigation entry and the old flashcard URL opens the sa
     assert.ok(dependencies.includes('topic/vocabulary.css?v=test'));
     assert.ok(dependencies.includes('question/controllers/QuestionExcelImportController.js?v=test'));
 });
+
+test('exact search is sent to the API and word details show all linked lessons', async () => {
+    let Controller, lastSearch;
+    const module = {
+        controller(name, fn) { Controller = fn; return this; },
+        directive() { return this; }
+    };
+    const context = vm.createContext({angular: {
+        module: () => module, copy: value => JSON.parse(JSON.stringify(value)), noop() {}
+    }});
+    vm.runInContext(fs.readFileSync(path.join(app, 'topic/controllers/VocabularyController.js'), 'utf8'), context);
+    const cards = {
+        getVocabularyUsage: () => Promise.resolve({wordCount: 0, topicCount: 0}),
+        getVocabularyPage(search) { lastSearch = search; return Promise.resolve({content: [], totalElements: 0}); }
+    };
+    const lessons = {
+        getPage: () => Promise.resolve({content: [], totalElements: 0}),
+        getPageTopicCategory: () => Promise.resolve({content: [], totalPages: 1})
+    };
+    const timeout = () => ({}); timeout.cancel = () => {};
+    const modal = {open: () => ({result: Promise.resolve(), dismiss() {}})};
+    const q = {defer() {
+        let resolve; const promise = new Promise(done => { resolve = done; }); return {promise, resolve};
+    }};
+    const workspace = new Controller({$on() {}}, q, modal, {get: () => '{"id":26,"username":"english"}'},
+        {search: () => ({})}, {isAdmin: true}, cards, lessons, {}, {}, timeout);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(lastSearch.findExactWord, true);
+    workspace.findExactWord = false; workspace.query = 'minimal';
+    await workspace.loadCards(true);
+    assert.equal(lastSearch.findExactWord, false);
+    assert.equal(lastSearch.textSearch, 'minimal');
+
+    const links = Array.from({length: 36}, (_, index) => ({
+        topic: {id: index + 1, name: 'Lesson ' + (index + 1)}
+    }));
+    const card = {id: 48652, question: 'minimal', questionTopics: links};
+    workspace.openCard(card);
+    assert.equal(workspace.cardTopics.length, 36);
+    assert.equal(workspace.cardTopics[35].name, 'Lesson 36');
+    assert.deepEqual(JSON.parse(JSON.stringify(workspace.cardDraft.questionTopics)), links);
+    assert.equal(workspace.lessons.length, 0, 'membership list must not depend on the sidebar page');
+
+    workspace.openCard({id: 42, question: 'new word'});
+    assert.equal(workspace.cardTopics.length, 0);
+});

@@ -58,6 +58,7 @@
         vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {};
         vm.lessonPage = 0; vm.lessonPageSize = 20; vm.lessonTotal = 0;
         vm.page = 1; vm.pageSize = 8; vm.total = 0; vm.status = 0; vm.query = '';
+        vm.findExactWord = true;
         vm.pageSizeInput = vm.pageSize;
         vm.pageSizeLimit = 100;
         vm.view = 'all'; vm.lessonQuery = ''; vm.lessonCategory = null;
@@ -137,7 +138,7 @@
             }
         };
         vm.searchPayload = function () {
-            return {questionType: {id: 6}, status: vm.status, textSearch: vm.query,
+            return {questionType: {id: 6}, status: vm.status, textSearch: vm.query, findExactWord: vm.findExactWord,
                 topicId: vm.activeLesson ? vm.activeLesson.id : null, withoutTopics: vm.view === 'unassigned'};
         };
         vm.loadCards = function (reset) {
@@ -247,6 +248,14 @@
             vm.cardDraft = card ? angular.copy(card) : {question: '', pronounce: '', motherTongue: '',
                 userId: vm.user.id, questionType: {id: 6}, status: vm.isAdmin && vm.status === 5 ? 5 : 1};
             vm.cardDraft.level = vm.cardDraft.level || '';
+            var seenTopics = new Set();
+            vm.cardTopics = (vm.cardDraft.questionTopics || []).map(function (link) { return link && link.topic; })
+                .filter(function (topic) {
+                    if (!topic || !topic.id || seenTopics.has(String(topic.id))) { return false; }
+                    seenTopics.add(String(topic.id)); return true;
+                }).sort(function (left, right) {
+                    return (left.name || '').localeCompare(right.name || '', 'vi', {numeric: true, sensitivity: 'base'});
+                });
             vm.cardLesson = card ? null : vm.activeLesson;
             vm.cardLessonChoices = vm.lessons;
             vm.cardSaveError = ''; vm.advancedOpen = false; vm.cardDialog = openDialog('vocabulary_card_modal.html');

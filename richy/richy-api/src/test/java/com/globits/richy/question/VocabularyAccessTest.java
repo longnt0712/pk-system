@@ -252,7 +252,7 @@ public class VocabularyAccessTest {
         when(manager.createQuery(anyString(), eq(QuestionDto.class))).thenReturn(rows);
         when(manager.createQuery(anyString())).thenReturn(count);
         when(rows.getResultList()).thenReturn(Collections.emptyList()); when(count.getSingleResult()).thenReturn(0L);
-        QuestionDto filter = new QuestionDto(); filter.setTopicId(11L); filter.setStatus(5); filter.setTextSearch("  APPLE  ");
+        QuestionDto filter = new QuestionDto(); filter.setTopicId(11L); filter.setStatus(5); filter.setTextSearch("  APPLE  "); filter.setFindExactWord(false);
         cards.getVocabularyPage(filter, 0, 10000);
         org.mockito.ArgumentCaptor<String> hql = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(manager).createQuery(hql.capture(), eq(QuestionDto.class));

@@ -86,12 +86,47 @@ public class VocabularyWorkspacePersistenceTest {
         assertEquals(3, cards.getVocabularyPage(search, 1, 8).getTotalElements());
         search.setTopicId(lessonId); assertEquals(2, cards.getVocabularyPage(search, 1, 8).getTotalElements());
         search.setStatus(5); assertEquals("listening", cards.getVocabularyPage(search, 1, 8).getContent().get(0).getQuestion());
-        search.setStatus(0); search.setTextSearch("NGHĨA MỘT");
+        search.setStatus(0); search.setTextSearch("NGHĨA MỘT"); search.setFindExactWord(false);
         assertEquals("alpha", cards.getVocabularyPage(search, 1, 8).getContent().get(0).getQuestion());
         search.setTextSearch(null); search.setTopicId(foreignLessonId);
         assertTrue(cards.getVocabularyPage(search, 1, 8).getContent().isEmpty());
         search.setTopicId(null); search.setWithoutTopics(true);
         assertEquals("orphan", cards.getVocabularyPage(search, 1, 8).getContent().get(0).getQuestion());
+    }
+    @Test public void exactWordSearchKeepsSameWordVariantsAndExcludesPartialMeaningAndOtherOwners() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Topic lesson = manager.find(Topic.class, lessonId);
+        word(owner, "Alpha", "another sense", 1, lesson);
+        word(owner, "alphabet", "letters", 1, lesson);
+        word(owner, "meaning match", "alpha", 1, lesson);
+        word(user(), "alpha", "another owner's card", 1, null);
+        manager.flush(); manager.clear();
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTextSearch("  ALPHA  ");
+        assertTrue(search.isFindExactWord());
+        org.springframework.data.domain.Page<QuestionDto> exact = cards.getVocabularyPage(search, 1, 8);
+        assertEquals(2, exact.getTotalElements());
+        for (QuestionDto card : exact.getContent()) { assertEquals("alpha", card.getQuestion().toLowerCase(Locale.ROOT)); }
+        search.setFindExactWord(false);
+        assertEquals(4, cards.getVocabularyPage(search, 1, 8).getTotalElements());
+        search.setTopicId(foreignLessonId);
+        assertEquals(0, cards.getVocabularyPage(search, 1, 8).getTotalElements());
+    }
+    @Test public void vocabularyDetailsIncludeEveryLinkedTopicRegardlessOfCardPageSize() {
+        Question alpha = manager.createQuery("select q from Question q where q.id in (select l.question.id from QuestionTopic l where l.topic.id = :lesson) and q.question = 'alpha'", Question.class)
+            .setParameter("lesson", lessonId).getSingleResult();
+        for (int index = 1; index <= 35; index++) {
+            Topic lesson = topic(alpha.getUser()); lesson.setName("Lesson " + index);
+            QuestionTopic link = new QuestionTopic(); link.setQuestion(alpha); link.setTopic(lesson); manager.persist(link);
+        }
+        manager.flush(); manager.clear();
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTextSearch("alpha");
+        QuestionDto detail = cards.getVocabularyPage(search, 1, 1).getContent().get(0);
+        assertEquals(36, detail.getQuestionTopics().size());
+        Set<Long> topicIds = new HashSet<Long>();
+        for (com.globits.richy.dto.QuestionTopicDto link : detail.getQuestionTopics()) {
+            assertNotNull(link.getTopic().getName()); topicIds.add(link.getTopic().getId());
+        }
+        assertEquals(36, topicIds.size());
     }
     @Test public void deletingLessonUnlinksItsCardsWithoutDeletingVocabulary() {
         Long before = manager.createQuery("select count(q.id) from Question q", Long.class).getSingleResult();
