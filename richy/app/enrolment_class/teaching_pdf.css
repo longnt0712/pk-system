@@ -176,7 +176,7 @@
 .teaching-pdf-free-text.is-dragging .teaching-pdf-text-value { cursor: grabbing; }
 .teaching-pdf-free-text textarea {
     box-sizing: border-box; width: min(220px, 50vw); max-width: 100%; max-height: 50vh;
-    overflow: auto; resize: both; background: rgba(255, 253, 241, .8);
+    min-height: 0; line-height: 1.15; overflow: auto; resize: both; background: rgba(255, 253, 241, .76);
 }
 .teaching-pdf-text-remove {
     display: grid; place-items: center; flex: 0 0 24px;

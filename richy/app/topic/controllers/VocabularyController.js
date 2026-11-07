@@ -18,6 +18,36 @@
             scope.$on('$destroy', function () { scrollBody.off('scroll', closeOnScroll); viewport.off('resize', closeOnResize); });
         }};
     }]);
+    angular.module('Hrm.Topic').directive('vocabularyLoadMore', ['$window', function ($window) {
+        return {link: function (scope, element, attrs) {
+            var list = element[0];
+            var sentinel = list.querySelector('.vw-lesson-end');
+            var observer;
+
+            function loadMore() {
+                scope.$evalAsync(function () { scope.$eval(attrs.vocabularyLoadMore); });
+            }
+            function onScroll() {
+                if (list.scrollHeight - list.scrollTop - list.clientHeight <= 120) {
+                    loadMore();
+                }
+            }
+            if ($window.IntersectionObserver) {
+                observer = new $window.IntersectionObserver(function (entries) {
+                    if (entries.some(function (entry) { return entry.isIntersecting; })) {
+                        loadMore();
+                    }
+                }, {root: list, rootMargin: '0px 0px 120px 0px'});
+                observer.observe(sentinel);
+            } else {
+                list.addEventListener('scroll', onScroll);
+            }
+            scope.$on('$destroy', function () {
+                if (observer) { observer.disconnect(); }
+                else { list.removeEventListener('scroll', onScroll); }
+            });
+        }};
+    }]);
     VocabularyController.$inject = ['$scope', '$q', '$uibModal', '$cookies', '$location', 'settings', 'QuestionService', 'TopicService', 'toastr', '$window', '$timeout'];
     function VocabularyController($scope, $q, modal, $cookies, $location, settings, cards, lessons, toastr, $window, $timeout) {
         var vm = this, cardRequest = 0, lessonRequest = 0, usageRequest = 0, lessonSelection = 0, alive = true;
@@ -26,8 +56,10 @@
         vm.isAdmin = settings.isAdmin === true;
         vm.canDelete = vm.isAdmin || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_USER'; });
         vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {};
-        vm.lessonPage = 1; vm.lessonPageSize = 20; vm.lessonTotal = 0;
+        vm.lessonPage = 0; vm.lessonPageSize = 20; vm.lessonTotal = 0;
         vm.page = 1; vm.pageSize = 8; vm.total = 0; vm.status = 0; vm.query = '';
+        vm.pageSizeInput = vm.pageSize;
+        vm.pageSizeLimit = 100;
         vm.view = 'all'; vm.lessonQuery = ''; vm.lessonCategory = null;
         vm.levels = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         $scope.vocabularyTinyMce = {height: 200, menubar: false, plugins: 'lists link', toolbar: 'bold italic | bullist numlist | link | removeformat'};
@@ -60,21 +92,50 @@
         };
         vm.wordPercent = function () { return vm.usage && vm.usage.wordLimit > 0 ? Math.min(100, vm.usage.wordCount / vm.usage.wordLimit * 100) : 0; };
         vm.lessonPercent = function () { return vm.usage && vm.usage.topicLimit > 0 ? Math.min(100, vm.usage.topicCount / vm.usage.topicLimit * 100) : 0; };
-        vm.loadLessons = function (reset) {
-            if (reset) { vm.lessonPage = 1; }
-            var request = ++lessonRequest; vm.lessonsLoading = true; vm.lessonError = '';
+        function fetchLessonPage() {
+            var page = vm.lessonPage + 1;
+            var request = ++lessonRequest;
+            vm.lessonsLoading = true;
+            vm.lessonError = '';
             var search = {userId: vm.user.id, username: vm.user.username, textSearch: vm.lessonQuery,
                 topicCategory: vm.lessonCategory ? {id: vm.lessonCategory} : null};
-            return lessons.getPage(search, vm.lessonPage, vm.lessonPageSize).then(function (data) {
+            return lessons.getPage(search, page, vm.lessonPageSize).then(function (data) {
                 if (!alive || request !== lessonRequest) { return; }
-                vm.lessons = data && data.content || []; vm.lessonTotal = data && data.totalElements || 0;
+                var incoming = data && data.content || [];
+                var seen = new Set(vm.lessons.map(function (lesson) { return lesson.id; }));
+                incoming.forEach(function (lesson) {
+                    if (!seen.has(lesson.id)) {
+                        vm.lessons.push(lesson);
+                        seen.add(lesson.id);
+                    }
+                });
+                vm.lessonPage = page;
+                vm.lessonTotal = data && data.totalElements || 0;
+                vm.hasMoreLessons = incoming.length > 0 && page * vm.lessonPageSize < vm.lessonTotal;
                 vm.importTopics = vm.activeLesson ? [vm.activeLesson] : vm.lessons;
             }, function (error) {
                 if (alive && request === lessonRequest) { vm.lessonError = errorMessage(error, 'Không tải được danh sách bài. Vui lòng thử lại.'); }
-            }).finally(function () { if (alive && request === lessonRequest) { vm.lessonsLoading = false; } });
+            }).finally(function () {
+                if (alive && request === lessonRequest) { vm.lessonsLoading = false; }
+            });
+        }
+        vm.loadLessons = function () {
+            vm.lessonPage = 0;
+            vm.lessonTotal = 0;
+            vm.lessons = [];
+            vm.hasMoreLessons = false;
+            return fetchLessonPage();
         };
-        vm.lessonPageCount = function () { return Math.max(1, Math.ceil(vm.lessonTotal / vm.lessonPageSize)); };
-        vm.changeLessonPage = function (step) { vm.lessonPage += step; return vm.loadLessons(); };
+        vm.loadMoreLessons = function () {
+            if (vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError) {
+                return fetchLessonPage();
+            }
+        };
+        vm.retryLessons = function () {
+            if (!vm.lessonsLoading && vm.lessonError) {
+                return fetchLessonPage();
+            }
+        };
         vm.searchPayload = function () {
             return {questionType: {id: 6}, status: vm.status, textSearch: vm.query,
                 topicId: vm.activeLesson ? vm.activeLesson.id : null, withoutTopics: vm.view === 'unassigned'};
@@ -113,6 +174,14 @@
         };
         vm.title = function () { return vm.activeLesson ? vm.activeLesson.name : vm.view === 'unassigned' ? 'Từ chưa vào bài' : 'Tất cả từ vựng'; };
         vm.pageCount = function () { return Math.max(1, Math.ceil(vm.total / vm.pageSize)); };
+        vm.applyPageSize = function () {
+            var size = vm.pageSizeInput;
+            if (vm.deleting || !Number.isInteger(size) || size < 1 || size > vm.pageSizeLimit || size === vm.pageSize) {
+                return;
+            }
+            vm.pageSize = size;
+            return vm.loadCards(true);
+        };
         vm.changePage = function (step) { vm.page += step; return vm.loadCards(); };
         vm.selectedCards = function () { return vm.cards.filter(function (card) { return vm.selected[card.id]; }); };
         vm.allSelected = function () { return !!vm.cards.length && vm.selectedCards().length === vm.cards.length; };
@@ -154,7 +223,7 @@
             vm.lessonDeleting = true; vm.lessonDeleteError = '';
             return lessons.deleteObject(vm.lessonDeleteDraft.id).then(function (ok) {
                 if (ok !== true) { vm.lessonDeleteError = 'Máy chủ chưa xác nhận xóa bài. Vui lòng thử lại.'; return; }
-                vm.lessonDeleteDialog.close(); vm.selectLesson(null, 'all'); vm.loadLessons(true); vm.loadUsage();
+                vm.lessonDeleteDialog.close(); vm.selectLesson(null, 'all'); vm.loadLessons(); vm.loadUsage();
                 toastr.success('Đã xóa bài. Các từ vựng vẫn được giữ trong thư viện.');
             }, function () { vm.lessonDeleteError = 'Không xóa được bài từ vựng. Bài có thể đang được sử dụng; hãy liên hệ quản trị viên để được hỗ trợ.'; })
                 .finally(function () { vm.lessonDeleting = false; });
@@ -170,7 +239,7 @@
             var payload = angular.copy(draft); payload.name = payload.name.trim();
             return lessons.saveObject(payload).then(function (data) {
                 if (!data || !data.id) { vm.lessonSaveError = data && data.message || 'Chưa lưu được bài từ vựng.'; vm.loadUsage(); return; }
-                vm.lessonDialog.close(data); vm.loadLessons(true); vm.selectLesson(data); vm.loadUsage(); toastr.success('Đã lưu bài từ vựng.');
+                vm.lessonDialog.close(data); vm.loadLessons(); vm.selectLesson(data); vm.loadUsage(); toastr.success('Đã lưu bài từ vựng.');
             }, function (error) { vm.lessonSaveError = errorMessage(error, 'Không lưu được bài từ vựng. Nội dung của bạn được giữ lại.'); })
                 .finally(function () { vm.lessonSaving = false; });
         };
@@ -233,7 +302,7 @@
                 else { vm.deleteDialog.close(); }
             }).finally(function () { vm.deleting = false; });
         };
-        vm.importTopicCreated = function (topic) { vm.loadLessons(true); vm.selectLesson(topic); vm.loadUsage(); };
+        vm.importTopicCreated = function (topic) { vm.loadLessons(); vm.selectLesson(topic); vm.loadUsage(); };
         vm.imported = function () { vm.loadCards(true); vm.loadUsage(); vm.loadLessons(); };
         vm.exportCards = function () {
             if (vm.exporting) { return; }

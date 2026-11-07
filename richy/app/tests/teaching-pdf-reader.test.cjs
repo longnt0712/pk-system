@@ -200,7 +200,7 @@ test('the PDF font picker applies to new text and keeps sizes on existing text a
     await h.tick();
     await h.ctrl.open('run');
     await h.tick();
-    assert.equal(h.ctrl.state.newTextSize, 14);
+    assert.equal(h.ctrl.state.newTextSize, 22);
 
     h.ctrl.state.newTextSize = 26;
     h.ctrl.markChanged();

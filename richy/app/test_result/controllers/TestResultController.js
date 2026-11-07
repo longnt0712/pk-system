@@ -16,6 +16,7 @@
         '$uibModal',
         'TestResultService',
         'blockUI',
+        '$cookies'
     ];
 
     angular.module('Hrm.TestResult').directive('compile', ['$compile', function ($compile) {
@@ -495,7 +496,7 @@
         };
     });
 
-    function TestResultController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, blockUI) {
+    function TestResultController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, blockUI, $cookies) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -654,10 +655,13 @@
         // Tạm ẩn tính năng chấm lại bằng GPT; đổi thành true khi cần bật lại.
         vm.showWritingGptGrading = false;
 
+        var cachedUser;
+        try { cachedUser = $cookies.getObject('education.user'); } catch (ignore) {}
+
         function getCurrentUser() {
             if ($scope.currentUser && $scope.currentUser.id) { return $scope.currentUser; }
             if ($rootScope.currentUser && $rootScope.currentUser.id) { return $rootScope.currentUser; }
-            return $scope.currentUser || $rootScope.currentUser || {};
+            return cachedUser || $scope.currentUser || $rootScope.currentUser || {};
         }
 
         function getCurrentRoleNames() {
@@ -865,7 +869,11 @@
             menubar: false
         };
 
+        var resultPageRequest = 0;
+        var waitingForInitialClass = vm.canReviewOtherResults();
+
         vm.getPage = function () {
+            if (waitingForInitialClass) { return; }
             var requestId = ++resultPageRequest;
             vm.testResults = [];
             vm.selectedTestResults = [];
@@ -893,14 +901,26 @@
             });
         };
 
-        var resultPageRequest = 0;
-        vm.getPage();
-
         vm.rankings = [];
         vm.isRankingLoading = false;
         vm.isRankingLoaded = false;
         vm.rankingLoadError = false;
         vm.rankingRequestId = 0;
+        var rankingFilterKey;
+
+        function rankingFilters() {
+            return {
+                startDate: vm.searchDto.startDate,
+                endDate: vm.searchDto.endDate,
+                enrollmentClassId: vm.searchDto.enrollmentClassId || null,
+                grade: vm.searchDto.grade,
+                numberOfRanking: vm.searchDto.numberOfRanking
+            };
+        }
+
+        function isRankingVisible() {
+            return vm.searchDto.resultGroup === 'ALL' || vm.searchDto.resultGroup === 'VOCAB';
+        }
 
         // Mặc định đóng. Chỉ gọi API ở lần người dùng chủ động mở.
         vm.isRankingCollapsed = true;
@@ -914,11 +934,14 @@
         };
 
         vm.getRanking = function () {
+            if (waitingForInitialClass || !isRankingVisible() || vm.isRankingLoading) { return; }
+            var filters = rankingFilters();
+            rankingFilterKey = angular.toJson(filters);
             var requestId = ++vm.rankingRequestId;
             vm.isRankingLoading = true;
             vm.rankingLoadError = false;
 
-            service.getRanking(angular.copy(vm.searchDto)).then(function (data) {
+            return service.getRanking(filters).then(function (data) {
 
                 if (requestId !== vm.rankingRequestId) {
                     return;
@@ -992,14 +1015,15 @@
             });
         };
 
-        vm.invalidateRanking = function () {
-            vm.rankingRequestId++;
-            vm.rankings = [];
-            vm.isRankingLoaded = false;
-            vm.isRankingLoading = false;
-            vm.rankingLoadError = false;
-
-            if (!vm.isRankingCollapsed) {
+        vm.invalidateRanking = function (force) {
+            if (force || rankingFilterKey !== angular.toJson(rankingFilters())) {
+                vm.rankingRequestId++;
+                vm.rankings = [];
+                vm.isRankingLoaded = false;
+                vm.isRankingLoading = false;
+                vm.rankingLoadError = false;
+            }
+            if (!vm.isRankingCollapsed && !vm.isRankingLoaded && !vm.rankingLoadError) {
                 vm.getRanking();
             }
         };
@@ -1506,20 +1530,13 @@
             });
         };
 
-        vm.enterSearchCode = function(){
-            // console.log(event.keyCode);
-            if(event.keyCode == 13){//Phím Enter
-                vm.codeChange();
+        vm.enterSearchCode = function (event) {
+            if (event.keyCode === 13) {
+                vm.codeChange(true);
             }
         };
 
-
-
-
-
-        vm.codeChange=function () {
-            console.log(vm.startDate);
-            console.log(vm.endDate);
+        vm.codeChange = function (refreshRanking) {
             if(angular.isUndefined(vm.startDate)){
                 vm.searchDto.startDate = null;
             }
@@ -1527,6 +1544,7 @@
                 vm.searchDto.endDate = null;
             }
             vm.searchDto.pageIndex = 1;
+            vm.bsTableControl.state = vm.bsTableControl.state || {};
             vm.bsTableControl.state.pageNumber = 1;
             if(vm.startDate != null && vm.endDate != null){
                 //vm.startDate = DateUtil.addDays(myDate, 1);
@@ -1537,7 +1555,7 @@
             }
 
             vm.getPage();
-            vm.invalidateRanking();
+            vm.invalidateRanking(refreshRanking === true);
 
             if (!vm.isStudyCalendarCollapsed) {
                 vm.loadStudyCalendar(false);
@@ -1570,28 +1588,21 @@
             }
         });
 
-        // $timeout(function () {
-        //     service.getUsers(vm.filter, 1, 1000000).then(function (data) {
-        //         vm.users = data.content;
-        //         console.log(vm.users);
-        //     });
-        // }, 1000);
-
+        var usersRequest = 0;
         vm.loadUsers = function () {
-            service.getUsers(vm.filter, 1, 1000000).then(function (data) {
-                vm.users = data.content || [];
-            });
+            var request = ++usersRequest;
+            vm.users = [];
+            return service.getUsers(angular.copy(vm.filter), 1, 1000000).then(function (data) {
+                if (request === usersRequest) { vm.users = data.content || []; }
+            }, angular.noop);
         };
 
-        $timeout(function () {
-            vm.loadUsers();
-        }, 1000);
-
-        vm.resultSchoolId = window.location.hostname.toLowerCase() === 'ieltsroom.com' ? 1 : 2;
+        vm.resultSchoolId = window.location.hostname.toLowerCase().replace(/^www\./, '') === 'ieltsroom.com' ? 1 : 2;
         vm.enrollmentClasses = [];
         vm.enrollmentClassesLoading = false;
         vm.enrollmentClassesError = false;
         var enrollmentClassesRequest = 0;
+        var defaultClassApplied = false;
         vm.loadEnrollmentClasses = function () {
             var request = ++enrollmentClassesRequest;
             vm.enrollmentClassesLoading = true;
@@ -1599,35 +1610,41 @@
             return service.getEnrolmentClass({schoolId: vm.resultSchoolId}, 1, 1000000).then(function (data) {
                 if (request !== enrollmentClassesRequest) { return; }
                 vm.enrollmentClasses = (data && angular.isArray(data.content) ? data.content : []).filter(function (item) {
-                    return item && Number(item.schoolId) === vm.resultSchoolId;
+                    return item && Number(item.id) > 0 && Number(item.schoolId) === vm.resultSchoolId;
+                }).sort(function (a, b) {
+                    return String(a.name || '').localeCompare(String(b.name || ''), 'vi', {numeric: true});
                 });
                 vm.enrollmentClassesLoading = false;
+                waitingForInitialClass = false;
+                if (!defaultClassApplied) {
+                    defaultClassApplied = true;
+                    vm.searchDto.enrollmentClassId = vm.enrollmentClasses.length ? vm.enrollmentClasses[0].id : null;
+                    vm.enrollmentClassChange();
+                }
             }, function () {
                 if (request !== enrollmentClassesRequest) { return; }
                 vm.enrollmentClasses = [];
                 vm.enrollmentClassesLoading = false;
                 vm.enrollmentClassesError = true;
                 toastr.error('Không tải được danh sách lớp. Hãy thử tải lại.', 'Lỗi');
+                if (waitingForInitialClass) {
+                    waitingForInitialClass = false;
+                    vm.enrollmentClassChange();
+                }
             });
         };
-        vm.loadEnrollmentClasses();
-
         vm.enrollmentClassChange = function () {
-
-            // User đã chọn có thể thuộc lớp cũ => clear
             vm.searchDto.user = null;
-
-            // Filter danh sách user theo lớp
-            vm.filter.enrollmentClass =
-                vm.searchDto.enrollmentClassId || null;
-
-            // Load lại dropdown user
+            vm.filter.enrollmentClass = vm.searchDto.enrollmentClassId || null;
             vm.loadUsers();
-
-            // Load TestResult + Ranking
             vm.codeChange();
         };
 
+        if (waitingForInitialClass) {
+            vm.loadEnrollmentClasses();
+        } else {
+            vm.getPage();
+        }
 
     }
 

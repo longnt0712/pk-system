@@ -19,15 +19,18 @@
                 <button class="vw-library-link" ng-class="{'is-active':vm.view === 'all'}" aria-pressed="{{vm.view === 'all'}}" ng-click="vm.selectLesson(null, 'all')"><span class="vw-library-icon"><i class="fa fa-th-large" aria-hidden="true"></i></span><span>Tất cả từ vựng</span></button>
                 <button class="vw-library-link" ng-class="{'is-active':vm.view === 'unassigned'}" aria-pressed="{{vm.view === 'unassigned'}}" ng-click="vm.selectLesson(null, 'unassigned')"><span class="vw-library-icon"><i class="fa fa-inbox" aria-hidden="true"></i></span><span>Chưa vào bài</span></button>
                 <div class="vw-section-label">BÀI TỪ VỰNG <span>{{vm.lessonTotal | number:0}}</span></div>
-                <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng" placeholder="Tìm tên bài..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons(true)"></label>
-                <select class="vw-category-filter" aria-label="Lọc nhóm bài từ vựng" ng-model="vm.lessonCategory" ng-options="category.id as category.name for category in vm.categories" ng-change="vm.loadLessons(true)"><option value="">Tất cả nhóm bài</option></select>
-                <div class="vw-sidebar-state" ng-if="vm.lessonsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải bài...</div>
-                <div class="vw-sidebar-state" ng-if="vm.lessonError" role="alert">{{vm.lessonError}} <button class="vw-link" ng-click="vm.loadLessons()">Thử lại</button></div>
-                <div class="vw-sidebar-state" ng-if="!vm.lessonsLoading && !vm.lessonError && !vm.lessons.length">{{vm.lessonQuery || vm.lessonCategory ? 'Không tìm thấy bài phù hợp.' : 'Chưa có bài nào. Tạo bài đầu tiên để bắt đầu nhé.'}}</div>
-                <button class="vw-lesson" ng-repeat="lesson in vm.lessons track by lesson.id" ng-class="{'is-active':vm.activeLesson.id === lesson.id}" aria-pressed="{{vm.activeLesson.id === lesson.id}}" ng-click="vm.selectLesson(lesson)">
-                    <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong><small>{{lesson.topicCategory.name || 'Chưa phân nhóm'}}</small></span><i class="fa fa-angle-right" aria-hidden="true"></i>
-                </button>
-                <div class="vw-sidebar-pager" ng-if="vm.lessonTotal > vm.lessonPageSize"><button class="vw-icon-btn" aria-label="Trang bài trước" ng-click="vm.changeLessonPage(-1)" ng-disabled="vm.lessonPage <= 1 || vm.lessonsLoading"><i class="fa fa-angle-left" aria-hidden="true"></i></button><span>{{vm.lessonPage}} / {{vm.lessonPageCount()}}</span><button class="vw-icon-btn" aria-label="Trang bài sau" ng-click="vm.changeLessonPage(1)" ng-disabled="vm.lessonPage >= vm.lessonPageCount() || vm.lessonsLoading"><i class="fa fa-angle-right" aria-hidden="true"></i></button></div>
+                <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng" placeholder="Tìm tên bài..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons()"></label>
+                <select class="vw-category-filter" aria-label="Lọc nhóm bài từ vựng" ng-model="vm.lessonCategory" ng-options="category.id as category.name for category in vm.categories" ng-change="vm.loadLessons()"><option value="">Tất cả nhóm bài</option></select>
+                <div class="vw-lesson-scroll" role="region" aria-label="Danh sách bài từ vựng" tabindex="0"
+                     vocabulary-load-more="vm.loadMoreLessons()">
+                    <button class="vw-lesson" ng-repeat="lesson in vm.lessons track by lesson.id" ng-class="{'is-active':vm.activeLesson.id === lesson.id}" aria-pressed="{{vm.activeLesson.id === lesson.id}}" ng-click="vm.selectLesson(lesson)">
+                        <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong><small>{{lesson.topicCategory.name || 'Chưa phân nhóm'}}</small></span><i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </button>
+                    <div class="vw-sidebar-state" ng-if="vm.lessonsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> {{vm.lessons.length ? 'Đang tải thêm bài...' : 'Đang tải bài...'}}</div>
+                    <div class="vw-sidebar-state" ng-if="vm.lessonError" role="alert">{{vm.lessonError}} <button type="button" class="vw-link" ng-click="vm.retryLessons()">Thử lại</button></div>
+                    <div class="vw-sidebar-state" ng-if="!vm.lessonsLoading && !vm.lessonError && !vm.lessons.length">{{vm.lessonQuery || vm.lessonCategory ? 'Không tìm thấy bài phù hợp.' : 'Chưa có bài nào. Tạo bài đầu tiên để bắt đầu nhé.'}}</div>
+                    <div class="vw-lesson-end" aria-hidden="true" ng-show="vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError"></div>
+                </div>
             </nav>
             <div class="vw-library-note"><span class="vw-note-orb"><i class="fa fa-leaf" aria-hidden="true"></i></span><p>Một bài, nhiều từ mới.<br><strong>Tiến bộ từng ngày.</strong></p></div>
         </aside>
@@ -54,7 +57,19 @@
                     <div class="vw-row-actions"><button class="vw-icon-btn" ng-click="vm.openCard(card)" aria-label="Sửa từ {{card.question}}" title="Sửa từ"><i class="fa fa-pencil" aria-hidden="true"></i></button><button class="vw-icon-btn vw-danger" ng-if="vm.canDelete && card.status === 5 && vm.status === 5" ng-click="vm.confirmDelete(card)" aria-label="Xóa từ {{card.question}}"><i class="fa fa-trash" aria-hidden="true"></i></button></div>
                 </article>
             </div>
-            <footer class="vw-pagination" ng-if="vm.total && !vm.cardLoadError"><span>{{(vm.page-1)*vm.pageSize+1}}–{{vm.page*vm.pageSize > vm.total ? vm.total : vm.page*vm.pageSize}} / {{vm.total | number:0}} thẻ</span><div><button class="vw-icon-btn" ng-click="vm.changePage(-1)" ng-disabled="vm.page <= 1 || vm.cardsLoading" aria-label="Trang từ trước"><i class="fa fa-angle-left" aria-hidden="true"></i></button><span>{{vm.page}} / {{vm.pageCount()}}</span><button class="vw-icon-btn" ng-click="vm.changePage(1)" ng-disabled="vm.page >= vm.pageCount() || vm.cardsLoading" aria-label="Trang từ sau"><i class="fa fa-angle-right" aria-hidden="true"></i></button></div></footer>
+            <footer class="vw-pagination" ng-if="vm.total && !vm.cardLoadError">
+                <span>{{(vm.page-1)*vm.pageSize+1}}–{{vm.page*vm.pageSize > vm.total ? vm.total : vm.page*vm.pageSize}} / {{vm.total | number:0}} thẻ</span>
+                <form class="vw-page-size" name="vocabularyPageSize" ng-submit="vm.applyPageSize()">
+                    <label for="vw-cards-per-page">Thẻ mỗi trang</label>
+                    <input id="vw-cards-per-page" type="number" ng-model="vm.pageSizeInput" min="1" ng-attr-max="{{vm.pageSizeLimit}}" step="1" required>
+                    <button type="submit" class="vw-btn vw-quiet" ng-disabled="vocabularyPageSize.$invalid || vm.pageSizeInput === vm.pageSize || vm.deleting">Áp dụng</button>
+                </form>
+                <div>
+                    <button type="button" class="vw-icon-btn" ng-click="vm.changePage(-1)" ng-disabled="vm.page <= 1 || vm.cardsLoading" aria-label="Trang từ trước"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
+                    <span>{{vm.page}} / {{vm.pageCount()}}</span>
+                    <button type="button" class="vw-icon-btn" ng-click="vm.changePage(1)" ng-disabled="vm.page >= vm.pageCount() || vm.cardsLoading" aria-label="Trang từ sau"><i class="fa fa-angle-right" aria-hidden="true"></i></button>
+                </div>
+            </footer>
         </section>
     </div>
     <p class="vw-footnote"><i class="fa fa-heart-o" aria-hidden="true"></i> Từ vựng được lưu vào thư viện cá nhân của bạn.</p>

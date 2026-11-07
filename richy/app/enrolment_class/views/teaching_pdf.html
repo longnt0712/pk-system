@@ -230,7 +230,7 @@
                              ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
                              ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}};">
                             <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
-                                      maxlength="4000" rows="2" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
+                                      maxlength="4000" rows="1" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
                             <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
                                     ng-keydown="$event.key === 'Enter' && pdf.editText(mark, $event)" ng-disabled="pdf.run.completed || pdf.busy"
                                     ng-attr-title="{{pdf.run.completed ? undefined : 'Kéo để di chuyển · Nhấp đúp để sửa'}}" ng-bind="mark.text"></button>

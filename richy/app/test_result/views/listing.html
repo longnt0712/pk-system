@@ -146,13 +146,13 @@
 
                                 <div class="input-group test-result-search-group">
                                     <input ng-model="vm.searchDto.textSearch"
-                                           ng-keyup="vm.enterSearchCode(e)"
+                                           ng-keyup="vm.enterSearchCode($event)"
                                            type="text"
                                            class="form-control test-result-filter-control"
                                            placeholder="Nhập tên bài test...">
 
                                     <div class="input-group-btn">
-                                        <button ng-click="vm.codeChange()"
+                                        <button ng-click="vm.codeChange(true)"
                                                 class="btn test-result-search-btn"
                                                 type="submit"
                                                 aria-label="Tìm kiếm">
