@@ -120,6 +120,9 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-rich-text.ql-container { position: relative; z-index: 2; height: auto; border: 0; background: transparent; font: 17px Arial,sans-serif; }
 .study-notebook-rich-text .ql-editor { min-height: 0; overflow: visible; white-space: pre-wrap; outline: 0; font-family: Arial,sans-serif; }
 .study-notebook-rich-text .ql-editor p { margin: 0; padding: 0; }
+.study-notebook-rich-text .ql-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: .4em 0; }
+.study-notebook-rich-text .ql-editor td { border: 1px solid #aeb9ca; padding: .25em .5em; vertical-align: top; overflow-wrap: anywhere; }
+.study-notebook-rich-text .ql-editor img { max-width: 100%; height: auto; vertical-align: middle; }
 .study-notebook-text:disabled { opacity: 1; color: #7d8799; -webkit-text-fill-color: #7d8799; }
 .study-notebook-canvas { position: absolute; z-index: 1; top: 0; left: 0; display: block; pointer-events: none; touch-action: auto; }
 .study-notebook-canvas.is-drawing { z-index: 3; pointer-events: auto; touch-action: none; cursor: crosshair; }

@@ -65,6 +65,138 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  return{page,context,server};
 }
 
+test('clipboard tables and raster images remain editable, undo atomically, save, reopen and print on desktop and phone',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width});
+  try{
+   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   const plain=f.page.locator('.study-notebook-text'),root=f.page.locator('.study-notebook-rich-text .ql-editor');
+   await plain.fill('Biên bản\nKết thúc');
+   await plain.evaluate(el=>{
+    el.focus();el.setSelectionRange(9,9);
+    const data=new DataTransfer();data.setData('text/html','<table><thead><tr><th colspan="2">Phân công</th></tr></thead><tbody><tr><td rowspan="2">An</td><td><b>Chuẩn bị</b><br>Hội trường</td></tr><tr><td>Bình</td></tr></tbody></table>');
+    data.setData('text/plain','Phân công\nAn\tChuẩn bị\nBình');
+    el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+   });
+   await root.locator('table td').last().waitFor();
+   assert.equal(await root.locator('table tr').count(),3);
+   assert.equal(await root.locator('td[colspan="2"]').innerText(),'Phân công');
+   assert.equal(await root.locator('td[rowspan="2"]').innerText(),'An');
+   assert.match(await root.locator('table').innerText(),/Chuẩn bị.*Hội trường/s);
+   assert.equal(await root.locator('table br.study-notebook-softbreak').count(),1);
+   assert.ok(await root.locator('table tr').nth(1).evaluate(row=>row.getBoundingClientRect().height>Number.parseFloat(getComputedStyle(row).lineHeight)*1.7),'Cell line breaks remain within the same cell');
+   assert.equal(await root.locator('table td').count(),4);
+   await f.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();
+   await root.locator('table').waitFor({state:'detached'});
+   assert.equal(await root.locator('table').count(),0);
+   assert.equal(await root.evaluate(el=>Quill.find(el.parentElement).getText()),'Biên bản\nKết thúc\n');
+   await f.page.getByRole('button',{name:'Khôi phục ghi chú',exact:true}).click();
+   await root.locator('table td').last().click();
+   await f.page.keyboard.press('End');await f.page.keyboard.insertText(' phụ trách');
+   assert.match(await root.locator('table td').last().innerText(),/Bình phụ trách/);
+   await root.evaluate(el=>{
+    const q=Quill.find(el.parentElement);q.setSelection(q.getLength()-1,0,'silent');
+    const data=new DataTransfer(),canvas=document.createElement('canvas');canvas.width=400;canvas.height=160;const c=canvas.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,400,160);c.fillStyle='#315bbe';c.font='32px Arial';c.fillText('Ảnh biên bản',30,80);
+    data.setData('text/html','<p><img onload="window.pasteExecuted=true" src="'+canvas.toDataURL()+'"></p>');
+    el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+   });
+   await root.locator('img').waitFor();
+   await f.page.waitForFunction(()=>{const e=document.querySelector('.ql-editor img');return e&&e.complete&&e.naturalWidth===400});
+   assert.equal(await f.page.evaluate(()=>window.pasteExecuted),undefined);
+   await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.equal(f.server.entry.document.textDelta.ops.filter(op=>op.insert?.image).length,1);
+   const saved=JSON.parse(JSON.stringify(f.server.entry.document));
+   assert.ok(saved.textDelta.ops.some(op=>op.attributes?.['table-colspan']==='2'));
+   assert.ok(saved.textDelta.ops.some(op=>op.attributes?.['table-rowspan']==='2'));
+   await f.page.locator('.study-notebook-close').click();
+   await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await root.locator('img').waitFor();
+   assert.match(await root.locator('table td').last().innerText(),/Bình phụ trách/);
+   assert.deepEqual(JSON.parse(await f.page.evaluate(()=>JSON.stringify(window.vm.session.document))),saved);
+   const print=f.page.context().newPage();const printPage=await print;
+   await printPage.setContent(await f.page.evaluate(()=>window.injector.get('TnttDocumentPrint').markup('Dán bảng và ảnh',window.vm.session.document)));
+   assert.equal(await printPage.locator('.text table td').count(),4);
+   assert.equal(await printPage.locator('.text img').evaluate(e=>e.complete&&e.naturalWidth),400);
+   assert.match(await printPage.locator('.text').innerText(),/Bình phụ trách/);
+   await printPage.pdf({path:path.join(app,'../../.tmp/tntt-pasted-table-'+width+'.pdf'),preferCSSPageSize:true});
+   await printPage.close();
+   await f.page.screenshot({path:path.join(app,'../../.tmp/tntt-pasted-table-'+width+'.png')});
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
+});
+
+test('pasting an image file is atomic and invalid clipboard images cannot replace existing selected text',async()=>{
+ const f=await fixture();
+ try{
+  await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+  await f.page.locator('.study-notebook-text').fill('Nội dung cần giữ');
+  await f.page.locator('.study-notebook-text').evaluate(async el=>{
+   el.focus();el.setSelectionRange(0,el.value.length);
+   const data=new DataTransfer();data.setData('text/html','<img src="javascript:alert(1)">');
+   el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+  });
+  await f.page.getByRole('status').filter({hasText:'Không lấy được ảnh'}).waitFor();
+  const root=f.page.locator('.ql-editor');assert.equal(await root.innerText(),'Nội dung cần giữ');
+  await f.page.getByRole('button',{name:'Bút',exact:true}).click();
+  await f.page.locator('.study-notebook-canvas').evaluate(async el=>{
+   const q=Quill.find(document.querySelector('.study-notebook-rich-text'));q.setSelection(q.getLength()-1,0,'silent');
+   const canvas=document.createElement('canvas');canvas.width=320;canvas.height=180;canvas.getContext('2d').fillRect(20,20,120,120);
+   const blob=await new Promise(resolve=>canvas.toBlob(resolve));const data=new DataTransfer();data.items.add(new File([blob],'clipboard.png',{type:'image/png'}));
+   el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+  });
+  await root.locator('img').waitFor();
+  assert.match(await root.innerText(),/Nội dung cần giữ/);
+  await f.page.waitForFunction(()=>!angular.element(document.querySelector('study-notebook')).controller('studyNotebook').pasting);
+  await f.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();await root.locator('img').waitFor({state:'detached'});
+  await f.page.getByRole('button',{name:'Khôi phục ghi chú',exact:true}).click();await root.locator('img').waitFor();
+  await f.page.waitForFunction(()=>window.vm.session.status==='saved');
+  const saved=structuredClone(f.server.entry.document);
+  await root.evaluate(async el=>{
+   const canvas=document.createElement('canvas');canvas.width=123;canvas.height=80;const blob=await new Promise(resolve=>canvas.toBlob(resolve));
+   const data=new DataTransfer();data.items.add(new File([blob],'cancelled.png',{type:'image/png'}));
+   el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+   angular.element(document.querySelector('study-notebook')).controller('studyNotebook').close();
+  });
+  await f.page.waitForFunction(()=>!window.vm.active);
+  await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();await root.locator('img').waitFor();
+  assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document),saved,'Closing during image decoding cannot change the saved note');
+  assert.deepEqual(f.server.errors,[]);
+ }finally{await f.context.close();}
+});
+
+test('text colors apply to the selection or future typing and underline persists in documents and print',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width});try{
+   const {page}=f,button=name=>page.getByRole('button',{name,exact:true});
+   await button('Soạn nội dung').click();
+   const text=page.locator('.study-notebook-text'),root=page.locator('.ql-editor'),palette=page.getByRole('dialog',{name:'Bảng màu chữ và bút',exact:true});
+   await text.fill('Giữ nguyên. Đổi màu.');
+   await text.evaluate(el=>{el.focus();el.setSelectionRange(el.value.indexOf('Đổi'),el.value.length)});
+   await button('Màu chữ và bút').click();await palette.getByRole('button',{name:'Màu #FF0000',exact:true}).click();
+   const red=root.locator('[style*="color: rgb(255, 0, 0)"]');await red.waitFor();assert.equal(await red.innerText(),'Đổi màu.');
+   assert.equal(await root.locator('p').evaluate(el=>getComputedStyle(el).color),'rgb(39, 54, 77)');
+   await button('Gạch chân').click();await root.locator('u').waitFor();assert.equal(await root.locator('u').innerText(),'Đổi màu.');
+   await root.press('Control+u');await root.locator('u').waitFor({state:'detached'});
+   await root.press('Control+u');await root.locator('u').waitFor();
+   await root.press('Control+End');
+   await button('Gõ chữ').click();await palette.getByRole('button',{name:'Màu #0000FF',exact:true}).click();
+   await page.keyboard.insertText(' Viết tiếp');
+   const blue=root.locator('[style*="color: rgb(0, 0, 255)"]');await blue.waitFor();assert.equal(await blue.innerText(),' Viết tiếp');
+   assert.equal(await red.innerText(),'Đổi màu.');
+   await page.waitForFunction(()=>window.vm.session.status==='saved');
+   const saved=structuredClone(f.server.entry.document);
+   assert.ok(saved.textDelta.ops.some(op=>op.insert==='Đổi màu.'&&op.attributes.color==='#ff0000'&&op.attributes.underline));
+   assert.ok(saved.textDelta.ops.some(op=>op.insert===' Viết tiếp'&&op.attributes.color==='#0000ff'));
+   const popupPromise=page.waitForEvent('popup');await page.evaluate(()=>window.injector.get('TnttDocumentPrint').open('Màu chữ',window.vm.session.document));
+   const popup=await popupPromise;await popup.locator('u').first().waitFor();assert.equal(await popup.locator('span[style*="#ff0000"] u, u span[style*="#ff0000"]').innerText(),'Đổi màu.');await popup.close();
+   await page.locator('.study-notebook-close').click();await button('Soạn nội dung').click();
+   await red.waitFor();assert.equal(await root.locator('u').first().innerText(),'Đổi màu.');assert.deepEqual(await page.evaluate(()=>window.vm.session.document),saved);
+   assert.deepEqual(f.server.errors,[]);
+  }finally{await f.context.close();}
+ }
+});
+
 test('share links select the right document and cannot turn a read-only account into an editor',async()=>{
  const author=await fixture({params:{document:'12',mode:'view'}});
  try {
@@ -178,6 +310,7 @@ test('tools open independent palettes with thin strokes, zoom resets on double c
    await hex.fill('#ZZZZZZ');assert.equal(await palette.getByRole('button',{name:'Áp dụng',exact:true}).isDisabled(),true);
    await hex.fill('#123ABC');await palette.getByRole('button',{name:'Áp dụng',exact:true}).click();
    await palette.waitFor({state:'hidden'});
+   await f.page.keyboard.insertText('Chữ màu xanh');
    await f.page.getByRole('button',{name:'Đánh dấu',exact:true}).click();
    await palette.waitFor({state:'visible'});
    assert.equal(await palette.locator('.study-notebook-palette-heading').innerText(),'Đánh dấu');
@@ -186,7 +319,7 @@ test('tools open independent palettes with thin strokes, zoom resets on double c
    await f.page.waitForFunction(()=>window.vm.session.status==='saved');
    assert.deepEqual(f.server.entry.document.strokes.map(s=>s.color),['#315bbe','#ff0000','#ffff00']);
    assert.deepEqual(f.server.entry.document.strokes.map(s=>s.width),[2,4,8]);
-   assert.equal(f.server.entry.document.textColor,'#123abc');assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
+   assert.ok(f.server.entry.document.textDelta.ops.some(op=>op.insert==='Chữ màu xanh'&&op.attributes.color==='#123abc'));
    await f.page.getByRole('button',{name:'Bút',exact:true}).click();
    await palette.waitFor({state:'visible'});
    assert.equal(await palette.getByRole('button',{name:'Vừa',exact:true}).getAttribute('aria-pressed'),'true');
@@ -215,7 +348,7 @@ test('tools open independent palettes with thin strokes, zoom resets on double c
    await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
    await f.page.waitForFunction(()=>window.vm.session&&window.vm.session.status==='saved');
    assert.deepEqual(await f.page.evaluate(()=>window.vm.session.document.strokes.map(s=>s.color)),['#315bbe','#ff0000','#ffff00']);
-   assert.equal(await f.page.locator('.study-notebook-text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
+   assert.equal(await f.page.locator('.ql-editor span').getByText('Chữ màu xanh',{exact:true}).evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
    assert.deepEqual(f.server.errors,[]);
   }finally{await f.context.close();}
  }
@@ -615,8 +748,8 @@ test('printing preserves plain text and ink across a multipage A4 PDF and escape
  const f=await fixture();try{
   const popupPromise=f.page.waitForEvent('popup');
   await f.page.evaluate(()=>window.injector.get('TnttDocumentPrint').open('Biên bản <script>bad()</script>',{text:Array.from({length:110},(_,i)=>'Dòng '+i+': Nội dung họp tiếng Việt').join('\n'),textColor:'#123abc',orientation:'portrait',pattern:'lined',strokes:[{id:'ink',tool:'pen',color:'#315bbe',width:4,points:[[60,1500],[200,1560]]}]}));
-  const popup=await popupPromise;await popup.locator('.paper').waitFor();assert.equal(await popup.locator('script').count(),0);
-  assert.match(await popup.locator('pre').innerText(),/Dòng 109/);assert.equal(await popup.locator('svg polyline').count(),1);assert.equal(await popup.locator('.text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
+  const popup=await popupPromise;await popup.locator('.paper').waitFor();assert.equal(await popup.locator('script').count(),1,'Only the built-in pagination helper may execute');assert.equal(await popup.title(),'Biên bản <script>bad()</script>');assert.equal(await popup.locator('.text script, header script').count(),0);
+  assert.match(await popup.locator('.text').innerText(),/Dòng 109/);assert.equal(await popup.locator('svg polyline').count(),1);assert.equal(await popup.locator('.text').evaluate(e=>getComputedStyle(e).color),'rgb(18, 58, 188)');
   const pdf=await popup.pdf({preferCSSPageSize:true,printBackground:true,path:path.join(app,'../../.tmp/tntt-document-print.pdf')});
   assert.ok((pdf.toString('latin1').match(/\/Type \/Page\b/g)||[]).length>=3);await popup.close();
  }finally{await f.context.close();}

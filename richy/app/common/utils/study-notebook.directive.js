@@ -24,7 +24,7 @@
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id,$event)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
-                    '<div class="study-notebook-text-options" ng-if="notebook.paged && !notebook.readOnly"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'bold\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.bold}}" aria-label="In đậm" title="In đậm (Ctrl+B)"><strong>B</strong></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'italic\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.italic}}" aria-label="In nghiêng" title="In nghiêng (Ctrl+I)"><em>I</em></button></div>',
+                    '<div class="study-notebook-text-options" ng-if="notebook.paged && !notebook.readOnly"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'bold\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.bold}}" aria-label="In đậm" title="In đậm (Ctrl+B)"><strong>B</strong></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'italic\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.italic}}" aria-label="In nghiêng" title="In nghiêng (Ctrl+I)"><em>I</em></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'underline\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.underline}}" aria-label="Gạch chân" title="Gạch chân (Ctrl+U)"><u>U</u></button></div>',
                     '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette($event)" ng-disabled="notebook.isLocked()" aria-label="Màu chữ và bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu cho công cụ đang dùng"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
                     '<button type="button" class="study-notebook-lasso-toggle" ng-if="notebook.inkSelection" ng-click="notebook.setTool(\'lasso\')" ng-disabled="notebook.isLocked()" ng-attr-aria-pressed="{{notebook.tool===\'lasso\'}}" title="Khoanh vùng để di chuyển nét viết tay"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 15C2 14 1 8 4 5c3-3 10-3 13 1 3 5-3 10-8 9H6" stroke-dasharray="2 2"/><path d="M8 14c-3 0-4 3-2 4s4-1 2-4Z"/></svg><span>Khoanh vùng</span></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác chữ và nét vẽ" aria-label="Hoàn tác ghi chú"><i class="fa fa-undo" aria-hidden="true"></i></button>',
@@ -34,6 +34,7 @@
                     '<button type="button" ng-if="notebook.session.status!==\'conflict\'" ng-click="notebook.refresh()">Thử đồng bộ lại</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'keepLocal\')">Giữ bản trên máy</button>',
                     '<button type="button" ng-if="notebook.session.status===\'conflict\'" ng-click="notebook.resolve(\'useRemote\')">Dùng bản đồng bộ</button></div>',
+                    '<div class="study-notebook-notice" ng-if="notebook.pasting || notebook.pasteError" role="status"><span>{{notebook.pasting ? \'Đang dán nội dung…\' : notebook.pasteError}}</span><button type="button" ng-if="notebook.pasteError" ng-click="notebook.pasteError=\'\'">Đóng</button></div>',
                     '<div class="study-notebook-scroll" ng-class="{\'has-page-controls\':notebook.paged}"><div class="study-notebook-page-frame"><div class="study-notebook-paper" ng-class="[\'is-\'+notebook.session.document.orientation,\'paper-\'+notebook.session.document.pattern,\'tool-\'+notebook.tool]">',
                     '<textarea class="study-notebook-text" ng-hide="notebook.richActive" ng-trim="false" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<div class="study-notebook-rich-text ng-hide" ng-show="notebook.richActive"></div>',
@@ -58,6 +59,7 @@
                     var paper = host.querySelector('.study-notebook-paper'), textarea = host.querySelector('.study-notebook-text');
                     var canvas = host.querySelector('.study-notebook-canvas'), context = canvas.getContext && canvas.getContext('2d');
                     var richHost = host.querySelector('.study-notebook-rich-text'), richEditor = null, richState = '', renderingRich = false;
+                    var pendingPaste = null, pasteSerial = 0, richRange = null, paletteTextRange = null;
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
                     var cacheDirty = true, inkBounds = [];
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
@@ -125,6 +127,7 @@
                     }
                     ui.togglePalette = function (event) {
                         if (ui.isLocked()) { return; } if (ui.paletteOpen) { ui.closePalette(); return; }
+                        if (ui.colorTool === 'text') { paletteTextRange = currentTextRange(); }
                         paletteTrigger = event && event.currentTarget || dialog.querySelector('.study-notebook-color-toggle');
                         finishStroke(true); palette = overlay.querySelector('.study-notebook-palette');
                         if (!palette) { return; } ui.paletteOpen = true; ui.customColorOpen = false;
@@ -134,9 +137,18 @@
                     ui.selectInkColor = function (color) {
                         color = normalizedColor(color); if (!color || ui.isLocked()) { return; } flushText(); finishStroke(true); ui.inkColor = color;
                         ui.colorTools[ui.colorTool].color = color;
-                        if (ui.colorTool === 'text') { ui.session.document.textColor = color; markChanged(); scheduleLayout(); }
+                        if (ui.colorTool === 'text') {
+                            if (ui.canFormatText()) {
+                                var range = paletteTextRange || currentTextRange();
+                                createRichEditor(); richEditor.setSelection(range.index, range.length, 'silent'); lastHistoryKind = '';
+                                if (range.length) { richEditor.formatText(range.index, range.length, 'color', color, 'user'); }
+                                else { richEditor.format('color', color, 'user'); }
+                                lastHistoryKind = 'format';
+                            } else { ui.session.document.textColor = color; markChanged(); }
+                            scheduleLayout();
+                        }
                         if (ui.paletteColors.indexOf(color) < 0 && ui.customColors.indexOf(color) < 0) { ui.customColors.unshift(color); ui.customColors = ui.customColors.slice(0, 8); }
-                        ui.closePalette();
+                        ui.closePalette(ui.colorTool !== 'text');
                     };
                     ui.selectInkWidth = function (width) {
                         if (ui.isLocked() || ui.colorTool === 'text' || !ui.strokeWidths.some(function (choice) { return choice.value === width; })) { return; }
@@ -159,7 +171,7 @@
                         return !!ui.enabled && Number(ui.testId) > 0 &&
                             (Number(ui.userId) > 0 || (ui.readOnly && !!ui.sessionOpener));
                     };
-                    ui.isLocked = function () { return !!ui.readOnly || !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
+                    ui.isLocked = function () { return !!ui.readOnly || !!ui.pasting || !ui.session || !ui.session.document || ui.session.status === 'loading' || ui.session.status === 'conflict'; };
                     ui.statusText = function () {
                         if (!ui.session) { return ''; }
                         return { loading: 'Đang tải ghi chú…', ready: 'Sẵn sàng ghi chú', saving: 'Đang đồng bộ…', saved: 'Đã đồng bộ', local: 'Chỉ lưu trên thiết bị · chưa đồng bộ',
@@ -191,20 +203,33 @@
                         return JSON.stringify([doc.text, doc.textDelta]);
                     }
                     function richSelectionChanged(range) {
-                        if (range) { ui.textFormatting = richEditor.getFormat(range.index, range.length); digest(); }
+                        if (range) {
+                            richRange = {index: range.index, length: range.length}; ui.textFormatting = richEditor.getFormat(range.index, range.length);
+                            if (ui.colorTool === 'text' && !ui.paletteOpen) {
+                                ui.colorTools.text.color = normalizedColor(ui.textFormatting.color) || normalizedColor(ui.session.document.textColor) || '#27364d';
+                                ui.inkColor = ui.colorTools.text.color;
+                            }
+                            digest();
+                        }
+                    }
+                    function currentTextRange() {
+                        return richEditor ? richEditor.getSelection() || richRange || {index: richEditor.getLength() - 1, length: 0} : {index: textarea.selectionStart, length: textarea.selectionEnd - textarea.selectionStart};
                     }
                     function richTextChanged() {
                         if (renderingRich || !ui.session || ui.readOnly) { return; }
                         var doc = ui.session.document;
-                        doc.text = richEditor.getText().slice(0, -1);
-                        doc.textDelta = {ops: richEditor.getContents().ops.map(function (op) {
+                        var delta = {ops: richEditor.getContents().ops.map(function (op) {
                             var value = {insert: op.insert}, attributes = {};
-                            ['bold', 'italic'].forEach(function (name) {
-                                if (op.attributes && op.attributes[name]) { attributes[name] = true; }
+                            ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (name) {
+                                if (op.attributes && op.attributes[name]) { attributes[name] = op.attributes[name]; }
                             });
                             if (Object.keys(attributes).length) { value.attributes = attributes; }
                             return value;
                         })};
+                        doc.text = delta.ops.map(function (op) { return typeof op.insert === 'string' ? op.insert : op.insert.softbreak ? '\u2028' : ''; }).join('').slice(0, -1);
+                        // Undoing the first rich edit restores the legacy plain-text snapshot.
+                        // Flushing that unchanged editor must not create a new edit and erase Redo.
+                        if (doc.textDelta || delta.ops.some(function (op) { return op.attributes || typeof op.insert !== 'string'; })) { doc.textDelta = delta; }
                         richState = richDocumentState(); recordTextEdit();
                         markChanged(); scheduleLayout(); digest();
                     }
@@ -224,8 +249,41 @@
                     }
                     function createRichEditor() {
                         if (richEditor || !ui.canFormatText() || !richHost) { return; }
+                        var Quill = $window.Quill, Parchment = Quill.import('parchment');
+                        if (!Quill.imports['formats/softbreak']) {
+                            class SoftBreak extends Parchment.EmbedBlot { static value() { return true; } }
+                            SoftBreak.blotName = 'softbreak'; SoftBreak.tagName = 'BR'; SoftBreak.className = 'study-notebook-softbreak';
+                            Quill.register(SoftBreak, true);
+                        }
+                        // Cell spans belong to the cell's terminating newline, like Quill's row id.
+                        ['colspan', 'rowspan'].forEach(function (name) {
+                            if (!Quill.imports['formats/table-' + name]) {
+                                Quill.register(new Parchment.Attributor('table-' + name, name, {scope: Parchment.Scope.BLOCK_ATTRIBUTE}), true);
+                            }
+                        });
                         ui.richActive = true; richHost.classList.remove('ng-hide'); textarea.classList.add('ng-hide');
-                        richEditor = new $window.Quill(richHost, {formats: ['bold', 'italic'], modules: {toolbar: false, history: false}});
+                        richEditor = new Quill(richHost, {formats: ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'image', 'softbreak'], modules: {toolbar: false, history: false, table: true}});
+                        // Quill's rectangular-cell balancer does not account for merged cells.
+                        // Preserve their real grid instead of adding empty cells after a keystroke.
+                        richEditor.getModule('table').balanceTables = function () {
+                            richEditor.scroll.descendants(Quill.import('formats/table-container')).forEach(function (table) {
+                                if (!table.domNode.querySelector('td[colspan],td[rowspan]')) { table.balanceCells(); }
+                            });
+                        };
+                        richEditor.clipboard.addMatcher('TD', pastedCell);
+                        richEditor.clipboard.addMatcher('TH', pastedCell);
+                        richEditor.clipboard.addMatcher('BR', function (node, delta) {
+                            return node.classList.contains('study-notebook-softbreak') ? new (Quill.import('delta'))().insert({softbreak: true}) : delta;
+                        });
+                        richEditor.clipboard.addMatcher('TR', function (row, delta) {
+                            return new (Quill.import('delta'))(delta.ops.map(function (op) {
+                                var attributes = angular.extend({}, op.attributes);
+                                if (typeof op.insert !== 'string' || !/^\n+$/.test(op.insert)) {
+                                    delete attributes.table; delete attributes['table-colspan']; delete attributes['table-rowspan'];
+                                } else { attributes.table = row.getAttribute('data-notebook-row'); }
+                                return {insert: op.insert, attributes: attributes};
+                            }));
+                        });
                         richEditor.root.setAttribute('aria-label', 'Nội dung ghi chú');
                         richEditor.root.setAttribute('spellcheck', 'false');
                         richEditor.root.addEventListener('compositionstart', compositionStart);
@@ -234,9 +292,139 @@
                         richEditor.on('selection-change', richSelectionChanged);
                         syncRichEditor(); digest();
                     }
+                    function pastedCell(cell) {
+                        var Delta = $window.Quill.import('delta');
+                        var inline = richEditor.clipboard.convert({html: cell.innerHTML, text: ''});
+                        var contents = new Delta();
+                        inline.ops.forEach(function (op) {
+                            var attributes = {};
+                            ['bold', 'italic', 'underline', 'color', 'width'].forEach(function (key) { if (op.attributes && op.attributes[key]) { attributes[key] = op.attributes[key]; } });
+                            if (cell.tagName === 'TH') { attributes.bold = true; }
+                            if (typeof op.insert === 'string') {
+                                op.insert.split(/[\n\u2028]/).forEach(function (part, index) { if (index) { contents.insert({softbreak: true}); } if (part) { contents.insert(part, attributes); } });
+                            } else { contents.insert(op.insert, attributes); }
+                        });
+                        var attrs = {table: cell.parentElement.getAttribute('data-notebook-row') || 'row-' + (++pasteSerial)};
+                        ['colspan', 'rowspan'].forEach(function (name) {
+                            var span = Number(cell.getAttribute(name));
+                            if (span > 1 && span <= 50 && Math.floor(span) === span) { attrs['table-' + name] = String(span); }
+                        });
+                        return contents.insert('\n', attrs);
+                    }
+                    function releasePaste() {
+                        var paste = pendingPaste; pendingPaste = null; ui.pasting = false;
+                        if (paste && paste.session.setInteraction) { paste.session.setInteraction(false, 'paste'); }
+                        if (richEditor) { richEditor.enable(!ui.isLocked()); }
+                    }
+                    function readPastedImage(blob) {
+                        return new $window.Promise(function (resolve, reject) {
+                            if (!blob || blob.size > 16 * 1024 * 1024 || !/^image\/(png|jpe?g|webp|gif|bmp)$/i.test(blob.type)) {
+                                reject(new Error('Ảnh dán phải là PNG, JPG, WebP, GIF hoặc BMP và không quá 16 MB.')); return;
+                            }
+                            var image = new $window.Image(), url = $window.URL.createObjectURL(blob);
+                            var timeout = $window.setTimeout(function () { finish(new Error('Không đọc được ảnh vừa dán.')); }, 15000);
+                            function finish(error, value) { $window.clearTimeout(timeout); image.onload = image.onerror = null; $window.URL.revokeObjectURL(url); error ? reject(error) : resolve(value); }
+                            image.onerror = function () { finish(new Error('Không đọc được ảnh vừa dán. Hãy thử sao chép lại ảnh.')); };
+                            image.onload = function () {
+                                try {
+                                    if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 50000000) { throw new Error('Ảnh quá lớn để dán vào ghi chú.'); }
+                                    var ratio = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+                                    var buffer = document.createElement('canvas'); buffer.width = Math.max(1, Math.round(image.naturalWidth * ratio)); buffer.height = Math.max(1, Math.round(image.naturalHeight * ratio));
+                                    var ctx = buffer.getContext('2d'); ctx.drawImage(image, 0, 0, buffer.width, buffer.height);
+                                    var source = buffer.toDataURL('image/png');
+                                    if (/jpe?g/i.test(blob.type) || source.length > 2796226) {
+                                        ctx.globalCompositeOperation = 'destination-over'; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, buffer.width, buffer.height);
+                                        source = buffer.toDataURL('image/jpeg', .88);
+                                    }
+                                    if (source.length > 2796226) { throw new Error('Ảnh vẫn quá lớn để dán. Hãy dùng ảnh có kích thước nhỏ hơn.'); }
+                                    finish(null, {source: source, width: String(Math.min(600, buffer.width))});
+                                } catch (error) { finish(error); }
+                            };
+                            image.src = url;
+                        });
+                    }
+                    function pastedImageSource(source, file) {
+                        if (file) { return readPastedImage(file); }
+                        if (!/^data:image\/(png|jpe?g|webp|gif|bmp);base64,[a-z0-9+/=]+$/i.test(source || '') && !/^https?:\/\//i.test(source || '')) {
+                            return $window.Promise.reject(new Error('Không lấy được ảnh từ nguồn đã sao chép. Hãy sao chép trực tiếp ảnh hoặc dán ảnh chụp màn hình.'));
+                        }
+                        var abort = new $window.AbortController(), timer = $window.setTimeout(function () { abort.abort(); }, 10000);
+                        return $window.fetch(source, {credentials: 'omit', referrerPolicy: 'no-referrer', signal: abort.signal}).then(function (response) {
+                            if (!response.ok) { throw new Error('Không tải được ảnh.'); } return response.blob();
+                        }).catch(function () { throw new Error('Trang nguồn không cho sao chép ảnh. Hãy sao chép trực tiếp ảnh hoặc dán ảnh chụp màn hình.'); })
+                            .then(readPastedImage).finally(function () { $window.clearTimeout(timer); });
+                    }
+                    function preparePaste(html, files) {
+                        var template = document.createElement('template'); template.innerHTML = html;
+                        var fragment = template.content, prefix = 'paste-' + Date.now().toString(36) + '-' + (++pasteSerial) + '-';
+                        Array.from(fragment.querySelectorAll('script,style,link,meta,iframe,object,embed,svg,math,video,audio,form')).forEach(function (node) { node.remove(); });
+                        // Quill cells contain one block. Soft line breaks keep paragraphs inside their original cell.
+                        Array.from(fragment.querySelectorAll('td table,th table')).forEach(function (table) { table.replaceWith(document.createTextNode(table.textContent)); });
+                        Array.from(fragment.querySelectorAll('tr')).forEach(function (row, index) { row.setAttribute('data-notebook-row', prefix + index); });
+                        var images = Array.from(fragment.querySelectorAll('img'));
+                        if (fragment.querySelectorAll('td,th').length > 2000) { return $window.Promise.reject(new Error('Bảng dán quá lớn. Hãy chia thành các bảng dưới 2.000 ô.')); }
+                        if (images.length > 40 || files.length > 40) { return $window.Promise.reject(new Error('Mỗi tài liệu chứa tối đa 40 ảnh.')); }
+                        // Only clipboard image files are trusted as an alternative to inaccessible HTML image URLs.
+                        var jobs = images.map(function (image, index) {
+                            return pastedImageSource(image.getAttribute('src'), files.length === images.length ? files[index] : null).then(function (value) {
+                                Array.from(image.attributes).forEach(function (attr) { image.removeAttribute(attr.name); });
+                                image.setAttribute('src', value.source); image.setAttribute('width', value.width);
+                            });
+                        });
+                        if (!images.length && !html && files.length) {
+                            jobs = files.map(readPastedImage);
+                        }
+                        return $window.Promise.all(jobs).then(function (values) {
+                            if (!images.length && !html) { values.forEach(function (value) {
+                                var image = document.createElement('img'); image.setAttribute('src', value.source); image.setAttribute('width', value.width); fragment.appendChild(image);
+                            }); }
+                            return template.innerHTML;
+                        });
+                    }
+                    function pasteContent(event) {
+                        var target = event.target, data = event.clipboardData;
+                        if (!visible() || !ui.canFormatText() || !data) { return; }
+                        var html = data.getData('text/html'), text = data.getData('text/plain');
+                        var files = Array.from(data.items || []).filter(function (item) { return item.kind === 'file' && /^image\//.test(item.type); }).map(function (item) { return item.getAsFile(); }).filter(Boolean);
+                        var inText = target === textarea || richHost && richHost.contains(target);
+                        if (!inText && (target.closest('input,textarea,select,[contenteditable]') || !files.length && !/<(?:table|img)\b/i.test(html))) { return; }
+                        if (ui.isLocked()) { event.preventDefault(); return; }
+                        if (!html && !files.length && !richEditor) { return; }
+                        event.preventDefault(); event.stopPropagation();
+                        ui.closePalette(false); flushText(); finishStroke(true);
+                        var range = currentTextRange();
+                        ui.tool = 'text'; createRichEditor();
+                        range = range || {index: richEditor.getLength() - 1, length: 0};
+                        var paste = pendingPaste = {session: ui.session}; ui.pasting = true; ui.pasteError = '';
+                        if (paste.session.setInteraction) { paste.session.setInteraction(true, 'paste'); }
+                        richEditor.enable(false); digest();
+                        var prepared = html.length > 8000000 || text.length > 500000 ? $window.Promise.reject(new Error('Nội dung dán quá dài. Hãy chia thành các phần nhỏ hơn.')) : preparePaste(html, files);
+                        prepared.then(function (safeHtml) {
+                            if (!alive || !ui.isOpen || pendingPaste !== paste || ui.session !== paste.session) { return; }
+                            var Delta = $window.Quill.import('delta'), delta = richEditor.clipboard.convert({html: safeHtml, text: text});
+                            if (delta.ops.some(function (op) { return op.attributes && op.attributes.table; })) {
+                                if (range.index && richEditor.getText(range.index - 1, 1) !== '\n') { delta = new Delta().insert('\n').concat(delta); }
+                                delta = delta.concat(new Delta().insert('\n'));
+                            }
+                            if (!delta.length()) { return; }
+                            var change = new Delta().retain(range.index).delete(range.length).concat(delta);
+                            var next = richEditor.getContents().compose(change), plain = next.ops.map(function (op) { return typeof op.insert === 'string' ? op.insert : op.insert.softbreak ? '\u2028' : ''; }).join('');
+                            if (plain.slice(-1) !== '\n') { next.insert('\n'); plain += '\n'; }
+                            if ($injector.has('TnttDocumentNotebookStore')) {
+                                $injector.get('TnttDocumentNotebookStore').validDocument(angular.extend({}, ui.session.document, {text: plain.slice(0, -1), textDelta: {ops: next.ops}}));
+                            }
+                            // Validate the whole result before changing the editor or replacing selected text.
+                            lastHistoryKind = ''; richEditor.updateContents(change, 'silent'); richTextChanged(); lastHistoryKind = 'paste';
+                            paste.caret = Math.min(range.index + delta.length(), richEditor.getLength() - 1);
+                        }).catch(function (error) {
+                            if (pendingPaste === paste) { ui.pasteError = error.message || 'Không dán được nội dung. Hãy thử sao chép lại.'; }
+                        }).finally(function () {
+                            if (pendingPaste === paste) { releasePaste(); if (paste.caret !== undefined && !ui.isLocked()) { richEditor.setSelection(paste.caret, 0, 'silent'); } scheduleLayout(); digest(); }
+                        });
+                    }
                     ui.formatText = function (format) {
-                        if (ui.isLocked() || !ui.canFormatText() || ['bold', 'italic'].indexOf(format) < 0) { return; }
-                        var range = richEditor ? richEditor.getSelection() : {index: textarea.selectionStart, length: textarea.selectionEnd - textarea.selectionStart};
+                        if (ui.isLocked() || !ui.canFormatText() || ['bold', 'italic', 'underline'].indexOf(format) < 0) { return; }
+                        var range = currentTextRange();
                         ui.closePalette(false); flushText(); finishStroke(true); ui.tool = 'text'; lastHistoryKind = '';
                         createRichEditor();
                         if (!richEditor) { return; }
@@ -297,6 +485,7 @@
                     }
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
+                        releasePaste(); ui.pasteError = '';
                         ui.closePalette(false);
                         flushText(); finishStroke(true); setInkSelection(null); compositionEnd(); saveNow(); ui.isOpen = false;
                         if (ui.session && ui.session.setVisible) { ui.session.setVisible(false); }
@@ -438,6 +627,9 @@
                         textSurface.style.padding = (40 * scale) + 'px';
                         textSurface.style.paddingTop = (paddingTop * scale) + 'px';
                         textSurface.style.color = /^#[0-9a-f]{6}$/i.test(ui.session.document.textColor || '') ? ui.session.document.textColor : '#27364d';
+                        if (ui.richActive && richEditor) {
+                            Array.from(richEditor.root.querySelectorAll('img')).forEach(function (image) { image.style.width = (Math.min(714, Number(image.getAttribute('width')) || image.naturalWidth || 600) * scale) + 'px'; });
+                        }
                         textSurface.style.height = '0px';
                         var textHeight = textSurface.scrollHeight;
                         textSurface.style.height = Math.max(logicalHeight * scale, textHeight + 4) + 'px';
@@ -784,9 +976,9 @@
                         if (!visible() || ui.isLocked() || event.isComposing || composing) { return; }
                         var key = String(event.key || '').toLowerCase();
                         var inText = event.target === textarea || !!richEditor && richEditor.root.contains(event.target);
-                        if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && (key === 'b' || key === 'i') && ui.canFormatText()) {
+                        if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && (key === 'b' || key === 'i' || key === 'u') && ui.canFormatText()) {
                             event.preventDefault(); event.stopImmediatePropagation();
-                            applyInput(function () { ui.formatText(key === 'b' ? 'bold' : 'italic'); }); return;
+                            applyInput(function () { ui.formatText({b:'bold', i:'italic', u:'underline'}[key]); }); return;
                         }
                         if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'z' || key === 'y')) {
                             if (event.target.tagName === 'INPUT' && !inText) { return; }
@@ -876,6 +1068,8 @@
                     canvas.addEventListener('lostpointercapture', pointerCancel);
                     overlay.addEventListener('keydown', keydown); overlay.addEventListener('keyup', stopKeys); overlay.addEventListener('keypress', stopKeys);
                     overlay.addEventListener('keydown', textShortcut, true);
+                    overlay.addEventListener('paste', pasteContent, true);
+                    if (richHost) { richHost.addEventListener('load', scheduleLayout, true); }
                     overlay.addEventListener('click', backdrop); document.addEventListener('click', blockBackground, true);
                     overlay.addEventListener('pointerdown', backdropPointerDown);
                     document.addEventListener('pointerdown', blockBackground, true); document.addEventListener('mousedown', blockBackground, true);
@@ -902,6 +1096,8 @@
                         canvas.removeEventListener('lostpointercapture', pointerCancel);
                         overlay.removeEventListener('keydown', keydown); overlay.removeEventListener('keyup', stopKeys); overlay.removeEventListener('keypress', stopKeys);
                         overlay.removeEventListener('keydown', textShortcut, true);
+                        overlay.removeEventListener('paste', pasteContent, true);
+                        if (richHost) { richHost.removeEventListener('load', scheduleLayout, true); }
                         overlay.removeEventListener('click', backdrop); document.removeEventListener('click', blockBackground, true);
                         overlay.removeEventListener('pointerdown', backdropPointerDown);
                         document.removeEventListener('pointerdown', blockBackground, true); document.removeEventListener('mousedown', blockBackground, true);

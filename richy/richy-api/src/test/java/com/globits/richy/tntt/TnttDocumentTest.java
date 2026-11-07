@@ -433,14 +433,14 @@ public class TnttDocumentTest {
     }
 
     @Test
-    public void formattedTextSurvivesSavingAndRejectsEmbedsOrMismatchedContent() {
+    public void formattedTextSurvivesSavingAndRejectsUnsafeEmbedsOrMismatchedContent() {
         Long id = create("DOCUMENT", null);
         TnttDocumentRequest save = new TnttDocumentRequest();
         save.revision = revision(id);
         save.document = blank();
         save.document.put("text", "Abba Cha ơi");
         Map<String, Object> delta = map("ops", Arrays.asList(
-                map("insert", "Abba", "attributes", map("bold", true, "italic", true)),
+                map("insert", "Abba", "attributes", map("bold", true, "italic", true, "underline", true, "color", "#ff0000")),
                 map("insert", " Cha ơi\n")));
         save.document.put("textDelta", delta);
         service.save(id, save);
@@ -451,6 +451,50 @@ public class TnttDocumentTest {
                 map("ops", Arrays.asList(map("insert", "Abba Cha ơi\n", "attributes", map("link", "bad")))))) {
             save.document.put("textDelta", invalidDelta);
             invalid(() -> validate(save.document));
+        }
+    }
+
+    @Test
+    public void pastedTablesAndImagesSurviveSavingPublicLinksAndPublishedSnapshots() {
+        Long id = create("DOCUMENT", null);
+        String image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=";
+        Map<String, Object> delta = map("ops", Arrays.asList(
+                map("insert", "Phân công", "attributes", map("bold", true)),
+                map("insert", "\n", "attributes", map("table", "row-header", "table-colspan", "2")),
+                map("insert", "An"), map("insert", map("softbreak", true)), map("insert", "Bình"), map("insert", "\n", "attributes", map("table", "row-body", "table-rowspan", "2")),
+                map("insert", map("image", image), "attributes", map("width", "320")), map("insert", "\n\n")));
+        TnttDocumentRequest save = new TnttDocumentRequest();
+        save.revision = revision(id);
+        save.document = blank();
+        save.document.put("text", "Phân công\nAn\u2028Bình\n\n");
+        save.document.put("textDelta", delta);
+        service.save(id, save);
+        assertEquals(delta, ((Map<?, ?>) service.read(id, null).get("document")).get("textDelta"));
+        String token = service.enablePublicLink(id).get("token");
+        Long notice = (Long) service.publish(id, publishRequest(id, false)).get("id");
+        SecurityContextHolder.clearContext();
+        assertEquals(delta, ((Map<?, ?>) service.readPublicLink(token).get("document")).get("textDelta"));
+        actor(manager);
+        assertEquals(delta, ((Map<?, ?>) service.notificationDocument(notice).get("document")).get("textDelta"));
+
+        for (Map<String, Object> op : Arrays.asList(
+                map("insert", map("image", "https://example.test/tracking.png")),
+                map("insert", map("image", "data:image/svg+xml;base64,PHN2Zz4=")),
+                map("insert", map("image", "data:image/png;base64,iVBORw0KGgo=")),
+                map("insert", map("image", image.replace("image/png", "image/jpeg"))),
+                map("insert", map("image", image), "attributes", map("width", "4097")),
+                map("insert", map("image", image), "attributes", map("onload", "alert(1)")),
+                map("insert", map("softbreak", "true")),
+                map("insert", map("softbreak", true), "attributes", map("width", "320")),
+                map("insert", "text", "attributes", map("color", "url(evil)")),
+                map("insert", "text", "attributes", map("underline", "true")),
+                map("insert", "text", "attributes", map("table", "row-header")),
+                map("insert", "\n", "attributes", map("table", "<script>")),
+                map("insert", "\n", "attributes", map("table-colspan", "2")),
+                map("insert", "\n", "attributes", map("table", "row-header", "table-rowspan", "999")))) {
+            Map<String, Object> bad = blank();
+            bad.put("textDelta", map("ops", Arrays.asList(op, map("insert", "\n"))));
+            invalid(() -> validate(bad));
         }
     }
 

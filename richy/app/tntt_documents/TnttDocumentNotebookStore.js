@@ -6,6 +6,16 @@
             function copy(value) { return JSON.parse(JSON.stringify(value)); }
             function positive(value) { return Number.isInteger(Number(value)) && Number(value) > 0; }
             function blank() { return {text: '', orientation: 'portrait', pattern: 'lined', strokes: [], pageCount: 3}; }
+            function utf8Length(text) {
+                var size = 0;
+                for (var i = 0; i < text.length; i++) {
+                    var code = text.charCodeAt(i);
+                    if (code < 128) { size++; } else if (code < 2048) { size += 2; }
+                    else if (code >= 0xd800 && code <= 0xdbff && text.charCodeAt(i + 1) >= 0xdc00 && text.charCodeAt(i + 1) <= 0xdfff) { size += 4; i++; }
+                    else { size += 3; }
+                }
+                return size;
+            }
             function documentValue(value) {
                 if (!value || typeof value.text !== 'string' || value.text.length > 500000 ||
                     ['portrait', 'landscape'].indexOf(value.orientation) < 0 || ['blank', 'lined', 'vertical', 'grid', 'squares', 'sketch'].indexOf(value.pattern) < 0 ||
@@ -21,7 +31,7 @@
                             point.length === 3 && point[2] > 1) { throw new Error('Tọa độ nét vẽ không hợp lệ.'); }
                     });
                 });
-                if (points > 200000 || JSON.stringify(value).length > 8000000) { throw new Error('Ghi chú vượt dung lượng đồng bộ. Bản đang viết vẫn được giữ.'); }
+                if (points > 200000 || utf8Length(JSON.stringify(value)) > 8 * 1024 * 1024) { throw new Error('Ghi chú vượt dung lượng đồng bộ 8 MB. Bản đang viết vẫn được giữ.'); }
                 if (value.textColor !== undefined && (typeof value.textColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.textColor))) { throw new Error('Màu chữ tài liệu không hợp lệ.'); }
                 if (value.pageCount !== undefined && (!Number.isInteger(value.pageCount) || value.pageCount < 1 || value.pageCount > 80)) {
                     throw new Error('Số trang tài liệu phải từ 1 đến 80.');
@@ -32,18 +42,34 @@
                 if (value.textColor !== undefined) { result.textColor = value.textColor; }
                 if (value.pageCount !== undefined) { result.pageCount = value.pageCount; }
                 if (value.textDelta !== undefined) {
-                    var delta = value.textDelta, text = '';
+                    var delta = value.textDelta, text = '', images = 0;
                     if (!delta || !Array.isArray(delta.ops) || !delta.ops.length || delta.ops.length > 10000) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
                     result.textDelta = {ops: delta.ops.map(function (op) {
-                        if (!op || typeof op.insert !== 'string' || !op.insert.length) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
-                        text += op.insert;
-                        var clean = {insert: op.insert}, attributes = {};
+                        if (!op || Object.keys(op).some(function (key) { return ['insert', 'attributes'].indexOf(key) < 0; })) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
+                        var image = op.insert && typeof op.insert === 'object' && !Array.isArray(op.insert) && Object.keys(op.insert).length === 1 && op.insert.image;
+                        var softbreak = op.insert && typeof op.insert === 'object' && !Array.isArray(op.insert) && Object.keys(op.insert).length === 1 && op.insert.softbreak === true;
+                        if (image) {
+                            if (typeof image !== 'string' || image.length > 2796226 || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(image) || (image.length - image.indexOf(',') - 1) % 4 !== 0 ||
+                                !(image.indexOf('data:image/png;base64,iVBORw0KGgo') === 0 || image.indexOf('data:image/jpeg;base64,/9j/') === 0) || ++images > 40) { throw new Error('Định dạng ảnh không hợp lệ hoặc ảnh quá lớn (tối đa 40 ảnh, 2 MB mỗi ảnh).'); }
+                        } else if (softbreak) { text += '\u2028'; } else {
+                            if (typeof op.insert !== 'string' || !op.insert.length) { throw new Error('Định dạng chữ tài liệu không hợp lệ.'); }
+                            text += op.insert;
+                        }
+                        var clean = {insert: image ? {image: image} : softbreak ? {softbreak: true} : op.insert}, attributes = {};
                         if (op.attributes !== undefined) {
                             if (!op.attributes || typeof op.attributes !== 'object' || Array.isArray(op.attributes) ||
-                                Object.keys(op.attributes).some(function (key) { return ['bold', 'italic'].indexOf(key) < 0 || typeof op.attributes[key] !== 'boolean'; })) {
+                                Object.keys(op.attributes).some(function (key) {
+                                    var v = op.attributes[key];
+                                    if (key === 'bold' || key === 'italic' || key === 'underline') { return typeof v !== 'boolean'; }
+                                    if (key === 'color') { return typeof v !== 'string' || !/^#[a-fA-F0-9]{6}$/.test(v); }
+                                    if (key === 'width') { return !image || typeof v !== 'string' || !/^[1-9][0-9]{0,3}$/.test(v) || Number(v) > 4096; }
+                                    if (key === 'table') { return image || softbreak || !/^\n+$/.test(op.insert) || typeof v !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(v); }
+                                    if (key === 'table-colspan' || key === 'table-rowspan') { return !op.attributes.table || typeof v !== 'string' || !/^[1-9][0-9]?$/.test(v) || Number(v) > 50; }
+                                    return true;
+                                })) {
                                 throw new Error('Định dạng chữ tài liệu không hợp lệ.');
                             }
-                            ['bold', 'italic'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = true; } });
+                            ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = op.attributes[key]; } });
                         }
                         if (Object.keys(attributes).length) { clean.attributes = attributes; }
                         return clean;

@@ -2,8 +2,12 @@ package com.globits.richy.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 public final class TnttDocumentPayload {
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -144,27 +148,53 @@ public final class TnttDocumentPayload {
                 throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
             List<Object> formatted = new ArrayList<>();
             StringBuilder plain = new StringBuilder();
+            int images = 0;
             for (Object raw : operations) {
-                if (!(raw instanceof Map) || !(((Map<?, ?>) raw).get("insert") instanceof String))
+                if (!(raw instanceof Map))
                     throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
                 Map<?, ?> op = (Map<?, ?>) raw;
-                String insert = (String) op.get("insert");
-                if (insert.isEmpty() || plain.length() + insert.length() > 500001)
-                    throw new IllegalArgumentException("Nội dung định dạng quá dài.");
-                plain.append(insert);
+                for (Object key : op.keySet())
+                    if (!Arrays.asList("insert", "attributes").contains(key))
+                        throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+                Object insert = op.get("insert");
+                boolean embedded = insert instanceof Map;
+                boolean image = embedded && ((Map<?, ?>) insert).containsKey("image");
+                if (embedded) {
+                    Map<?, ?> embed = (Map<?, ?>) insert;
+                    if (embed.size() != 1)
+                        throw new IllegalArgumentException("Định dạng ảnh không hợp lệ (tối đa 40 ảnh).");
+                    if (image) {
+                        if (!(embed.get("image") instanceof String) || ++images > 40) throw new IllegalArgumentException("Định dạng ảnh không hợp lệ (tối đa 40 ảnh).");
+                        validateImage((String) embed.get("image"));
+                        insert = map("image", embed.get("image"));
+                    } else if (Boolean.TRUE.equals(embed.get("softbreak"))) {
+                        plain.append('\u2028'); insert = map("softbreak", true);
+                    } else throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
+                } else {
+                    if (!(insert instanceof String) || ((String) insert).isEmpty() || plain.length() + ((String) insert).length() > 500001)
+                        throw new IllegalArgumentException("Nội dung định dạng không hợp lệ hoặc quá dài.");
+                    plain.append(insert);
+                }
                 Map<String, Object> cleanOp = map("insert", insert);
                 if (op.containsKey("attributes")) {
                     if (!(op.get("attributes") instanceof Map))
                         throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
                     Map<?, ?> attributes = (Map<?, ?>) op.get("attributes");
                     for (Map.Entry<?, ?> entry : attributes.entrySet()) {
-                        if (!Arrays.asList("bold", "italic").contains(entry.getKey())
-                                || !(entry.getValue() instanceof Boolean))
+                        String key = String.valueOf(entry.getKey());
+                        Object v = entry.getValue();
+                        boolean valid = false;
+                        if ("bold".equals(key) || "italic".equals(key) || "underline".equals(key)) valid = v instanceof Boolean;
+                        else if ("color".equals(key)) valid = v instanceof String && ((String) v).matches("#[a-fA-F0-9]{6}");
+                        else if ("width".equals(key)) valid = image && v instanceof String && ((String) v).matches("[1-9][0-9]{0,3}") && Integer.parseInt((String) v) <= 4096;
+                        else if ("table".equals(key)) valid = !embedded && ((String) insert).matches("\\n+") && v instanceof String && ((String) v).matches("[a-zA-Z0-9_-]{1,80}");
+                        else if ("table-colspan".equals(key) || "table-rowspan".equals(key)) valid = attributes.containsKey("table") && v instanceof String && ((String) v).matches("[1-9][0-9]?") && Integer.parseInt((String) v) <= 50;
+                        if (!valid)
                             throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
                     }
                     Map<String, Object> cleanAttributes = new LinkedHashMap<>();
-                    for (String key : Arrays.asList("bold", "italic"))
-                        if (Boolean.TRUE.equals(attributes.get(key))) cleanAttributes.put(key, true);
+                    for (String key : Arrays.asList("bold", "italic", "underline", "color", "table", "table-colspan", "table-rowspan", "width"))
+                        if (attributes.containsKey(key) && !Boolean.FALSE.equals(attributes.get(key))) cleanAttributes.put(key, attributes.get(key));
                     if (!cleanAttributes.isEmpty()) cleanOp.put("attributes", cleanAttributes);
                 }
                 formatted.add(cleanOp);
@@ -177,5 +207,31 @@ public final class TnttDocumentPayload {
         if (data.getBytes(StandardCharsets.UTF_8).length > 8 * 1024 * 1024)
             throw new IllegalArgumentException("Tài liệu vượt dung lượng 8 MB.");
         return data;
+    }
+
+    private static void validateImage(String source) {
+        int comma = source.indexOf(',');
+        if (source.length() > 2796226 || !source.matches("data:image/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}") || (source.length() - comma - 1) % 4 != 0)
+            throw new IllegalArgumentException("Định dạng ảnh không hợp lệ hoặc ảnh vượt 2 MB.");
+        try {
+            byte[] bytes = Base64.getDecoder().decode(source.substring(source.indexOf(',') + 1));
+            if (bytes.length > 2 * 1024 * 1024) throw new IllegalArgumentException();
+            // Inspect dimensions before decoding pixels, including on public shared documents.
+            try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+                Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+                if (!readers.hasNext()) throw new IllegalArgumentException();
+                ImageReader reader = readers.next();
+                try {
+                    reader.setInput(input, true, true);
+                    String mime = reader.getFormatName().toLowerCase(Locale.ROOT);
+                    if (!("png".equals(mime) && source.startsWith("data:image/png;"))
+                            && !("jpeg".equals(mime) && source.startsWith("data:image/jpeg;"))) throw new IllegalArgumentException();
+                    int width = reader.getWidth(0), height = reader.getHeight(0);
+                    if (width < 1 || height < 1 || width > 4096 || height > 4096) throw new IllegalArgumentException();
+                } finally { reader.dispose(); }
+            }
+        } catch (Exception error) {
+            throw new IllegalArgumentException("Ảnh dán không hợp lệ hoặc kích thước vượt 4096 px.");
+        }
     }
 }

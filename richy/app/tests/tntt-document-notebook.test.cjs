@@ -74,15 +74,50 @@ test('document page counts survive autosave and legacy documents keep their orig
  s.destroy();
 });
 
-test('selected text formatting is saved with matching plain text and rejects embedded content',async()=>{
+test('selected text formatting is saved with matching plain text and rejects unsafe embedded content',async()=>{
  const f=fixture(),s=f.session();await s.ready;
  s.document.text='Abba Cha ơi';
- s.document.textDelta={ops:[{insert:'Abba',attributes:{italic:true,bold:true}},{insert:' Cha ơi\n'}]};
+ s.document.textDelta={ops:[{insert:'Abba',attributes:{italic:true,bold:true,underline:true,color:'#ff0000'}},{insert:' Cha ơi\n'}]};
  s.changed();await s.save();
  assert.equal(s.status,'saved');
- assert.deepEqual(plain(f.remote().document.textDelta),{ops:[{insert:'Abba',attributes:{bold:true,italic:true}},{insert:' Cha ơi\n'}]});
+ assert.deepEqual(plain(f.remote().document.textDelta),{ops:[{insert:'Abba',attributes:{bold:true,italic:true,underline:true,color:'#ff0000'}},{insert:' Cha ơi\n'}]});
  for(const textDelta of [{ops:[{insert:'Khác\n'}]},{ops:[{insert:{image:'bad'}}]},{ops:[{insert:'Abba Cha ơi\n',attributes:{link:'bad'}}]}]){
   assert.throws(()=>f.store.validDocument({...blank(),text:'Abba Cha ơi',textDelta}),/Định dạng/);
  }
  s.destroy();
+});
+
+test('table rows, merged cells and embedded clipboard images survive the note store without changing plain text',async()=>{
+ const f=fixture(),s=f.session();await s.ready;
+ const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=';
+ s.document.text='Phân công\nAn\u2028Bình\n\n';
+ s.document.textDelta={ops:[{insert:'Phân công',attributes:{bold:true}},{insert:'\n',attributes:{'table-colspan':'2',table:'row-header'}},{insert:'An'},{insert:{softbreak:true}},{insert:'Bình'},{insert:'\n',attributes:{table:'row-body'}},{insert:{image},attributes:{width:'320'}},{insert:'\n\n'}]};
+ s.changed();await s.save();assert.equal(s.status,'saved');
+ assert.deepEqual(plain(f.remote().document),plain(s.document));
+ assert.equal(f.remote().document.textDelta.ops.find(op=>op.insert.image).insert.image,image);
+ for(const bad of [
+  {insert:{image:'https://example.test/tracking.png'}},
+  {insert:{image:'data:image/svg+xml;base64,PHN2Zz4='}},
+  {insert:{image},attributes:{width:'100%'}},
+  {insert:{image},attributes:{width:'4097'}},
+  {insert:{image},attributes:{onload:'bad'}},
+  {insert:{softbreak:'true'}},
+  {insert:{softbreak:true},attributes:{width:'320'}},
+  {insert:'An',attributes:{color:'url(evil)'}},
+  {insert:'An',attributes:{underline:'true'}},
+  {insert:'An',attributes:{table:'row-body'}},
+  {insert:'\n',attributes:{table:'<script>'}},
+  {insert:'\n',attributes:{'table-colspan':'2'}},
+  {insert:'\n',attributes:{table:'row-body','table-rowspan':'999'}},
+  {insert:'\n',attributes:{table:'row-body','table-colspan':2}}
+ ])assert.throws(()=>f.store.validDocument({...blank(),textDelta:{ops:[bad,{insert:'\n'}]}}),/Định dạng/);
+ assert.throws(()=>f.store.validDocument({...blank(),textDelta:{ops:[...Array.from({length:41},()=>({insert:{image}})),{insert:'\n'}]}}),/40 ảnh/);
+ s.destroy();
+});
+
+test('the total clipboard payload is bounded by UTF-8 bytes before a large paste can replace the document',()=>{
+ const f=fixture(),image='data:image/png;base64,iVBORw0KGgo'+'A'.repeat(2300000-11);
+ const value={...blank(),text:'ế'.repeat(400000),textDelta:{ops:[{insert:'ế'.repeat(400000)},...Array.from({length:3},()=>({insert:{image}})),{insert:'\n'}]}};
+ assert.ok(JSON.stringify(value).length<8000000);
+ assert.throws(()=>f.store.validDocument(value),/8 MB/);
 });
