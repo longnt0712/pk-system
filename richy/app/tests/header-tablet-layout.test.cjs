@@ -13,8 +13,8 @@ const executablePath = [
 
 const header = fs.readFileSync(path.join(app, 'common/views/navs/header-hoz.html'), 'utf8');
 const shell = fs.readFileSync(path.join(app, 'common/views/application.html'), 'utf8')
-    .replace(/<div\b[^>]*class="page-header"[^>]*>\s*<\/div>/, '<div class="page-header" ng-controller="HeaderController">' + header.match(/<nav\b[\s\S]*?<\/nav>/)[0] + '</div>')
-    .replace(/\sdata-ng-(include|controller)="[^"]*"/g, '')
+    .replace(/\sdata-ng-(include|controller)="([^"]*)"/g, (attribute, directive, value) =>
+        directive === 'controller' && value === 'HeaderController' || directive === 'include' && value.includes('navs/header-hoz.html') ? attribute : '')
     .replace('<div ui-view class="fade-in-up"> </div>', '<div id="content-probe" style="min-height:1400px;position:relative"><button id="page-tool" style="position:absolute;top:0;right:0;z-index:20">Page action</button>Page content</div>');
 const styles = [...header.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(match => match[1]).join('\n');
 
@@ -27,6 +27,8 @@ for (const viewport of [
     const browser = await playwright.chromium.launch({headless: true, executablePath});
     try {
         const page = await browser.newPage({viewport, reducedMotion: 'reduce'});
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
         await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' + shell + '</body></html>');
         for (const css of ['external/bootstrap.min.css', 'components-md.min.css', 'plugins-md.min.css', 'layout-hoz.min.css', 'default.min.css', 'custom.css']) {
@@ -36,18 +38,23 @@ for (const viewport of [
         for (const script of ['jquery.min.js', 'bootstrap.min.js', 'angular.min.js']) {
             await page.addScriptTag({path: path.join(app, 'assets/scripts/external', script)});
         }
-        await page.evaluate(() => {
+        await page.evaluate(nav => {
             window.Hrm = angular.module('HeaderLayoutTest', []).value('$state', {});
             window.Layout = {initContent() {}};
-            Hrm.run(['$rootScope', root => {
+            window.headerErrors = [];
+            Hrm.value('$exceptionHandler', error => headerErrors.push(error.message));
+            Hrm.run(['$rootScope', '$templateCache', (root, templates) => {
+                root.appVersion = 'header-layout-test';
+                templates.put('common/views/navs/header-hoz.html?v=' + root.appVersion, nav);
                 root.settings = {permissionsLoaded: true, ieltsRoom: true, salesEnabled: false, isAdmin: true, isViewer: true, campaignsEnabled: true, fairsEnabled: true, assetsPath: 'assets', api: {baseUrl: '/'}};
                 root.currentUser = {person: {lastName: 'NGUYỄN', firstName: 'NGƯỜI DÙNG THỬ NGHIỆM'}, username: 'long.tablet.account', hasPhoto: false};
                 root.canManageOwnProfile = () => true;
                 root.$state = {current: {name: 'application.dashboard'}, includes: () => false};
             }]);
-        });
+        }, header.match(/<nav\b[\s\S]*?<\/nav>/)[0]);
         await page.addScriptTag({path: path.join(app, 'application.controllers.js')});
         await page.evaluate(() => angular.bootstrap(document.body, ['HeaderLayoutTest']));
+        await page.locator('.learning-login-nav').waitFor();
         if (viewport.width === 390) {
             for (const variant of [
                 {enabled: false, admin: true, navigation: true, visible: false, documents: 0},
@@ -198,13 +205,15 @@ for (const viewport of [
             }
         }
         await page.evaluate(() => {
-            const header = document.querySelector('.page-header');
+            const header = document.querySelector('.page-wrapper-top');
             angular.element(header).scope().$destroy();
             document.querySelector('.user-dropdown-mobile').classList.add('open');
             document.querySelector('.user-dropdown-menu').style.setProperty('--header-dropdown-shift', '7px');
             dispatchEvent(new Event('resize'));
         });
         assert.equal(await page.locator('.user-dropdown-menu').evaluate(menu => menu.style.getPropertyValue('--header-dropdown-shift')), '7px', 'destroying the header removes its resize listener');
+        assert.deepEqual(errors, [], 'real ng-include header handles viewport events without uncaught errors');
+        assert.deepEqual(await page.evaluate(() => headerErrors), [], 'destroying the included header does not raise an Angular error');
     } finally {
         await browser.close();
     }
