@@ -3,6 +3,7 @@ package com.globits.richy.rest;
 import com.globits.richy.dto.VocabularyDuplicateDto;
 import com.globits.richy.service.impl.VocabularyDuplicateService;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,7 @@ public class RestVocabularyDuplicateController {
 
     @Secured({"ROLE_ADMIN", "ROLE_USER"})
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> groups() { return response(() -> service.groups()); }
+    public ResponseEntity<?> groups(@RequestParam(value="includeReviewed",defaultValue="false") boolean includeReviewed) { return response(() -> service.groups(includeReviewed)); }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER"})
     @RequestMapping(value = "/details", method = RequestMethod.POST)
@@ -41,5 +42,17 @@ public class RestVocabularyDuplicateController {
     @RequestMapping(value = "/merge", method = RequestMethod.POST)
     public ResponseEntity<?> merge(@RequestBody VocabularyDuplicateDto.Merge request) {
         return response(() -> service.merge(request));
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/merge_batch", method = RequestMethod.POST)
+    public ResponseEntity<?> mergeBatch(@RequestBody List<VocabularyDuplicateDto.Merge> requests) {
+        return response(() -> service.mergeBatch(requests));
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/review", method = RequestMethod.POST)
+    public ResponseEntity<?> setReviewed(@RequestBody VocabularyDuplicateDto.Review request) {
+        return response(() -> service.setReviewed(request));
     }
 }

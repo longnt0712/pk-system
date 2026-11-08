@@ -1,54 +1,70 @@
 <main class="vocab-workspace vd-workspace">
     <header class="vw-topbar">
-        <div><span class="vw-eyebrow">SẮP XẾP KHO TỪ CỦA BẠN</span><h1>Quản lý từ trùng<span class="vw-title-dot"></span></h1><p>Chọn bản muốn gộp, giữ một bản chính và tập hợp các bài từ vựng vào đó.</p></div>
-        <div class="vd-header-actions"><a class="vw-btn vw-quiet" href="topics"><i class="fa fa-book" aria-hidden="true"></i> Bài từ vựng</a><button type="button" class="vw-btn" ng-click="vm.refresh()" ng-disabled="vm.groupsLoading || vm.merging"><i class="fa" ng-class="vm.groupsLoading ? 'fa-spinner fa-spin' : 'fa-refresh'" aria-hidden="true"></i> Làm mới</button></div>
+        <div><span class="vw-eyebrow">SẮP XẾP KHO TỪ CỦA BẠN</span><h1>Quản lý từ trùng<span class="vw-title-dot"></span></h1><p>Đối chiếu 10 nhóm mỗi trang, chọn bản chính và lưu các nhóm đã sửa trong một lượt.</p></div>
+        <div class="vd-header-actions"><a class="vw-btn vw-quiet" href="topics"><i class="fa fa-book" aria-hidden="true"></i> Bài từ vựng</a><button type="button" class="vw-btn" ng-click="vm.refresh()" ng-disabled="vm.busy()"><i class="fa" ng-class="vm.groupsLoading ? 'fa-spinner fa-spin' : 'fa-refresh'" aria-hidden="true"></i> Làm mới</button></div>
     </header>
-    <div class="vd-notice" role="status" ng-if="vm.lastMerge"><i class="fa fa-check-circle" aria-hidden="true"></i><span>Đã giữ bản <strong>#{{vm.lastMerge.card.id}} · {{vm.lastMerge.card.question}}</strong> và gộp {{vm.lastMerge.mergedCount}} bản phụ.</span></div>
-    <div class="vd-layout">
+    <div class="vd-notice" role="status" ng-if="vm.lastBatch"><i class="fa fa-check-circle" aria-hidden="true"></i><span>Đã gộp {{vm.lastBatch.removed}} bản phụ trong {{vm.lastBatch.groups}} nhóm và đánh dấu <strong>Đã check</strong>.</span></div>
+    <section class="vd-filters" aria-label="Lọc nhóm từ trùng">
+        <label class="vw-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm từ trùng" placeholder="Tìm từ hoặc cụm từ..." ng-model="vm.query" ng-change="vm.filterGroups()" ng-model-options="{debounce:200}" ng-disabled="vm.busy()"></label>
+        <div class="vd-counts"><span><strong>{{vm.pendingCount || 0 | number:0}}</strong> chưa check</span><span class="vd-checked-count"><i class="fa fa-check-circle" aria-hidden="true"></i> {{vm.reviewedCount || 0 | number:0}} đã check</span></div>
+        <label class="vd-switch"><input type="checkbox" ng-model="vm.showAll" ng-change="vm.filterGroups()" ng-disabled="vm.busy()"><span class="vd-switch-track" aria-hidden="true"></span><span>Hiện tất cả</span></label>
+    </section>
+    <div class="vw-loading" ng-if="vm.groupsLoading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải danh sách nhóm từ…</div>
+    <div class="vd-error" ng-if="vm.groupsError" role="alert">{{vm.groupsError}}</div>
+    <div class="vd-layout" ng-if="!vm.groupsLoading && !vm.groupsError && vm.pageGroups.length">
         <aside class="vd-groups">
-            <div class="vd-groups-heading"><h2>Nhóm từ trùng</h2><span class="vw-count">{{vm.groups.length | number:0}} nhóm</span></div>
-            <label class="vw-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm từ trùng" placeholder="Tìm từ hoặc cụm từ..." ng-model="vm.query" ng-change="vm.filterGroups()" ng-model-options="{debounce:200}"></label>
-            <p class="vd-hint">Cùng nguyên từ/cụm từ, bỏ qua chữ hoa và khoảng trắng thừa. Chỉ đối chiếu kho của bạn.</p>
-            <div class="vw-loading" ng-if="vm.groupsLoading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tìm các nhóm từ trùng…</div>
-            <div class="vd-error" ng-if="vm.groupsError" role="alert">{{vm.groupsError}}</div>
-            <div class="vd-group-scroll" vocabulary-duplicate-more="vm.loadMore()" tabindex="0" aria-label="Danh sách nhóm từ trùng">
-                <button type="button" class="vd-group" ng-repeat="group in vm.visibleGroups track by group.word" ng-click="vm.openGroup(group)" ng-disabled="vm.merging || vm.groupsLoading" ng-class="{'is-active':vm.activeGroup === group}" ng-attr-aria-pressed="{{vm.activeGroup === group}}"><span class="vd-group-icon"><i class="fa fa-clone" aria-hidden="true"></i></span><span class="vd-group-word">{{group.word}}</span><span class="vd-group-count">{{group.count}} bản</span><i class="fa fa-angle-right" aria-hidden="true"></i></button>
-                <div class="vd-group-end" aria-hidden="true"></div>
-            </div>
-            <p class="vd-list-status" ng-if="!vm.groupsLoading && !vm.groupsError">{{vm.visibleGroups.length | number:0}} / {{vm.filteredGroups.length | number:0}} nhóm{{vm.visibleGroups.length < vm.filteredGroups.length ? ' · Cuộn xuống để xem tiếp' : ''}}</p>
-        </aside>
-        <section class="vd-detail" aria-label="Chi tiết và gộp từ">
-            <div class="vd-empty" ng-if="!vm.activeGroup"><span class="vd-empty-icon"><i class="fa" ng-class="vm.groups.length ? 'fa-object-group' : 'fa-check-circle'" aria-hidden="true"></i></span><h2>{{vm.groups.length ? 'Chọn một nhóm để đối chiếu' : 'Kho từ gọn gàng hơn mỗi ngày'}}</h2><p>{{vm.groups.length ? 'Xem từng bản, chọn những bản muốn gộp và chọn một bản chính.' : (vm.groupsLoading ? 'Đang kiểm tra các từ trong tài khoản của bạn.' : 'Các nhóm có từ hoặc cụm từ giống nhau sẽ xuất hiện tại đây.')}}</p></div>
-            <div ng-if="vm.activeGroup">
-                <div class="vd-detail-heading"><div><span class="vw-eyebrow">ĐỐI CHIẾU CÁC BẢN</span><h2>{{vm.activeGroup.word}}</h2></div><span class="vd-group-count">{{vm.activeGroup.count}} bản</span></div>
-                <div class="vw-loading" ng-if="vm.detailsLoading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải nghĩa và các topic trực thuộc…</div>
-                <div class="vd-error" ng-if="vm.groupError" role="alert">{{vm.groupError}}</div>
-                <div ng-if="!vm.detailsLoading && !vm.groupError && vm.cards.length">
-                    <div class="vd-selection-bar"><label><input type="checkbox" ng-checked="vm.chosen.length === vm.cards.length" ng-click="vm.toggleAll()" ng-disabled="vm.merging"> Chọn tất cả</label><span>Đã chọn {{vm.chosen.length}} bản</span></div>
-                    <article class="vd-word" ng-repeat="card in vm.cards track by card.id" ng-class="{'is-selected':vm.selected[card.id],'is-primary':vm.primaryId === card.id}">
-                        <div class="vd-word-heading"><label class="vd-card-check"><input type="checkbox" ng-model="vm.selected[card.id]" ng-change="vm.changeSelection()" ng-disabled="vm.merging" aria-label="Chọn bản số {{card.id}}"><strong>{{card.question}}</strong><span class="vd-card-id">#{{card.id}}</span></label><label class="vd-primary-choice"><input type="radio" name="vocabulary-primary" ng-model="vm.primaryId" ng-value="card.id" ng-change="vm.selectPrimary(card)" ng-disabled="vm.merging"> Bản chính</label></div>
-                        <div class="vd-word-meta"><span>{{card.pronounce || 'Chưa có phiên âm'}}</span><span class="vw-level" ng-if="card.level">{{card.level}}</span></div>
-                        <p class="vd-word-meaning">{{card.motherTongue || 'Chưa có nghĩa'}}</p>
-                        <div class="vd-word-topics"><span class="vd-topics-label"><i class="fa fa-book" aria-hidden="true"></i> Các bài chứa từ</span><ul ng-if="card.questionTopics.length"><li ng-repeat="link in card.questionTopics track by $index" ng-if="link.topic.id">{{link.topic.name || ('Bài #' + link.topic.id)}}</li></ul><span class="vd-no-topic" ng-if="!card.questionTopics.length">Chưa thuộc bài nào</span></div>
-                    </article>
-                    <section class="vd-merge-preview" aria-labelledby="vd-merge-heading">
-                        <div class="vd-preview-heading"><h3 id="vd-merge-heading"><i class="fa fa-object-ungroup" aria-hidden="true"></i> Sau khi gộp</h3><span class="vw-count">{{vm.topics.length}} bài từ vựng</span></div>
-                        <p class="vd-hint" ng-if="vm.primaryCard">Giữ bản <strong>#{{vm.primaryCard.id}}</strong> cùng phiên âm, CEFR, mô tả và trạng thái của bản chính. Các lượt luyện được cộng dồn.</p>
-                        <label class="vw-field" for="vd-merged-meaning">Nghĩa sau khi gộp</label><textarea id="vd-merged-meaning" class="vd-meaning-input" rows="3" ng-model="vm.meaning" ng-change="vm.meaningChanged()" ng-disabled="vm.merging" placeholder="nghĩa từ 1 / nghĩa từ 2 / …"></textarea>
-                        <div class="vd-meaning-footer"><span ng-class="{'vd-too-long':vm.meaning.length > 500}">{{vm.meaning.length}} / 500 ký tự</span><button type="button" class="vw-link" ng-click="vm.useSuggestedMeaning()" ng-if="vm.meaningEdited" ng-disabled="vm.merging">Dùng nghĩa gợi ý</button></div>
-                        <p class="vd-hint">Các nghĩa giống hệt nhau chỉ xuất hiện một lần. Bạn có thể sửa nghĩa ghép trước khi xác nhận.</p>
-                        <div class="vd-topic-preview" ng-if="vm.topics.length"><span ng-repeat="topic in vm.topics track by topic.id"><i class="fa fa-bookmark-o" aria-hidden="true"></i> {{topic.name || ('Bài #' + topic.id)}}</span></div>
-                        <div class="vd-error" role="alert" ng-if="vm.mergeError">{{vm.mergeError}}</div>
-                        <div class="vd-merge-actions"><span ng-if="vm.chosen.length < 2">Chọn ít nhất 2 bản để gộp.</span><span class="vd-too-long" ng-if="vm.meaning.length > 500">Vui lòng rút gọn nghĩa còn tối đa 500 ký tự.</span><button type="button" class="vw-btn vw-primary" ng-disabled="!vm.canMerge()" ng-click="vm.confirmMerge()"><i class="fa fa-object-group" aria-hidden="true"></i> Gộp {{vm.chosen.length}} bản</button></div>
-                    </section>
+            <div class="vd-groups-heading"><h2>10 nhóm mỗi trang</h2><span class="vw-count">{{vm.page}} / {{vm.pageCount}}</span></div>
+            <p class="vd-hint">Tích cạnh từ để lưu Đã check ngay. Các thẻ từ và bài trực thuộc được giữ nguyên.</p>
+            <div class="vd-group-scroll" tabindex="0" aria-label="Các nhóm trên trang này">
+                <div class="vd-list-row" ng-repeat="group in vm.pageGroups track by group.uid" ng-class="{'is-reviewed':group.summary.reviewed}">
+                    <input type="checkbox" class="vd-review-check" ng-checked="group.summary.reviewed" ng-click="vm.toggleReview(group,$event)" ng-disabled="vm.busy() || !group.loaded || group.loading || group.error || group.stale" aria-label="Đánh dấu đã check {{group.summary.word}}">
+                    <button type="button" class="vd-group" ng-click="vm.scrollToGroup(group)" ng-disabled="vm.merging"><span class="vd-group-word">{{group.summary.word}}</span><span class="vd-group-count">{{group.summary.reviewed ? 'Đã check' : (group.summary.ids.length + ' bản')}}</span><i class="fa fa-angle-right" aria-hidden="true"></i></button>
                 </div>
             </div>
+            <nav class="vd-page-nav" aria-label="Chuyển trang nhóm từ"><button type="button" class="vw-btn" aria-label="Trang trước" ng-click="vm.showPage(vm.page-1)" ng-disabled="vm.busy() || vm.page <= 1"><i class="fa fa-angle-left" aria-hidden="true"></i></button><span>{{vm.page}} / {{vm.pageCount}}</span><button type="button" class="vw-btn" aria-label="Trang sau" ng-click="vm.showPage(vm.page+1)" ng-disabled="vm.busy() || vm.page >= vm.pageCount"><i class="fa fa-angle-right" aria-hidden="true"></i></button></nav>
+            <p class="vd-list-status">{{vm.filteredGroups.length | number:0}} nhóm trong danh sách</p>
+        </aside>
+        <section class="vd-batch-details" aria-label="Đối chiếu và sửa các nhóm">
+            <article class="vd-detail vd-batch-group" id="vd-group-{{group.uid}}" ng-repeat="group in vm.pageGroups track by group.uid" ng-class="{'is-reviewed':group.summary.reviewed,'is-skipped':!group.included && !group.summary.reviewed}">
+                <div class="vd-detail-heading"><div><span class="vw-eyebrow">NHÓM {{(vm.page-1)*vm.pageSize+$index+1}}</span><h2>{{group.summary.word}}</h2></div><div class="vd-detail-state"><span class="vd-reviewed-badge" ng-if="group.summary.reviewed"><i class="fa fa-check-circle" aria-hidden="true"></i> Đã check</span><label class="vd-batch-include" ng-if="!group.summary.reviewed"><input type="checkbox" ng-model="group.included" ng-disabled="vm.busy()"> Gộp trong lượt lưu này</label><button type="button" class="vw-link" ng-click="vm.reload(group)" ng-disabled="vm.busy() || group.loading">Tải lại</button></div></div>
+                <div class="vw-loading" ng-if="group.loading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải nghĩa và các bài trực thuộc…</div>
+                <div class="vd-error" ng-if="group.error" role="alert">{{group.error}}</div>
+                <div class="vd-error" ng-if="group.stale && !group.error" role="alert">Cần tải lại nhóm để đối chiếu trước khi lưu tiếp. Phần nghĩa bạn sửa vẫn được giữ.</div>
+                <div ng-if="group.loaded && !group.loading">
+                    <div class="vd-selection-bar"><label><input type="checkbox" ng-checked="group.chosen.length === group.cards.length" ng-click="vm.toggleAll(group)" ng-disabled="vm.busy() || group.summary.reviewed"> Chọn tất cả các bản</label><span>{{group.chosen.length}} / {{group.cards.length}} bản được chọn</span></div>
+                    <div class="vd-word-grid">
+                        <section class="vd-word" ng-repeat="card in group.cards track by card.id" ng-class="{'is-selected':group.selected[card.id],'is-primary':group.primaryId === card.id}">
+                            <div class="vd-word-heading"><label class="vd-card-check"><input type="checkbox" ng-model="group.selected[card.id]" ng-change="vm.changeSelection(group)" ng-disabled="vm.busy() || group.summary.reviewed" aria-label="Chọn bản số {{card.id}}"><strong>{{card.question}}</strong><span class="vd-card-id">#{{card.id}}</span></label><label class="vd-primary-choice"><input type="radio" name="vocabulary-primary-{{group.uid}}" ng-model="group.primaryId" ng-value="card.id" ng-change="vm.selectPrimary(group,card)" ng-disabled="vm.busy() || group.summary.reviewed"> Bản chính</label></div>
+                            <div class="vd-word-meta"><span>{{card.pronounce || 'Chưa có phiên âm'}}</span><span class="vw-level" ng-if="card.level">{{card.level}}</span></div>
+                            <p class="vd-word-meaning">{{card.motherTongue || 'Chưa có nghĩa'}}</p>
+                            <div class="vd-word-topics"><span class="vd-topics-label"><i class="fa fa-book" aria-hidden="true"></i> Các bài chứa từ</span><ul ng-if="card.questionTopics.length"><li ng-repeat="link in card.questionTopics track by $index" ng-if="link.topic.id">{{link.topic.name || ('Bài #' + link.topic.id)}}</li></ul><span class="vd-no-topic" ng-if="!card.questionTopics.length">Chưa thuộc bài nào</span></div>
+                        </section>
+                    </div>
+                    <section class="vd-merge-preview" ng-if="!group.summary.reviewed">
+                        <div class="vd-preview-heading"><h3>Sau khi gộp</h3><span class="vw-count">{{group.topics.length}} bài từ vựng</span></div>
+                        <p class="vd-hint" ng-if="group.primaryCard">Giữ bản <strong>#{{group.primaryCard.id}}</strong> cùng phiên âm, CEFR, mô tả và trạng thái của bản chính. Các lượt luyện được cộng dồn.</p>
+                        <label class="vw-field" for="vd-meaning-{{group.uid}}">Nghĩa sau khi gộp</label><textarea id="vd-meaning-{{group.uid}}" class="vd-meaning-input" rows="2" ng-model="group.meaning" ng-change="vm.meaningChanged(group)" ng-disabled="vm.busy()" placeholder="Nhập nghĩa muốn giữ sau khi gộp"></textarea>
+                        <div class="vd-meaning-footer"><span ng-class="{'vd-too-long':group.meaning.length > 500}">{{group.meaning.length}} / 500 ký tự</span><div class="vd-meaning-options"><button type="button" class="vw-link" ng-click="vm.usePrimaryMeaning(group)" ng-disabled="vm.busy()">Giữ nghĩa bản chính</button><button type="button" class="vw-link" ng-click="vm.joinMeanings(group)" ng-disabled="vm.busy()">Ghép các nghĩa khác nhau</button></div></div>
+                        <p class="vd-hint">Mặc định giữ một nghĩa của bản chính. Nếu các bản cùng hoặc gần nghĩa, chỉ cần giữ một nghĩa rõ ràng và đầy đủ.</p>
+                        <div class="vd-topic-preview" ng-if="group.topics.length"><span ng-repeat="topic in group.topics track by topic.id"><i class="fa fa-bookmark-o" aria-hidden="true"></i> {{topic.name || ('Bài #' + topic.id)}}</span></div>
+                        <p class="vd-too-long" ng-if="group.included && group.chosen.length < 2">Chọn ít nhất 2 bản, hoặc bỏ chọn nhóm khỏi lượt lưu này.</p>
+                        <p class="vd-too-long" ng-if="group.included && (!group.meaning.trim() || group.meaning.length > 500)">Nhập nghĩa từ 1 đến 500 ký tự trước khi lưu.</p>
+                    </section>
+                    <p class="vd-hint" ng-if="group.summary.reviewed">Đã check {{group.summary.reviewedAt | date:'dd/MM/yyyy HH:mm'}}. Bỏ tích cạnh từ trong danh sách nếu muốn kiểm tra lại.</p>
+                </div>
+            </article>
         </section>
     </div>
+    <div class="vd-empty vd-detail" ng-if="!vm.groupsLoading && !vm.groupsError && !vm.pageGroups.length"><span class="vd-empty-icon"><i class="fa fa-check-circle" aria-hidden="true"></i></span><h2>{{vm.query ? 'Không tìm thấy nhóm phù hợp' : 'Đã kiểm tra hết các nhóm hiện tại'}}</h2><p>{{vm.query ? 'Thử tìm bằng từ hoặc cụm từ khác.' : 'Bật Hiện tất cả để xem lại các nhóm đã check.'}}</p></div>
+    <footer class="vd-batch-footer" ng-if="!vm.groupsLoading && !vm.groupsError && vm.pageGroups.length">
+        <div><strong>{{vm.selectedGroups().length}} nhóm trong lượt lưu</strong><span>Chọn bản chính và kiểm tra nghĩa của từng nhóm trước khi lưu.</span><div class="vd-error" role="alert" ng-if="vm.mergeError">{{vm.mergeError}}</div></div>
+        <button type="button" class="vw-btn vw-primary" ng-click="vm.confirmMerge()" ng-disabled="!vm.canMerge() || vm.confirmDialog"><i class="fa" ng-class="vm.merging ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i> {{vm.merging ? 'Đang lưu…' : ('Lưu & gộp ' + vm.selectedGroups().length + ' nhóm')}}</button>
+    </footer>
 </main>
 <script type="text/ng-template" id="vocabulary_merge_confirm.html">
-    <div class="vw-modal"><div class="vw-modal-head"><span class="vw-modal-symbol mint"><i class="fa fa-object-group" aria-hidden="true"></i></span><h2>Gộp {{vm.chosen.length}} bản “{{vm.primaryCard.question}}”?</h2><p>Giữ ID #{{vm.primaryId}} và chuyển toàn bộ {{vm.topics.length}} bài từ vựng về bản chính. Các liên kết topic bị trùng chỉ giữ một lần.</p></div>
-        <div class="vw-modal-body"><h3 class="vd-confirm-label">Nghĩa sau khi gộp</h3><p class="vd-confirm-meaning">{{vm.meaning || 'Chưa có nghĩa'}}</p><p class="vd-hint">Phiên âm, CEFR, mô tả và trạng thái theo bản chính. Các bản phụ được xóa sau khi chuyển liên kết; thao tác này không hoàn tác.</p><div class="vd-error" role="alert" ng-if="vm.mergeError">{{vm.mergeError}}</div></div>
-        <div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="vm.cancelMerge()" ng-disabled="vm.merging">Quay lại kiểm tra</button><button type="button" class="vw-btn vw-primary" ng-click="vm.merge()" ng-disabled="!vm.canMerge()"><i class="fa" ng-class="vm.merging ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i> {{vm.merging ? 'Đang gộp…' : 'Xác nhận gộp'}}</button></div>
+    <div class="vw-modal">
+        <div class="vw-modal-head"><span class="vw-modal-symbol mint"><i class="fa fa-object-group" aria-hidden="true"></i></span><h2>Lưu & gộp {{vm.confirmation.length}} nhóm?</h2><p>Các nhóm lưu thành công sẽ được đánh dấu Đã check. Các topic được chuyển đầy đủ về bản chính của từng nhóm.</p></div>
+        <div class="vw-modal-body"><section class="vd-confirm-item" ng-repeat="item in vm.confirmation track by item.payload.primaryId"><h3>{{item.word}} <span>#{{item.payload.primaryId}} · {{item.payload.sources.length}} bản · {{item.topics}} bài</span></h3><p class="vd-confirm-meaning">{{item.payload.meaning}}</p></section><p class="vd-hint">Các bản phụ được xóa sau khi chuyển liên kết. Nếu một nhóm không còn khớp dữ liệu, cả lượt lưu sẽ được hoàn tác.</p><div class="vd-error" role="alert" ng-if="vm.mergeError">{{vm.mergeError}}</div></div>
+        <div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="vm.cancelMerge()" ng-disabled="vm.merging">Quay lại kiểm tra</button><button type="button" class="vw-btn vw-primary" ng-click="vm.merge()" ng-disabled="!vm.canMerge()"><i class="fa" ng-class="vm.merging ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i> {{vm.merging ? 'Đang lưu…' : 'Xác nhận lưu & gộp'}}</button></div>
     </div>
 </script>

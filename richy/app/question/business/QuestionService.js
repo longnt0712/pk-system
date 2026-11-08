@@ -57,8 +57,8 @@
                 {timeout: options && options.timeout || 30000})
                 .then(function (response) { return response.data; });
         };
-        self.getVocabularyDuplicateGroups = function () {
-            return $http.get(baseUrl + 'question/vocabulary/duplicates', {timeout: 30000})
+        self.getVocabularyDuplicateGroups = function (includeReviewed) {
+            return $http.get(baseUrl + 'question/vocabulary/duplicates', {timeout: 30000, params: {includeReviewed: !!includeReviewed}})
                 .then(function (response) { return response.data; });
         };
         self.getVocabularyDuplicateDetails = function (ids) {
@@ -67,6 +67,14 @@
         };
         self.mergeVocabularyDuplicates = function (payload) {
             return $http.post(baseUrl + 'question/vocabulary/duplicates/merge', payload, {timeout: 90000})
+                .then(function (response) { return response.data; });
+        };
+        self.mergeVocabularyDuplicateBatch = function (payload) {
+            return $http.post(baseUrl + 'question/vocabulary/duplicates/merge_batch', payload, {timeout: 90000})
+                .then(function (response) { return response.data; });
+        };
+        self.setVocabularyDuplicateReviewed = function (payload) {
+            return $http.post(baseUrl + 'question/vocabulary/duplicates/review', payload, {timeout: 30000})
                 .then(function (response) { return response.data; });
         };
         self.updateTestStatus = updateTestStatus;

@@ -42,9 +42,18 @@ public class VocabularyDuplicateService {
 
     @Transactional(readOnly = true)
     public List<VocabularyDuplicateDto.Group> groups() {
-        Long owner = currentUser().getId();
+        return groups(false);
+    }
+
+    private String reviewKey(String word, List<Long> ids) {
+        StringBuilder data = new StringBuilder(); part(data, wordKey(word));
+        for (Long id : new TreeSet<Long>(ids)) { part(data, id); }
+        return digest(data.toString());
+    }
+
+    private Map<String, VocabularyDuplicateDto.Group> groupedWords(Long owner) {
         // Scalar projection: do not hydrate every word's HTML, answers and topic collections.
-        List<Object[]> words = manager.createQuery("select q.id, q.question from Question q "
+        List<Object[]> words = manager.createQuery("select q.id, q.question, q.duplicateReviewedKey, q.duplicateReviewedAt from Question q "
                 + "where q.user.id = :owner and q.questionType.id = 6 and q.parent is null order by q.id", Object[].class)
                 .setParameter("owner", owner).getResultList();
         Map<String, VocabularyDuplicateDto.Group> grouped = new TreeMap<String, VocabularyDuplicateDto.Group>();
@@ -57,9 +66,22 @@ public class VocabularyDuplicateService {
             }
             group.getIds().add((Long) row[0]);
         }
+        for (Object[] row : words) {
+            VocabularyDuplicateDto.Group group = grouped.get(wordKey((String) row[1]));
+            if (group != null && row[2] != null && row[3] != null && row[2].equals(reviewKey(group.getWord(), group.getIds()))) {
+                group.setReviewed(true);
+                Date date = (Date) row[3];
+                if (group.getReviewedAt() == null || date.after(group.getReviewedAt())) { group.setReviewedAt(date); }
+            }
+        }
+        return grouped;
+    }
+
+    @Transactional(readOnly = true)
+    public List<VocabularyDuplicateDto.Group> groups(boolean includeReviewed) {
         List<VocabularyDuplicateDto.Group> result = new ArrayList<VocabularyDuplicateDto.Group>();
-        for (VocabularyDuplicateDto.Group group : grouped.values()) {
-            if (group.getCount() > 1) { result.add(group); }
+        for (VocabularyDuplicateDto.Group group : groupedWords(currentUser().getId()).values()) {
+            if ((!group.isReviewed() && group.getCount() > 1) || (includeReviewed && group.isReviewed())) { result.add(group); }
         }
         return result;
     }
@@ -96,7 +118,7 @@ public class VocabularyDuplicateService {
 
     @Transactional(readOnly = true)
     public List<VocabularyDuplicateDto.Card> details(List<Long> selected) {
-        List<Question> words = ownedWords(validIds(selected, 2), currentUser().getId(), false);
+        List<Question> words = ownedWords(validIds(selected, 1), currentUser().getId(), false);
         List<VocabularyDuplicateDto.Card> result = new ArrayList<VocabularyDuplicateDto.Card>();
         for (Question word : words) { result.add(new VocabularyDuplicateDto.Card(word, fingerprint(word))); }
         return result;
@@ -113,7 +135,8 @@ public class VocabularyDuplicateService {
         StringBuilder data = new StringBuilder();
         for (Object value : Arrays.asList(word.getId(), word.getQuestion(), word.getMotherTongue(), word.getPronounce(), word.getLevel(),
                 word.getDescription(), word.getExamples(), word.getAuthor(), word.getTitle(), word.getStatus(), word.getType(),
-                word.getTimeReviewd(), word.getCorrectAnswer(), word.getWrongAnswer(), word.getCountWords(), word.getModifyDate())) {
+                word.getTimeReviewd(), word.getCorrectAnswer(), word.getWrongAnswer(), word.getCountWords(), word.getModifyDate(),
+                word.getDuplicateReviewedKey(), word.getDuplicateReviewedAt())) {
             part(data, value);
         }
         List<String> links = new ArrayList<String>();
@@ -129,8 +152,12 @@ public class VocabularyDuplicateService {
             }
         }
         Collections.sort(links); for (String link : links) { part(data, link); }
+        return digest(data.toString());
+    }
+
+    private String digest(String data) {
         try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(data.toString().getBytes(StandardCharsets.UTF_8));
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(data.getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder();
             for (byte value : hash) { hex.append(String.format("%02x", value & 255)); }
             return hex.toString();
@@ -188,9 +215,15 @@ public class VocabularyDuplicateService {
         return (int) total;
     }
 
-    @Transactional
-    public VocabularyDuplicateDto.Result merge(VocabularyDuplicateDto.Merge request) {
-        User actor = currentUser();
+    private static class PreparedMerge {
+        private List<Long> ids, removed;
+        private Question primary;
+        private String meaning;
+        private int correct, wrong, reviewed;
+    }
+
+    private PreparedMerge prepareMerge(VocabularyDuplicateDto.Merge request, User actor, Set<Long> batchIds,
+            Map<String,VocabularyDuplicateDto.Group> currentGroups) {
         if (request == null || request.getPrimaryId() == null || request.getSources() == null) {
             throw new IllegalArgumentException("Chọn bản chính và các bản muốn gộp.");
         }
@@ -201,11 +234,18 @@ public class VocabularyDuplicateService {
         }
         List<Long> ids = validIds(requestedIds, 2);
         if (!ids.contains(request.getPrimaryId())) { throw new IllegalArgumentException("Bản chính phải nằm trong các bản được chọn."); }
-        // Same owner lock used by imports/word creation; sorted word locks serialize overlapping merges.
-        if (manager.find(User.class, actor.getId(), LockModeType.PESSIMISTIC_WRITE) == null) {
-            throw new AccessDeniedException("Tài khoản không còn tồn tại.");
+        for (Long id : ids) {
+            if (!batchIds.add(id)) { throw new IllegalArgumentException("Một bản từ vựng chỉ được xuất hiện trong một nhóm của lượt lưu."); }
         }
+        if (batchIds.size() > 5000) { throw new IllegalArgumentException("Một lượt lưu tối đa 5.000 bản từ vựng."); }
         List<Question> words = ownedWords(ids, actor.getId(), true);
+        if (request.getGroupIds() != null) {
+            List<Long> previewIds = validIds(request.getGroupIds(), 2);
+            VocabularyDuplicateDto.Group current = currentGroups.get(wordKey(words.get(0).getQuestion()));
+            if (current == null || !previewIds.equals(current.getIds()) || !previewIds.containsAll(ids)) {
+                throw new IllegalStateException("Nhóm có bản trùng mới hoặc đã thay đổi. Hãy tải lại danh sách trước khi gộp.");
+            }
+        }
         for (Question word : words) {
             if (!fingerprint(word).equals(expected.get(word.getId()))) {
                 throw new IllegalStateException("Từ hoặc topic đã được sửa ở nơi khác. Hãy tải lại nhóm và kiểm tra trước khi gộp.");
@@ -214,23 +254,90 @@ public class VocabularyDuplicateService {
         requireVocabularyOnly(ids);
         Question primary = words.stream().filter(word -> request.getPrimaryId().equals(word.getId())).findFirst().get();
         String meaning = request.getMeaning();
-        if (meaning == null) {
-            Set<String> meanings = new LinkedHashSet<String>();
-            for (Question word : words) { if (word.getMotherTongue() != null && !word.getMotherTongue().trim().isEmpty()) { meanings.add(word.getMotherTongue().trim()); } }
-            meaning = String.join(" / ", meanings);
+        if (meaning == null) { meaning = primary.getMotherTongue(); }
+        if (meaning == null || meaning.trim().isEmpty() || meaning.length() > VocabularyPolicy.MEANING_LENGTH) {
+            throw new IllegalArgumentException("Nhập nghĩa sau gộp từ 1 đến 500 ký tự.");
         }
-        if (meaning.length() > VocabularyPolicy.MEANING_LENGTH) { throw new IllegalArgumentException("Nghĩa sau gộp vượt 500 ký tự. Vui lòng rút gọn trước khi xác nhận."); }
-        int correct = sum(words, 0), wrong = sum(words, 1), reviewed = sum(words, 2);
-        primary.setMotherTongue(meaning.trim()); primary.setCorrectAnswer(correct); primary.setWrongAnswer(wrong); primary.setTimeReviewd(reviewed);
-        primary.setModifyDate(LocalDateTime.now()); primary.setModifiedBy(actor.getUsername()); manager.flush();
-        mergeLinks("QuestionTopic", "topic", ids, primary);
-        mergeLinks("CategoryQuestion", "category", ids, primary);
-        List<Long> removed = new ArrayList<Long>(ids); removed.remove(primary.getId());
-        // Keep answer/link IDs: saved QuestionAnswerTestResult rows continue referring to the same answers.
-        mutateIds("update QuestionAnswer a set a.question = :primary where a.question.id in :ids", removed, primary);
-        // Bulk deletion deliberately avoids orphanRemoval deleting the links/answers moved above.
-        mutateIds("delete from Question q where q.id in :ids", removed, null);
+        PreparedMerge prepared = new PreparedMerge();
+        prepared.ids = ids; prepared.primary = primary; prepared.meaning = meaning.trim();
+        prepared.correct = sum(words, 0); prepared.wrong = sum(words, 1); prepared.reviewed = sum(words, 2);
+        prepared.removed = new ArrayList<Long>(ids); prepared.removed.remove(primary.getId());
+        return prepared;
+    }
+
+    @Transactional
+    public VocabularyDuplicateDto.Result merge(VocabularyDuplicateDto.Merge request) {
+        return mergeBatch(Collections.singletonList(request)).get(0);
+    }
+
+    @Transactional
+    public List<VocabularyDuplicateDto.Result> mergeBatch(List<VocabularyDuplicateDto.Merge> requests) {
+        User actor = currentUser();
+        if (requests == null || requests.isEmpty() || requests.size() > 10) {
+            throw new IllegalArgumentException("Mỗi lượt lưu từ 1 đến 10 nhóm từ trùng.");
+        }
+        // Serialize merges/imports for this owner and validate every group before any write.
+        if (manager.find(User.class, actor.getId(), LockModeType.PESSIMISTIC_WRITE) == null) {
+            throw new AccessDeniedException("Tài khoản không còn tồn tại.");
+        }
+        Set<Long> batchIds = new HashSet<Long>(); List<PreparedMerge> prepared = new ArrayList<PreparedMerge>();
+        Map<String,VocabularyDuplicateDto.Group> currentGroups = groupedWords(actor.getId());
+        for (VocabularyDuplicateDto.Merge request : requests) { prepared.add(prepareMerge(request, actor, batchIds, currentGroups)); }
+        for (PreparedMerge item : prepared) {
+            Question primary = item.primary;
+            primary.setMotherTongue(item.meaning); primary.setCorrectAnswer(item.correct);
+            primary.setWrongAnswer(item.wrong); primary.setTimeReviewd(item.reviewed);
+            primary.setModifyDate(LocalDateTime.now()); primary.setModifiedBy(actor.getUsername()); manager.flush();
+            mergeLinks("QuestionTopic", "topic", item.ids, primary);
+            mergeLinks("CategoryQuestion", "category", item.ids, primary);
+            // Keep answer/link IDs so saved answers and historical results remain connected.
+            mutateIds("update QuestionAnswer a set a.question = :primary where a.question.id in :ids", item.removed, primary);
+            // Bulk deletion avoids orphanRemoval cascading into transferred links/answers.
+            mutateIds("delete from Question q where q.id in :ids", item.removed, null);
+        }
+        // Mark the whole remaining same-word group, including deliberately unselected senses.
+        // Its exact ID set is part of the key: a newly imported duplicate automatically reopens review.
+        Map<String, VocabularyDuplicateDto.Group> remaining = groupedWords(actor.getId());
+        Date reviewedAt = new Date();
+        for (PreparedMerge item : prepared) {
+            VocabularyDuplicateDto.Group group = remaining.get(wordKey(item.primary.getQuestion()));
+            item.primary.setDuplicateReviewedKey(reviewKey(group.getWord(), group.getIds()));
+            item.primary.setDuplicateReviewedAt(reviewedAt);
+            group.setReviewed(true); group.setReviewedAt(reviewedAt);
+        }
         manager.flush(); manager.clear();
-        return new VocabularyDuplicateDto.Result(new QuestionDto(manager.find(Question.class, primary.getId())), removed.size());
+        List<VocabularyDuplicateDto.Result> results = new ArrayList<VocabularyDuplicateDto.Result>();
+        for (PreparedMerge item : prepared) {
+            results.add(new VocabularyDuplicateDto.Result(new QuestionDto(manager.find(Question.class, item.primary.getId())), item.removed.size(),
+                    remaining.get(wordKey(item.primary.getQuestion()))));
+        }
+        return results;
+    }
+
+    @Transactional
+    public VocabularyDuplicateDto.Group setReviewed(VocabularyDuplicateDto.Review request) {
+        User actor = currentUser();
+        if (request == null || request.getSources() == null) { throw new IllegalArgumentException("Hãy tải nhóm từ trước khi đánh dấu."); }
+        List<Long> ids = new ArrayList<Long>(); Map<Long,String> expected = new HashMap<Long,String>();
+        for (VocabularyDuplicateDto.Source source : request.getSources()) {
+            if (source == null || source.getFingerprint() == null) { throw new IllegalArgumentException("Thiếu dữ liệu đối chiếu nhóm từ."); }
+            ids.add(source.getId()); expected.put(source.getId(),source.getFingerprint());
+        }
+        ids = validIds(ids,1);
+        if (manager.find(User.class, actor.getId(), LockModeType.PESSIMISTIC_WRITE) == null) { throw new AccessDeniedException("Tài khoản không còn tồn tại."); }
+        List<Question> words = ownedWords(ids,actor.getId(),true);
+        for (Question word : words) {
+            if (!fingerprint(word).equals(expected.get(word.getId()))) { throw new IllegalStateException("Nhóm từ đã thay đổi. Hãy tải lại trước khi đánh dấu."); }
+        }
+        VocabularyDuplicateDto.Group group = groupedWords(actor.getId()).get(wordKey(words.get(0).getQuestion()));
+        if (group == null || !new TreeSet<Long>(ids).equals(new TreeSet<Long>(group.getIds()))) {
+            throw new IllegalStateException("Có bản trùng mới trong nhóm. Hãy tải lại trước khi đánh dấu.");
+        }
+        for (Question word : words) { word.setDuplicateReviewedKey(null); word.setDuplicateReviewedAt(null); }
+        Date date = request.isReviewed() ? new Date() : null;
+        if (request.isReviewed()) { words.get(0).setDuplicateReviewedKey(reviewKey(group.getWord(),ids)); words.get(0).setDuplicateReviewedAt(date); }
+        manager.flush(); manager.clear();
+        group.setReviewed(request.isReviewed()); group.setReviewedAt(date);
+        return group;
     }
 }

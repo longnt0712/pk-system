@@ -1,6 +1,7 @@
 package com.globits.richy.domain;
 
 import java.util.Set;
+import java.util.Date;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -12,6 +13,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.globits.core.domain.BaseObject;
@@ -21,6 +24,15 @@ import com.globits.security.domain.User;
 @Table(name = "tbl_question")
 @XmlRootElement
 public class Question extends BaseObject{
+	@Column(name="duplicate_reviewed_key", length=64)
+	private String duplicateReviewedKey;
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="duplicate_reviewed_at")
+	private Date duplicateReviewedAt;
+	public String getDuplicateReviewedKey() { return duplicateReviewedKey; }
+	public void setDuplicateReviewedKey(String value) { duplicateReviewedKey = value; }
+	public Date getDuplicateReviewedAt() { return duplicateReviewedAt; }
+	public void setDuplicateReviewedAt(Date value) { duplicateReviewedAt = value; }
 	@Lob
 	@Column(name="question")
 	private String question;
