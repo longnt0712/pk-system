@@ -329,6 +329,81 @@ test('pasting an image file is atomic and invalid clipboard images cannot replac
  }finally{await f.context.close();}
 });
 
+test('selected text gets a safe blue underlined link from its context menu and survives reopening and print',async()=>{
+ for(const width of [1440,390]){
+  const f=await fixture({width});try{
+   const {page,server}=f;await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   const text=page.locator('.study-notebook-text');await text.fill('Biên bản cuộc họp');
+   await text.evaluate(node=>{node.focus();node.setSelectionRange(0,8)});
+   const box=await text.boundingBox();
+   await text.dispatchEvent('contextmenu',{clientX:box.x+60,clientY:box.y+55});
+   await page.getByRole('menuitem',{name:/Chèn liên kết/}).click();
+   const form=page.getByRole('dialog',{name:'Chèn liên kết',exact:true});
+   assert.equal(await form.locator('.study-notebook-link-selection').innerText(),'Biên bản');
+   await form.getByRole('textbox',{name:'Địa chỉ liên kết'}).fill('javascript:alert(1)');
+   await form.getByRole('button',{name:'Áp dụng',exact:true}).click();assert.match(await form.getByRole('alert').innerText(),/hợp lệ/);
+   const url='https://tnttphungkhoang.com/tai-lieu?a=1&b=2';
+   await form.getByRole('textbox',{name:'Địa chỉ liên kết'}).fill(url);
+   await form.getByRole('button',{name:'Áp dụng',exact:true}).click();
+   const link=page.locator('.study-notebook-rich-text .ql-editor a');
+   assert.equal(await link.innerText(),'Biên bản');assert.equal(await link.getAttribute('href'),url);
+   assert.deepEqual(await link.evaluate(node=>({color:getComputedStyle(node).color,decoration:getComputedStyle(node).textDecorationLine})),{color:'rgb(26, 115, 232)',decoration:'underline'});
+   assert.equal(await page.locator('.study-notebook-rich-text .ql-editor').innerText(),'Biên bản cuộc họp');
+   await page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.equal(server.entry.document.textDelta.ops[0].attributes.link,url);
+   const print=await page.evaluate(()=>injector.get('TnttDocumentPrint').markup('Biên bản',window.vm.session.document));
+   assert.match(print,/href="https:\/\/tnttphungkhoang.com\/tai-lieu\?a=1&amp;b=2"/);assert.match(print,/color:#1a73e8;text-decoration:underline/);
+   await page.locator('.study-notebook-close').click();await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   assert.equal(await page.locator('.study-notebook-rich-text .ql-editor a').innerText(),'Biên bản');
+   const selected=await page.evaluate(()=>{Quill.find(document.querySelector('.study-notebook-rich-text')).setSelection(0,8);const r=getSelection().getRangeAt(0).getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});
+   await page.mouse.click(selected.x,selected.y,{button:'right'});await page.getByRole('menuitem',{name:/Chèn liên kết/}).click();
+   assert.equal(await form.getByRole('textbox',{name:'Địa chỉ liên kết'}).inputValue(),url);
+   await form.getByRole('textbox',{name:'Địa chỉ liên kết'}).press('Escape');await form.waitFor({state:'detached'});
+   assert.equal(await page.locator('.study-notebook-dialog').isVisible(),true,'Escape closes the link editor before closing the note');
+   assert.deepEqual(server.errors,[]);
+  }finally{await f.context.close()}
+ }
+});
+
+test('typed, pasted and legacy website addresses become links without linking trailing punctuation or following words',async()=>{
+ const f=await fixture();try{
+  const {page,server}=f;await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+  await page.locator('.study-notebook-text').fill('Xem https://example.com/path?q=1, và www.ieltsroom.com nhé.');
+  const rich=page.locator('.study-notebook-rich-text .ql-editor');await rich.waitFor();
+  assert.deepEqual(await rich.locator('a').allTextContents(),['https://example.com/path?q=1','www.ieltsroom.com']);
+  await rich.press('Control+End');await page.keyboard.type(' https://example.org/path ');await page.keyboard.type('tiếp tục');
+  await page.getByRole('button',{name:'Lưu ngay',exact:true}).click();await page.waitForFunction(()=>window.vm.session.status==='saved');
+  assert.equal(await rich.locator('a').last().innerText(),'https://example.org/path');
+  assert.equal(await rich.locator('a').last().getAttribute('href'),'https://example.org/path');
+  assert.ok(server.entry.document.text.endsWith('tiếp tục'));
+  await rich.press('Control+End');await page.keyboard.type(' ');
+  await rich.evaluate(node=>{const data=new DataTransfer();data.setData('text/plain','https://example.net/pasted');node.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}))});
+  await rich.locator('a[href="https://example.net/pasted"]').waitFor();
+  await page.getByRole('button',{name:'Lưu ngay',exact:true}).click();await page.waitForFunction(()=>window.vm.session.status==='saved');
+  assert.ok(server.entry.document.textDelta.ops.some(op=>op.attributes?.link==='https://example.net/pasted'));
+  assert.deepEqual(server.errors,[]);
+ }finally{await f.context.close()}
+});
+
+test('a link dialog follows its selected text across a remote edit and the resulting destination syncs to both editors',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7}),b=await fixture({collaboration:room,userId:8});
+ try{
+  await openLive(a);await openLive(b);
+  await a.page.locator('.study-notebook-text').fill('Biên bản họp');
+  await b.page.waitForFunction(()=>window.vm.session.document.text==='Biên bản họp');
+  const text=a.page.locator('.study-notebook-text');await text.evaluate(node=>{node.focus();node.setSelectionRange(0,8)});await text.press('Control+k');
+  const form=a.page.getByRole('dialog',{name:'Chèn liên kết',exact:true});await form.waitFor();
+  await b.page.locator('.study-notebook-text').press('Control+Home');await b.page.keyboard.insertText('Mới: ');
+  await a.page.waitForFunction(()=>window.vm.session.document.text==='Mới: Biên bản họp');
+  await form.getByRole('textbox',{name:'Địa chỉ liên kết'}).fill('https://example.com/minutes');
+  await form.getByRole('button',{name:'Áp dụng',exact:true}).click();
+  for(const f of[a,b])await f.page.locator('.study-notebook-rich-text .ql-editor a').getByText('Biên bản',{exact:true}).waitFor();
+  assert.equal(room.server.entry.document.text,'Mới: Biên bản họp');
+  assert.equal(room.server.entry.document.textDelta.ops.find(op=>op.attributes?.link).attributes.link,'https://example.com/minutes');
+  assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
+});
+
 test('text colors apply to the selection or future typing and underline persists in documents and print',async()=>{
  for(const width of [1440,390]){
   const f=await fixture({width});try{

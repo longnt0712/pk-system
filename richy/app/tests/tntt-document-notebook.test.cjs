@@ -87,6 +87,19 @@ test('selected text formatting is saved with matching plain text and rejects uns
  s.destroy();
 });
 
+test('web links persist with selected text and unsafe destinations cannot enter a draft',async()=>{
+ const f=fixture(),s=f.session();await s.ready;
+ s.document.text='Biên bản';
+ s.document.textDelta={ops:[{insert:'Biên bản',attributes:{link:'https://tnttphungkhoang.com/tai-lieu?a=1&b=2',bold:true}},{insert:'\n'}]};
+ s.changed();await s.save();assert.equal(s.status,'saved');
+ assert.deepEqual(plain(f.remote().document.textDelta),plain(s.document.textDelta));
+ for(const link of ['bad','javascript:alert(1)','data:text/html,test','file:///tmp/test','//example.com','https://example.com/a" onclick="x','https://example.com/a\\b','https://example.com/a\u2028b','https://'+'a'.repeat(2048)]){
+  assert.throws(()=>f.store.validDocument({...blank(),text:'Biên bản',textDelta:{ops:[{insert:'Biên bản',attributes:{link}},{insert:'\n'}]}}),/Định dạng/);
+ }
+ assert.throws(()=>f.store.validDocument({...blank(),text:'',textDelta:{ops:[{insert:'\n',attributes:{link:'https://example.com'}}]}}),/Định dạng/);
+ s.destroy();
+});
+
 test('table rows, merged cells and embedded clipboard images survive the note store without changing plain text',async()=>{
  const f=fixture(),s=f.session();await s.ready;
  const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=';

@@ -455,6 +455,29 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void linksSurviveSavingAndPublicSharingButUnsafeUrlsAreRejected() {
+        Long id = create("DOCUMENT", null);
+        TnttDocumentRequest save = new TnttDocumentRequest();
+        save.revision = revision(id);
+        save.document = blank();
+        save.document.put("text", "Biên bản");
+        Map<String, Object> delta = map("ops", Arrays.asList(
+                map("insert", "Biên bản", "attributes", map("link", "https://tnttphungkhoang.com/tai-lieu?a=1&b=2", "bold", true)),
+                map("insert", "\n")));
+        save.document.put("textDelta", delta);
+        service.save(id, save);
+        assertEquals(delta, ((Map<?, ?>) service.read(id, null).get("document")).get("textDelta"));
+        String token = service.enablePublicLink(id).get("token");
+        assertEquals(delta, ((Map<?, ?>) service.readPublicLink(token).get("document")).get("textDelta"));
+        for (String link : Arrays.asList("bad", "javascript:alert(1)", "data:text/html,test", "file:///tmp/test", "//example.com",
+                "https://example.com/a\" onclick=\"x", "https://example.com/a\\b", "https://example.com/a\u2028b")) {
+            save.document.put("textDelta", map("ops", Arrays.asList(
+                    map("insert", "Biên bản", "attributes", map("link", link)), map("insert", "\n"))));
+            invalid(() -> validate(save.document));
+        }
+    }
+
+    @Test
     public void pastedTablesAndImagesSurviveSavingPublicLinksAndPublishedSnapshots() {
         Long id = create("DOCUMENT", null);
         String image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=";

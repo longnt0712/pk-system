@@ -33,7 +33,7 @@
             if (base.textDelta || local.textDelta || remote.textDelta || content.ops.some(function (op) { return op.attributes || typeof op.insert !== 'string'; })) {
                 result.textDelta = {ops: content.ops.map(function (op) {
                     var clean = {insert: op.insert}, attributes = {};
-                    ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes && op.attributes[key]) attributes[key] = op.attributes[key]; });
+                    ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes && op.attributes[key]) attributes[key] = op.attributes[key]; });
                     if (Object.keys(attributes).length) clean.attributes = attributes;
                     return clean;
                 })};

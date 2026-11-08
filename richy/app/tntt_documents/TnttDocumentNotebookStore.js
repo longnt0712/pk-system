@@ -7,6 +7,9 @@
             var liveService = $injector && $injector.has('TnttDocumentLive') ? $injector.get('TnttDocumentLive') : null;
             function copy(value) { return JSON.parse(JSON.stringify(value)); }
             function positive(value) { return Number.isInteger(Number(value)) && Number(value) > 0; }
+            function validLink(value) {
+                return typeof value === 'string' && value.length <= 2048 && /^https?:\/\/(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\[[a-f0-9:]+\])(?::[0-9]{1,5})?(?:[/?#][^\s<>"'\\\u0000-\u001f\u007f]*)?$/i.test(value);
+            }
             function blank() { return {text: '', orientation: 'portrait', pattern: 'lined', strokes: [], pageCount: 3}; }
             function utf8Length(text) {
                 var size = 0;
@@ -64,6 +67,7 @@
                                     var v = op.attributes[key];
                                     if (key === 'bold' || key === 'italic' || key === 'underline') { return typeof v !== 'boolean'; }
                                     if (key === 'color') { return typeof v !== 'string' || !/^#[a-fA-F0-9]{6}$/.test(v); }
+                                    if (key === 'link') { return image || softbreak || !/[^\n]/.test(op.insert) || !validLink(v); }
                                     if (key === 'width') { return !image || typeof v !== 'string' || !/^[1-9][0-9]{0,3}$/.test(v) || Number(v) > 4096; }
                                     if (key === 'table') { return image || softbreak || !/^\n+$/.test(op.insert) || typeof v !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(v); }
                                     if (key === 'table-colspan' || key === 'table-rowspan') { return !op.attributes.table || typeof v !== 'string' || !/^[1-9][0-9]?$/.test(v) || Number(v) > 50; }
@@ -71,7 +75,7 @@
                                 })) {
                                 throw new Error('Định dạng chữ tài liệu không hợp lệ.');
                             }
-                            ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = op.attributes[key]; } });
+                            ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = op.attributes[key]; } });
                         }
                         if (Object.keys(attributes).length) { clean.attributes = attributes; }
                         return clean;

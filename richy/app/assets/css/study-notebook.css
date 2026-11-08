@@ -123,6 +123,24 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-rich-text .ql-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: .4em 0; }
 .study-notebook-rich-text .ql-editor td { border: 1px solid #aeb9ca; padding: .25em .5em; vertical-align: top; overflow-wrap: anywhere; }
 .study-notebook-rich-text .ql-editor img { max-width: 100%; height: auto; vertical-align: middle; }
+.study-notebook-rich-text .ql-editor a,
+.study-notebook-rich-text .ql-editor a * { color: #1a73e8 !important; text-decoration: underline; }
+.study-notebook-context-menu, .study-notebook-link-editor { position: absolute; z-index: 12; box-sizing: border-box; max-width: calc(100vw - 16px); border: 1px solid #dce3f0; border-radius: 10px; background: #fff; color: #334155; box-shadow: 0 8px 30px #17243b38; font: 13px/1.5 Arial,sans-serif; text-align: left; }
+.study-notebook-context-menu { width: 230px; padding: 5px; }
+.study-notebook-context-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 8px; border: 0; border-radius: 6px; color: inherit; background: transparent; text-align: left; cursor: pointer; font: inherit; }
+.study-notebook-context-menu button:hover, .study-notebook-context-menu button:focus-visible { color: #315bbe; background: #edf3ff; outline: 0; }
+.study-notebook-context-menu kbd { margin-left: auto; padding: 0; color: #8390a3; background: none; box-shadow: none; font: 10px Arial,sans-serif; }
+.study-notebook-link-editor { width: 340px; max-height: calc(100vh - 16px); overflow: auto; margin: 0; padding: 16px; }
+.study-notebook-link-editor strong { display: block; margin-bottom: 6px; color: #26344d; font-size: 14px; }
+.study-notebook-link-selection { margin: 0 0 12px; max-height: 40px; overflow: hidden; color: #728099; font-size: 12px; overflow-wrap: anywhere; }
+.study-notebook-link-editor label { display: block; margin: 0; font-size: 12px; font-weight: 600; }
+.study-notebook-link-editor input { box-sizing: border-box; width: 100%; height: 36px; margin-top: 5px; padding: 7px 9px; border: 1px solid #bccae1; border-radius: 6px; color: #26344d; background: #fff; font: 13px Arial,sans-serif; }
+.study-notebook-link-editor input:focus { outline: 2px solid #9db8ff; outline-offset: 1px; }
+.study-notebook-link-error { margin: 8px 0 0; color: #b42318; font-size: 12px; }
+.study-notebook-link-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+.study-notebook-link-actions button { padding: 6px 13px; border: 1px solid #dce3f0; border-radius: 6px; background: #fff; color: #536175; font: 600 12px Arial,sans-serif; cursor: pointer; }
+.study-notebook-link-actions button[type="submit"] { color: #fff; background: #315bbe; border-color: #315bbe; }
+.study-notebook-link-actions button:disabled { opacity: .55; cursor: default; }
 .study-notebook-live { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; color: #8b6b28; }
 .study-notebook-live.is-online { color: #047857; }
 .study-notebook-live__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

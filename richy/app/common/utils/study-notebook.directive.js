@@ -52,7 +52,10 @@
                     '<div class="study-notebook-palette-grid" role="group" aria-label="Màu có sẵn"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.paletteColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-keydown="notebook.paletteKey($event,$index)" ng-attr-tabindex="{{notebook.paletteFocusColor===color?0:-1}}" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button></div>',
                     '<div class="study-notebook-palette-label">Tùy chỉnh</div><div class="study-notebook-custom-colors"><button type="button" class="study-notebook-swatch" ng-repeat="color in notebook.customColors track by color" ng-style="{\'background-color\':color,color:notebook.colorContrast(color)}" ng-click="notebook.selectInkColor(color)" ng-attr-title="{{color.toUpperCase()}}" ng-attr-aria-label="Màu tùy chỉnh {{color.toUpperCase()}}" ng-attr-aria-pressed="{{notebook.inkColor===color}}"><svg ng-if="notebook.inkColor===color" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg></button><button type="button" class="study-notebook-add-color" ng-click="notebook.openCustomColor()" aria-label="Thêm màu tùy chỉnh" ng-attr-aria-expanded="{{notebook.customColorOpen}}" title="Thêm màu tùy chỉnh"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v8M6 10h8"/></svg></button></div>',
                     '<form class="study-notebook-custom-form" ng-if="notebook.customColorOpen" ng-submit="notebook.applyCustomColor()"><label>Mã màu HEX<input type="text" ng-model="notebook.customHex" ng-change="notebook.customHexChanged()" placeholder="#315BBE" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Mã màu HEX"></label><div><input type="color" ng-model="notebook.customColor" ng-change="notebook.customHex=notebook.customColor" aria-label="Chọn màu tùy chỉnh"><button type="submit" ng-disabled="!notebook.validCustomColor()">Áp dụng</button></div></form>',
-                    '</div></div>'
+                    '</div>',
+                    '<div class="study-notebook-context-menu" ng-if="notebook.contextOpen" ng-style="notebook.linkPosition" role="menu" aria-label="Tùy chọn đoạn chữ"><button type="button" role="menuitem" ng-mousedown="$event.preventDefault()" ng-click="notebook.openLink()"><i class="fa fa-link" aria-hidden="true"></i> Chèn liên kết <kbd>Ctrl+K</kbd></button></div>',
+                    '<form class="study-notebook-link-editor" ng-if="notebook.linkOpen" ng-style="notebook.linkPosition" ng-submit="notebook.applyLink()" role="dialog" aria-label="Chèn liên kết"><strong>Chèn liên kết</strong><p class="study-notebook-link-selection">{{notebook.linkSelection}}</p><label>Địa chỉ liên kết<input type="text" ng-model="notebook.linkUrl" ng-change="notebook.linkError=\'\'" aria-label="Địa chỉ liên kết" placeholder="https://example.com" maxlength="2048" autocomplete="off" spellcheck="false"></label><p class="study-notebook-link-error" ng-if="notebook.linkError" role="alert">{{notebook.linkError}}</p><div class="study-notebook-link-actions"><button type="button" ng-click="notebook.closeLink()">Hủy</button><button type="submit" ng-disabled="notebook.isLocked()">Áp dụng</button></div></form>',
+                    '</div>'
                 ].join(''),
                 link: function (scope, element, attrs, ui) {
                     var document = $window.document, host = element[0], button = host.querySelector('.study-notebook-toggle');
@@ -61,7 +64,7 @@
                     var paper = host.querySelector('.study-notebook-paper'), textarea = host.querySelector('.study-notebook-text');
                     var canvas = host.querySelector('.study-notebook-canvas'), context = canvas.getContext && canvas.getContext('2d');
                     var richHost = host.querySelector('.study-notebook-rich-text'), richEditor = null, richState = '', renderingRich = false;
-                    var pendingPaste = null, pasteSerial = 0, richRange = null, paletteTextRange = null;
+                    var pendingPaste = null, pasteSerial = 0, richRange = null, paletteTextRange = null, linkRange = null, linkTimer = null;
                     var remoteUnsubscribe = null;
                     var collabMerge = ui.paged && $injector.has && $injector.has('TnttDocumentMerge') ? $injector.get('TnttDocumentMerge') : null;
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
@@ -73,6 +76,7 @@
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null, palette = null, paletteTimer = null, paletteTrigger = null, backdropPressed = false;
                     ui.pages = []; ui.currentPage = 1;
+                    ui.contextOpen = false; ui.linkOpen = false; ui.linkUrl = ''; ui.linkError = '';
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
@@ -119,6 +123,7 @@
                             undo = undo.map(rebase); redo = redo.map(rebase);
                         } catch (error) { undo = []; redo = []; }
                         if (paletteTextRange) { paletteTextRange = collabMerge.selection(paletteTextRange, before, after); }
+                        if (linkRange) { linkRange = collabMerge.selection(linkRange, before, after); }
                         richRange = range; knownStrokes = after.strokes; knownContent = {text: after.text, textDelta: after.textDelta, strokes: after.strokes};
                         lastHistoryKind = ''; cacheDirty = true; setInkSelection(null);
                         return function () {
@@ -126,7 +131,7 @@
                             if (richEditor) {
                                 if (active && range) {
                                     richEditor.setSelection(range.index, range.length, 'silent');
-                                    if (!range.length && formats) ['bold', 'italic', 'underline', 'color'].forEach(function (key) { richEditor.format(key, formats[key] || false, 'silent'); });
+                                    if (!range.length && formats) ['bold', 'italic', 'underline', 'color', 'link'].forEach(function (key) { richEditor.format(key, formats[key] || false, 'silent'); });
                                 }
                             } else if (range) { textarea.value = after.text; if (textarea.setSelectionRange) textarea.setSelectionRange(range.index, range.index + range.length); }
                             scheduleLayout(); digest();
@@ -252,12 +257,103 @@
                     function currentTextRange() {
                         return richEditor ? richEditor.getSelection() || richRange || {index: richEditor.getLength() - 1, length: 0} : {index: textarea.selectionStart, length: textarea.selectionEnd - textarea.selectionStart};
                     }
-                    function richTextChanged() {
+                    function validLink(value) {
+                        return typeof value === 'string' && value.length <= 2048 && /^https?:\/\/(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\[[a-f0-9:]+\])(?::[0-9]{1,5})?(?:[/?#][^\s<>"'\\\u0000-\u001f\u007f]*)?$/i.test(value);
+                    }
+                    function normalizedLink(value) {
+                        var url = String(value || '').trim();
+                        if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) { url = 'https://' + url; }
+                        try { url = new $window.URL(url).href; } catch (error) { return ''; }
+                        return validLink(url) ? url : '';
+                    }
+                    function detectedLinks(ops, includeTail) {
+                        // Embeds occupy one Quill position even though they are not plain text.
+                        var text = ops.map(function (op) { return typeof op.insert === 'string' ? op.insert : op.insert.softbreak ? '\u2028' : '\ufffc'; }).join('');
+                        var pattern = /(^|[\s([{])((?:https?:\/\/|www\.)[^\s<>"'\\\ufffc]+|(?:[a-z0-9][a-z0-9-]*\.)+[a-z]{2,24}(?::[0-9]{1,5})?(?:[/?#][^\s<>"'\\\ufffc]*)?)/gi;
+                        var result = [], match;
+                        while ((match = pattern.exec(text))) {
+                            var label = match[2].replace(/[.,;:!?]+$/, '');
+                            [['(', ')'], ['[', ']'], ['{', '}']].forEach(function (pair) {
+                                while (label.endsWith(pair[1]) && label.split(pair[1]).length > label.split(pair[0]).length) { label = label.slice(0, -1); }
+                            });
+                            var index = match.index + match[1].length, url = normalizedLink(label);
+                            if (url && (includeTail || index + label.length < text.length - 1)) { result.push({index: index, length: label.length, url: url}); }
+                        }
+                        return result;
+                    }
+                    function linkifyRichEditor(includeTail) {
+                        var Delta = $window.Quill.import('delta'), change = new Delta(), cursor = 0;
+                        detectedLinks(richEditor.getContents().ops, includeTail).forEach(function (link) {
+                            var current = richEditor.getFormat(link.index, link.length).link;
+                            // Keep an explicitly chosen destination, even when its label looks like a URL.
+                            if (current) { return; }
+                            change.retain(link.index - cursor).retain(link.length, {link: link.url}); cursor = link.index + link.length;
+                        });
+                        if (change.ops.length) { richEditor.updateContents(change, 'silent'); }
+                    }
+                    function popupPosition(x, y, width, height) {
+                        var origin = overlay.getBoundingClientRect(), viewportWidth = $window.innerWidth || document.documentElement.clientWidth;
+                        return {left: (Math.max(8, Math.min(x, viewportWidth - Math.min(width, viewportWidth - 16) - 8)) - origin.left) + 'px',
+                            top: (Math.max(8, Math.min(y, $window.innerHeight - height - 8)) - origin.top) + 'px'};
+                    }
+                    ui.closeLink = function (restore) {
+                        var range = linkRange; ui.contextOpen = false; ui.linkOpen = false; linkRange = null;
+                        $timeout.cancel(linkTimer); linkTimer = null;
+                        if (restore !== false && range && richEditor && visible()) { richEditor.setSelection(range.index, range.length, 'silent'); }
+                    };
+                    ui.openLink = function () {
+                        if (ui.isLocked() || !ui.canFormatText()) { return; }
+                        var range = linkRange || currentTextRange();
+                        if (!range || !range.length) { return; }
+                        ui.closePalette(false); flushText(); finishStroke(true); createRichEditor();
+                        if (!richEditor) { return; }
+                        linkRange = {index: range.index, length: range.length};
+                        ui.linkSelection = richEditor.getText(range.index, range.length);
+                        ui.linkUrl = richEditor.getFormat(range.index, range.length).link || '';
+                        if (typeof ui.linkUrl !== 'string') { ui.linkUrl = ''; }
+                        var bounds = dialog.getBoundingClientRect();
+                        ui.linkPosition = popupPosition(bounds.left + Math.max(16, (bounds.width - 340) / 2), bounds.top + 90, 340, 250);
+                        ui.contextOpen = false; ui.linkOpen = true; ui.linkError = '';
+                        $timeout.cancel(linkTimer);
+                        linkTimer = $timeout(function () {
+                            linkTimer = null;
+                            var input = overlay.querySelector('.study-notebook-link-editor input');
+                            if (visible() && ui.linkOpen && input) { input.focus(); input.select(); }
+                        }, 0, false);
+                    };
+                    ui.applyLink = function () {
+                        if (ui.isLocked() || !richEditor || !linkRange) { return; }
+                        var url = normalizedLink(ui.linkUrl), range = linkRange;
+                        if (!url) { ui.linkError = 'Nhập một địa chỉ website hợp lệ, ví dụ https://example.com.'; return; }
+                        if (!range.length || range.index + range.length > richEditor.getLength() - 1) {
+                            ui.linkError = 'Đoạn chữ đã thay đổi. Hãy chọn lại đoạn cần chèn liên kết.'; return;
+                        }
+                        lastHistoryKind = ''; richEditor.formatText(range.index, range.length, 'link', url, 'user');
+                        lastHistoryKind = 'format'; ui.closeLink(); richSelectionChanged(range);
+                    };
+                    function textContextMenu(event) {
+                        if (!visible() || ui.isLocked() || !ui.canFormatText()) { return; }
+                        if (event.target !== textarea && !(richEditor && richEditor.root.contains(event.target))) { return; }
+                        var range = richEditor ? richEditor.getSelection() : currentTextRange();
+                        if (!range || !range.length) { return; }
+                        event.preventDefault(); event.stopPropagation();
+                        applyInput(function () {
+                            ui.closeLink(false); ui.closePalette(false); linkRange = {index: range.index, length: range.length};
+                            ui.contextOpen = true; ui.linkPosition = popupPosition(event.clientX, event.clientY, 230, 45);
+                            linkTimer = $timeout(function () {
+                                linkTimer = null;
+                                var item = overlay.querySelector('.study-notebook-context-menu button');
+                                if (visible() && ui.contextOpen && item) { item.focus(); }
+                            }, 0, false);
+                        });
+                    }
+                    function richTextChanged(change) {
                         if (renderingRich || !ui.session || ui.readOnly) { return; }
+                        if (!composing) { linkifyRichEditor(!change || change.ops && change.ops.some(function (op) { return typeof op.insert === 'string' && op.insert.length > 1; })); }
                         var doc = ui.session.document;
                         var delta = {ops: richEditor.getContents().ops.map(function (op) {
                             var value = {insert: op.insert}, attributes = {};
-                            ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (name) {
+                            ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (name) {
                                 if (op.attributes && op.attributes[name]) { attributes[name] = op.attributes[name]; }
                             });
                             if (Object.keys(attributes).length) { value.attributes = attributes; }
@@ -271,7 +367,9 @@
                         markChanged(); scheduleLayout(); digest();
                     }
                     function syncRichEditor() {
-                        if (!ui.session || !ui.paged || !richHost || (!richEditor && !ui.session.document.textDelta)) { return; }
+                        if (!ui.session || !ui.paged || !richHost) { return; }
+                        if (!richEditor && !ui.session.document.textDelta && !detectedLinks([{insert: ui.session.document.text + '\n'}], document.activeElement !== textarea).length) { return; }
+                        var legacyRange = !richEditor && document.activeElement === textarea ? currentTextRange() : null;
                         if (!richEditor) { createRichEditor(); }
                         if (!richEditor) { return; }
                         richEditor.enable(!ui.isLocked());
@@ -280,9 +378,11 @@
                             renderingRich = true;
                             try {
                                 richEditor.setContents(ui.session.document.textDelta || {ops: [{insert: ui.session.document.text + '\n'}]}, 'silent');
+                                linkifyRichEditor(true);
                                 richState = state;
                             } finally { renderingRich = false; }
                         }
+                        if (legacyRange) { richEditor.setSelection(legacyRange.index, legacyRange.length, 'silent'); }
                     }
                     function createRichEditor() {
                         if (richEditor || !ui.canFormatText() || !richHost) { return; }
@@ -299,7 +399,7 @@
                             }
                         });
                         ui.richActive = true; richHost.classList.remove('ng-hide'); textarea.classList.add('ng-hide');
-                        richEditor = new Quill(richHost, {formats: ['bold', 'italic', 'underline', 'color', 'table', 'table-colspan', 'table-rowspan', 'image', 'softbreak'], modules: {toolbar: false, history: false, table: true}});
+                        richEditor = new Quill(richHost, {formats: ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'image', 'softbreak'], modules: {toolbar: false, history: false, table: true}});
                         // Quill's rectangular-cell balancer does not account for merged cells.
                         // Preserve their real grid instead of adding empty cells after a keystroke.
                         richEditor.getModule('table').balanceTables = function () {
@@ -309,6 +409,15 @@
                         };
                         richEditor.clipboard.addMatcher('TD', pastedCell);
                         richEditor.clipboard.addMatcher('TH', pastedCell);
+                        richEditor.clipboard.addMatcher('A', function (node, delta) {
+                            var Delta = Quill.import('delta'), source = node.getAttribute('href') || '';
+                            var url = /^https?:\/\//i.test(source) ? normalizedLink(source) : '';
+                            return new Delta(delta.ops.map(function (op) {
+                                var attributes = angular.extend({}, op.attributes); delete attributes.link;
+                                if (url && typeof op.insert === 'string' && !/[\n\u2028]/.test(op.insert)) { attributes.link = url; }
+                                return {insert: op.insert, attributes: attributes};
+                            }));
+                        });
                         richEditor.clipboard.addMatcher('BR', function (node, delta) {
                             return node.classList.contains('study-notebook-softbreak') ? new (Quill.import('delta'))().insert({softbreak: true}) : delta;
                         });
@@ -335,7 +444,7 @@
                         var contents = new Delta();
                         inline.ops.forEach(function (op) {
                             var attributes = {};
-                            ['bold', 'italic', 'underline', 'color', 'width'].forEach(function (key) { if (op.attributes && op.attributes[key]) { attributes[key] = op.attributes[key]; } });
+                            ['bold', 'italic', 'underline', 'color', 'link', 'width'].forEach(function (key) { if (op.attributes && op.attributes[key]) { attributes[key] = op.attributes[key]; } });
                             if (cell.tagName === 'TH') { attributes.bold = true; }
                             if (typeof op.insert === 'string') {
                                 op.insert.split(/[\n\u2028]/).forEach(function (part, index) { if (index) { contents.insert({softbreak: true}); } if (part) { contents.insert(part, attributes); } });
@@ -488,6 +597,9 @@
                             if (control) { control.$setViewValue(value); if (control.$commitViewValue) { control.$commitViewValue(); } }
                             ui.session.document.text = value; recordTextEdit(); markChanged();
                         }
+                        if (!ui.readOnly && ui.canFormatText() && detectedLinks([{insert: ui.session.document.text + '\n'}], true).length) {
+                            createRichEditor(); if (richEditor) { richTextChanged(); }
+                        }
                     }
                     function positionOverlay() {
                         var bounds = button.getBoundingClientRect();
@@ -524,6 +636,7 @@
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
                         releasePaste(); ui.pasteError = '';
+                        ui.closeLink(false);
                         ui.closePalette(false);
                         flushText(); finishStroke(true); setInkSelection(null); compositionEnd(); saveNow(); ui.isOpen = false;
                         if (ui.session && ui.session.setVisible) { ui.session.setVisible(false); }
@@ -548,6 +661,7 @@
                     ui.changed = function () { if (!ui.isLocked()) { finishStroke(true); recordTextEdit(); markChanged(); scheduleLayout(); } };
                     ui.setTool = function (tool, event) {
                         if (tool === 'lasso' && (!ui.inkSelection || ui.isLocked())) { return; }
+                        ui.closeLink(false);
                         ui.closePalette(false); flushText(); finishStroke(true); lastHistoryKind = '';
                         if (tool !== ui.tool) { setInkSelection(null); }
                         ui.tool = tool; scheduleDraw();
@@ -995,7 +1109,8 @@
                         event.stopPropagation();
                         if ((event.key === 'Escape' || event.keyCode === 27) && !event.isComposing) {
                             event.preventDefault();
-                            if (ui.paletteOpen) { digest(ui.closePalette); }
+                            if (ui.contextOpen || ui.linkOpen) { digest(ui.closeLink); }
+                            else if (ui.paletteOpen) { digest(ui.closePalette); }
                             else if (inkGesture || selectedInk) { digest(function () { finishStroke(false); setInkSelection(null); }); }
                             else { digest(ui.close); }
                             return;
@@ -1003,6 +1118,8 @@
                         if ((event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 's') { event.preventDefault(); digest(ui.save); return; }
                         if (event.key !== 'Tab' && event.keyCode !== 9) { return; }
                         var controls = Array.prototype.slice.call(dialog.querySelectorAll('button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex="0"]'));
+                        var linkPopup = overlay.querySelector(ui.linkOpen ? '.study-notebook-link-editor' : '.study-notebook-context-menu');
+                        if ((ui.linkOpen || ui.contextOpen) && linkPopup) { controls = Array.prototype.slice.call(linkPopup.querySelectorAll('button:not([disabled]),input:not([disabled])')); }
                         if (ui.paletteOpen && palette) { controls = controls.concat(Array.prototype.slice.call(palette.querySelectorAll('button:not([disabled]):not([tabindex="-1"]),input:not([disabled])'))); }
                         controls = controls.filter(function (node) { return node.getClientRects().length > 0; });
                         if (!controls.length) { event.preventDefault(); return; }
@@ -1014,6 +1131,9 @@
                         if (!visible() || ui.isLocked() || event.isComposing || composing) { return; }
                         var key = String(event.key || '').toLowerCase();
                         var inText = event.target === textarea || !!richEditor && richEditor.root.contains(event.target);
+                        if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && key === 'k' && ui.canFormatText()) {
+                            event.preventDefault(); event.stopImmediatePropagation(); applyInput(ui.openLink); return;
+                        }
                         if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && (key === 'b' || key === 'i' || key === 'u') && ui.canFormatText()) {
                             event.preventDefault(); event.stopImmediatePropagation();
                             applyInput(function () { ui.formatText({b:'bold', i:'italic', u:'underline'}[key]); }); return;
@@ -1024,6 +1144,15 @@
                             applyInput(key === 'y' || event.shiftKey ? ui.redo : ui.undo); return;
                         }
                         if (!inText || event.ctrlKey || event.metaKey || event.altKey) { return; }
+                        if (key === ' ' && !event.shiftKey && richEditor && ui.richActive) {
+                            var linkCaret = richEditor.getSelection();
+                            if (linkCaret && !linkCaret.length && richEditor.getFormat(linkCaret.index, 0).link) {
+                                event.preventDefault(); event.stopImmediatePropagation();
+                                var plainFormats = angular.extend({}, richEditor.getFormat(linkCaret.index, 0)); delete plainFormats.link;
+                                richEditor.insertText(linkCaret.index, ' ', plainFormats, 'user');
+                                richEditor.setSelection(linkCaret.index + 1, 0, 'silent'); richEditor.format('link', false, 'silent'); return;
+                            }
+                        }
                         var tab = event.key === 'Tab' && !event.shiftKey;
                         var unindent = event.shiftKey && (event.key === ' ' || event.code === 'Space');
                         if (!tab && !unindent) { return; }
@@ -1061,7 +1190,15 @@
                     function stopKeys(event) { if (visible()) { event.stopPropagation(); } }
                     function backdropPointerDown(event) { backdropPressed = event.target === overlay; }
                     function backdrop(event) { if (event.target === overlay && backdropPressed) { digest(ui.close); } }
+                    function clickTextLink(event) {
+                        var link = event.target.closest && event.target.closest('.study-notebook-rich-text a');
+                        if (link && richHost && richHost.contains(link) && !ui.readOnly && !event.ctrlKey && !event.metaKey) { event.preventDefault(); }
+                    }
                     function blockBackground(event) {
+                        if (ui.contextOpen || ui.linkOpen) {
+                            var popup = overlay.querySelector(ui.linkOpen ? '.study-notebook-link-editor' : '.study-notebook-context-menu');
+                            if (popup && !popup.contains(event.target)) { digest(function () { ui.closeLink(false); }); }
+                        }
                         var trigger = ui.paletteOpen && colorTrigger();
                         if (ui.paletteOpen && palette && !palette.contains(event.target) && !(trigger && trigger.contains(event.target))) {
                             digest(function () { if (colorTrigger() === trigger) { ui.closePalette(false); } });
@@ -1108,6 +1245,8 @@
                     overlay.addEventListener('keydown', keydown); overlay.addEventListener('keyup', stopKeys); overlay.addEventListener('keypress', stopKeys);
                     overlay.addEventListener('keydown', textShortcut, true);
                     overlay.addEventListener('paste', pasteContent, true);
+                    overlay.addEventListener('contextmenu', textContextMenu);
+                    overlay.addEventListener('click', clickTextLink, true);
                     if (richHost) { richHost.addEventListener('load', scheduleLayout, true); }
                     overlay.addEventListener('click', backdrop); document.addEventListener('click', blockBackground, true);
                     overlay.addEventListener('pointerdown', backdropPointerDown);
@@ -1139,6 +1278,8 @@
                         overlay.removeEventListener('keydown', keydown); overlay.removeEventListener('keyup', stopKeys); overlay.removeEventListener('keypress', stopKeys);
                         overlay.removeEventListener('keydown', textShortcut, true);
                         overlay.removeEventListener('paste', pasteContent, true);
+                        overlay.removeEventListener('contextmenu', textContextMenu);
+                        overlay.removeEventListener('click', clickTextLink, true);
                         if (richHost) { richHost.removeEventListener('load', scheduleLayout, true); }
                         overlay.removeEventListener('click', backdrop); document.removeEventListener('click', blockBackground, true);
                         overlay.removeEventListener('pointerdown', backdropPointerDown);

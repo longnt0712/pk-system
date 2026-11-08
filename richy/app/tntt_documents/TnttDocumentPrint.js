@@ -2,10 +2,28 @@
     'use strict';
     angular.module('Hrm.TnttDocuments').factory('TnttDocumentPrint', ['$window', '$q', function (window, q) {
         function escape(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+        function validLink(value) {
+            return typeof value === 'string' && value.length <= 2048 && /^https?:\/\/(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\[[a-f0-9:]+\])(?::[0-9]{1,5})?(?:[/?#][^\s<>"'\\\u0000-\u001f\u007f]*)?$/i.test(value);
+        }
+        function linkMarkup(text, url) { return '<a href="' + escape(url) + '" target="_blank" rel="noopener noreferrer" style="color:#1a73e8;text-decoration:underline">' + escape(text) + '</a>'; }
+        function linkedText(text, destination) {
+            if (validLink(destination)) { return linkMarkup(text, destination); }
+            var pattern = /(^|[\s([{])((?:https?:\/\/|www\.)[^\s<>"'\\]+|(?:[a-z0-9][a-z0-9-]*\.)+[a-z]{2,24}(?::[0-9]{1,5})?(?:[/?#][^\s<>"'\\]*)?)/gi;
+            var html = '', end = 0, match;
+            while ((match = pattern.exec(text))) {
+                var label = match[2].replace(/[.,;:!?]+$/, '');
+                [['(', ')'], ['[', ']'], ['{', '}']].forEach(function (pair) {
+                    while (label.endsWith(pair[1]) && label.split(pair[1]).length > label.split(pair[0]).length) { label = label.slice(0, -1); }
+                });
+                var start = match.index + match[1].length, url = /^https?:\/\//i.test(label) ? label : 'https://' + label;
+                if (validLink(url)) { html += escape(text.slice(end, start)) + linkMarkup(label, url); end = start + label.length; }
+            }
+            return html + escape(text.slice(end));
+        }
         function formattedText(doc) {
-            if (!doc.textDelta || !Array.isArray(doc.textDelta.ops)) { return escape(doc.text); }
             var lines = [], inline = '', html = '', row = null;
-            doc.textDelta.ops.forEach(function (op) {
+            var ops = doc.textDelta && Array.isArray(doc.textDelta.ops) ? doc.textDelta.ops : [{insert: String(doc.text || '') + '\n'}];
+            ops.forEach(function (op) {
                 var attrs = op.attributes || {};
                 if (op.insert && typeof op.insert === 'object') {
                     if (op.insert.softbreak === true) { inline += '<br>'; return; }
@@ -16,7 +34,7 @@
                 }
                 String(op.insert || '').split('\n').forEach(function (part, index) {
                     if (index) { lines.push({html: inline || '<br>', attrs: attrs}); inline = ''; }
-                    var text = escape(part);
+                    var text = linkedText(part, attrs.link);
                     if (attrs.bold) { text = '<strong>' + text + '</strong>'; }
                     if (attrs.italic) { text = '<em>' + text + '</em>'; }
                     if (attrs.underline) { text = '<u>' + text + '</u>'; }

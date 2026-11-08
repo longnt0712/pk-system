@@ -192,6 +192,7 @@ public final class TnttDocumentPayload {
                         boolean valid = false;
                         if ("bold".equals(key) || "italic".equals(key) || "underline".equals(key)) valid = v instanceof Boolean;
                         else if ("color".equals(key)) valid = v instanceof String && ((String) v).matches("#[a-fA-F0-9]{6}");
+                        else if ("link".equals(key)) valid = !embedded && ((String) insert).matches("(?s).*[^\\n].*") && validLink(v);
                         else if ("width".equals(key)) valid = image && v instanceof String && ((String) v).matches("[1-9][0-9]{0,3}") && Integer.parseInt((String) v) <= 4096;
                         else if ("table".equals(key)) valid = !embedded && ((String) insert).matches("\\n+") && v instanceof String && ((String) v).matches("[a-zA-Z0-9_-]{1,80}");
                         else if ("table-colspan".equals(key) || "table-rowspan".equals(key)) valid = attributes.containsKey("table") && v instanceof String && ((String) v).matches("[1-9][0-9]?") && Integer.parseInt((String) v) <= 50;
@@ -199,7 +200,7 @@ public final class TnttDocumentPayload {
                             throw new IllegalArgumentException("Định dạng chữ tài liệu không hợp lệ.");
                     }
                     Map<String, Object> cleanAttributes = new LinkedHashMap<>();
-                    for (String key : Arrays.asList("bold", "italic", "underline", "color", "table", "table-colspan", "table-rowspan", "width"))
+                    for (String key : Arrays.asList("bold", "italic", "underline", "color", "link", "table", "table-colspan", "table-rowspan", "width"))
                         if (attributes.containsKey(key) && !Boolean.FALSE.equals(attributes.get(key))) cleanAttributes.put(key, attributes.get(key));
                     if (!cleanAttributes.isEmpty()) cleanOp.put("attributes", cleanAttributes);
                 }
@@ -213,6 +214,11 @@ public final class TnttDocumentPayload {
         if (data.getBytes(StandardCharsets.UTF_8).length > 8 * 1024 * 1024)
             throw new IllegalArgumentException("Tài liệu vượt dung lượng 8 MB.");
         return data;
+    }
+
+    private static boolean validLink(Object value) {
+        return value instanceof String && ((String) value).length() <= 2048
+                && ((String) value).matches("(?iU)https?://(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\\[[a-f0-9:]+\\])(?::[0-9]{1,5})?(?:[/?#][^\\s<>\"'\\\\\\x00-\\x1f\\x7f]*)?");
     }
 
     private static void validateImage(String source) {
