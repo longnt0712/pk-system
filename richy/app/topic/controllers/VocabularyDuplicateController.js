@@ -26,7 +26,7 @@
             var name = key(summary.word), state = drafts[name];
             if (!state) {
                 state = drafts[name] = {uid: ++sequence, cards: [], selected: {}, chosen: [], topics: [],
-                    meaning: '', meaningEdited: false, included: !summary.reviewed, loaded: false, request: 0};
+                    meaning: '', meaningEdited: false, keepPrimaryMeaning: false, included: !summary.reviewed, loaded: false, request: 0};
             }
             if (state.summary && !sameIds(state.summary.ids,summary.ids)) { state.loaded = false; state.request++; }
             state.summary = summary;
@@ -48,7 +48,9 @@
             });
             state.joinedMeaning = meanings.join(' / ');
             state.topics = Array.from(topics.values()).sort(function (a,b) { return (a.name || '').localeCompare(b.name || '', 'vi', {numeric:true}); });
-            if (!state.meaningEdited) { state.meaning = state.primaryCard && state.primaryCard.motherTongue || ''; }
+            if (!state.meaningEdited) {
+                state.meaning = state.keepPrimaryMeaning ? (state.primaryCard && state.primaryCard.motherTongue || '') : state.joinedMeaning;
+            }
         }
         function load(state, force) {
             if (state.loaded && !force) { return $q.when(); }
@@ -124,8 +126,8 @@
             state.cards.forEach(function (card) { state.selected[card.id] = selected; }); recalculate(state);
         };
         vm.meaningChanged = function (state) { state.meaningEdited = true; vm.mergeError = ''; };
-        vm.usePrimaryMeaning = function (state) { state.meaningEdited = false; recalculate(state); };
-        vm.joinMeanings = function (state) { state.meaning = state.joinedMeaning; state.meaningEdited = true; };
+        vm.usePrimaryMeaning = function (state) { state.keepPrimaryMeaning = true; state.meaningEdited = false; recalculate(state); };
+        vm.joinMeanings = function (state) { state.keepPrimaryMeaning = false; state.meaningEdited = false; recalculate(state); };
         vm.selectedGroups = function () { return vm.pageGroups.filter(function (state) { return state.included; }); };
         function ready(state) {
             return state.loaded && !state.loading && !state.error && !state.stale && state.chosen.length >= 2 && state.primaryCard

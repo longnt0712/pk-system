@@ -62,16 +62,32 @@ test('only ten details load per page; edited definitions and selections survive 
     page.query='';await page.filterGroups();assert.equal(page.pageGroups[0].meaning,'Nghĩa biên tập');
 });
 
-test('default keeps one primary definition, optional distinct meanings join with slash, topics form a union',async()=>{
+test('default joins distinct meanings with slash and updates selected sources without overwriting manual edits',async()=>{
     const f=fixture(),page=f.page;await tick();const group=page.pageGroups[0];
-    assert.equal(group.primaryId,10);assert.equal(group.meaning,'tối thiểu');
+    assert.equal(group.primaryId,10);assert.equal(group.meaning,'tối thiểu / rất ít');
     assert.deepEqual(plain(group.topics).map(t=>t.id),[1,2]);
-    page.joinMeanings(group);assert.equal(group.meaning,'tối thiểu / rất ít');
-    group.selected[20]=false;page.changeSelection(group);assert.equal(group.meaning,'tối thiểu / rất ít');
+    group.selected[20]=false;page.changeSelection(group);assert.equal(group.meaning,'tối thiểu');
+    group.selected[20]=true;page.changeSelection(group);assert.equal(group.meaning,'tối thiểu / rất ít');
+    page.usePrimaryMeaning(group);assert.equal(group.meaning,'tối thiểu');
+    group.selected[20]=false;page.changeSelection(group);
     page.usePrimaryMeaning(group);assert.equal(group.meaning,'tối thiểu');assert.equal(group.topics.length,1);
     page.selectPrimary(group,f.cards[1]);assert.equal(group.primaryId,20);assert.equal(group.meaning,'rất ít');
+    page.joinMeanings(group);assert.equal(group.meaning,'tối thiểu / rất ít');
     group.meaning='Giữ phần đang sửa';page.meaningChanged(group);
     page.selectPrimary(group,f.cards[0]);assert.equal(group.meaning,'Giữ phần đang sửa');
+});
+
+test('activist preview and confirmed merge retain both definitions by default and remove only exact duplicates',async()=>{
+    const first='nhà hoạt động (vd: chính trị...)',second='phần tử tích cực';
+    const f=fixture({groups:[{word:'activist',ids:[13918,88607,88608],reviewed:false}],cards:[
+        {id:13918,question:'activist',motherTongue:first,fingerprint:'a',questionTopics:[]},
+        {id:88607,question:'activist',motherTongue:second,fingerprint:'b',questionTopics:[]},
+        {id:88608,question:'activist',motherTongue:' '+first+' ',fingerprint:'c',questionTopics:[]}
+    ]}),page=f.page;await tick();
+    assert.equal(page.pageGroups[0].meaning,first+' / '+second);
+    page.confirmMerge();await page.merge();
+    assert.equal(f.payloads[0][0].meaning,first+' / '+second);
+    assert.equal(page.lastBatch.removed,2);assert.equal(page.reviewedCount,1);
 });
 
 test('one confirmation saves ten groups, checks acknowledged groups and fills the next pending page',async()=>{
