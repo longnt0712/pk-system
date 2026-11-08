@@ -348,6 +348,11 @@ test('selected text gets a safe blue underlined link from its context menu and s
    const link=page.locator('.study-notebook-rich-text .ql-editor a');
    assert.equal(await link.innerText(),'Biên bản');assert.equal(await link.getAttribute('href'),url);
    assert.deepEqual(await link.evaluate(node=>({color:getComputedStyle(node).color,decoration:getComputedStyle(node).textDecorationLine})),{color:'rgb(26, 115, 232)',decoration:'underline'});
+   await f.context.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Linked website</title>'}));
+   const opened=page.waitForEvent('popup');await link.click();const target=await opened;
+   await target.waitForLoadState('domcontentloaded');assert.equal(target.url(),url);
+   assert.equal(await target.evaluate(()=>window.opener),null,'The linked website cannot control the document tab');
+   assert.match(page.url(),/\/tai-lieu$/);assert.equal(await page.locator('.study-notebook-dialog').isVisible(),true);await target.close();
    assert.equal(await page.locator('.study-notebook-rich-text .ql-editor').innerText(),'Biên bản cuộc họp');
    await page.waitForFunction(()=>window.vm.session.status==='saved');
    assert.equal(server.entry.document.textDelta.ops[0].attributes.link,url);

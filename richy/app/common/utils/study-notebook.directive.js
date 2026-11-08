@@ -1192,7 +1192,12 @@
                     function backdrop(event) { if (event.target === overlay && backdropPressed) { digest(ui.close); } }
                     function clickTextLink(event) {
                         var link = event.target.closest && event.target.closest('.study-notebook-rich-text a');
-                        if (link && richHost && richHost.contains(link) && !ui.readOnly && !event.ctrlKey && !event.metaKey) { event.preventDefault(); }
+                        if (!link || !richHost || !richHost.contains(link)) { return; }
+                        if (!validLink(link.getAttribute('href'))) { event.preventDefault(); return; }
+                        link.setAttribute('target', '_blank');
+                        link.setAttribute('rel', 'noopener noreferrer');
+                        event.preventDefault();
+                        $window.open(link.href, '_blank', 'noopener,noreferrer');
                     }
                     function blockBackground(event) {
                         if (ui.contextOpen || ui.linkOpen) {
