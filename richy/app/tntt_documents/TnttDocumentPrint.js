@@ -45,14 +45,15 @@
             function endTable() { if (row !== null) { html += '</tr></tbody></table>'; row = null; } }
             lines.forEach(function (line) {
                 var attrs = line.attrs;
+                var alignment = ['center', 'right', 'justify'].indexOf(attrs.align) >= 0 ? ' style="text-align:' + attrs.align + '"' : '';
                 if (attrs.table) {
                     if (row === null) { html += '<table><tbody><tr>'; }
                     else if (row !== attrs.table) { html += '</tr><tr>'; }
                     row = attrs.table;
                     html += '<td' + ['colspan', 'rowspan'].map(function (name) {
                         var span = Number(attrs['table-' + name]); return span > 1 && span <= 50 ? ' ' + name + '="' + span + '"' : '';
-                    }).join('') + '>' + line.html + '</td>';
-                } else { endTable(); html += '<p>' + line.html + '</p>'; }
+                    }).join('') + alignment + '>' + line.html + '</td>';
+                } else { endTable(); html += '<p' + alignment + '>' + line.html + '</p>'; }
             });
             endTable();
             return html;

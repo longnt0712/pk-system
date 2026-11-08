@@ -9,24 +9,26 @@
     <link rel="stylesheet" href="/assets/css/external/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/external/font-awesome.min.css">
     <link rel="stylesheet" href="/assets/css/external/quill.snow-2.0.3.css">
-    <link rel="stylesheet" href="/assets/css/study-notebook.css?v=20261108-notebook-fullscreen-1">
-    <link rel="stylesheet" href="/tntt_documents/documents.css?v=20261108-notebook-fullscreen-1">
+    <link rel="stylesheet" href="/assets/css/study-notebook.css?v=20261108-public-compact-2">
+    <link rel="stylesheet" href="/tntt_documents/documents.css?v=20261108-public-compact-2">
     <script defer src="/assets/scripts/external/angular.min.js"></script>
     <script defer src="/assets/scripts/external/quill-2.0.3.js"></script>
-    <script defer src="/tntt_documents/shared.js?v=20261108-notebook-fullscreen-1"></script>
-    <script defer src="/common/utils/study-notebook.directive.js?v=20261108-notebook-fullscreen-1"></script>
+    <script defer src="/tntt_documents/shared.js?v=20261108-public-compact-2"></script>
+    <script defer src="/common/utils/study-notebook.directive.js?v=20261108-public-compact-2"></script>
 </head>
 <body>
-    <main class="td-page container" ng-controller="PublicDocumentController as vm" ng-cloak>
-        <header class="td-heading">
-            <div><span class="td-eyebrow">TNTT PHÙNG KHOANG</span><h1 ng-bind="vm.title || 'Tài liệu được chia sẻ'"></h1><p>Chỉ xem</p></div>
+    <main class="td-page td-public-page container" ng-controller="PublicDocumentController as vm" ng-cloak>
+        <header class="td-public-heading">
+            <span class="td-public-brand">TNTT PHÙNG KHOANG</span>
+            <h1 ng-bind="vm.title || 'Tài liệu được chia sẻ'" ng-attr-title="{{vm.title || 'Tài liệu được chia sẻ'}}"></h1>
+            <span class="td-public-badge">Chỉ xem</span>
+            <a class="td-public-home" href="/login">Về trang chủ</a>
+            <study-notebook ng-if="vm.document" test-id="1" test-mode="TNTT_PUBLIC" user-id="0" enabled="true"
+                session-opener="vm.openSession()" auto-open="true" read-only="true" paged="true"
+                title="{{vm.title}}" footer-label="Tài liệu được chia sẻ · Chỉ xem"></study-notebook>
         </header>
-        <nav class="td-tabs"><a href="/login">Về trang chủ</a></nav>
         <p ng-if="vm.loading" role="status">Đang tải tài liệu…</p>
         <p class="td-error" ng-if="vm.error" role="alert" ng-bind="vm.error"></p>
-        <study-notebook ng-if="vm.document" test-id="1" test-mode="TNTT_PUBLIC" user-id="0" enabled="true"
-            session-opener="vm.openSession()" auto-open="true" read-only="true" paged="true"
-            title="{{vm.title}}" footer-label="Tài liệu được chia sẻ · Chỉ xem"></study-notebook>
     </main>
 </body>
 </html>

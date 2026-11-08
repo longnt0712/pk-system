@@ -13,7 +13,7 @@
                 template: [
                     '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
                     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5L20 7v13.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M16 3.5V8h4M8 11h8M8 15h6M7 3.5v17"/></svg></button>',
-                    '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-class="{\'is-fullscreen\':notebook.fullscreen}" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
+                    '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-class="{\'is-fullscreen\':notebook.fullscreen,\'is-read-only\':notebook.readOnly}" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
                     '<section class="study-notebook-dialog" role="dialog" aria-modal="true" ng-attr-id="{{notebook.dialogId}}" ng-attr-aria-labelledby="{{notebook.dialogId}}-title">',
                     '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">{{notebook.title || \'Sổ tay học tập\'}}</h2></div>',
                     '<div class="study-notebook-heading__settings"><div class="study-notebook-paper-options"><label><span>Khổ giấy A4</span><select ng-model="notebook.session.document.orientation" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Hướng giấy A4"><option value="portrait">Dọc</option><option value="landscape">Ngang</option></select></label>',
@@ -27,6 +27,7 @@
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id,$event)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
                     '<div class="study-notebook-text-options" ng-if="notebook.paged && !notebook.readOnly"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'bold\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.bold}}" aria-label="In đậm" title="In đậm (Ctrl+B)"><strong>B</strong></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'italic\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.italic}}" aria-label="In nghiêng" title="In nghiêng (Ctrl+I)"><em>I</em></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="notebook.formatText(\'underline\')" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{!!notebook.textFormatting.underline}}" aria-label="Gạch chân" title="Gạch chân (Ctrl+U)"><u>U</u></button></div>',
+                    '<div class="study-notebook-text-options study-notebook-alignment" ng-if="notebook.paged && !notebook.readOnly" role="group" aria-label="Căn đoạn văn"><button type="button" ng-repeat="alignment in notebook.alignments" ng-mousedown="$event.preventDefault()" ng-click="notebook.alignText(alignment.id)" ng-disabled="notebook.isLocked() || !notebook.canFormatText()" ng-attr-aria-pressed="{{(notebook.textFormatting.align || \'left\')===alignment.id}}" ng-attr-aria-label="{{alignment.label}}" ng-attr-title="{{alignment.label}} (Ctrl+Shift+{{alignment.key}})"><i class="fa" ng-class="\'fa-align-\'+alignment.id" aria-hidden="true"></i></button></div>',
                     '<div class="study-notebook-ink-options" ng-if="!notebook.readOnly"><div class="study-notebook-color"><span>Màu</span><button type="button" class="study-notebook-color-toggle" ng-click="notebook.togglePalette($event)" ng-disabled="notebook.isLocked()" aria-label="Màu chữ và bút" aria-haspopup="dialog" ng-attr-aria-expanded="{{notebook.paletteOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}-palette" title="Chọn màu cho công cụ đang dùng"><span ng-style="{\'background-color\':notebook.inkColor}"></span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4 3 3 3-3"/></svg></button></div>',
                     '<button type="button" class="study-notebook-lasso-toggle" ng-if="notebook.inkSelection" ng-click="notebook.setTool(\'lasso\')" ng-disabled="notebook.isLocked()" ng-attr-aria-pressed="{{notebook.tool===\'lasso\'}}" title="Khoanh vùng để di chuyển nét viết tay"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 15C2 14 1 8 4 5c3-3 10-3 13 1 3 5-3 10-8 9H6" stroke-dasharray="2 2"/><path d="M8 14c-3 0-4 3-2 4s4-1 2-4Z"/></svg><span>Khoanh vùng</span></button>',
                     '<button type="button" class="study-notebook-history" ng-click="notebook.undo()" ng-disabled="!notebook.canUndo()" title="Hoàn tác chữ và nét vẽ" aria-label="Hoàn tác ghi chú"><i class="fa fa-undo" aria-hidden="true"></i></button>',
@@ -45,7 +46,7 @@
                     '<div class="study-notebook-page-boundary" ng-if="notebook.paged" ng-repeat="page in notebook.pages track by page" ng-style="{top:((page-1)*notebook.pageStep)+\'px\'}" aria-hidden="true"><span>Trang {{page}}</span></div>',
                     '</div></div></div>',
                     '<footer class="study-notebook-footer" ng-class="{\'is-selecting-ink\':notebook.tool===\'lasso\'}"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip" ng-if="notebook.tool!==\'lasso\'">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span><span class="study-notebook-tip study-notebook-lasso-tip" ng-if="notebook.tool===\'lasso\'" aria-live="polite">{{notebook.inkSelected ? \'Kéo vùng nét đã chọn đến vị trí mới.\' : \'Vẽ vòng quanh các nét cần di chuyển.\'}}</span>',
-                    '<nav class="study-notebook-pages" ng-if="notebook.paged" aria-label="Các trang tài liệu"><button type="button" ng-click="notebook.goToPage(notebook.currentPage-1)" ng-disabled="notebook.currentPage<=1" aria-label="Trang trước">‹</button><label>Trang<select ng-model="notebook.currentPage" ng-change="notebook.goToPage(notebook.currentPage)" ng-options="page as page for page in notebook.pages" aria-label="Chọn trang tài liệu"></select><span>/ {{notebook.pages.length}}</span></label><button type="button" ng-click="notebook.goToPage(notebook.currentPage+1)" ng-disabled="notebook.currentPage>=notebook.pages.length" aria-label="Trang sau">›</button><button type="button" class="study-notebook-add-page" ng-if="!notebook.readOnly" ng-click="notebook.addPage()" ng-disabled="notebook.isLocked() || notebook.pages.length>=80" title="Thêm trang A4, tối đa 80 trang">+ Thêm trang</button></nav></footer>',
+                    '<nav class="study-notebook-pages" ng-if="notebook.paged" aria-label="Các trang tài liệu"><button type="button" ng-click="notebook.goToPage(notebook.currentPage-1)" ng-disabled="notebook.currentPage<=1" aria-label="Trang trước">‹</button><label><select ng-model="notebook.currentPage" ng-change="notebook.goToPage(notebook.currentPage)" ng-options="page as page for page in notebook.pages" aria-label="Chọn trang tài liệu"></select><span>/ {{notebook.pages.length}}</span></label><button type="button" ng-click="notebook.goToPage(notebook.currentPage+1)" ng-disabled="notebook.currentPage>=notebook.pages.length" aria-label="Trang sau">›</button><button type="button" class="study-notebook-add-page" ng-if="!notebook.readOnly" ng-click="notebook.addPage()" ng-disabled="notebook.isLocked() || notebook.pages.length>=80" aria-label="Thêm trang" title="Thêm trang A4, tối đa 80 trang">+</button></nav></footer>',
                     '</section>',
                     '<div class="study-notebook-palette ng-hide" ng-if="notebook.isOpen && !notebook.readOnly" ng-show="notebook.paletteOpen" role="dialog" aria-label="Bảng màu chữ và bút" ng-attr-id="{{notebook.dialogId}}-palette">',
                     '<strong class="study-notebook-palette-heading">{{notebook.colorTools[notebook.colorTool].label}}</strong>',
@@ -77,6 +78,7 @@
                     var pageWidth = 794, pageHeight = 1123, scale = 1, dpr = 1, logicalWidth = 794, logicalHeight = 1123;
                     var zoomAnchor = null, palette = null, paletteTimer = null, paletteTrigger = null, backdropPressed = false;
                     ui.pages = []; ui.currentPage = 1;
+                    ui.alignments = [{id: 'left', label: 'Căn trái', key: 'L'}, {id: 'center', label: 'Căn giữa', key: 'E'}, {id: 'right', label: 'Căn phải', key: 'R'}, {id: 'justify', label: 'Căn đều hai bên', key: 'J'}];
                     ui.contextOpen = false; ui.linkOpen = false; ui.linkUrl = ''; ui.linkError = '';
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
@@ -394,7 +396,7 @@
                         var doc = ui.session.document;
                         var delta = {ops: richEditor.getContents().ops.map(function (op) {
                             var value = {insert: op.insert}, attributes = {};
-                            ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (name) {
+                            ['bold', 'italic', 'underline', 'color', 'link', 'align', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (name) {
                                 if (op.attributes && op.attributes[name]) { attributes[name] = op.attributes[name]; }
                             });
                             if (Object.keys(attributes).length) { value.attributes = attributes; }
@@ -440,7 +442,7 @@
                             }
                         });
                         ui.richActive = true; richHost.classList.remove('ng-hide'); textarea.classList.add('ng-hide');
-                        richEditor = new Quill(richHost, {formats: ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'image', 'softbreak'], modules: {toolbar: false, history: false, table: true}});
+                        richEditor = new Quill(richHost, {formats: ['bold', 'italic', 'underline', 'color', 'link', 'align', 'table', 'table-colspan', 'table-rowspan', 'image', 'softbreak'], modules: {toolbar: false, history: false, table: true}});
                         // Quill's rectangular-cell balancer does not account for merged cells.
                         // Preserve their real grid instead of adding empty cells after a keystroke.
                         richEditor.getModule('table').balanceTables = function () {
@@ -492,6 +494,8 @@
                             } else { contents.insert(op.insert, attributes); }
                         });
                         var attrs = {table: cell.parentElement.getAttribute('data-notebook-row') || 'row-' + (++pasteSerial)};
+                        var alignment = cell.style.textAlign || cell.getAttribute('align');
+                        if (['center', 'right', 'justify'].indexOf(alignment) >= 0) { attrs.align = alignment; }
                         ['colspan', 'rowspan'].forEach(function (name) {
                             var span = Number(cell.getAttribute(name));
                             if (span > 1 && span <= 50 && Math.floor(span) === span) { attrs['table-' + name] = String(span); }
@@ -620,6 +624,16 @@
                         var active = !!richEditor.getFormat(range.index, range.length)[format];
                         if (range.length) { richEditor.formatText(range.index, range.length, format, !active, 'user'); }
                         else { richEditor.format(format, !active, 'user'); }
+                        lastHistoryKind = 'format'; richSelectionChanged(range); scheduleLayout();
+                    };
+                    ui.alignText = function (alignment) {
+                        if (ui.isLocked() || !ui.canFormatText() || !ui.alignments.some(function (item) { return item.id === alignment; })) { return; }
+                        var range = currentTextRange();
+                        ui.closeLink(false); ui.closePalette(false); flushText(); finishStroke(true); ui.tool = 'text'; lastHistoryKind = '';
+                        createRichEditor(); if (!richEditor) { return; }
+                        range = range || {index: richEditor.getLength() - 1, length: 0};
+                        richEditor.setSelection(range.index, range.length, 'silent');
+                        richEditor.formatLine(range.index, range.length || 1, 'align', alignment === 'left' ? false : alignment, 'user');
                         lastHistoryKind = 'format'; richSelectionChanged(range); scheduleLayout();
                     };
                     function flushText() {
@@ -1170,10 +1184,42 @@
                         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
                         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
                     }
+                    function indentationEdits(text, range, outdent) {
+                        if (!range.length && !outdent) { return [{index: range.index, remove: 0, insert: '     '}]; }
+                        var start = range.index ? text.lastIndexOf('\n', range.index - 1) + 1 : 0;
+                        var starts = [start], next = text.indexOf('\n', start);
+                        while (range.length && next >= 0 && next < range.index + range.length - 1) { starts.push(next + 1); next = text.indexOf('\n', next + 1); }
+                        var edits = [];
+                        starts.forEach(function (index) {
+                            var spaces = text.slice(index, index + 5).match(/^ {1,5}/);
+                            if (!outdent) { edits.push({index: index, remove: 0, insert: '     '}); }
+                            else if (spaces) { edits.push({index: index, remove: spaces[0].length, insert: ''}); }
+                        });
+                        // A Tab inserted inside a line is also reversible, without deleting letters.
+                        if (outdent && !range.length && !edits.length) {
+                            var preceding = text.slice(start, range.index).match(/ {1,5}$/);
+                            if (preceding) { edits.push({index: range.index - preceding[0].length, remove: preceding[0].length, insert: ''}); }
+                        }
+                        return edits;
+                    }
+                    function indentedPosition(position, edits) {
+                        var offset = 0;
+                        for (var i = 0; i < edits.length; i++) {
+                            var edit = edits[i];
+                            if (position < edit.index) { break; }
+                            if (position <= edit.index + edit.remove) { return edit.index + offset + edit.insert.length; }
+                            offset += edit.insert.length - edit.remove;
+                        }
+                        return position + offset;
+                    }
                     function textShortcut(event) {
                         if (!visible() || ui.isLocked() || event.isComposing || composing) { return; }
                         var key = String(event.key || '').toLowerCase();
                         var inText = event.target === textarea || !!richEditor && richEditor.root.contains(event.target);
+                        var alignment = {l: 'left', e: 'center', r: 'right', j: 'justify'}[key];
+                        if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && inText && alignment && ui.canFormatText()) {
+                            event.preventDefault(); event.stopImmediatePropagation(); applyInput(function () { ui.alignText(alignment); }); return;
+                        }
                         if ((event.ctrlKey || event.metaKey) && !event.altKey && inText && key === 'k' && ui.canFormatText()) {
                             event.preventDefault(); event.stopImmediatePropagation(); applyInput(ui.openLink); return;
                         }
@@ -1197,36 +1243,42 @@
                             }
                         }
                         var tab = event.key === 'Tab' && !event.shiftKey;
-                        var unindent = event.shiftKey && (event.key === ' ' || event.code === 'Space');
+                        var unindent = event.shiftKey && (event.key === 'Tab' || event.key === ' ' || event.code === 'Space');
                         if (!tab && !unindent) { return; }
                         event.preventDefault(); event.stopImmediatePropagation();
                         if (richEditor && ui.richActive) {
                             var range = richEditor.getSelection();
                             if (!range) { return; }
-                            var prefix = richEditor.getText(0, range.index), spaces = prefix.match(/ {1,5}$/);
-                            if (unindent && !spaces) { return; }
+                            var contents = richEditor.getContents().ops.map(function (op) { return typeof op.insert === 'string' ? op.insert : '\ufffc'; }).join('');
+                            var edits = indentationEdits(contents, range, unindent);
+                            if (!edits.length) { return; }
                             lastHistoryKind = 'indent';
-                            if (tab) {
-                                if (range.length) { richEditor.deleteText(range.index, range.length, 'user'); }
-                                richEditor.insertText(range.index, '     ', richEditor.getFormat(range.index, 0), 'user');
-                                richEditor.setSelection(range.index + 5, 0, 'silent');
-                            } else {
-                                richEditor.deleteText(range.index - spaces[0].length, spaces[0].length, 'user');
-                                richEditor.setSelection(range.index - spaces[0].length, range.length, 'silent');
-                            }
+                            var change = new ($window.Quill.import('delta'))(), cursor = 0;
+                            edits.forEach(function (edit) {
+                                change.retain(edit.index - cursor).delete(edit.remove);
+                                if (edit.insert) {
+                                    var formats = richEditor.getFormat(edit.index, 0), inline = {};
+                                    ['bold', 'italic', 'underline', 'color'].forEach(function (key) { if (formats[key]) { inline[key] = formats[key]; } });
+                                    change.insert(edit.insert, inline);
+                                }
+                                cursor = edit.index + edit.remove;
+                            });
+                            richEditor.updateContents(change, 'user');
+                            var nextStart = indentedPosition(range.index, edits), nextEnd = indentedPosition(range.index + range.length, edits);
+                            richEditor.setSelection(nextStart, Math.max(0, nextEnd - nextStart), 'silent');
                             lastHistoryKind = 'indent'; return;
                         }
                         var text = textarea.value, start = textarea.selectionStart, end = textarea.selectionEnd;
-                        var cut = start;
-                        if (unindent) { while (cut > 0 && start - cut < 5 && text.charAt(cut - 1) === ' ') { cut--; } }
-                        if (unindent && cut === start) { return; }
-                        var value = tab ? text.slice(0, start) + '     ' + text.slice(end) : text.slice(0, cut) + text.slice(start);
-                        var caret = tab ? start + 5 : cut;
+                        var plainEdits = indentationEdits(text, {index: start, length: end - start}, unindent);
+                        if (!plainEdits.length) { return; }
+                        var value = text;
+                        plainEdits.slice().reverse().forEach(function (edit) { value = value.slice(0, edit.index) + edit.insert + value.slice(edit.index + edit.remove); });
+                        var caret = indentedPosition(start, plainEdits), selectionEnd = indentedPosition(end, plainEdits);
                         applyInput(function () {
                             ui.session.document.text = value; recordTextEdit('indent');
                             var model = angular.element(textarea).controller('ngModel');
                             if (model) { model.$setViewValue(value); if (model.$commitViewValue) { model.$commitViewValue(); } }
-                            textarea.value = value; textarea.setSelectionRange(caret, tab ? caret : end - (start - cut));
+                            textarea.value = value; textarea.setSelectionRange(caret, Math.max(caret, selectionEnd));
                             lastHistoryKind = 'indent'; markChanged(); scheduleLayout();
                         });
                     }

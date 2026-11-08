@@ -455,6 +455,30 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void paragraphAlignmentSurvivesSavingAndOnlyAcceptsSupportedBlockFormats() {
+        Long id = create("DOCUMENT", null);
+        TnttDocumentRequest save = new TnttDocumentRequest();
+        save.document = blank();
+        save.document.put("text", "Biên bản");
+        for (String alignment : Arrays.asList("center", "right", "justify")) {
+            save.revision = revision(id);
+            Map<String, Object> delta = map("ops", Arrays.asList(map("insert", "Biên bản"),
+                    map("insert", "\n", "attributes", map("align", alignment))));
+            save.document.put("textDelta", delta);
+            service.save(id, save);
+            assertEquals(delta, ((Map<?, ?>) service.read(id, null).get("document")).get("textDelta"));
+        }
+        for (String alignment : Arrays.asList("left", "start", "url(evil)")) {
+            save.document.put("textDelta", map("ops", Arrays.asList(map("insert", "Biên bản"),
+                    map("insert", "\n", "attributes", map("align", alignment)))));
+            invalid(() -> validate(save.document));
+        }
+        save.document.put("textDelta", map("ops", Arrays.asList(
+                map("insert", "Biên bản", "attributes", map("align", "center")), map("insert", "\n"))));
+        invalid(() -> validate(save.document));
+    }
+
+    @Test
     public void linksSurviveSavingAndPublicSharingButUnsafeUrlsAreRejected() {
         Long id = create("DOCUMENT", null);
         TnttDocumentRequest save = new TnttDocumentRequest();

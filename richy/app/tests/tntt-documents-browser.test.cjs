@@ -480,7 +480,7 @@ test('a guest can open the public notebook without a session and a revoked link 
    if(pathname==='/service/public/tntt-documents/'+token){
     assert.equal(route.request().method(),'GET');
     assert.equal(route.request().headers().authorization,undefined);
-    return route.fulfill({status:revoked?404:200,json:{title:'Biên bản công khai',document:{...blank(),text:'Nội dung chỉ xem'}}});
+    return route.fulfill({status:revoked?404:200,json:{title:'20261108. Câu hỏi hội chợ và phân công chuẩn bị cho các gian hàng',document:{...blank(),text:'Nội dung chỉ xem'}}});
    }
    const file=path.join(app,pathname.slice(1));
    if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});
@@ -493,6 +493,21 @@ test('a guest can open the public notebook without a session and a revoked link 
   assert.equal(await notebook.evaluate(element=>element.readOnly),true);
   assert.equal(await page.locator('.study-notebook-tools').count(),0);
   assert.deepEqual(await context.cookies(),[]);
+  for(const width of[1440,768,390,320]){
+   await page.setViewportSize({width,height:950});await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const geometry=await page.evaluate(()=>{
+    const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,center:r.top+r.height/2}};
+    const heading=document.querySelector('.td-public-heading'),notebook=document.querySelector('.study-notebook-heading');
+    return{header:rect(heading),items:[...heading.children].filter(node=>node.getClientRects().length).map(rect),notebook:rect(notebook),controls:[...notebook.querySelectorAll('.study-notebook-heading__copy,.study-notebook-heading__settings,.study-notebook-heading__actions')].map(rect),dialogTop:document.querySelector('.study-notebook-dialog').getBoundingClientRect().top,width:innerWidth,scrollWidth:document.documentElement.scrollWidth};
+   });
+   assert.ok(geometry.header.height<=52,'public header uses one compact row: '+JSON.stringify(geometry));
+   assert.ok(geometry.items.every(item=>Math.abs(item.center-geometry.header.center)<2),'public header items share the same row');
+   assert.ok(geometry.notebook.height<=40&&geometry.controls.every(item=>Math.abs(item.center-geometry.notebook.center)<2),'viewer title and zoom remain on one row: '+JSON.stringify(geometry));
+   assert.ok(geometry.dialogTop<120,'the document starts near the top instead of below a large banner');
+   assert.ok(geometry.scrollWidth<=geometry.width+1,'compact public header does not overflow the phone');
+   assert.equal(await page.getByRole('link',{name:'Về trang chủ',exact:true}).getAttribute('href'),'/login');
+   if(width===1440||width===390)await page.screenshot({path:path.join(app,'../../.tmp/tntt-public-compact-'+width+'.png')});
+  }
   revoked=true;
   await page.reload();
   await page.getByRole('alert').filter({hasText:'đã bị thu hồi'}).waitFor();
@@ -660,7 +675,10 @@ test('TNTT documents open with three A4 pages and save added pages with handwrit
    }
    await draw();
    assert.ok(server.entry.document.strokes[0].points[0][1]>1123);
-   await button('+ Thêm trang').click();
+   assert.equal(await page.locator('.study-notebook-add-page').innerText(),'+');
+   assert.doesNotMatch(await page.locator('.study-notebook-pages label').innerText(),/Trang/);
+   assert.equal(await page.locator('.study-notebook-pages label > span').innerText(),'/ 3');
+   await button('Thêm trang').click();
    await page.waitForFunction(()=>window.vm.session?.status==='saved');
    assert.equal(await chooser.locator('option').count(),4);
    assert.equal(await chooser.locator('option:checked').innerText(),'4');
@@ -684,7 +702,7 @@ test('TNTT documents open with three A4 pages and save added pages with handwrit
    await page.waitForFunction(()=>document.querySelector('.study-notebook-text')?.readOnly);
    await page.waitForFunction(()=>document.querySelector('[aria-label="Chọn trang tài liệu"]')?.options.length===4);
    assert.equal(await chooser.locator('option').count(),4);
-   assert.equal(await button('+ Thêm trang').count(),0);
+   assert.equal(await button('Thêm trang').count(),0);
    await chooser.selectOption({label:'4'});
    assert.equal(await page.locator('.study-notebook-text').inputValue(),saved.text);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -812,6 +830,81 @@ test('notebook fullscreen fills the viewport, exits with its button or Escape an
    assert.deepEqual(server.errors,[]);
   }finally{await f.context.close()}
  }
+});
+
+test('paragraph alignment buttons and Ctrl Shift L E R J persist with links, print and reopening',async()=>{
+ for(const width of[1440,390]){
+  const f=await fixture({width});try{
+   const {page,server}=f;await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   const text=page.locator('.study-notebook-text'),contents='BIÊN BẢN HỌP\nNội dung cuộc họp và công việc được phân công.\nKết thúc';
+   await text.fill(contents);await text.evaluate(node=>{node.focus();node.setSelectionRange(0,0)});await text.press('Control+Shift+E');
+   const rich=page.locator('.study-notebook-rich-text .ql-editor');await rich.locator('p.ql-align-center').first().waitFor();
+   for(const[key,alignment,label]of[['R','right','Căn phải'],['J','justify','Căn đều hai bên'],['L','left','Căn trái'],['E','center','Căn giữa']]){
+    await rich.press('Control+Home');await rich.press('Control+Shift+'+key);
+    assert.equal(await rich.locator('p').first().evaluate(node=>getComputedStyle(node).textAlign),alignment);
+    assert.equal(await page.getByRole('button',{name:label,exact:true}).getAttribute('aria-pressed'),'true');
+   }
+   await page.evaluate(()=>{const q=Quill.find(document.querySelector('.study-notebook-rich-text'));q.setSelection(0,q.getLength()-1)});
+   await rich.press('Control+Shift+E');
+   assert.equal(await rich.locator('p.ql-align-center').count(),3);
+   await page.evaluate(()=>Quill.find(document.querySelector('.study-notebook-rich-text')).setSelection(0,12));
+   await page.getByRole('button',{name:'Căn phải',exact:true}).click();
+   assert.equal(await rich.locator('p').first().evaluate(node=>getComputedStyle(node).textAlign),'right');
+   await rich.press('Control+End');await page.keyboard.type(' https://example.com ');
+   await page.getByRole('button',{name:'Lưu ngay',exact:true}).click();await page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.equal(server.entry.document.textDelta.ops.filter(op=>op.attributes?.align==='right').length,1);
+   assert.equal(server.entry.document.textDelta.ops.filter(op=>op.attributes?.align==='center').length,2);
+   assert.equal(server.entry.document.textDelta.ops.find(op=>op.attributes?.link)?.attributes.link,'https://example.com/');
+   const markup=await page.evaluate(()=>injector.get('TnttDocumentPrint').markup('Họp',window.vm.session.document));
+   assert.match(markup,/<p style="text-align:right">BIÊN BẢN HỌP<\/p>/);
+   assert.match(markup,/<p style="text-align:center">/);
+   await page.locator('.study-notebook-close').click();await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await rich.locator('p.ql-align-right').waitFor();
+   assert.equal(await rich.locator('p.ql-align-right').count(),1);assert.equal(await rich.locator('p.ql-align-center').count(),2);
+   await page.screenshot({path:path.join(app,'../../.tmp/tntt-note-alignment-'+width+'.png')});
+   assert.deepEqual(server.errors,[]);
+  }finally{await f.context.close()}
+ }
+});
+
+test('Shift Tab outdents selected lines without leaving the plain or rich editor or deleting their contents',async()=>{
+ for(const width of[1440,390]){
+  const f=await fixture({width});try{
+   const{page,server}=f;await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   const text=page.locator('.study-notebook-text'),original='Một\nHai\nBa',indented='     Một\n     Hai\n     Ba';
+   await text.fill(original);await text.press('Control+a');await text.press('Tab');assert.equal(await text.inputValue(),indented);
+   await text.press('Shift+Tab');assert.equal(await text.inputValue(),original);await text.press('Shift+Tab');assert.equal(await text.inputValue(),original);
+   assert.equal(await text.evaluate(node=>document.activeElement===node),true);
+   await text.evaluate(node=>node.setSelectionRange(0,0));await text.press('Tab');await text.evaluate(node=>node.setSelectionRange(0,0));await text.press('Shift+Tab');
+   assert.equal(await text.inputValue(),original,'Outdent also works with the caret before the leading spaces');
+   await page.getByRole('button',{name:'Căn giữa',exact:true}).click();
+   const rich=page.locator('.study-notebook-rich-text .ql-editor');
+   await page.evaluate(()=>{const q=Quill.find(document.querySelector('.study-notebook-rich-text'));q.setSelection(0,q.getLength()-1)});
+   await rich.press('Tab');assert.equal(await page.evaluate(()=>window.vm.session.document.text),indented);
+   await rich.press('Shift+Tab');assert.equal(await page.evaluate(()=>window.vm.session.document.text),original);
+   await rich.press('Shift+Tab');assert.equal(await rich.evaluate(node=>document.activeElement===node),true);
+   assert.equal(await rich.locator('p.ql-align-center').count(),1);
+   await rich.press('Control+z');assert.equal(await page.evaluate(()=>window.vm.session.document.text),indented);
+   await rich.press('Control+y');assert.equal(await page.evaluate(()=>window.vm.session.document.text),original);
+   await page.getByRole('button',{name:'Lưu ngay',exact:true}).click();await page.waitForFunction(()=>window.vm.session.status==='saved');
+   assert.equal(server.entry.document.text,original);assert.deepEqual(server.errors,[]);
+  }finally{await f.context.close()}
+ }
+});
+
+test('paragraph alignment converges live and undo preserves the other editors text',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7}),b=await fixture({collaboration:room,userId:8});
+ try{
+  await openLive(a);await openLive(b);await a.page.locator('.study-notebook-text').fill('Biên bản');
+  await b.page.waitForFunction(()=>window.vm.session.document.text==='Biên bản');
+  await a.page.locator('.study-notebook-text').press('Control+Home');await a.page.locator('.study-notebook-text').press('Control+Shift+E');
+  const ar=a.page.locator('.study-notebook-rich-text .ql-editor'),br=b.page.locator('.study-notebook-rich-text .ql-editor');
+  await br.locator('.ql-align-center').waitFor();await br.press('Control+Home');await b.page.keyboard.insertText('Mới: ');
+  await a.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text==='Mới: Biên bản');
+  await a.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();
+  await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&!window.vm.session.document.textDelta.ops.some(op=>op.attributes?.align));
+  assert.equal(room.server.entry.document.text,'Mới: Biên bản');assert.equal(await ar.locator('.ql-align-center').count(),0);assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
 });
 
 test('text shortcuts, selected bold and italic formatting and ink share undo history and persist together',async()=>{

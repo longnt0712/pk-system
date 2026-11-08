@@ -87,6 +87,19 @@ test('selected text formatting is saved with matching plain text and rejects uns
  s.destroy();
 });
 
+test('paragraph alignments persist on newlines and reject inline or unsupported alignment metadata',async()=>{
+ const f=fixture(),s=f.session();await s.ready;s.document.text='Biên bản';
+ for(const align of['center','right','justify']){
+  s.document.textDelta={ops:[{insert:'Biên bản'},{insert:'\n',attributes:{align}}]};s.changed();await s.save();
+  assert.equal(s.status,'saved');assert.deepEqual(plain(f.remote().document.textDelta),plain(s.document.textDelta));
+ }
+ for(const align of['left','start','url(evil)',true]){
+  assert.throws(()=>f.store.validDocument({...blank(),text:'Biên bản',textDelta:{ops:[{insert:'Biên bản'},{insert:'\n',attributes:{align}}]}}),/Định dạng/);
+ }
+ assert.throws(()=>f.store.validDocument({...blank(),text:'Biên bản',textDelta:{ops:[{insert:'Biên bản',attributes:{align:'center'}},{insert:'\n'}]}}),/Định dạng/);
+ s.destroy();
+});
+
 test('web links persist with selected text and unsafe destinations cannot enter a draft',async()=>{
  const f=fixture(),s=f.session();await s.ready;
  s.document.text='Biên bản';

@@ -68,6 +68,7 @@
                                     if (key === 'bold' || key === 'italic' || key === 'underline') { return typeof v !== 'boolean'; }
                                     if (key === 'color') { return typeof v !== 'string' || !/^#[a-fA-F0-9]{6}$/.test(v); }
                                     if (key === 'link') { return image || softbreak || !/[^\n]/.test(op.insert) || !validLink(v); }
+                                    if (key === 'align') { return image || softbreak || !/^\n+$/.test(op.insert) || ['center', 'right', 'justify'].indexOf(v) < 0; }
                                     if (key === 'width') { return !image || typeof v !== 'string' || !/^[1-9][0-9]{0,3}$/.test(v) || Number(v) > 4096; }
                                     if (key === 'table') { return image || softbreak || !/^\n+$/.test(op.insert) || typeof v !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(v); }
                                     if (key === 'table-colspan' || key === 'table-rowspan') { return !op.attributes.table || typeof v !== 'string' || !/^[1-9][0-9]?$/.test(v) || Number(v) > 50; }
@@ -75,7 +76,7 @@
                                 })) {
                                 throw new Error('Định dạng chữ tài liệu không hợp lệ.');
                             }
-                            ['bold', 'italic', 'underline', 'color', 'link', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = op.attributes[key]; } });
+                            ['bold', 'italic', 'underline', 'color', 'link', 'align', 'table', 'table-colspan', 'table-rowspan', 'width'].forEach(function (key) { if (op.attributes[key]) { attributes[key] = op.attributes[key]; } });
                         }
                         if (Object.keys(attributes).length) { clean.attributes = attributes; }
                         return clean;
