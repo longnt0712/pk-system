@@ -781,6 +781,39 @@ test('TNTT lasso moves outlined handwriting as one edit and keeps its position a
  }
 });
 
+test('notebook fullscreen fills the viewport, exits with its button or Escape and cleans up on close in editing and read-only views',async()=>{
+ for(const[width,readOnly,native]of[[1440,false,true],[390,true,true],[1440,true,false],[390,false,false]]){
+  const f=await fixture({width,editor:!readOnly,params:readOnly?{document:'12',mode:'view'}:{}});try{
+   const{page,server}=f;if(!readOnly)await page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();
+   await page.locator('.study-notebook-dialog').waitFor();
+   if(!readOnly)await page.locator('.study-notebook-text').fill('Toàn màn hình giữ nguyên nội dung.');
+   await page.waitForFunction(()=>angular.element(document.querySelector('study-notebook')).controller('studyNotebook').session?.document);
+   const original=await page.evaluate(()=>angular.element(document.querySelector('study-notebook')).controller('studyNotebook').session.document.text);
+   if(!native)await page.locator('.study-notebook-overlay').evaluate(node=>{node.requestFullscreen=()=>Promise.reject(new Error('Fullscreen is unavailable'))});
+   await page.getByRole('button',{name:'Bật toàn màn hình',exact:true}).click();
+   if(native)await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('study-notebook-overlay'));
+   await page.waitForFunction(()=>document.querySelector('.study-notebook-overlay')?.classList.contains('is-fullscreen'));
+   const bounds=await page.locator('.study-notebook-dialog').evaluate(node=>{const r=node.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,vw:innerWidth,vh:innerHeight}});
+   assert.ok(Math.abs(bounds.x)<1&&Math.abs(bounds.y)<1,JSON.stringify(bounds));
+   assert.ok(Math.abs(bounds.width-bounds.vw)<1&&Math.abs(bounds.height-bounds.vh)<1,JSON.stringify(bounds));
+   assert.equal(await page.evaluate(()=>angular.element(document.querySelector('study-notebook')).controller('studyNotebook').session.document.text),original);
+   await page.getByRole('button',{name:'Thoát toàn màn hình',exact:true}).click();
+   await page.waitForFunction(()=>!document.fullscreenElement&&!document.querySelector('.study-notebook-overlay')?.classList.contains('is-fullscreen'));
+   assert.equal(await page.locator('.study-notebook-dialog').isVisible(),true);
+   await page.getByRole('button',{name:'Bật toàn màn hình',exact:true}).click();
+   if(native)await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('study-notebook-overlay'));
+   await page.keyboard.press('Escape');
+   await page.getByRole('button',{name:'Bật toàn màn hình',exact:true}).waitFor();
+   assert.equal(await page.locator('.study-notebook-dialog').isVisible(),true,'Escape exits fullscreen without closing the document');
+   await page.getByRole('button',{name:'Bật toàn màn hình',exact:true}).click();
+   if(native)await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('study-notebook-overlay'));
+   await page.locator('.study-notebook-close').click();
+   await page.waitForFunction(()=>!document.fullscreenElement&&!window.vm.active);
+   assert.deepEqual(server.errors,[]);
+  }finally{await f.context.close()}
+ }
+});
+
 test('text shortcuts, selected bold and italic formatting and ink share undo history and persist together',async()=>{
  for(const width of [1440,390]){const f=await fixture({width});try{
   const {page,server}=f,button=name=>page.getByRole('button',{name,exact:true});

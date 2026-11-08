@@ -206,3 +206,8 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
     .study-notebook-footer.is-selecting-ink { flex-wrap: wrap; }
     .study-notebook-footer > .study-notebook-lasso-tip { display: block; flex-basis: 100%; white-space: normal; }
 }
+.study-notebook-fullscreen{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:25px;height:25px;padding:4px;border:1px solid #d9e5fc;border-radius:6px;background:#f5f8ff;color:#4668b8;cursor:pointer}
+.study-notebook-fullscreen svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.study-notebook-fullscreen[aria-pressed="true"]{background:#e7eeff;border-color:#9bb1e8}
+.study-notebook-overlay.is-fullscreen{inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;padding:0!important;border:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.study-notebook-overlay.is-fullscreen .study-notebook-dialog{width:100%;height:100%;max-width:none;max-height:none;border-radius:0}

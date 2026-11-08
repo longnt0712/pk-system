@@ -13,7 +13,7 @@
                 template: [
                     '<button type="button" class="study-notebook-toggle" ng-hide="notebook.hideToggle" ng-class="{\'is-active\':notebook.isOpen}" ng-click="notebook.toggle()" ng-disabled="!notebook.canOpen()" ng-attr-aria-expanded="{{notebook.isOpen}}" ng-attr-aria-controls="{{notebook.dialogId}}" aria-haspopup="dialog" aria-label="Mở hoặc ẩn sổ ghi chú" title="Sổ ghi chú học tập">',
                     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5L20 7v13.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M16 3.5V8h4M8 11h8M8 15h6M7 3.5v17"/></svg></button>',
-                    '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
+                    '<div class="study-notebook-overlay ng-hide" ng-show="notebook.isOpen" ng-class="{\'is-fullscreen\':notebook.fullscreen}" ng-attr-aria-hidden="{{!notebook.isOpen}}">',
                     '<section class="study-notebook-dialog" role="dialog" aria-modal="true" ng-attr-id="{{notebook.dialogId}}" ng-attr-aria-labelledby="{{notebook.dialogId}}-title">',
                     '<header class="study-notebook-heading"><div class="study-notebook-heading__copy"><h2 ng-attr-id="{{notebook.dialogId}}-title">{{notebook.title || \'Sổ tay học tập\'}}</h2></div>',
                     '<div class="study-notebook-heading__settings"><div class="study-notebook-paper-options"><label><span>Khổ giấy A4</span><select ng-model="notebook.session.document.orientation" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Hướng giấy A4"><option value="portrait">Dọc</option><option value="landscape">Ngang</option></select></label>',
@@ -22,6 +22,7 @@
                     '<div class="study-notebook-heading__actions"><span class="study-notebook-status" ng-class="\'is-\'+notebook.session.status" role="status" aria-live="polite">{{notebook.statusText()}}</span>',
                     '<span class="study-notebook-live" ng-if="notebook.session.live" ng-class="{\'is-online\':notebook.session.live.state===\'online\'}"><span class="study-notebook-live__dot"></span><span>{{notebook.session.live.state===\'online\' ? \'Trực tiếp\' : notebook.session.live.state===\'unavailable\' ? \'Đồng bộ định kỳ\' : \'Đang nối lại\'}}</span><span ng-if="notebook.session.live.peers.length"> · {{notebook.session.live.peers.length + 1}} đang mở</span></span>',
                     '<button type="button" class="study-notebook-action" ng-if="!notebook.hideSave && !notebook.readOnly" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
+                    '<button type="button" class="study-notebook-fullscreen" ng-click="notebook.toggleFullscreen()" ng-attr-aria-pressed="{{notebook.fullscreen}}" ng-attr-aria-label="{{notebook.fullscreen ? \'Thoát toàn màn hình\' : \'Bật toàn màn hình\'}}" ng-attr-title="{{notebook.fullscreen ? \'Thoát toàn màn hình (Esc)\' : \'Toàn màn hình\'}}"><svg viewBox="0 0 20 20" aria-hidden="true"><path ng-attr-d="{{notebook.fullscreen ? \'M7 2v5H2m11-5v5h5M2 13h5v5m11-5h-5v5\' : \'M7 2H2v5m11-5h5v5M2 13v5h5m11-5v5h-5\'}}"/></svg></button>',
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
                     '<div class="study-notebook-tools" ng-if="!notebook.readOnly"><button type="button" ng-repeat="tool in notebook.tools" ng-click="notebook.setTool(tool.id,$event)" ng-class="{\'is-active\':notebook.tool===tool.id}" ng-attr-aria-pressed="{{notebook.tool===tool.id}}" ng-attr-title="{{tool.label}}"><i class="fa" ng-class="tool.icon" aria-hidden="true"></i><span>{{tool.label}}</span></button></div>',
@@ -80,6 +81,7 @@
                     var requestFrame = $window.requestAnimationFrame || function (callback) { return $window.setTimeout(callback, 16); };
                     var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
                     ui.dialogId = 'study-notebook-' + (++notebookSerial); ui.isOpen = false;
+                    ui.fullscreen = false;
                     ui.colorTools = {
                         text: {label: 'Gõ chữ', color: '#27364d'},
                         pen: {label: 'Bút', color: '#315bbe', width: '2'},
@@ -103,6 +105,45 @@
                         else { callback(); digest(); }
                     }
                     function preventPromiseNoise(result) { if (result && result.catch) { result.catch(angular.noop); } }
+                    var nativeFullscreen = false, fullscreenEscapeUntil = 0;
+                    function fullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement; }
+                    function fullscreenChanged() {
+                        digest(function () {
+                            var own = fullscreenElement() === overlay;
+                            if (own && !ui.fullscreen) { leaveFullscreen(); return; }
+                            if (!nativeFullscreen && !own) { return; }
+                            if (nativeFullscreen && !own) { fullscreenEscapeUntil = Date.now() + 400; }
+                            nativeFullscreen = own; ui.fullscreen = own; scheduleLayout();
+                        });
+                    }
+                    function leaveFullscreen() {
+                        ui.fullscreen = false; nativeFullscreen = false; scheduleLayout();
+                        if (fullscreenElement() === overlay) {
+                            var exit = document.exitFullscreen || document.webkitExitFullscreen;
+                            if (exit) { try { preventPromiseNoise(exit.call(document)); } catch (ignoreExit) {} }
+                        }
+                    }
+                    function fullscreenKeydown(event) {
+                        if (!visible() || (!ui.fullscreen && Date.now() >= fullscreenEscapeUntil) || ui.paletteOpen || ui.contextOpen || ui.linkOpen || event.isComposing) { return; }
+                        if (event.key === 'Escape' || event.keyCode === 27) {
+                            event.preventDefault(); event.stopImmediatePropagation(); fullscreenEscapeUntil = 0;
+                            if (ui.fullscreen) { digest(leaveFullscreen); }
+                        }
+                    }
+                    ui.toggleFullscreen = function () {
+                        if (!visible()) { return; }
+                        flushText(); finishStroke(true); ui.closePalette(false); ui.closeLink(false);
+                        if (ui.fullscreen) { leaveFullscreen(); return; }
+                        ui.fullscreen = true; fullscreenEscapeUntil = 0; scheduleLayout();
+                        var request = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+                        if (request) {
+                            nativeFullscreen = true;
+                            try {
+                                var pending = request.call(overlay);
+                                if (pending && pending.then) { pending.then(fullscreenChanged, function () { nativeFullscreen = false; digest(scheduleLayout); }); }
+                            } catch (ignoreRequest) { nativeFullscreen = false; scheduleLayout(); }
+                        }
+                    };
                     ui.peerStyle = function (peer) { return {left: (peer.cursor.x * scale) + 'px', top: (peer.cursor.y * scale) + 'px', color: peer.color}; };
                     function sendCursor(event) {
                         if (!visible() || !ui.session || !ui.session.cursor || !ui.session.live) { return; }
@@ -635,6 +676,7 @@
                     }
                     ui.close = function () {
                         if (!ui.isOpen) { return; }
+                        leaveFullscreen();
                         releasePaste(); ui.pasteError = '';
                         ui.closeLink(false);
                         ui.closePalette(false);
@@ -1111,6 +1153,7 @@
                             event.preventDefault();
                             if (ui.contextOpen || ui.linkOpen) { digest(ui.closeLink); }
                             else if (ui.paletteOpen) { digest(ui.closePalette); }
+                            else if (ui.fullscreen) { digest(leaveFullscreen); }
                             else if (inkGesture || selectedInk) { digest(function () { finishStroke(false); setInkSelection(null); }); }
                             else { digest(ui.close); }
                             return;
@@ -1258,6 +1301,8 @@
                     document.addEventListener('pointerdown', blockBackground, true); document.addEventListener('mousedown', blockBackground, true);
                     document.addEventListener('focusin', keepFocus, true);
                     $window.addEventListener('pagehide', flushBeforeLeave); document.addEventListener('visibilitychange', visibilityChanged);
+                    document.addEventListener('fullscreenchange', fullscreenChanged); document.addEventListener('webkitfullscreenchange', fullscreenChanged);
+                    document.addEventListener('keydown', fullscreenKeydown, true);
                     $window.addEventListener('resize', scheduleLayout);
                     scroller.addEventListener('scroll', pageScrolled, {passive: true});
                     paper.addEventListener('pointermove', sendCursor, {passive: true, capture: true});
@@ -1291,6 +1336,8 @@
                         document.removeEventListener('pointerdown', blockBackground, true); document.removeEventListener('mousedown', blockBackground, true);
                         document.removeEventListener('focusin', keepFocus, true);
                         $window.removeEventListener('pagehide', flushBeforeLeave); document.removeEventListener('visibilitychange', visibilityChanged);
+                        document.removeEventListener('fullscreenchange', fullscreenChanged); document.removeEventListener('webkitfullscreenchange', fullscreenChanged);
+                        document.removeEventListener('keydown', fullscreenKeydown, true);
                         $window.removeEventListener('resize', scheduleLayout);
                         scroller.removeEventListener('scroll', pageScrolled);
                         paper.removeEventListener('pointermove', sendCursor, true); paper.removeEventListener('pointerleave', hideCursor);
