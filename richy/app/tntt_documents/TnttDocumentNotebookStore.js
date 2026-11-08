@@ -1,8 +1,10 @@
 (function () {
     'use strict';
-    angular.module('Hrm.TnttDocuments').factory('TnttDocumentNotebookStore', ['$window', '$timeout', '$q', '$cookies', 'TnttDocumentApi',
-        function ($window, $timeout, $q, $cookies, api) {
+    angular.module('Hrm.TnttDocuments').factory('TnttDocumentNotebookStore', ['$window', '$timeout', '$q', '$cookies', 'TnttDocumentApi', '$injector',
+        function ($window, $timeout, $q, $cookies, api, $injector) {
             var entries = {}, serial = 0;
+            var merger = $injector && $injector.has('TnttDocumentMerge') ? $injector.get('TnttDocumentMerge') : null;
+            var liveService = $injector && $injector.has('TnttDocumentLive') ? $injector.get('TnttDocumentLive') : null;
             function copy(value) { return JSON.parse(JSON.stringify(value)); }
             function positive(value) { return Number.isInteger(Number(value)) && Number(value) > 0; }
             function blank() { return {text: '', orientation: 'portrait', pattern: 'lined', strokes: [], pageCount: 3}; }
@@ -88,53 +90,135 @@
                 var session = {document: blank(), status: 'loading', error: '', revision: 0, ready: null};
                 var entry = {session: session, refs: 1}, loaded = false, dirty = false, baseline = JSON.stringify(session.document), operation = null, reading = null;
                 var timer = null, poll = null, visible = false, interaction = false, interactions = {}, deferredRemote = null, conflict = null, lastBackup = null, localSaved = true;
+                var protocol = false, baseTrusted = false, uncertain = null, liveHint = 0, wantsRefresh = false, dirtySince = 0, remoteListeners = [], lastLiveState = '';
                 entries[key] = entry;
                 function authenticated() { try { return Number(JSON.parse($cookies.get('education.user') || '{}').id) === context.userId; } catch (ignore) { return false; } }
                 function matches(row) { return row && Number(row.id) === context.documentId && Number.isInteger(row.revision) && row.revision >= 0; }
                 function fail(error) { session.status = conflict ? 'conflict' : localSaved ? 'local' : 'error'; session.error = (error && error.data && error.data.message) || (error && error.message) || 'Chưa đồng bộ được ghi chú. Bản đang viết vẫn được giữ.'; }
+                function packImages(value, local) {
+                    value = copy(value);
+                    var images = (local.textDelta ? local.textDelta.ops : []).filter(function (op) { return op.insert && op.insert.image; }).map(function (op) { return op.insert.image; });
+                    if (value.textDelta) value.textDelta.ops.forEach(function (op) {
+                        if (op.insert && op.insert.image) { var index = images.indexOf(op.insert.image); if (index >= 0) op.insert = {draftImage: index}; }
+                    });
+                    return value;
+                }
+                function unpackImages(value, local) {
+                    value = copy(value);
+                    var images = (local.textDelta ? local.textDelta.ops : []).filter(function (op) { return op.insert && op.insert.image; }).map(function (op) { return op.insert.image; });
+                    if (value.textDelta) value.textDelta.ops.forEach(function (op) {
+                        if (op.insert && op.insert.draftImage !== undefined) { var index = op.insert.draftImage; if (!Number.isInteger(index) || !images[index]) throw new Error('Không đọc được ảnh trong bản nháp.'); op.insert = {image: images[index]}; }
+                    });
+                    return documentValue(value);
+                }
                 function persist() {
                     try {
-                        if (dirty) { lastBackup = JSON.stringify({context: context, revision: session.revision, document: session.document, stamp: Date.now() + '-' + (++serial)}); $window.localStorage.setItem(key, lastBackup); }
+                        if (dirty || uncertain) {
+                            var draft = {context: context, revision: session.revision, document: session.document, stamp: Date.now() + '-' + (++serial)};
+                            if (protocol && baseTrusted) { draft.baseDocument = packImages(JSON.parse(baseline), session.document); }
+                            if (uncertain) { draft.pending = {mutationId: uncertain.mutationId, revision: uncertain.revision, document: packImages(uncertain.document, session.document)}; }
+                            lastBackup = JSON.stringify(draft); $window.localStorage.setItem(key, lastBackup);
+                        }
                         else if (lastBackup && $window.localStorage.getItem(key) === lastBackup) { $window.localStorage.removeItem(key); lastBackup = null; }
                         localSaved = true;
                     } catch (error) { localSaved = false; }
                 }
+                function replaceDocument(value) {
+                    if (!equal(session.document, value)) {
+                        var rendered = remoteListeners.slice().map(function (listener) { return listener(session.document, value); });
+                        session.document = value;
+                        rendered.forEach(function (callback) { if (typeof callback === 'function') callback(); });
+                    }
+                }
+                session.onRemote = function (listener) { remoteListeners.push(listener); return function () { remoteListeners = remoteListeners.filter(function (item) { return item !== listener; }); }; };
+                function startLive() {
+                    if (!session.live && loaded && protocol && liveService && visible && entry.refs && authenticated()) {
+                        session.live = liveService.connect(context.documentId, function (revision) {
+                            if (Number.isInteger(revision) && revision >= 0) {
+                                liveHint = Math.max(liveHint, revision);
+                                if (liveHint > session.revision || uncertain || session.error) { wantsRefresh = true; if (!$window.document.hidden) { session.refresh(); } }
+                            }
+                            var state = session.live && session.live.state;
+                            if (state !== lastLiveState) { lastLiveState = state; nextPoll(); }
+                        });
+                    }
+                }
+                function acceptProtocol(row) { if (row.syncProtocol === 1 && merger) { protocol = true; startLive(); } }
                 function apply(row) {
                     var value = documentValue(row.document);
-                    if (!equal(session.document, value)) { session.document = value; }
-                    session.revision = row.revision; baseline = JSON.stringify(value); dirty = false; conflict = null;
+                    acceptProtocol(row); replaceDocument(value);
+                    session.revision = row.revision; baseline = JSON.stringify(value); baseTrusted = true; dirty = false; conflict = null;
+                    dirtySince = 0;
                     session.status = row.revision ? 'saved' : 'ready'; session.error = ''; persist();
                 }
+                function receipt(row, id) {
+                    return row.sync && Array.isArray(row.sync.recent) && row.sync.recent.find(function (item) { return item.id === id && Number.isInteger(item.revision) && item.revision > 0 && item.revision <= row.revision; });
+                }
+                function recoverPending(row) {
+                    if (!uncertain) return true;
+                    var accepted = receipt(row, uncertain.mutationId);
+                    if (accepted) {
+                        session.revision = accepted.revision; baseline = JSON.stringify(uncertain.document); baseTrusted = true; uncertain = null;
+                        dirty = JSON.stringify(session.document) !== baseline; return true;
+                    }
+                    if (row.sync && Number.isInteger(row.sync.floor) && row.sync.floor <= uncertain.revision) {
+                        if (row.revision === uncertain.revision) { return 'retry'; }
+                        uncertain = null; return true;
+                    }
+                    return false;
+                }
                 function reconcile(row) {
-                    row = {id: context.documentId, revision: row.revision, document: documentValue(row.document)};
+                    row = Object.assign({}, row, {id: context.documentId, document: documentValue(row.document)});
                     if (interaction) { deferredRemote = row; return; }
                     if (row.revision < session.revision) { return; }
-                    if (!dirty || equal(session.document, row.document)) { apply(row); }
+                    acceptProtocol(row);
+                    var pending = protocol && recoverPending(row);
+                    if (pending === 'retry') { session.error = ''; session.status = 'local'; persist(); schedule(); return; }
+                    if (protocol && !pending) { conflict = row; session.status = 'conflict'; session.error = 'Chưa xác nhận được lần lưu trước. Bản trên máy được giữ để đối chiếu.'; persist(); return; }
+                    if (!dirty || !protocol && equal(session.document, row.document)) { apply(row); }
+                    else if (protocol && merger && row.revision !== session.revision) {
+                        try {
+                            var merged = documentValue(merger.merge(JSON.parse(baseline), session.document, row.document));
+                            replaceDocument(merged); session.revision = row.revision; baseline = JSON.stringify(row.document); baseTrusted = true;
+                            dirty = JSON.stringify(merged) !== baseline; conflict = null; session.error = ''; session.status = dirty ? 'local' : 'saved'; persist();
+                        } catch (error) { conflict = row; session.status = 'conflict'; session.error = 'Chưa ghép được thay đổi. Bản đang viết được giữ để đối chiếu.'; persist(); }
+                    }
                     else if (row.revision !== session.revision) { conflict = row; session.status = 'conflict'; session.error = 'Có ghi chú mới của người soạn tài liệu. Bản đang viết được giữ để đối chiếu.'; persist(); }
                 }
                 function schedule() {
                     $timeout.cancel(timer); timer = null;
-                    if (entry.refs && dirty && !conflict && !interaction) { timer = $timeout(function () { timer = null; session.save(); }, 900); }
+                    if (entry.refs && (dirty || uncertain) && !conflict && !interaction) {
+                        var live = session.live && session.live.state === 'online';
+                        var large = baseline.length > 256000, pause = large ? 900 : 300, maximum = large ? 1500 : 800;
+                        var delay = live ? Math.min(pause, Math.max(0, maximum - (Date.now() - dirtySince))) : 900;
+                        timer = $timeout(function () { timer = null; session.save(); }, delay);
+                    }
                 }
                 session.changed = function () {
                     dirty = JSON.stringify(session.document) !== baseline;
+                    if (dirty && !dirtySince) dirtySince = Date.now();
                     persist();
-                    if (!conflict) { session.status = dirty ? localSaved ? 'local' : 'error' : session.revision ? 'saved' : 'ready'; session.error = localSaved ? '' : 'Chưa giữ được bản nháp trên thiết bị. Hãy giữ trang mở và thử đồng bộ lại.'; }
+                    if (!conflict) { session.status = dirty || uncertain ? localSaved ? 'local' : 'error' : session.revision ? 'saved' : 'ready'; session.error = localSaved ? '' : 'Chưa giữ được bản nháp trên thiết bị. Hãy giữ trang mở và thử đồng bộ lại.'; }
                     schedule();
                 };
                 session.refresh = function (force) {
                     if (reading) { return reading; }
                     if (operation || interaction || !entry.refs || !authenticated()) { return $q.when(session); }
-                    reading = api.read(context.documentId, loaded && !force ? session.revision : undefined).then(function (row) {
+                    wantsRefresh = false;
+                    reading = api.read(context.documentId, loaded && !force && !uncertain ? session.revision : undefined).then(function (row) {
                         if (!entry.refs || operation || !authenticated()) { return session; }
                         if (!matches(row)) { throw new Error('Ghi chú nhận được không khớp tài liệu.'); }
+                        acceptProtocol(row);
                         if (row.changed === false) {
                             if (!loaded || row.revision !== session.revision) { throw new Error('Phiên bản đồng bộ ghi chú không khớp.'); }
                             if (!conflict) { session.error = ''; session.status = dirty ? 'local' : session.revision ? 'saved' : 'ready'; schedule(); }
                             return session;
                         }
                         loaded = true; reconcile(row); schedule(); return session;
-                    }).catch(function (error) { if (entry.refs) { fail(error); } return session; }).finally(function () { reading = null; });
+                    }).catch(function (error) { if (entry.refs) { fail(error); } wantsRefresh = false; return session; }).finally(function () {
+                        reading = null;
+                        if (wantsRefresh && liveHint > session.revision) { wantsRefresh = false; session.refresh(); }
+                    });
                     return reading;
                 };
                 function cleanup() {
@@ -143,29 +227,38 @@
                 session.save = function () {
                     $timeout.cancel(timer); timer = null;
                     if (operation) { return operation; }
-                    if (!dirty || conflict || interaction || !authenticated()) { return $q.when(session); }
+                    if ((!dirty && !uncertain) || conflict || interaction || !authenticated()) { return $q.when(session); }
                     if (!loaded) { return session.refresh(true).then(function () { return loaded && !conflict ? session.save() : session; }); }
                     var payload;
                     try {
-                        payload = {revision: session.revision, document: documentValue(session.document)};
-                        if (payload.document.textDelta) { session.document.textDelta = copy(payload.document.textDelta); }
+                        payload = uncertain || {revision: session.revision, document: documentValue(session.document)};
+                        if (!uncertain && payload.document.textDelta) { session.document.textDelta = copy(payload.document.textDelta); }
+                        if (protocol && !payload.mutationId) { payload.mutationId = liveService ? liveService.uuid() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (key) { var n = Math.random() * 16 | 0; return (key === 'x' ? n : n & 3 | 8).toString(16); }); }
+                        if (protocol) { uncertain = copy(payload); }
                     }
                     catch (error) { persist(); fail(error); return $q.when(session); }
-                    session.status = 'saving'; session.error = ''; persist();
+                    session.status = 'saving'; session.error = ''; dirtySince = Date.now(); persist();
                     operation = api.save(context.documentId, payload).then(function (row) {
-                        if (!authenticated() || !matches(row) || row.revision < 1 || row.revision < payload.revision || !equal(documentValue(row.document), payload.document)) { throw new Error('Chưa nhận đúng xác nhận lưu ghi chú. Bản đang viết vẫn được giữ.'); }
-                        session.revision = row.revision; baseline = JSON.stringify(documentValue(row.document)); dirty = JSON.stringify(session.document) !== baseline; conflict = null;
-                        session.status = dirty ? 'local' : 'saved'; session.error = ''; persist(); return session;
+                        if (!authenticated() || !matches(row) || row.revision < 1 || row.revision < payload.revision) { throw new Error('Chưa nhận đúng xác nhận lưu ghi chú. Bản đang viết vẫn được giữ.'); }
+                        var accepted = protocol && receipt(row, payload.mutationId);
+                        if (protocol && !accepted || !protocol && !equal(documentValue(row.document), payload.document)) { throw new Error('Chưa nhận đúng xác nhận lưu ghi chú. Bản đang viết vẫn được giữ.'); }
+                        if (accepted && accepted.revision === row.revision && !equal(documentValue(row.document), payload.document)) { throw new Error('Nội dung xác nhận lưu không khớp. Bản đang viết được giữ.'); }
+                        session.revision = accepted ? accepted.revision : row.revision; baseline = JSON.stringify(payload.document); baseTrusted = true; uncertain = null;
+                        dirty = JSON.stringify(session.document) !== baseline; conflict = null; session.error = ''; session.status = dirty ? 'local' : 'saved';
+                        if (protocol) { reconcile(row); }
+                        persist(); return session;
                     }).catch(function (error) {
                         if (error.status === 409 && authenticated()) {
+                            uncertain = null;
                             return api.read(context.documentId).then(function (row) {
-                                if (matches(row)) { reconcile(row); } if (!conflict && dirty) { fail(error); } return session;
+                                if (matches(row)) { reconcile(row); } if (!protocol && !conflict && dirty) { fail(error); } return session;
                             }, function () { fail(error); return session; });
                         }
                         persist(); fail(error); return session;
                     }).finally(function () {
                         operation = null;
-                        if (dirty && !conflict && session.status !== 'error' && !session.error) { if (entry.refs) { schedule(); } else { session.save(); } }
+                        if ((dirty || uncertain) && !conflict && session.status !== 'error' && !session.error) { if (entry.refs) { schedule(); } else { session.save(); } }
+                        if (wantsRefresh && liveHint > session.revision && visible && !interaction) { wantsRefresh = false; session.refresh(); }
                         cleanup();
                     });
                     return operation;
@@ -174,7 +267,7 @@
                     if (!conflict) { return session.save(); }
                     return api.read(context.documentId).then(function (row) {
                         if (!authenticated() || !matches(row)) { throw new Error('Chưa xác nhận được phiên bản ghi chú mới.'); }
-                        session.revision = row.revision; baseline = JSON.stringify(documentValue(row.document)); conflict = null;
+                        session.revision = row.revision; baseline = JSON.stringify(documentValue(row.document)); baseTrusted = true; conflict = null; uncertain = null;
                         dirty = JSON.stringify(session.document) !== baseline; session.error = ''; persist(); return session.save();
                     }).catch(function (error) { fail(error); return session; });
                 };
@@ -182,16 +275,22 @@
                     if (!conflict) { return session.refresh(true); }
                     try { $window.localStorage.setItem(key + ':previous:' + Date.now(), JSON.stringify({context: context, revision: session.revision, document: session.document})); }
                     catch (error) { fail(new Error('Chưa giữ được bản dự phòng; chưa thay nội dung đang viết.')); return $q.when(session); }
-                    apply(conflict); return $q.when(session);
+                    uncertain = null; apply(conflict); return $q.when(session);
                 };
                 function nextPoll() {
                     $timeout.cancel(poll); poll = null;
-                    if (visible && entry.refs) { poll = $timeout(function () { poll = null; if (!$window.document.hidden) { session.refresh(); } nextPoll(); }, 3000); }
+                    if (visible && entry.refs) { poll = $timeout(function () { poll = null; if (!$window.document.hidden) { session.refresh(); } nextPoll(); }, session.live && session.live.state === 'online' ? 15000 : 3000); }
                 }
-                session.setVisible = function (value) { visible = value === true; nextPoll(); if (visible && loaded && !$window.document.hidden) { session.refresh(); } };
+                session.setVisible = function (value) {
+                    visible = value === true;
+                    if (!visible && session.live) { session.live.close(); session.live = null; lastLiveState = ''; }
+                    else if (visible) { startLive(); }
+                    nextPoll(); if (visible && loaded && !$window.document.hidden) { session.refresh(); }
+                };
+                session.cursor = function (value) { if (session.live) session.live.cursor(value); };
                 session.setInteraction = function (value, kind) {
                     interactions[kind || 'input'] = value === true; interaction = Object.keys(interactions).some(function (name) { return interactions[name]; });
-                    if (!interaction) { if (deferredRemote) { var row = deferredRemote; deferredRemote = null; reconcile(row); } schedule(); }
+                    if (!interaction) { if (deferredRemote) { var row = deferredRemote; deferredRemote = null; reconcile(row); } schedule(); if (wantsRefresh && liveHint > session.revision) session.refresh(); }
                 };
                 function focus() { if (visible && !$window.document.hidden) { session.refresh(); } }
                 function leaving() { persist(); session.save(); }
@@ -199,6 +298,7 @@
                 session.destroy = function () {
                     if (!entry.refs) { return; } entry.refs--; if (entry.refs) { return; }
                     visible = false; $timeout.cancel(poll); $timeout.cancel(timer); poll = timer = null;
+                    if (session.live) { session.live.close(); session.live = null; }
                     $window.removeEventListener('focus', focus); $window.document.removeEventListener('visibilitychange', focus); $window.removeEventListener('pagehide', leaving);
                     persist(); session.save().finally(cleanup);
                 };
@@ -206,18 +306,32 @@
                 try {
                     var raw = $window.localStorage.getItem(key); draft = raw ? JSON.parse(raw) : null;
                     if (draft && (!draft.context || Object.keys(context).some(function (name) { return Number(draft.context[name]) !== context[name]; }) || !Number.isInteger(draft.revision) || draft.revision < 0)) { draft = null; }
-                    if (draft) { draft.document = documentValue(draft.document); lastBackup = raw; session.document = copy(draft.document); session.revision = draft.revision; dirty = true; }
+                    if (draft) {
+                        draft.document = documentValue(draft.document);
+                        if (draft.baseDocument) { draft.baseDocument = unpackImages(draft.baseDocument, draft.document); baseline = JSON.stringify(draft.baseDocument); baseTrusted = true; protocol = true; }
+                        if (draft.pending) {
+                            if (!/^[a-f0-9-]{36}$/.test(draft.pending.mutationId) || !Number.isInteger(draft.pending.revision) || draft.pending.revision < 0) throw new Error('Mã bản nháp không hợp lệ.');
+                            draft.pending.document = unpackImages(draft.pending.document, draft.document);
+                            uncertain = draft.pending;
+                        }
+                        lastBackup = raw; session.document = copy(draft.document); session.revision = draft.revision; dirty = true;
+                    }
                 } catch (error) { draft = null; fail(new Error('Chưa đọc được bản nháp ghi chú trên thiết bị.')); }
                 session.ready = api.read(context.documentId).then(function (row) {
                     if (!entry.refs && entries[key] !== entry) { return session; }
                     if (!authenticated() || !matches(row)) { throw new Error('Ghi chú nhận được không khớp tài liệu.'); }
-                    row.document = documentValue(row.document); loaded = true;
+                    row.document = documentValue(row.document); loaded = true; acceptProtocol(row);
+                    if (protocol && draft && draft.baseDocument && (!equal(draft.document, row.document) || draft.pending)) {
+                        baseline = JSON.stringify(draft.baseDocument); baseTrusted = true; uncertain = draft.pending || null; dirtySince = Date.now();
+                        reconcile(row); persist(); schedule(); return session;
+                    }
                     if (draft && !equal(draft.document, row.document)) { lastBackup = null; }
                     apply(row);
                     if (draft && !equal(draft.document, row.document)) {
-                        session.document = copy(draft.document); session.revision = draft.revision; dirty = true; persist();
-                        if (draft.revision !== row.revision) { conflict = row; session.status = 'conflict'; session.error = 'Bản nháp trên thiết bị khác bản mới của người soạn tài liệu; hãy đối chiếu.'; }
+                        session.document = copy(draft.document); session.revision = draft.revision; dirty = true;
+                        if (draft.revision !== row.revision) { baseTrusted = false; conflict = row; session.status = 'conflict'; session.error = 'Bản nháp trên thiết bị khác bản mới của người soạn tài liệu; hãy đối chiếu.'; }
                         else { session.status = 'local'; schedule(); }
+                        persist();
                     }
                     return session;
                 }).catch(function (error) { if (!entry.refs && entries[key] !== entry) { return session; } if (draft) { session.document = copy(draft.document); session.revision = draft.revision; dirty = true; persist(); } fail(error); return session; });

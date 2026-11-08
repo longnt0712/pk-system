@@ -4,16 +4,19 @@ const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-pri
 const app=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(app,f),'utf8');
 let browser;before(async()=>{browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});});after(async()=>{if(browser)await browser.close();});
 const blank=()=>({text:'',orientation:'portrait',pattern:'lined',strokes:[]});
-async function fixture({width=1440,gender='M',student=false,editor=!student,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0,params={}}={}){
+async function fixture({width=1440,gender='M',student=false,editor=!student,unread=true,expires=60000,dark=false,dashboard=false,enabled=true,notebookReadDelay=0,params={},collaboration=null,userId=7,name='Người soạn'}={}){
  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage();page.setDefaultTimeout(6000);
- const server={entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:null,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:editor,document:blank()},extraEntries:[],archivedEntries:[],notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
+ const server=collaboration?.server||{entry:{id:12,title:'Biên bản tháng 11',kind:'DOCUMENT',revision:0,parentId:null,updatedAt:Date.now(),shared:true,noticeId:21,canEdit:editor,document:blank()},extraEntries:[],archivedEntries:[],notice:{id:21,entryId:12,title:'Lịch họp huynh trưởng',summary:'Mời các anh chị xem nội dung họp.',startsAt:Date.now()-1000,endsAt:Date.now()+expires,active:true,readAt:unread?null:Date.now()},calls:[],errors:[]};
+ if(collaboration){collaboration.server=server;server.entry.syncProtocol=1;server.entry.sync||={floor:0,recent:[]};await page.addInitScript(()=>Object.defineProperty(document,'hidden',{get:()=>false}));await page.routeWebSocket('**/public/tntt-document-live?*',socket=>collaboration.connect(socket));}
  page.on('pageerror',e=>server.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))server.errors.push(m.text());});
  const css=['assets/css/external/bootstrap.min.css','assets/css/external/quill.snow-2.0.3.css','assets/css/study-notebook.css','tntt_documents/notices.css','tntt_documents/documents.css'].map(read).join('\n');
  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());const reply=(obj,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(obj)});
   if(u.pathname==='/tai-lieu'||u.pathname==='/dashboard')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="vi"'+(dark?' class="global-dark-mode"':'')+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div ng-controller="TnttDocumentsController as vm">'+read('tntt_documents/documents.html')+'</div><tntt-notification-pet></tntt-notification-pet></body></html>'});
   if(u.pathname.startsWith('/assets/images/tntt-notices/'))return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(app,u.pathname.slice(1)))});
   server.calls.push({path:u.pathname,method:req.method(),body:req.postDataJSON()});
-  if(u.pathname.endsWith('/capabilities'))return reply({enabled:enabled,canEdit:editor,canReceive:!student,emailConfigured:false,userId:7,serverNow:Date.now()});
+  if(collaboration?.blocked.has(userId))return route.abort('failed');
+  if(u.pathname.endsWith('/capabilities'))return reply({enabled:enabled,canEdit:editor,canReceive:!student,emailConfigured:false,userId,serverNow:Date.now()});
+  if(collaboration&&u.pathname.endsWith('/live-ticket'))return reply(collaboration.issue(req.postDataJSON().clientId,userId,name));
   if(u.pathname.endsWith('/notifications/21/read')){server.notice.readAt=Date.now();return reply({});}
   if(u.pathname.endsWith('/notifications/21'))return reply({...server.notice,canEdit:false,revision:21,document:{...blank(),text:'Nội dung đã công bố'}});
   if(u.pathname.endsWith('/notifications'))return reply(student?[]:(u.searchParams.get('unread')==='true'&&server.notice.readAt?[]:[server.notice]));
@@ -25,9 +28,22 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
    return reply({token:server.token||null});
   }
   if(u.pathname.endsWith('/entries/12')){
-   if(req.method()==='PUT'){const p=req.postDataJSON();server.entry={...server.entry,revision:server.entry.revision+1,document:p.document};}
+   if(req.method()==='PUT'){
+    const p=req.postDataJSON();
+    if(collaboration){
+     const old=server.entry.sync.recent.find(item=>item.id===p.mutationId);
+     if(old)return reply({...server.entry,changed:true});
+     if(p.revision!==server.entry.revision)return reply({message:'Tài liệu vừa được cập nhật.'},409);
+     server.entry={...server.entry,revision:server.entry.revision+1,document:structuredClone(p.document),sync:{floor:0,recent:[...server.entry.sync.recent,{id:p.mutationId,revision:server.entry.revision+1}]}};
+     const acknowledged=structuredClone({...server.entry,changed:true});collaboration.revision();
+     if(collaboration.hold?.userId===userId){const hold=collaboration.hold;collaboration.hold=null;hold.reached();await hold.wait;}
+     if(collaboration.abort?.delete(userId))return route.abort('failed');
+     return reply(acknowledged);
+    }
+    server.entry={...server.entry,revision:server.entry.revision+1,document:p.document};
+   }
    else if(notebookReadDelay && server.calls.filter(c=>c.path===u.pathname&&c.method==='GET').length>1)await new Promise(resolve=>setTimeout(resolve,notebookReadDelay));
-   return reply(u.searchParams.get('revision')===String(server.entry.revision)?{id:12,revision:server.entry.revision,changed:false}:{...server.entry,changed:true});
+   return reply(u.searchParams.get('revision')===String(server.entry.revision)?{id:12,revision:server.entry.revision,changed:false,syncProtocol:collaboration?1:undefined}:{...server.entry,changed:true,canEdit:editor});
   }
   if(u.pathname.endsWith('/entries')){
    let rows=u.searchParams.get('trash')==='true'?server.archivedEntries:[{id:3,title:'Biên bản họp',kind:'FOLDER',parentId:null,revision:0,updatedAt:Date.now()},...server.extraEntries,server.entry];
@@ -40,8 +56,8 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  await page.goto('https://tnttphungkhoang.test/'+(dashboard?'dashboard':'tai-lieu'));
  for(const f of ['angular.min.js','angular-cookies.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',f)});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/quill-2.0.3.js')});
- await page.evaluate(({student,editor,gender,dashboard})=>{
-  window.Hrm={};window.user={id:7,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGEMENT'}],person:{gender}};
+ await page.evaluate(({student,editor,gender,dashboard,userId})=>{
+  window.Hrm={};window.user={id:userId,roles:[{name:student?'ROLE_STUDENT':editor?'ROLE_ADMIN':'ROLE_STUDENT_MANAGEMENT'}],person:{gender}};
   document.cookie='education.user='+encodeURIComponent(JSON.stringify(window.user))+';path=/';
   angular.module('ui.router',[]).provider('$state',function(){
    const routes={};this.state=function(name,config){routes[name]=config;return this;};
@@ -54,8 +70,8 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
    };}];
   });
   angular.module('oc.lazyLoad',[]);angular.module('Hrm.Common',[]);
- },{student,editor,gender,dashboard});
- for(const f of ['common/utils/color-palette.js','tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
+ },{student,editor,gender,dashboard,userId});
+ for(const f of ['common/utils/color-palette.js','tntt_documents/tntt-documents.module.js','tntt_documents/TnttNoticeCenter.js','tntt_documents/TnttDocumentMerge.js','tntt_documents/TnttDocumentLive.js','tntt_documents/TnttDocumentNotebookStore.js','tntt_documents/TnttDocumentPrint.js','tntt_documents/TnttDocumentsController.js'])await page.addScriptTag({path:path.join(app,f)});
  await page.addScriptTag({path:path.join(app,'common/utils/study-notebook.directive.js')});
  await page.evaluate(params=>{
   angular.module('Fixture',['Hrm.TnttDocuments','ngCookies']).value('settings',{campaignsEnabled:true,permissionsLoaded:true,api:{baseUrl:'/service/'}}).value('AuthSession',{hasCredentials:()=>!!window.user}).value('$stateParams',params);
@@ -64,6 +80,154 @@ async function fixture({width=1440,gender='M',student=false,editor=!student,unre
  await page.locator(enabled?'.td-entry':'.td-empty').first().waitFor().catch(async e=>{console.error(JSON.stringify({errors:server.errors,calls:server.calls,state:await page.evaluate(()=>({error:window.vm?.error,caps:window.vm?.caps,entries:window.vm?.entries})),body:(await page.locator('body').innerText()).slice(0,700)}));await context.close();throw e;});
  return{page,context,server};
 }
+
+function collaborationServer(){
+ const tickets=new Map(),peers=new Map();let ticketSerial=0;
+ const publicPeer=peer=>({id:peer.id,name:peer.name,color:peer.color,cursor:peer.cursor});
+ const send=(peer,packet)=>{try{peer.socket.send(JSON.stringify(packet))}catch{}};
+ const broadcast=(packet,except)=>{for(const peer of peers.values())if(peer.id!==except)send(peer,packet)};
+ const room={abort:new Set(),blocked:new Set(),peers,server:null,hold:null,
+  issue(id,userId,name){const ticket='ticket-'+(++ticketSerial);tickets.set(ticket,{id,userId,name});return{ticket}},
+  connect(socket){
+   const token=new URL(socket.url()).searchParams.get('ticket'),identity=tickets.get(token);tickets.delete(token);
+   if(!identity){socket.close({code:1008});return}
+   const peer={...identity,socket,color:['#2563eb','#be185d','#047857'][identity.userId%3],cursor:{visible:false}};
+   const others=[...peers.values()].map(publicPeer);peers.set(peer.id,peer);
+   send(peer,{type:'welcome',documentId:12,revision:room.server.entry.revision,self:publicPeer(peer),peers:others});broadcast({type:'join',peer:publicPeer(peer)},peer.id);
+   const leave=()=>{if(peers.get(peer.id)!==peer)return;peers.delete(peer.id);broadcast({type:'leave',id:peer.id},peer.id)};
+   socket.onClose(()=>leave());
+   socket.onMessage(message=>{const packet=JSON.parse(message);if(packet.type==='ping'){send(peer,{type:'pong'});return}if(packet.type==='cursor'){peer.cursor=packet.cursor;broadcast({type:'cursor',peer:publicPeer(peer)},peer.id)}});
+  },
+  revision(){broadcast({type:'revision',revision:room.server.entry.revision})}
+ };return room;
+}
+async function openLive(f){await f.page.getByRole('button',{name:'Soạn nội dung',exact:true}).click();await f.page.waitForFunction(()=>window.vm.session?.live?.state==='online');}
+
+test('three live editors see distinct named cursors across zoom levels without saving cursor movements',async()=>{
+ const room=collaborationServer(),clients=[];
+ try{
+  for(const [userId,name,width]of [[7,'Chị An',1440],[8,'Anh Bình',1100],[9,'Chị Chi',390]]){const f=await fixture({collaboration:room,userId,name,width});clients.push(f);await openLive(f)}
+  for(let i=0;i<clients.length;i++){
+   const f=clients[i],box=await f.page.locator('.study-notebook-paper').boundingBox(),scale=box.width/794;
+   await f.page.mouse.move(box.x+(120+i*100)*scale,box.y+(160+i*20)*scale);
+  }
+  for(const f of clients){await f.page.waitForFunction(()=>document.querySelectorAll('.study-notebook-peer-cursor').length===2);assert.equal(await f.page.locator('.study-notebook-peer-cursor span').first().evaluate(e=>getComputedStyle(e).color),'rgb(255, 255, 255)')}
+  assert.deepEqual((await clients[0].page.locator('.study-notebook-peer-cursor span').allTextContents()).sort(),['Anh Bình','Chị Chi']);
+  assert.equal(room.server.calls.filter(call=>call.method==='PUT').length,0,'Presence never creates document revisions');
+  await clients[0].page.screenshot({path:path.join(app,'../../.tmp/tntt-collaboration-three-cursors.png')});
+  await clients[1].page.locator('.study-notebook-close').click();await clients[0].page.waitForFunction(()=>document.querySelectorAll('.study-notebook-peer-cursor').length===1);await clients[1].context.close();
+  assert.deepEqual(room.server.errors,[]);
+ }finally{await Promise.all(clients.map(f=>f.context.close()))}
+});
+
+test('two live editors merge concurrent text and handwriting and undo only their own edit',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7,name:'Máy A'}),b=await fixture({collaboration:room,userId:8,name:'Máy B'});
+ try{
+  await openLive(a);await openLive(b);
+  await Promise.all([a.page.locator('.study-notebook-text').fill('Nội dung A\n'),b.page.locator('.study-notebook-text').fill('Nội dung B\n')]);
+  for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('Nội dung A')&&window.vm.session.document.text.includes('Nội dung B'));
+  assert.equal((room.server.entry.document.text.match(/Nội dung A/g)||[]).length,1);assert.equal((room.server.entry.document.text.match(/Nội dung B/g)||[]).length,1);
+  await a.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();
+  await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&!window.vm.session.document.text.includes('Nội dung A')&&window.vm.session.document.text.includes('Nội dung B'));
+  const draw=async(f,offset)=>{await f.page.getByRole('button',{name:'Bút',exact:true}).click();await f.page.locator('.study-notebook-heading__copy').click();const box=await f.page.locator('.study-notebook-canvas').boundingBox();await f.page.mouse.move(box.x+100,box.y+offset);await f.page.mouse.down();await f.page.mouse.move(box.x+200,box.y+offset+20,{steps:5});await f.page.mouse.up()};
+  await Promise.all([draw(a,140),draw(b,210)]);
+  for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.strokes.length===2);
+  assert.equal(new Set(room.server.entry.document.strokes.map(stroke=>stroke.id)).size,2);
+  await a.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();
+  await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.strokes.length===1);
+  assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
+});
+
+test('live updates arriving before a delayed or lost save acknowledgement do not duplicate local text',async()=>{
+ for(const lost of [false,true]){
+  const room=collaborationServer(),a=await fixture({collaboration:room,userId:7,name:'Máy A'}),b=await fixture({collaboration:room,userId:8,name:'Máy B'});
+  try{
+   await openLive(a);await openLive(b);
+   let release,reached;const committed=new Promise(resolve=>reached=resolve);room.hold={userId:7,reached,wait:new Promise(resolve=>release=resolve)};
+   if(lost)room.abort.add(7);
+   await a.page.locator('.study-notebook-text').fill('Alpha');await committed;
+   await a.page.locator('.study-notebook-text').press('End');await a.page.keyboard.insertText(' thêm');
+   await b.page.waitForFunction(()=>window.vm.session.document.text==='Alpha');
+   await b.page.locator('.study-notebook-text').press('End');await b.page.keyboard.insertText(' Beta');
+   await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('Beta'));
+   release();
+   for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('thêm')&&window.vm.session.document.text.includes('Beta'));
+   const text=room.server.entry.document.text;assert.equal((text.match(/Alpha/g)||[]).length,1);assert.equal((text.match(/thêm/g)||[]).length,1);assert.equal((text.match(/Beta/g)||[]).length,1);
+   assert.deepEqual(room.server.errors,[]);
+  }finally{await a.context.close();await b.context.close()}
+ }
+});
+
+test('identical concurrent insertions are distinct edits and a remote insert preserves selected text formatting',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7}),b=await fixture({collaboration:room,userId:8});
+ try{
+  await openLive(a);await openLive(b);
+  await Promise.all([a.page.locator('.study-notebook-text').fill('A'),b.page.locator('.study-notebook-text').fill('A')]);
+  for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text==='AA');
+  await a.page.locator('.study-notebook-text').fill('abcd');
+  await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text==='abcd');
+  await a.page.locator('.study-notebook-text').evaluate(el=>{el.focus();el.setSelectionRange(1,3)});
+  await b.page.locator('.study-notebook-text').fill('B abcd');
+  await a.page.waitForFunction(()=>window.vm.session.document.text==='B abcd');
+  await a.page.getByRole('button',{name:'Màu chữ và bút',exact:true}).click();
+  await a.page.getByRole('dialog',{name:'Bảng màu chữ và bút',exact:true}).getByRole('button',{name:'Màu #FF0000',exact:true}).click();
+  for(const f of [a,b])await f.page.locator('.ql-editor [style*="color: rgb(255, 0, 0)"]').getByText('bc',{exact:true}).waitFor();
+  assert.equal(room.server.entry.document.text,'B abcd');assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
+});
+
+test('IME input is kept while remote updates wait and an uncertain offline save recovers after closing and reopening',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7}),b=await fixture({collaboration:room,userId:8});
+ try{
+  await openLive(a);await openLive(b);
+  await b.page.locator('.study-notebook-text').evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})));
+  await b.page.locator('.study-notebook-text').fill('Tiếng Việt');await a.page.locator('.study-notebook-text').fill('Máy A ');
+  await a.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.revision>0);
+  assert.equal(await b.page.locator('.study-notebook-text').inputValue(),'Tiếng Việt');
+  await b.page.locator('.study-notebook-text').evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
+  for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('Máy A')&&window.vm.session.document.text.includes('Tiếng Việt'));
+  assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
+ const offline=collaborationServer(),f=await fixture({collaboration:offline,userId:7});
+ try{
+  await openLive(f);offline.blocked.add(7);
+  await f.page.locator('.study-notebook-text').fill('Không được xuất hiện sau khi đã hoàn tác');
+  await f.page.evaluate(()=>window.vm.session.save());
+  await f.page.locator('.study-notebook-text').fill('');
+  await f.page.locator('.study-notebook-close').click();await f.page.waitForFunction(()=>!window.vm.active);
+  offline.blocked.delete(7);await openLive(f);
+  await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.revision>=2&&window.vm.session.document.text==='');
+  assert.equal(offline.server.entry.document.text,'');
+  const attempts=offline.server.calls.filter(call=>call.method==='PUT'&&call.body.document.text!=='');
+  assert.equal(new Set(attempts.map(call=>call.body.mutationId)).size,1,'Retrying an uncertain request reuses its id instead of inserting text twice');
+ }finally{await f.context.close()}
+});
+
+test('live rich tables, cell line breaks, images and local undo converge on both machines',async()=>{
+ const room=collaborationServer(),a=await fixture({collaboration:room,userId:7}),b=await fixture({collaboration:room,userId:8});
+ try{
+  await openLive(a);
+  await a.page.locator('.study-notebook-text').evaluate(el=>{
+   const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const c=canvas.getContext('2d');c.fillStyle='#315bbe';c.fillRect(0,0,64,64);
+   const data=new DataTransfer();data.setData('text/html','<table><tr><th>Tên</th><th>Ghi chú</th></tr><tr><td>An</td><td>Chuẩn bị<br>Hội trường</td></tr></table><p><img src="'+canvas.toDataURL()+'"></p>');
+   el.focus();el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+  });
+  await a.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.textDelta?.ops.some(op=>op.insert.image));
+  await openLive(b);
+  const cell=(f,index)=>f.page.locator('.ql-editor table tr').nth(1).locator('td').nth(index);
+  await Promise.all([(async()=>{await cell(a,0).click();await a.page.keyboard.press('End');await a.page.keyboard.insertText(' A')})(),(async()=>{await cell(b,1).click();await b.page.keyboard.press('End');await b.page.keyboard.insertText(' B')})()]);
+  for(const f of [a,b]){
+   await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('An A')&&window.vm.session.document.text.includes('Hội trường B'));
+   assert.equal(await f.page.locator('.ql-editor table td').count(),4);assert.equal(await f.page.locator('.ql-editor table br.study-notebook-softbreak').count(),1);assert.equal(await f.page.locator('.ql-editor img').count(),1);
+  }
+  await a.page.getByRole('button',{name:'Hoàn tác ghi chú',exact:true}).click();
+  await b.page.waitForFunction(()=>window.vm.session.status==='saved'&&!window.vm.session.document.text.includes('An A')&&window.vm.session.document.text.includes('Hội trường B'));
+  await a.page.getByRole('button',{name:'Khôi phục ghi chú',exact:true}).click();
+  for(const f of [a,b])await f.page.waitForFunction(()=>window.vm.session.status==='saved'&&window.vm.session.document.text.includes('An A')&&window.vm.session.document.text.includes('Hội trường B'));
+  assert.deepEqual(room.server.errors,[]);
+ }finally{await a.context.close();await b.context.close()}
+});
 
 test('clipboard tables and raster images remain editable, undo atomically, save, reopen and print on desktop and phone',async()=>{
  for(const width of [1440,390]){

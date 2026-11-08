@@ -499,6 +499,55 @@ public class TnttDocumentTest {
     }
 
     @Test
+    public void liveMutationReceiptsAreIdempotentAndNeverLeakIntoPublicContent() {
+        Long id = create("DOCUMENT", null);
+        TnttDocumentRequest first = new TnttDocumentRequest();
+        first.revision = revision(id); first.mutationId = "11111111-1111-4111-8111-111111111111"; first.document = blank(); first.document.put("text", "Máy A");
+        service.save(id, first);
+        actor(education);
+        TnttDocumentRequest second = new TnttDocumentRequest();
+        second.revision = revision(id); second.mutationId = "22222222-2222-4222-8222-222222222222"; second.document = blank(); second.document.put("text", "Máy A và máy B");
+        service.save(id, second);
+        invalid(() -> service.save(id, first)); // Another account cannot claim an existing mutation id.
+        actor(admin);
+        Long head = revision(id);
+        Map<String, Object> acknowledged = service.save(id, first);
+        assertEquals(head.longValue(), revision(id));
+        assertEquals("Máy A và máy B", ((Map<?, ?>) acknowledged.get("document")).get("text"));
+        assertEquals(2, ((List<?>) ((Map<?, ?>) acknowledged.get("sync")).get("recent")).size());
+        first.document.put("text", "Không được dùng lại mã cho nội dung khác");
+        invalid(() -> service.save(id, first));
+        TnttDocumentRequest stale = new TnttDocumentRequest(); stale.revision = 0L; stale.mutationId = "33333333-3333-4333-8333-333333333333"; stale.document = second.document;
+        try { service.save(id, stale); fail("Distinct concurrent edits must be rebased, even if their text is identical."); } catch (TnttDocumentService.Conflict expected) {}
+        String token = service.enablePublicLink(id).get("token");
+        SecurityContextHolder.clearContext();
+        assertFalse(((Map<?, ?>) service.readPublicLink(token).get("document")).containsKey("_live"));
+        actor(manager); denied(() -> service.liveAccess(id));
+        actor(student); denied(() -> service.liveAccess(id));
+        actor(education); assertEquals(education.getId(), service.liveAccess(id).get("userId"));
+    }
+
+    @Test
+    public void liveRevisionHintsWaitUntilTheDatabaseTransactionCommits() {
+        Long id = create("DOCUMENT", null);
+        List<Object> sent = new ArrayList<>();
+        ReflectionTestUtils.setField(service, "events", new org.springframework.context.ApplicationEventPublisher() {
+            @Override public void publishEvent(org.springframework.context.ApplicationEvent event) { sent.add(event); }
+            @Override public void publishEvent(Object event) { sent.add(event); }
+        });
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            TnttDocumentRequest save = new TnttDocumentRequest(); save.revision = revision(id); save.document = blank(); save.document.put("text", "Chỉ gửi sau commit");
+            service.save(id, save);
+            assertTrue(sent.isEmpty());
+            for (org.springframework.transaction.support.TransactionSynchronization synchronization : org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()) synchronization.afterCommit();
+            assertEquals(1, sent.size());
+            assertEquals(id, ((TnttDocumentChanged) sent.get(0)).documentId);
+            assertEquals(revision(id), ((TnttDocumentChanged) sent.get(0)).revision.longValue());
+        } finally { org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization(); }
+    }
+
+    @Test
     public void payloadRejectsInvalidInkInsteadOfSavingAPartialDocument() {
         final Map<String, Object> v = blank();
         v.put(

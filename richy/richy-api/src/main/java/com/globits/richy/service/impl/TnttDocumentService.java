@@ -8,25 +8,73 @@ import com.globits.richy.dto.TnttDocumentRequest;
 import com.globits.security.domain.User;
 import java.util.*;
 import java.util.function.LongSupplier;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import javax.persistence.*;
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @Transactional
 public class TnttDocumentService {
     @PersistenceContext private EntityManager em;
     @Autowired private TnttDocumentMail mail;
+    @Autowired(required = false) private ApplicationEventPublisher events;
 
     @Value("${tntt.documents.enabled:false}")
     private boolean enabled;
 
     private LongSupplier clock = System::currentTimeMillis;
+
+    private void committed(TnttDocumentEntry entry) {
+        if (events == null) return;
+        final TnttDocumentChanged event = new TnttDocumentChanged(this, entry.getId(), entry.revision);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+                @Override public void afterCommit() { events.publishEvent(event); }
+            });
+        } else events.publishEvent(event);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> syncState(String json) {
+        Object state = stored(json).get("_live");
+        return state instanceof Map ? (Map<String, Object>) state : map("floor", 0L, "recent", new ArrayList<>());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> receipts(Map<String, Object> state) {
+        Object recent = state.get("recent");
+        return recent instanceof List ? (List<Map<String, Object>>) recent : new ArrayList<>();
+    }
+
+    private String withSync(String json, Map<String, Object> sync) {
+        Map<String, Object> document = decode(json);
+        if (!receipts(sync).isEmpty() || ((Number) sync.get("floor")).longValue() > 0) document.put("_live", sync);
+        return encode(document);
+    }
+
+    private String mutationHash(String json) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(json.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (Exception error) { throw new IllegalStateException("Không xác nhận được thay đổi tài liệu."); }
+    }
+
+    public Map<String, Object> liveAccess(Long id) {
+        User user = requireEditor();
+        List<Object[]> rows = em.createQuery("select e.id,e.revision,e.kind,e.archived from TnttDocumentEntry e where e.id=:id", Object[].class).setParameter("id", id).getResultList();
+        if (rows.isEmpty() || !"DOCUMENT".equals(rows.get(0)[2]) || Boolean.TRUE.equals(rows.get(0)[3])) throw new AccessDeniedException("Không mở được tài liệu này.");
+        return map("userId", user.getId(), "name", name(user), "revision", rows.get(0)[1]);
+    }
 
     public static class Conflict extends RuntimeException {
         public Conflict() {
@@ -377,10 +425,18 @@ public class TnttDocumentService {
         }
         long rev = edit ? e.revision : n.getId();
         out.put("canEdit", edit);
+        out.put("syncProtocol", edit ? 1 : 0);
         out.put("revision", rev);
         out.put("changed", known == null || known != rev);
-        if (known == null || known != rev)
+        if (known == null || known != rev) {
             out.put("document", decode(edit ? e.notebookJson : n.notebookJson));
+            if (edit) {
+                Map<String, Object> sync = syncState(e.notebookJson);
+                List<Object> recent = new ArrayList<>();
+                for (Map<String, Object> receipt : receipts(sync)) recent.add(map("id", receipt.get("id"), "revision", receipt.get("revision")));
+                out.put("sync", map("floor", sync.get("floor"), "recent", recent));
+            }
+        }
         return out;
     }
 
@@ -463,17 +519,35 @@ public class TnttDocumentService {
         if (e.archived || !"DOCUMENT".equals(e.kind))
             throw new IllegalArgumentException("Không sửa được tài liệu này.");
         String data = validate(r.document);
+        if (r.mutationId != null && !r.mutationId.matches("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))
+            throw new IllegalArgumentException("Mã thay đổi tài liệu không hợp lệ.");
+        Map<String, Object> sync = syncState(e.notebookJson);
+        for (Map<String, Object> receipt : receipts(sync)) {
+            if (Objects.equals(receipt.get("id"), r.mutationId)) {
+                if (!Objects.equals(((Number) receipt.get("actorId")).longValue(), u.getId())) throw new IllegalArgumentException("Mã thay đổi thuộc phiên soạn khác.");
+                if (!Objects.equals(receipt.get("hash"), mutationHash(data))) throw new IllegalArgumentException("Mã thay đổi đã được dùng cho nội dung khác.");
+                return read(id, null);
+            }
+        }
+        boolean changed = !Objects.equals(data, encode(decode(e.notebookJson)));
         if (!Objects.equals(e.revision, r.revision)) {
-            if (Objects.equals(data, e.notebookJson)) return read(id, null);
+            if (r.mutationId == null && !changed) return read(id, null);
             throw new Conflict();
         }
-        if (!Objects.equals(data, e.notebookJson)) {
-            e.notebookJson = data;
+        if (changed || r.mutationId != null) {
+            if (r.mutationId != null) {
+                List<Map<String, Object>> recent = new ArrayList<>(receipts(sync));
+                recent.add(map("id", r.mutationId, "revision", e.revision + 1, "actorId", u.getId(), "hash", mutationHash(data)));
+                while (recent.size() > 128) sync.put("floor", recent.remove(0).get("revision"));
+                sync.put("recent", recent);
+            }
+            e.notebookJson = withSync(data, sync);
             e.editorId = u.getId();
             e.updatedAt = clock.getAsLong();
             stamp(e, u);
             em.flush();
-            checkpoint(e, u, true);
+            if (changed) checkpoint(e, u, true);
+            committed(e);
         }
         return read(id, null);
     }
@@ -508,6 +582,7 @@ public class TnttDocumentService {
         e.updatedAt = clock.getAsLong();
         stamp(e, u);
         em.flush();
+        if ("DOCUMENT".equals(e.kind)) committed(e);
         return metadata(e);
     }
 
@@ -599,12 +674,13 @@ public class TnttDocumentService {
         if (v == null || !Objects.equals(id, v.entryId))
             throw new AccessDeniedException("Phiên bản không thuộc tài liệu.");
         e.title = v.title;
-        e.notebookJson = v.notebookJson;
+        e.notebookJson = withSync(validate(decode(v.notebookJson)), syncState(e.notebookJson));
         e.editorId = u.getId();
         e.updatedAt = clock.getAsLong();
         stamp(e, u);
         em.flush();
         checkpoint(e, u, false);
+        committed(e);
         return read(id, null);
     }
 

@@ -123,6 +123,13 @@ body.study-notebook-open .learning-pet-shell, body.study-notebook-open .student-
 .study-notebook-rich-text .ql-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: .4em 0; }
 .study-notebook-rich-text .ql-editor td { border: 1px solid #aeb9ca; padding: .25em .5em; vertical-align: top; overflow-wrap: anywhere; }
 .study-notebook-rich-text .ql-editor img { max-width: 100%; height: auto; vertical-align: middle; }
+.study-notebook-live { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px; color: #8b6b28; }
+.study-notebook-live.is-online { color: #047857; }
+.study-notebook-live__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.study-notebook-peer-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.study-notebook-peer-cursor { position: absolute; display: flex; align-items: flex-start; pointer-events: none; transition: left 70ms linear,top 70ms linear; }
+.study-notebook-peer-cursor svg { width: 18px; height: 23px; flex-shrink: 0; fill: currentColor; stroke: white; stroke-width: 1.5; filter: drop-shadow(0 1px 2px #0003); }
+.study-notebook-peer-cursor span { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 17px 0 0 -4px; padding: 3px 7px; border-radius: 0 7px 7px; color: #fff; font: 11px/1.35 Arial,sans-serif; }
 .study-notebook-text:disabled { opacity: 1; color: #7d8799; -webkit-text-fill-color: #7d8799; }
 .study-notebook-canvas { position: absolute; z-index: 1; top: 0; left: 0; display: block; pointer-events: none; touch-action: auto; }
 .study-notebook-canvas.is-drawing { z-index: 3; pointer-events: auto; touch-action: none; cursor: crosshair; }

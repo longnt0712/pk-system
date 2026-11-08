@@ -5,6 +5,7 @@ import java.util.*;
 public class TnttDocumentRequest {
     public Long id, revision, parentId, versionId;
     public String title, kind, requestKey, summary;
+    public String mutationId;
     public Boolean archived, shared, email;
     public Long startsAt, endsAt;
     public List<String> groups;

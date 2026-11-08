@@ -57,6 +57,7 @@ public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter 
 				// .antMatchers("/oauth/**").permitAll()
 
 				.antMatchers("/public/battle-online-ws/**").permitAll()
+				.antMatchers("/public/tntt-document-live").permitAll()
 
 				.antMatchers("/api/**").authenticated()
 

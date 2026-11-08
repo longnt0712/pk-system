@@ -20,6 +20,7 @@
                     '<label><span>Kiểu giấy</span><select ng-model="notebook.session.document.pattern" ng-change="notebook.changed()" ng-disabled="notebook.isLocked()" aria-label="Kiểu kẻ giấy"><option value="blank">Giấy trơn</option><option value="lined">Dòng kẻ ngang</option><option value="vertical">Dòng kẻ dọc</option><option value="grid">Ô ly</option><option value="squares">Ô vuông lớn</option><option value="sketch">Giấy nhám phác thảo</option></select></label></div>',
                     '<div class="study-notebook-zoom" role="group" aria-label="Thu phóng trang giấy"><button type="button" ng-click="notebook.zoomOut()" ng-disabled="notebook.zoomPercent<=50" aria-label="Thu nhỏ trang giấy" title="Thu nhỏ"><i class="fa fa-search-minus" aria-hidden="true"></i></button><input type="range" class="study-notebook-zoom__slider" min="50" max="200" step="5" ng-model="notebook.zoomSliderValue" ng-change="notebook.setZoom(notebook.zoomSliderValue)" ng-dblclick="notebook.fitZoom()" title="Nhấp đúp để về 100%" aria-label="Kéo để thu phóng trang giấy" ng-attr-aria-valuetext="{{notebook.zoomPercent}} phần trăm"><output aria-live="polite" aria-label="Mức thu phóng">{{notebook.zoomPercent}}%</output><button type="button" ng-click="notebook.zoomIn()" ng-disabled="notebook.zoomPercent>=200" aria-label="Phóng to trang giấy" title="Phóng to"><i class="fa fa-search-plus" aria-hidden="true"></i></button></div></div>',
                     '<div class="study-notebook-heading__actions"><span class="study-notebook-status" ng-class="\'is-\'+notebook.session.status" role="status" aria-live="polite">{{notebook.statusText()}}</span>',
+                    '<span class="study-notebook-live" ng-if="notebook.session.live" ng-class="{\'is-online\':notebook.session.live.state===\'online\'}"><span class="study-notebook-live__dot"></span><span>{{notebook.session.live.state===\'online\' ? \'Trực tiếp\' : notebook.session.live.state===\'unavailable\' ? \'Đồng bộ định kỳ\' : \'Đang nối lại\'}}</span><span ng-if="notebook.session.live.peers.length"> · {{notebook.session.live.peers.length + 1}} đang mở</span></span>',
                     '<button type="button" class="study-notebook-action" ng-if="!notebook.hideSave && !notebook.readOnly" ng-click="notebook.save()" ng-disabled="!notebook.session || notebook.session.status===\'loading\' || notebook.session.status===\'conflict\'" title="Lưu ngay"><i class="fa fa-cloud-upload" aria-hidden="true"></i><span>Lưu ngay</span></button>',
                     '<button type="button" class="study-notebook-close" ng-click="notebook.close()" aria-label="Ẩn sổ ghi chú" title="Ẩn sổ ghi chú">&times;</button></div></header>',
                     '<div class="study-notebook-toolbar" role="group" aria-label="Công cụ ghi chú">',
@@ -39,6 +40,7 @@
                     '<textarea class="study-notebook-text" ng-hide="notebook.richActive" ng-trim="false" ng-model="notebook.session.document.text" ng-change="notebook.changed()" ng-disabled="notebook.isLocked() && !notebook.readOnly" ng-readonly="notebook.readOnly" ng-attr-placeholder="{{notebook.tool===\'text\' && !notebook.session.document.strokes.length ? (notebook.placeholder || \'Viết những ý chính, từ mới hoặc điều bạn muốn nhớ…\') : \'\'}}" aria-label="Nội dung ghi chú" spellcheck="false"></textarea>',
                     '<div class="study-notebook-rich-text ng-hide" ng-show="notebook.richActive"></div>',
                     '<canvas class="study-notebook-canvas" ng-class="{\'is-drawing\':notebook.tool!==\'text\'}" aria-label="Vùng viết và vẽ bằng bút" role="img"></canvas>',
+                    '<div class="study-notebook-peer-layer" aria-hidden="true"><div class="study-notebook-peer-cursor" ng-repeat="peer in notebook.session.live.peers track by peer.id" ng-if="peer.cursor.visible" ng-style="notebook.peerStyle(peer)"><svg viewBox="0 0 20 24"><path d="M2 2v17l4.8-4.5 3.4 7 3.1-1.5-3.4-7H17Z"/></svg><span ng-style="{backgroundColor:peer.color}">{{peer.name}}</span></div></div>',
                     '<div class="study-notebook-page-boundary" ng-if="notebook.paged" ng-repeat="page in notebook.pages track by page" ng-style="{top:((page-1)*notebook.pageStep)+\'px\'}" aria-hidden="true"><span>Trang {{page}}</span></div>',
                     '</div></div></div>',
                     '<footer class="study-notebook-footer" ng-class="{\'is-selecting-ink\':notebook.tool===\'lasso\'}"><span><i class="fa fa-lock" aria-hidden="true"></i> {{notebook.footerLabel || \'Ghi chú riêng của bạn trong đề này\'}}</span><label ng-if="!notebook.readOnly"><input type="checkbox" ng-model="notebook.touchDrawing"> Vẽ bằng ngón tay</label><span class="study-notebook-tip" ng-if="notebook.tool!==\'lasso\'">{{notebook.tool===\'text\' ? \'Gõ chữ hoặc cuộn trang để xem tiếp.\' : \'Dùng bút hoặc chuột. Chọn Gõ chữ để cuộn trang.\'}}</span><span class="study-notebook-tip study-notebook-lasso-tip" ng-if="notebook.tool===\'lasso\'" aria-live="polite">{{notebook.inkSelected ? \'Kéo vùng nét đã chọn đến vị trí mới.\' : \'Vẽ vòng quanh các nét cần di chuyển.\'}}</span>',
@@ -60,6 +62,8 @@
                     var canvas = host.querySelector('.study-notebook-canvas'), context = canvas.getContext && canvas.getContext('2d');
                     var richHost = host.querySelector('.study-notebook-rich-text'), richEditor = null, richState = '', renderingRich = false;
                     var pendingPaste = null, pasteSerial = 0, richRange = null, paletteTextRange = null;
+                    var remoteUnsubscribe = null;
+                    var collabMerge = ui.paged && $injector.has && $injector.has('TnttDocumentMerge') ? $injector.get('TnttDocumentMerge') : null;
                     var inkCache = document.createElement('canvas'), cacheContext = inkCache.getContext && inkCache.getContext('2d');
                     var cacheDirty = true, inkBounds = [];
                     var alive = true, raf = null, layoutTimer = null, observer = null, identity = '';
@@ -95,6 +99,39 @@
                         else { callback(); digest(); }
                     }
                     function preventPromiseNoise(result) { if (result && result.catch) { result.catch(angular.noop); } }
+                    ui.peerStyle = function (peer) { return {left: (peer.cursor.x * scale) + 'px', top: (peer.cursor.y * scale) + 'px', color: peer.color}; };
+                    function sendCursor(event) {
+                        if (!visible() || !ui.session || !ui.session.cursor || !ui.session.live) { return; }
+                        var box = paper.getBoundingClientRect();
+                        ui.session.cursor({visible: true, x: Math.max(0, Math.min(100000, (event.clientX - box.left) / scale)), y: Math.max(0, Math.min(100000, (event.clientY - box.top) / scale)), tool: ui.tool});
+                    }
+                    function hideCursor() { if (ui.session && ui.session.cursor) { ui.session.cursor({visible: false}); } }
+                    function remoteDocument(before, after) {
+                        if (!collabMerge || !alive) { return; }
+                        var active = document.activeElement === textarea || richEditor && richEditor.root.contains(document.activeElement);
+                        var range = collabMerge.selection(currentTextRange(), before, after);
+                        var formats = richEditor && richEditor.getFormat(currentTextRange().index, currentTextRange().length);
+                        try {
+                            function rebase(value) {
+                                var result = collabMerge.merge(before, angular.extend({}, before, value), after);
+                                return {text: result.text, textDelta: result.textDelta, strokes: result.strokes};
+                            }
+                            undo = undo.map(rebase); redo = redo.map(rebase);
+                        } catch (error) { undo = []; redo = []; }
+                        if (paletteTextRange) { paletteTextRange = collabMerge.selection(paletteTextRange, before, after); }
+                        richRange = range; knownStrokes = after.strokes; knownContent = {text: after.text, textDelta: after.textDelta, strokes: after.strokes};
+                        lastHistoryKind = ''; cacheDirty = true; setInkSelection(null);
+                        return function () {
+                            syncRichEditor();
+                            if (richEditor) {
+                                if (active && range) {
+                                    richEditor.setSelection(range.index, range.length, 'silent');
+                                    if (!range.length && formats) ['bold', 'italic', 'underline', 'color'].forEach(function (key) { richEditor.format(key, formats[key] || false, 'silent'); });
+                                }
+                            } else if (range) { textarea.value = after.text; if (textarea.setSelectionRange) textarea.setSelectionRange(range.index, range.index + range.length); }
+                            scheduleLayout(); digest();
+                        };
+                    }
                     function strokes() { return (ui.session && ui.session.document && ui.session.document.strokes) || []; }
                     function visible() { return alive && ui.isOpen; }
                     function colorTrigger() { return paletteTrigger || dialog.querySelector('.study-notebook-color-toggle'); }
@@ -462,6 +499,7 @@
                         if (!ui.session) {
                             try { ui.session = ui.sessionOpener ? ui.sessionOpener() : $injector.get('StudyNotebookStore').open({ userId: ui.userId, testId: ui.testId, testMode: ui.testMode }); }
                             catch (error) { return; }
+                            if (ui.session.onRemote && collabMerge) { remoteUnsubscribe = ui.session.onRemote(remoteDocument); }
                             knownStrokes = strokes(); knownContent = contentSnapshot();
                             if (ui.session.ready && ui.session.ready.then) {
                                 ui.session.ready.then(function () {
@@ -1036,13 +1074,14 @@
                         }
                     }
                     function flushBeforeLeave() { if (ui.session) { flushText(); finishStroke(true); compositionEnd(); saveNow(); } }
-                    function visibilityChanged() { if (document.visibilityState === 'hidden') { flushBeforeLeave(); } }
+                    function visibilityChanged() { if (document.visibilityState === 'hidden') { hideCursor(); flushBeforeLeave(); } }
                     function compositionStart() { composing = true; if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(true, 'text'); } }
                     function compositionEnd() { if (!composing) { return; } flushText(); composing = false; if (ui.session && ui.session.setInteraction) { ui.session.setInteraction(false, 'text'); } }
                     function identityChanged() {
                         var next = [ui.userId, ui.testMode, ui.testId, !!ui.enabled, ui.sessionKey || ''].join(':');
                         if (identity === next) { return; }
                         identity = next; ui.close();
+                        if (remoteUnsubscribe) { remoteUnsubscribe(); remoteUnsubscribe = null; }
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
                         undo = []; redo = []; knownStrokes = null; knownContent = null; lastHistoryKind = ''; ui.zoomPercent = 100; ui.zoomSliderValue = 100; zoomAnchor = null;
                         ui.pages = []; ui.currentPage = 1;
@@ -1077,6 +1116,8 @@
                     $window.addEventListener('pagehide', flushBeforeLeave); document.addEventListener('visibilitychange', visibilityChanged);
                     $window.addEventListener('resize', scheduleLayout);
                     scroller.addEventListener('scroll', pageScrolled, {passive: true});
+                    paper.addEventListener('pointermove', sendCursor, {passive: true, capture: true});
+                    paper.addEventListener('pointerleave', hideCursor);
                     var toolbar = dialog.querySelector('.study-notebook-toolbar'); if (toolbar) { toolbar.addEventListener('scroll', positionPalette); }
                     if ($window.ResizeObserver) { observer = new $window.ResizeObserver(scheduleLayout); observer.observe(paper); }
                     scope.$on('$destroy', function () {
@@ -1084,6 +1125,7 @@
                         $timeout.cancel(layoutTimer); if (raf) { cancelFrame.call($window, raf); raf = null; }
                         $timeout.cancel(paletteTimer); if (toolbar) { toolbar.removeEventListener('scroll', positionPalette); }
                         if (observer) { observer.disconnect(); }
+                        if (remoteUnsubscribe) { remoteUnsubscribe(); remoteUnsubscribe = null; }
                         if (ui.session) { ui.session.destroy(); ui.session = null; }
                         if (richEditor) {
                             richEditor.off('text-change', richTextChanged); richEditor.off('selection-change', richSelectionChanged);
@@ -1105,6 +1147,7 @@
                         $window.removeEventListener('pagehide', flushBeforeLeave); document.removeEventListener('visibilitychange', visibilityChanged);
                         $window.removeEventListener('resize', scheduleLayout);
                         scroller.removeEventListener('scroll', pageScrolled);
+                        paper.removeEventListener('pointermove', sendCursor, true); paper.removeEventListener('pointerleave', hideCursor);
                         if (overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
                     });
                 }

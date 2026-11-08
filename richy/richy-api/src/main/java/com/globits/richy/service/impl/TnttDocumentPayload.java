@@ -43,6 +43,12 @@ public final class TnttDocumentPayload {
     }
 
     public static Map<String, Object> decode(String value) {
+        Map<String, Object> document = stored(value);
+        document.remove("_live");
+        return document;
+    }
+
+    static Map<String, Object> stored(String value) {
         try {
             return value == null
                     ? blank()
