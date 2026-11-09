@@ -8,8 +8,8 @@ import com.globits.richy.dto.VocabularyLessonBulkActionDto;
 import com.globits.richy.dto.TopicForListAllDto;
 
 public interface TopicService {
-	List<Long> getUncategorizedLessonSelection(String search);
-	int moveUncategorizedLessons(VocabularyLessonBulkActionDto request);
+	List<Long> getLessonSelection(Long sourceCategoryId, String search);
+	int moveLessons(Long sourceCategoryId, VocabularyLessonBulkActionDto request);
 	int deleteUncategorizedLessons(VocabularyLessonBulkActionDto request);
 	public Page<TopicDto> getPageObject(TopicDto searchDto, int pageIndex, int pageSize);
 	public Page<TopicDto> getPageObjectForGames(TopicDto searchDto, int pageIndex, int pageSize);

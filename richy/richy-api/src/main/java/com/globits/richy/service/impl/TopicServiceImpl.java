@@ -409,33 +409,36 @@ public class TopicServiceImpl implements TopicService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<Long> getUncategorizedLessonSelection(String search) {
-		User owner = uncategorizedLessonOwner();
+	public List<Long> getLessonSelection(Long sourceCategoryId, String search) {
+		User owner = lessonBulkOwner(sourceCategoryId, null);
 		boolean searchByName = search != null && !search.isEmpty();
-		TypedQuery<Long> ids = manager.createQuery("select s.id from Topic s" + TopicRepository.UNCATEGORIZED_OWNER
+		TypedQuery<Long> ids = manager.createQuery("select s.id from Topic s" + TopicRepository.LESSON_SOURCE
 				+ (searchByName ? " and s.name like :search" : ""), Long.class);
-		ids.setParameter("owner", owner.getId());
+		ids.setParameter("owner", owner.getId()).setParameter("source", sourceCategoryId);
 		if (searchByName) { ids.setParameter("search", "%" + search + "%"); }
 		return ids.getResultList();
 	}
 
 	@Override
 	@Transactional
-	public int moveUncategorizedLessons(VocabularyLessonBulkActionDto request) {
+	public int moveLessons(Long sourceCategoryId, VocabularyLessonBulkActionDto request) {
 		if (request == null || request.targetCategoryId == null) {
 			throw new IllegalArgumentException("Hãy chọn nhóm bài đích.");
 		}
-		return changeUncategorizedLessons(request, request.targetCategoryId);
+		if (request.targetCategoryId.equals(sourceCategoryId)) {
+			throw new IllegalArgumentException("Hãy chọn nhóm đích khác với nhóm hiện tại.");
+		}
+		return changeLessons(sourceCategoryId, request, request.targetCategoryId);
 	}
 
 	@Override
 	@Transactional
 	public int deleteUncategorizedLessons(VocabularyLessonBulkActionDto request) {
-		return changeUncategorizedLessons(request, null);
+		return changeLessons(null, request, null);
 	}
 
-	private int changeUncategorizedLessons(VocabularyLessonBulkActionDto request, Long targetId) {
-		User owner = uncategorizedLessonOwner();
+	private int changeLessons(Long sourceCategoryId, VocabularyLessonBulkActionDto request, Long targetId) {
+		User owner = lessonBulkOwner(sourceCategoryId, targetId);
 		if (request == null || request.lessonIds == null || request.lessonIds.isEmpty()
 				|| request.lessonIds.stream().anyMatch(id -> id == null || id < 1)) {
 			throw new IllegalArgumentException("Hãy chọn ít nhất một bài hợp lệ.");
@@ -458,7 +461,7 @@ public class TopicServiceImpl implements TopicService {
 						.setParameter("owner", owner.getId()).setParameter("ids", batch).executeUpdate();
 				changed = topicRepository.deleteUncategorizedLessons(batch, owner.getId());
 			} else {
-				changed = topicRepository.moveUncategorizedLessons(batch, owner.getId(), category, owner.getUsername(), now);
+				changed = topicRepository.moveLessons(batch, owner.getId(), sourceCategoryId, category, owner.getUsername(), now);
 			}
 			if (changed != batch.size()) {
 				throw new IllegalStateException("Danh sách bài đã thay đổi. Hãy tải lại và chọn lại bài.");
@@ -467,12 +470,16 @@ public class TopicServiceImpl implements TopicService {
 		return ids.size();
 	}
 
-	private User uncategorizedLessonOwner() {
+	private User lessonBulkOwner(Long sourceCategoryId, Long targetCategoryId) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
-				|| ((User) authentication.getPrincipal()).getId() == null || "VIEWER".equals(VocabularyPolicy.role(authentication))
-				|| topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent() != null) {
-			throw new AccessDeniedException("Bạn không có quyền quản lý mục Bài chưa phân nhóm.");
+				|| ((User) authentication.getPrincipal()).getId() == null || "VIEWER".equals(VocabularyPolicy.role(authentication))) {
+			throw new AccessDeniedException("Bạn không có quyền quản lý bài từ vựng.");
+		}
+		Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		if (allowed != null && (sourceCategoryId == null || !allowed.contains(sourceCategoryId)
+				|| (targetCategoryId != null && !allowed.contains(targetCategoryId)))) {
+			throw new AccessDeniedException("Bạn không có quyền sử dụng nhóm bài này.");
 		}
 		return (User) authentication.getPrincipal();
 	}

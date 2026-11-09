@@ -66,11 +66,14 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             const id = Number(url.pathname.split('/').at(-1)); lessons.splice(lessons.findIndex(lesson => lesson.id === id), 1);
             state.cards.forEach(card => { card.questionTopics = card.questionTopics.filter(link => link.topic.id !== id); }); return json(true);
         }
-        if (url.pathname === '/api/topic/uncategorized/selection') {
-            const query = url.searchParams.get('search') || '';
-            return json(lessons.filter(lesson => !lesson.topicCategory && lesson.name.includes(query)).map(lesson => lesson.id));
+        const lessonSelection = url.pathname.match(/^\/api\/topic\/(?:uncategorized|category\/(\d+))\/selection$/);
+        if (lessonSelection) {
+            const categoryId = lessonSelection[1] ? Number(lessonSelection[1]) : undefined;
+            const query = (url.searchParams.get('search') || '').toLowerCase();
+            return json(lessons.filter(lesson => lesson.topicCategory?.id === categoryId &&
+                lesson.name.toLowerCase().includes(query)).map(lesson => lesson.id));
         }
-        if (url.pathname.startsWith('/api/topic/uncategorized/bulk/')) {
+        if (/^\/api\/topic\/(?:uncategorized|category\/\d+)\/bulk\//.test(url.pathname)) {
             const dto = request.postDataJSON();
             if (url.pathname.endsWith('/move')) {
                 lessons.filter(lesson => dto.lessonIds.includes(lesson.id)).forEach(lesson => {
@@ -499,6 +502,42 @@ test('uncategorized lessons select across the scroll list and move into a child 
         assert.ok(!state.lessons.some(lesson => lesson.id === 300));
         assert.equal(state.cards.length, 12);
         assert.deepEqual(state.cards[10].questionTopics, []);
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
+
+test('searching within a category lets the user move selected matches to one folder', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser, {role: 'USER'});
+        const source = state.categories[1], child = state.categories[2];
+        const matches = Array.from({length: 42}, (_, index) => ({
+            id: 200 + index, name: 'iR.VOL ' + index, topicCategory: source
+        }));
+        state.lessons.push(...matches, {id: 300, name: 'iR.VOL in child', topicCategory: child});
+        await selectCategory(page, source.name);
+        const search = page.getByLabel('Tìm bài từ vựng trong nhóm');
+        await search.fill('vol');
+        await page.getByText('42 bài phù hợp', {exact: true}).waitFor();
+        assert.ok(await page.locator('.vw-lesson-row').count() < matches.length);
+        const first = page.getByRole('checkbox', {name: 'Chọn bài iR.VOL 0', exact: true});
+        await first.check();
+        await page.getByText('Đã chọn 1 bài', {exact: true}).waitFor();
+        await page.getByRole('checkbox', {name: 'Chọn tất cả bài', exact: true}).check();
+        await page.getByText('Đã chọn 42 bài', {exact: true}).waitFor();
+        await first.uncheck();
+        await page.getByRole('button', {name: 'Di chuyển', exact: true}).click();
+        await page.getByRole('heading', {name: 'Di chuyển 41 bài từ vựng?'}).waitFor();
+        await page.locator('.modal-dialog .ui-select-toggle').click();
+        assert.equal(await page.getByRole('option', {name: source.name, exact: true}).count(), 0);
+        await page.getByRole('option', {name: 'IELTS & học thuật / Reading', exact: true}).click();
+        assert.ok(!state.requests.some(request => request.url.endsWith('/bulk/move')));
+        await page.getByRole('button', {name: 'Xác nhận di chuyển'}).click();
+        await page.getByText('1 bài phù hợp', {exact: true}).waitFor();
+        const move = state.requests.find(request => request.url.endsWith('/bulk/move'));
+        assert.equal(move.url, '/api/topic/category/2/bulk/move');
+        assert.deepEqual(move.data, {lessonIds: matches.slice(1).map(lesson => lesson.id), targetCategoryId: child.id});
+        assert.equal(await search.inputValue(), 'vol');
         assert.deepEqual(state.errors, []);
     } finally { await browser.close(); }
 });

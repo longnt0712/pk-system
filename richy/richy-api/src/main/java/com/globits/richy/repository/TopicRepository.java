@@ -39,11 +39,12 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 	Long countByUserId(Long userId);
 
 	String UNCATEGORIZED_OWNER = " where s.user.id = :owner and s.topicCategory is null";
+	String LESSON_SOURCE = " where s.user.id = :owner and ((:source is null and s.topicCategory is null) or s.topicCategory.id = :source)";
 
 	@Modifying
 	@Query("update Topic s set s.topicCategory = :category, s.modifiedBy = :actor, s.modifyDate = :now"
-			+ UNCATEGORIZED_OWNER + " and s.id in :ids")
-	int moveUncategorizedLessons(@Param("ids") List<Long> ids, @Param("owner") Long owner,
+			+ LESSON_SOURCE + " and s.id in :ids")
+	int moveLessons(@Param("ids") List<Long> ids, @Param("owner") Long owner, @Param("source") Long source,
 			@Param("category") TopicCategory category, @Param("actor") String actor, @Param("now") LocalDateTime now);
 
 	@Modifying

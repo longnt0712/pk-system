@@ -19,12 +19,15 @@
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url;
         // console.log(baseUrl);
         self.getPage = getPage;
-        self.getUncategorizedLessonSelection = function (search) {
-            return $http.get(baseUrl + 'topic/uncategorized/selection', {params: {search: search}, timeout: 30000})
+        function lessonSourcePath(categoryId) {
+            return baseUrl + 'topic/' + (categoryId == null ? 'uncategorized' : 'category/' + encodeURIComponent(categoryId));
+        }
+        self.getLessonSelection = function (categoryId, search) {
+            return $http.get(lessonSourcePath(categoryId) + '/selection', {params: {search: search}, timeout: 30000})
                 .then(function (response) { return response.data; });
         };
-        self.changeUncategorizedLessons = function (action, payload) {
-            return $http.post(baseUrl + 'topic/uncategorized/bulk/' + action, payload)
+        self.changeLessons = function (categoryId, action, payload) {
+            return $http.post(lessonSourcePath(categoryId) + '/bulk/' + action, payload)
                 .then(function (response) { return response.data; });
         };
         self.getPageTopicCategory = getPageTopicCategory;

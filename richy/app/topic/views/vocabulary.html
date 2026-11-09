@@ -52,10 +52,10 @@
                 <div><button type="button" class="vw-btn vw-quiet" ng-repeat="child in vm.categoryChildren track by child.id" ng-click="vm.selectCategory(child)"><i class="fa fa-folder" aria-hidden="true"></i> {{child.name}}</button></div>
             </div>
             <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng trong nhóm" placeholder="Tìm tên bài trong nhóm..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons()"></label>
-            <div ng-if="vm.canDelete && vm.isUncategorized() && vm.lessonTotal" ng-include="'vocabulary_bulk_controls.html'"></div>
+            <div ng-if="vm.canDelete && vm.lessonTotal" ng-include="'vocabulary_bulk_controls.html'"></div>
             <div class="vw-lesson-scroll" role="region" aria-label="Danh sách bài từ vựng" tabindex="0" vocabulary-load-more="vm.loadMoreLessons()">
                 <div class="vw-lesson-row" ng-repeat="lesson in vm.lessons track by lesson.id" ng-class="{'is-selected':vm.selected[lesson.id]}">
-                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete && vm.isUncategorized()" ng-model="vm.selected[lesson.id]" ng-change="vm.toggleSelection(lesson.id)" aria-label="Chọn bài {{lesson.name}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
+                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete" ng-model="vm.selected[lesson.id]" ng-change="vm.toggleSelection(lesson.id)" aria-label="Chọn bài {{lesson.name}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
                     <button type="button" class="vw-lesson" ng-click="vm.selectLesson(lesson)">
                         <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong></span><i class="fa fa-angle-right" aria-hidden="true"></i>
                     </button>
@@ -186,10 +186,10 @@
 </script>
 <script type="text/ng-template" id="vocabulary_bulk_controls.html">
     <div class="vw-selection">
-        <label><input type="checkbox" aria-label="Chọn tất cả {{vm.isUncategorized() ? 'bài' : 'thẻ'}}" ng-model="vm.selectAllChecked" ng-change="vm.toggleAll()" ng-disabled="vm.selectionLoading || vm.bulkSaving"> Chọn tất cả</label>
-        <span role="status" ng-if="vm.selectionLoading || vm.selectedCount">{{vm.selectionLoading ? 'Đang chọn...' : 'Đã chọn ' + (vm.selectedCount | number:0) + (vm.isUncategorized() ? ' bài' : ' thẻ')}}</span>
+        <label><input type="checkbox" aria-label="Chọn tất cả {{vm.view === 'category' ? 'bài' : 'thẻ'}}" ng-model="vm.selectAllChecked" ng-change="vm.toggleAll()" ng-disabled="vm.selectionLoading || vm.bulkSaving"> Chọn tất cả</label>
+        <span role="status" ng-if="vm.selectionLoading || vm.selectedCount">{{vm.selectionLoading ? 'Đang chọn...' : 'Đã chọn ' + (vm.selectedCount | number:0) + (vm.view === 'category' ? ' bài' : ' thẻ')}}</span>
         <button type="button" class="vw-btn vw-quiet" ng-click="vm.confirmMove()" ng-disabled="!vm.selectedCount || vm.selectionLoading || vm.bulkSaving"><i class="fa fa-folder-open" aria-hidden="true"></i> Di chuyển</button>
-        <button type="button" class="vw-btn vw-delete-lesson" ng-click="vm.confirmDelete()" ng-disabled="!vm.selectedCount || vm.selectionLoading || vm.bulkSaving"><i class="fa fa-trash" aria-hidden="true"></i> Xóa đã chọn</button>
+        <button type="button" class="vw-btn vw-delete-lesson" ng-if="vm.view !== 'category' || vm.isUncategorized()" ng-click="vm.confirmDelete()" ng-disabled="!vm.selectedCount || vm.selectionLoading || vm.bulkSaving"><i class="fa fa-trash" aria-hidden="true"></i> Xóa đã chọn</button>
     </div>
 </script>
 
@@ -205,7 +205,7 @@
                 <label for="vw-bulk-category">Nhóm đích</label>
                 <ui-select class="vw-lesson-category" theme="bootstrap" dropdown-position="down" input-id="vw-bulk-category" ng-model="vm.bulkDraft.target" ng-disabled="vm.bulkSaving">
                     <ui-select-match placeholder="Gõ để tìm nhóm đích...">{{$select.selected.pathLabel || $select.selected.name}}</ui-select-match>
-                    <ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel || category.name"></span></ui-select-choices>
+                    <ui-select-choices repeat="category in vm.moveCategoryChoices | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel || category.name"></span></ui-select-choices>
                 </ui-select>
             </div>
             <div class="vw-field" ng-if="vm.bulkDraft.move && !vm.bulkDraft.lessons">

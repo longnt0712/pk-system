@@ -120,7 +120,7 @@
                 });
                 vm.lessonPage = page;
                 vm.lessonTotal = data && data.totalElements || 0;
-                if (vm.isUncategorized()) { updateSelectAllChecked(); }
+                if (vm.view === 'category') { updateSelectAllChecked(); }
                 vm.hasMoreLessons = incoming.length > 0 && page * vm.lessonPageSize < vm.lessonTotal;
                 vm.importTopics = vm.activeLesson ? [vm.activeLesson] : vm.lessons;
             }, function (error) {
@@ -130,7 +130,7 @@
             });
         }
         vm.loadLessons = function () {
-            if (vm.isUncategorized()) { clearSelection(); }
+            if (vm.view === 'category') { clearSelection(); }
             lessonRequest++;
             vm.lessonPage = 0;
             vm.lessonTotal = 0;
@@ -162,8 +162,11 @@
             vm.selectionLoading = false;
         }
         function updateSelectAllChecked() {
-            var total = vm.isUncategorized() ? vm.lessonTotal : vm.total;
+            var total = vm.view === 'category' ? vm.lessonTotal : vm.total;
             vm.selectAllChecked = total > 0 && vm.selectedCount === total;
+        }
+        function lessonSourceId() {
+            return vm.isUncategorized() ? null : vm.lessonCategory.id;
         }
         vm.loadCards = function (reset) {
             if (!vm.activeLesson && vm.view !== 'unassigned') { return; }
@@ -295,7 +298,9 @@
             if (!vm.selectAllChecked) { clearSelection(); return; }
             var request = ++selectionRequest;
             vm.selectionLoading = true;
-            var selection = vm.isUncategorized() ? lessons.getUncategorizedLessonSelection(vm.lessonQuery) : cards.getVocabularySelection(vm.searchPayload());
+            var selection = vm.view === 'category'
+                ? lessons.getLessonSelection(lessonSourceId(), vm.lessonQuery)
+                : cards.getVocabularySelection(vm.searchPayload());
             return selection.then(function (ids) {
                 if (!alive || request !== selectionRequest) { return; }
                 if (!angular.isArray(ids)) { throw new Error('Invalid vocabulary selection'); }
@@ -423,11 +428,17 @@
         };
         function confirmBulkAction(move, card) {
             if (!vm.canDelete || vm.selectionLoading || vm.bulkDialog) { return; }
+            var lessonList = vm.view === 'category';
+            if (lessonList && !move && !vm.isUncategorized()) { return; }
             var ids = card ? [card.id] : Object.keys(vm.selected).map(Number);
             if (!ids.length) { return; }
-            var lessonList = vm.isUncategorized();
+            var sourceCategoryId = lessonList ? lessonSourceId() : null;
             vm.bulkDraft = {move: move, ids: ids, lessons: lessonList, sourceTopicId: vm.activeLesson ? vm.activeLesson.id : null,
-                sourceTitle: lessonList ? vm.lessonCategory.name : vm.title(), word: card && card.question, target: null};
+                sourceCategoryId: sourceCategoryId, sourceTitle: lessonList ? vm.lessonCategory.name : vm.title(),
+                word: card && card.question, target: null};
+            if (lessonList && move) {
+                vm.moveCategoryChoices = vm.categories.filter(function (category) { return String(category.id) !== String(sourceCategoryId); });
+            }
             vm.bulkError = ''; vm.moveLessonError = ''; vm.moveLessonChoices = [];
             var dialog = vm.bulkDialog = openDialog('vocabulary_bulk_modal.html');
             function clearDialog() { vm.bulkDialog = null; vm.bulkDraft = null; moveLessonRequest++; }
@@ -456,7 +467,7 @@
             vm.bulkSaving = true; vm.bulkError = '';
             var action = draft.move ? 'move' : 'delete', targetId = draft.move ? draft.target.id : null;
             var change = draft.lessons
-                ? lessons.changeUncategorizedLessons(action, {lessonIds: draft.ids, targetCategoryId: targetId})
+                ? lessons.changeLessons(draft.sourceCategoryId, action, {lessonIds: draft.ids, targetCategoryId: targetId})
                 : cards.changeVocabularyCards(action, {cardIds: draft.ids, sourceTopicId: draft.sourceTopicId, targetTopicId: targetId});
             return change.then(function (count) {
                 if (!alive || vm.bulkDialog !== dialog) { return; }

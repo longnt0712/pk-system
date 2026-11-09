@@ -34,16 +34,19 @@ public class RestTopicController {
 	}
 
 	@Secured({"ROLE_ADMIN", "ROLE_USER"})
-	@RequestMapping(value = "/uncategorized/selection", method = RequestMethod.GET)
-	public List<Long> getUncategorizedLessonSelection(@RequestParam(defaultValue = "") String search) {
-		return service.getUncategorizedLessonSelection(search);
+	@RequestMapping(value = {"/uncategorized/selection", "/category/{sourceCategoryId}/selection"}, method = RequestMethod.GET)
+	public List<Long> getLessonSelection(@PathVariable(value = "sourceCategoryId", required = false) Long sourceCategoryId,
+			@RequestParam(defaultValue = "") String search) {
+		return service.getLessonSelection(sourceCategoryId, search);
 	}
 
 	@Secured({"ROLE_ADMIN", "ROLE_USER"})
-	@RequestMapping(value = "/uncategorized/bulk/{action:move|delete}", method = RequestMethod.POST)
-	public ResponseEntity<?> changeUncategorizedLessons(@PathVariable String action, @RequestBody VocabularyLessonBulkActionDto request) {
+	@RequestMapping(value = {"/uncategorized/bulk/{action:move|delete}", "/category/{sourceCategoryId}/bulk/{action:move}"},
+			method = RequestMethod.POST)
+	public ResponseEntity<?> changeLessons(@PathVariable(value = "sourceCategoryId", required = false) Long sourceCategoryId,
+			@PathVariable String action, @RequestBody VocabularyLessonBulkActionDto request) {
 		try {
-			return ResponseEntity.ok("move".equals(action) ? service.moveUncategorizedLessons(request) : service.deleteUncategorizedLessons(request));
+			return ResponseEntity.ok("move".equals(action) ? service.moveLessons(sourceCategoryId, request) : service.deleteUncategorizedLessons(request));
 		} catch (IllegalArgumentException error) {
 			return ResponseEntity.badRequest().body(Collections.singletonMap("message", error.getMessage()));
 		} catch (IllegalStateException error) {

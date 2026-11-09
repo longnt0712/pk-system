@@ -217,10 +217,10 @@ public class VocabularyWorkspacePersistenceTest {
         TopicCategory parent = new TopicCategory(); parent.setName("Parent"); manager.persist(parent);
         TopicCategory child = new TopicCategory(); child.setName("Child"); child.setParent(parent); manager.persist(child);
         manager.flush(); manager.clear();
-        assertEquals(Collections.singletonList(lessonId), lessons.getUncategorizedLessonSelection("Vocabu"));
+        assertEquals(Collections.singletonList(lessonId), lessons.getLessonSelection(null, "Vocabu"));
         VocabularyLessonBulkActionDto request = new VocabularyLessonBulkActionDto();
         request.lessonIds = Collections.singletonList(lessonId); request.targetCategoryId = child.getId();
-        assertEquals(1, lessons.moveUncategorizedLessons(request));
+        assertEquals(1, lessons.moveLessons(null, request));
         manager.clear();
         assertEquals(child.getId(), manager.find(Topic.class, lessonId).getTopicCategory().getId());
         QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTopicId(lessonId);
@@ -233,5 +233,43 @@ public class VocabularyWorkspacePersistenceTest {
         assertNull(manager.find(Topic.class, remaining.getId()));
         assertTrue(manager.find(Question.class, kept.getId()).getQuestionTopics().isEmpty());
         assertNotNull(manager.find(Topic.class, foreignLessonId));
+    }
+
+    @Test public void groupedLessonSelectionAndMoveUseTheDirectSourceAndAllowedDestination() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        TopicCategory source = new TopicCategory(); source.setName("IELTS Reading"); manager.persist(source);
+        TopicCategory child = new TopicCategory(); child.setName("Volume"); child.setParent(source); manager.persist(child);
+        Topic match = manager.find(Topic.class, lessonId); match.setName("VOL 1"); match.setTopicCategory(source);
+        Topic foreign = manager.find(Topic.class, foreignLessonId); foreign.setName("VOL 2"); foreign.setTopicCategory(source);
+        Topic nonmatch = topic(owner); nonmatch.setName("Grammar"); nonmatch.setTopicCategory(source);
+        Topic alreadyInChild = topic(owner); alreadyInChild.setName("VOL 3"); alreadyInChild.setTopicCategory(child);
+        manager.flush(); manager.clear();
+
+        List<Long> ids = lessons.getLessonSelection(source.getId(), "VOL");
+        assertEquals(Collections.singletonList(lessonId), ids);
+        VocabularyLessonBulkActionDto request = new VocabularyLessonBulkActionDto();
+        request.lessonIds = ids; request.targetCategoryId = source.getId();
+        try { lessons.moveLessons(source.getId(), request); fail("The destination must differ from the source"); }
+        catch (IllegalArgumentException expected) { }
+
+        TopicCategoryVisibilityService visibility = (TopicCategoryVisibilityService) ReflectionTestUtils.getField(lessons, "topicCategoryVisibilityService");
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(Collections.singleton(source.getId()));
+        request.targetCategoryId = child.getId();
+        try { lessons.moveLessons(source.getId(), request); fail("The destination is hidden"); }
+        catch (AccessDeniedException expected) { }
+
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(new HashSet<Long>(Arrays.asList(source.getId(), child.getId())));
+        request.lessonIds = Collections.singletonList(foreignLessonId);
+        try { lessons.moveLessons(source.getId(), request); fail("The lesson belongs to another user"); }
+        catch (IllegalStateException expected) { }
+        request.lessonIds = ids;
+        assertEquals(1, lessons.moveLessons(source.getId(), request));
+        manager.clear();
+        assertTrue(lessons.getLessonSelection(source.getId(), "VOL").isEmpty());
+        assertEquals(2, lessons.getLessonSelection(child.getId(), "VOL").size());
+        assertEquals(source.getId(), manager.find(Topic.class, foreignLessonId).getTopicCategory().getId());
+        assertEquals(source.getId(), manager.find(Topic.class, nonmatch.getId()).getTopicCategory().getId());
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTopicId(lessonId);
+        assertEquals(2, cards.getVocabularyPage(search, 1, 8).getTotalElements());
     }
 }
