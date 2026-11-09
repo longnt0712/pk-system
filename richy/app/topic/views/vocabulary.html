@@ -71,7 +71,10 @@
             <div ng-if="vm.activeLesson" ng-include="'vocabulary_breadcrumbs.html'"></div>
             <div class="vw-content-head">
                 <div class="vw-context"><span class="vw-eyebrow">{{vm.activeLesson ? (vm.activeLesson.topicCategory.name || 'BÀI TỪ VỰNG') : 'THẺ TỪ VỰNG CỦA BẠN'}}</span><h2 id="vocabulary-heading">{{vm.title()}}</h2><p><span class="vw-live-dot"></span>{{vm.total | number:0}} thẻ{{vm.query ? ' phù hợp' : ''}} <span class="vw-separator">·</span> {{vm.activeLesson ? 'Thêm từ mới trực tiếp vào bài này' : 'Chọn một bài để học và quản lý từ cùng nhau'}}</p></div>
-                <button class="vw-icon-btn vw-edit-lesson" ng-if="vm.activeLesson" ng-click="vm.editLesson()" ng-disabled="vm.lessonOpening" aria-label="Sửa bài từ vựng" title="Sửa tên và nhóm bài"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                <div class="vw-lesson-actions" ng-if="vm.activeLesson">
+                    <button type="button" class="vw-icon-btn vw-edit-lesson" ng-click="vm.editLesson()" ng-disabled="vm.lessonOpening" aria-label="Sửa bài từ vựng" title="Sửa tên và nhóm bài"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                    <button type="button" class="vw-btn vw-delete-lesson" ng-if="vm.canDelete" ng-click="vm.confirmDeleteLesson()" ng-disabled="vm.lessonOpening || vm.lessonDeleting"><i class="fa fa-trash" aria-hidden="true"></i> Xóa bài</button>
+                </div>
             </div>
             <div class="vw-toolbar">
                 <div class="vw-search-options">
@@ -158,7 +161,7 @@
             <p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p>
             <p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p>
         </div>
-        <div class="vw-modal-footer"><button type="button" class="vw-link vw-danger" style="margin-right:auto" ng-if="vm.canDelete && vm.lessonDraft.id" ng-click="vm.confirmDeleteLesson()" ng-disabled="vm.lessonSaving">Xóa bài</button><button type="button" class="vw-btn" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.lessonSaving || (!vm.lessonDraft.id && vm.usage.topicLimitReached)"><i class="fa" ng-class="vm.lessonSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.lessonSaving ? 'Đang lưu...' : 'Lưu bài từ vựng'}}</button></div>
+        <div class="vw-modal-footer"><button type="button" class="vw-link vw-danger" style="margin-right:auto" ng-if="vm.canDelete && vm.lessonDraft.id" ng-click="vm.confirmDeleteLesson(true)" ng-disabled="vm.lessonSaving">Xóa bài</button><button type="button" class="vw-btn" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.lessonSaving || (!vm.lessonDraft.id && vm.usage.topicLimitReached)"><i class="fa" ng-class="vm.lessonSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.lessonSaving ? 'Đang lưu...' : 'Lưu bài từ vựng'}}</button></div>
     </form>
 </script>
 <script type="text/ng-template" id="vocabulary_card_modal.html">

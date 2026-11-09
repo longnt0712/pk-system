@@ -251,6 +251,7 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.activeLesson && window.vm.activeLesson.id === 101 && !window.vm.cardsLoading);
         assert.match(await page.locator('#vocabulary-heading').innerText(), /Little things/);
+        assert.equal(await page.getByRole('button', {name: 'Xóa bài', exact: true}).count(), 0, 'viewers cannot delete lessons');
         assert.ok(!await page.locator('.vw-word-card').filter({hasText: 'wanderlust'}).count());
         await page.getByRole('button', {name: 'Thêm từ', exact: true}).click();
         await page.getByLabel('Từ / cụm từ', {exact: true}).fill('stay curious');
@@ -447,20 +448,28 @@ test('export follows the selected lesson and exports every result while preservi
     } finally { await browser.close(); }
 });
 
-test('deleting a lesson confirms first and keeps its vocabulary in the library', async () => {
+test('deleting a lesson from its header confirms first and keeps its vocabulary in the library', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
-        const {page, state} = await fixture(browser, {role: 'USER'});
+        const {page, state} = await fixture(browser, {role: 'USER', width: 390});
         await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.getByRole('button', {name: 'Sửa bài từ vựng', exact: true}).click();
-        await page.getByRole('button', {name: 'Xóa bài', exact: true}).click();
-        await page.getByRole('button', {name: 'Xác nhận xóa bài', exact: true}).waitFor();
+        await page.locator('.modal-dialog').getByRole('button', {name: 'Xóa bài', exact: true}).click();
+        await page.getByRole('button', {name: 'Giữ lại bài', exact: true}).click();
+        await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+        assert.ok(!state.requests.some(request => request.url.startsWith('/api/topic/delete/')));
+        await page.locator('.vw-lesson-actions').getByRole('button', {name: 'Xóa bài', exact: true}).click();
+        const confirmation = page.locator('.modal-dialog');
+        await confirmation.getByRole('button', {name: 'Xác nhận xóa bài', exact: true}).waitFor();
         assert.equal(state.lessons.length, 4); assert.equal(state.cards.length, 12);
-        assert.match(await page.locator('.modal-dialog').innerText(), /vẫn được giữ trong thư viện/);
+        assert.match(await confirmation.innerText(), /Little things, every day/);
+        assert.match(await confirmation.innerText(), /vẫn được giữ trong thư viện/);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         await page.getByRole('button', {name: 'Xác nhận xóa bài', exact: true}).click();
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});
         assert.equal(state.lessons.length, 3); assert.equal(state.cards.length, 12);
+        await page.locator('.vw-mobile-picker').click();
         await page.getByRole('button', {name: 'Chưa vào bài', exact: true}).click();
         await page.waitForFunction(() => !window.vm.cardsLoading && window.vm.total === 11);
         assert.deepEqual(state.errors, []);

@@ -300,18 +300,25 @@
                 .finally(function () { vm.lessonOpening = false; });
         };
         vm.cancelLesson = function () { if (!vm.lessonSaving) { vm.lessonDialog.dismiss(); } };
-        vm.confirmDeleteLesson = function () {
-            if (!vm.canDelete || !vm.lessonDraft.id || vm.lessonSaving) { return; }
-            vm.lessonDeleteDraft = angular.copy(vm.lessonDraft); vm.lessonDeleteError = '';
-            vm.lessonDialog.dismiss(); vm.lessonDeleteDialog = openDialog('vocabulary_delete_lesson_modal.html');
+        vm.confirmDeleteLesson = function (fromEditor) {
+            var lesson = fromEditor ? vm.lessonDraft : vm.activeLesson;
+            if (!vm.canDelete || !lesson || !lesson.id || vm.lessonOpening || vm.lessonSaving || vm.lessonDeleteDialog) { return; }
+            vm.lessonDeleteDraft = {id: lesson.id, name: lesson.name};
+            vm.lessonDeleteError = '';
+            if (fromEditor) { vm.lessonDialog.dismiss(); }
+            var dialog = vm.lessonDeleteDialog = openDialog('vocabulary_delete_lesson_modal.html');
+            function clearConfirmation() { vm.lessonDeleteDialog = null; vm.lessonDeleteDraft = null; }
+            dialog.result.then(clearConfirmation, clearConfirmation);
         };
-        vm.cancelDeleteLesson = function () { if (!vm.lessonDeleting) { vm.lessonDeleteDialog.dismiss(); } };
+        vm.cancelDeleteLesson = function () { if (!vm.lessonDeleting && vm.lessonDeleteDialog) { vm.lessonDeleteDialog.dismiss(); } };
         vm.deleteLesson = function () {
-            if (!vm.canDelete || vm.lessonDeleting) { return; }
+            if (!vm.canDelete || vm.lessonDeleting || !vm.lessonDeleteDialog || !vm.lessonDeleteDraft) { return; }
+            var dialog = vm.lessonDeleteDialog;
             vm.lessonDeleting = true; vm.lessonDeleteError = '';
             return lessons.deleteObject(vm.lessonDeleteDraft.id).then(function (ok) {
+                if (!alive || vm.lessonDeleteDialog !== dialog) { return; }
                 if (ok !== true) { vm.lessonDeleteError = 'Máy chủ chưa xác nhận xóa bài. Vui lòng thử lại.'; return; }
-                vm.lessonDeleteDialog.close(); vm.backToCategory(); vm.loadLessons(); vm.loadUsage();
+                dialog.close(); vm.backToCategory(); vm.loadLessons(); vm.loadUsage();
                 toastr.success('Đã xóa bài. Các từ vựng vẫn được giữ trong thư viện.');
             }, function () { vm.lessonDeleteError = 'Không xóa được bài từ vựng. Bài có thể đang được sử dụng; hãy liên hệ quản trị viên để được hỗ trợ.'; })
                 .finally(function () { vm.lessonDeleting = false; });

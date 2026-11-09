@@ -65,7 +65,10 @@
 .vw-separator{padding:0 7px;color:#c2cac1}
 .vw-icon-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #e7ece6;background:#fafcf9;color:#81917e;border-radius:10px!important;min-width:32px;height:32px;font-size:12px;flex-shrink:0}
 .vw-icon-btn:hover:not(:disabled){background:#edf3ea;color:#506b53}
-.vw-edit-lesson{width:38px;height:38px;border-radius:12px!important;align-self:flex-start;margin-top:16px}
+.vw-lesson-actions{display:flex;align-items:center;gap:8px;align-self:flex-start;flex-shrink:0;margin-top:16px}
+.vw-edit-lesson{width:38px;height:38px;border-radius:12px!important}
+.vw-btn.vw-delete-lesson{min-height:38px;padding:8px 10px;color:#a24848;border-color:#ecd9d9;background:#fff8f8}
+.vw-btn.vw-delete-lesson:not(:disabled):hover{background:#faeaea}
 .vw-toolbar{display:flex;gap:12px;align-items:center;margin-bottom:26px}
 .vw-search-options{display:flex;align-items:center;flex-wrap:wrap;gap:10px;flex:1;min-width:0}
 .vw-card-search{flex:1;min-width:150px}
