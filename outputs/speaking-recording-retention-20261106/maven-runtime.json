@@ -1,0 +1,11 @@
+{
+  "Executable": "C:\\Program Files\\Java\\jdk1.8.0_131\\bin\\java.exe",
+  "Prefix": [
+    "-Dfile.encoding=UTF-8",
+    "-Dmaven.multiModuleProjectDirectory=C:/Users/Admin/git/pk-system",
+    "-cp",
+    "C:\\Eclipse-2026\\eclipse\\plugins\\org.eclipse.m2e.maven.runtime_3.9.1200.20260112-2306;C:\\Eclipse-2026\\eclipse\\plugins\\org.eclipse.m2e.maven.runtime_3.9.1200.20260112-2306\\jars\\*;C:\\Eclipse-2026\\eclipse\\plugins\\org.apache.commons.cli_1.11.0.jar;C:\\Eclipse-2026\\eclipse\\plugins\\org.apache.commons.commons-codec_1.21.0.jar;C:\\Eclipse-2026\\eclipse\\plugins\\org.apache.commons.commons-io_2.21.0.jar;C:\\Eclipse-2026\\eclipse\\plugins\\org.apache.commons.lang3_3.20.0.jar;C:\\Users\\Admin\\.m2\\repository\\org\\slf4j\\slf4j-api\\1.7.25\\slf4j-api-1.7.25.jar;C:\\Users\\Admin\\.m2\\repository\\javax\\inject\\javax.inject\\1\\javax.inject-1.jar;C:/Eclipse-2026/eclipse/plugins/com.google.guava_33.5.0.jre.jar;C:/Eclipse-2026/eclipse/plugins/com.google.guava.failureaccess_1.0.3.jar",
+    "org.apache.maven.cli.MavenCli"
+  ],
+  "Description": "Eclipse embedded Maven: C:\\Eclipse-2026\\eclipse\\plugins\\org.eclipse.m2e.maven.runtime_3.9.1200.20260112-2306"
+}

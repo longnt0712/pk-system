@@ -1,0 +1,37 @@
+{
+  "examId": 1503,
+  "partId": 7984,
+  "partNumber": 4,
+  "title": "The Influence of Children on Adult Diet Background",
+  "originalAndAnswerCacheAgree": true,
+  "standaloneExamCheck": {
+    "examId": 1145,
+    "endpoint": "https://api.ieltsadvancedtest.com/api/ielts/public/exam/answer/1145",
+    "httpStatus": 200,
+    "applicationCode": 200,
+    "samePartId": 7984,
+    "audioUrl": "https://api.ieltsadvancedtest.com/ielts_images/exam/AUDIO/20260419154408697_4..MP3"
+  },
+  "requestMethod": "GET with Range: bytes=0-1023",
+  "testedHosts": [
+    "api.ieltsadvancedtest.com",
+    "ielts-api.atteam.vn"
+  ],
+  "testedPathPrefix": "/ielts_images/exam/AUDIO/",
+  "testedFilenamesOnEachHost": [
+    "20260419154408697_4..MP3",
+    "20260419154408697_4.MP3",
+    "20260419154408697_4.mp3",
+    "20260419154408697_4..mp3"
+  ],
+  "allEightGetStatuses": 404,
+  "legacyHostProvenance": "The legacy hostname is present in cached source exam audio URLs; no arbitrary external host was used.",
+  "headRequestObservation": "HEAD returned 403 even for the original path; GET results were used to establish file absence.",
+  "validAudioCandidateFound": false,
+  "audioDownloaded": false,
+  "ffprobeRun": false,
+  "mediaManifestsChanged": false,
+  "sqlChanged": false,
+  "serverConnectionsUsed": false,
+  "result": "Source audio remains unavailable. No replacement was fabricated."
+}

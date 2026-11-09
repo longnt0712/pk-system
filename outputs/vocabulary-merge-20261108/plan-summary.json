@@ -1,0 +1,10 @@
+{
+  "xml_cards": 23197,
+  "xml_words": 8535,
+  "merge_clusters": 4101,
+  "redundant_cards": 4993,
+  "different_or_unresolved_words": 6184,
+  "remaining_duplicate_cards": 15853,
+  "sql_sha256": "a9961d8b9cf2cf98075f320895a264e38d0881431238cd27b959e14db5fe9c25",
+  "xml_sha256": "5ae5a6bfa07c766c6d406a0fca6d967655ac7b25c806757664857f32b7320795"
+}

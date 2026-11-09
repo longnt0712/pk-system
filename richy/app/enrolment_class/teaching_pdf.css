@@ -36,6 +36,14 @@
 }
 .teaching-pdf-session-complete:not(:disabled):hover { background: #e5dfff; }
 .teaching-pdf-error { margin: 8px 14px; }
+.teaching-pdf-conflicts {
+    flex: 0 0 auto; max-height: min(25vh, 190px); overflow: auto; margin: 4px 14px; padding: 8px 12px;
+    border: 1px solid #ead6a7; border-radius: 9px; background: #fffaf0; color: #423726; font-size: 12px;
+}
+.teaching-pdf-conflicts p { margin: 0 0 6px; }
+.teaching-pdf-conflicts article { padding: 7px 0; border-top: 1px solid #ead6a7; }
+.teaching-pdf-conflicts dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 8px; margin: 4px 0 6px; }
+.teaching-pdf-conflicts dd { max-height: 70px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .teaching-pdf-library { overflow: auto; }
 .teaching-pdf-library section { padding: 14px; margin-bottom: 12px; border: 1px solid #dfe4f1; border-radius: 12px; }
 .teaching-pdf-dialog h3 { font-size: 16px; margin: 0 0 10px; }

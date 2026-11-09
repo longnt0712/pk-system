@@ -1,0 +1,31 @@
+{
+  "zipFile": "IELTSROOM_SQL_english_20261106.zip",
+  "zipBytes": 10126001,
+  "zipSha256": "67460236ec626712df644f2ab403035461a631ebee63e7e788df30cc35e0b7cb",
+  "sqlSha256": "6a91ebf4b11ebb781d1a4c6e4fe2d7295d9a3d32dc2caef8f84702aab3d1c56b",
+  "includedFiles": [
+    "IELTSROOM_IMPORT_english.sql",
+    "MANIFEST.json",
+    "README_HUONG_DAN.md",
+    "SHA256SUMS.txt",
+    "licenses/DICTIONARY_DATA_CC_BY_SA_4_0.txt",
+    "licenses/IPA_DICT_MIT_LICENSE.txt",
+    "review/DE_CAN_RA_SOAT.json",
+    "review/DIEU_CHINH_CHUAN_HOA.json",
+    "review/NGUON_TRUNG_LAP.json",
+    "review/audio-1503-verification.json",
+    "review/source-1095-answers.json",
+    "review/source-1095-exam.json",
+    "validation/VALIDATION_SUMMARY.json",
+    "validation/importer-contract-checks.json",
+    "validation/media-publication-summary.json",
+    "validation/normalization-invariants.json",
+    "validation/normalization-qa.json",
+    "validation/sql-validation.json",
+    "validation/vocabulary-qa.json",
+    "validation/vocabulary-summary.json"
+  ],
+  "componentCount": 20,
+  "containsServerCredentials": false,
+  "containsMediaPayloads": false
+}

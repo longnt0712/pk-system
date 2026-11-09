@@ -1,0 +1,18 @@
+{
+  "phase": "complete",
+  "completedAt": "2026-11-06T11:18:22Z",
+  "audioFiles": 356,
+  "imageFiles": 33,
+  "fullListeningTests": 70,
+  "verifiedAssets": 389,
+  "verifiedPublicAssets": 389,
+  "httpChecked": 389,
+  "httpFailures": [],
+  "knownSourceErrors": [
+    {
+      "examId": 1503,
+      "part": 4,
+      "message": "Source audio unavailable"
+    }
+  ]
+}

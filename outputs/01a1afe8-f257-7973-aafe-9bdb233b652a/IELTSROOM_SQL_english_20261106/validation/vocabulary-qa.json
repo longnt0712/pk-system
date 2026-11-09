@@ -1,0 +1,303 @@
+{
+  "status": "passed",
+  "scope": "Automated structural/source checks and targeted linguistic spot checks; not an exhaustive human review of every meaning.",
+  "topics": 548,
+  "entries": 113862,
+  "minimumTopicWords": 184,
+  "maximumTopicWords": 211,
+  "unresolvedCriticalIssues": [],
+  "checks": {
+    "minimum180": true,
+    "uniqueHeadwordsPerTopic": true,
+    "requiredFields": true,
+    "sourceRelevance": true,
+    "keywordParserContamination": true,
+    "knownProperNameLeaks": true,
+    "lemmatizationAndPOS": "spaCy en_core_web_sm 3.8.0; headwords normalized from actual source tokens",
+    "OxfordCEFR": "Merged without overwriting easier levels; POS-specific levels used when available",
+    "uniqueTopicNames": true
+  },
+  "estimatedCEFR": 30607,
+  "estimatedCEFRPercentage": 26.88,
+  "pronunciationSources": {
+    "composed": 3917,
+    "dictionary": 105913,
+    "POS-aware correction": 1682,
+    "source": 2170,
+    "reviewed basic function word": 180
+  },
+  "POSAwarePronunciationCorrections": 1682,
+  "contextMeaningOverrides": 708,
+  "basicEntriesRetained": 0,
+  "removedWeakVariants": [
+    "an advert",
+    "membership for",
+    "the activities",
+    "the joint one",
+    "the membership",
+    "the minimum",
+    "the name first",
+    "the phone book",
+    "want the membership",
+    "your postcode"
+  ],
+  "examples": [
+    {
+      "partId": 16792,
+      "word": "field",
+      "meaning": "lĩnh vực",
+      "level": "A2"
+    },
+    {
+      "partId": 16558,
+      "word": "field",
+      "meaning": "cánh đồng; đồng ruộng",
+      "level": "A2"
+    },
+    {
+      "partId": 14825,
+      "word": "field",
+      "meaning": "sân thi đấu; sân thể thao",
+      "level": "A2"
+    },
+    {
+      "partId": 11234,
+      "word": "field",
+      "meaning": "trường (vật lý)",
+      "level": "A2"
+    },
+    {
+      "partId": 6006,
+      "word": "shuttle",
+      "meaning": "xe đưa đón; con thoi",
+      "level": "C1"
+    },
+    {
+      "partId": 8472,
+      "word": "shuttle",
+      "meaning": "xe đưa đón; con thoi",
+      "level": "C1"
+    },
+    {
+      "word": "well",
+      "sample": {
+        "word": "well",
+        "pronounce": "/wˈɛl/",
+        "pronunciationSource": "dictionary",
+        "meaning": "tốt, giỏi, hay",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "ADV",
+        "sourceForm": "well",
+        "fromSourceMeaning": false,
+        "score": 7
+      }
+    },
+    {
+      "word": "say",
+      "sample": {
+        "word": "say",
+        "pronounce": "/sˈeɪ/",
+        "pronunciationSource": "dictionary",
+        "meaning": "nói; nói ra",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "VERB",
+        "sourceForm": "said",
+        "fromSourceMeaning": false,
+        "score": 13
+      }
+    },
+    {
+      "word": "rock",
+      "sample": {
+        "word": "rock",
+        "pronounce": "/ɹˈɒk/",
+        "pronunciationSource": "dictionary",
+        "meaning": "tảng đá",
+        "level": "A2",
+        "levelEstimated": true,
+        "pos": "PROPN",
+        "sourceForm": "rock",
+        "fromSourceMeaning": true,
+        "score": 112
+      }
+    },
+    {
+      "word": "see",
+      "sample": {
+        "word": "see",
+        "pronounce": "/sˈiː/",
+        "pronunciationSource": "dictionary",
+        "meaning": "chứng kiến; trải qua",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "VERB",
+        "sourceForm": "see",
+        "fromSourceMeaning": false,
+        "score": 9
+      }
+    },
+    {
+      "word": "use",
+      "sample": {
+        "word": "use",
+        "pronounce": "/juːs/",
+        "pronunciationSource": "POS-aware correction",
+        "meaning": "sự sử dụng; việc dùng",
+        "level": "A2",
+        "levelEstimated": false,
+        "pos": "NOUN",
+        "sourceForm": "use",
+        "fromSourceMeaning": false,
+        "score": 11
+      }
+    },
+    {
+      "word": "long",
+      "sample": {
+        "word": "long",
+        "pronounce": "/lˈɒŋ/",
+        "pronunciationSource": "dictionary",
+        "meaning": "lâu",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "ADV",
+        "sourceForm": "long",
+        "fromSourceMeaning": false,
+        "score": 9
+      }
+    },
+    {
+      "word": "close",
+      "sample": {
+        "word": "close",
+        "pronounce": "/kləʊs/",
+        "pronunciationSource": "POS-aware correction",
+        "meaning": "gần, kề",
+        "level": "A2",
+        "levelEstimated": false,
+        "pos": "ADJ",
+        "sourceForm": "close",
+        "fromSourceMeaning": false,
+        "score": 12
+      }
+    },
+    {
+      "word": "next",
+      "sample": {
+        "word": "next",
+        "pronounce": "/nˈɛkst/",
+        "pronunciationSource": "dictionary",
+        "meaning": "gần nhất, bên cạnh",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "ADJ",
+        "sourceForm": "next",
+        "fromSourceMeaning": false,
+        "score": 7
+      }
+    },
+    {
+      "word": "question",
+      "sample": {
+        "word": "question",
+        "pronounce": "/kwˈɛstʃən/",
+        "pronunciationSource": "dictionary",
+        "meaning": "câu hỏi",
+        "level": "A1",
+        "levelEstimated": false,
+        "pos": "NOUN",
+        "sourceForm": "questions",
+        "fromSourceMeaning": false,
+        "score": 8
+      }
+    }
+  ],
+  "limits": [
+    "CEFR for words outside Oxford lists and for most multiword phrases is estimated, not officially certified.",
+    "Some multiword IPA is assembled from constituent dictionary pronunciations; it is not a recording or narrow connected-speech transcription.",
+    "The open English–Vietnamese dictionary includes machine-produced translations; POS/context selection and targeted corrections improve it, but remaining nuanced senses have not all been individually reviewed."
+  ],
+  "sourceDerivedHeadwords": 11,
+  "selectionCorrections": [
+    "Removed course in part7902: source typo course cloth for coarse cloth; no incorrect course definition taught.",
+    "Removed isolated state from three topics already containing state-of-the-art.",
+    "Used state room/state school compound headwords for clear source compounds.",
+    "Removed isolated ground from coffee topic6302 that already has grind.",
+    "Renamed quality-comparative well to good and fixed means/customs noun lemmas.",
+    "Capitalized genuine weekdays, months and language names."
+  ],
+  "genericPOSFallbackCorrections": 5155,
+  "genericPOSFallbackReviewPairs": 599,
+  "genericReviewInputPairs": 2548,
+  "genericReviewScope": "Three defined review slices of the selected dictionary entries with incomplete Vietnamese sense coverage; corrected clearly wrong or misleading generic POS definitions. This does not replace the documented per-context review limits.",
+  "duplicateTopicConsolidations": [
+    {
+      "canonicalExamId": 1612,
+      "aliasExamIds": [
+        2120
+      ],
+      "partId": 9924,
+      "name": "iR.VOL5.11.PASSAGE1.Face recognition in everyday life",
+      "canonicalEntriesBefore": 210,
+      "aliasEntriesBefore": 210,
+      "mergedEntries": 210,
+      "addedHeadwords": [],
+      "reviewedConflictChoices": [],
+      "method": "Union by casefold headword; canonical entry wins unless a reviewed correction is more appropriate; no cap applied."
+    },
+    {
+      "canonicalExamId": 1612,
+      "aliasExamIds": [
+        2120
+      ],
+      "partId": 9928,
+      "name": "iR.VOL5.11.PASSAGE2.The problem of Graffiti",
+      "canonicalEntriesBefore": 210,
+      "aliasEntriesBefore": 210,
+      "mergedEntries": 211,
+      "addedHeadwords": [
+        "chemical"
+      ],
+      "reviewedConflictChoices": [
+        {
+          "word": "security",
+          "preferredSourceExamId": 2120,
+          "reason": "source says security patrols"
+        },
+        {
+          "word": "impact",
+          "preferredSourceExamId": 1612,
+          "reason": "source discusses impact of treatment"
+        }
+      ],
+      "method": "Union by casefold headword; canonical entry wins unless a reviewed correction is more appropriate; no cap applied."
+    },
+    {
+      "canonicalExamId": 1612,
+      "aliasExamIds": [
+        2120
+      ],
+      "partId": 9933,
+      "name": "iR.VOL5.11.PASSAGE3.Star Performers",
+      "canonicalEntriesBefore": 210,
+      "aliasEntriesBefore": 210,
+      "mergedEntries": 211,
+      "addedHeadwords": [
+        "in all"
+      ],
+      "reviewedConflictChoices": [
+        {
+          "word": "in all",
+          "preferredSourceExamId": 2120,
+          "reason": "question says talent exists in all areas of life"
+        }
+      ],
+      "method": "Union by casefold headword; canonical entry wins unless a reviewed correction is more appropriate; no cap applied."
+    }
+  ],
+  "sourceExamAliases": {
+    "2120": 1612
+  }
+}

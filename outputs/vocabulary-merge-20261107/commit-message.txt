@@ -1,0 +1,8 @@
+Add scoped duplicate vocabulary review and transactional merge
+
+List same-word groups in the current account, review all topic memberships,
+choose the canonical card and merge distinct meanings with slash separators.
+Transfer topic/category links and retain saved answer IDs in one transaction;
+reject changed previews, foreign cards and direct test/assignment roots.
+
+Validation: 26 Java checks and 13 Node checks passed. No schema changes.

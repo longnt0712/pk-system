@@ -1,0 +1,101 @@
+{
+  "scope": "IELTSAdvancedTest source to IELTSRoom normalized test data",
+  "databaseChanges": false,
+  "result": "pass",
+  "normalizedTests": 158,
+  "numberedQuestions": 6307,
+  "checks": {
+    "uniqueQuestionNumbersWithinEachTest": "pass",
+    "sourceQuestionIdAndTargetNumberMappings": "pass",
+    "gapCountEqualsQuestionCount": "pass",
+    "visualTableGapOrderMatchesAnswerNumbering": "pass",
+    "correctAnswerCountsByQuestionType": "pass",
+    "sharedOptionBanksMatchWithinEachGroup": "pass",
+    "spacedNumericAndCodeAnswersHaveCompactVariants": "pass",
+    "multipleAnswerGroups": {
+      "result": "pass",
+      "groups": 112,
+      "twoAnswerGroups": 101,
+      "threeAnswerGroups": 11,
+      "correctOptionUnionMatchesNumberedQuestionCount": true
+    },
+    "matchingHeadings": {
+      "result": "pass",
+      "groups": 33,
+      "markers": 212,
+      "expectedParagraphLabelsAndOrderMatch": true,
+      "exactFirstTwelveSourceTokensMatched": 211,
+      "equivalentParagraphWithMinorNameTokenization": 1
+    },
+    "type13WordbankInstructions": {
+      "result": "pass",
+      "adaptedGroups": 38,
+      "obsoleteSourceLetterInstructionsRemaining": 0,
+      "targetInteraction": "Drag a word or phrase from the list into each gap"
+    },
+    "listeningTranscripts": {
+      "result": "pass",
+      "visibleRuntimeField": "Part.question",
+      "alsoRetainedIn": "Part.description"
+    },
+    "nonTableStaticCellLayouts": {
+      "result": "pass",
+      "multiColumnGroups": 0,
+      "additionalDefiniteOrderDefects": 0
+    },
+    "exactNormalizedTestDeduplication": {
+      "result": "pass",
+      "method": "SHA-256 of canonical entire normalized DTO; canonical=min(sourceId)",
+      "duplicateAliasesFolded": 1,
+      "contentLost": false
+    }
+  },
+  "documentedCorrections": [
+    {
+      "examId": 1542,
+      "sourceGroupId": 6064,
+      "reason": "Source question numbers 8 and 10 were reversed relative to visual form order",
+      "targetAnswers": {
+        "8": "£120,000",
+        "9": "Park Square",
+        "10": "collect"
+      },
+      "sourceQuestionIdsAndExplanationsPreserved": true
+    },
+    {
+      "examId": 2147,
+      "sourceGroupId": 16029,
+      "reason": "Questions had no source positions; restored section headings before their relevant questions and omitted duplicate static suffix cell 2014",
+      "discoveryAndScientificExaminationBefore": "8–11",
+      "ongoingControversyAndPublicInterestBefore": "12–13"
+    }
+  ],
+  "minorEquivalentSourceDifference": {
+    "examId": 1096,
+    "questionNumber": 18,
+    "sourceNameTokens": "Miraz n Lahr",
+    "passageNameTokens": "Mirazn Lahr",
+    "finding": "Same paragraph; marker placement is correct"
+  },
+  "sourceExclusions": [
+    {
+      "examId": 1095,
+      "title": "Vol 3 READING FULL TEST 2",
+      "reason": "Source has 41 questions and duplicates question number 27",
+      "fabricatedReplacementQuestions": false
+    }
+  ],
+  "otherSourceIssues": "Recorded separately in normalization-report.json and the delivery manifest; affected tests remain drafts",
+  "corpusParts": 548,
+  "duplicateSources": [
+    {
+      "canonicalSourceId": 1612,
+      "aliasSourceId": 2120,
+      "canonicalTitle": "Vol 5 READING FULL TEST 11",
+      "aliasSourceTitle": "[VOL 5] Full Reading Test  11",
+      "normalizedDtoSha256": "cbc4bba86df69911ab3c0f014349ca0675d993614ae649f10fb753cb5ea656c7",
+      "reason": "Entire normalized test DTO is identical; catalog alias retained in source archive"
+    }
+  ],
+  "failures": []
+}

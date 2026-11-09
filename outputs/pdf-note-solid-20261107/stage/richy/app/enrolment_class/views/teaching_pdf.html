@@ -1,0 +1,304 @@
+<div class="teaching-pdf-dialog study-notebook-dialog" ng-class="{'is-fullscreen': pdf.fullscreen}" teaching-pdf-surface>
+    <header class="study-notebook-heading">
+        <div class="study-notebook-heading__copy">
+            <h2 id="teaching-pdf-title" ng-bind="pdf.run.name || 'Quản lý tài liệu PDF'"></h2>
+        </div>
+        <div class="study-notebook-heading__actions">
+            <span ng-if="pdf.run" class="study-notebook-status" role="status"
+                  ng-class="{'is-saved': pdf.run.completed || pdf.saveStatus === 'Đã đồng bộ', 'is-error': pdf.saveStatus === 'Chưa lưu'}">
+                {{pdf.run.completed ? 'Đã hoàn thành' : (pdf.busy ? 'Đang xử lý…' : (pdf.saveStatus || 'Tự động lưu'))}}
+            </span>
+            <button type="button" class="study-notebook-action" ng-if="pdf.run && pdf.saveStatus === 'Chưa lưu'" ng-click="pdf.save()" ng-disabled="pdf.busy">
+                <i class="fa fa-floppy-o" aria-hidden="true"></i> Lưu lại
+            </button>
+            <button type="button" class="study-notebook-close" ng-click="pdf.close()" ng-disabled="pdf.busy" aria-label="Đóng PDF">×</button>
+        </div>
+    </header>
+    <div class="alert alert-danger teaching-pdf-error" role="alert" ng-if="pdf.error" ng-bind="pdf.error"></div>
+    <div class="modal-body teaching-pdf-library" ng-if="!pdf.run">
+        <p ng-if="pdf.busy" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải…</p>
+        <section ng-if="pdf.current.length">
+            <h3>Tài liệu buổi này</h3>
+            <div class="teaching-pdf-row" ng-repeat="run in pdf.current track by run.id">
+                <span ng-bind="run.name"></span>
+                <button type="button" class="btn btn-default" ng-click="pdf.open(run.id)" ng-disabled="pdf.busy">{{run.completed ? 'Xem lại' : 'Mở PDF'}}</button>
+            </div>
+        </section>
+        <section ng-if="pdf.previous.length">
+            <h3>Tiếp tục buổi trước</h3>
+            <div class="teaching-pdf-row" ng-repeat="run in pdf.previous track by run.id">
+                <span ng-bind="run.name"></span>
+                <button type="button" class="btn btn-primary" ng-click="pdf.attach({previousRun: run.id})" ng-disabled="pdf.busy">Tiếp tục buổi trước</button>
+            </div>
+        </section>
+        <section>
+            <h3>Kho PDF của tôi</h3>
+            <p>Tải lên một lần để dùng lại ở nhiều lớp. Gắn vào buổi này sẽ tạo lượt dạy riêng với ghi chú mới.</p>
+            <p class="teaching-pdf-library-notice" role="status" ng-if="pdf.libraryNotice" ng-bind="pdf.libraryNotice"></p>
+            <div class="teaching-pdf-explorer" ng-if="pdf.foldersEnabled" ng-class="'is-' + pdf.libraryView" ng-attr-aria-busy="{{!!pdf.busy}}">
+                <div class="teaching-pdf-explorer-bar">
+                    <button type="button" class="btn btn-default" ng-disabled="!pdf.folderId || pdf.busy"
+                            ng-click="pdf.browseFolder(pdf.folderTrail[pdf.folderTrail.length - 1].parentId)"
+                            ng-attr-data-pdf-destination="{{pdf.folderId ? (pdf.folderTrail[pdf.folderTrail.length - 1].parentId || '') : undefined}}"
+                            aria-label="Lên thư mục cha" title="Lên thư mục cha"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+                    <nav aria-label="Đường dẫn kho PDF">
+                        <button type="button" data-pdf-destination="" ng-click="pdf.browseFolder(null)" ng-disabled="pdf.busy" ng-attr-aria-current="{{!pdf.folderId ? 'location' : undefined}}">
+                            <i class="fa fa-home" aria-hidden="true"></i> Kho PDF
+                        </button>
+                        <span ng-repeat="folder in pdf.folderTrail track by folder.id">
+                            <i class="fa fa-angle-right" aria-hidden="true"></i>
+                            <button type="button" ng-attr-data-pdf-destination="{{folder.id}}" ng-click="pdf.browseFolder(folder.id)" ng-disabled="pdf.busy"
+                                    ng-attr-aria-current="{{$last ? 'location' : undefined}}" ng-bind="folder.name"></button>
+                        </span>
+                    </nav>
+                    <div class="teaching-pdf-toolbar teaching-pdf-explorer-actions">
+                        <button type="button" class="btn btn-default" ng-click="pdf.toggleLibraryView()"
+                                ng-attr-aria-label="{{pdf.libraryView === 'list' ? 'Chuyển sang dạng biểu tượng' : 'Chuyển sang dạng danh sách'}}">
+                            <i class="fa" ng-class="pdf.libraryView === 'list' ? 'fa-th-large' : 'fa-list'" aria-hidden="true"></i>
+                            {{pdf.libraryView === 'list' ? 'Biểu tượng' : 'Danh sách'}}
+                        </button>
+                        <button type="button" class="btn btn-default" ng-click="pdf.editLibrary('folder')" ng-disabled="pdf.busy">
+                            <i class="fa fa-folder-o" aria-hidden="true"></i> Tạo thư mục
+                        </button>
+                        <button type="button" class="btn btn-primary" ngf-select="pdf.upload($file)" accept=".pdf,application/pdf" ng-disabled="pdf.busy">
+                            <i class="fa fa-upload" aria-hidden="true"></i> Tải PDF lên
+                        </button>
+                    </div>
+                </div>
+                <form class="teaching-pdf-library-form" ng-if="pdf.libraryForm" ng-submit="pdf.saveLibrary()">
+                    <label>Tên
+                        <input class="form-control" type="text" ng-model="pdf.libraryForm.name" required
+                               ng-maxlength="pdf.libraryForm.kind === 'folder' ? 200 : 255" ng-disabled="pdf.busy">
+                    </label>
+                    <label>Vị trí
+                        <select class="form-control" ng-model="pdf.libraryForm.parentId"
+                                ng-options="folder.id as folder.path for folder in pdf.folderChoices | orderBy:'path'" ng-disabled="pdf.busy">
+                            <option value="">Kho PDF (gốc)</option>
+                        </select>
+                    </label>
+                    <div class="teaching-pdf-toolbar">
+                        <button type="button" class="btn btn-default" ng-click="pdf.libraryForm = null" ng-disabled="pdf.busy">Hủy</button>
+                        <button type="submit" class="btn btn-primary" ng-disabled="pdf.busy || !pdf.libraryForm.name">Lưu</button>
+                    </div>
+                </form>
+                <div class="teaching-pdf-upload-area">
+                    <i class="fa fa-cloud-upload" aria-hidden="true"></i>
+                    <span><strong>Thả file PDF vào đây để tải lên.</strong> Kéo tài liệu hoặc thư mục vào thư mục đích để di chuyển.</span>
+                </div>
+                <div class="teaching-pdf-explorer-items">
+                    <div class="teaching-pdf-folder-card" ng-repeat="folder in pdf.visibleFolders | orderBy:'name' track by folder.id"
+                         ng-attr-data-pdf-destination="{{folder.id}}">
+                        <button type="button" class="teaching-pdf-folder-open" ng-click="pdf.browseFolder(folder.id)" ng-disabled="pdf.busy"
+                                data-pdf-drag="folder" ng-attr-data-pdf-entry-id="{{folder.id}}"
+                                ng-attr-draggable="{{!pdf.busy && !pdf.libraryForm}}"
+                                ng-attr-aria-label="Mở thư mục {{folder.name}}">
+                            <i class="fa fa-folder" aria-hidden="true"></i><span ng-bind="folder.name"></span>
+                        </button>
+                        <button type="button" class="btn btn-default teaching-pdf-organize" ng-click="pdf.editLibrary('folder', folder)"
+                                ng-disabled="pdf.busy" ng-attr-aria-label="Đổi tên hoặc di chuyển thư mục {{folder.name}}"
+                                title="Đổi tên hoặc di chuyển"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                    </div>
+                    <div class="teaching-pdf-file-row" ng-repeat="item in pdf.visibleFiles | orderBy:'name' track by item.id">
+                        <span class="teaching-pdf-file-name" data-pdf-drag="file" ng-attr-data-pdf-entry-id="{{item.id}}"
+                              ng-attr-draggable="{{!pdf.busy && !pdf.libraryForm}}">
+                            <i class="fa fa-file-pdf-o" aria-hidden="true"></i><span ng-bind="item.name"></span>
+                        </span>
+                        <div class="teaching-pdf-toolbar">
+                            <button type="button" class="btn btn-default teaching-pdf-organize" ng-click="pdf.editLibrary('file', item)"
+                                    ng-disabled="pdf.busy" ng-attr-aria-label="Đổi tên hoặc di chuyển {{item.name}}"
+                                    title="Đổi tên hoặc di chuyển"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                            <button type="button" class="btn btn-primary" ng-click="pdf.attach({pdfId: item.id})"
+                                    ng-disabled="pdf.busy">Gắn vào buổi này</button>
+                        </div>
+                    </div>
+                </div>
+                <p class="teaching-pdf-explorer-empty" ng-if="!pdf.busy && !pdf.visibleFolders.length && !pdf.visibleFiles.length">Thư mục này chưa có tài liệu.</p>
+            </div>
+            <div class="teaching-pdf-toolbar" ng-if="!pdf.foldersEnabled">
+                <select aria-label="Chọn PDF từ kho" class="form-control" ng-model="pdf.selected"
+                        ng-options="item.id as item.name for item in pdf.library" ng-disabled="pdf.busy">
+                    <option value="">Chọn tài liệu…</option>
+                </select>
+                <button type="button" class="btn btn-primary" ng-click="pdf.attach({pdfId: pdf.selected})" ng-disabled="!pdf.selected || pdf.busy">Gắn vào buổi này</button>
+                <button type="button" class="btn btn-default" ngf-select="pdf.upload($file)" accept=".pdf,application/pdf" ng-disabled="pdf.busy">
+                    <i class="fa fa-upload"></i> Tải PDF lên
+                </button>
+            </div>
+            <small>PDF tối đa 9 MB.</small>
+        </section>
+    </div>
+    <div ng-if="pdf.run" class="teaching-pdf-reader">
+        <div class="study-notebook-toolbar teaching-pdf-controls" role="group" aria-label="Công cụ PDF">
+            <button type="button" class="study-notebook-action" ng-click="pdf.back()" ng-disabled="pdf.busy">
+                <i class="fa fa-folder-open-o" aria-hidden="true"></i> Kho PDF
+            </button>
+            <div class="study-notebook-tools" ng-if="!pdf.run.completed">
+                <button type="button" ng-class="{'is-active': pdf.highlighting}" ng-attr-aria-pressed="{{!!pdf.highlighting}}"
+                        ng-mousedown="$event.preventDefault()" ng-click="pdf.startHighlight()" ng-disabled="pdf.busy"
+                        title="Highlight (Shift+H)" aria-keyshortcuts="Shift+H">
+                    <i class="fa fa-paint-brush" aria-hidden="true"></i> Highlight
+                </button>
+                <button type="button" ng-class="{'is-active': pdf.addingText}" ng-attr-aria-pressed="{{!!pdf.addingText}}"
+                        ng-click="pdf.startText()" ng-disabled="pdf.busy" title="Thêm text (Shift+T)" aria-keyshortcuts="Shift+T">
+                    <i class="fa fa-font" aria-hidden="true"></i> Thêm text
+                </button>
+                <label>
+                    Cỡ chữ
+                    <select ng-model="pdf.state.newTextSize" ng-options="size as (size + ' px') for size in pdf.textSizes"
+                            ng-change="pdf.markChanged()" ng-disabled="pdf.busy" aria-label="Cỡ chữ cho text mới"></select>
+                </label>
+                <button type="button" ng-class="{'is-active': pdf.inkTool === 'pen'}" ng-attr-aria-pressed="{{pdf.inkTool === 'pen'}}"
+                        ng-click="pdf.toggleInk('pen')" ng-disabled="pdf.busy">
+                    <i class="fa fa-pencil" aria-hidden="true"></i> Bút
+                </button>
+                <button type="button" ng-class="{'is-active': pdf.inkTool === 'eraser'}" ng-attr-aria-pressed="{{pdf.inkTool === 'eraser'}}"
+                        ng-click="pdf.toggleInk('eraser')" ng-disabled="pdf.busy">
+                    <i class="fa fa-eraser" aria-hidden="true"></i> Tẩy
+                </button>
+            </div>
+            <label ng-if="pdf.inkTool && !pdf.run.completed">
+                {{pdf.inkTool === 'pen' ? 'Nét bút' : 'Cỡ tẩy'}}
+                <select ng-model="pdf.inkSizes[pdf.inkTool]" ng-disabled="pdf.busy">
+                    <option value="2">{{pdf.inkTool === 'pen' ? 'Mảnh' : 'Nhỏ'}}</option>
+                    <option value="4">Vừa</option>
+                    <option value="7">{{pdf.inkTool === 'pen' ? 'Đậm' : 'To'}}</option>
+                </select>
+            </label>
+            <button type="button" class="study-notebook-action teaching-pdf-pen-color" ng-if="pdf.inkTool === 'pen' && !pdf.run.completed"
+                    ng-click="pdf.penPaletteOpen = !pdf.penPaletteOpen" ng-attr-aria-expanded="{{!!pdf.penPaletteOpen}}"
+                    aria-controls="teaching-pdf-pen-palette" ng-disabled="pdf.busy">
+                <span ng-style="{'background-color':pdf.penColor}" aria-hidden="true"></span> Màu bút
+            </button>
+            <div class="teaching-pdf-navigation">
+                <button type="button" class="study-notebook-action" ng-click="pdf.go(pdf.state.page - 1)" ng-disabled="pdf.busy || pdf.state.page <= 1"
+                        aria-label="Trang trước"><i class="fa fa-chevron-left" aria-hidden="true"></i></button>
+                <form class="teaching-pdf-page-form" ng-submit="pdf.go(pdf.pageInput)">
+                    <input type="number" min="1" max="{{pdf.pageCount}}" ng-model="pdf.pageInput" ng-disabled="pdf.busy" aria-label="Số trang">
+                    <span>/ {{pdf.pageCount}}</span>
+                </form>
+                <button type="button" class="study-notebook-action" ng-click="pdf.go(pdf.state.page + 1)" ng-disabled="pdf.busy || pdf.state.page >= pdf.pageCount"
+                        aria-label="Trang sau"><i class="fa fa-chevron-right" aria-hidden="true"></i></button>
+            </div>
+            <div class="study-notebook-zoom">
+                <button type="button" ng-click="pdf.zoom(-.1)" ng-disabled="pdf.busy || pdf.state.zoom <= .5" aria-label="Thu nhỏ">−</button>
+                <input type="range" class="study-notebook-zoom__slider" data-pdf-zoom min="0.5" max="3" step="0.1"
+                       ng-attr-value="{{pdf.zoomInput || pdf.state.zoom}}" ng-disabled="pdf.busy" aria-label="Độ phóng PDF">
+                <output>{{(pdf.zoomInput || pdf.state.zoom) * 100 | number:0}}%</output>
+                <button type="button" ng-click="pdf.zoom(.1)" ng-disabled="pdf.busy || pdf.state.zoom >= 3" aria-label="Phóng to">+</button>
+            </div>
+            <button type="button" class="study-notebook-action teaching-pdf-fullscreen" ng-click="pdf.toggleFullscreen()" ng-disabled="pdf.busy"
+                    ng-attr-aria-label="{{pdf.fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}}" ng-attr-aria-pressed="{{!!pdf.fullscreen}}"
+                    title="{{pdf.fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}}">
+                <i class="fa" ng-class="pdf.fullscreen ? 'fa-compress' : 'fa-expand'" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="study-notebook-action teaching-pdf-notes-toggle" ng-click="pdf.toggleNotes()"
+                    ng-attr-aria-expanded="{{!!pdf.notesOpen}}" aria-controls="teaching-pdf-notes">
+                <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Ghi chú trang
+            </button>
+        </div>
+        <div class="teaching-pdf-workspace">
+            <div id="teaching-pdf-pen-palette" class="teaching-pdf-pen-palette teaching-pdf-swatches" ng-if="pdf.penPaletteOpen && pdf.inkTool === 'pen' && !pdf.run.completed"
+                 role="group" aria-label="Màu bút Google Docs">
+                <button type="button" ng-repeat="color in pdf.penColors track by color.value" ng-style="{'background-color':color.value}"
+                        ng-click="pdf.penColor = color.value; pdf.penPaletteOpen = false" ng-disabled="pdf.busy" ng-attr-aria-pressed="{{pdf.penColor === color.value}}"
+                        title="{{color.name}}" aria-label="{{color.name}}"></button>
+            </div>
+            <div class="teaching-pdf-scroll" ng-class="{'is-adding-text': pdf.addingText}" tabindex="0" aria-label="Trang tài liệu PDF" role="region">
+                <div class="teaching-pdf-page" ng-repeat="page in pdf.pages track by page.number"
+                     ng-attr-data-pdf-page="{{page.number}}" ng-style="page.style">
+                    <div class="teaching-pdf-page-content" ng-if="page.active">
+                        <canvas></canvas>
+                        <svg class="teaching-pdf-marks" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+                            <g ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true">
+                                <g ng-repeat="rect in mark.rects track by $index">
+                                    <rect ng-if="mark.highlight !== false" ng-attr-x="{{rect.x * 1000}}" ng-attr-y="{{rect.y * 1000}}"
+                                          ng-attr-width="{{rect.w * 1000}}" ng-attr-height="{{rect.h * 1000}}" ng-attr-fill="{{mark.highlightColor || '#ffcf33'}}" ng-attr-fill-opacity="{{pdf.highlightOpacity(mark.highlightColor)}}"></rect>
+                                    <line ng-if="(mark.note || mark.noteAnchor) && mark.highlight === false" ng-attr-x1="{{rect.x * 1000}}" ng-attr-x2="{{(rect.x + rect.w) * 1000}}"
+                                          ng-attr-y1="{{(rect.y + rect.h) * 1000}}" ng-attr-y2="{{(rect.y + rect.h) * 1000}}" class="teaching-pdf-note-line"></line>
+                                </g>
+                                <polyline ng-if="mark.points && !pdf.inkErased(mark)" ng-attr-points="{{pdf.inkPoints(mark)}}"
+                                          ng-style="{stroke:pdf.inkColor(mark)}"
+                                          ng-attr-stroke-width="{{pdf.inkWidth(mark)}}"></polyline>
+                            </g>
+                            <polyline ng-if="pdf.stroke.page === page.number" ng-attr-points="{{pdf.inkPoints(pdf.stroke)}}"
+                                      ng-style="{stroke:pdf.inkColor(pdf.stroke)}"
+                                      ng-attr-stroke-width="{{pdf.inkWidth(pdf.stroke)}}"></polyline>
+                        </svg>
+                        <div class="textLayer"></div>
+                        <div class="teaching-pdf-free-text" ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true"
+                             ng-if="mark.text !== undefined"
+                             ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
+                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}};">
+                            <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
+                                      maxlength="4000" rows="2" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
+                            <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
+                                    ng-keydown="$event.key === 'Enter' && pdf.editText(mark, $event)" ng-disabled="pdf.run.completed || pdf.busy"
+                                    ng-attr-title="{{pdf.run.completed ? undefined : 'Kéo để di chuyển · Nhấp đúp để sửa'}}" ng-bind="mark.text"></button>
+                            <button ng-if="!pdf.run.completed && !pdf.inkTool" type="button" class="teaching-pdf-text-remove"
+                                    title="Xóa chữ" aria-label="Xóa chữ trên PDF" ng-mousedown="$event.preventDefault()"
+                                    ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">
+                                <svg viewBox="0 0 4 4" width="4" height="4" aria-hidden="true"><path d="M.5.5l3 3m0-3l-3 3" fill="none" stroke="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="teaching-pdf-ink" ng-if="pdf.inkTool && !pdf.run.completed" ng-class="{'is-eraser': pdf.inkTool === 'eraser'}"></div>
+                    </div>
+                    <div class="teaching-pdf-page-status" ng-if="!page.ready">
+                        {{page.error ? 'Không tải được trang' : 'Đang tải trang'}} {{page.number}}
+                    </div>
+                </div>
+            </div>
+            <div class="teaching-pdf-context" ng-if="pdf.context && !pdf.run.completed"
+                 ng-style="{left:pdf.context.menu.x + 'px', top:pdf.context.menu.y + 'px', visibility:pdf.context.menu ? 'visible' : 'hidden'}" aria-label="Thao tác với đoạn chữ">
+                <div class="teaching-pdf-swatches" role="group" aria-label="Màu highlight">
+                    <button type="button" ng-repeat="color in pdf.highlightColors track by color.value" ng-mousedown="$event.preventDefault()"
+                            ng-style="{backgroundColor:color.value}" ng-click="pdf.colorSelection(color.value)"
+                            ng-attr-aria-pressed="{{pdf.context.mark.highlight !== false && pdf.context.mark.highlightColor === color.value}}" title="{{color.name}}" aria-label="{{color.name}}"></button>
+                </div>
+                <div class="study-notebook-tools">
+                    <button type="button" ng-mousedown="$event.preventDefault()" ng-click="pdf.highlightSelection()">
+                        <i class="fa fa-paint-brush" aria-hidden="true"></i> {{pdf.context.mark.highlight === false ? 'Highlight' : 'Bỏ highlight'}}
+                    </button>
+                    <button type="button" ng-mousedown="$event.preventDefault()" ng-click="pdf.noteSelection()">
+                        <i class="fa fa-sticky-note-o" aria-hidden="true"></i> Ghi chú
+                    </button>
+                    <button type="button" ng-if="!pdf.context.draft" ng-click="pdf.removeContextMark()" aria-label="Xóa đánh dấu">
+                        <i class="fa fa-trash-o" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="teaching-pdf-inline-note" ng-if="pdf.context.showNote"
+                 ng-style="{left:pdf.context.note.x + 'px', top:pdf.context.note.y + 'px', visibility:pdf.context.note ? 'visible' : 'hidden'}">
+                <div class="teaching-pdf-inline-note-header">
+                    <label for="teaching-pdf-inline-note-text">Ghi chú</label>
+                    <button type="button" class="study-notebook-action teaching-pdf-inline-note-delete" ng-if="!pdf.run.completed"
+                            ng-click="pdf.removeInlineNote()" ng-disabled="pdf.busy">
+                        <i class="fa fa-trash-o" aria-hidden="true"></i> Xóa ghi chú
+                    </button>
+                </div>
+                <textarea id="teaching-pdf-inline-note-text" rows="1" teaching-pdf-note-input="pdf.repositionNote()" maxlength="4000" ng-model="pdf.context.mark.note"
+                          ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"
+                          placeholder="Gõ điều cần nhớ…"></textarea>
+            </div>
+            <aside id="teaching-pdf-notes" class="teaching-pdf-notes" ng-if="pdf.notesOpen" aria-label="Ghi chú trang PDF">
+                <div class="teaching-pdf-notes-header">
+                    <h3>Ghi chú trang {{pdf.state.page}}</h3>
+                    <button type="button" class="study-notebook-close" ng-click="pdf.toggleNotes()" aria-label="Đóng ghi chú">×</button>
+                </div>
+                <p class="teaching-pdf-notes-empty" ng-if="!pdf.pageHasMarks()">Trang này chưa có ghi chú.</p>
+                <div class="teaching-pdf-note" ng-repeat="mark in pdf.state.marks track by $index" ng-if="mark.page === pdf.state.page">
+                    <button type="button" class="teaching-pdf-note-title" ng-click="pdf.selectedMark = pdf.selectedMark === mark ? null : mark"
+                            ng-class="{'is-active': pdf.selectedMark === mark}" ng-attr-aria-expanded="{{pdf.selectedMark === mark}}" ng-bind="mark.quote || (mark.points ? 'Nét bút' : (mark.text || mark.note || 'Ghi chú trang'))"></button>
+                    <div ng-if="pdf.selectedMark === mark && mark.text === undefined">
+                        <textarea class="form-control" aria-label="Nội dung ghi chú" rows="1" teaching-pdf-note-input maxlength="4000" ng-model="mark.note"
+                                  ng-change="pdf.markChanged()" ng-readonly="pdf.run.completed" ng-disabled="pdf.busy"></textarea>
+                        <button type="button" class="study-notebook-action" ng-if="!pdf.run.completed" ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">Xóa ghi chú</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+        <footer class="study-notebook-footer">
+            <span><i class="fa fa-lock" aria-hidden="true"></i> Ghi chú riêng theo lớp</span>
+            <span class="teaching-pdf-tip" role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành.' : (pdf.inkTool === 'eraser' ? 'Chạm hoặc kéo qua nét bút để xóa cả nét.' : (pdf.inkTool === 'pen' ? 'Viết trực tiếp trên PDF.' : (pdf.addingText ? 'Bấm vào trang để đặt chữ.' : (pdf.highlighting ? 'Bôi chọn đoạn cần highlight.' : 'Bôi chọn chữ để highlight hoặc ghi chú.'))))}}</span>
+        </footer>
+    </div>
+</div>

@@ -71,6 +71,12 @@ public class RestTeachingPdfController {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(pdf.open(classId, date, runId));
     }
 
+    @RequestMapping(value = "/run/{runId}/changes", method = RequestMethod.GET)
+    public ResponseEntity<Map<String, Object>> changes(@PathVariable Long classId, @PathVariable String date,
+            @PathVariable String runId, @RequestParam("afterRevision") int afterRevision) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(pdf.changes(classId, date, runId, afterRevision));
+    }
+
     @RequestMapping(value = "/run/{runId}/content", method = RequestMethod.GET)
     public void content(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId,
             HttpServletResponse response) throws IOException {

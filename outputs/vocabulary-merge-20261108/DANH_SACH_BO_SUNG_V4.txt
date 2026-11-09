@@ -1,0 +1,1583 @@
+1. come from | 9559: (........./ .........) xuất phát từ/ đến từ || 88310: xuất phát từ, đến từ
+2. compensation | 6483: sự (tiền) bồi thường/đền bù || 93160: tiền bồi thường; sự đền bù
+3. sticky | 31597: dính dính || 101852: dính
+4. rattle | 98919: rung lách cách; rung lạch cạch || 99906: lách cách; lạch cạch
+5. glaciated areas | 66355: khu vực bị băng hà bao phủ || 92415: các khu vực từng bị băng hà bao phủ
+6. dish | 13600: bát đĩa/ món ăn || 91737: đĩa; món; món ăn
+7. expel | 30690: đuổi học/ trục xuất || 100060: đuổi; trục xuất
+8. killer | 15325: kẻ/thứ giết người || 101078: kẻ giết người; người giết
+9. parent | 62662: phụ huynh, cha mẹ || 99428: phụ huynh; mẹ
+10. scream | 78584: la hét; tiếng hét || 96313: tiếng thét; tiếng la hét
+11. common | 12759: thông thường/ phổ biến/ chung || 98057: bình thường, thông thường, phổ biến
+12. east coast | 83458: bờ biển phía đông || 102781: bờ biển phía đông (nước Mỹ)
+13. fear | 13391: sợ; sợ hãi || 97205: sợ hãi; nỗi sợ
+14. haze | 70411: sương mù nhẹ; màn khói || 85303: sương mù; màn khói bụi
+15. hedge | 16954: hàng rào || 90294: hàng rào (cây)
+16. increasingly | 15220: ngày càng tăng || 99083: ngày càng, càng ngày càng
+17. inspiration | 7507: nguồn cảm hứng || 93933: cảm hứng
+18. light bulb | 51818: bóng đèn || 13332: bóng đèn tròn
+19. more and more | 17193: ngày càng nhiều || 95844: ngày càng; càng ngày càng
+20. pan | 29290: cái chảo || 102392: chảo; cái giần
+21. rib | 78912: gân; xương sườn || 95190: xương sườn; sườn
+22. rodent | 55210: loài gặm nhấm || 103351: gặm nhấm
+23. win | 91734: thắng; chiến thắng; giành chiến thắng || 14606: (......./......) chiến thắng
+24. worried | 15064: (bị) lo lắng || 95160: lo lắng
+25. worrying | 54576: đáng lo ngại, làm lo lắng || 87504: đáng lo ngại, gây lo lắng
+26. priest | 48646: linh mục/ thầy tu || 89110: linh mục; thầy tế
+27. back pain | 28759: đau lứng || 91849: đau lưng
+28. complicated | 5848: phức tap || 94253: phức tạp
+29. make photocopies | 66374: photo tài liệu || 85725: photocopy tài liệu
+30. double-decker | 57765: xe buýt 2 tầng || 91082: xe buýt hai tầng
+31. misunderstand | 71517: hiểu sai; hiểu nhầm || 84725: hiểu sai, hiểu lầm
+32. hunt | 4900: săn bắt || 92659: săn bắn
+33. clove | 13481: nhánh (vd: nhánh tỏi) || 30682: nhành/ tép (vd: nhánh tỏi)
+34. use something up | 29512: dùng hết cgi đó || 30363: dùng hết cái gì đó
+35. dragonfly | 28598: con chuồn chuồn || 90662: chuồn chuồn
+36. go abroad | 66820: đi nước ngoài || 95565: ra nước ngoài
+37. reference number | 74677: số tham chiếu || 100114: mã tham chiếu
+38. town hall | 78654: tòa thị chính || 85664: toà thị chính
+39. bit by bit | 6727: dần dần, từng tí 1 || 88309: dần dần; từng tí một
+40. parking spaces | 28963: chỗ đậu xe || 29306: chỗ đỗ xe
+41. century | 10710: thế kỉ || 86895: thế kỷ
+42. national monument | 71065: di tích/tượng đài quốc gia || 89394: di tích quốc gia; đài tưởng niệm quốc gia
+43. paraphrase | 73565: diễn đạt lại bằng cách khác || 100856: diễn giải; nói lại bằng cách khác
+44. pasta | 30349: mỳ ống || 91022: mì ống
+45. peaceful | 14780: yên bình/ hoà bình || 95987: yên bình; hòa bình
+46. raw | 28740: thô/ chưa qua xử lý/ chưa chín || 95795: thô; chưa qua xử lý; sống, chưa nấu
+47. signature | 89703: chữ ký || 13895: chữ kí
+48. workable | 7671: khả thi/có thể làm được || 92522: khả thi, có thể thực hiện được
+49. contradictory | 28552: mâu thuẫn/ đối ngược || 91190: mâu thuẫn; trái ngược
+50. taxpayer | 97159: người nộp thuế || 97727: người đóng thuế
+51. astute | 93541: sắc sảo, tinh tường || 97979: sắc sảo, tinh ý
+52. unsatisfactory | 17885: không đạt yêu cầu/không hài lòng || 86187: không đạt yêu cầu; không thỏa đáng
+53. purity | 29326: sự tinh khiết || 87208: sự thuần khiết
+54. body language | 31412: ngôn ngữ hình thể || 93909: ngôn ngữ cơ thể
+55. practical training | 63427: đào tạo thực hành || 85258: đào tạo thực tế
+56. short walk | 70859: cuộc đi bộ ngắn || 85937: chuyến đi bộ ngắn
+57. comfortable shoes | 74811: giày dép thoải mái || 90486: giày mang thoải mái
+58. explore | 10858: tìm hiểu, khám phá || 85749: thám hiểm; khám phá
+59. april | 17421: tháng 4 || 88610: tháng Tư
+60. coincidence | 15117: sự trùng hợp || 87866: sự trùng nhau
+61. announce | 7631: thông báo/ tuyên bố || 98476: công bố; thông báo
+62. aquifer | 12851: tầng chứa nước (dưới lòng đất) || 93596: (n) tầng ngậm nước (lớp đất đá dưới lòng đất chứa nước)
+63. bacterial | 75705: do vi khuẩn gây ra || 99000: vi khuẩn; do vi khuẩn
+64. boulevard | 29249: đại lộ/ đường cái || 99393: đại lộ; đường lớn
+65. cartographer | 63089: nhà vẽ bản đồ || 97426: người vẽ bản đồ
+66. cautiously | 14096: cách thận trọng || 97138: một cách thận trọng; cẩn thận
+67. ceremony | 7515: nghi thức/ nghi lễ || 90025: (n) nghi thức, buổi lễ
+68. change blindness | 66467: hiện tượng mù thay đổi || 92094: mù thay đổi
+69. civilisation | 7386: nền văn minh || 84959: nền văn minh (cụ thể)
+70. come back | 8245: quay lại/trở lại || 84823: quay lại, trở lại (chủ đề)
+71. computation | 48636: sự tính toán (= máy) || 85337: sự tính toán, phép tính
+72. computer-aided design | 78876: thiết kế có sự hỗ trợ của máy tính (CAD) || 98506: máy tính hỗ trợ thiết kế
+73. confidence | 15758: sự tin tưởng, sự tự tin || 88631: tự tin; sự tự tin; tính tự tin; sự tự tin
+74. confine | 7600: giới hạn/ giam hãm || 98133: giới hạn; giam giữ
+75. countryside | 13893: miền quê; vùng quê; nông thôn || 98391: vùng nông thôn
+76. daunting | 6824: đáng sợ/ nản || 93776: đáng sợ; làm nản lòng
+77. dedicate | 63638: dành riêng, cống hiến || 102604: cống hiến, dành cho
+78. delighted | 15649: vui mừng/ hoan hỉ || 94056: vui mừng, hân hoan
+79. description | 15821: (bài/sự) mô tả || 89490: sự miêu tả; sự mô tả
+80. die out | 6555: chết dần (tuyệt chủng) || 91091: tuyệt chủng, chết hết
+81. direct evidence | 72421: bằng chứng trực tiếp || 100081: chứng cứ trực tiếp
+82. domesticated | 61820: được thuần hóa || 95654: (Adjective) Đã được thuần hóa.
+83. drafty | 28348: có nhiều gió lùa || 97147: có gió lùa, hở gió
+84. dutch | 13886: tiếng/người Hà Lan || 103191: (thuộc) Hà Lan, người Hà Lan
+85. electronic waste | 70288: rác thải điện tử || 87457: (n) rác điện tử
+86. embarrass | 28846: (làm cho) chán xấu hổ || 93898: làm xấu hổ
+87. energy level | 66883: mức năng lượng || 98456: mức năng lượng (vật lý)
+88. engaging | 26813: hấp dẫn/cuốn hút || 87478: lôi cuốn; hấp dẫn
+89. ethnographic | 9593: lquan đến dân tộc học || 90993: dân tộc học
+90. existing | 8093: hiện có/ đang tồn tại/ đang có || 97121: hiện có; hiện tại
+91. externally | 14384: theo cách từ bên ngoài || 84175: bên ngoài; từ bên ngoài
+92. face-to-face | 13317: trực tiếp/mặt đối mặt || 90326: đối diện trực tiếp
+93. figure out | 16713: tìm ra/ hiểu ra/ nhận ra || 98098: giải, tìm ra; hiểu ra
+94. finite | 8107: (adj) có giới hạn, hữu hạn. || 99972: hữu hạn; có hạn
+95. flexibility | 7625: sự/tính linh hoạt || 95936: tính linh hoạt; tính dẻo
+96. foreseeable | 72394: có thể lường trước || 84100: có thể thấy trước
+97. formal | 26961: chính quy/ trang trọng || 100016: trang trọng; chính thức
+98. formation | 7395: sự hình thành; cấu tạo; thành hệ địa chất || 93730: (n) sự hình thành; cấu trúc (địa chất)
+99. freshman | 26327: học sinh năm nhất || 87664: sinh viên năm nhất
+100. generational | 30298: thuộc/ lquan đến thế hệ || 94117: thuộc thế hệ
+101. generous | 6608: hào phóng, rộng rãi || 85640: rộng lượng; hào phóng
+102. glimpse | 15227: nhìn thoáng qua || 90669: cái nhìn thoáng qua, thoáng thấy
+103. go upstairs | 15501: đi lên gác/lên tầng || 93904: đi lên tầng trên
+104. ideally | 84754: một cách lý tưởng; lý tưởng là || 11784: cách lý tưởng
+105. identify | 7369: nhận dạng/ xác định || 91168: xác định, nhận diện
+106. in place | 30724: tại chỗ/ đúng chỗ || 98955: tại chỗ, đúng vị trí
+107. incorrect | 29096: sai/ không đúng || 90592: không chính xác; sai; không đúng
+108. independent learning | 62837: việc học độc lập || 86667: học tập độc lập
+109. infancy | 9029: thời thơ ấu/thời sơ khai/giai đoạn ban đầu || 85423: thời kỳ sơ khai, giai đoạn đầu
+110. infection | 96593: sự nhiễm trùng; sự lây nhiễm || 16629: sự nhiễm (trùng, virus...)
+111. inhibition | 65171: sự ức chế || 102982: (sinh lý) sự ức chế
+112. inspection | 16201: sự thanh tra/kiểm duyệt || 94333: sự kiểm tra
+113. intricate | 7213: tinh xảo, phức tạp || 96469: phức tạp, tinh vi
+114. just in case | 12925: để đề phòng trường hợp || 88084: để đề phòng
+115. last bus | 73364: chuyến xe cuối || 84558: chuyến xe buýt cuối cùng
+116. leafy | 27926: có nhiều lá/ có nhiều cây || 90953: có nhiều lá; đầy lá
+117. liking | 31298: sự yêu thích (cgi đó) || 87377: sự thích, sự yêu thích
+118. mighty | 83722: hùng vĩ, to lớn || 95528: hùng mạnh; to lớn
+119. nap | 17172: ngủ 1 giấc ngắn || 97334: giấc ngủ ngắn; giấc ngủ trưa
+120. northeast | 14627: phía đông bắc; hướng đông bắc; đông bắc || 88007: đông bắc; về phía đông bắc
+121. northwest | 101888: phía tây bắc; hướng tây bắc; tây bắc || 95507: về phía tây bắc
+122. offender | 28574: người phạm pháp/phạm tội || 93907: người phạm tội (n)
+123. organiser | 79269: người tổ chức || 92718: người tổ chức (công đoàn)
+124. pause | 58010: tạm dừng; ngừng lại || 88795: khoảng dừng; tạm ngừng
+125. picnic area | 82528: khu vực dã ngoại || 99518: khu dã ngoại, khu picnic
+126. populate | 16400: sinh sống/cư trú || 101716: cư trú; sống ở
+127. population growth | 27353: sự tăng trưởng dân số || 86951: tăng dân số
+128. potter | 69573: thợ làm gốm || 102297: người thợ đồ gốm; người làm đồ gốm
+129. precisely | 15550: cách chính xác (exactly) || 86248: một cách chính xác
+130. probably | 13287: có lẽ/chắc là || 98229: có lẽ; hẳn là
+131. proudly | 14154: cách đáng tự hào || 84264: một cách tự hào
+132. prune | 83980: cắt tỉa, loại bớt || 102317: cắt bỏ, loại bỏ bớt
+133. regret | 6311: hối tiếc; hối hận || 84894: sự hối tiếc; sự ân hận
+134. relic | 85806: di tích, cổ vật || 14662: cổ vật/thánh tích
+135. remarkably | 13342: rất đáng chú ý || 90537: đáng chú ý; đáng kể
+136. reminder | 28596: lời nhắc nhở || 84268: lời nhắc, thông báo nhắc nhở
+137. renowned | 88038: nổi tiếng; lừng danh || 79156: nổi tiếng; có danh tiếng
+138. restrain | 52131: kiềm chế/ chế ngự/ kiềm hãm || 93454: kiềm chế, kìm hãm
+139. sceptic | 17694: người hoài nghi/nghi ngờ || 101031: người hoài nghi; người đa nghi
+140. separately | 14105: cách riêng rẽ/ tách biệt || 89903: riêng rẽ, riêng biệt
+141. sleek | 51529: bóng bẩy, mượt mà || 89014: bóng loáng; mượt mà
+142. solar | 17154: thuộc về mặt trời (adj) || 89108: (thuộc) mặt trời
+143. southeast | 15009: phía đông nam; hướng đông nam; đông nam || 90817: từ hướng đông nam
+144. spherical | 63073: có hình cầu || 100331: hình cầu; có dạng quả cầu
+145. statistic | 14528: thông số/thống kê || 85237: số liệu thống kê
+146. technician | 31908: kỹ thuật viên || 92156: nhà kỹ thuật; kĩ thuật viên
+147. tension | 15376: sự căng (gì căng)/ căng thẳng || 97892: sự căng thẳng; sức căng
+148. terrify | 17551: làm cho khiếp sợ || 95730: làm khiếp sợ; làm hoảng sợ
+149. testament | 57099: bằng chứng, di chúc || 90994: di chúc; minh chứng
+150. undoubtedly | 29180: 1 cách chắc chắn/ 1 cách không còn nghi ngờ gì nữa || 99243: chắc chắn, không nghi ngờ gì
+151. uniformly | 57871: đồng đều, thống nhất || 96833: đồng đều; nhất quán
+152. up to us | 66360: tùy chúng ta || 86933: tùy chúng ta quyết định
+153. upheaval | 28077: sự biến động || 88658: cuộc biến động; sự chấn động
+154. urban areas | 18390: khu vực thành thị || 90048: khu vực đô thị
+155. virtual reality | 30691: (công nghệ) thực tế ảo || 87623: thực tế ảo
+156. windbreak | 17641: rào chắn gió || 98171: (Noun) Hàng rào chắn gió.
+157. worldwide | 16992: trên toàn thế giới || 96699: toàn thế giới; toàn cục
+158. atomic | 82134: thuộc nguyên tử; hạt nhân || 101297: (vũ khí) nguyên tử; hạt nhân
+159. backward | 90857: về phía sau; lùi || 96291: về phía sau; ngược lại
+160. dissimilar | 57700: không giống nhau || 100093: không giống; khác
+161. on display | 29332: đang được trưng bầy || 85621: được trưng bày
+162. analyst | 15633: nhà phân tích || 89066: người phân tích
+163. babysitter | 30161: người trông trẻ || 92452: người giữ trẻ
+164. inappropriate | 32525: không phù hợp || 97837: không thích hợp
+165. souvenir | 5703: quà lưu niệm || 94810: đồ lưu niệm
+166. staircase | 18265: bậc thang || 92310: cầu thang
+167. successive | 17074: liên tiếp/nối tiếp || 103193: liên tiếp; kế tiếp
+168. written | 69149: được viết ra; bằng văn bản || 87772: được viết; dưới dạng văn bản
+169. depending on | 62637: phụ thuộc vào || 102808: tùy thuộc vào
+170. founder | 18551: nhà sáng lập || 92665: người sáng lập
+171. inefficient | 54160: không hiệu quả || 101426: kém hiệu quả
+172. smoking | 29459: việc hút thuốc || 99941: sự hút thuốc
+173. amuse | 16765: giải trí/ tiêu khiển/làm cho vui || 96646: giải trí; làm vui
+174. apology | 11931: lời xin lỗi || 95556: sự xin lỗi
+175. assume | 5774: giả định/ cho là/ cho rằng || 88971: cho rằng; giả định; đảm nhận
+176. benchmark | 95384: chuẩn mực; tiêu chuẩn đánh giá || 102189: (Noun) Điểm chuẩn, tiêu chuẩn đánh giá.
+177. celebration | 12503: lễ ăn mừng/kỉ niệm || 102679: lễ kỷ niệm; sự ăn mừng
+178. checklist | 69224: danh sách các mục cần kiểm tra || 95455: danh sách kiểm tra
+179. cognitive decline | 70811: suy giảm nhận thức || 99609: (Noun phrase) Sự suy giảm nhận thức.
+180. corporation | 6170: tập đoàn, công ty lớn || 98103: công ty cổ phần, tập đoàn
+181. danger | 12776: sự nguy hiển || 97014: nguy hiểm
+182. downtown | 14900: trung tâm thành phố || 87112: khu trung tâm thành phố; khu vực trung tâm thành phố; nội thành
+183. emergency | 14010: trường hợp/ sự khẩn cấp/ tình huống khẩn cấp || 97887: trường hợp khẩn cấp
+184. financial aid | 28922: sự hỗ trợ về tài chính || 89264: hỗ trợ tài chính; viện trợ tài chính
+185. groundwork | 94540: cơ sở; nền tảng || 95611: (noun) Nền tảng, cơ sở ban đầu
+186. hiking | 29123: môn đi bộ đường dài/ leo núi || 85234: đi bộ đường dài
+187. inheritance | 28264: tài sản kế thừa/ sự kế thừa, thừa hưởng || 97915: tài sản thừa kế; di sản
+188. innate | 83819: bẩm sinh, tự nhiên || 92867: (adj) Bẩm sinh, tự nhiên có sẵn
+189. longevity | 14946: sự sống lâu; tuổi thọ cao || 92489: sự lâu dài, tuổi thọ
+190. low tide | 74912: triều thấp, nước ròng || 93061: thủy triều xuống thấp nhất, nước ròng
+191. masculinity | 61819: nam tính; tính đàn ông || 87409: (n) Tính nam, bản lĩnh đàn ông
+192. meaningful | 9714: đầy ý nghĩa || 101102: có ý nghĩa
+193. modification | 7854: sự sửa đổi/điều chỉnh || 90013: (n) sự thay đổi, điều chỉnh
+194. mysteriously | 70746: một cách khó hiểu/bí ẩn || 100690: một cách bí ẩn; huyền bí
+195. percent | 14589: phầm trăm/ % || 99728: phần trăm
+196. pivotal | 6129: manh tính then chốt (rất quan trọng) || 97923: then chốt, quan trọng
+197. prowess | 72304: kỹ năng hoặc năng lực xuất sắc || 90299: tài năng; kỹ năng xuất sắc
+198. railway station | 14465: nhà ga tàu hỏa || 90493: nhà ga; nhà ga hành khách; ga; bến tàu hỏa
+199. reportedly | 65032: theo như được báo cáo || 100715: theo báo cáo, được cho là
+200. satisfactory | 13673: tốt/đạt yêu cầu/hài lòng || 88822: đạt yêu cầu; tốt đẹp
+201. science fiction | 14706: khoa học viễn tưởng (SCI-FI) || 93540: khoa học viễn tưởng; khoa học giả tưởng
+202. social skills | 16220: những kỹ năng giao tiếp xã hội || 29236: kỹ năng xã hội
+203. sub-saharan africa | 27340: châu Phi cận Sahara || 84503: vùng châu Phi hạ Sahara
+204. driver | 91337: người lái; tài xế || 15645: người lái xe
+205. radio station | 17554: Trạm phát thanh || 101122: đài phát thanh
+206. invariably | 12196: luôn luôn, không bao giờ thay đổi || 100198: luôn luôn, hầu như không thay đổi
+207. in front | 30645: phía đăng trước || 90728: phía trước, đằng trước
+208. divine | 67994: thuộc thần linh; thiêng liêng || 97883: thần thánh, thiêng liêng
+209. august | 17417: tháng 8 || 89151: tháng Tám
+210. bell | 14166: cái chuông || 101812: chuông
+211. evolution | 6436: tiến hóa || 94641: tiến hoá
+212. fast food | 14740: đồ ăn nhanh || 99176: thức ăn nhanh
+213. february | 17423: tháng 2 || 102366: tháng Hai
+214. january | 17424: tháng 1 || 89884: tháng Một
+215. july | 17418: tháng 7 || 92850: tháng Bảy
+216. june | 17419: tháng 6 || 96188: tháng Sáu
+217. naval | 78860: thuộc hải quân; tàu biển || 91485: hải quân; tàu bè
+218. physicist | 17438: nhà vật lý học || 92960: nhà vật lí
+219. predisposition | 6491: khuynh hướng, tố chất || 89218: khuynh hướng sẵn có
+220. resist | 7014: kháng cự || 89443: chống cự
+221. simplicity | 13594: sự đơn giản || 90296: tính đơn giản
+222. unforeseen | 6228: không lường trước được || 87365: không lường trước; bất ngờ
+223. biodegradable | 51937: có thể phân hủy sinh học || 88787: có khả năng phân hủy sinh học (adj)
+224. high temperature | 81813: nhiệt độ cao; sốt cao || 98490: nhiệt độ cao; sức nóng
+225. productive | 6741: có năng suất; hiệu quả || 100843: có năng suất, hữu ích
+226. cathedral | 29150: thánh đường/ nhà thờ chính tòa || 99672: nhà thờ chính tòa; đại giáo đường; nhà thờ lớn
+227. desirable | 15293: đáng mong ước || 90503: đáng mong muốn
+228. electric | 9672: thuộc về điện/ điện/ dùng điện || 93452: thuộc điện; sử dụng điện
+229. rationale | 85650: (n) Cơ sở lý luận, lý do hợp lý || 100303: lý do căn bản; cơ sở lý luận
+230. relocation | 86569: sự di dời; sự chuyển chỗ || 94014: (n) sự di dời, chuyển chỗ ở/công tác
+231. social isolation | 82830: sự cô lập xã hội || 96743: (Noun phrase) Sự cô lập về mặt xã hội.
+232. toddler | 52148: trẻ con (bé, mới biết đi...) || 100535: trẻ mới biết đi, em bé chập chững
+233. engage with | 63627: tham gia, tương tác với || 102762: tiếp cận, tương tác với
+234. neuronal | 69661: thuộc tế bào thần kinh || 88557: (thuộc) nơ-ron thần kinh
+235. biographer | 28162: người viết tiểu sử || 103303: (n) nhà viết tiểu sử
+236. epic | 12975: hoành tráng/ sử thi || 88662: hoành tráng, vĩ đại
+237. human beings | 14560: loài người || 91165: con người
+238. irregular | 48952: không bình thường || 89377: không đều, bất thường
+239. sailing ship | 71783: tàu buồm || 90701: thuyền buồm
+240. salvation | 67967: sự cứu độ || 103087: sự cứu rỗi
+241. travel agency | 17083: đại lý/ công ty du lịch || 91299: công ti du lịch
+242. novelist | 30893: tiểu thuyết gia || 90703: nhà tiểu thuyết
+243. leftover | 54499: còn thừa, còn  lại || 99635: thức ăn thừa; đồ còn lại
+244. mountain building | 66353: sự hình thành núi || 97051: quá trình hình thành núi
+245. closing | 82337: sự đóng cửa || 93459: sự đóng lại
+246. employment | 14401: sự có việc làm || 90614: việc làm
+247. endangered | 13616: bị đe dọa/có nguy cơ tuyệt chủng || 99445: (adj) Có nguy cơ biến mất, bị đe dọa
+248. hairdresser | 50895: thợ làm tóc || 86063: thợ cắt tóc
+249. investor | 18909: nhà đầu tư || 84728: người đầu tư
+250. rare | 12484: hiếm || 97736: hiếm có
+251. applicant | 17319: người xin việc/ ứng viên || 88039: người nộp đơn; ứng viên
+252. uninhabited | 85031: không có người ở; hoang vắng || 28031: không có người sống
+253. businessman | 14559: nam doanh nhân || 86458: thương gia; doanh nhân
+254. commemorate | 6294: kỉ niệm/tưởng niệm || 98164: kỷ niệm; tưởng nhớ
+255. deliberate | 29452: có chủ ý/ có ý định || 101348: có chủ ý; cố tình
+256. journey | 12626: di chuyển, hành trình || 101607: cuộc hành trình
+257. unrestricted | 28502: không bị hạn chế || 99193: không hạn chế; tự do
+258. undergraduate | 13625: sinh viên đại học (đang học) || 87928: sinh viên đại học chưa tốt nghiệp
+259. northern | 52301: về phía bắc || 98065: thuộc phía bắc
+260. pesticide | 9480: thuốc trừ sâu; thuốc diệt côn trùng || 101777: (n) thuốc trừ sâu, thuốc diệt trừ sâu bọ
+261. privacy | 15627: quyền riêng tư || 95797: sự riêng tư
+262. secondhand | 79127: gián tiếp; qua người khác || 94057: gián tiếp; qua trung gian
+263. shoemaker | 46213: thợ làm giày || 84103: thợ đóng giày
+264. yellow | 91114: hoàng; vàng || 97037: vàng; màu vàng
+265. found | 30462: thành lập/ thiết lập || 99485: thành lập, sáng lập
+266. impractical | 27132: không thực tiễn || 96272: không thực tế, viển vông
+267. solar panel | 14858: tấm pin mặt trời || 17198: tấm năng lượng mặt trời
+268. endangered species | 76394: loài bị đe dọa tuyệt chủng || 98354: loài có nguy cơ tuyệt chủng
+269. enthusiast | 48316: Người nhiệt tình/ nhiệt huyết/ đam mê || 84978: người nhiệt tình; người hâm mộ
+270. descend | 52103: ngự xuống || 100154: xuống
+271. egg | 16474: quả trứng || 101482: trứng
+272. eyewitness | 67884: nhân chứng tận mắt || 99041: nhân chứng
+273. high tide | 68850: thủy triều lên/cao || 88629: thủy triều lên; nước lớn
+274. unhygienic | 5780: không hợp vệ sinh || 13692: không sạch sẽ/mất vệ sinh
+275. white | 30415: màu trắng || 102021: trắng
+276. incompatible | 58150: không tương thích, xung khắc, không hợp nhau || 97077: không tương thích; không phù hợp
+277. aquatic plant | 62474: thực vật thủy sinh || 89919: cây thủy sinh
+278. before | 12386: trước/trước khi || 99655: trước; trước đây
+279. spiral | 90477: xoắn ốc; xoáy || 89666: xoắn ốc; hình xoắn
+280. worth a visit | 95313: đáng để ghé thăm || 100594: đáng để đến thử
+281. unwilling | 29246: không sẵn lòng/ k muốn || 98436: không sẵn lòng, miễn cưỡng
+282. neighbour | 17224: người hàng xóm || 97504: láng giềng; hàng xóm
+283. on the way | 81765: trên đường đi || 97844: trên đường; dọc đường
+284. pinpoint | 7857: xác định/ chỉ ra || 102464: xác định chính xác
+285. roadside | 27453: ven đường || 90070: rệ đường
+286. september | 17416: tháng 9 || 102443: tháng Chín
+287. suggestion | 14593: lời gợi ý || 86259: sự gợi ý
+288. overuse | 88676: lạm dụng; dùng quá mức || 30302: sự dụng quá mức
+289. preside | 28514: chủ trì/ chủ tọa || 99982: chủ trì; làm chủ tịch
+290. distracting | 12598: làm mất tập trung || 85873: (adj) gây mất tập trung
+291. finally | 16723: cuối cùng; rốt cuộc || 88445: cuối cùng; kết quả là
+292. highland | 10721: cao nguyên || 98549: sơn nguyên
+293. backbone | 77309: xương sống; phần cốt lõi || 103159: xương sống; trụ cột
+294. land clearance | 83739: việc phát quang đất || 87233: hoạt động phát quang đất
+295. bus station | 48309: trạm xe buýt || 85504: bến xe buýt
+296. digital | 48656: thuộc về số hóa (kĩ thuật số) || 101214: thuộc kỹ thuật số
+297. economic growth | 52005: sự phát triển về kinh tế || 102241: sự tăng trưởng kinh tế
+298. imaginative | 26562: giàu tưởng tượng || 89843: giàu trí tưởng tượng; sáng tạo
+299. post office | 16547: bưu điện || 86120: Bưu điện Hoa Kỳ
+300. reaction | 7829: sự phản ứng lại || 92621: phản ứng
+301. sensor | 14861: máy/bộ cảm biến || 96107: cảm biến
+302. usual | 26867: thông thường || 97195: bình thường
+303. electric guitar | 78290: đàn guitar điện || 91438: ghi-ta điện
+304. playwright | 55319: nhà viết kịch || 97092: nhà soạn kịch
+305. unbalanced | 28427: Không cân bằng || 99680: mất cân bằng
+306. vacant | 57711: trống, bỏ trống || 86202: trống; rỗng
+307. worthless | 5676: không có giá trị || 92723: vô giá trị
+308. field trip | 17085: (n) chuyến đi thực tế, chuyến tham quan học tập || 102059: chuyến đi thực tế, chuyến dã ngoại
+309. presentation | 9258: bài thuyết trình; sự trình bày || 85811: (n) bài thuyết trình nhân
+310. correlate | 52946: tương quan || 94682: tương quan với nhau
+311. importance | 9515: tầm quan trọng; sự quan trọng || 86175: vị thế quan trọng; sự nổi bật
+312. indicate | 6718: chỉ ra, ghi rõ || 95908: chỉ ra, chỉ dẫn
+313. solve | 13305: giải quyết (vấn đề) || 90129: giải quyết
+314. specialized | 6108: thuộc chuyên môn/ có chuyên môn || 98313: chuyên môn hóa; chuyên biệt
+315. written exam | 15265: bài kiểm tra viết || 101350: bài thi viết
+316. at last | 13966: cuối cùng thì || 84768: cuối cùng; rốt cuộc
+317. of course | 7805: tất nhiên rồi || 97402: tất nhiên; dĩ nhiên
+318. curved shape | 65294: hình dạng cong || 101965: hình cong, đường cong
+319. paying attention | 91007: sự chú ý; sự quan tâm || 99758: chú ý; lưu tâm
+320. constantly | 6952: (1 cách) không ngừng || 99510: liên tục; không ngừng
+321. entertainer | 48630: người làm giải trí || 102658: người giải trí, nghệ sĩ
+322. inhabitant | 97465: cư dân, người sinh sống tại một nơi (n) || 7602: cư dân/ động vật (sinh sống ở 1 nơi nào đó)
+323. normal perception | 83947: tri giác bình thường || 85976: nhận thức bình thường
+324. contamination | 103110: sự ô nhiễm; sự nhiễm bẩn || 9291: sự ô nhiêm/nhiễm độc
+325. perseverance | 57098: sự kiên trì, bền b || 87416: sự kiên trì, tính nhẫn nại
+326. premier | 12297: quan trọng/tốt nhất || 86785: hàng đầu; quan trọng nhất
+327. rhythmic | 17116: nhịp nhàng/theo nhịp || 85735: nhịp nhàng; có nhịp điệu
+328. promptly | 82857: ngay lập tức; kịp thời || 96641: ngay lập tức; nhanh chóng
+329. underway | 68806: đang được tiến hành || 98486: đang diễn ra; đang tiến hành
+330. successor | 28344: người kế vị/ nối tiếp || 84075: người kế nhiệm; người kế tiếp
+331. keeper | 87296: người giữ, người bảo vệ || 102197: người trông coi, người quản lý
+332. metropolitan | 89255: thuộc đô thị; thuộc thủ đô || 15001: thuộc đô thị/ thành phố lớn
+333. excursion | 12304: chuyến đi chơi, dã ngoại || 85865: chuyến du ngoạn, chuyến dã ngoại
+334. work experience | 64554: kinh nghiệm làm việc || 95345: (n.phr) Kinh nghiệm làm việc (thực tập)
+335. competitively | 8065: một cách cạnh tranh được || 92318: một cách cạnh tranh; theo kiểu thi đua
+336. practicality | 88821: (noun) Tính thực tế, tính thiết thực || 95091: tính thực tế; tính khả thi
+337. announcer | 31337: người công bố/ phát thanh viên || 85138: phát thanh viên; người thông báo
+338. annually | 27556: hàng năm; mỗi năm || 103219: (adv) hàng năm, mỗi năm một lần
+339. ant | 28643: con kiến || 103090: kiến
+340. anxiety | 14085: sự căng thẳng/lo âu || 97527: sự lo lắng; lo âu; lo âu
+341. anxious | 15200: lo lắng/căng thẳng || 97380: lo lắng; nóng lòng
+342. archive | 65864: kho lưu trữ || 96418: trung tâm lưu trữ; kho tàng
+343. arrive at | 76549: đến nơi || 93765: đến, tới (nơi nào)
+344. artisan | 14961: nghệ nhân (thủ công) || 97355: nghệ nhân
+345. ash | 7376: tro/tàn || 91589: tro
+346. assign | 74679: phân công, cấp || 94525: giao, phân công
+347. at | 17432: ở/tại || 91683: ở; tại; vào (giờ)
+348. attach | 14358: buộc/ nối/ gắn || 100072: gắn; đính; buộc
+349. attend | 12112: tham dự || 101242: tham gia
+350. attractiveness | 30899: sự hấp dẫn || 97568: sức hấp dẫn; sự thu hút
+351. aware | 10712: có nhận thức || 91840: nhận thức; biết
+352. backyard | 30357: sân sau || 90827: sân sau nhà (n)
+353. balanced | 16397: cân đối/ cân bằng || 87665: cân bằng; thăng bằng
+354. ballet | 78928: múa ba lê || 88945: ba lê; vở ba lê
+355. bamboo | 5428: cây tre || 90283: tre
+356. ban | 88950: cấm; cấm chỉ || 26446: cấm
+357. bare | 14396: trần truồng/trần trụi || 84360: trần; trơ; trụi
+358. basket | 5430: cái rổ, cái giỏ, cái thúng || 92216: giỏ; rổ
+359. bean | 13557: hạt đậu || 100591: đậu
+360. beloved | 72351: được yêu quý || 90631: yêu quý; yêu dấu
+361. billboard | 8156: biển (quảng cáo) || 89088: bảng quảng cáo ngoài trời; biển quảng cáo
+362. bin | 14880: thùng rác || 84270: thùng; thùng đựng rác; hộp đựng
+363. blood | 16884: máu || 91313: máu; huyết
+364. bloodstream | 29623: dòng chảy của máu || 98424: dòng máu
+365. booklet | 14178: sách nhỏ, tập hướng dẫn || 87426: tập sách nhỏ; sách mỏng
+366. boring | 14433: nhàm chán || 95460: chán
+367. bounce | 57938: bật, nảy || 102230: nảy
+368. brand name | 18307: thương hiệu || 95877: tên thương hiệu; nhãn hiệu
+369. bucket | 12466: xô/chậu || 91706: xô
+370. bullet | 28603: viên đạn || 85404: đạn
+371. camping | 14451: hoạt động cắm trại || 103012: cắm trại
+372. carnivorous | 30065: thuộc loài ăn thịt || 95379: ăn thịt
+373. carpet | 28608: tấm thảm || 90011: thảm
+374. case study | 64672: nghiên cứu trường hợp; nghiên cứu tình huống || 85926: (n. phr) Nghiên cứu trường hợp
+375. cattle | 5433: gia súc [ plural ] || 91471: gia súc; bò
+376. centralized | 61860: được tập trung hóa || 85036: tập trung
+377. certify | 66135: chứng nhận || 99240: chứng thực, xác nhận
+378. chalk | 30271: phấn (viết) || 86975: phấn; đá phấn; phấn; phấn viết; phấn viết bảng
+379. chimp | 17700: tinh tinh - chimpanzee || 89688: tinh tinh
+380. chin | 29269: cái cằm || 94016: cằm
+381. chocolate | 17529: sô cô la || 93832: sô-cô-la; sôcôla; socola; kẹo sô-cô-la; kẹo sôcôla; kẹo socola
+382. cinematographer | 16336: người quay/dựng phim || 89466: nhà quay phim
+383. cinematography | 51071: kỹ thuật quay phim || 103354: nghệ thuật quay phim; điện ảnh
+384. cite | 6482: dẫn chứng/ trích dẫn || 87041: trích dẫn; viện dẫn
+385. clap | 29539: vỗ tay || 92703: vỗ tay (tán thưởng)
+386. cloth | 14968: vải vóc (nói chung) || 87684: vải; vải vóc
+387. clown | 28975: chú hề || 97591: hề
+388. cobblestone | 52346: đá cuội || 99209: đá lát đường; đá cuội lát
+389. cockroach | 58014: con gián || 84195: gián
+390. coconut | 32771: quả dừa || 103067: (trái / quả) dừa; (sọ) dừa
+391. color | 87059: màu || 94171: màu sắc
+392. column | 80417: cột trụ || 101131: cột
+393. columnist | 28844: người viết 1 chuyên mục (cho báo/ tạp chí) || 85510: người viết chuyên mục; nhà báo chuyên mục
+394. commentator | 28406: người bình luận || 84218: bình luận viên
+395. companionship | 54010: tình bạn, sự đồng hành || 99160: sự bầu bạn; tình bạn
+396. comply with | 76328: tuân thủ (câu 16) || 88200: tuân thủ
+397. confusion | 13453: sự bối rối/lú || 86359: sự bối rối, sự lộn xộn
+398. connect | 13519: kết nối/ liên quan || 102573: nối; kết nối
+399. consultation | 8045: sự tham vấn/ tham khảo ý kiến || 87612: sự tư vấn; buổi tư vấn; sự tham khảo
+400. contaminated | 9539: bị làm cho nhiễm bẩn/ô nhiễm/độc hại || 99406: bị ô nhiễm; bị nhiễm bẩn
+401. controller | 17303: người điều khiển/điều phối || 85576: người điều khiển; người kiểm soát
+402. convenient | 14999: tiện lợi/thuận lợi || 95378: (adj) thuận tiện
+403. crowded | 28869: đông đúc || 97799: đông
+404. cucumber | 30578: quả dưa chuột || 96549: dưa chuột; dưa leo
+405. curly | 4451: quăn, xoăn (curly hair) || 86328: xoăn; quăn
+406. debt | 27639: (khoản) nợ || 92047: nợ
+407. deceive | 31615: lừa lọc/ lừa dối || 89839: lừa; lừa bịp; bịp; lừa dối
+408. decidedly | 5390: rõ ràng/ chắc chắn (certainly and obviously ) || 88759: rõ ràng, chắc chắn; hẳn
+409. decisively | 14586: cách dứt khoát || 91740: một cách dứt khoát; kiên quyết
+410. decoration | 16975: sự trang trí/đồ trang trí || 101265: đồ trang trí; vật trang hoàng
+411. dedication | 15942: sự cống hiến || 103379: sự tận tụy, lòng cống hiến
+412. delicate | 12690: tinh xảo/tinh tế || 85602: tinh tế, tế nhị
+413. department | 5767: phòng ban || 103187: phòng, ban, bộ phận
+414. department store | 28641: cửa hàng bách hóa || 86278: cửa hàng bách hoá; hiệu bách hoá
+415. depot | 64808: bến/kho xe || 85388: kho chứa; kho hàng; bến xe; bến tàu
+416. depressed | 54575: (bị) chán nản, trầm cảm || 99616: (adj) Trầm cảm, chán nản sâu sắc
+417. desk | 16688: cái bàn || 101581: bàn
+418. destruction | 14531: sự hủy diệt/hủy hoại || 85478: sự phá hủy, sự tiêu diệt
+419. detective | 15094: thám tử/ trinh thám || 92691: thám tử; thám tử tư
+420. determined | 12246: cương quyết/quả quyết || 102208: kiên quyết; cương quyết
+421. developer | 14889: nhà/người phát triển || 102995: nhà phát triển; nhà phát triển phần mềm
+422. dialect | 13459: thổ ngữ/tiếng địa phương || 90163: thổ ngữ; phương ngữ; phương ngôn
+423. dietary | 14950: lquan đế chế độ ăn || 92931: chế độ ăn uống
+424. digestive | 92069: tiêu hóa || 30588: lquan đến tiêu hóa
+425. digestive system | 64195: hệ tiêu hóa || 101767: đường tiêu hóa; hệ tiêu hoá; hệ thống tiêu hoá
+426. diminished | 72763: bị suy giảm || 85736: giảm; suy yếu
+427. dining | 56091: việc ăn uống || 101352: việc ăn tối; dùng bữa
+428. disabled | 17461: bị tàn tật || 88678: khuyết tật; tàn tật
+429. disappointed | 13605: (cảm thấy) thất vọng || 91217: thất vọng
+430. disciplinary | 85089: (adj) Thuộc về ngành học, kỷ luật || 96099: thuộc về ngành học; thuộc về chuyên ngành
+431. discredit | 12984: mất uy tín || 93854: làm mất uy tín; làm mất lòng tin
+432. distant | 27741: (ở) xa xôi/cách xa || 84827: xa; xa xôi
+433. divinity | 49745: sự thần thánh/ (vị) thần thánh || 93215: vị thần
+434. downstairs | 7059: dưới nhà || 101712: ở dưới nhà, dưới tầng
+435. dozen | 7898: 1 tá || 92515: tá
+436. dragon | 6596: con rồng || 102147: rồng
+437. dual | 58120: kép, đôi || 102986: kép; đôi; hai mặt
+438. dweller | 14870: người sinh sống/cư dân || 87310: cư dân; người ở
+439. eagle | 6597: con đại bàng || 91980: chim đại bàng; đại bàng
+440. ear | 16697: tai || 93565: tai; bông
+441. earn | 14404: kiếm được, kiếm tiền || 101479: kiếm được; đạt được
+442. easy | 13486: dễ || 84274: dễ; dễ dàng
+443. electromagnetic | 16192: có điện từ trường || 102517: điện từ
+444. elevated | 15365: được nâng cao lên || 100499: cao, nâng cao
+445. elsewhere | 16795: nơi khác || 89000: ở nơi khác; đến nơi khác
+446. envelope | 16232: phong bì/phong bao || 97911: phong bì; lớp vỏ bao quanh
+447. environmentalist | 32539: Nhà môi trường học || 85500: nhà bảo vệ môi trường; nhà môi trường
+448. erase | 27566: tẩy/xóa || 86165: xóa
+449. errand | 27900: việc (chạy) vặt || 102651: việc vặt; việc lặt vặt
+450. especially | 9267: một cách đặc biệt/đặc biệt là || 101703: đặc biệt là; nhất là
+451. esteem | 29017: sự kính trọng/ tôn trọng || 96665: sự kính trọng; sự quý mến
+452. european | 96706: thuộc châu Âu, có liên quan đến châu Âu || 99845: thuộc châu Âu/người châu Âu
+453. examination | 14707: bài kiểm tra || 103318: bài thi; kỳ thi; sự kiểm tra
+454. explode | 13564: phát nổ || 91138: nổ
+455. external | 13026: phía bên ngoài || 86746: bên ngoài, nước ngoài
+456. fake | 13897: giả || 92878: giả; nhái
+457. fan | 14371: cái quạt/ fan hâm mộ :)) || 89582: người hâm mộ; fan
+458. fascinated | 53241: (bị) mê hoặc, bị  quyến rũ || 97167: bị mê hoặc, say mê
+459. featureless | 90292: không có điểm đặc biệt; trống trơn || 93248: (adj) không có đặc điểm
+460. fellow student | 63889: bạn học || 102545: bạn học cùng khóa
+461. fencing | 50062: môn đấu kiếm || 100205: đấu kiếm; đấu gươm
+462. ferry | 5856: chiếc phà || 94730: phà
+463. fever | 28601: cơn sốt || 85201: sốt
+464. fierce | 6605: hung dữ, dữ tợn || 98138: dữ dội, hung dữ
+465. first aid | 52010: việc sơ cứu || 92660: sơ cấp cứu
+466. flower | 9214: hoa || 88333: hoa; bông
+467. flush | 52632: xả (xả nước) || 85875: xả
+468. flute | 29005: cái sáo || 87431: sáo
+469. fly away | 15601: bay đi || 18097: bay đi mất/bay đi xa
+470. fox | 6607: con cáo || 103335: cáo
+471. frankly | 26642: 1 cách thẳng thắn/thẳng thắn mà nói || 88715: thành thật mà nói; thẳng thắn
+472. fresh | 11990: tươi/ mới/ sạch/ trong sạch || 93297: tươi; mới
+473. fur | 12667: lông thú || 96195: lông
+474. fuzzy | 17698: mờ || 89259: mờ, nhòe
+475. gardening | 12464: việc làm vườn || 102225: làm vườn, nghề làm vườn
+476. geography | 11930: môn địa lý || 102528: địa lý học
+477. get there | 15012: đi đến đó || 86592: đến nơi đó
+478. give off | 31378: phát ra, tỏa ra || 98601: thải ra, tạo ra
+479. globally | 24358: cách toàn cầu || 96463: trên toàn cầu, toàn cầu
+480. go past | 26869: đi ngang qua || 97118: đi qua, vượt qua
+481. golf course | 15212: sân golf || 92327: sân gôn
+482. government minister | 62856: bộ trưởng chính phủ || 98003: bộ trưởng
+483. grape | 57649: quả nho || 92229: (trái, quả) nho; màu nho
+484. grease | 12649: dầu mỡ || 95990: mỡ
+485. greenhouse gas | 13630: khí gây hiệu ứng nhà kính || 87304: khí nhà kính
+486. grocery store | 17135: cửa hàng tạp hóa || 96689: cửa hàng tạp hoá; tiệm tạp hoá; tạp hoá
+487. grow crops | 68883: trồng cây nông nghiệp || 90063: trồng cây
+488. grow up | 14996: (......../........) lớn lên || 101608: trưởng thành, lớn lên
+489. guidebook | 86684: sách hướng dẫn, sách chỉ dẫn || 29385: sách hướng dẫn (du lịch)
+490. guilty | 30909: cảm giác tội lỗi/ có tội || 101229: có tội; phạm tội; tội lỗi
+491. gun | 57798: cái súng || 86516: súng
+492. handcraft | 27610: nghề thủ công/đồ thù công || 95712: (n) Đồ thủ công
+493. handkerchief | 29239: khăn mùi xoa || 91473: khăn tay; mùi soa; mu-xoa
+494. hardship | 17605: cảnh khó khăn || 96457: khó khăn; gian khổ; cảnh khốn khó
+495. headset | 30193: tai nghe (có mic) || 93704: tai nghe
+496. healing | 12605: quá trình hồi phục/ sự hồi phục || 94686: sự lành; sự hồi phục
+497. health | 12326: sức khỏe || 90544: tình trạng sức khỏe
+498. hectare | 15896: hec ta || 99036: héc-ta
+499. heritage | 4899: di sản || 84993: di sản văn hóa
+500. high season | 86080: mùa cao điểm du lịch (n.p) || 88451: (n. phr) Mùa cao điểm
+501. hilly | 85611: nhiều đồi; gò đồi || 93196: (a) nhiều đồi
+502. history | 88389: lịch sử; sử sách || 7070: lịch sử/môn lịch sử
+503. holiday | 9221: ngày nghỉ/kì nghỉ || 101665: ngày lễ; nghỉ lễ
+504. hopeful | 15592: tràn đầy hy vọng || 91565: đầy hy vọng; lạc quan
+505. hopefully | 26938: hy vọng rằng || 86740: hy vọng; đầy hy vọng
+506. horizontally | 12219: chiều ngang || 97221: theo chiều ngang; nằm ngang
+507. horse | 16292: con ngựa || 89085: ngựa
+508. humid | 57661: ẩm ướt || 102666: ẩm
+509. ice cream | 17788: cái kem || 86483: kem
+510. illogical | 82388: phi lý || 101851: phi lôgic
+511. importantly | 14929: (cách) quan trọng || 92237: một cách quan trọng; đáng kể
+512. incapable | 71411: không có khả năng, bất tài || 95709: (adj) Không thể, không có khả năng
+513. incubation | 30075: sự ủ/ấp trứng || 92824: (Noun) Sự ấp trứng / Thời kỳ ủ bệnh.
+514. infect | 16621: lây nhiễm || 84633: nhiễm; lây; lan truyền
+515. informed | 57534: có hiểu biết, am hiểu || 90841: hiểu biết; có kiến thức
+516. inhale | 29627: hít vào || 99272: hít
+517. inspector | 95721: người thanh tra; người kiểm tra || 100533: thanh tra, kiểm định viên
+518. inspiring | 7476: (tính từ) truyền cảm hứng || 92375: truyền cảm hứng; gây cảm hứng
+519. intellectual | 8714: trí thức/trí tuệ || 9020: nhà trí thức
+520. intercultural | 58106: liên văn hóa || 89041: (adj) Liên văn hoá
+521. intrinsically | 6544: thuộc về bản chất || 90366: về bản chất; nội tại
+522. inward | 7850: hướng vào trong(adv)/phía trong(adj) || 87586: vào trong; hướng vào trong
+523. irony | 26685: sự trớ trêu || 100345: sự mỉa mai; điều trớ trêu
+524. irritable | 31469: dễ cáu bẳn || 99250: cáu kỉnh, dễ cáu
+525. jewelry | 27631: trang sức || 90282: đồ trang sức; nữ trang
+526. jot down | 27043: ghi chú nhanh || 99202: ghi nhanh, ghi lại
+527. kiss | 18182: hôn || 85859: hôn; hun
+528. knit | 29233: đan (len) || 93047: đan
+529. knock | 16959: gõ cửa || 102689: gõ
+530. know | 9225: (........./.........) biết/ hiểu || 100965: biết
+531. labour-intensive | 11825: cần nhiều sức lao động/nhân công || 91875: thâm dụng lao động; tốn nhiều nhân công
+532. landfill | 85615: bãi chôn lấp rác || 50743: bãi rác
+533. latter | 85646: cái thứ hai; cái sau || 86635: sau; thứ hai; thứ nhì; sau cùng
+534. leaf | 12318: lá cây || 95480: lá
+535. leave behind | 66557: để lại || 92118: bỏ lại; để quên
+536. lecture notes | 13757: note của bài giảng || 102656: ghi chép bài giảng
+537. likelihood | 6135: khả năng xảy ra || 92875: khả năng; xác suất
+538. listen carefully | 75813: lắng nghe kỹ || 98179: lắng nghe cẩn thận
+539. look back | 17927: nhìn lại || 85235: nhìn lại phía sau
+540. lover | 18090: người tình || 92653: người yêu; người tình bạn tình
+541. manipulation | 84846: sự thao túng, sự điều khiển || 86439: sự thao tác; sự thao túng
+542. marshland | 30070: vùng đầm lầy || 91373: đầm lầy, đất lầy
+543. marvel | 12902: điều kì diệu || 87455: kỳ quan; điều kỳ diệu
+544. mental health | 26550: sức khỏe tinh thần || 93669: sức khoẻ tâm thần; sức khoẻ tinh thần
+545. merchant | 5689: thương gia || 93688: thương nhân
+546. mess | 16919: đống/mớ hỗn độn || 95237: mớ hỗn độn; lộn xộn
+547. military | 17883: quân sự; quân đội || 89263: quân đội, quân lực
+548. mindful | 6191: quan tâm (không dễ quên)/ lưu tâm || 87366: quan tâm; lưu tâm
+549. mineral | 6942: khoáng chất/ khoáng sản || 97755: khoáng sản; khoáng vật
+550. minimise | 92263: giảm thiểu; làm nhỏ đi || 16103: giảm thiểu tối đa
+551. minor role | 61859: vai trò nhỏ || 96503: vai phụ; vai nhỏ
+552. mite | 58011: nhện nhỏ, côn trùng ký sinh || 89982: (n) ve/ký sinh trùng nhỏ
+553. modesty | 92326: sự khiêm tốn, tính khiêm nhường || 92743: ̣(n) sự khiêm tốn
+554. molecular | 12209: phân tử || 98062: phân tử (thuộc về)
+555. monkey | 81950: con khỉ || 85332: khỉ
+556. mosquito | 28597: con muỗi || 93947: muỗi
+557. mountain | 7068: núi/ ngọn núi || 92975: núi
+558. mud | 7373: bùn || 98723: bùn; sình
+559. mule | 18248: con la || 100210: la
+560. mum | 30253: mẹ || 88355: mẹ; má
+561. museum | 10868: bảo tàng || 98167: nhà bảo tàng; viện bảo tàng
+562. mystery | 15781: bí ẩn; huyền bí || 102339: điều bí ẩn
+563. nearly | 10972: gần như/ khoảng || 95718: gần như, suýt
+564. neck | 29451: cái cổ || 101921: cổ
+565. nerve | 29618: (dây) thần kinh || 88268: dây thần kinh; lòng can đảm
+566. noble | 18583: cao quý/quý tộc || 98099: cao quý; cao thượng
+567. normally | 12785: theo thông thường || 101164: thường; thông thường; bình thường
+568. notable | 15098: đáng chú ý/đáng kính || 97965: nổi tiếng, đáng chú ý
+569. october | 17415: tháng 10 || 84394: tháng Mười
+570. opposite | 14969: đối diện/ngược lại/trái || 86091: trái ngược; đối nghịch; ngược; bên kia; đối diện
+571. orbit | 9014: quỹ đạo (noun)/ quay quanh (verb) || 97300: quay quanh; bay theo quỹ đạo
+572. orchestra | 28836: dàn nhạc giao hưởng || 89020: dàn nhạc
+573. outward | 7851: hướng ra ngoài(adv)/bề ngoài(adj) || 102175: ra ngoài; hướng ra ngoài
+574. overcrowding | 13312: quá đông đúc || 102031: (n) tình trạng quá đông đúc
+575. overhead projector | 66372: máy chiếu qua đầu || 89867: máy chiếu hắt
+576. overtake | 6919: vượt qua || 86295: vượt
+577. palette | 51651: khay pha màu || 88289: bảng màu, bảng pha màu
+578. pandemic | 12792: đại dịch toàn cầu || 89778: đại dịch
+579. papyrus | 28366: giấy cói (xem ảnh) || 89886: cói; giấy cói
+580. paragraph | 16001: đoạn văn || 86105: đoạn
+581. passive | 51345: thụ động/ bị động || 94544: (a) thụ động
+582. pay attention | 83896: tập trung chú ý || 91364: chú ý
+583. pay attention to | 64960: chú ý đến || 89963: chú ý tới
+584. pepper | 12562: hạt tiêu || 98663: tiêu
+585. percentage | 15332: tỉ lệ (phần trăm) || 96386: số phần trăm; tỷ lệ phần trăm
+586. permanent collection | 67717: bộ sưu tập thường trực || 98761: bộ sưu tập trưng bày thường xuyên
+587. petrol | 17169: xăng dầu || 92095: xăng
+588. philanthropist | 12618: nhà từ thiện (= tiền) || 93601: nhà từ thiện, nhà hảo tâm
+589. physically | 13876: về mặt vật lý/thể lý || 92557: về mặt vật lý; theo quy luật vật lý
+590. pillar | 12858: cột trụ || 96382: cột
+591. plateau | 15366: (plateaux/plateaus) cao nguyên || 101739: cao nguyên
+592. pollute | 11995: làm cho ô nhiễm || 95053: gây ô nhiễm, làm bẩn
+593. polluted | 12152: bị ô nhiễm || 103339: ô nhiễm; bẩn
+594. possession | 15155: sự/quyên sở hữu/ tài sản || 88096: sự sở hữu
+595. pottery | 14954: đồ gốm/nghề làm gốm || 95756: gốm; đồ gốm
+596. pound | 17753: bảng anh (1 pound = 1 bảng) || 87235: cân Anh; pound; pao; bảng
+597. precise | 7220: chính xác; đúng đắn || 96626: chính xác; chuẩn xác
+598. precision | 7191: độ chính xác; sự chính xác || 84315: (n) Sự chính xác cao
+599. preferred | 14068: (được) ưa thích || 93857: được ưa thích hơn; ưu tiên
+600. prescribed | 15580: được quy định || 91094: quy định; ấn định
+601. prevail | 97628: chiếm ưu thế; thắng thế || 15861: chiếm kiểm soát/ưu thế
+602. previously | 7365: trước đó/ trước đấy || 97013: trước đây; trước đó
+603. privilege | 29971: đặc quyền || 87703: đặc ân, ban đặc quyền
+604. pump | 13848: bơm || 92251: bơm; đổ; bơm
+605. pumpkin | 31046: quả bí ngô || 102944: bí ngô; bí đỏ
+606. queue | 16664: (xếp) hàng || 98756: sắp hàng
+607. rabbit | 29289: con thỏ || 101170: thỏ
+608. radiator | 52006: bộ tản nhiệt/ bộ tỏa nhiệt || 87709: bộ tản nhiệt; lò sưởi
+609. raft | 12970: (thuyền) bè || 93880: bè
+610. rainy | 10797: có mưa/nhiều mưa || 90008: trời mưa; có mưa
+611. raise money | 87619: gây quỹ || 102295: (v. phr) Gây quỹ
+612. ranking | 29587: thứ bậc/ cấp bậc || 84751: thứ hạng; thứ bậc
+613. reader | 13160: người đọc/ máy đọc || 102625: người đọc; độc giả
+614. realistically | 27621: theo/cách thực tế || 94140: một cách thực tế; hiện thực
+615. really | 10980: rất/thật sự || 98649: thực sự, thật sự
+616. recognise | 5030: công nhận, xác nhận, nhận ra || 99455: công nhận, thừa nhận
+617. relent | 31277: nhượng bộ/ dịu đi || 88495: mềm lòng; nhượng bộ; dịu lại
+618. renovation | 8035: sự cải tạo/ cải tiến || 85899: sự cải tạo, sự tân trang
+619. repaint | 29662: sơn sửa lại || 92035: sơn lại; quét lại
+620. request | 26289: thỉnh cầu; yêu cầu || 84813: yêu cầu, thỉnh cầu (bằng văn bản)
+621. resemblance | 28274: sự giống nhau, nét tương đồng || 99928: sự giống nhau, nét tương đồng (đặc biệt về ngoại hình) (n)
+622. respondent | 28986: người trả lời; người phản hồi || 103301: người trả lời khảo sát
+623. reunite | 55206: đoàn tụ/ hiệp lại || 87386: đoàn tụ; hội ngộ
+624. rhyme | 82025: vần; gieo vần || 88920: vần
+625. roll | 98971: lăn; cuốn; cuộn || 102393: cuốn; cuộn; cuộn; cuốn; quyển
+626. rope | 17621: dây thừng || 87451: dây
+627. rubbish | 11985: rác || 93291: rác; rác rưởi
+628. rubbish dump | 86046: (n. phr) Bãi rác || 88276: bãi rác
+629. ruler | 16328: thước kẻ; thước; người thống trị || 68377: Người thống trị/ cai trị
+630. salary | 14723: lương || 100125: tiền lương
+631. sanitation | 9036: hệ thống vệ sinh || 84485: vệ sinh
+632. scent | 6146: mùi hương || 94102: mùi
+633. school | 16473: trường, trường học || 96264: việc học, trường lớp
+634. scientifically | 12208: theo khoa học/một cách khoa học || 87178: một cách khoa học; khoa học; bằng phương pháp khoa học
+635. screw | 55664: đinh vít || 94458: vít
+636. secretion | 64194: chất tiết || 91223: chất bài tiết; dịch tiết
+637. seemingly | 16789: có vẻ || 94763: có vẻ như; hình như
+638. seize | 12195: túm lấy/chộp lấy || 96198: nắm lấy; chộp
+639. serious | 11158: nghiêm túc/nghiêm trọng || 100983: nghiêm trọng, hệ trọng
+640. sheet | 11814: tờ giấy || 91347: tờ
+641. shore | 10783: bờ biển || 94598: bờ
+642. silkworm | 31108: con tằm || 88392: tằm
+643. ski | 31166: ván trượt || 95546: xki; ván trượt tuyết
+644. skin | 12716: làn da || 100653: da
+645. sleepy | 17784: (cảm thây) buồn ngủ || 97469: buồn ngủ
+646. snail | 30351: ốc sên || 92992: ốc
+647. snatch | 30820: chộp/ giựt || 103268: chộp; giật; vồ
+648. snowfall | 28306: (việc )tuyết rơi || 103097: tuyết rơi; lượng tuyết rơi
+649. soap | 27490: bánh xà phòng || 84510: xà phòng; xà bông
+650. south | 12534: phía nam, hướng nam || 96063: về phía nam
+651. sow | 65082: gieo hạt || 86181: gieo
+652. soybean | 15710: đậu tương/đâu nành || 88304: đậu nành
+653. spacious | 10820: rộng rãi || 96074: rộng
+654. spanish | 13476: Người/tiếng Tây Ban Nha || 103233: thuộc Tây Ban Nha; Tây Ban Nha
+655. specimen | 6463: mẫu vật || 91110: mẫu vật nghiên cứu
+656. spiritually | 31148: về mặt tinh thần (tôn giáo) || 89385: về mặt tinh thần; về mặt tâm linh
+657. spring up | 68758: mọc lên; xuất hiện nhanh chóng || 85796: mọc lên; nảy sinh; xuất hiện
+658. stabilize | 5321: ổn định || 92938: ổn định hóa; làm ổn định
+659. straw | 29191: rơm rạ || 96014: rơm
+660. suburban area | 76416: khu vực ngoại ô || 85435: khu ngoại ô, vùng ngoại thành
+661. success | 31625: (sự) thành công || 91139: thành công, thành tựu
+662. sufficient | 7882: đủ || 88646: đủ; đầy đủ
+663. sugar cane | 17476: cây mía || 100684: mía
+664. supplier | 29879: người cung cấp/ nhà cung cấp || 103055: người cung cấp; người tiếp tế
+665. suspicion | 18211: sự hoài nghi || 96685: sự nghi ngờ
+666. t-shirt | 16111: áo phông cộc tay || 85053: áo phông; áo thun
+667. takeaway | 48529: đồ mang đi/ đồ mua mang về || 92444: đồ ăn mang đi
+668. takeover | 13022: sự tiếp quản || 101126: sự tiếp quản (bằng vũ lực)
+669. target language | 65901: ngôn ngữ mục tiêu || 102880: ngôn ngữ đích
+670. teenage | 15066: thiếu niên || 92895: tuổi thiếu niên; tuổi teen
+671. tendency | 6740: khuynh hướng; xu thế || 102331: xu hướng
+672. thick | 13384: dày || 84564: dày; đặc
+673. thin | 14689: gầy/mỏng || 88583: mỏng; mảnh; ốm; gầy
+674. three | 15515: số 3 || 96523: số ba
+675. throw away | 9266: (........../..........) vứt bỏ || 89676: vất; vứt; vứt bỏ; bỏ đi
+676. tidal | 7346: lquan đến thủy triều || 97732: thủy triều
+677. tiring | 16306: làm cho mệt mỏi || 94334: mệt mỏi; làm kiệt sức
+678. toad | 50967: con cóc || 86491: cóc
+679. tongue | 28727: cái lưỡi || 93355: lưỡi
+680. tortoise | 6617: con rùa || 96211: rùa
+681. towel | 68503: khăn tắm || 87607: khăn
+682. trading | 6171: trao đổi buôn bán || 89953: giao dịch; buôn bán
+683. transform | 97818: biến đổi, chuyển hóa || 16801: chuyển đổi
+684. travelling | 12622: việc đi du lịch/di chuyển || 102886: việc đi lại; du lịch; sự đi du lịch
+685. tree | 9717: cái cây || 84374: cây
+686. trumpet | 24361: kèn || 95355: kèn trumpet
+687. turtle | 17802: con rùa || 87390: rùa
+688. uncertainty | 15158: sự không chắc chắn || 93559: sự bất định; tình trạng không chắc chắn
+689. undergo | 89677: trải qua; chịu đựng || 8034: (................../ ..................) trải qua
+690. underneath | 16908: phía bên dưới || 90880: ở dưới; phía dưới
+691. unexplained | 64855: chưa được giải thích || 96282: không được giải thích; chưa rõ nguyên nhân
+692. unfortunate | 17144: không may mắn || 88460: không may; đáng tiếc
+693. unhealthy | 16403: không khỏe mạnh/lành mạnh || 86269: ốm yếu; không khỏe mạnh
+694. unpleasant | 13148: gây khó chịu || 92679: khó chịu; khó ưa
+695. unpublished | 28186: chưa được công bố || 100272: chưa xuất bản, chưa công bố
+696. unusual | 7901: không bình thường, lạ thường || 89028: bất thường, khác thường
+697. upstairs | 29295: trên gác/trên tầng || 92798: lên tầng trên
+698. urgent | 90722: khẩn cấp; cấp bách || 13949: gấp/ khẩn cấp
+699. vanilla | 26567: va ni la || 97835: vani; vanilla
+700. vapor | 18685: làn hơi || 103072: hơi
+701. virtuous | 32787: có tính đạo đức/ đức hạnh || 101987: có đạo đức; có đức hạnh; tiết hạnh; đoan chính
+702. wait | 18417: chờ/đợi || 93233: mong chờ, trông đợi
+703. wake up | 16724: (........../ ..........) thức dậy || 100466: thức dậy; dậy lên; dậy; thức; đánh thức
+704. walkway | 96434: lối đi bộ; đường đi || 101370: lối đi
+705. wasteful | 31466: lãng phí; hoang phí || 101484: gây lãng phí
+706. weak | 15126: yếu đuối || 93181: yếu
+707. weakly | 17343: cách yếu ớt || 93481: ốm yếu; yếu ớt
+708. weird | 5665: dị/lạ/kì kì || 100398: kì quặc; kì quái; kì cục; lạ; kì lạ; kì dị
+709. wine | 13567: rượu || 87126: rượu vang
+710. winner | 14271: người thắng cuộc || 87989: người chiến thắng
+711. with | 10613: với || 88899: với; cùng với
+712. woodland | 71731: vùng đất có cây rừng; khu rừng || 88480: đất rừng, vùng rừng
+713. woods | 29298: rừng (hoặc 1 khu nhiều cây) || 94713: rừng cây; khu rừng
+714. worry | 14484: lo; lo lắng; lo ngại || 96513: lo lắng; âu lo
+715. booming | 84147: (adj) phát triển mạnh || 84209: (adj) Phát triển bùng nổ, thịnh vượng
+716. insatiable | 18906: không thể làm thỏa mãn được || 101277: không bao giờ thỏa mãn
+717. sprinkler | 88692: vòi phun nước; béc tưới || 5661: máy phun nước (tưới cỏ)
+718. mentor | 74735: người cố vấn, người hướng dẫn || 98778: (n) người cố vấn, người thầy hướng dẫn (dày dạn kinh nghiệm)
+719. deviation | 72758: sự đi chệch; lệch chuẩn || 92357: sự sai lệch; độ lệch
+720. devotion | 30729: sự tận tâm/ tận tụy || 91516: sự tận tâm; lòng yêu mến
+721. metabolism | 28115: sự trao đổi chất || 90943: (n) quá trình trao đổi chất
+722. origin | 7838: nguồn gốc; gốc toạ độ || 101366: (n) Nguồn gốc, gốc gác
+723. professional development | 65433: phát triển nghề nghiệp || 92012: phát triển chuyên môn
+724. unattended | 49914: không được chú ý tới || 85902: không được trông coi
+725. unwell | 14921: không khỏe/ bất ổn =)) || 90824: không khỏe, ốm nhẹ
+726. around the world | 18329: xung quanh thế giới || 86637: trên toàn thế giới
+727. strategically | 16371: 1 cách có chiến lược || 97266: về mặt chiến lược
+728. break up | 31063: chia tay/ giải tán || 101077: chia tay; tan vỡ
+729. distressed | 32534: đau khổ/ khốn cùng || 85766: đau khổ; lo lắng
+730. draw on | 65147: tận dụng, dựa vào || 84687: tận dụng, sử dụng
+731. give in | 57207: nhượng bộ, nộp || 93411: nhượng bộ, chịu thua
+732. groundbreaking | 31410: (adj) Đột phá || 93925: (a) mang tính đột phá
+733. hundred | 11203: trăm (vd: 1 trăm) || 85025: trăm; số một trăm
+734. lush | 12684: tươi tốt/xanh mướt || 103039: tươi tốt, um tùm
+735. specifically | 16675: 1 cách đặc biệt || 94532: cụ thể; đặc biệt là
+736. theme park | 10578: công viên giải trí || 95305: công viên chủ đề
+737. biomedical | 55199: y sinh (liên quan đến y học và sinh học) || 85620: sinh y học; y sinh học
+738. newcomer | 16364: người mới đến || 100865: người mới tham gia
+739. personally | 18436: theo cá nhân || 95745: với tư cách cá nhân
+740. skepticism | 15700: sự hoài nghi || 84297: chủ nghĩa hoài nghi
+741. unfold | 57097: mở ra/ truyền tải || 91349: mở ra; trải ra
+742. eccentric | 15093: kì dị/kì quặc || 93006: lập dị; kỳ quặc
+743. elastic | 55655: dẻo/ đàn hồi || 91348: co giãn, đàn hồi
+744. entry form | 61898: mẫu đăng ký dự thi || 94589: đơn dự thi
+745. illegitimate | 49806: bất hợp pháp/ không công bằng || 94164: bất hợp pháp; ngoài giá thú
+746. organically | 18428: (theo) hữu cơ || 99327: một cách hữu cơ
+747. walk around | 48595: đi bộ xung quanh || 97885: đi dạo quanh
+748. eyesight | 51923: khả năng nhìn/ tầm nhìn || 92985: thị lực; sức nhìn; tầm nhìn
+749. pea | 48532: đậu (hạt đậu) || 88000: đậu; cây đậu
+750. pedagogy | 65247: khoa học/phương pháp giảng dạy || 90383: phương pháp giáo dục
+751. refreshing | 29967: sảng khoái/ tươi mới || 86470: sảng khoái; tiếp thêm sinh lực
+752. take notice | 66674: chú ý; nhận ra || 103357: chú ý; để ý
+753. coaching | 77245: việc huấn luyện || 87827: công việc huấn luyện; sự dạy kèm
+754. bossy | 13913: hống hách/như là chỉ huy || 85822: hống hách; hách dịch
+755. criterion | 88805: (n) tiêu chí || 97237: tiêu chuẩn
+756. downtime | 26557: thời gian nghỉ ngơi || 101406: thời gian ngừng hoạt động
+757. public transport | 14869: phương tiện công cộng || 102048: giao thông công cộng
+758. shortage | 13950: thiếu hụt/khan hiếm || 94188: sự thiếu hụt; sự thiếu
+759. upstream | 28314: phía thượng nguồn || 92290: ngược dòng; thượng nguồn
+760. chase | 17860: đuổi theo || 91722: đuổi; rượt
+761. childhood | 15029: thời thơ ấu || 91021: tuổi thơ
+762. citizenship | 74660: quyền công dân, tư cách công dân || 85716: quyền công dân; quốc tịch
+763. distinguish | 100258: phân biệt; nhận ra || 15859: phân biệt/ tách biệt
+764. fabulous | 12403: tuyệt vời (điêu, không tin được) || 89456: tuyệt vời, đáng kinh ngạc
+765. notify | 30054: thông báo chính thức || 100882: thông báo; báo cho
+766. tolerant | 29220: khoan dung/ vị tha || 93853: khoan dung, bao dung
+767. art dealer | 67620: nhà buôn nghệ thuật || 97060: người buôn tranh; đại lý nghệ thuật
+768. extinct | 7370: tuyệt chủng; biến mất || 101681: đã tuyệt chủng
+769. friction | 67608: xung đột; bất hòa || 100461: ma sát; sự bất hòa
+770. guarantee | 13826: bảo đảm; bảo hành || 8050: bảo đảm/ chắc chắn
+771. hardly | 7484: gần như không || 97472: hầu như không; vừa mới
+772. manufacturer | 13029: công ty/ nhà sản xuất || 99441: người sản xuất
+773. permanently | 15584: lâu dài/vĩnh viễn || 92684: mãi mãi, vĩnh viễn
+774. nonlinear | 66282: không tuyến tính || 86142: không theo trình tự, phi tuyến tính
+775. calculated | 16100: được tính toán trước || 86672: tính toán trước, có chủ đích
+776. hurried | 27389: vội vã/ gấp rút || 89078: vội vàng; gấp gáp
+777. intense | 6524: mãnh liệt/ gắt/ dữ đội/ sâu sắc || 89855: mãnh liệt; dữ dội
+778. literacy | 15121: trình độ học vấn/khả năng đọc và viết || 102453: biết chữ; khả năng đọc viết
+779. manifest | 7905: biểu lộ || 102044: biểu hiện
+780. mansion | 5690: biệt thự || 99539: dinh thự
+781. poisonous | 9553: độc; có độc || 100709: không ăn được; có độc
+782. provincial | 29276: ở tỉnh || 96255: thuộc tỉnh
+783. reenact | 52529: (v) Tái hiện, diễn lại || 89180: (v) tái hiện (một sự kiện)
+784. solar power | 58226: năng lượng mặt trời || 93177: điện mặt trời
+785. unskilled | 30859: không có kĩ năng || 86021: không có tay nghề; thiếu kỹ năng
+786. uphold | 57710: duy trì, bảo vệ || 103171: duy trì; giữ vững
+787. linear | 57902: theo đường thẳng || 90780: tuyến tính; thuộc đường thẳng
+788. spiritual | 9627: thuộc về tâm linh || 102901: thuộc về tôn giáo; tinh thần
+789. commonly | 27349: thường thường || 89797: thường, phổ biến
+790. marathon | 14139: cuộc chạy ma-ra-tôn || 100669: ma-ra-tông
+791. relieve | 14907: làm dịu đi || 92692: làm dịu; giảm (đau)
+792. stereotype | 86693: định kiến; khuôn mẫu || 27284: định kiến/ sự hiểu sai
+793. anatomy | 87977: (n) giải phẫu học, cấu trúc cơ thể || 65198: giải phẫu, cấu tạo
+794. buzz | 84973: vo vo; vù vù || 96380: kêu vo ve, ù ù
+795. elicit | 16380: gợi ra, khơi gợi || 99909: gợi ra, khơi gợi (cảm xúc, phản ứng)
+796. empire | 18242: đế chế || 91789: đế quốc
+797. fin | 14045: vây cá || 84655: vây; vi
+798. in particular | 5844: 1 cách đặc biệt || 94260: đặc biệt là
+799. keep going | 48340: tiếp tục làm gì đó || 97653: tiếp tục
+800. logical thinking | 30188: suy nghĩ logic || 93538: tư duy logic
+801. multicultural | 5029: đa văn hóa || 95732: (adj) Đa văn hoá
+802. predict | 7906: dự đoán || 86381: dự báo
+803. shipment | 71725: lô hàng; đợt hàng được vận chuyển || 95652: hàng hóa vận chuyển
+804. telephone | 16459: điện thoại; dây nói; phôn || 91761: điện thoại bàn
+805. tractor | 18124: xe kéo || 84322: máy kéo
+806. weekday | 14664: ngày trong tuần || 101611: ngày thường
+807. why | 9218: tại sao || 93460: vì sao
+808. utensil | 57640: dụng cụ (thường dùng trong nhà bếp) || 96054: dụng cụ, đồ dùng (gia đình)
+809. lifespan | 99708: tuổi thọ; vòng đời || 71632: tuổi thọ; khoảng thời gian sống
+810. promoter | 15130: người ủng hộ/nhà tài trợ || 101762: người ủng hộ; người cổ vũ
+811. specialised | 49683: chuyên sâu/ có chuyên môn || 84700: chuyên dụng; chuyên biệt
+812. canopy | 7006: Mái che/tán lá rộng || 84135: mái che buồng lái
+813. halfway | 16757: nửa đường/ở giữa || 93798: nửa đường; nửa chừng
+814. honestly | 14311: thành thực mà nói || 102167: thành thật, thực sự
+815. salesman | 31306: nhân viên bán hàng nam || 102060: người bán hàng
+816. technology | 12167: công nghệ, kỹ thuật || 93919: môn công nghệ học
+817. which | 17435: cái nào/ cái mà || 96045: cái nào; lựa chọn nào
+818. inadequate | 6484: không đủ/ không thỏa đáng || 102323: không đủ năng lực, không thích hợp
+819. and so on | 14292: và vân vân || 95279: vân vân; v.v.
+820. commonplace | 27944: chuyện thường || 92945: đời thường
+821. exploitation | 48165: sự khai thác / lợi dụng || 91890: sự bóc lột, sự lợi dụng
+822. primitive | 85466: thô sơ, nguyên thủy || 14981: tiền sử/nguyên thủy/sơ khai
+823. stand out | 71440: nổi bật; đặc biệt đáng chú ý || 96403: nổi bật, khác biệt
+824. suffering | 32556: sự đau đớn (khổ hình) || 101583: sự đau khổ; nỗi thống khổ
+825. as well as | 11229: cũng như là || 91201: cũng như; ngoài ra còn
+826. experimentally | 28243: 1 cách thử nghiệm || 103003: bằng thực nghiệm
+827. lining | 89939: lớp lót (bảo vệ) || 99121: lớp lót bên trong
+828. seedling | 71735: cây con mọc từ hạt || 99997: cây con; cây mạ
+829. detergent | 12642: chất tẩy rửa; bột giặt || 88752: (n) chất tẩy rửa (thường chỉ bột giặt hoặc nước rửa bát)
+830. showcase | 8016: (v) Trưng bày, giới thiệu || 88627: giới thiệu, trưng bày để thu hút sự chú ý (v)
+831. straddle | 83690: nằm vắt ngang hai bên || 89930: (v) Mọc/nằm vắt ngang hai bên (con đường, ranh giới)
+832. food production | 65110: sản xuất lương thực || 102363: sản xuất thực phẩm (n.p)
+833. philosophical | 47931: theo/liên quan đến triết học || 90077: thuộc triết học
+834. stimulating | 13463: kích thích (phát triển) || 102812: kích thích; khơi dậy
+835. uniquely | 7824: một cách đặc biệt || 102025: một cách độc đáo; duy nhất
+836. amphibian | 16040: loài lưỡng cư || 103123: động vật lưỡng cư
+837. carbon dating | 92517: (n) phương pháp xác định niên đại bằng carbon (kỹ thuật khoa học dùng để đo tuổi của các vật thể hữu cơ cổ đại) || 103073: phương pháp xác định niên đại bằng cacbon; định tuổi cacbon
+838. chinese | 14278: tiếng/người trung quốc || 96135: (thuộc) Trung Quốc
+839. connectivity | 52554: khả năng kết nối || 95715: (n) sự kết nối
+840. disappearance | 16084: sự biến mất; sự mất tích || 94624: sự tan biến; sự khuất dạng
+841. discreet | 31243: giữ kín đáo || 91686: thận trọng, kín đáo
+842. five | 15517: số 5 || 87128: số năm
+843. four | 15516: số 4 || 92223: số bốn
+844. franchise | 28017: nhượng quyền kinh doanh || 94202: nhượng quyền thương mại (n)
+845. mainland | 87651: đại lục; đất liền || 10678: vùng đất liền
+846. make sure | 48053: đảm bảo rằng || 97619: đảm bảo, chắc chắn
+847. marked | 69559: rõ rệt, đáng kể || 89947: rõ rệt; nổi bật
+848. simulated | 14355: được mô phỏng lại || 94999: giả; mô phỏng
+849. slope | 28431: con dốc || 101749: dốc, sườn dốc
+850. stay healthy | 14906: giữ/sống khỏe mạnh || 96149: giữ sức khỏe
+851. structured | 52088: có cấu trúc/ có tổ chức || 91452: có cấu trúc, theo khuôn mẫu
+852. surprising | 14245: (gây) ngạc nhiên || 86599: đáng ngạc nhiên; bất ngờ
+853. toll | 82155: phí đường bộ || 100814: (lệ) phí cầu đường
+854. traveler | 29689: người di chuyển/ du lịch || 97093: người đi du lịch; lữ khách
+855. two | 15514: số 2 || 91087: số hai
+856. well-educated | 30129: được đào tạo bài bản/ được giáo dục tốt || 91204: học thức cao; được giáo dục tốt
+857. vocal coach | 84427: huấn luyện viên thanh nhạc || 100507: (n) huấn luyện viên thanh nhạc (người hướng dẫn kỹ thuật hát)
+858. honesty | 29658: sự thành thật/ trung thực || 89179: tánh thành thật; tánh thanh liêm
+859. coating | 67760: lớp phủ; lớp tráng || 85084: lớp sơn; lớp trang trí bề mặt
+860. complication | 31247: sự phức tạp/ biến chứng || 89069: điều rắc rối; biến chứng
+861. incentive | 7472: (n) động lực, sự khuyến khích || 89049: động lực; khích lệ
+862. popularize | 9142: phổ biến hóa/phổ cập || 87981: phổ biến, làm cho phổ thông
+863. set free | 67963: giải thoát; làm tự do || 93310: thả; giải phóng; trả tự do
+864. suffer | 29361: chịu đựng/chịu thiệt hại || 98118: chịu đựng; cảm thấy đau
+865. waterfront | 96751: (n) khu ven sông/biển || 98827: khu vực ven sông; bến cảng
+866. come about | 15101: xảy ra/ bắt đầu xảy ra || 101883: xảy ra, xảy đến
+867. fantastic | 5835: tuyệt vời/ cực tốt || 98284: tuyệt vời; xuất sắc
+868. habitat | 12155: môi trường sống; sinh cảnh || 91162: (n) môi trường sống (tự nhiên của động/thực vật)
+869. iceberg | 28294: tảng băng trôi || 90003: núi băng trôi; băng sơn
+870. cabin | 28992: nhà nhỏ/ buồng/ khoang/ ca bin :)) || 91648: căn nhà gỗ nhỏ; khoang; buồng riêng
+871. commuting | 82557: việc đi lại hằng ngày || 90668: việc đi làm hàng ngày, đi lại thường xuyên
+872. councillor | 31016: ủy viên hội đồng || 95743: (n) Ủy viên hội đồng (chính quyền địa phương)
+873. crater | 12854: miệng núi lửa or hố giống thế || 96790: hố va chạm; miệng núi lửa
+874. deactivate | 101356: (v) vô hiệu hóa, tắt (máy móc, hệ thống báo động) || 101394: (v) vô hiệu hóa, tắt, làm ngừng hoạt động (hệ thống, thiết bị, bom mìn...)
+875. evaluation | 15479: sự đánh giá; sự thẩm định || 97942: (n) Sự đánh giá, nhận định phân tích
+876. for example | 12344: Ví dụ (như) || 94180: ví dụ; chẳng hạn
+877. furthermore | 16635: quan trọng hơn; thêm vào đó || 95217: hơn nữa; ngoài ra; thêm vào đó
+878. get worse | 9579: trở nên xấu hơn || 93963: trở nên tồi tệ hơn; xấu đi (sức khỏe)
+879. iconic | 10577: mang tính biểu tượng, nổi tiếng (adj) || 85862: có tính biểu tượng; mang tính tượng trưng
+880. inadvertently | 58158: vô tình; vô ý; không cố ý || 84634: (adverb) Một cách vô tình, không chủ ý
+881. incremental | 58390: tăng dần, gia tăng từng bước, theo lối cải tiến dần dần || 99866: tăng dần; từng bước
+882. intentionally | 57722: cố ý, có chủ ý || 91710: cố ý; cố tình
+883. oversight | 58121: sự sơ suất/quên sót/sự giám sát || 98140: (Noun) Sự sơ suất, bỏ sót.
+884. physical fitness | 49900: sức khỏe thể chất/ thể lực || 84629: thể lực tốt; sự khỏe mạnh về thể chất
+885. primary school | 17344: trường cấp 1 || 101382: trường tiểu học
+886. self-aware | 15040: có thể tự nhận thức || 97617: tự nhận thức; có ý thức về bản thân
+887. shellfish | 28814: động vật có vỏ || 94868: động vật có vỏ như sò, ốc, tôm, cua
+888. wellbeing | 27403: sự khỏe mạnh/ hạnh phúc || 92138: hạnh phúc; sự an lành; sức khỏe tốt
+889. blog | 72260: nhật ký trực tuyến || 96440: nhật ký web; trang cá nhân
+890. hypothesize | 64597: giả thuyết rằng || 101850: giả thuyết; đưa ra giả thuyết
+891. steamboat | 30895: tàu thủy (chạy bằng hơi nước) || 87232: thuyền hơi nước
+892. cease | 96811: (verb) ngừng hẳn, chấm dứt hoàn toàn || 102003: ngừng, chấm dứt
+893. evening | 17027: buổi tối || 89761: chiều tối
+894. filler | 31509: chất độn || 101459: chất trám
+895. intensity | 7949: cường độ mạnh || 95332: cường độ (năng lượng)
+896. magnificent | 12946: (adj) tráng lệ, nguy nga, lộng lẫy, tuyệt vời || 97503: (adj) Tráng lệ, hùng vĩ
+897. of all time | 49825: của mọi thời đại || 101527: từ trước đến nay, nhất mọi thời đại
+898. proficient | 31238: thành thạo/ có khả năng/ giỏi || 91379: thành thạo; tinh thông
+899. secret | 18185: bí mật, kín đáo || 98813: bí mật, điều bí mật
+900. terminology | 84779: thuật ngữ; hệ thống thuật ngữ || 68491: thuật ngữ chuyên ngành
+901. clench | 31341: (nghiến răng) nắm chặt || 92897: siết chặt; nắm chặt
+902. comply | 99013: tuân theo, tuân thủ || 99904: (v) tuân theo, đáp ứng
+903. confusing | 15685: gây bối rối nhầm lẫn/khó hiểu || 86150: gây nhầm lẫn
+904. diabetes | 16623: bệnh tiểu đường || 90995: đái tháo đường; tiểu đường
+905. involved | 66188: liên quan; tham gia || 98582: có liên quan, dính líu
+906. man-made | 85245: nhân tạo, do con người làm ra || 13479: người làm ra
+907. undertaking | 5705: công việc (được đảm nhận) || 97644: công việc; dự án
+908. associated with | 64173: có liên quan đến || 100045: (phr.v/adj phrase) Liên quan đến
+909. certificate | 14472: chứng chỉ || 100148: giấy chứng nhận
+910. collector | 27789: người sưu tầm || 103275: nhà sưu tập
+911. experienced | 88842: có kinh nghiệm; dày dạn || 16007: (đã) có nhiều kinh nghiệm
+912. inherit | 28044: (Verb) Thừa hưởng, kế thừa. || 95555: thừa hưởng, di truyền
+913. interior | 27608: phần bên trong/ nội thất || 98327: bên trong; thuộc nội địa
+914. no more than | 18386: không nhiều hơn || 94798: không quá
+915. phosphorus | 65102: phốt pho || 87193: photpho; phốtpho
+916. prefer | 98532: thích hơn, ưu tiên hơn || 28927: thích (hơn những thứ khác)
+917. be known as | 85722: được biết đến như là; được coi là || 93331: được gọi là; có tên là
+918. cardio | 27153: bài tập thể dục về tim mạch || 101149: (n/adj) Các bài tập tim mạch
+919. everyday | 91606: hằng ngày; thường ngày; tầm thường || 12639: thường ngày/ mọi ngày
+920. behold | 73838: hãy chiêm ngưỡng (trang trọng/hài hước) || 93003: chiêm ngưỡng; ngắm nhìn
+921. from time to time | 27049: thi thoảng || 84351: thỉnh thoảng; đôi khi
+922. homesickness | 49628: cảm giác nhớ nhà || 101842: nỗi nhớ nhà (n)
+923. ill-advised | 83830: thiếu khôn ngoan, không nên làm || 87810: thiếu suy nghĩ; không sáng suốt
+924. liquid | 12648: nước; chất lỏng || 99735: lỏng; ở thể lỏng
+925. or else | 31495: nếu không || 98941: hoặc là; nếu không thì
+926. psychiatrist | 52589: bác sĩ tâm thần || 90170: nhà tâm thần học
+927. soluble | 15793: có thẻ hòa tan || 84740: tan được, hòa tan
+928. sometimes | 9364: thi thoảng || 100217: thỉnh thoảng, đôi khi
+929. twister | 12369: lốc xoáy.. tw || 97464: lốc xoáy; vòi rồng
+930. uneven | 27689: không đồng đều || 102227: không đều, gồ ghề
+931. victory | 57672: chiến thắng (n) || 88065: thắng; thắng lợi
+932. extraction | 71320: sự chiết xuất; quá trình tách lấy một chất || 102400: sự chiết xuất; sự khai thác
+933. communication system | 65814: hệ thống liên lạc || 92571: hệ thống truyền thông
+934. dispense | 30656: phân phát/ phân phối || 98312: (v) phân phát, bán
+935. element | 7936: thành phần/ nguyên tố || 91166: yếu tố; nguyên tố
+936. impenetrable | 57995: không thể xuyên thủng/ không thể đi qua || 98161: không thể xuyên qua; bất khả xâm nhập
+937. magnetism | 70959: từ tính; từ trường || 100107: từ tính; sức thu hút
+938. obligatory | 30400: là nghĩa vụ/ thuộc nghĩa vụ (phải làm vì là luật) || 86739: bắt buộc; nghĩa vụ phải làm
+939. reading | 66350: việc đọc tài liệu || 98538: sự đọc; việc đọc hiểu
+940. righteousness | 67975: sự công chính || 101492: sự ngay thẳng, chính trực
+941. spur | 9032: thúc đẩy/ đẩy mạnh || 98460: thúc đẩy, kích thích
+942. astonished | 30390: bị cực kì ngạc nhiên || 54569: (bị) ngạc nhiên/ sửng sốt
+943. dealer | 15236: người buôn bán/trao đổi || 102513: người bán hàng, đại lý
+944. fad | 66680: mốt; trào lưu nhất thời || 100302: (n) Xu hướng nhất thời
+945. possible solutions | 78164: giải pháp khả thi || 98991: các giải pháp có thể áp dụng
+946. undeniably | 28364: không thể phủ nhận || 89234: không thể chối cãi; rõ ràng
+947. with regard to | 29018: liên quan đến || 92450: (prep.phr) Liên quan đến, xét về
+948. nutritional | 7170: liên quan đến dinh dưỡng || 100061: dinh dưỡng; thuộc dinh dưỡng
+949. special | 7102: đặc biệt, riêng biệt || 100239: đặc biệt (dành riêng cho dịp gì)
+950. worthwhile | 6713: đáng giá; xứng đáng; bõ công || 92317: đáng giá, đáng làm (adj)
+951. mirror image | 83998: ảnh phản chiếu trong gương || 95451: hình ảnh phản chiếu; ảnh đối xứng
+952. annoyance | 17187: sự khó chịu/phiền toái || 84992: sự bực mình; sự khó chịu
+953. ascent | 18259: việc leo/đi lên (phía trên) || 90600: sự đi lên; sự leo lên
+954. assert | 14172: khẳng định/nói || 87984: khẳng định, quả quyết
+955. awe | 67964: sự kính sợ; kinh ngạc || 100341: sự kinh ngạc, sự ngưỡng mộ
+956. blow up | 74204: nổ tung || 84448: nổ; thổi phồng
+957. brightly | 48344: 1 cách tươi sáng/ rực rỡ || 95471: rực rỡ; sáng chói
+958. bring back | 56602: gợi lại, mang quay trở lại || 102309: mang về, đem trở lại
+959. captivate | 51634: lôi cuốn, quyến rũ || 86877: thu hút; quyến rũ
+960. carry | 13548: mang (vác) / chở/ có (cái gì đó) || 90698: mang, vác, chở
+961. central | 14545: (adj) ở trung tâm, thuận tiện || 91426: trung tâm, ở giữa
+962. chloride | 29578: clorua || 94384: hợp chất clorua
+963. choreographer | 6206: người biên đạo (nhảy) || 93864: biên đạo múa; người dàn dựng múa
+964. cleaner | 26797: người dọn dẹp || 97521: người quét dọn nhà cửa
+965. clerical | 83229: thuộc công việc văn thư || 96851: (thuộc) văn phòng, thư ký
+966. damaging | 28229: có tính gây tổn hại || 97667: gây hại; làm tổn thương
+967. degradation | 15180: sự suy thoái/hủy hoại || 101332: sự suy thoái, sự xuống cấp
+968. devastate | 28024: tàn phá; hủy diệt || 98800: (v) Tàn phá, phá hủy hoàn toàn
+969. download | 18440: tải xuống/tải về (phần mềm, ứng dụng) || 90340: tải; tải xuống; tải về
+970. drainage | 7327: hệ thống dẫn nước, chất thải... || 99978: hệ thống thoát nước
+971. efficiency | 87846: hiệu suất, tính hiệu quả || 11842: sự hiệu quả
+972. efficiently | 91366: hiệu quả; có hiệu suất cao || 15219: 1 cách có hiệu quả
+973. effort | 13640: sự cố gắng; nỗ lực || 92419: sự nỗ lực đạt được
+974. elasticity | 55658: sự đàn hồi/ tính đàn hồi || 100619: tính đàn hồi, độ co giãn
+975. electronically | 72280: bằng hệ thống điện tử || 102913: bằng điện tử; bằng phương tiện điện tử
+976. exaggeration | 6891: sự nói quá/ phóng đại || 84810: sự phóng đại; sự thổi phồng
+977. expand | 13025: mở rộng/ giãn nở || 89209: mở rộng; phát triển
+978. extended family | 18035: đại gia đình || 86957: gia đình mở rộng
+979. factual | 16154: có thật, thực tế || 100012: mang tính sự kiện, thực tế
+980. family business | 82516: công việc kinh doanh gia đình || 98090: doanh nghiệp gia đình
+981. fiercely | 11960: 1 cách dữ dội/quyết liệt || 86615: dữ dội; mãnh liệt
+982. frustration | 26680: sự chán nản/ bực bội/ chán nản || 93939: sự thất vọng, chán nản
+983. globe | 8040: thế giới/ địa cầu || 97643: quả địa cầu
+984. graffiti | 8167: tranh vẽ trên tường || 101439: hình vẽ graffiti; chữ viết trên tường
+985. improbable | 63817: khó xảy ra || 99492: (adj) khó có khả năng xảy ra
+986. innovate | 12183: đưa ra cải cách/đổi mới || 92304: đổi mới; cải tiến
+987. interesting | 9370: thú vị/hay ho || 86387: thú vị; hấp dẫn
+988. journal | 5503: tạp chí; tập san; nhật ký || 89927: tạp chí học thuật
+989. korean | 16507: người/tiếng Hàn || 101278: (thuộc) Hàn Quốc; Triều Tiên; người Hàn; tiếng Hàn
+990. lengthen | 30359: làm cho dài ra/ làm cho lâu hơn || 94048: kéo dài; làm dài ra
+991. loathe | 27038: ghê tởm/ghét/ không thích || 84235: ghê tởm; kinh tởm
+992. magical | 7546: huyền diệu/pháp thuật || 85122: ma thuật; huyền diệu; thần kỳ
+993. make sense | 16031: có ý nghĩa/ có nghĩa/ hợp lý || 94971: có lý; hợp lý; dễ hiểu
+994. marker | 16847: bút nhớ/bút đánh dấu || 86385: vật làm dấu; dấu hiệu; bút đánh dấu
+995. medical history | 76532: tiền sử y khoa || 99304: tiền sử bệnh, bệnh sử
+996. municipal | 82697: thuộc chính quyền đô thị || 84835: thuộc đô thị; thành phố
+997. mythological | 10627: thuộc thần thoại/chỉ có trong thần thoại || 103131: thần thoại; huyền thoại
+998. natural gas | 29505: khí ga tự nhiên || 90330: khí thiên nhiên; khí ga; khí gas; khí đốt
+999. overeating | 28934: việc ăn quá nhiều || 88352: ăn quá nhiều; ăn uống vô độ
+1000. perform | 7474: làm/ trình diễn/ biểu diễn/ thể hiện || 96859: thực hiện; biểu diễn
+1001. periodically | 30459: 1 cách có định kỳ || 101908: tuần hoàn; định kỳ
+1002. pleased | 15686: happy or satisfied/ vui / hài lòng || 92759: hài lòng; vui mừng
+1003. process information | 69387: xử lý thông tin || 86422: xử lý dữ liệu
+1004. proliferation | 58809: sự tăng nhanh, sự nảy nở || 102345: sự sinh sôi nhanh, sự tăng nhanh
+1005. puzzling | 10815: rối/khó hiểu || 90926: khó hiểu; bối rối; gây thắc mắc
+1006. reconcile | 66519: dung hòa; lý giải sự mâu thuẫn || 91863: hòa giải, dung hòa
+1007. reverence | 6946: sự tôn kính || 99874: lòng tôn kính; sự kính trọng sâu sắc
+1008. rip | 30053: xé toạc || 94960: xé; cắt
+1009. secondary school | 17345: trường cấp 2 || 102503: trường trung học
+1010. seldom | 14440: hiếm khi || 90912: ít khi
+1011. sleeplessness | 30679: sự mất ngủ || 85390: tình trạng mất ngủ
+1012. superiority | 15589: sự ưu việt (hơn) || 93178: sự vượt trội; tính ưu việt
+1013. surprised | 53243: (cảm thấy; bị) ngạc nhiên || 91456: ngạc nhiên
+1014. testing | 82478: đang thử nghiệm || 89632: thử nghiệm, kiểm tra
+1015. topple | 10665: (làm cho) lật/đổ || 17638: lật đổ/làm mất thăng bằng
+1016. tourist attraction | 14896: địa điểm du lịch || 98559: điểm thu hút khách du lịch
+1017. uneducated | 31144: không có giáo dục/ vô học :)) || 95811: không có học, thất học
+1018. unfamiliar with | 62866: không quen thuộc với || 97364: không quen; không biết
+1019. unit | 13398: đơn vị/ khối || 91143: đơn vị (tổ chức)
+1020. unprepared | 11079: chưa được chuẩn bị || 87705: không chuẩn bị; chưa sẵn sàng
+1021. viewpoint | 18040: góc nhìn/quan điểm/lập trường || 97299: quan điểm; cách nhìn
+1022. vulnerable | 7869: (Adjective) Dễ bị tổn thương/tấn công. || 99955: dễ tổn thương
+1023. wellness | 79370: sức khỏe toàn diện || 87292: sức khỏe tốt; sự an lành
+1024. wardrobe | 28645: tủ áo; quần áo; tủ quần áo || 95177: tủ quần áo; toàn bộ quần áo một người sở hữu (n)
+1025. handicraft | 14965: thủ công/ đồ thủ công || 87400: thủ công; thủ công nghiệp; thợ thủ công
+1026. refinement | 71327: sự tinh luyện; quá trình làm tinh khiết || 86999: sự tinh luyện; sự lọc
+1027. relevance | 7749: sự liên quan; tính thích đáng || 98392: tính liên quan, giá trị hữu ích
+1028. tasmanian tiger | 78995: hổ Tasmania (loài đã tuyệt chủng) || 89936: hổ Tasmania, sói túi
+1029. transmission | 16627: quá trình truyền/ lây truyền || 101999: sự truyền đạt, truyền tin
+1030. unaware | 17891: thiếu/ chưa nhận thức được || 98577: không biết; không nhận thức
+1031. symbolize | 7112: tượng trưng cho || 89940: tượng trưng hóa, biểu tượng hóa
+1032. embarrassing | 16878: xấu hổ/ ngượng || 85820: xấu hổ; lúng túng; khó xử
+1033. movable | 28837: di chuyển được || 97125: có thể di chuyển; di động
+1034. truth | 14603: sự thật (không dối trá) || 92134: sự thật, chân lý
+1035. tuition | 85239: học phí; sự giảng dạy (n) || 12287: việc giảng dạy
+1036. comfortably | 17016: cách thoải mái || 95798: thoải mái; dễ chịu
+1037. halve | 15106: giảm 1 nửa || 95408: chia đôi; giảm một nửa
+1038. let alone | 15186: huống chi là || 96837: huống hồ, nói gì đến
+1039. result in | 76251: dẫn đến (kết quả) || 84625: dẫn đến, gây ra
+1040. rim | 15848: cái vành (xem ảnh) || 91928: vành (bánh xe)
+1041. well-equipped | 14249: trang bị tốt || 90550: được trang bị đầy đủ
+1042. assemblage | 57988: sự tập hợp || 85683: tụ tập, hội họp
+1043. grandeur | 57100: vẻ huy hoàng, tráng lệ || 91880: (noun) Sự lộng lẫy, tráng lệ
+1044. insulate | 16091: cách nhiệt/giữ nhiệt || 92058: cách nhiệt, cách âm, cách điện
+1045. partial | 73566: một phần; không đầy đủ || 95112: một phần; bán phần; thiên vị
+1046. tennis courts | 28994: sân bóng te nít || 96319: sân tennis
+1047. imagination | 18205: trí tưởng tượng || 96712: sự hình dung; sự tưởng tượng
+1048. investigator | 12212: điều tra viên || 88343: người điều tra; nhà nghiên cứu
+1049. stimulate | 6207: kích thích/ xúc tác || 88101: (v) Kích thích, khơi gợi
+1050. study syndicate | 66346: nhóm học chung || 84572: nhóm học tập cùng hỗ trợ nhau
+1051. hype | 27450: sự cường điệu, thổi phồng || 87925: sự quảng cáo rùm beng; sự thổi phồng
+1052. analysis | 51755: sự phân tích || 96462: phép phân tích (văn học)
+1053. conference | 8996: hội nghị, hội thảo || 13121: buổi hội nghị/ họp
+1054. consciousness | 27194: sự nhận thức || 87790: ý thức
+1055. contender | 77206: đối thủ tranh tài || 91786: đối thủ; người tranh đấu; ứng cử viên
+1056. fetch | 31359: đi lấy hộ ai cgi đó || 86280: đi lấy và mang về
+1057. language | 12113: ngôn ngữ; tiếng || 93603: lời nói; ngôn ngữ nói
+1058. one at a time | 82183: từng người một || 88054: từng cái một, lần lượt
+1059. owner | 13304: chủ sở hữu || 97400: chủ nhân
+1060. prepare | 51927: chuẩn bị, trang bị kiến thức/kỹ năng || 84741: chuẩn bị, chế biến
+1061. punishment | 14077: việc/hành động trừng phạt || 99917: hình phạt; trừng trị; sự phạt
+1062. retrospect | 87406: (n) sự hồi tưởng, nhìn lại quá khứ (thường dùng: in retrospect) || 95843: sự nhìn lại; sự hồi tưởng
+1063. shame | 12913: sự tủi nhục/xấu hổ/đáng tiếc/thất vọng || 86876: sự xấu hổ; sự thẹn; sự ngượng; sự hổ thẹn; điều đáng tiếc
+1064. spelling | 17054: việc đánh vần || 95438: chính tả; cách đánh vần
+1065. statistical | 7902: liên quan đến thống kê || 99745: thuộc thống kê
+1066. sunken | 16177: chũng/ chìm || 101090: bị chìm
+1067. tackle | 6225: giải quyết (vấn đề, công việc...) || 100118: giải quyết; đương đầu
+1068. watery | 28119: có nước/chứa nước || 87408: đầy nước; ngập nước
+1069. wealth | 87615: sự giàu có; của cải || 13509: tiền bạc, của cải
+1070. off campus | 69239: ngoài khuôn viên trường || 100220: (adv/adj) ngoài khuôn viên trường (trái nghĩa với on campus)
+1071. metaphor | 28820: sự ẩn dụ/ lối nói ẩn dụ || 84132: ẩn dụ; ẩn dụ; phép ẩn dụ
+1072. put down | 11963: bỏ xuống (vd: bỏ súng xuống) || 88628: đặt xuống, để xuống
+1073. on the face of it | 71808: thoạt nhìn; xét theo vẻ ngoài ban đầu || 96437: thoạt nhìn; bề ngoài thì; nhìn bề ngoài
+1074. anew | 18565: thêm 1 lần nữa (= cách khác) || 84543: lại một lần nữa; theo cách mới
+1075. automated | 7643: tự động (bằng máy) || 84888: tự động hóa
+1076. criminal | 84180: tội phạm; hình sự || 16022: tên tội phạm
+1077. missing | 15051: bị mất tích || 97241: mất tích, thất lạc
+1078. resonant | 97553: vang, có độ ngân || 98804: vang; âm vang
+1079. concrete jungle | 32797: rừng bê tông (toàn nhà cửa) || 87926: rừng bê tông (khu phố hiện đại, nguy hiểm)
+1080. memorable | 14962: đáng nhớ; khó quên || 85480: đáng nhớ, gây ấn tượng
+1081. scrutinize | 15161: điều tra kỹ lưỡng || 96973: (verb) xem xét kỹ lưỡng
+1082. sit-down meal | 80146: bữa ăn có chỗ ngồi || 102798: bữa ăn phục vụ tại bàn
+1083. freight | 14392: hàng hóa (được vận chuyển từ A đến B) || 102555: hàng hóa; hàng chuyên chở
+1084. analytical | 85874: (triết học) tiên nghiệm; phân tích || 13610: (mang tính) phân tích
+1085. blanket | 14833: khăn/cái chăn || 91524: mền; chăn
+1086. cheerful | 6592: vui vẻ/ lạc quan || 90231: vui vẻ, phấn chấn
+1087. data | 27843: dữ liệu/thông tin || 84205: dữ liệu; số liệu
+1088. december | 17413: tháng 12 || 98035: tháng Mười Hai
+1089. disperse | 68450: phân tán; tản ra || 88229: (v) Phân tán, di cư lan rộng
+1090. formidable | 65649: đáng gờm, rất lớn || 89857: đáng sợ, ghê gớm
+1091. gigantic | 85334: (Adjective) Khổng lồ, kếch xù. || 89863: ̣̣(a) khổng lồ
+1092. incredibly | 16775: 1 cách khó tin/vô cùng || 94542: khó tin nổi
+1093. kangaroo | 17955: con chuột túi || 100034: căng-gu-ru; kangaroo; chuột túi
+1094. noisy | 12160: ồn ào || 100666: ồn; ầm
+1095. november | 17414: tháng 11 || 86077: tháng Mười Một
+1096. off-putting | 26812: gây khó chịu/ không thoải mái || 96744: gây khó chịu; làm nản lòng
+1097. route | 11145: tuyến đường/ con đường || 91630: tuyến đường; hành trình; lộ trình
+1098. satisfaction | 14511: sự hài lòng || 85715: sự thỏa mãn
+1099. scenery | 6312: cảnh quan/phong cảnh || 99584: (n) Phong cảnh, cảnh vật
+1100. sensation | 79147: sự chấn động; cảm giác || 99881: sự kiện gây chấn động / gây chú ý
+1101. skill | 14509: kỹ năng; kỹ xảo || 94722: khả năng; năng lực
+1102. state room | 76572: phòng nghi lễ lớn || 101977: phòng khánh tiết
+1103. swiftly | 15600: cách nhanh chóng/vội vàng || 96103: nhanh chóng; mau lẹ
+1104. totally | 13878: cách hoàn toàn/ tổng thể || 88221: hoàn toàn
+1105. apprehensive | 97038: (adj.) Lo lắng, e sợ || 103207: (adj) lo lắng, e sợ (về một việc gì đó sắp xảy ra)
+1106. gig | 27178: buổi biểu diễn (nhạc or kịch nói...) || 91958: buổi biểu diễn; công việc ngắn hạn
+1107. in reality | 29182: trong thực tế/ trong đời thực || 92751: thực tế là, thực ra
+1108. relevant | 16351: (adj) Liên quan, phù hợp || 85291: có liên quan; thích đáng
+1109. unpredictable | 16347: không dự báo trước đc || 101383: không thể dự đoán; khó đoán
+1110. behavioural | 85296: thuộc về hành vi || 52144: liên quan đến hành vi
+1111. dictate | 97649: ra lệnh; đọc chính tả || 19011: ra lệnh/đưa lệnh
+1112. event | 10597: sự kiện, sự việc || 92259: sự kiện, buổi họp mặt
+1113. fluctuation | 5312: sự giao động || 99384: sự dao động; sự biến động
+1114. interestingly | 10806: một cách thú vị || 88896: thú vị là, thật thú vị
+1115. panic | 6407: hoảng loạn || 97940: cơn hoảng loạn; sự hoảng sợ
+1116. robe | 12301: áo choàng (tắm) || 91830: áo choàng; áo dài rộng
+1117. shorten | 16119: làm cho ngắn đi || 89412: rút ngắn, làm ngắn lại
+1118. traverse | 15605: đi qua/băng qua || 102715: đi ngang qua; vượt qua
+1119. deprivation | 57880: sự thiếu thốn; cảnh nghèo đói || 84341: (noun) Sự thiếu thốn, sự tước đoạt
+1120. divert | 12869: chuyển hướng/dùng sth theo mục đích khác || 86410: chuyển hướng; làm chệch
+1121. bowl | 16737: bát ô tô || 86177: bát; chén; tô; đọi
+1122. debatable | 29174: có thể gây tranh cãi || 93877: có thể tranh luận; đáng nghi ngờ
+1123. excessive | 30908: quá nhiều || 99337: quá mức, thái quá
+1124. identifiable | 15361: có thể nhận ra được || 86713: có thể nhận dạng; có thể xác định
+1125. sucrose | 71321: sucrose; đường saccarozơ || 87924: sucroza; đường mía; đường ăn
+1126. entity | 15617: thực thể/phần || 85486: thực thể, tổ chức, pháp nhân
+1127. exactly | 85102: chính xác, đúng || 10991: 1 cách chính xác/hoàn toàn
+1128. impatient | 16529: không kiên nhẫn || 99506: thiếu kiên nhẫn; nóng lòng
+1129. inexperienced | 5834: thiếu kinh nghiệm; non nớt || 98195: (adj) thiếu kinh nghiệm, chưa có kinh nghiệm (người mới)
+1130. sample | 7372: mẫu vật; mẫu || 89552: mẫu vật, mẫu thử; lấy mẫu (n)
+1131. sampling | 28387: việc lấy mẫu/ mẫu vật... || 100564: lấy mẫu; chọn mẫu
+1132. temporal | 15331: liên quan đến thời gian || 95121: thuộc về thời gian
+1133. persuasive | 12255: (làm cho/ dễ) thuyết phục || 100768: thuyết phục; có sức thuyết phục
+1134. troublesome | 11781: gây phiền toái/khó khăn || 88001: gây rắc rối, phiền phức; khó chịu
+1135. cohesion | 65497: sự gắn kết, sự liên kết || 95540: (n) sự gắn kết, sự liên kết chặt chẽ (trong một nhóm/cộng đồng)
+1136. amplify | 28833: khuếch đại; khuếch đại; phóng đại || 93896: khuếch đại (âm thanh)
+1137. antibiotic | 16542: kháng sinh; trụ sinh || 99503: (n) thuốc kháng sinh
+1138. arise | 6229: xảy ra/ phát sinh ra || 93955: phát sinh; nảy sinh
+1139. arrogance | 31270: sự kiêu ngạo || 94385: tính kiêu ngạo; tính ngạo mạn
+1140. as a matter of fact | 29522: thực tế thì || 97193: thực ra; sự thật là
+1141. asian | 18351: châu á || 84735: châu Á (người, văn hóa)
+1142. aspiration | 48283: khao khát/ khát vọng || 97509: khát vọng; hoài bão
+1143. assure | 12240: cam đoan/ cam kết/ bảo đảm || 98273: đảm bảo
+1144. asthma | 14009: hen xuyễn || 86656: suyễn; hen; hen suyễn
+1145. autism | 31413: bệnh tự kỷ || 85458: tự kỉ
+1146. bath | 17498: bồn tắm/việc tắm || 88434: bồn tắm; phòng tắm; buồng tắm
+1147. cardiovascular | 29340: lqan đến tim mạch || 101036: tim mạch; thuộc tim mạch
+1148. celebrate | 10807: tổ chức/ kỷ niệm || 92382: kỷ niệm; mừng
+1149. cloudy | 14442: nhiều mây || 93194: có mây
+1150. communal house | 5437: nhà chung/rông || 30345: nhà rông / đình làng
+1151. composite | 94925: tổng hợp phức tạp || 101882: hỗn hợp; tổng hợp
+1152. concept | 15591: ý tưởng/khái niệm || 93786: khái niệm; quan niệm
+1153. conversion | 51752: sự chuyển đổi, sự biến đổi || 87474: sự quy đổi (đơn vị)
+1154. cooperate | 79273: hợp tác || 88387: cộng tác
+1155. coordinated | 58389: (được) phối hợp || 100551: phối hợp nhịp nhàng
+1156. country house | 28219: ngôi nhà to ở nông thôn || 101037: biệt thự nông thôn, nhà ở vùng quê
+1157. coverage | 30059: báo cáo (về sự kiện)/sự đưa tin, phạm vi bao phủ || 95838: phạm vi bao phủ; phạm vi bảo hiểm; mức độ đưa tin
+1158. crank | 27561: tay quay :)) (xem ảnh) || 103124: (n) tay quay
+1159. cylinder | 12372: hình trụ || 97015: hình trụ tròn; xi lanh; xi-lanh
+1160. dare | 15839: dám/cả gan =))/thách thức || 97346: dám; thách
+1161. declare | 7730: ban bố; ban hành; tuyên bố || 13667: tuyên bố/ công bố
+1162. definitely | 12563: (cách) chắc chắn || 94650: chắc chắn; nhất định
+1163. depth | 17490: độ sâu || 100576: chiều sâu
+1164. developed | 32796: (đã) phát triển/ tiến bộ || 85238: phát triển (quốc gia)
+1165. diary | 92294: sổ nhật ký; nhật kí; nhật ký || 16674: cuốn nhật ký
+1166. discussion | 13161: thảo luận || 95905: cuộc thảo luận; sự bàn luận
+1167. electronics | 18426: Các thiết bị điện tử || 85709: đồ điện tử
+1168. enclose | 31198: bao quanh/ bọc chung quanh || 90679: bao quanh; đính kèm
+1169. endeavour | 7725: nỗ lực/ cố gắng || 85585: (v) nỗ lực, cố gắng (làm điều gì khó khăn)
+1170. engineering | 14188: nghề kỹ sư/kỹ thuật || 100631: kỹ thuật; ngành kỹ thuật
+1171. engraving | 92509: bản in khắc || 96145: (n) Bản khắc, tranh khắc
+1172. environmental | 11999: (thuộc) môi trường || 90872: môi trường (sinh thái)
+1173. episode | 16785: tập (vd: tập phim) || 101585: tập (phim, chương trình)
+1174. ethnic group | 4896: (nhóm) dân tộc || 89021: dân tộc; sắc tộc; tộc người
+1175. evolutionary | 16013: liên quan đến tiến hóa || 99610: tiến hóa
+1176. experimental | 16519: thuộc thử nghiệm/ thuộc thí nghiệm || 90647: thí nghiệm; thực nghiệm
+1177. exporter | 29200: người /doanh nghiệp/ nước xuất khẩu hàng hóa || 94411: người xuất khẩu; cơ quan xuất khẩu; nước xuất khẩu
+1178. extend | 7601: mở rộng/ kéo dài || 91254: kéo dài; kéo dài; nối dài
+1179. extend to | 67950: trải rộng đến || 96571: kéo dài đến, trải dài đến
+1180. filming | 77261: đang quay phim || 85057: sự quay phim; sự làm phim
+1181. follow-up | 74358: tiếp nối; kế tiếp || 95204: hoạt động tiếp nối
+1182. for instance | 14515: for example ~ ví dụ như || 89983: ví dụ
+1183. fresh water | 50308: nước ngọt || 32495: nước ngọt (nước ở sông, hồ,...)
+1184. frozen | 87979: đông lạnh; đóng băng || 71406: đóng băng; băng giá
+1185. fulfilled | 32650: (được) thỏa mãn/ được ứng nghiệm/ được hoàn thành || 94286: cảm thấy được đáp ứng, thỏa mãn
+1186. funny | 13353: hài hước/khôi hài || 89208: buồn cười; hài hước
+1187. gorgeous | 48030: đẹp lộng lẫy || 96049: lộng lẫy, tráng lệ
+1188. gorilla | 13412: con khỉ đột || 99647: khỉ đột; đại tinh tinh
+1189. graduation | 13644: (sự) tốt nghiệp || 96940: việc tốt nghiệp; lễ tốt nghiệp
+1190. green | 18405: màu xanh lá || 92354: xanh lá cây; lục
+1191. grove | 6183: lùm/ khóm cây || 102165: lùm cây; rừng nhỏ
+1192. hamper | 8688: cản trở/kiềm hãm || 96526: cản trở; ngăn cản
+1193. hint | 16651: gợi ý (ẩn) || 90289: gợi ý; ám chỉ
+1194. hostel | 28786: nhà trọ || 100871: nhà nghỉ
+1195. howl | 72356: hú; tru; tiếng tru || 93427: tiếng hú (chó sói)
+1196. impede | 58020: kiềm hãm/ cản trở || 94196: cản trở; ngăn cản
+1197. incidentally | 83310: tiện thể; nhân tiện || 90462: nhân tiện; tình cờ
+1198. indian | 52287: người Ấn Độ || 89817: (thuộc) Ấn Độ; Đông Ấn
+1199. inference | 31376: sự suy đoán/ suy luận || 100670: suy luận; suy diễn
+1200. infinite | 7656: vô tận || 89576: vô bờ; bất tận; vô hạn; bất tận
+1201. infinitely | 29996: vô cùng/ quá nhiều || 99197: vô hạn, vô cùng
+1202. kick off | 61881: bắt đầu, khai mạc || 103025: khởi đầu, bắt đầu
+1203. knowledge | 29184: kiến thức/hiểu biết || 90059: kiến thức; tri thức
+1204. landlord | 26285: chủ khu đất/ chủ nhà || 94643: chủ nhà; địa chủ
+1205. landmass | 6959: đất liền || 96352: khối đất liền; lục địa
+1206. last minute | 79389: phút cuối || 86617: phút chót; giây phút cuối cùng
+1207. later on | 29952: về sau/ sau này || 98123: sau này; lát nữa
+1208. lemon | 13430: chanh (vỏ vàng) || 99478: quả chanh vàng; màu vàng chanh
+1209. lens | 28152: ống kính/ thấu kính (xem ảnh) || 90381: thấu kính
+1210. limb | 16030: chân/tay || 89752: chi; tay chân; cành lớn
+1211. main | 12085: chính/ chính yếu (vd: món chính) || 101075: chính, chủ yếu
+1212. mainly | 14801: cách chủ yếu || 96090: chủ yếu; phần lớn
+1213. maintenance | 91497: bảo trì; bảo dưỡng || 7165: sự duy trì/bảo trì
+1214. measurement | 15388: sự đo đạc || 101626: sự đo lường; phép đo
+1215. microbe | 7738: vi sinh || 86888: vi trùng; vi khuẩn; vi sinh vật
+1216. mountainous | 12122: thuộc núi/nhiều núi || 102750: nhiều núi; có núi non
+1217. myriad | 94527: vô số; hàng ngàn || 98399: vô số; một vạn
+1218. neighbor | 7095: người hàng xóm || 96600: hàng xóm; láng giềng
+1219. next door | 13979: nhà bên || 89173: ở nhà bên cạnh; sang nhà bên cạnh
+1220. novelty | 27112: của lạ/sự mới lạ || 96251: tính mới lạ
+1221. nursery | 28224: trường mẫu giáo/ nhà trẻ || 99051: phòng trẻ em; nhà trẻ
+1222. prayer | 15598: lời cầu nguyện || 84742: kinh cầu nguyện; kinh nguyện; ý nguyện
+1223. precipitation | 15915: lượng mưa || 97990: (Noun) Lượng mưa (hoặc tuyết).
+1224. proclaim | 68014: công bố; loan báo || 89043: tuyên bố, công bố
+1225. pronunciation | 15996: (n) phát âm || 91564: cách phát âm; cách phát âm; cách đọc
+1226. pursuit | 15971: sự theo đuổi || 96215: sự truy đuổi; sự truy bắt
+1227. reality | 12244: sự thật/thực tế || 91885: thực tế; hiện thực
+1228. realize | 13853: nhận ra; thực hiện || 28403: hiện thực hóa
+1229. recently | 15350: gần đây (DHNB thì: .........) || 99996: gần đây; mới đây
+1230. recline | 27771: ngả lưng || 93615: ngả người ra; dựa lưng
+1231. regulate | 6529: kiểm soát, điều chỉnh || 95295: điều chỉnh; điều hòa
+1232. relation | 7956: mối tương quan || 92194: mối quan hệ; mối liên hệ
+1233. reopen | 74379: mở cửa trở lại || 103353: mở lại, tái mở
+1234. retain | 6934: giữ lại; duy trì || 102313: giữ lại để dùng sau; tích trữ
+1235. risky | 12971: nhiều rủi ro || 87675: rủi ro; nguy hiểm
+1236. rotation | 28169: sự quay tròn || 99573: sự quay; sự luân phiên
+1237. satisfy | 6860: đáp ứng/ thỏa mãn || 86514: thỏa mãn; thoả mãn
+1238. scientific | 13321: (có tính/thuộc) khoa học || 95175: khoa học
+1239. secretly | 13497: cách bí mật || 86500: bí mật; lén lút
+1240. self-confident | 32494: tự tin vào bản thân || 84545: tự tin
+1241. sensitive | 7156: nhạy; nhạy cảm || 96398: (a) nhạy cảm, tế nhị
+1242. silk | 28861: (vải) lụa || 96022: vải lụa; lụa; tơ lụa; xoa; tơ; chỉ tơ
+1243. simulation | 7951: sự mô phỏng || 87274: mô phỏng (máy tính)
+1244. sleeping bag | 52066: túi ngủ (đi cắm trại) || 85730: túi ngủ
+1245. slow down | 14735: (làm) chậm lại || 86111: chậm lại; giảm tốc
+1246. snowy | 12666: có tuyết rơi/như tuyết || 98180: đầy tuyết; có tuyết
+1247. socialize | 6750: chơi/giao tiếp (xã hội) || 84886: giao tiếp; tham gia các hoạt động xã hội
+1248. sore | 26516: đau/nhức || 86508: đau đớn
+1249. starve | 28592: rất đói/ chết đói || 90801: chết đói; đói ngấu; đói meo
+1250. state-of-the-art | 85358: hiện đại nhất, tiên tiến nhất || 8053: hiện đại/tối tân
+1251. subsidised | 74764: được trợ giá || 86128: được trợ cấp; được bao cấp
+1252. sugar | 86369: đường; chất đường || 13803: đường (để ăn)
+1253. suppress | 15583: đàn áp/nén/giấu || 102928: đàn áp, trấn áp
+1254. sweatshirt | 96605: áo nỉ || 100969: áo nỉ thể thao (sweatshirt)
+1255. take advantage | 95120: lợi dụng quá mức || 101453: tận dụng; lợi dụng
+1256. technological | 14927: thuộc/ lqan đến công nghệ || 102999: công nghệ
+1257. theater | 14135: rạp hát/rạp chiếu phim || 92973: nhà hát; rạp hát
+1258. theft | 27516: việc trộm cắp || 87356: sự trộm cắp; sự ăn trộm
+1259. theorist | 12238: nhà giả thuyết || 96044: nhà lý thuyết; người lý thuyết
+1260. thousand | 11015: ngàn/nghìn (vd: 1 nghìn) || 101429: một nghìn; ngàn
+1261. timely | 26668: đúng thời điểm || 93715: kịp thời; đúng lúc
+1262. tranquility | 57739: sự yên bình || 97919: (noun) sự bình thản
+1263. treatise | 28187: chuyên luận; luận thuyết; luận án || 98413: luận văn, chuyên luận
+1264. true | 13355: đúng/ chuẩn/ thật || 88579: đúng, thật, chính xác
+1265. ultraviolet | 28497: tia cực tím || 92121: cực tím; tử ngoại
+1266. unequal | 52055: không đều || 100110: không cân xứng; không đồng đều
+1267. unruly | 77167: ngỗ ngược; khó kiểm soát || 86149: ngỗ ngược; bướng bỉnh
+1268. walking | 48055: môn đi bộ || 84123: sự đi bộ; việc đi bộ
+1269. wander | 13528: đi lang thang/ đi lên mây =)) || 97544: lang thang
+1270. windy | 48599: nhiều gió || 97855: có gió
+1271. polymerization | 87739: (Noun) Quá trình polyme hóa. || 91477: sự trùng hợp (quá trình tạo polymer)
+1272. banking | 17301: ngân hàng; nghiệp vụ ngân hàng || 95413: giao dịch ngân hàng
+1273. deterioration | 51662: sự suy thoái; sự hư hỏng || 97249: sự xuống cấp, hư hỏng (n)
+1274. brisk | 67580: nhanh, mạnh mẽ || 102674: nhanh nhẹn, hoạt bát
+1275. bustling | 16176: hối hả/nhộn nhịp || 90725: nhộn nhịp, sầm uất
+1276. expanse | 7599: vùng rộng lớn || 95283: khoảng rộng; dải rộng
+1277. gently | 29706: 1 cách châm rãi nhẹ nhàng || 87214: nhẹ nhàng
+1278. injury | 31085: chấn thương || 98255: thương tích; thương tật
+1279. means | 84605: phương tiện, cách thức || 18574: phương tiện/công cụ (để hoàn thành việc gì đó)
+1280. purification | 68048: sự thanh tẩy || 92680: sự tinh chế; thanh lọc
+1281. closure | 27532: sự khép kín/đóng lại/đóng cửa || 84122: sự kết thúc; sự đóng lại
+1282. occupation | 5781: nghề nghiệp/công việc || 95014: nghề; nghề nghiệp; sự chiếm đóng
+1283. untrained | 31659: chưa được đào tạo || 100479: không được đào tạo; thiếu huấn luyện
+1284. as yet | 83972: cho đến hiện tại || 102066: cho đến nay (vẫn chưa)
+1285. electron | 63857: electron || 89220: ê-léc-trông
+1286. enforce | 13958: thi hành, thực thi (luật, quy tắc) || 97724: (v) thực thi, ép buộc tuân thủ (luật lệ, quy tắc, chính sách)
+1287. grill | 92673: lưới; nướng vĩ || 95277: nướng
+1288. housing | 15148: nhà cửa || 100489: nhà ở; chỗ ở
+1289. innovative | 87953: sáng tạo; đổi mới || 12174: tính cải tiến/đổi mới
+1290. likeness | 64257: sự giống thật || 84609: sự giống nhau; tương đồng
+1291. machine operators | 27613: người vận hành máy móc/thiết bị || 98650: các công nhân vận hành máy
+1292. prove | 5519: chỉ ra/ chứng minh || 100351: chứng minh; cho thấy
+1293. reintroduction | 6468: hành động giới thiệu lại || 87875: sự giới thiệu lại; sự đưa trở lại
+1294. rider | 27381: người lái xe/người cưỡi ngựa || 94365: người cưỡi ngựa; kị sĩ; kị mã
+1295. talk about | 64502: nói về; thảo luận về || 99313: bàn về; xem xét về
+1296. developmental | 13273: (adj) liên quan đến sự phát triển || 92377: phát triển, thuộc phát triển
+1297. revert | 27601: quay lại/trả lại/hoàn lại... || 97949: quay lại, trở lại (trạng thái cũ)
+1298. envision | 27824: tưởng tượng/ kỳ vong || 86185: hình dung, tưởng tượng
+1299. on the job | 83244: ngay trong quá trình làm việc || 86211: đang làm việc
+1300. protective | 7867: (có tính) bảo vệ/muốn bảo vệ || 84613: bảo vệ, bảo hộ
+1301. required | 50169: cần thiết/ được yêu cầu || 87007: cần thiết; bắt buộc
+1302. welcoming | 48615: thân thiện/chào đón khách || 90506: niềm nở; chào đón
+1303. confrontation | 76268: (n) Sự đối đầu, sự chạm trán || 102547: sự đối đầu, cuộc xung đột (trực diện)
+1304. receiver | 31338: người nhận (đồ đạc/ thư từ/ thứ vật ...) || 100754: người nhận; máy thu thanh
+1305. criticism | 15252: sự chỉ trích || 98593: sự phê bình
+1306. incoming | 65233: đi vào, đến || 94865: đến, sắp đến
+1307. managerial | 6479: liên quan đến quản lý || 86377: quản lý; thuộc về quản lý
+1308. mercy | 7874: lòng nhân từ || 85575: lòng thương
+1309. related | 16778: liên quan đến (connected) || 88379: liên quan; có liên hệ
+1310. respectable | 30283: đáng kính/ đáng tôn trọng, đúng đắn, đàng hoàng || 85554: đáng kính trọng, tử tế
+1311. spider | 32470: con nhện || 100446: nhện; nhền nhện
+1312. strong | 12377: mạnh/ mạnh mẽ || 92567: mạnh, khỏe
+1313. time-consuming | 100441: tốn thời gian; mất nhiều thì giờ || 5702: ngốn thời gian
+1314. transferable | 65635: có thể chuyển giao/áp dụng rộng || 100350: có thể chuyển nhượng; có thể di chuyển
+1315. withstand | 7577: chịu/chống đỡ || 102728: chống chọi
+1316. methodical | 28163: 1 cách có trật tự/ phương pháp || 94369: có phương pháp, ngăn nắp
+1317. recorded | 64322: được ghi nhận || 93589: đã ghi, đã thu
+1318. tired | 13855: mệt/bị mệt || 89442: mệt mỏi; mệt nhọc
+1319. leisure time | 16603: thời gian giải trí/rảnh rỗi || 98450: thời gian rảnh, thời gian nghỉ ngơi
+1320. sense of purpose | 47728: mục đích sống || 84289: ý thức về mục đích
+1321. turn on | 14790: bật (vd: bật đèn) || 91385: bật (thiết bị)
+1322. unused | 24399: chưa được sử dụng || 86972: chưa dùng; mới
+1323. inconclusive | 30027: chưa có kết luận/ chưa có kết quả || 89365: không kết luận được, chưa rõ ràng
+1324. dawn | 7109: (v,n) bình minh || 97634: bình minh; rạng đông
+1325. deficit | 28298: sự thiếu hụt hoặc khuyết || 95182: sự thâm hụt
+1326. shopping | 16662: việc mua sắm || 94302: sự đi mua hàng; mua sắm
+1327. predator | 6160: thú săn mồi/ động vật ăn thịt || 85096: động vật săn mồi/kẻ ăn cây trong ngữ cảnh này
+1328. conservative | 7009: bảo thủ/cổ hủ || 94301: bảo thủ; bảo thủ chủ nghĩa
+1329. deploy | 27483: triển khai || 94849: triển khai (quân đội, vũ khí)
+1330. elaborately | 52349: một cách tỉ mỉ || 84662: một cách cầu kỳ, công phu
+1331. epidemic | 31210: (n) Dịch bệnh lan rộng || 96752: (n) đại dịch, nạn bệnh (nghĩa bóng: sự lan tràn mạnh mẽ)
+1332. maritime | 78858: thuộc hàng hải || 93779: ven biển; thuộc vùng biển
+1333. saturate | 70388: làm bão hòa; tràn ngập || 85813: bão hòa, thấm đẫm
+1334. tube | 17123: ống (thường là cao su) || 86797: ống; ống; lọ; lon
+1335. characterise | 75836: đặc trưng hóa || 101081: là đặc điểm của; đặc trưng cho
+1336. check your answers | 66376: kiểm tra đáp án || 98749: kiểm tra lại các câu trả lời
+1337. competitor | 13635: đối thủ/người thi đấu || 97836: (n) đối thủ cạnh tranh
+1338. credibility | 57709: sự tín nhiệm, sự đáng tin || 103153: uy tín, độ tin cậy
+1339. disadvantage | 16141: điều bất lợi/tác hại || 94197: sự bất lợi; thế bất lợi
+1340. pale | 16609: bợt bạt/nhạt/tái nhợt || 88720: nhợt nhạt; có màu nhạt
+1341. sorrow | 29672: nỗi buồn/ sầu khổ/ đau khổ || 84984: nỗi buồn; sự buồn
+1342. exaggerate | 6890: nói quá/phóng đại/ làm quá || 97085: phóng đại; cường điệu
+1343. indisputable | 77233: không thể bác bỏ || 97441: (Adjective) Không thể chối cãi.
+1344. well-kept | 30646: được gìn giữ cẩn thận || 88963: được giữ gìn, bảo quản tốt
+1345. workmanship | 71429: tay nghề; chất lượng gia công || 85515: tay nghề; kỹ thuật
+1346. belonging | 55564: sự thuộc về, sự gắn bó || 91398: cảm giác thuộc về, thân thuộc
+1347. disrupt | 6231: làm gián đoạn; gây xáo trộn || 13880: làm ngắt quãng/gián đoạn
+1348. public speaking | 16557: nói trước đám đông || 84548: nói trước công chúng; diễn thuyết
+1349. ferret | 71642: chồn sương; động vật ăn thịt nhỏ || 84871: chồn sương, chồn ferret
+1350. progression | 35438: quá trình tiến triển/ thay đổi || 101187: sự tiến triển, sự tiến bộ
+1351. unite | 49746: đoàn kết lại/ bắt tay/ hợp lại làm một || 99353: đoàn kết; kết hợp
+1352. destructive | 11093: có thể gây tổn hại/phá hoại/tính hủy diệt || 86305: phá hoại; huỷ diệt
+1353. sighting | 71647: lần nhìn thấy và ghi nhận một loài || 95698: sự nhìn thấy; sự quan sát
+1354. volatile | 88239: dễ bay hơi; dễ biến động, bất ổn || 76295: biến động mạnh, thất thường
+1355. established | 29024: được chấp thuận/ thiết lập (từ lâu) || 88732: đã được thiết lập; có uy tín
+1356. legacy | 10685: (n) Di sản, di sản để lại || 98060: tài sản thừa kế, di sản (theo di chúc)
+1357. cohabit | 88484: sống chung (không kết hôn); cùng tồn tại || 102872: (v) sống chung, cùng chung sống
+1358. energize | 16389: nạp năng lượng/ làm cho tràn đầy năng lượng || 97860: tiếp thêm năng lượng; làm sảng khoái
+1359. as much as possible | 57611: nhiều nhất có thể || 85538: hết sức có thể, càng nhiều càng tốt
+1360. audible | 29526: có thể nghe được (âm thanh) || 90941: nghe được
+1361. audition | 62445: buổi thử giọng/thử năng lực biểu diễn || 88910: buổi thử vai, buổi thử giọng
+1362. barter | 100281: hàng đổi hàng; trao đổi || 103064: (v) trao đổi hàng hóa không dùng tiền
+1363. basin | 57890: lưu vực/bồn rửa mặt/ vùng lòng chảo || 87273: chảo; lưu vực
+1364. be made of | 12125: được làm từ (chất liệu) || 90094: được làm bằng
+1365. beautifully | 29885: 1 cách đẹp || 96594: một cách đẹp đẽ; tuyệt đẹp
+1366. celestial | 7396: adjective   formal - thuộc về bầu trời/vũ trụ || 91770: trên trời; thuộc bầu trời
+1367. championship | 28944: giải vô địch (a high-level competition ) || 96965: chức vô địch; giải vô địch
+1368. cholera | 9337: dịch tả || 91280: (bệnh) tả
+1369. clean up | 14819: dọn dẹp sạch sẽ || 87700: dọn dẹp; thu xếp gọn gàng
+1370. close down | 28866: đóng cửa (ví dụ: cửa hàng đóng cửa) || 89360: đóng cửa, ngừng hoạt động
+1371. cocktail | 47970: rượu cocktail || 102814: cốc-tai
+1372. competence | 15290: năng lực (làm gì đó rất tốt) || 97511: năng lực; khả năng; trình độ
+1373. comprehension | 6836: khả năng hiểu || 84606: sự hiểu
+1374. cow | 14701: con bò || 91618: bò cái; bò
+1375. cultural | 12315: thuộc văn hóa || 97627: văn hoá
+1376. curriculum | 13642: chương trình dạy => số nhiều .....................s/ .....................a || 87595: chương trình giảng dạy
+1377. decision making | 27213: việc đưa ra quyết định || 87640: sự ra quyết định; quá trình ra quyết định
+1378. deduct | 97929: khấu trừ, giữ lại (tiền) || 98137: (v) khấu trừ, trừ đi
+1379. determinant | 65628: yếu tố quyết định || 101515: nhân tố quyết định; định thức (toán học)
+1380. discrimination | 99637: phân biệt đối xử; kì thị || 29610: sự phân biệt
+1381. donut | 27394: bánh đô nắt || 100850: bánh vòng, bánh donut
+1382. emperor | 6599: hoàng đế/nhà vua/đế chế || 94936: hoàng đế; thiên hoàng
+1383. energetic | 16497: nhiều năng lượng/mãnh liệt || 98877: tràn đầy năng lượng; năng động
+1384. evacuate | 14526: sơ tán || 87045: di tản
+1385. exclusively | 15374: duy nhất/ dành riêng || 95539: hoàn toàn, chỉ riêng
+1386. extra time | 17200: thời gian thêm vào || 98838: hiệp phụ; thời gian bù giờ
+1387. extravagant | 87568: (adj) xa hoa, phô trương || 94472: xa hoa, lộng lẫy
+1388. farmhouse | 27782: nhà ở (của nông dân ở chỗ trang trại) || 103069: nhà trại; nhà nông trại
+1389. field of study | 66636: lĩnh vực nghiên cứu; ngành học || 101442: (n) Lĩnh vực học tập
+1390. furnish | 29988: đặt/ chuẩn bị các đồ nội thất || 93113: trang bị nội thất; cung cấp
+1391. get used to | 79663: dần quen với (danh từ/V-ing) || 88847: quen với, thích nghi với
+1392. governess | 67681: nữ gia sư sống cùng gia đình || 85489: (n) gia sư (dạy tại nhà)
+1393. habitable | 14313: (nơi) có thể sinh sống được || 99918: có thể ở được, đáng ở
+1394. harvesting | 48217: hoạt động thu hoạch || 86172: sự thu hoạch; mùa gặt
+1395. honest | 12462: trung thực || 93098: thành thật
+1396. ignorant | 47932: dốt/ không biết gì cả || 101904: thiếu hiểu biết; không biết
+1397. in earnest | 84310: (idiom) một cách nghiêm túc, mạnh mẽ, thực sự bắt đầu (sau một thời gian chuẩn bị) || 86653: một cách nghiêm túc; thực sự
+1398. incident | 15133: sự cố/sự việc || 102771: sự kiện
+1399. informative | 26297: có nhiều thông tin hữu ích || 91484: cung cấp thông tin; giàu thông tin
+1400. intestinal | 6422: đường ruột || 93472: thuộc ruột
+1401. justify | 18236: làm cho hợp lý/chứng minh || 88585: biện hộ; chứng minh là đúng
+1402. keep off | 48325: tránh xa/ tránh đề cập tới thứ gì || 96749: kiêng; tránh (đồ ăn, thức uống)
+1403. knowledge base | 66288: nền tảng kiến thức || 99471: cơ sở tri thức
+1404. lamp | 16942: đèn ngủ || 85897: đèn; đèn điện
+1405. lie in | 68039: nằm trong || 93069: nằm ở; bắt nguồn từ
+1406. mentally | 15059: thuộc tinh thần/thần kinh || 85907: về mặt tinh thần, trong tâm trí
+1407. nuisance | 31297: 1 sự phiền toái || 88804: sự phiền toái; vật/con vật gây phiền toái (n)
+1408. nutritious | 13451: bổ dưỡng/nhiều chất || 86584: bổ dưỡng, giàu dinh dưỡng
+1409. overview | 28394: tổng quan; sơ lược || 86166: cái nhìn tổng quan
+1410. parking | 91892: việc/chỗ đỗ xe || 27672: bãi đậu xe
+1411. peace of mind | 14936: bình yên trong tâm trí || 94859: sự yên tâm
+1412. perfumery | 64178: ngành sản xuất nước hoa || 91973: (n) Nghệ thuật/ngành công nghiệp chế tạo nước hoa
+1413. pine | 26362: cây thông || 101379: thông; tùng
+1414. platter | 74352: đĩa lớn đựng thức ăn || 102132: đĩa lớn; mâm
+1415. postage stamps | 57958: tem bưu chính || 87325: tem thư
+1416. practical | 12983: thực tế; thực tiễn || 95219: thực tế (dựa trên kinh nghiệm)
+1417. practitioner | 9027: noun [ C ]   formal - người hành nghề || 85592: người hành nghề; chuyên gia
+1418. rain | 17760: (v,n) mưa || 98769: mưa
+1419. regards | 14246: lời hỏi thăm || 16284: lời chào
+1420. reproduction | 12698: sự sinh sản; sự sao chép; bản sao || 15546: sự làm lại (sao chép lại)
+1421. resin | 93005: (n) nhựa cây || 96997: nhựa; mủ
+1422. reusable | 16475: tái sử dụng || 100864: có thể tái sử dụng; dùng lại được
+1423. rigor | 27157: sự khắc khổ/khắc nghiệt || 95604: sự chặt chẽ; tính nghiêm ngặt
+1424. secretary | 17313: thư ký; trợ lý || 30495: thư kí
+1425. secretive | 55649: bí mật, kín tiếng || 94023: kín đáo; giữ bí mật; ít nói
+1426. sewage | 9310: chất thải/nước thải (human urine or solid waste) || 96465: nước thải, chất thải
+1427. sheer | 15578: cực lớn/cực quan trọng/tuyệt đối || 88105: hoàn toàn, tuyệt đối
+1428. sometime | 17472: 1 lúc nào đó || 88042: lúc nào đó; thỉnh thoảng; một ngày nào đó
+1429. southward | 68950: về phía nam || 90375: hướng nam
+1430. static | 15103: tĩnh/không đổi || 92702: tĩnh, đứng yên
+1431. style | 14390: phong cách; kiểu; cách thức || 85247: phong cách (nghệ thuật, ngôn ngữ)
+1432. suburban | 16655: thuộc ngoại thành || 98324: ngoại ô
+1433. surplus | 29641: sự dư thừa/ có thừa || 97808: số dư; lượng thừa
+1434. sustained | 67517: được duy trì lâu dài || 85019: liên tục; kéo dài; duy trì
+1435. swift | 15863: nhanh chóng || 93988: nhanh; mau lẹ
+1436. symposium | 78510: hội nghị chuyên đề || 88139: hội thảo học thuật
+1437. tissue | 15993: giấy ăn || 90739: khăn giấy; mô
+1438. traffic jam | 13267: tắc nghẽn giao thông || 95926: ách tắc giao thông; tắc đường; kẹt xe
+1439. try on | 30872: mặc thử (vd: try on clothes) || 95581: mặc thử; ướm thử
+1440. ultimate | 27868: cuối cùng/ tối thượng/ khủng nhất/ chiêu cuối =)) || 85699: tối thượng, cao nhất
+1441. unpopular | 14230: không được ưa chuộng; không phổ biến || 102787: không được yêu thích
+1442. unusually | 17887: (1 cách) bất thường || 99113: đặc biệt; khác thường
+1443. urgently | 87598: khẩn cấp; cấp bách; gấp rút || 14106: cách cấp bách
+1444. vibration | 28107: sự rung || 85472: rung động
+1445. vocal | 95583: thuộc giọng nói; phát ra tiếng || 90754: hay phát ra âm thanh/tiếng kêu
+1446. choreograph | 84073: (v) biên đạo (múa, các chuyển động), dàn xếp hoặc thiết kế một chuỗi sự kiện một cách tỉ mỉ || 91826: biên đạo (múa); dàn xếp, lên kế hoạch chi tiết
+1447. chore | 6819: việc vặt; công việc thường ngày || 85032: (n.) Việc vặt, công việc nhà (thường là những việc nhàm chán nhưng phải làm thường xuyên).
+1448. conservatory | 5799: nhạc viện/ nhà kính trồng cây ( để chill) || 93613: nhạc viện; trường nghệ thuật
+1449. make a difference | 14512: tạo nên 1 sự khác biệt (thường mang tính tích cực) || 51638: tạo ra sự khác biệt
+1450. obliterate | 52357: xóa bỏ (toàn bộ dấu vết) || 86494: (v) Xóa sổ, phá hủy không còn dấu vết
+1451. professionally | 67503: về mặt nghề nghiệp || 96030: một cách chuyên nghiệp, như một nghề nghiệp
+1452. expedition | 16409: chuyến thám hiểm, khảo sát || 94938: cuộc thám hiểm; cuộc viễn chinh
+1453. refrain | 95149: kiềm chế; nhịn; tránh || 102308: (v) kiềm chế, tránh (làm việc gì đó)
+1454. surprisingly | 16393: 1 cách đầy bất ngờ/ không ngờ tới || 95439: một cách đáng ngạc nhiên
+1455. severely | 16626: cách dữ dội/rất nghiêm trọng || 91864: nghiêm trọng; nặng nề
+1456. audience | 5806: khán giả; quý vị || 90137: (n) khán giả, người tham quan
+1457. gravitational | 17366: lquan đến trọng lực || 99358: (thuộc) trọng lực; hấp dẫn
+1458. locally | 15718: (adv) địa phương || 93247: tại địa phương, trong khu vực
+1459. stretch out | 29291: duỗi ra/nằm dài ra (thư giãn) || 86546: duỗi ra, mở rộng
+1460. trillion | 16991: nghìn tỉ (vd: 1 nghìn tỉ) || 97943: hàng nghìn tỉ; vô số
+1461. enquiry | 80137: yêu cầu hỏi thông tin || 89269: câu hỏi; sự thắc mắc
+1462. flightless | 71627: không có khả năng bay || 96047: không biết bay (adj)
+1463. gutter | 88552: (n) máng xối (trên mái nhà) || 96308: rãnh; máng xối
+1464. mining | 6912: việc khai thác/ khai phá/ đào || 101522: khai thác mỏ
+1465. responsive | 15941: phản hồi nhanh || 100731: (adj) phản hồi tốt, đáp ứng
+1466. underlie | 15379: (v) là nên tảng || 89238: làm nền tảng; là cơ sở của
+1467. climatic | 15396: liên quan đến khí hậu || 93780: thuộc về khí hậu
+1468. craftsman | 29379: người nghệ nhân/thợ thủ công || 92437: nghệ nhân
+1469. endorse | 72397: tán thành; công nhận || 101347: ủng hộ, tán thành
+1470. knowledgeable | 17284: rất hiểu biết || 99415: hiểu biết rộng; uyên bác
+1471. menace | 15910: mối nguy tiềm tàng || 99015: mối đe dọa; nguy cơ
+1472. promotional | 48301: (adj) khuyến mãi || 89645: khuyến mại; quảng cáo
+1473. belong to | 67888: thuộc về || 101025: thuộc về; là một phần của
+1474. conservationist | 28458: nhà/người (làm/nghiên cứu việc) bảo tồn || 88969: nhà bảo tồn; người bảo vệ môi trường
+1475. earthly | 30637: thuộc trần gian || 85733: trần thế; trần tục
+1476. embrace | 6509: đón nhận; chấp nhận; ôm || 95006: (v) Ôm lấy, đón nhận, chấp nhận (một ý tưởng, một quan điểm)
+1477. excessively | 27323: 1 cách quá mức || 87817: quá chừng; quá đáng
+1478. islander | 10675: Người dân trên đảo (someone who lives on an island) || 85868: dân đảo; người sống trên đảo
+1479. lady | 17311: quý bà/người phụ nữ || 95356: quý bà, quý cô
+1480. lookout | 27499: người trong coi (cảnh báo nguy hiểm) || 98328: người canh gác, người quan sát
+1481. medication | 8062: thuốc; việc dùng thuốc || 11133: thuốc thang
+1482. moderately | 69411: ở mức vừa phải || 89636: vừa phải; tương đối
+1483. popularise | 62671: làm cho phổ biến || 100495: phổ biến; đại chúng hóa; làm cho dễ hiểu (với công chúng)
+1484. recharge | 52626: sạc (vd: sạc pin) || 90267: nạp lại; sạc lại
+1485. shift work | 64521: làm việc theo ca || 84426: (n) công việc làm theo ca (ca sáng, ca chiều, ca đêm đổi nhau)
+1486. weed out | 92152: loại bỏ; sàng lọc || 98972: (phrasal verb) loại bỏ, sàng lọc (những thứ không phù hợp)
+1487. emotionally | 31650: 1 cách đầy cảm xúc/ liên quan đến cảm xúc || 102224: đầy cảm xúc; xúc động
+1488. contaminate | 13924: làm cho nhiễm bẩn/nhiễm độc || 98925: làm ô nhiễm; làm nhiễm phóng xạ
+1489. empathy | 58159: thấu cảm; cộng cảm || 93388: sự đồng cảm
+1490. gathering | 16227: bữa gặp mặt/tụ họp || 97477: cuộc tụ họp
+1491. living quarters | 15697: khu nhà ở || 94531: chỗ ở; khu sinh hoạt
+1492. prototype | 58274: nguyên mẫu || 94126: (noun): bản mẫu thử
+1493. rail | 52065: đường sắt || 89767: đường ray; thanh ray
+1494. situation | 11186: tình huống || 99831: tình hình, tình thế
+1495. container | 16208: thùng chứa/ thùng đựng hàng || 99962: thùng; công-te-nơ; côngtenơ
+1496. active | 13176: tích cực/chủ động/ được kích hoạt || 101692: tích cực; năng nổ
+1497. brilliant | 12646: sáng chói/xuất sắc || 95303: rất thông minh; xuất sắc; rực rỡ
+1498. chest | 29596: phần ngực || 97486: rương; hòm; ngực
+1499. convenience | 14428: sự tiện lợi || 102649: tính tiện dụng
+1500. disaster | 11099: thảm họa || 84889: tai hoạ; thảm hoạ
+1501. genuinely | 26924: chân thật || 88296: thực sự, thật sự
+1502. herbal | 7583: liên quan đến thảo dược || 86621: (thuộc) thảo mộc, thảo dược
+1503. sadness | 29349: nỗi buồn || 86532: buồn; sự buồn rầu
+1504. storeroom | 28796: nhà kho || 87702: phòng chứa đồ; kho
+1505. system | 9709: hệ thống || 91017: hệ (trong hóa lý)
+1506. thrilled | 15846: cực vui/ phấn khích || 94231: hào hứng, phấn khích, thích thú
+1507. traveling | 16639: hoạt động di chuyển/du lịch || 93911: sự đi lại; việc du lịch
+1508. unaffected | 28295: không bị tác động/không thay đổi || 84667: không bị ảnh hưởng
+1509. yacht | 30594: thuyền (có buồm) || 99738: du thuyền
+1510. exhausted | 86048: kiệt sức, mệt lử || 16596: (bị) kiệt sức/ extremely tired
+1511. hazardous | 18412: nguy hiểm; mạo hiểm || 94549: (adj) Nguy hiểm, đầy rủi ro
+1512. healthy | 85840: khỏe mạnh; tốt cho sức khỏe || 13288: khỏe mạnh/lành mạnh
+1513. intelligence | 12459: Sự thông minh || 89568: trí tuệ; trí thông minh; trí năng
+1514. wildly | 5311: một cách không có kiểm soát || 102683: một cách điên cuồng
+1515. amusing | 14437: (có tính) giải trí, vui vẻ || 95728: thú vị; giải trí
+1516. bitter | 13570: vị đắng || 93128: đắng; cay đắng
+1517. divorce | 88797: ly hôn; ly dị || 30251: sự li dị
+1518. familiarise | 67487: làm quen với || 99990: làm quen; phổ biến (kiến thức)
+1519. fluent | 86311: lưu loát; trôi chảy; thành thạo || 12039: thành thao/ trôi chảy (ngôn ngữ)
+1520. kitchen | 7223: phòng bếp || 87722: nhà bếp; bếp
+1521. no charge | 80290: không mất phí || 84580: miễn phí
+1522. nonsense | 15193: vô nghĩa/ nhảm nhí || 89211: điều vô nghĩa; lời vô lý
+1523. opera | 90467: ca kịch; nhạc kịch; nhà hát || 77252: nhạc kịch opera
+1524. toxin | 30022: chất độc || 99880: toxin; độc tố
+1525. conquest | 87620: sự chinh phục || 18273: cuộc càn quét/ chinh phạt
+1526. dispel | 30152: xua tan/ đẩy bay || 94080: xua đuổi; làm tan biến
+1527. economical | 14223: tiết kiệm chi phí/ tài nguyên || 94400: tiết kiệm
+1528. irritate | 26682: làm cho khó chịu || 93340: làm bực mình; chọc tức
+1529. learner | 24417: người học || 89452: người học việc, thực tập sinh
+1530. opinion | 12436: ý kiến; quan điểm || 93440: dư luận; ý kiến chung
+1531. ornamental | 26627: manh tính trang trí || 91216: trang trí, làm cảnh
+1532. remote | 7708: xa xôi; cách biệt || 90222: xa cách, khó tiếp cận
+1533. uniqueness | 15720: sự độc nhất || 88009: tính độc đáo, tính duy nhất
+1534. vegetation | 6960: thảm thực vật || 101929: cây cối; cây cỏ; thực vật
+1535. virtue | 8702: Đức tính tốt/nhân đức || 99101: đức hạnh; ưu điểm
+1536. archaic | 66603: cổ xưa; thuộc thời kỳ sơ khai || 101805: (adj) cổ xưa, lỗi thời
+1537. capable | 28116: có khả năng || 85846: có thể
+1538. conventional | 95247: thông thường; theo quy ước; truyền thống || 32714: traditional and ordinary/ truyền thống, cổ hủ
+1539. converge | 49743: hội tụ/ giao nhau || 100602: hội tụ, tập trung
+1540. county | 52295: quận || 91494: quận (Hoa Kỳ)
+1541. court | 69673: tòa án || 96875: phòng xử án
+1542. detailed | 17382: được mô tả chi tiết || 94423: chi tiết; tỉ mỉ
+1543. entail | 65486: bao hàm, kéo theo || 94708: kéo theo, đòi hỏi
+1544. firsthand | 14117: tự trải nghiệm || 100948: trực tiếp (từ nguồn)
+1545. half | 84748: một nửa; nửa || 28717: 1 nửa
+1546. handmade | 24396: tự làm = tay || 98310: làm bằng tay; thủ công
+1547. hard hat | 62771: mũ bảo hộ || 99177: mũ bảo hiểm (công trường)
+1548. indirectly | 32806: 1 cách không trực tiếp || 92031: gián tiếp; một cách gián tiếp
+1549. japan | 16506: nước Nhật || 93801: Nhật Bản
+1550. landline | 17128: điện thoại bàn || 90978: điện thoại cố định; đường dây cố định
+1551. mechanic | 14502: thợ cơ khí || 85964: thợ máy
+1552. palm | 6275: lòng bàn tay; cây cọ || 17654: cây dừa/cây cọ
+1553. reliably | 7655: 1 cách có thể tin cậy được || 96998: một cách đáng tin cậy; một cách trung thực
+1554. thought | 13209: việc nghĩ/suy nghĩ || 94401: ý nghĩ, tư tưởng
+1555. vandalism | 6128: sự/tội phá hoại (của công) || 92226: phá hoại
+1556. colonisation | 30597: sự thuộc địa hóa || 96903: sự xâm chiếm thuộc địa; sự khai hoang lập nghiệp
+1557. exceptionally | 8055: đặc biệt/phi thường || 88897: đặc biệt; ngoại lệ; xuất sắc
+1558. imaginary | 17383: thuộc trí tưởng tượng || 93106: tưởng tượng; không có thực
+1559. naive | 62217: ngây thơ, đơn giản hóa || 102639: ngờ nghệch; ngây thơ; nai
+1560. atlas | 31634: quyển bản đồ || 100834: tập bản đồ; át-lát
+1561. creator | 27629: người sáng tạo ra cgi đó || 86485: tạo vật chủ; tạo hoá; người sáng tạo
+1562. infiltrate | 69653: thâm nhập || 87215: xâm nhập (để do thám)
+1563. liberal | 6886: tôn trọng/ chấp nhận tự do (adj) || 95499: cởi mở; theo chủ nghĩa tự do
+1564. look up to | 56621: tôn trọng || 95198: kính trọng, ngưỡng mộ
+1565. tilt | 17650: nghiêng/trượt/tụt || 91667: nghiêng, chúc
+1566. disbelief | 18212: sự không tin tưởng || 96212: sự hoài nghi, sự nghi ngờ
+1567. exaggerated | 58803: cường điệu, thổi phồng || 85447: phóng đại; cường điệu
+1568. generosity | 35435: sự hào  phóng || 85191: lòng hào phóng; tính rộng lượng
+1569. shrinking | 61938: đang suy giảm, thu nhỏ || 98461: sự co lại, sự thu nhỏ
+1570. speciality | 26934: chuyên ngành || 100896: chuyên môn; lĩnh vực chuyên sâu
+1571. undeterred | 57905: không nản lòng || 86817: không nao núng; không nản chí
+1572. predominant | 13043: chiếm ưu thế (phổ biến/nhiều nhất) || 97814: phổ biến nhất, chủ yếu
+1573. new wave | 84601: làn sóng mới (điện ảnh Pháp thập niên 1960) || 95525: làn sóng mới, phong trào mới (nghệ thuật, công nghệ)
+1574. chapter | 13402: chương (chương I,II) || 101100: chương
+1575. circus | 81954: rạp xiếc; buổi biểu diễn xiếc || 86551: xiếc; xiệc
+1576. concurrently | 83828: đồng thời; cùng lúc || 93587: (adv) Diễn ra song song, cùng lúc
+1577. critical of | 79635: chỉ trích || 90360: có ý chỉ trích, phê phán gì đó
+1578. day | 17430: ngày; thời; thời gian || 95012: ngày; một ngày đêm
+1579. embark on | 62828: bắt đầu làm || 89824: bắt đầu, khởi sự (một dự án)
+1580. fantasy | 6188: hoàn cảnh tưởng tượng/phim viễn tưởng || 90504: sự tưởng tượng; truyện kỳ ảo
+1581. intentional | 52261: có ý định || 95135: cố ý, có chủ đích
+1582. low | 7810: thấp, kém || 87495: thấp, ở dưới thấp
+1583. misery | 31089: sự khốn khổ || 103008: khổ sở; đau khổ

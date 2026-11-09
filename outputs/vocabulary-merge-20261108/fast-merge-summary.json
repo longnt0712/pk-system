@@ -1,0 +1,11 @@
+{
+  "xml_cards": 23197,
+  "xml_same_word_groups": 8535,
+  "reviewed_merge_groups": 4586,
+  "planned_redundant_cards": 5741,
+  "additional_semantic_review_groups": 587,
+  "additional_semantic_removals": 748,
+  "max_groups_per_run": 1000,
+  "xml_sha256": "5ae5a6bfa07c766c6d406a0fca6d967655ac7b25c806757664857f32b7320795",
+  "sql_sha256": "01c15f0548a38317eee9ff0af26a36504789c09b8808208a904400a20c70703e"
+}

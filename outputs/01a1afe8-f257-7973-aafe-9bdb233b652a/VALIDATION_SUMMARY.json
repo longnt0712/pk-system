@@ -1,0 +1,85 @@
+{
+  "sqlSha256": "6a91ebf4b11ebb781d1a4c6e4fe2d7295d9a3d32dc2caef8f84702aab3d1c56b",
+  "sqlServer": "2008 R2",
+  "database": "ecommerce",
+  "ownerUsername": "english",
+  "ownerId": 26,
+  "sqlValidationStatus": "passed",
+  "temporaryTablesOnly": true,
+  "firstRun": [
+    1,
+    27416,
+    21916,
+    548,
+    21916,
+    113862
+  ],
+  "secondRun": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "normalizationFailures": [],
+  "media": {
+    "phase": "complete",
+    "completedAt": "2026-11-06T11:18:22Z",
+    "audioFiles": 356,
+    "imageFiles": 33,
+    "fullListeningTests": 70,
+    "verifiedAssets": 389,
+    "verifiedPublicAssets": 389,
+    "httpChecked": 389,
+    "httpFailures": [],
+    "knownSourceErrors": [
+      {
+        "examId": 1503,
+        "part": 4,
+        "message": "Source audio unavailable"
+      }
+    ]
+  },
+  "vocabulary": {
+    "topics": 548,
+    "entriesAcrossTopics": 113862,
+    "distinctVocabularyCards": 19173,
+    "minimumTopicWords": 184,
+    "maximumTopicWords": 211,
+    "belowMinimum": [],
+    "topicWordCountHistogram": {
+      "184": 1,
+      "188": 1,
+      "190": 30,
+      "191": 8,
+      "192": 2,
+      "193": 4,
+      "195": 3,
+      "196": 3,
+      "197": 1,
+      "198": 3,
+      "199": 3,
+      "200": 2,
+      "201": 1,
+      "202": 4,
+      "203": 2,
+      "204": 1,
+      "205": 2,
+      "206": 4,
+      "207": 3,
+      "208": 1,
+      "209": 29,
+      "210": 438,
+      "211": 2
+    },
+    "estimatedCEFRLinks": 30607,
+    "composedIPAFromEntryFlags": 3917,
+    "checks": [
+      "Every available part has at least 180 distinct terms",
+      "Every entry has a pronunciation, Vietnamese meaning and valid CEFR code",
+      "Counts match the final SQL manifest"
+    ],
+    "reviewScope": "Automated checks and targeted spot checks; educational labels and contextual meanings remain editable."
+  }
+}

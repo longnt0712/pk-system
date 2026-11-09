@@ -1,0 +1,15 @@
+{
+  "xml_sha256": "1447f9f681479bef5f88c25bc725e4cbbaa34e62a7878453733156ccda1b0f32",
+  "reviewed_units": 3622,
+  "clusters": 2758,
+  "word_groups": 2619,
+  "source_cards_to_remove": 3823,
+  "cards_in_snapshot_after_merge": 7148,
+  "remaining_same_word_groups": 2282,
+  "remaining_unreviewed_same_word_groups": 2125,
+  "checked_groups_untouched": 157,
+  "snapshot_guard_cards": 7731,
+  "unreviewed_groups_untouched": 1262,
+  "sql_file": "C:\\Users\\Admin\\git\\pk-system\\outputs\\vocabulary-merge-20261108\\GOP_TU_TRUNG_CON_LAI_GIU_BAN_GOC_ENGLISH_V5.sql",
+  "bytes": 1674943
+}

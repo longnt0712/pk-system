@@ -1,0 +1,10 @@
+[
+  {
+    "canonicalSourceId": 1612,
+    "aliasSourceId": 2120,
+    "canonicalTitle": "Vol 5 READING FULL TEST 11",
+    "aliasSourceTitle": "[VOL 5] Full Reading Test  11",
+    "normalizedDtoSha256": "cbc4bba86df69911ab3c0f014349ca0675d993614ae649f10fb753cb5ea656c7",
+    "reason": "Entire normalized test DTO is identical; catalog alias retained in source archive"
+  }
+]

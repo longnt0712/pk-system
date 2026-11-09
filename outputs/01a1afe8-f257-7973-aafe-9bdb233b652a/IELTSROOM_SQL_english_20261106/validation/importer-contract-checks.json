@@ -1,0 +1,44 @@
+{
+  "templates": [
+    {
+      "skill": "READING",
+      "sheets": [
+        "HUONG_DAN",
+        "PROMPT_CHATGPT",
+        "THONG_TIN",
+        "NOI_DUNG",
+        "LOAI_CAU_HOI",
+        "VI_DU_TABLE_AND_LIST",
+        "VI_DU_MATCHING_HEADING",
+        "VI_DU_SENTENCE_ENDINGS",
+        "VI_DU_ONE_WORD_ONLY",
+        "VI_DU_COMPLETE_LIST",
+        "VI_DU_MULTIPLE_ANSWERS"
+      ],
+      "contentColumns": 22
+    },
+    {
+      "skill": "LISTENING",
+      "sheets": [
+        "HUONG_DAN",
+        "PROMPT_CHATGPT",
+        "THONG_TIN",
+        "NOI_DUNG",
+        "LOAI_CAU_HOI",
+        "VI_DU_TABLE_AND_LIST",
+        "VI_DU_MATCHING_HEADING",
+        "VI_DU_SENTENCE_ENDINGS",
+        "VI_DU_ONE_WORD_ONLY",
+        "VI_DU_COMPLETE_LIST",
+        "VI_DU_MULTIPLE_ANSWERS"
+      ],
+      "contentColumns": 22
+    }
+  ],
+  "regressionChecks": {
+    "questionCount": 40,
+    "leadingZerosPreserved": true,
+    "spacedAndCompactCodeAccepted": true,
+    "multipleCorrectAnswersMerged": true
+  }
+}
