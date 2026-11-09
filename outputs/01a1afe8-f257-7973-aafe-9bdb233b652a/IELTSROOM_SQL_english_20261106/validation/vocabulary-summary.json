@@ -1,0 +1,41 @@
+{
+  "topics": 548,
+  "entriesAcrossTopics": 113862,
+  "distinctVocabularyCards": 19173,
+  "minimumTopicWords": 184,
+  "maximumTopicWords": 211,
+  "belowMinimum": [],
+  "topicWordCountHistogram": {
+    "184": 1,
+    "188": 1,
+    "190": 30,
+    "191": 8,
+    "192": 2,
+    "193": 4,
+    "195": 3,
+    "196": 3,
+    "197": 1,
+    "198": 3,
+    "199": 3,
+    "200": 2,
+    "201": 1,
+    "202": 4,
+    "203": 2,
+    "204": 1,
+    "205": 2,
+    "206": 4,
+    "207": 3,
+    "208": 1,
+    "209": 29,
+    "210": 438,
+    "211": 2
+  },
+  "estimatedCEFRLinks": 30607,
+  "composedIPAFromEntryFlags": 3917,
+  "checks": [
+    "Every available part has at least 180 distinct terms",
+    "Every entry has a pronunciation, Vietnamese meaning and valid CEFR code",
+    "Counts match the final SQL manifest"
+  ],
+  "reviewScope": "Automated checks and targeted spot checks; educational labels and contextual meanings remain editable."
+}

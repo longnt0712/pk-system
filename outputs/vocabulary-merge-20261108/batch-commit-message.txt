@@ -1,0 +1,10 @@
+Add batch vocabulary merges and persistent review checks
+
+Review ten same-word groups per page, keep primary definitions by default,
+and save selected groups atomically with stale preview protection.
+Persist manual sidebar check marks and hide reviewed groups by default;
+show all to revisit them, and reopen review when new duplicate IDs arrive.
+
+Deploy vocabulary-duplicate-review.sql before the matching backend JAR.
+Validation: 33 Java checks, 13 Node checks, and isolated local SQL migration
+tests for initial run, repeatability, unchanged data and DDL rollback.

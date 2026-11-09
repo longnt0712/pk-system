@@ -104,6 +104,30 @@ public class TeachingPdfServiceTest {
     }
 
     @Test
+    public void authorizedEditorsCanPollTheSameRunWithoutReceivingUnchangedProgress() throws Exception {
+        String run = pdf.attach(1L, "2026-11-04", upload(), null).get("id");
+        pdf.save(1L, "2026-11-04", run, state(0, 5, false));
+        owner = 8L;
+        assertEquals(8L, pdf.open(1L, "2026-11-04", run).get("editorId"));
+        RestTeachingPdfController controller = new RestTeachingPdfController(pdf);
+        assertEquals("no-store", controller.changes(1L, "2026-11-04", run, 0).getHeaders().getFirst("Cache-Control"));
+        Map<String, Object> changes = controller.changes(1L, "2026-11-04", run, 0).getBody();
+        assertEquals(1, changes.get("revision"));
+        assertEquals(5, json.readTree((String) changes.get("progress")).path("page").asInt());
+        assertNull(pdf.changes(1L, "2026-11-04", run, 1).get("progress"));
+        pdf.save(1L, "2026-11-04", run, state(1, 5, true));
+        assertEquals(true, pdf.changes(1L, "2026-11-04", run, 1).get("completed"));
+        try {
+            pdf.changes(2L, "2026-11-04", run, 0);
+            fail("Polling must stay within the class and date linked to this run");
+        } catch (EnrolmentClassScheduleException e) { assertEquals(HttpStatus.NOT_FOUND, e.getStatus()); }
+        try {
+            pdf.changes(3L, "2026-11-04", run, 0);
+            fail("Polling must enforce class permissions");
+        } catch (AccessDeniedException expected) { assertEquals("Different class", expected.getMessage()); }
+    }
+
+    @Test
     public void exactSaveRetryReturnsSameRevisionButCannotOverwriteNewerNotes() throws Exception {
         String run = pdf.attach(1L, "2026-11-04", upload(), null).get("id");
         JsonNode request = state(0, 5, false);

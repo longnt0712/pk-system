@@ -1,0 +1,201 @@
+[
+  {
+    "word": "bunch",
+    "ids": [
+      30681,
+      90485
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 162
+  },
+  {
+    "word": "call",
+    "ids": [
+      12826,
+      90301
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 191
+  },
+  {
+    "word": "corner",
+    "ids": [
+      8234,
+      102344
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 552
+  },
+  {
+    "word": "dwell",
+    "ids": [
+      29334,
+      94346
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 903
+  },
+  {
+    "word": "far",
+    "ids": [
+      7061,
+      88482
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1129
+  },
+  {
+    "word": "fire",
+    "ids": [
+      11958,
+      85070
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1190
+  },
+  {
+    "word": "full",
+    "ids": [
+      14894,
+      100368
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1305
+  },
+  {
+    "word": "hair",
+    "ids": [
+      12712,
+      89791
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1466
+  },
+  {
+    "word": "layer",
+    "ids": [
+      8982,
+      96747
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1876
+  },
+  {
+    "word": "long",
+    "ids": [
+      12507,
+      87993,
+      91423
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 1960
+  },
+  {
+    "word": "major",
+    "ids": [
+      13019,
+      13322
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2003
+  },
+  {
+    "word": "newspaper",
+    "ids": [
+      31294,
+      87832
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2233
+  },
+  {
+    "word": "oil",
+    "ids": [
+      12332,
+      98202
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2306
+  },
+  {
+    "word": "paint",
+    "ids": [
+      7085,
+      29622
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2393
+  },
+  {
+    "word": "plough",
+    "ids": [
+      14208,
+      99338
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2538
+  },
+  {
+    "word": "pot",
+    "ids": [
+      5824,
+      87609
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2588
+  },
+  {
+    "word": "roof",
+    "ids": [
+      11974,
+      86689
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 2987
+  },
+  {
+    "word": "salty",
+    "ids": [
+      29575,
+      87189
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 3032
+  },
+  {
+    "word": "stone",
+    "ids": [
+      12097,
+      85192
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 3390
+  },
+  {
+    "word": "trap",
+    "ids": [
+      13689,
+      89745
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 3706
+  },
+  {
+    "word": "watch",
+    "ids": [
+      13075,
+      100585
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 3932
+  },
+  {
+    "word": "wrong",
+    "ids": [
+      16262,
+      102013
+    ],
+    "reason": "Các mệnh đề nghĩa của bản phụ đã có nguyên văn trong bản gốc (chuẩn hóa khoảng trắng, chữ hoa và dấu phân cách).",
+    "original_group": 4025
+  }
+]

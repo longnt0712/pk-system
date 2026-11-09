@@ -1,0 +1,54 @@
+{
+  "tests": 158,
+  "questions": 6307,
+  "groupsByTargetType": {
+    "1": 358,
+    "11": 405,
+    "4": 33,
+    "10": 97,
+    "14": 5,
+    "5": 112,
+    "12": 96,
+    "15": 88,
+    "13": 38
+  },
+  "sourceNumberingCorrection1542": {
+    "question8": [
+      "£120,000"
+    ],
+    "question9": [
+      "Park Square"
+    ],
+    "question10": [
+      "collect"
+    ]
+  },
+  "wordbankUiAdaptations": 38,
+  "headingGroups": 33,
+  "headingMarkers": 212,
+  "exactHeadingBodyMatches": 211,
+  "equivalentHeadingBodyDifferences": [
+    {
+      "examId": 1096,
+      "questionNumber": 18,
+      "reason": "Same paragraph; source name tokenization Miraz n Lahr / Mirazn Lahr"
+    }
+  ],
+  "multipleAnswerGroups": 112,
+  "multipleAnswerGroupSizes": {
+    "3": 11,
+    "2": 101
+  },
+  "duplicateSources": [
+    {
+      "canonicalSourceId": 1612,
+      "aliasSourceId": 2120,
+      "canonicalTitle": "Vol 5 READING FULL TEST 11",
+      "aliasSourceTitle": "[VOL 5] Full Reading Test  11",
+      "normalizedDtoSha256": "cbc4bba86df69911ab3c0f014349ca0675d993614ae649f10fb753cb5ea656c7",
+      "reason": "Entire normalized test DTO is identical; catalog alias retained in source archive"
+    }
+  ],
+  "corpusParts": 548,
+  "failures": []
+}

@@ -3,8 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
+const {isDeepStrictEqual} = require('node:util');
 
-function fixture(saved = {}, completed = false, catalog = {}) {
+function fixture(saved = {}, completed = false, catalog = {}, collaboration) {
     const input = {value: '1', matches: () => true};
     const events = {}, documentEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
     const ctrl = {};
@@ -43,7 +44,9 @@ function fixture(saved = {}, completed = false, catalog = {}) {
         if (selector === '.teaching-pdf-inline-note' && ctrl.context?.showNote) return {offsetWidth: 285, offsetHeight: 130};
         return null;
     }
-    const window = {getSelection: () => selection, addEventListener() {}, requestAnimationFrame: setImmediate, cancelAnimationFrame: clearImmediate};
+    const polls = new Set();
+    const window = {getSelection: () => selection, addEventListener() {}, requestAnimationFrame: setImmediate, cancelAnimationFrame: clearImmediate,
+        setTimeout(fn) { polls.add(fn); return fn; }, clearTimeout(fn) { polls.delete(fn); }, localStorage: collaboration?.storage};
     let selection = {isCollapsed: true};
     function timer(fn) {
         let handle;
@@ -109,15 +112,31 @@ function fixture(saved = {}, completed = false, catalog = {}) {
         append(key, value) { this.fields.set(key, value); }
     };
     vm.runInNewContext(source, {window, document, URL, FormData, TransformStream, pdfEngineMock: engine,
-        angular: {module: () => module, extend: Object.assign, isArray: Array.isArray, copy: structuredClone, noop() {}}});
+        angular: {module: () => module, extend: Object.assign, isArray: Array.isArray, copy: structuredClone,
+            equals: (a, b) => isDeepStrictEqual(structuredClone(a), structuredClone(b)), noop() {}}});
     const http = {
-        async get(url) {
+        async get(url, options) {
             reads.push(url);
             if (url.endsWith('/content')) return {data: new ArrayBuffer(0)};
+            if (collaboration && url.includes('/run/')) {
+                const {server, editorId} = collaboration;
+                return {data: {editorId, revision: server.revision, completed: !!server.completed,
+                    progress: options?.params?.afterRevision === server.revision ? null : JSON.stringify(server.state)}};
+            }
             if (url.includes('/run/')) return {data: {revision: 0, completed, progress: saved === null ? null : JSON.stringify(saved)}};
             return {data: catalog};
         },
-        async put(url, data) { writes.push(data); return {data: {revision: data.revision + 1, completed: data.completed}}; }
+        async put(url, data) {
+            writes.push(data);
+            if (collaboration) {
+                const {server} = collaboration;
+                if (data.revision !== server.revision || server.completed) throw {status: 409};
+                server.state = data.state;
+                server.completed = data.completed;
+                server.revision++;
+            }
+            return {data: {revision: data.revision + 1, completed: data.completed}};
+        }
     };
     const service = factory({open(options) { config = options; return {result: Promise.resolve()}; }}, http,
         {when: Promise.resolve.bind(Promise), all: Promise.all.bind(Promise), reject: Promise.reject.bind(Promise)},
@@ -127,6 +146,7 @@ function fixture(saved = {}, completed = false, catalog = {}) {
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
     return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers,
+        async sync() { const callback = polls.values().next().value; assert.ok(polls.delete(callback)); callback(); await tick(); },
         select(number, top = 150) {
             const page = sheet(number);
             const rect = {top, bottom: top + 20, left: 90, right: 170, width: 80, height: 20};
@@ -137,6 +157,85 @@ function fixture(saved = {}, completed = false, catalog = {}) {
             documentEvents.selectionchange();
         }};
 }
+
+test('two teachers merge concurrent edits to separate PDF annotations and keep their own zoom and page', async () => {
+    const server = {revision: 0, state: {page: 1, marks: [{page: 1, note: 'A'}, {page: 2, note: 'B'}]}};
+    const keys = new Map(), storage = {setItem: (key, value) => keys.set(key, value), getItem: key => keys.get(key)};
+    const a = fixture({}, false, {}, {server, editorId: 7, storage});
+    const b = fixture({}, false, {}, {server, editorId: 8, storage});
+    await Promise.all([a.tick(), b.tick()]);
+    await Promise.all([a.ctrl.open('run'), b.ctrl.open('run')]);
+    assert.deepEqual(Array.from(a.ctrl.state.marks, mark => mark.annotationId), Array.from(b.ctrl.state.marks, mark => mark.annotationId));
+    a.ctrl.setZoom(1.5);
+    b.ctrl.go(2);
+    await a.tick();
+    assert.equal(server.revision, 0);
+    a.ctrl.state.marks[0].note = 'A changed';
+    b.ctrl.state.marks[1].note = 'B changed';
+    a.ctrl.markChanged(); b.ctrl.markChanged();
+    await a.tick();
+    assert.equal(b.writes.length, 2);
+    assert.deepEqual(server.state.marks.map(mark => mark.note), ['A changed', 'B changed']);
+    const openNote = a.ctrl.state.marks[1];
+    a.ctrl.selectedMark = openNote;
+    const textBox = {matches: () => true};
+    a.events.compositionstart({type: 'compositionstart', target: textBox});
+    await a.sync();
+    assert.equal(openNote.note, 'B');
+    a.events.compositionend({type: 'compositionend', target: textBox});
+    await a.sync();
+    assert.equal(a.ctrl.selectedMark, openNote);
+    assert.equal(openNote.note, 'B changed');
+    assert.equal(a.ctrl.state.zoom, 1.5);
+    assert.equal(b.ctrl.state.page, 2);
+    assert.equal(b.ctrl.state.zoom, 1);
+    assert.equal(server.state.page, 1);
+    const reopened = fixture({}, false, {}, {server, editorId: 7, storage});
+    await reopened.tick(); await reopened.ctrl.open('run');
+    assert.equal(reopened.ctrl.state.zoom, 1.5);
+});
+
+test('a conflict keeps the local draft while independent edits save, and a teacher can resolve it explicitly', async () => {
+    const server = {revision: 0, state: {page: 1, marks: [{page: 1, note: 'A'}, {page: 1, note: 'B'}]}};
+    const a = fixture({}, false, {}, {server, editorId: 7});
+    const b = fixture({}, false, {}, {server, editorId: 8});
+    await Promise.all([a.tick(), b.tick()]);
+    await Promise.all([a.ctrl.open('run'), b.ctrl.open('run')]);
+    a.ctrl.state.marks[0].note = 'From A';
+    b.ctrl.state.marks[0].note = 'From B';
+    b.ctrl.state.marks[1].note = 'Independent edit';
+    a.ctrl.markChanged(); b.ctrl.markChanged();
+    await a.tick();
+    assert.deepEqual(server.state.marks.map(mark => mark.note), ['From A', 'Independent edit']);
+    const conflict = b.ctrl.syncConflicts[0];
+    assert.equal(conflict.mine.note, 'From B');
+    assert.equal(conflict.theirs.note, 'From A');
+    b.ctrl.resolveConflict(conflict.id, false);
+    await b.tick();
+    assert.equal(b.ctrl.syncConflicts.length, 0);
+    assert.equal(server.state.marks[0].note, 'From B');
+    await a.sync();
+    assert.equal(a.ctrl.state.marks[0].note, 'From B');
+});
+
+test('another teacher completing the run preserves unsaved text for copying and stops new writes', async () => {
+    const server = {revision: 0, state: {page: 1, marks: [{page: 1, note: 'Already saved'}]}};
+    const h = fixture({}, false, {}, {server, editorId: 7});
+    await h.tick();
+    await h.ctrl.open('run');
+    h.ctrl.state.marks[0].note = 'Unsaved local text';
+    server.revision++;
+    server.completed = true;
+    h.ctrl.markChanged();
+    await h.tick();
+    assert.equal(h.ctrl.run.completed, true);
+    assert.equal(h.ctrl.syncConflicts[0].mine.note, 'Unsaved local text');
+    assert.equal(h.ctrl.syncConflicts[0].theirs.note, 'Already saved');
+    assert.equal(h.writes.length, 1);
+    h.ctrl.resolveConflict(h.ctrl.syncConflicts[0].id, true);
+    assert.equal(h.ctrl.state.marks[0].note, 'Already saved');
+    assert.equal(h.ctrl.syncConflicts.length, 0);
+});
 
 test('scrolling renders a group of five and dragging zoom retains the current page and offset', async () => {
     const h = fixture();

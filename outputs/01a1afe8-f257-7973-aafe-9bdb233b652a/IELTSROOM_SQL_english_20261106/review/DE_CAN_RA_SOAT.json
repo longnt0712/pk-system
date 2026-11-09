@@ -1,0 +1,168 @@
+{
+  "excludedSourceTests": [
+    {
+      "id": 1095,
+      "title": "Vol 3 READING FULL TEST 2",
+      "reason": "Source has 41 questions with two questions numbered 27; retained in source review archive."
+    }
+  ],
+  "draftTests": [
+    {
+      "id": 1881,
+      "title": "Vol 6 LISTENING FULL TEST 2",
+      "notes": [
+        "Source bank 13699 contains duplicate option texts; collapsed identical texts"
+      ]
+    },
+    {
+      "id": 1586,
+      "title": "Vol 2 LISTENING FULL TEST 7",
+      "notes": [
+        "Source bank 6690 contains duplicate option texts; collapsed identical texts",
+        "Source bank 6690 omits correct source answer lighting restrictions; restored answer text, requires review",
+        "Source bank 6690 omits correct source answer impacts on the growth ofanimals; restored answer text, requires review"
+      ]
+    },
+    {
+      "id": 1503,
+      "title": "Vol 1 LISTENING FULL TEST 10",
+      "notes": [
+        "Incomplete or missing source audio"
+      ]
+    },
+    {
+      "id": 1404,
+      "title": "Vol 4 READING FULL TEST 3",
+      "notes": [
+        "Source bank 16010 contains duplicate option texts; collapsed identical texts"
+      ]
+    },
+    {
+      "id": 1107,
+      "title": "Vol 3 READING FULL TEST 7",
+      "notes": [
+        "Source bank 16736 omits correct source answer Some common social functions of flowers; restored answer text, requires review"
+      ]
+    },
+    {
+      "id": 1097,
+      "title": "Vol 3 READING FULL TEST 4",
+      "notes": [
+        "Source bank 16734 has conflicting position 0; retained source text choices for review",
+        "Source bank 16734 has conflicting position 0; retained source text choices for review",
+        "Source bank 16734 has conflicting position 0; retained source text choices for review",
+        "Source bank 16734 has conflicting position 0; retained source text choices for review",
+        "Source bank 16734 has conflicting position 0; retained source text choices for review"
+      ]
+    },
+    {
+      "id": 1047,
+      "title": "Vol 5 READING FULL TEST 7",
+      "notes": [
+        "Source bank 16224 has conflicting position 7; retained source text choices for review"
+      ]
+    },
+    {
+      "id": 1042,
+      "title": "Vol 5 READING FULL TEST 1",
+      "notes": [
+        "Source bank 16171 omits correct source answer The different methods of applause employed in ancient times, besides clapping; restored answer text, requires review"
+      ]
+    },
+    {
+      "id": 1038,
+      "title": "Vol 2 READING FULL TEST 6",
+      "notes": [
+        "Source bank 15326 contains duplicate option texts; collapsed identical texts",
+        "Source bank 15326 omits correct source answer Nathan Consedine; restored answer text, requires review"
+      ]
+    },
+    {
+      "id": 1026,
+      "title": "Vol 4 LISTENING FULL TEST 9",
+      "notes": [
+        "Source bank 6464 contains duplicate option texts; collapsed identical texts",
+        "Source bank 6464 omits correct source answer It was harder than expected; restored answer text, requires review",
+        "Source bank 6464 omits correct source answer The professor explained things clearly; restored answer text, requires review",
+        "Source bank 6464 omits correct source answer It improved as it went on; restored answer text, requires review"
+      ]
+    },
+    {
+      "id": 1004,
+      "title": "Vol 1 READING FULL TEST 5",
+      "notes": [
+        "Source Passage 3 restarts at 1; renumbered to 27–39 by source part order. Source is missing question 40."
+      ]
+    },
+    {
+      "id": 484,
+      "title": "Real Tests LISTENING FULL TEST 2",
+      "notes": [
+        "Source is missing a complete part; left empty for review.",
+        "Incomplete or missing source audio"
+      ]
+    }
+  ],
+  "translatedNotes": [
+    {
+      "id": 1881,
+      "title": "Vol 6 LISTENING FULL TEST 2",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn có nội dung trùng; đã gộp các lựa chọn giống nhau."
+    },
+    {
+      "id": 1586,
+      "title": "Vol 2 LISTENING FULL TEST 7",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn có nội dung trùng; đã gộp các lựa chọn giống nhau. Ngân hàng lựa chọn ở nguồn thiếu một số đáp án được ghi trong phần giải; đã khôi phục nội dung để rà lại."
+    },
+    {
+      "id": 1503,
+      "title": "Vol 1 LISTENING FULL TEST 10",
+      "noteVi": "Audio Part 4 ở nguồn trả về HTTP 404; bộ đề được lưu nháp để bổ sung audio."
+    },
+    {
+      "id": 1404,
+      "title": "Vol 4 READING FULL TEST 3",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn có nội dung trùng; đã gộp các lựa chọn giống nhau."
+    },
+    {
+      "id": 1107,
+      "title": "Vol 3 READING FULL TEST 7",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn thiếu một số đáp án được ghi trong phần giải; đã khôi phục nội dung để rà lại."
+    },
+    {
+      "id": 1097,
+      "title": "Vol 3 READING FULL TEST 4",
+      "noteVi": "Thứ tự hoặc nhãn lựa chọn ở nguồn không nhất quán; cần đối chiếu lại."
+    },
+    {
+      "id": 1047,
+      "title": "Vol 5 READING FULL TEST 7",
+      "noteVi": "Thứ tự hoặc nhãn lựa chọn ở nguồn không nhất quán; cần đối chiếu lại."
+    },
+    {
+      "id": 1042,
+      "title": "Vol 5 READING FULL TEST 1",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn thiếu một số đáp án được ghi trong phần giải; đã khôi phục nội dung để rà lại."
+    },
+    {
+      "id": 1038,
+      "title": "Vol 2 READING FULL TEST 6",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn có nội dung trùng; đã gộp các lựa chọn giống nhau. Ngân hàng lựa chọn ở nguồn thiếu một số đáp án được ghi trong phần giải; đã khôi phục nội dung để rà lại."
+    },
+    {
+      "id": 1026,
+      "title": "Vol 4 LISTENING FULL TEST 9",
+      "noteVi": "Ngân hàng lựa chọn ở nguồn có nội dung trùng; đã gộp các lựa chọn giống nhau. Ngân hàng lựa chọn ở nguồn thiếu một số đáp án được ghi trong phần giải; đã khôi phục nội dung để rà lại."
+    },
+    {
+      "id": 1004,
+      "title": "Vol 1 READING FULL TEST 5",
+      "noteVi": "Passage 3 ở nguồn đánh số lại từ 1; đã chuyển thành 27–39 theo thứ tự Passage. Nguồn thiếu câu 40; bộ đề được lưu nháp."
+    },
+    {
+      "id": 484,
+      "title": "Real Tests LISTENING FULL TEST 2",
+      "noteVi": "Nguồn có 3 Part và 28 câu, thiếu Part 4; bộ đề được lưu nháp."
+    }
+  ]
+}

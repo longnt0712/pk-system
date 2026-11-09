@@ -202,7 +202,30 @@ public class TeachingPdfService {
                 + "JOIN dbo.tbl_class_teaching_pdf_day a ON a.run_id = r.id WHERE r.id = ? AND r.class_id = ? AND a.day_id = ?",
                 runId, classId, session.dayId);
         if (rows.isEmpty()) { throw error(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu của buổi này."); }
-        return rows.get(0);
+        Map<String, Object> row = rows.get(0);
+        Map<String, Object> result = progressResponse(row);
+        result.put("name", row.get("name"));
+        result.put("editorId", session.ownerId);
+        return result;
+    }
+
+    public Map<String, Object> changes(Long classId, String date, String runId, int afterRevision) {
+        TeachingPdfSession session = classes.teachingPdfSession(classId, date, false);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT r.revision, r.completed, CASE WHEN r.revision = ? THEN NULL ELSE r.progress END AS progress "
+                + "FROM dbo.tbl_class_teaching_pdf_run r JOIN dbo.tbl_class_teaching_pdf_day a ON a.run_id = r.id "
+                + "WHERE r.id = ? AND r.class_id = ? AND a.day_id = ?",
+                afterRevision, runId, classId, session.dayId);
+        if (rows.isEmpty()) { throw error(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu của buổi này."); }
+        return progressResponse(rows.get(0));
+    }
+
+    private static Map<String, Object> progressResponse(Map<String, Object> row) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("revision", row.get("revision"));
+        result.put("completed", row.get("completed"));
+        result.put("progress", row.get("progress"));
+        return result;
     }
 
     public byte[] content(Long classId, String date, String runId) {

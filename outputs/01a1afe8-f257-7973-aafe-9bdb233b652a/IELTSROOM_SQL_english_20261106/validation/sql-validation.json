@@ -1,0 +1,26 @@
+{
+  "mode": "full",
+  "sqlSha256": "6a91ebf4b11ebb781d1a4c6e4fe2d7295d9a3d32dc2caef8f84702aab3d1c56b",
+  "temporaryTablesOnly": true,
+  "startedAt": "2026-11-06T12:13:32.248813+00:00",
+  "status": "passed",
+  "firstRun": [
+    1,
+    27416,
+    21916,
+    548,
+    21916,
+    113862
+  ],
+  "secondRun": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "database": "ecommerce",
+  "unicodeAndRelationshipsVerified": true,
+  "completedAt": "2026-11-06T12:16:06.851098+00:00"
+}

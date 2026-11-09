@@ -1,0 +1,9 @@
+Restore slash-joined definitions in manual vocabulary merges
+
+Default the preview to all distinct selected meanings, removing exact
+duplicates and preserving manually edited text when selection changes.
+Keep the explicit primary-only option and refresh the frontend cache token.
+
+Validation: all 14 vocabulary duplicate frontend checks passed, including
+the reported activist case through confirmation and submitted payload.
+Frontend only; no backend or SQL changes in this commit.

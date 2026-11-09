@@ -1,0 +1,452 @@
+[
+  {
+    "sourceId": 2479,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16183,
+        "originalInstruction": "Complete the summary using the list of words, A–I , below. Write the correct letter, A–I , in boxes 36–40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2376,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 14955,
+        "originalInstruction": "Complete the summary using the list of words, A-J , below. Write the correct letter, A-J , in boxes 27-31 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2358,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15348,
+        "originalInstruction": "Complete the summary using the list of words, A–G , below. Write the correct letter, A–G , in boxes 32–36 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2337,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15866,
+        "originalInstruction": "Complete the flow chart below. Choose FIVE letters from the box and write letters A-H , next to questions 26-30",
+        "targetInstruction": "Complete the flow chart below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2321,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16551,
+        "originalInstruction": "Complete the summary using the list of words, A–I, below. Write the correct letter, A–I , in boxes 27–32 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2312,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15150,
+        "originalInstruction": "Complete the summary using the list of words, A–H , below.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2288,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15095,
+        "originalInstruction": "Complete the summary using the list of words, A-J , below. Write the correct letter, A-J , in boxes 31-35 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2284,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15046,
+        "originalInstruction": "Complete the flow-chart below. Choose FIVE answers from the box and write the correct letter, A-H , next to questions",
+        "targetInstruction": "Complete the flow-chart below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2271,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15774,
+        "originalInstruction": "Complete the summary using the list of words, A-I, below. Write the correct letter, A-I , in boxes 32-35 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2154,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 14075,
+        "originalInstruction": "Complete the summary using the list of words, A-K , below. Write the correct letter, A-K , in boxes 27-30 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2149,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13287,
+        "originalInstruction": "Complete the summary below. Choose the correct letter, A–I , from the box below.",
+        "targetInstruction": "Complete the summary below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2147,
+    "corrections": [
+      {
+        "kind": "summary-heading-layout",
+        "groupId": 16029,
+        "reason": "Placed Discovery/scientific examination before Q8–11 and Ongoing controversy/public interest before Q12–13; omitted static cell 2014 because it duplicates Q11 suffix."
+      }
+    ]
+  },
+  {
+    "sourceId": 2145,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16726,
+        "originalInstruction": "Complete the summary using the list of words and phrases, A-H , below. Write the correct letter, A-H , in boxes 27-30 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words and phrases below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 2135,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 14095,
+        "originalInstruction": "Complete the flow chart below Choose FIVE letters from A-I , next to questions 26-30",
+        "targetInstruction": "Complete the flow chart below Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1987,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16258,
+        "originalInstruction": "Complete the summary using the list of words, A–I , below. Write the correct letter, A–I , in boxes 32 - 36 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1986,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16262,
+        "originalInstruction": "Complete the summary using the list of words, A–J, below. Write the correct letter, A–J , in boxes 27–31 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1984,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16283,
+        "originalInstruction": "Complete the summary using the list of phrases, A-K , below. Write the correct letter, A-K , in boxes 35-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of phrases below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1982,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13829,
+        "originalInstruction": "Complete the flow-charts below. Choose SIX answers from the box and write the correct letter, A-I. next to questions 11-15.",
+        "targetInstruction": "Complete the flow-charts below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1980,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13817,
+        "originalInstruction": "Complete the flow-chart below. Choose FIVE answers from the box and write the correct letter, A-G, next to questions 21-25.",
+        "targetInstruction": "Complete the flow-chart below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1881,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13701,
+        "originalInstruction": "Complete the flow-chart below. Choose FIVE answers from the box and write the correct letter, A-H , next to questions 26-30.",
+        "targetInstruction": "Complete the flow-chart below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1670,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16162,
+        "originalInstruction": "Complete the flow chart below. Choose FIVE answers from the box and write the correct letter, A-G , next to questions 26-30.",
+        "targetInstruction": "Complete the flow chart below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1639,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16124,
+        "originalInstruction": "Complete the summary using the list of words, A-I, below. Write the correct letter, A-I , in boxes 37-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1542,
+    "corrections": [
+      {
+        "kind": "source-numbering-correction",
+        "groupId": 6064,
+        "reason": "Align target numbers with visual form order: maximum price 8, bank branch 9, collection of details 10.",
+        "changes": [
+          {
+            "sourceQuestionId": 5465,
+            "sourceNumber": 10,
+            "targetNumber": 8
+          },
+          {
+            "sourceQuestionId": 5464,
+            "sourceNumber": 8,
+            "targetNumber": 10
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 1517,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16049,
+        "originalInstruction": "Complete the summary using the list of words and phrases, A-I , below. Write the correct letter, A-I , in boxes 32-35 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words and phrases below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1450,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16100,
+        "originalInstruction": "Complete the summary using the list of words, A–I , below. Write the correct letter, A–I , in boxes 36–40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1418,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16026,
+        "originalInstruction": "Complete the summary using the list of words, A–H, below. Write the correct letter, A–H, in boxes 36–40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1364,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 15947,
+        "originalInstruction": "Complete the summary using the list of words, A–J , below. Write the correct letter, A–J , in boxes 32–36 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1136,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16660,
+        "originalInstruction": "Match the natural phenomenon with the correct determined factor. Write the correct letter, A-F, in boxes 19-21 on your answer sheet.",
+        "targetInstruction": "Match the natural phenomenon with the correct determined factor. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1099,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16114,
+        "originalInstruction": "Complete the summary using the list of words, A-I , below. Write the correct letter, A-I, in boxes 7-10 on your answer sheet",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1097,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13805,
+        "originalInstruction": "Complete the summary using the list of words, A-I, below. Write the correct letter, A-I, in boxes 34-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1096,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13779,
+        "originalInstruction": "Complete the summary using the list of words, A - J, below. Write the correct letter, A - J , in boxes 36 - 40 below.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1094,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 13754,
+        "originalInstruction": "Complete the summary using the list of words, A-K below Write the correct letter, A-K in boxes 27-32 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1068,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16381,
+        "originalInstruction": "Complete the summary using the list of words, A–L, below. Write the correct letter, A–L, in boxes 32–35 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1054,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16180,
+        "originalInstruction": "Complete the summary using the list of words, A-J, below. Write the correct letter, A-J , in boxes 27-31 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1049,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16039,
+        "originalInstruction": "Complete the summary using the list of words, A-H , below. Write the correct letter, A-H , in boxes 38-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1048,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16117,
+        "originalInstruction": "Complete the summary using the list of words, A-H , below. Write the correct letter, A-H , in boxes 32-36 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1047,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16224,
+        "originalInstruction": "Complete the summary using the list of phrases, A-H , below. Write the correct letter, A-H , in boxes 35-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of phrases below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1046,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16236,
+        "originalInstruction": "Complete the summary using the list of words, A–I , below. Write the correct letter, A–I , in boxes 37–40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1042,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16199,
+        "originalInstruction": "Complete the summary using the list of words, A-L , below. Write the correct letter, A-L , in boxes 27-32 on your answer sheet",
+        "targetInstruction": "Complete the summary using the list of words below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  },
+  {
+    "sourceId": 1032,
+    "corrections": [
+      {
+        "kind": "wordbank-ui-adaptation",
+        "groupId": 16410,
+        "originalInstruction": "Complete the summary using the list of words and phrases, A-J , below. Write the correct letter, A-J , in boxes 36-40 on your answer sheet.",
+        "targetInstruction": "Complete the summary using the list of words and phrases below. Drag the correct word or phrase from the list into each gap."
+      }
+    ]
+  }
+]

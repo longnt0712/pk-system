@@ -1,0 +1,11 @@
+{
+  "new_reviewed_groups": 1583,
+  "previous_remaining_same_word_groups": 5812,
+  "additional_removals_if_v3_completed_and_original_exists": 1583,
+  "raw_xml_ids_in_new_groups": 3564,
+  "xml_sha256": "5ae5a6bfa07c766c6d406a0fca6d967655ac7b25c806757664857f32b7320795",
+  "review_source_sha256": "34b106226c9dd8999640012fa8efac27c7d2af515e238336f6509b67f3edbdb0",
+  "sql_sha256": "9efdf0e6934c3d70d175375a2fa5605065ff87e0ee628b75be02d5a4450acc36",
+  "original_before": "2026-11-06",
+  "preserve_original_meaning": true
+}

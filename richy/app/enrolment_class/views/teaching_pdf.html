@@ -15,6 +15,23 @@
         </div>
     </header>
     <div class="alert alert-danger teaching-pdf-error" role="alert" ng-if="pdf.error" ng-bind="pdf.error"></div>
+    <section class="teaching-pdf-conflicts" ng-if="pdf.syncConflicts.length" aria-label="Thay đổi cần đối chiếu">
+        <p role="status">{{pdf.run.completed ? 'Lượt dạy đã hoàn thành ở phiên khác. Bạn vẫn có thể sao chép nội dung đang sửa bên dưới.'
+            : 'Có người vừa thay đổi cùng một mục. Chọn bản muốn giữ cho từng mục.'}}</p>
+        <article ng-repeat="item in pdf.syncConflicts track by item.id">
+            <strong>Trang {{item.page}}</strong>
+            <dl>
+                <dt>Bản của bạn</dt><dd ng-bind="pdf.conflictText(item.mine)"></dd>
+                <dt>Bản đã đồng bộ</dt><dd ng-bind="pdf.conflictText(item.theirs)"></dd>
+            </dl>
+            <div class="teaching-pdf-toolbar">
+                <button type="button" class="study-notebook-action" ng-click="pdf.resolveConflict(item.id, true)"
+                        ng-disabled="pdf.busy || pdf.saveStatus === 'Đang đồng bộ…'">Dùng bản đã đồng bộ</button>
+                <button type="button" class="study-notebook-action" ng-if="!pdf.run.completed" ng-click="pdf.resolveConflict(item.id, false)"
+                        ng-disabled="pdf.busy || pdf.saveStatus === 'Đang đồng bộ…'">Giữ thay đổi của tôi</button>
+            </div>
+        </article>
+    </section>
     <div class="modal-body teaching-pdf-library" ng-if="!pdf.run">
         <p ng-if="pdf.busy" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải…</p>
         <section ng-if="pdf.current.length">
@@ -145,7 +162,7 @@
                 <label>
                     Cỡ chữ
                     <select ng-model="pdf.state.newTextSize" ng-options="size as (size + ' px') for size in pdf.textSizes"
-                            ng-change="pdf.markChanged()" ng-disabled="pdf.busy" aria-label="Cỡ chữ cho text mới"></select>
+                            ng-change="pdf.viewChanged()" ng-disabled="pdf.busy" aria-label="Cỡ chữ cho text mới"></select>
                 </label>
                 <button type="button" ng-class="{'is-active': pdf.inkTool === 'pen'}" ng-attr-aria-pressed="{{pdf.inkTool === 'pen'}}"
                         ng-click="pdf.toggleInk('pen')" ng-disabled="pdf.busy">
@@ -285,7 +302,7 @@
                     <button type="button" class="study-notebook-close" ng-click="pdf.toggleNotes()" aria-label="Đóng ghi chú">×</button>
                 </div>
                 <p class="teaching-pdf-notes-empty" ng-if="!pdf.pageHasMarks()">Trang này chưa có ghi chú.</p>
-                <div class="teaching-pdf-note" ng-repeat="mark in pdf.state.marks track by $index" ng-if="mark.page === pdf.state.page">
+                <div class="teaching-pdf-note" ng-repeat="mark in pdf.state.marks" ng-if="mark.page === pdf.state.page">
                     <button type="button" class="teaching-pdf-note-title" ng-click="pdf.selectedMark = pdf.selectedMark === mark ? null : mark"
                             ng-class="{'is-active': pdf.selectedMark === mark}" ng-attr-aria-expanded="{{pdf.selectedMark === mark}}" ng-bind="mark.quote || (mark.points ? 'Nét bút' : (mark.text || mark.note || 'Ghi chú trang'))"></button>
                     <div ng-if="pdf.selectedMark === mark && mark.text === undefined">

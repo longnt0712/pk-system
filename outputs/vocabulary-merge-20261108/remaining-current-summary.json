@@ -1,0 +1,31 @@
+{
+  "xml_sha256": "1447f9f681479bef5f88c25bc725e4cbbaa34e62a7878453733156ccda1b0f32",
+  "cards": 10971,
+  "same_word_groups": 4038,
+  "unreviewed_groups": 3881,
+  "checked_groups": 157,
+  "groups_with_old_card": 3765,
+  "groups_with_two_old_cards": 779,
+  "unreviewed_with_old_card": 3626,
+  "unreviewed_card_counts": {
+    "7": 23,
+    "2": 2240,
+    "3": 1030,
+    "5": 145,
+    "4": 348,
+    "6": 57,
+    "9": 4,
+    "8": 15,
+    "11": 7,
+    "14": 1,
+    "13": 1,
+    "23": 1,
+    "15": 3,
+    "29": 1,
+    "17": 1,
+    "12": 1,
+    "20": 1,
+    "18": 1,
+    "10": 1
+  }
+}

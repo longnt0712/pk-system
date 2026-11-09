@@ -55,6 +55,7 @@
                     controller: ['$scope', '$timeout', '$uibModalInstance', function (scope, timer, instance) {
                         var vm = this, root, pdf, api, loadingTask, saveTimer, saveRequest;
                         var editId = 0, savedEditId = 0, destroyed = false, inkGesture;
+                        var sharedState, conflicts, syncTimer, viewTimer, viewKey, composingText;
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -292,16 +293,14 @@
                                 pdfEngine()]).then(function (data) {
                                 if (destroyed) { return; }
                                 angular.extend(vm.run, data[0].data);
-                                var state = vm.run.progress ? JSON.parse(vm.run.progress) : {};
-                                vm.state = angular.extend({page: 1, zoom: 1, x: 0, y: 0, marks: []}, state);
-                                vm.state.newTextSize = validTextSize(vm.state.newTextSize, defaultNewTextSize);
-                                vm.state.marks.forEach(function (mark) {
-                                    if (mark.textColor) {
-                                        mark.highlightColor = mark.highlightColor || mark.textColor;
-                                        mark.highlight = true;
-                                        delete mark.textColor;
-                                    }
-                                });
+                                vm.state = parseProgress(vm.run.progress, vm.run.editorId);
+                                if (vm.run.editorId) {
+                                    sharedState = angular.copy(vm.state);
+                                    conflicts = new Map();
+                                    vm.syncConflicts = [];
+                                    viewKey = 'teaching-pdf-view:' + vm.run.editorId + ':' + classId + ':' + id;
+                                    restoreView();
+                                }
                                 vm.zoomInput = vm.state.zoom;
                                 api = data[2];
                                 loadingTask = api.getDocument({data: data[1].data, isEvalSupported: false, enableXfa: false,
@@ -313,7 +312,7 @@
                                     pdf = doc; vm.pageCount = doc.numPages;
                                     vm.state.page = Math.max(1, Math.min(vm.state.page, doc.numPages));
                                     vm.pageInput = vm.state.page;
-                                    return setupPages();
+                                    return setupPages().then(scheduleSync);
                                 });
                             }).catch(function (error) {
                                 var message = 'Không khởi động được trình đọc PDF. Hãy tải lại trang rồi thử lại.';
@@ -328,6 +327,69 @@
                                 release(); vm.run = null;
                             });
                         }
+
+                        function parseProgress(progress, withIds) {
+                            var state = angular.extend({page: 1, zoom: 1, x: 0, y: 0, marks: []}, progress ? JSON.parse(progress) : {});
+                            state.newTextSize = validTextSize(state.newTextSize, defaultNewTextSize);
+                            var ids = new Set(), occurrences = Object.create(null);
+                            state.marks.forEach(function (mark) {
+                                if (mark.textColor) {
+                                    mark.highlightColor = mark.highlightColor || mark.textColor;
+                                    mark.highlight = true;
+                                    delete mark.textColor;
+                                }
+                                if (!withIds) { return; }
+                                if (typeof mark.annotationId === 'string' && mark.annotationId && !ids.has(mark.annotationId)) {
+                                    ids.add(mark.annotationId); return;
+                                }
+                                var value = JSON.stringify(mark, function (key, data) {
+                                    if (!data || typeof data !== 'object' || Array.isArray(data)) { return data; }
+                                    return Object.keys(data).sort().reduce(function (ordered, name) {
+                                        ordered[name] = data[name]; return ordered;
+                                    }, Object.create(null));
+                                });
+                                var hash = 2166136261;
+                                for (var i = 0; i < value.length; i++) { hash = Math.imul(hash ^ value.charCodeAt(i), 16777619); }
+                                var stem = 'legacy-' + (hash >>> 0).toString(36), number = occurrences[stem] || 0;
+                                do { mark.annotationId = stem + '-' + number++; } while (ids.has(mark.annotationId));
+                                occurrences[stem] = number;
+                                ids.add(mark.annotationId);
+                            });
+                            return state;
+                        }
+                        function addMark(mark) {
+                            if (sharedState && !mark.annotationId) {
+                                mark.annotationId = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID()
+                                    : 'mark-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+                            }
+                            vm.state.marks.push(mark);
+                        }
+                        function restoreView() {
+                            try {
+                                var saved = JSON.parse(window.localStorage.getItem(viewKey));
+                                if (saved && Number.isInteger(saved.page) && saved.page > 0 && Number.isFinite(saved.zoom) &&
+                                        saved.zoom >= .5 && saved.zoom <= 3 && Number.isFinite(saved.x) && saved.x >= 0 &&
+                                        Number.isFinite(saved.y) && saved.y >= 0) {
+                                    angular.extend(vm.state, {page: saved.page, zoom: saved.zoom, x: saved.x, y: saved.y,
+                                        newTextSize: validTextSize(saved.newTextSize, defaultNewTextSize)});
+                                }
+                            } catch (ignore) {}
+                        }
+                        function writeView() {
+                            if (viewTimer) { timer.cancel(viewTimer); viewTimer = null; }
+                            if (!viewKey) { return; }
+                            var state = vm.state;
+                            try {
+                                window.localStorage.setItem(viewKey, JSON.stringify({
+                                    page: state.page, zoom: state.zoom, x: state.x, y: state.y, newTextSize: state.newTextSize
+                                }));
+                            } catch (ignore) {}
+                        }
+                        vm.viewChanged = function () {
+                            if (!sharedState) { changed(); return; }
+                            if (viewTimer) { timer.cancel(viewTimer); }
+                            viewTimer = timer(writeView, 250);
+                        };
 
                         function viewport() { return root && root.querySelector('.teaching-pdf-scroll'); }
                         function sheetFor(page) { return viewport().querySelector('[data-pdf-page="' + page + '"]'); }
@@ -465,7 +527,7 @@
                             page = Math.min(pdf.numPages, Math.max(1, page));
                             vm.state.page = page; vm.state.x = 0; vm.state.y = 0; vm.pageInput = page;
                             vm.selectedMark = null; closeContext();
-                            scrollToState(); updateBatch(); changed();
+                            scrollToState(); updateBatch(); vm.viewChanged();
                         };
                         function syncZoomInput() {
                             var input = root && root.querySelector('[data-pdf-zoom]');
@@ -479,7 +541,7 @@
                             if (vm.state.zoom === zoom) { return; }
                             vm.state.zoom = zoom;
                             refitPages();
-                            changed();
+                            vm.viewChanged();
                         };
                         function refitPages() {
                             if (!pdf || destroyed) { return; }
@@ -545,25 +607,139 @@
                         }
 
                         function changed() {
-                            if (vm.run.completed) { return; }
+                            if (!vm.run || vm.run.completed) { return; }
+                            if (conflicts && conflicts.size) {
+                                var local = marksById(vm.state.marks);
+                                conflicts.forEach(function (conflict, id) { conflict.mine = local.get(id); });
+                            }
                             editId++;
                             vm.saveStatus = 'Chờ đồng bộ';
+                            scheduleSave();
+                        }
+                        function scheduleSave() {
                             if (saveTimer) { timer.cancel(saveTimer); }
                             saveTimer = timer(function () { save().catch(angular.noop); }, 700);
+                        }
+                        function marksById(marks) {
+                            return new Map(marks.map(function (mark) { return [mark.annotationId, mark]; }));
+                        }
+                        function replaceMarks(marks) {
+                            vm.state.marks = marks;
+                            if (vm.context && !vm.context.draft && marks.indexOf(vm.context.mark) < 0) { closeContext(); }
+                            if (vm.selectedMark && marks.indexOf(vm.selectedMark) < 0) { vm.selectedMark = null; }
+                            if (vm.editingText && marks.indexOf(vm.editingText) < 0) { vm.editingText = null; }
+                        }
+                        function updateSyncStatus() {
+                            vm.saveStatus = editId !== savedEditId ? 'Chờ đồng bộ'
+                                : conflicts && conflicts.size ? 'Có thay đổi cần đối chiếu' : 'Đã đồng bộ';
+                        }
+                        function receiveChanges(response) {
+                            if (!response || !Number.isInteger(response.revision) || response.revision < vm.run.revision ||
+                                    typeof response.completed !== 'boolean') { throw new Error('Phản hồi đồng bộ PDF không hợp lệ.'); }
+                            if (response.revision === vm.run.revision) { return; }
+                            if (typeof response.progress !== 'string') { throw new Error('Thiếu tiến trình PDF ở phiên bản mới.'); }
+                            var incoming = parseProgress(response.progress, true);
+                            var base = marksById(sharedState.marks), local = marksById(vm.state.marks), remote = marksById(incoming.marks);
+                            var ordered = new Set(incoming.marks.concat(vm.state.marks, sharedState.marks).map(function (mark) { return mark.annotationId; }));
+                            var next = [];
+                            ordered.forEach(function (id) {
+                                var old = base.get(id), mine = local.get(id), theirs = remote.get(id);
+                                var localChanged = !angular.equals(old, mine), remoteChanged = !angular.equals(old, theirs);
+                                var same = angular.equals(mine, theirs);
+                                if (same) { conflicts.delete(id); }
+                                else if (conflicts.has(id) || (response.completed && localChanged) ||
+                                        (remoteChanged && localChanged)) {
+                                    var reference = mine || theirs || old;
+                                    conflicts.set(id, {id: id, page: reference.page, mine: mine, theirs: theirs});
+                                }
+                                var mark = same || localChanged || conflicts.has(id) ? mine : theirs;
+                                if (mark === theirs && mine && theirs && !same) {
+                                    Object.keys(mine).forEach(function (key) {
+                                        if (!Object.prototype.hasOwnProperty.call(theirs, key)) { delete mine[key]; }
+                                    });
+                                    mark = angular.extend(mine, angular.copy(theirs));
+                                }
+                                if (mark) { next.push(mark); }
+                            });
+                            sharedState = angular.copy(incoming);
+                            vm.run.revision = response.revision;
+                            vm.run.completed = response.completed;
+                            vm.syncConflicts = Array.from(conflicts.values());
+                            replaceMarks(next);
+                            if (response.completed) {
+                                vm.inkTool = null; vm.addingText = false; vm.editingText = null;
+                                savedEditId = editId;
+                            }
+                            updateSyncStatus();
+                        }
+                        function getChanges(revision) {
+                            return http.get(runUrl() + '/changes', {cache: false, timeout: 10000, params: {afterRevision: revision}})
+                                .then(function (response) { return response.data; });
+                        }
+                        function hasActiveComposition() {
+                            return !!(composingText && root && root.contains(composingText));
+                        }
+                        function scheduleSync() {
+                            if (!sharedState || destroyed || !vm.run || vm.run.completed) { return; }
+                            syncTimer = window.setTimeout(function () {
+                                syncTimer = null;
+                                scope.$evalAsync(function () {
+                                    if (destroyed || !sharedState || !vm.run || vm.run.completed) { return; }
+                                    if (document.hidden || saveRequest || vm.busy || inkGesture || vm.textDrag || hasActiveComposition()) { scheduleSync(); return; }
+                                    var run = vm.run, revision = run.revision;
+                                    getChanges(revision).then(function (response) {
+                                        if (run !== vm.run || destroyed || saveRequest || run.revision !== revision ||
+                                                vm.busy || inkGesture || vm.textDrag || hasActiveComposition()) { return; }
+                                        receiveChanges(response);
+                                        if (!run.completed && editId !== savedEditId && !saveTimer) { scheduleSave(); }
+                                    }).catch(angular.noop).finally(scheduleSync);
+                                });
+                            }, 5000);
+                        }
+                        function stateToSave() {
+                            if (!sharedState) { return angular.copy(vm.state); }
+                            var base = marksById(sharedState.marks), local = marksById(vm.state.marks);
+                            var ordered = new Set(sharedState.marks.concat(vm.state.marks).map(function (mark) { return mark.annotationId; }));
+                            var marks = [];
+                            ordered.forEach(function (id) {
+                                var mark = local.get(id);
+                                if (conflicts.has(id) || mark && typeof mark.text === 'string' && !mark.text.trim()) { mark = base.get(id); }
+                                if (mark) { marks.push(mark); }
+                            });
+                            return angular.copy(angular.extend({}, sharedState, {marks: marks}));
+                        }
+                        function sendProgress(attempt) {
+                            if (vm.run.completed) { return $q.when(); }
+                            if (vm.saveStatus === 'Chưa lưu') { vm.error = ''; }
+                            var run = vm.run;
+                            var sent = editId, revision = vm.run.revision, state = stateToSave();
+                            if (sharedState && angular.equals(state.marks, sharedState.marks)) {
+                                savedEditId = sent; updateSyncStatus(); return $q.when();
+                            }
+                            vm.saveStatus = 'Đang đồng bộ…';
+                            return saveRun(runUrl(), state, revision, false).then(function (saved) {
+                                if (destroyed || run !== vm.run) { return; }
+                                if (sharedState) { sharedState = state; }
+                                vm.run.revision = saved.revision;
+                                savedEditId = sent;
+                                updateSyncStatus();
+                            }).catch(function (error) {
+                                if (!sharedState || destroyed || run !== vm.run || error.status !== 409 ||
+                                        attempt >= 2 || inkGesture || vm.textDrag || hasActiveComposition()) { return $q.reject(error); }
+                                return getChanges(revision).then(function (response) {
+                                    if (destroyed || run !== vm.run || response.revision <= revision ||
+                                            inkGesture || vm.textDrag || hasActiveComposition()) { return $q.reject(error); }
+                                    receiveChanges(response);
+                                    return sendProgress(attempt + 1);
+                                });
+                            });
                         }
                         function save() {
                             if (saveTimer) { timer.cancel(saveTimer); saveTimer = null; }
                             if (!vm.run || vm.run.completed) { return $q.when(); }
                             if (saveRequest) { return saveRequest.then(function () { return save(); }); }
                             if (editId === savedEditId) { return $q.when(); }
-                            var sent = editId, revision = vm.run.revision;
-                            vm.saveStatus = 'Đang đồng bộ…';
-                            saveRequest = saveRun(runUrl(), angular.copy(vm.state), revision, false)
-                                .then(function (saved) {
-                                    vm.run.revision = saved.revision;
-                                    savedEditId = sent;
-                                    vm.saveStatus = sent === editId ? 'Đã đồng bộ' : 'Chờ đồng bộ';
-                                }).catch(function (error) {
+                            saveRequest = sendProgress(0).catch(function (error) {
                                     vm.saveStatus = 'Chưa lưu';
                                     fail(error, 'Chưa lưu được tiến trình. Bấm Lưu lại để thử lại.');
                                     return $q.reject(error);
@@ -571,10 +747,34 @@
                             return saveRequest;
                         }
                         vm.save = function () { vm.error = ''; save().catch(angular.noop); };
+                        vm.conflictText = function (mark) {
+                            if (!mark) { return 'Đã xóa'; }
+                            return mark.text || mark.note || mark.quote || (mark.points ? 'Nét bút' : 'Đánh dấu');
+                        };
+                        vm.resolveConflict = function (id, useServer) {
+                            if (!conflicts || !conflicts.has(id) || vm.busy || saveRequest || vm.run.completed && !useServer) { return; }
+                            var conflict = conflicts.get(id);
+                            conflicts.delete(id);
+                            if (useServer) {
+                                var marks = vm.state.marks.slice();
+                                var index = marks.findIndex(function (mark) { return mark.annotationId === id; });
+                                var theirs = conflict.theirs && angular.copy(conflict.theirs);
+                                if (index >= 0 && theirs) { marks[index] = theirs; }
+                                else if (index >= 0) { marks.splice(index, 1); }
+                                else if (theirs) { marks.push(theirs); }
+                                replaceMarks(marks);
+                            } else { changed(); }
+                            vm.syncConflicts = Array.from(conflicts.values());
+                            vm.error = '';
+                            updateSyncStatus();
+                        };
 
 
                         function release() {
                             vm.highlighting = false;
+                            if (syncTimer) { window.clearTimeout(syncTimer); syncTimer = null; }
+                            writeView();
+                            sharedState = null; conflicts = null; vm.syncConflicts = []; viewKey = null; composingText = null;
                             endTextDrag();
                             finishInk(false);
                             lastTextTap = null;
@@ -592,6 +792,10 @@
                             vm.busy = true;
                             if (vm.editingText) { vm.finishText(vm.editingText); }
                             save().then(function () {
+                                if (conflicts && conflicts.size) {
+                                    vm.error = 'Hãy đối chiếu các thay đổi đang chờ trước khi đóng PDF.';
+                                    return;
+                                }
                                 release(); exitFullscreen(); vm.run = null; vm.selectedMark = null; vm.inkTool = null; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
                                 editId = savedEditId = 0; vm.saveStatus = '';
                                 if (close) { instance.close(vm.changedDay); } else { return load(); }
@@ -717,7 +921,7 @@
                         function saveContextMark() {
                             var context = vm.context;
                             if (context.draft) {
-                                vm.state.marks.push(context.mark);
+                                addMark(context.mark);
                                 context.draft = false;
                             }
                             var selection = window.getSelection();
@@ -975,7 +1179,7 @@
                             if (gesture.overlay.hasPointerCapture(gesture.pointerId)) { gesture.overlay.releasePointerCapture(gesture.pointerId); }
                             if (!commit) { return; }
                             if (gesture.stroke && gesture.stroke.points.length > 1) {
-                                vm.state.marks.push(gesture.stroke); changed();
+                                addMark(gesture.stroke); changed();
                             } else if (gesture.erased && gesture.erased.size) {
                                 vm.state.marks = vm.state.marks.filter(function (mark) { return !gesture.erased.has(mark); });
                                 changed();
@@ -1044,7 +1248,7 @@
                                     }
                                     if (vm.state.page !== page || vm.state.x !== x || vm.state.y !== y) {
                                         vm.state.page = page; vm.pageInput = page;
-                                        vm.state.x = x; vm.state.y = y; closeContext(); changed();
+                                        vm.state.x = x; vm.state.y = y; closeContext(); vm.viewChanged();
                                     }
                                     updateBatch();
                                 });
@@ -1052,6 +1256,7 @@
                         }
 
                         var pointerEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'];
+                        var compositionEvents = ['compositionstart', 'compositionend', 'focusout'];
                         var shortcutTarget;
                         function onShortcut(event) {
                             if (!pdf || !vm.run || vm.run.completed || vm.busy || event.defaultPrevented || event.isComposing ||
@@ -1065,6 +1270,12 @@
                             if (!action) { return; }
                             event.preventDefault();
                             scope.$evalAsync(action);
+                        }
+                        function onComposition(event) {
+                            if (event.type === 'compositionstart' && event.target.matches(
+                                    '.teaching-pdf-free-text textarea, .teaching-pdf-inline-note textarea, .teaching-pdf-note textarea')) {
+                                composingText = event.target;
+                            } else if (composingText === event.target) { composingText = null; }
                         }
                         function onPageClick(event) {
                             var selection = window.getSelection();
@@ -1084,7 +1295,7 @@
                                         fontSize: validTextSize(vm.state.newTextSize, defaultNewTextSize),
                                         fontColor: vm.penColor
                                     };
-                                    vm.state.marks.push(mark);
+                                    addMark(mark);
                                     vm.addingText = false;
                                     vm.editText(mark, event);
                                 });
@@ -1113,6 +1324,7 @@
                             shortcutTarget.addEventListener('keydown', onShortcut);
                             Object.keys(libraryDragEvents).forEach(function (name) { root.addEventListener(name, libraryDragEvents[name]); });
                             pointerEvents.forEach(function (name) { root.addEventListener(name, onPointer); });
+                            compositionEvents.forEach(function (name) { root.addEventListener(name, onComposition); });
                             root.addEventListener('scroll', onScroll, true);
                             root.addEventListener('input', onZoom);
                             root.addEventListener('change', onZoom);
@@ -1123,7 +1335,8 @@
                             document.addEventListener('webkitfullscreenchange', fullscreenChanged);
                         };
                         function preventUnsavedExit(event) {
-                            if (editId !== savedEditId || saveRequest) {
+                            writeView();
+                            if (editId !== savedEditId || saveRequest || conflicts && conflicts.size) {
                                 event.preventDefault(); event.returnValue = true;
                             }
                         }
@@ -1146,6 +1359,7 @@
                                 document.removeEventListener('webkitfullscreenchange', fullscreenChanged);
                                 if (selectionTimer) { timer.cancel(selectionTimer); }
                                 pointerEvents.forEach(function (name) { root.removeEventListener(name, onPointer); });
+                                compositionEvents.forEach(function (name) { root.removeEventListener(name, onComposition); });
                             }
                         });
                         load().then(function () {
