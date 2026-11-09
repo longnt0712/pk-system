@@ -229,6 +229,9 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-category-choice{flex:1;display:flex;align-items:center;gap:9px;min-width:0;padding:7px 8px 7px 0;text-align:left;font-size:13px;font-weight:600;border-radius:8px}
 .vw-category-choice .fa{color:#62836e;flex:none}
 .vw-category-choice span,.vw-mobile-picker span{overflow-wrap:anywhere;min-width:0;white-space:normal}
+.vw-category-row-actions{display:flex;flex-shrink:0;gap:3px;padding-right:4px}
+.vw-category-row-actions .vw-icon-btn{padding:0;border-color:transparent;background:transparent;color:#526c5e}
+.vw-category-row-actions .vw-icon-btn:hover:not(:disabled){background:#dce9e0}
 .vw-category-special{margin:10px 4px 0;padding-top:7px;border-top:1px solid var(--vw-border)}
 .vw-category-special .vw-library-link{min-height:40px;color:#526c5e}
 .vw-breadcrumb,.vw-breadcrumb-item{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}

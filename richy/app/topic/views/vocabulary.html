@@ -22,10 +22,14 @@
                 <div class="vw-sidebar-state" ng-if="vm.categoriesError" role="alert">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
                 <div class="vw-sidebar-state" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categoryRows.length">{{vm.categoryQuery ? 'Không tìm thấy nhóm phù hợp.' : 'Chưa có nhóm bài.'}}</div>
                 <ul class="vw-category-tree" aria-label="Cây nhóm bài" ng-if="vm.categoryRows.length">
-                    <li class="vw-category-row" ng-repeat="row in vm.categoryRows track by row.category.id" ng-style="{'padding-left':row.indent + 'px'}" ng-class="{'is-active':vm.lessonCategory.id === row.category.id}">
+                    <li class="vw-category-row" ng-repeat="row in vm.categoryRows track by row.category.id" ng-style="{'padding-left':'min(' + row.indent + 'px, ' + (row.indent / 4) + '%)'}" ng-class="{'is-active':vm.lessonCategory.id === row.category.id}">
                         <button type="button" class="vw-category-toggle" ng-if="row.hasChildren" ng-click="vm.toggleCategory(row)" ng-disabled="vm.categoryQuery.trim()" aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.category.name}}"><i class="fa" ng-class="row.expanded ? 'fa-angle-down' : 'fa-angle-right'" aria-hidden="true"></i></button>
                         <span class="vw-category-spacer" ng-if="!row.hasChildren" aria-hidden="true"></span>
                         <button type="button" class="vw-category-choice" ng-click="vm.selectCategory(row.category)" aria-pressed="{{vm.lessonCategory.id === row.category.id}}" ng-attr-title="{{row.category.pathLabel}}"><i class="fa" ng-class="row.expanded ? 'fa-folder-open' : 'fa-folder'" aria-hidden="true"></i><span>{{row.category.name}}</span></button>
+                        <div class="vw-category-row-actions" ng-if="vm.isAdmin">
+                            <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Sửa nhóm {{row.category.name}}" title="Sửa nhóm"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                            <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(null, row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Thêm nhóm con vào {{row.category.name}}" title="Thêm nhóm con"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                        </div>
                     </li>
                 </ul>
                 <div class="vw-category-special" ng-if="!vm.categoryQuery.trim()">

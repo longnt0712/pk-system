@@ -164,6 +164,8 @@ test('categories open before lessons and the tree shows ancestors, direct lesson
             assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).count(), 0);
             await sidebar.getByRole('button', {name: 'Mở rộng IELTS & học thuật', exact: true}).click();
             assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).isVisible(), true);
+            assert.equal(await sidebar.getByRole('button', {name: 'Sửa nhóm Reading', exact: true}).isVisible(), true);
+            assert.equal(await sidebar.getByRole('button', {name: 'Thêm nhóm con vào Reading', exact: true}).isVisible(), true);
             assert.equal(await page.locator('.vw-lesson').count(), 0, 'expanding a folder does not open its lessons');
             const search = page.getByLabel('Tìm nhóm bài', {exact: true});
             await search.fill('cambridge');
@@ -184,6 +186,7 @@ test('categories open before lessons and the tree shows ancestors, direct lesson
             assert.match(await page.locator('.vw-breadcrumb').innerText(), /IELTS & học thuật.*Reading.*Cambridge IELTS 19/s);
             assert.equal(await page.locator('.vw-word-card').count(), 0);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            assert.ok(await sidebar.locator('.vw-category-tree').evaluate(tree => tree.scrollWidth <= tree.clientWidth));
             if (process.env.VOCABULARY_TREE_PREVIEW && width === 1366) {
                 await page.locator('.vocab-workspace').screenshot({path: process.env.VOCABULARY_TREE_PREVIEW});
             }
@@ -212,12 +215,14 @@ test('administrators can create and move groups, and a slower group cannot overw
         state.holdCategory = null; state.releaseCategory();
         await page.waitForTimeout(120);
         assert.equal(await page.locator('.vw-lesson').count(), 1);
-        await page.getByRole('button', {name: 'Thêm nhóm con', exact: true}).click();
+        const tree = page.getByRole('list', {name: 'Cây nhóm bài'});
+        await tree.getByRole('button', {name: 'Thêm nhóm con vào Reading', exact: true}).click();
+        assert.equal(await page.locator('#vw-category-title').innerText(), 'IELTS & học thuật');
         await page.getByLabel('Tên nhóm', {exact: true}).fill('Writing');
-        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option:checked').innerText(), 'IELTS & học thuật');
+        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option:checked').innerText(), 'IELTS & học thuật / Reading');
         await page.getByRole('button', {name: 'Lưu nhóm', exact: true}).click();
-        await page.locator('.vw-child-categories').getByRole('button', {name: 'Writing', exact: true}).click();
-        await page.getByRole('button', {name: 'Sửa nhóm', exact: true}).click();
+        await tree.getByRole('button', {name: 'Writing', exact: true}).click();
+        await tree.getByRole('button', {name: 'Sửa nhóm Writing', exact: true}).click();
         assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option').filter({hasText: 'Writing'}).count(), 0);
         await page.getByLabel('Nhóm cha', {exact: true}).selectOption({label: 'Đời sống hằng ngày'});
         await page.getByRole('button', {name: 'Lưu nhóm', exact: true}).click();
@@ -281,6 +286,7 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {role: 'VIEWER'});
+        assert.equal(await page.locator('.vw-category-row-actions').count(), 0);
         await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.activeLesson && window.vm.activeLesson.id === 101 && !window.vm.cardsLoading);
