@@ -52,10 +52,11 @@
     function VocabularyController($scope, $q, modal, $cookies, $location, settings, cards, lessons, toastr, $window, $timeout) {
         var vm = this, cardRequest = 0, lessonRequest = 0, usageRequest = 0, lessonSelection = 0, alive = true;
         var cardCancellation = null, cardDeadline = null;
+        var selectionRequest = 0, moveLessonRequest = 0;
         vm.user = JSON.parse($cookies.get('education.user') || '{}');
         vm.isAdmin = settings.isAdmin === true;
         vm.canDelete = vm.isAdmin || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_USER'; });
-        vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {};
+        vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {}; vm.selectedCount = 0;
         vm.lessonPage = 0; vm.lessonPageSize = 20; vm.lessonTotal = 0;
         vm.page = 1; vm.pageSize = 8; vm.total = 0; vm.status = 0; vm.query = '';
         vm.findExactWord = true;
@@ -65,6 +66,7 @@
         var uncategorized = {id: 'uncategorized', name: 'Bài chưa phân nhóm'};
         var unassignedWords = {id: 'unassigned', name: 'Chưa vào bài'};
         vm.view = 'browse'; vm.lessonPickerOpen = true;
+        vm.isUncategorized = function () { return vm.view === 'category' && vm.lessonCategory === uncategorized; };
         vm.lessonQuery = ''; vm.categoryQuery = ''; vm.categoryRows = [];
         vm.levels = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
         $scope.vocabularyTinyMce = {height: 200, menubar: false, plugins: 'lists link', toolbar: 'bold italic | bullist numlist | link | removeformat'};
@@ -118,6 +120,7 @@
                 });
                 vm.lessonPage = page;
                 vm.lessonTotal = data && data.totalElements || 0;
+                if (vm.isUncategorized()) { updateSelectAllChecked(); }
                 vm.hasMoreLessons = incoming.length > 0 && page * vm.lessonPageSize < vm.lessonTotal;
                 vm.importTopics = vm.activeLesson ? [vm.activeLesson] : vm.lessons;
             }, function (error) {
@@ -127,6 +130,7 @@
             });
         }
         vm.loadLessons = function () {
+            if (vm.isUncategorized()) { clearSelection(); }
             lessonRequest++;
             vm.lessonPage = 0;
             vm.lessonTotal = 0;
@@ -150,10 +154,21 @@
             return {questionType: {id: 6}, status: vm.status, textSearch: vm.query, findExactWord: vm.findExactWord,
                 topicId: vm.activeLesson ? vm.activeLesson.id : null, withoutTopics: vm.view === 'unassigned'};
         };
+        function clearSelection() {
+            selectionRequest++;
+            vm.selected = {};
+            vm.selectedCount = 0;
+            vm.selectAllChecked = false;
+            vm.selectionLoading = false;
+        }
+        function updateSelectAllChecked() {
+            var total = vm.isUncategorized() ? vm.lessonTotal : vm.total;
+            vm.selectAllChecked = total > 0 && vm.selectedCount === total;
+        }
         vm.loadCards = function (reset) {
             if (!vm.activeLesson && vm.view !== 'unassigned') { return; }
-            if (reset) { vm.page = 1; }
-            var request = ++cardRequest; vm.cardsLoading = true; vm.cardLoadError = ''; vm.selected = {};
+            if (reset) { vm.page = 1; clearSelection(); }
+            var request = ++cardRequest; vm.cardsLoading = true; vm.cardLoadError = '';
             if (cardCancellation) { cardCancellation.resolve(); }
             if (cardDeadline) { $timeout.cancel(cardDeadline); }
             var cancellation = $q.defer(), timedOut = false;
@@ -163,6 +178,7 @@
             return cards.getVocabularyPage(vm.searchPayload(), vm.page, vm.pageSize, {timeout: cancellation.promise}).then(function (data) {
                 if (!alive || request !== cardRequest) { return; }
                 vm.cards = data && data.content || []; vm.total = data && data.totalElements || 0;
+                updateSelectAllChecked();
                 if (!vm.cards.length && vm.page > 1) { vm.page = Math.max(1, Math.ceil(vm.total / vm.pageSize)); return vm.loadCards(); }
             }, function (error) {
                 if (alive && request === cardRequest) {
@@ -194,7 +210,8 @@
             cardRequest++;
             if (cardCancellation) { cardCancellation.resolve(); cardCancellation = null; }
             if (cardDeadline) { $timeout.cancel(cardDeadline); cardDeadline = null; }
-            vm.cards = []; vm.total = 0; vm.selected = {}; vm.cardsLoading = false; vm.cardLoadError = '';
+            clearSelection();
+            vm.cards = []; vm.total = 0; vm.cardsLoading = false; vm.cardLoadError = '';
         };
         vm.title = function () { return vm.activeLesson ? vm.activeLesson.name : 'Từ chưa vào bài'; };
         function categoryPath(category) {
@@ -261,17 +278,38 @@
         vm.pageCount = function () { return Math.max(1, Math.ceil(vm.total / vm.pageSize)); };
         vm.applyPageSize = function () {
             var size = vm.pageSizeInput;
-            if (vm.deleting || !Number.isInteger(size) || size < 1 || size > vm.pageSizeLimit || size === vm.pageSize) {
+            if (vm.bulkSaving || !Number.isInteger(size) || size < 1 || size > vm.pageSizeLimit || size === vm.pageSize) {
                 return;
             }
             vm.pageSize = size;
-            return vm.loadCards(true);
+            vm.page = 1;
+            return vm.loadCards();
         };
         vm.changePage = function (step) { vm.page += step; return vm.loadCards(); };
-        vm.selectedCards = function () { return vm.cards.filter(function (card) { return vm.selected[card.id]; }); };
-        vm.allSelected = function () { return !!vm.cards.length && vm.selectedCards().length === vm.cards.length; };
-        vm.togglePage = function () {
-            var value = !vm.allSelected(); vm.cards.forEach(function (card) { vm.selected[card.id] = value; });
+        vm.toggleSelection = function (id) {
+            if (vm.selected[id]) { vm.selectedCount++; }
+            else { delete vm.selected[id]; vm.selectedCount--; }
+            updateSelectAllChecked();
+        };
+        vm.toggleAll = function () {
+            if (!vm.selectAllChecked) { clearSelection(); return; }
+            var request = ++selectionRequest;
+            vm.selectionLoading = true;
+            var selection = vm.isUncategorized() ? lessons.getUncategorizedLessonSelection(vm.lessonQuery) : cards.getVocabularySelection(vm.searchPayload());
+            return selection.then(function (ids) {
+                if (!alive || request !== selectionRequest) { return; }
+                if (!angular.isArray(ids)) { throw new Error('Invalid vocabulary selection'); }
+                vm.selected = {};
+                ids.forEach(function (id) { vm.selected[id] = true; });
+                vm.selectedCount = ids.length;
+                vm.selectAllChecked = ids.length > 0;
+            }).catch(function (error) {
+                if (!alive || request !== selectionRequest) { return; }
+                vm.selectAllChecked = false;
+                toastr.error(errorMessage(error, 'Không chọn được tất cả. Vui lòng thử lại.'));
+            }).finally(function () {
+                if (alive && request === selectionRequest) { vm.selectionLoading = false; }
+            });
         };
         vm.say = function (card) {
             if (!$window.speechSynthesis || !$window.SpeechSynthesisUtterance) { toastr.info('Trình duyệt này chưa hỗ trợ đọc từ.'); return; }
@@ -375,6 +413,7 @@
             return cards.saveObject(payload).then(function (data) {
                 if (!data || !data.id) { vm.cardSaveError = data && data.message || 'Máy chủ chưa xác nhận lưu từ. Vui lòng thử lại.'; vm.loadUsage(); return; }
                 vm.cardDialog.close(data);
+                clearSelection();
                 if (!draft.id && vm.cardLesson && (!vm.activeLesson || vm.cardLesson.id !== vm.activeLesson.id)) { vm.selectLesson(vm.cardLesson); }
                 else { if (!draft.id && !vm.isAdmin && vm.status === 5) { vm.status = 0; } vm.loadCards(!draft.id); }
                 vm.loadUsage();
@@ -382,29 +421,58 @@
             }, function (error) { vm.cardSaveError = errorMessage(error, 'Không lưu được từ. Nội dung của bạn được giữ lại.'); })
                 .finally(function () { vm.cardSaving = false; });
         };
-        vm.confirmDelete = function (card) {
-            if (!vm.canDelete || vm.deleting || vm.deleteDialogOpen) { return; }
-            vm.deleteTargets = angular.copy(card ? [card] : vm.selectedCards());
-            if (!vm.deleteTargets.length) { return; }
-            vm.deleteError = ''; vm.deleteDialogOpen = true;
-            vm.deleteDialog = openDialog('vocabulary_delete_modal.html');
-            vm.deleteDialog.result.finally(function () { vm.deleteDialogOpen = false; }).catch(angular.noop);
-        };
-        vm.cancelDelete = function () { if (!vm.deleting) { vm.deleteDialog.dismiss(); } };
-        vm.deleteCards = function () {
-            if (vm.deleting || !vm.deleteTargets.length) { return; }
-            vm.deleting = true; vm.deleteError = ''; var failed = [], removed = 0;
-            var pending = $q.when();
-            vm.deleteTargets.forEach(function (card) {
-                pending = pending.then(function () {
-                    return cards.deleteObject(card.id).then(function (ok) { if (ok === true) { removed++; } else { failed.push(card); } }, function () { failed.push(card); });
+        function confirmBulkAction(move, card) {
+            if (!vm.canDelete || vm.selectionLoading || vm.bulkDialog) { return; }
+            var ids = card ? [card.id] : Object.keys(vm.selected).map(Number);
+            if (!ids.length) { return; }
+            var lessonList = vm.isUncategorized();
+            vm.bulkDraft = {move: move, ids: ids, lessons: lessonList, sourceTopicId: vm.activeLesson ? vm.activeLesson.id : null,
+                sourceTitle: lessonList ? vm.lessonCategory.name : vm.title(), word: card && card.question, target: null};
+            vm.bulkError = ''; vm.moveLessonError = ''; vm.moveLessonChoices = [];
+            var dialog = vm.bulkDialog = openDialog('vocabulary_bulk_modal.html');
+            function clearDialog() { vm.bulkDialog = null; vm.bulkDraft = null; moveLessonRequest++; }
+            dialog.result.then(clearDialog, clearDialog);
+        }
+        vm.confirmDelete = function (card) { confirmBulkAction(false, card); };
+        vm.confirmMove = function () { confirmBulkAction(true); };
+        vm.cancelBulkAction = function () { if (vm.bulkDialog && !vm.bulkSaving) { vm.bulkDialog.dismiss(); } };
+        vm.findMoveLessons = function (query) {
+            var draft = vm.bulkDraft;
+            if (!draft || !draft.move || draft.lessons) { return; }
+            var request = ++moveLessonRequest;
+            vm.moveLessonError = '';
+            return lessons.getPage({textSearch: query, userId: vm.user.id}, 1, 50).then(function (data) {
+                if (!alive || request !== moveLessonRequest) { return; }
+                vm.moveLessonChoices = (data && data.content || []).filter(function (lesson) {
+                    return lesson.id !== draft.sourceTopicId;
                 });
+            }, function (error) {
+                if (alive && request === moveLessonRequest) { vm.moveLessonError = errorMessage(error, 'Không tìm được bài đích. Vui lòng thử lại.'); }
             });
-            return pending.then(function () {
-                if (removed) { vm.loadUsage(); vm.loadCards(); toastr.success('Đã xóa ' + removed + ' thẻ từ vựng.'); }
-                if (failed.length) { vm.deleteTargets = failed; vm.deleteError = 'Chưa xóa được ' + failed.length + ' thẻ. Bạn có thể thử lại các thẻ còn lại.'; }
-                else { vm.deleteDialog.close(); }
-            }).finally(function () { vm.deleting = false; });
+        };
+        vm.applyBulkAction = function () {
+            var draft = vm.bulkDraft, dialog = vm.bulkDialog;
+            if (vm.bulkSaving || !draft || !dialog || (draft.move && !draft.target)) { return; }
+            vm.bulkSaving = true; vm.bulkError = '';
+            var action = draft.move ? 'move' : 'delete', targetId = draft.move ? draft.target.id : null;
+            var change = draft.lessons
+                ? lessons.changeUncategorizedLessons(action, {lessonIds: draft.ids, targetCategoryId: targetId})
+                : cards.changeVocabularyCards(action, {cardIds: draft.ids, sourceTopicId: draft.sourceTopicId, targetTopicId: targetId});
+            return change.then(function (count) {
+                if (!alive || vm.bulkDialog !== dialog) { return; }
+                if (count !== draft.ids.length) { vm.bulkError = 'Máy chủ chưa xác nhận thao tác. Hãy tải lại danh sách để kiểm tra.'; return; }
+                dialog.close();
+                if (draft.lessons) { vm.loadLessons(); }
+                else { clearSelection(); vm.loadCards(); }
+                if (!draft.move) { vm.loadUsage(); }
+                var items = count + (draft.lessons ? ' bài từ vựng' : ' thẻ từ vựng');
+                var targetName = draft.target && (draft.target.pathLabel || draft.target.name);
+                toastr.success(draft.move ? 'Đã di chuyển ' + items + ' vào ' + targetName + '.' : 'Đã xóa ' + items + '.');
+            }, function (error) {
+                if (alive && vm.bulkDialog === dialog) {
+                    vm.bulkError = errorMessage(error, 'Không xác nhận được thao tác. Hãy tải lại danh sách để kiểm tra.');
+                }
+            }).finally(function () { vm.bulkSaving = false; });
         };
         vm.importTopicCreated = function (topic) { vm.selectLesson(topic, null, true); vm.loadUsage(); };
         vm.imported = function () { vm.loadCards(true); vm.loadUsage(); vm.loadLessons(); };

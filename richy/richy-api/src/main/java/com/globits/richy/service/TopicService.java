@@ -4,9 +4,13 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.VocabularyLessonBulkActionDto;
 import com.globits.richy.dto.TopicForListAllDto;
 
 public interface TopicService {
+	List<Long> getUncategorizedLessonSelection(String search);
+	int moveUncategorizedLessons(VocabularyLessonBulkActionDto request);
+	int deleteUncategorizedLessons(VocabularyLessonBulkActionDto request);
 	public Page<TopicDto> getPageObject(TopicDto searchDto, int pageIndex, int pageSize);
 	public Page<TopicDto> getPageObjectForGames(TopicDto searchDto, int pageIndex, int pageSize);
 	public List<TopicDto> getListObject();

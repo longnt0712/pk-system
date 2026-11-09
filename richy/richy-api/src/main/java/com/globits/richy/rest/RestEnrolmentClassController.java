@@ -143,11 +143,12 @@ public class RestEnrolmentClassController {
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/schedule/{classId}", method = RequestMethod.GET)
-	public List<EnrolmentClassScheduleDayDto> getSchedule(
+	public List<?> getSchedule(
 			@PathVariable Long classId,
 			@RequestParam String fromDate,
-			@RequestParam String toDate) {
-		return service.getScheduleDays(classId, fromDate, toDate);
+			@RequestParam String toDate,
+			@RequestParam(defaultValue = "false") boolean summary) {
+		return summary ? service.getCalendarDays(classId, fromDate, toDate) : service.getScheduleDays(classId, fromDate, toDate);
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})

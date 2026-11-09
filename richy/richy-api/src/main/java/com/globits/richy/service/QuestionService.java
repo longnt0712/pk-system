@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.dto.VocabularyBulkActionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionOnlyQuestionDto;
@@ -25,6 +26,9 @@ public interface QuestionService {
 	public QuestionDto saveForCurrentUser(QuestionDto dto);
 	public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage();
 	public Page<QuestionDto> getVocabularyPage(QuestionDto search, int page, int size);
+	public List<Long> getVocabularySelection(QuestionDto search);
+	public int moveVocabularyCards(VocabularyBulkActionDto request);
+	public int deleteVocabularyCards(VocabularyBulkActionDto request);
 	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto);
 	public QuestionLevelDto updateFlashCardLevel(Long id, String level);
 	public QuestionForTestsDto updateTestStatus(Long id, int status);

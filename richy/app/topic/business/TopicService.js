@@ -19,6 +19,14 @@
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url;
         // console.log(baseUrl);
         self.getPage = getPage;
+        self.getUncategorizedLessonSelection = function (search) {
+            return $http.get(baseUrl + 'topic/uncategorized/selection', {params: {search: search}, timeout: 30000})
+                .then(function (response) { return response.data; });
+        };
+        self.changeUncategorizedLessons = function (action, payload) {
+            return $http.post(baseUrl + 'topic/uncategorized/bulk/' + action, payload)
+                .then(function (response) { return response.data; });
+        };
         self.getPageTopicCategory = getPageTopicCategory;
         self.saveCategory = function (category) {
             return $http.post(baseUrl + 'topic_category/save', category).then(function (response) { return response.data; });

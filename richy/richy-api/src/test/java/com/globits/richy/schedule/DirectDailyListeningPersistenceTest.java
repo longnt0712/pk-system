@@ -12,6 +12,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.joda.time.LocalDateTime;
 import org.junit.*;
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -101,5 +102,40 @@ public class DirectDailyListeningPersistenceTest {
         assertEquals(1,count());EnrolmentClassScheduleTaskDto teacher=new EnrolmentClassScheduleTaskDto(task);
         HomeworkTopicCompletion.applyDirectListening(teacher,rows(),start,end);assertEquals("PROGRESS_50",teacher.getStudentProgress().get(0).getStatus());
         assertEquals(Integer.valueOf(50),teacher.getStudentProgress().get(0).getProgressPercent());
+    }
+
+    @Test public void monthlyCalendarUsesOnlyCountsAndScheduleMarkers() {
+        EnrolmentClassScheduleDay day = task.getScheduleDay();
+        EnrolmentClass course = day.getEnrolmentClass();
+        Topic topic = new Topic(); topic.setName("Vocabulary lesson"); manager.persist(topic);
+        day.getHomeworkTopics().add(topic);
+        day.setSessionStartTime("18:00"); day.setSessionEndTime("20:00"); day.setMovedFromDate("2026-10-17");
+        EnrolmentClassScheduleDay moved = new EnrolmentClassScheduleDay();
+        moved.setEnrolmentClass(course); moved.setScheduleDate("2026-10-17"); moved.setMovedToDate(day.getScheduleDate());
+        manager.persist(moved);
+        manager.flush(); manager.clear();
+
+        EnrolmentClassServiceImpl service = new EnrolmentClassServiceImpl();
+        EnrolmentClassRepository classes = mock(EnrolmentClassRepository.class);
+        when(classes.findOne(course.getId())).thenReturn(course);
+        ReflectionTestUtils.setField(service, "enrolmentClassRepository", classes);
+        UserRepository users = mock(UserRepository.class);
+        when(users.findByUsername(student.getUsername())).thenReturn(student);
+        ReflectionTestUtils.setField(service, "userRepository", users);
+        EnrolmentClassScheduleDayRepository days = new JpaRepositoryFactory(manager).getRepository(EnrolmentClassScheduleDayRepository.class);
+        ReflectionTestUtils.setField(service, "scheduleDayRepository", days);
+        TestResultRepository results = mock(TestResultRepository.class);
+        ReflectionTestUtils.setField(service, "testResultRepository", results);
+
+        List<EnrolmentClassCalendarDayDto> calendar = service.getCalendarDays(course.getId(), "2026-10-01", "2026-10-31");
+        assertEquals(2, calendar.size());
+        assertEquals("2026-10-19", calendar.get(0).movedToDate);
+        EnrolmentClassCalendarDayDto scheduled = calendar.get(1);
+        assertEquals("2026-10-17", scheduled.movedFromDate);
+        assertEquals("20:00", scheduled.sessionEndTime);
+        assertEquals(0, scheduled.classTopicCount);
+        assertEquals(1, scheduled.homeworkTopicCount);
+        assertEquals(1, scheduled.taskCount);
+        verifyZeroInteractions(results);
     }
 }

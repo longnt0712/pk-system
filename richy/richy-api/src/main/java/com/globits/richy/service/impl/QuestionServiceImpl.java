@@ -4,14 +4,18 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +37,7 @@ import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionTopic;
 import com.globits.richy.domain.QuestionType;
+import com.globits.richy.domain.Topic;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
@@ -45,6 +50,7 @@ import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
 import com.globits.richy.dto.ShoesSizesDto;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.VocabularyBulkActionDto;
 import com.globits.richy.dto.ShoesDto.sortByImageOrdinalNumber;
 import com.globits.richy.repository.AnswerRepository;
 import com.globits.richy.repository.CategoryQuestionRepository;
@@ -1423,23 +1429,56 @@ public class QuestionServiceImpl implements QuestionService {
 		return result;
 	}
 
-	/** Editor boundary: learners save personal word fields, staff retain test editing. */
 	@Override
 	@Transactional(readOnly = true)
 	public Page<QuestionDto> getVocabularyPage(QuestionDto search, int page, int size) {
+		User owner = vocabularyUser(false);
+		if (search == null) { search = new QuestionDto(); }
+		int pageIndex = Math.max(0, page - 1), pageSize = Math.max(1, Math.min(500, size));
+		Map<String, Object> parameters = new HashMap<String, Object>();
+		String where = vocabularyFilter(search, owner.getId(), parameters);
+		TypedQuery<QuestionDto> rows = manager.createQuery("select new com.globits.richy.dto.QuestionDto(q)" + where
+				+ " order by q.createDate desc, q.id desc", QuestionDto.class);
+		Query count = manager.createQuery("select count(q.id)" + where);
+		parameters.forEach(rows::setParameter);
+		parameters.forEach(count::setParameter);
+		rows.setFirstResult(pageIndex * pageSize); rows.setMaxResults(pageSize);
+		return new PageImpl<QuestionDto>(rows.getResultList(), new PageRequest(pageIndex, pageSize), (Long) count.getSingleResult());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Long> getVocabularySelection(QuestionDto search) {
+		User owner = vocabularyUser(true);
+		if (search == null || (search.getTopicId() == null && !search.isWithoutTopics())) {
+			throw new IllegalArgumentException("Hãy chọn một bài hoặc mục Chưa vào bài trước.");
+		}
+		Map<String, Object> parameters = new HashMap<String, Object>();
+		String where = vocabularyFilter(search, owner.getId(), parameters);
+		TypedQuery<Long> ids = manager.createQuery("select q.id" + where, Long.class);
+		parameters.forEach(ids::setParameter);
+		return ids.getResultList();
+	}
+
+	private User vocabularyUser(boolean bulk) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
 				|| ((User) authentication.getPrincipal()).getId() == null) {
 			throw new AccessDeniedException("Bạn cần đăng nhập để xem từ vựng.");
 		}
-		VocabularyPolicy.role(authentication);
-		if (search == null) { search = new QuestionDto(); }
-		int pageIndex = Math.max(0, page - 1), pageSize = Math.max(1, Math.min(500, size));
+		String role = VocabularyPolicy.role(authentication);
+		if (bulk && "VIEWER".equals(role)) { throw new AccessDeniedException("Bạn không có quyền thay đổi thẻ hàng loạt."); }
+		return (User) authentication.getPrincipal();
+	}
+
+	private String vocabularyFilter(QuestionDto search, Long ownerId, Map<String, Object> parameters) {
 		String where = " from Question q where q.questionType.id = 6 and q.parent is null and q.user.id = :owner";
+		parameters.put("owner", ownerId);
 		if (search.isWithoutTopics()) {
 			where += " and not exists (select link.id from QuestionTopic link where link.question.id = q.id)";
 		} else if (search.getTopicId() != null) {
 			where += " and exists (select link.id from QuestionTopic link where link.question.id = q.id and link.topic.id = :lesson)";
+			parameters.put("lesson", search.getTopicId());
 		}
 		if (search.getStatus() == 5) { where += " and q.status = 5"; }
 		else if (search.getStatus() == 4) { where += " and q.status = 4"; }
@@ -1448,16 +1487,96 @@ public class QuestionServiceImpl implements QuestionService {
 		if (!term.isEmpty()) {
 			where += search.isFindExactWord() ? " and lower(q.question) = :term"
 					: " and (lower(q.question) like :term or lower(q.motherTongue) like :term)";
+			parameters.put("term", search.isFindExactWord() ? term : "%" + term + "%");
 		}
-		Query rows = manager.createQuery("select new com.globits.richy.dto.QuestionDto(q)" + where + " order by q.createDate desc, q.id desc", QuestionDto.class);
-		Query count = manager.createQuery("select count(q.id)" + where);
-		for (Query query : new Query[]{rows, count}) {
-			query.setParameter("owner", ((User) authentication.getPrincipal()).getId());
-			if (!search.isWithoutTopics() && search.getTopicId() != null) { query.setParameter("lesson", search.getTopicId()); }
-			if (!term.isEmpty()) { query.setParameter("term", search.isFindExactWord() ? term : "%" + term + "%"); }
+		return where;
+	}
+
+	@Override
+	@Transactional
+	public int moveVocabularyCards(VocabularyBulkActionDto request) {
+		if (request == null || request.targetTopicId == null || request.targetTopicId.equals(request.sourceTopicId)) {
+			throw new IllegalArgumentException("Hãy chọn một bài đích khác với bài hiện tại.");
 		}
-		rows.setFirstResult(pageIndex * pageSize); rows.setMaxResults(pageSize);
-		return new PageImpl<QuestionDto>(rows.getResultList(), new PageRequest(pageIndex, pageSize), (Long) count.getSingleResult());
+		return changeVocabularyCards(request, request.targetTopicId);
+	}
+
+	@Override
+	@Transactional
+	public int deleteVocabularyCards(VocabularyBulkActionDto request) {
+		return changeVocabularyCards(request, null);
+	}
+
+	private int changeVocabularyCards(VocabularyBulkActionDto request, Long targetId) {
+		User owner = vocabularyUser(true);
+		if (request == null || request.cardIds == null || request.cardIds.isEmpty()
+				|| request.cardIds.stream().anyMatch(id -> id == null || id < 1)) {
+			throw new IllegalArgumentException("Hãy chọn ít nhất một thẻ hợp lệ.");
+		}
+		List<Long> ids = new ArrayList<Long>(new HashSet<Long>(request.cardIds));
+		Collections.sort(ids);
+		// Use the same per-owner lock as other vocabulary mutations.
+		if (userRepository.findForVocabularyUpdate(owner.getId()) == null) {
+			throw new AccessDeniedException("Không xác định được chủ sở hữu thẻ.");
+		}
+		if (request.sourceTopicId != null) { ownedVocabularyLesson(request.sourceTopicId, owner.getId()); }
+		Topic target = targetId == null ? null : ownedVocabularyLesson(targetId, owner.getId());
+		QuestionDto scope = new QuestionDto();
+		scope.setStatus(0);
+		scope.setTopicId(request.sourceTopicId);
+		scope.setWithoutTopics(request.sourceTopicId == null);
+		Map<String, Object> parameters = new HashMap<String, Object>();
+		String where = vocabularyFilter(scope, owner.getId(), parameters);
+		LocalDateTime now = LocalDateTime.now();
+		// Keep each IN list under SQL Server's parameter limit. All batches share one transaction.
+		int batchSize = 500;
+		for (int from = 0; from < ids.size(); from += batchSize) {
+			List<Long> batch = ids.subList(from, Math.min(from + batchSize, ids.size()));
+			TypedQuery<Question> query = manager.createQuery("select q" + where + " and q.id in :ids order by q.id", Question.class);
+			parameters.forEach(query::setParameter);
+			List<Question> selected = query.setParameter("ids", batch).setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultList();
+			if (selected.size() != batch.size()) {
+				throw new IllegalStateException("Danh sách thẻ đã thay đổi. Hãy tải lại và chọn lại thẻ.");
+			}
+			if (target == null) {
+				Long children = manager.createQuery("select count(q.id) from Question q where q.parent.id in :ids", Long.class)
+						.setParameter("ids", batch).getSingleResult();
+				if (children > 0) { throw new IllegalStateException("Có thẻ chứa câu hỏi con. Hãy bỏ chọn thẻ đó trước khi xóa hàng loạt."); }
+				for (Question card : selected) { manager.remove(card); }
+			} else {
+				for (Question card : selected) { moveVocabularyCard(card, request.sourceTopicId, target, owner.getUsername(), now); }
+			}
+		}
+		questionRepository.flush();
+		return ids.size();
+	}
+
+	private Topic ownedVocabularyLesson(Long id, Long ownerId) {
+		Topic lesson = topicRepository.findOne(id);
+		if (lesson == null || lesson.getUser() == null || !ownerId.equals(lesson.getUser().getId())) {
+			throw new AccessDeniedException("Bạn chỉ được quản lý thẻ trong bài từ vựng của mình.");
+		}
+		return lesson;
+	}
+
+	private void moveVocabularyCard(Question card, Long sourceId, Topic target, String actor, LocalDateTime now) {
+		Set<QuestionTopic> links = card.getQuestionTopics();
+		if (links == null) {
+			links = new HashSet<QuestionTopic>();
+			card.setQuestionTopics(links);
+		}
+		boolean hasTarget = links.stream().anyMatch(link -> link.getTopic() != null && target.getId().equals(link.getTopic().getId()));
+		if (sourceId != null) { links.removeIf(link -> link.getTopic() != null && sourceId.equals(link.getTopic().getId())); }
+		if (!hasTarget) {
+			QuestionTopic link = new QuestionTopic();
+			link.setQuestion(card);
+			link.setTopic(target);
+			link.setCreatedBy(actor);
+			link.setCreateDate(now);
+			links.add(link);
+		}
+		card.setModifiedBy(actor);
+		card.setModifyDate(now);
 	}
 
 	@Override
@@ -1475,6 +1594,7 @@ public class QuestionServiceImpl implements QuestionService {
 				VocabularyPolicy.wordLimit(authentication), topics == null ? 0 : topics, VocabularyPolicy.lessonLimit(authentication));
 	}
 
+	/** Editor boundary: learners save personal word fields, staff retain test editing. */
 	@Override
 	@Transactional
 	public QuestionDto saveForCurrentUser(QuestionDto dto) {

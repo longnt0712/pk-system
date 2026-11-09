@@ -69,7 +69,7 @@
             return utils.resolve(
                 baseUrl + '/schedule/' + classId
                     + '?fromDate=' + encodeURIComponent(fromDate)
-                    + '&toDate=' + encodeURIComponent(toDate),
+                    + '&toDate=' + encodeURIComponent(toDate) + '&summary=true',
                 'GET', angular.noop, angular.noop
             );
         };

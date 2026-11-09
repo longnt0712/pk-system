@@ -827,10 +827,9 @@
 					isExtraDate: !!entry && weeklyDays[dayOfWeek] !== true && !entry.movedFromDate
 						&& !entry.movedToDate && !entry.dayOff,
 					entry: entry,
-					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
-					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0,
-					taskCount: entry && entry.tasks ? entry.tasks.length : 0,
-					doneTaskCount: entry && entry.tasks ? entry.tasks.filter(function (task) { return vm.taskIsDone(task); }).length : 0
+					classCount: entry ? (entry.classTopicIds || []).length || entry.classTopicCount || 0 : 0,
+					homeworkCount: entry ? (entry.homeworkTopicIds || []).length || entry.homeworkTopicCount || 0 : 0,
+					taskCount: entry ? (entry.tasks || []).length || entry.taskCount || 0 : 0
 				});
 			}
 			while (cells.length % 7) { cells.push({isBlank: true}); }

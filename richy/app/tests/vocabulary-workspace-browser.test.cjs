@@ -66,7 +66,23 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             const id = Number(url.pathname.split('/').at(-1)); lessons.splice(lessons.findIndex(lesson => lesson.id === id), 1);
             state.cards.forEach(card => { card.questionTopics = card.questionTopics.filter(link => link.topic.id !== id); }); return json(true);
         }
-        if (url.pathname.startsWith('/api/question/vocabulary/get_page/')) {
+        if (url.pathname === '/api/topic/uncategorized/selection') {
+            const query = url.searchParams.get('search') || '';
+            return json(lessons.filter(lesson => !lesson.topicCategory && lesson.name.includes(query)).map(lesson => lesson.id));
+        }
+        if (url.pathname.startsWith('/api/topic/uncategorized/bulk/')) {
+            const dto = request.postDataJSON();
+            if (url.pathname.endsWith('/move')) {
+                lessons.filter(lesson => dto.lessonIds.includes(lesson.id)).forEach(lesson => {
+                    lesson.topicCategory = categories.find(category => category.id === dto.targetCategoryId);
+                });
+            } else {
+                dto.lessonIds.forEach(id => lessons.splice(lessons.findIndex(lesson => lesson.id === id), 1));
+                state.cards.forEach(card => { card.questionTopics = card.questionTopics.filter(link => !dto.lessonIds.includes(link.topic.id)); });
+            }
+            return json(dto.lessonIds.length);
+        }
+        if (url.pathname === '/api/question/vocabulary/selection' || url.pathname.startsWith('/api/question/vocabulary/get_page/')) {
             const dto = request.postDataJSON(), numbers = url.pathname.split('/').slice(-2).map(Number);
             if (state.holdUnassigned && dto.withoutTopics) await new Promise(resolve => { state.releaseUnassigned = resolve; });
             if (state.holdLesson === dto.topicId) await new Promise(resolve => { state.releaseLesson = resolve; });
@@ -74,7 +90,22 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
                 (!dto.withoutTopics || !card.questionTopics.length) && (!dto.status || (dto.status === 3 ? card.status !== 5 : card.status === dto.status)) &&
                 (!dto.textSearch || (dto.findExactWord ? card.question.toLowerCase() === dto.textSearch.trim().toLowerCase() :
                     (card.question + ' ' + card.motherTongue).toLowerCase().includes(dto.textSearch.toLowerCase()))));
+            if (url.pathname.endsWith('/selection')) return json(rows.map(card => card.id));
             return json({content: rows.slice((numbers[0]-1)*numbers[1], numbers[0]*numbers[1]), totalElements: rows.length});
+        }
+        if (url.pathname.startsWith('/api/question/vocabulary/bulk/')) {
+            const dto = request.postDataJSON();
+            if (url.pathname.endsWith('/move')) {
+                state.cards.filter(card => dto.cardIds.includes(card.id)).forEach(card => {
+                    card.questionTopics = card.questionTopics.filter(link => link.topic.id !== dto.sourceTopicId);
+                    if (!card.questionTopics.some(link => link.topic.id === dto.targetTopicId)) {
+                        card.questionTopics.push({topic: lessons.find(lesson => lesson.id === dto.targetTopicId)});
+                    }
+                });
+            } else {
+                state.cards = state.cards.filter(card => !dto.cardIds.includes(card.id));
+            }
+            return json(dto.cardIds.length);
         }
         if (url.pathname === '/api/question/save') {
             const dto = request.postDataJSON(); state.saves.push(dto);
@@ -395,6 +426,79 @@ test('deletion requires confirmation, unassigned and Listening filters work, and
         await page.waitForTimeout(150);
         assert.equal(await page.locator('.vw-word-card').count(), 1);
         assert.equal(await page.locator('.vw-word-card h3').innerText(), 'wanderlust');
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
+
+test('select all includes other card pages and moving requires a confirmed destination', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser, {role: 'USER', initialLesson: 101});
+        state.cards[0].questionTopics.push({topic: state.lessons[2]});
+        const all = page.getByRole('checkbox', {name: 'Chọn tất cả thẻ', exact: true});
+        await all.check();
+        await page.getByText('Đã chọn 10 thẻ', {exact: true}).waitFor();
+        await page.getByRole('button', {name: 'Trang từ sau'}).click();
+        const last = page.getByRole('checkbox', {name: 'Chọn từ slow down', exact: true});
+        assert.ok(await last.isChecked());
+        await last.uncheck();
+        await page.getByText('Đã chọn 9 thẻ', {exact: true}).waitFor();
+        await page.getByLabel('Loại flashcard').selectOption({label: 'Listening'});
+        await last.waitFor();
+        assert.equal(await last.isChecked(), false, 'changing the filter clears selection');
+        await page.getByLabel('Loại flashcard').selectOption({label: 'Tất cả thẻ'});
+        await all.check();
+        await page.getByRole('button', {name: 'Di chuyển', exact: true}).click();
+        await page.getByRole('heading', {name: 'Di chuyển 10 thẻ từ vựng?'}).waitFor();
+        const confirm = page.getByRole('button', {name: 'Xác nhận di chuyển'});
+        assert.equal(await confirm.isEnabled(), false);
+        await page.locator('.modal-dialog .ui-select-toggle').click();
+        await page.locator('.modal-dialog input.ui-select-search').fill('world');
+        await page.getByRole('option', {name: /A world to discover/}).click();
+        assert.ok(!state.requests.some(request => request.url.includes('/bulk/')));
+        await confirm.click();
+        await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+        const move = state.requests.find(request => request.url.endsWith('/bulk/move'));
+        assert.deepEqual(move.data, {sourceTopicId: 101, targetTopicId: 102, cardIds: [1, 2, 3, 4, 6, 7, 8, 9, 10, 12]});
+        assert.deepEqual(state.cards[0].questionTopics.map(link => link.topic.id), [103, 102]);
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
+
+test('uncategorized lessons select across the scroll list and move into a child category', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser, {role: 'USER', width: 390});
+        const ids = Array.from({length: 45}, (_, index) => 200 + index);
+        state.lessons.push(...ids.map(id => ({id, name: 'Tài liệu ' + id})), {id: 300, name: 'Bài còn lại'});
+        state.cards[10].questionTopics = [{topic: state.lessons.find(lesson => lesson.id === 300)}];
+        await selectCategory(page, 'Bài chưa phân nhóm');
+        const search = page.getByLabel('Tìm bài từ vựng trong nhóm');
+        await search.fill('Tài liệu');
+        await page.getByText('45 bài phù hợp', {exact: true}).waitFor();
+        assert.ok(await page.locator('.vw-lesson-row').count() < ids.length);
+        await page.getByRole('checkbox', {name: 'Chọn tất cả bài', exact: true}).check();
+        await page.getByText('Đã chọn 45 bài', {exact: true}).waitFor();
+        await page.getByRole('button', {name: 'Di chuyển', exact: true}).click();
+        await page.getByRole('heading', {name: 'Di chuyển 45 bài từ vựng?'}).waitFor();
+        await page.locator('.modal-dialog .ui-select-toggle').click();
+        await page.locator('.modal-dialog input.ui-select-search').fill('Cambridge');
+        await page.getByRole('option', {name: 'IELTS & học thuật / Reading / Cambridge IELTS 19'}).click();
+        assert.ok(!state.requests.some(request => request.url.includes('/bulk/')));
+        await page.getByRole('button', {name: 'Xác nhận di chuyển'}).click();
+        await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+        const move = state.requests.find(request => request.url.endsWith('/bulk/move'));
+        assert.deepEqual(move.data, {lessonIds: ids, targetCategoryId: 4});
+        await search.fill('');
+        await page.getByRole('checkbox', {name: 'Chọn bài Bài còn lại'}).check();
+        await page.getByRole('button', {name: 'Xóa đã chọn'}).click();
+        await page.getByRole('heading', {name: 'Xóa 1 bài từ vựng?'}).waitFor();
+        assert.ok(!state.requests.some(request => request.url.endsWith('/bulk/delete')));
+        await page.getByRole('button', {name: 'Xác nhận xóa'}).click();
+        await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+        assert.ok(!state.lessons.some(lesson => lesson.id === 300));
+        assert.equal(state.cards.length, 12);
+        assert.deepEqual(state.cards[10].questionTopics, []);
         assert.deepEqual(state.errors, []);
     } finally { await browser.close(); }
 });

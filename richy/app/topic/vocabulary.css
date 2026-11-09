@@ -44,6 +44,8 @@
 .vw-lesson-search input{height:34px;font-size:11px}
 .vw-type-filter{border:0;background:transparent;color:#849087;font-size:11px;padding:8px 7px;max-width:100%;outline-offset:0}
 .vw-lesson{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 8px;border:1px solid transparent;border-radius:15px!important;background:transparent;margin:3px 0;color:#5b6b60;transition:background .15s}
+.vw-lesson-row{display:flex;align-items:center;gap:8px}
+.vw-lesson-row.is-selected .vw-lesson{background:#f1f6ee;border-color:#bdcdb5}
 .vw-lesson:hover{background:rgba(232,239,233,.55)}
 .vw-lesson.is-active{background:rgba(255,255,255,.92);border-color:#e1e8e0;box-shadow:0 3px 8px rgba(43,65,49,.04)}
 .vw-lesson-icon{width:33px;height:35px;border-radius:10px!important;font-size:13px}
@@ -85,8 +87,9 @@
 .vw-segment-label{display:flex;align-items:center;gap:9px;font-size:12px;color:#556b58}
 .vw-segment-label>i{font-size:13px;color:#9cad98}
 .vw-segment-label strong{font-weight:600}
-.vw-selection{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;padding:9px 2px 4px;font-size:10px;color:#a1ab9f}
+.vw-selection{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:42px;padding:9px 2px 4px;font-size:10px;color:#a1ab9f}
 .vw-selection label{display:flex;gap:8px;align-items:center;margin:0;font-weight:400;font-size:10px}
+.vw-selection .vw-btn{min-height:32px;padding:6px 9px;font-size:11px}
 .vocab-workspace input[type=checkbox],.vocab-dialog input[type=checkbox]{accent-color:#76957a;width:14px;height:14px;cursor:pointer;margin:0}
 .vw-link{background:none;border:0;color:#6d8a74;font-size:12px;font-weight:600;padding:0;text-decoration:none}
 .vw-link:hover{text-decoration:underline}
@@ -199,7 +202,6 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-form-error{font-size:12px;color:#bd7770;background:#fcf0eb;border:1px solid #f2deda;border-radius:10px!important;padding:10px 13px;margin:12px 0 0;line-height:1.7}
 .vw-destructive{background:#bc7c73;border-color:#bc7c73;color:white}
 .vw-destructive:not(:disabled):hover{background:#a86660;color:white}
-.vw-delete-list{max-height:200px;overflow:auto;padding:0 0 0 20px;color:#8f9b7e;font-size:13px;line-height:2;overflow-wrap:anywhere}
 .vocab-dialog .ui-select-bootstrap>.ui-select-match>.btn{border:1px solid #e2e9d8!important;border-radius:11px!important;padding:10px 13px!important;height:auto;min-height:42px;background:#fff!important;color:#7b8f68!important;font-size:12px;box-shadow:none!important}
 .vocab-dialog .ui-select-search{border-radius:10px!important;min-height:42px}
 .vocab-import-dialog .modal-dialog{width:min(1480px,calc(100% - 32px));margin:30px auto}

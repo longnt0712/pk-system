@@ -48,6 +48,7 @@ import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
 import org.springframework.http.HttpStatus;
 import com.globits.richy.dto.EnrolmentClassDto;
+import com.globits.richy.dto.EnrolmentClassCalendarDayDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassWeeklySessionDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
@@ -746,15 +747,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate) {
-		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
-		if (selectedClass == null || !isValidDate(fromDate) || !isValidDate(toDate)
-				|| fromDate.compareTo(toDate) > 0) {
-			return new ArrayList<EnrolmentClassScheduleDayDto>();
-		}
 		User currentUser = getCurrentUser();
-		if (!canViewClass(currentUser, selectedClass)) {
-			throw new AccessDeniedException("Bạn không được xem lịch của lớp này.");
-		}
+		EnrolmentClass selectedClass = viewableScheduleClass(classId, fromDate, toDate, currentUser);
+		if (selectedClass == null) { return Collections.emptyList(); }
 		List<EnrolmentClassScheduleDayDto> result = new ArrayList<EnrolmentClassScheduleDayDto>();
 		EffectiveClassSchedule timeline = effectiveSchedule(classId);
 		for (EnrolmentClassScheduleDay day : scheduleDayRepository
@@ -763,6 +758,26 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                     : new EnrolmentClassScheduleDayDto(day));
 		}
 		return result;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<EnrolmentClassCalendarDayDto> getCalendarDays(Long classId, String fromDate, String toDate) {
+		if (viewableScheduleClass(classId, fromDate, toDate, getCurrentUser()) == null) {
+			return Collections.emptyList();
+		}
+		return scheduleDayRepository.findCalendarDays(classId, fromDate, toDate);
+	}
+
+	private EnrolmentClass viewableScheduleClass(Long classId, String fromDate, String toDate, User user) {
+		if (classId == null || !isValidDate(fromDate) || !isValidDate(toDate) || fromDate.compareTo(toDate) > 0) {
+			return null;
+		}
+		EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
+		if (selectedClass != null && !canViewClass(user, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được xem lịch của lớp này.");
+		}
+		return selectedClass;
 	}
 
 	@Override

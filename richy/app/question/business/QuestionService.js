@@ -57,6 +57,14 @@
                 {timeout: options && options.timeout || 30000})
                 .then(function (response) { return response.data; });
         };
+        self.getVocabularySelection = function (search) {
+            return $http.post(baseUrl + 'question/vocabulary/selection', search, {timeout: 30000})
+                .then(function (response) { return response.data; });
+        };
+        self.changeVocabularyCards = function (action, payload) {
+            return $http.post(baseUrl + 'question/vocabulary/bulk/' + action, payload)
+                .then(function (response) { return response.data; });
+        };
         self.getVocabularyDuplicateGroups = function (includeReviewed) {
             return $http.get(baseUrl + 'question/vocabulary/duplicates', {timeout: 30000, params: {includeReviewed: !!includeReviewed}})
                 .then(function (response) { return response.data; });

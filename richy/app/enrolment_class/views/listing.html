@@ -1084,7 +1084,7 @@
                             <span class="class-schedule-topic-count homework-count" data-ng-if="cell.homeworkCount">
                                 Homework: {{cell.homeworkCount}} topic
                             </span>
-                            <span class="class-schedule-topic-count" data-ng-if="cell.taskCount">Tasks: {{cell.doneTaskCount}}/{{cell.taskCount}}</span>
+                            <span class="class-schedule-topic-count" data-ng-if="cell.taskCount">{{cell.taskCount}} Tasks</span>
                             <span class="class-schedule-empty-hint" data-ng-if="!cell.isDayOff && !cell.entry.movedToDate && !cell.classCount && !cell.homeworkCount && !cell.taskCount">
                                 {{cell.isMovedTarget ? 'Buổi được dời · + Thêm bài' : (cell.isExtraDate ? 'Ngoài lịch tuần · + Thêm bài' : (cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'))}}
                             </span>

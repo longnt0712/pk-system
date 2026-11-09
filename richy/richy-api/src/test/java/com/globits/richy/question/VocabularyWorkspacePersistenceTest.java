@@ -2,19 +2,28 @@ package com.globits.richy.question;
 
 import com.globits.richy.domain.*;
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.dto.VocabularyBulkActionDto;
+import com.globits.richy.dto.VocabularyLessonBulkActionDto;
+import com.globits.richy.repository.QuestionRepository;
+import com.globits.richy.repository.TopicCategoryRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.impl.QuestionServiceImpl;
+import com.globits.richy.service.impl.TopicCategoryVisibilityService;
 import com.globits.richy.service.impl.TopicServiceImpl;
 import com.globits.security.domain.User;
+import com.globits.security.repository.UserRepository;
 import java.util.*;
 import javax.persistence.Entity;
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import org.h2.jdbcx.JdbcDataSource;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.*;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -59,10 +68,22 @@ public class VocabularyWorkspacePersistenceTest {
         manager.flush(); manager.clear();
         cards = new QuestionServiceImpl(); ReflectionTestUtils.setField(cards, "manager", manager);
         lessons = new TopicServiceImpl(); ReflectionTestUtils.setField(lessons, "manager", manager);
-        TopicRepository repository = mock(TopicRepository.class);
-        when(repository.getOne(anyLong())).thenAnswer(call -> manager.find(Topic.class, call.getArguments()[0]));
-        doAnswer(call -> { manager.remove(call.getArguments()[0]); return null; }).when(repository).delete(any(Topic.class));
+        TopicRepository repository = new JpaRepositoryFactory(manager).getRepository(TopicRepository.class);
+        ReflectionTestUtils.setField(cards, "topicRepository", repository);
         ReflectionTestUtils.setField(lessons, "topicRepository", repository);
+        QuestionRepository questions = mock(QuestionRepository.class);
+        doAnswer(call -> { manager.flush(); return null; }).when(questions).flush();
+        ReflectionTestUtils.setField(cards, "questionRepository", questions);
+        UserRepository users = mock(UserRepository.class);
+        when(users.findForVocabularyUpdate(anyLong())).thenAnswer(call -> manager.find(User.class, call.getArguments()[0], LockModeType.PESSIMISTIC_WRITE));
+        ReflectionTestUtils.setField(cards, "userRepository", users);
+        ReflectionTestUtils.setField(lessons, "userRepository", users);
+        TopicCategoryRepository categories = mock(TopicCategoryRepository.class);
+        when(categories.findOne(anyLong())).thenAnswer(call -> manager.find(TopicCategory.class, call.getArguments()[0]));
+        ReflectionTestUtils.setField(lessons, "topicCategoryRepository", categories);
+        TopicCategoryVisibilityService visibility = mock(TopicCategoryVisibilityService.class);
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(null);
+        ReflectionTestUtils.setField(lessons, "topicCategoryVisibilityService", visibility);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, "",
             Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))));
     }
@@ -135,6 +156,82 @@ public class VocabularyWorkspacePersistenceTest {
         assertEquals(before, manager.createQuery("select count(q.id) from Question q", Long.class).getSingleResult());
         QuestionDto search = new QuestionDto(); search.setStatus(0); search.setWithoutTopics(true);
         assertEquals(3, cards.getVocabularyPage(search, 1, 8).getTotalElements());
+        assertNotNull(manager.find(Topic.class, foreignLessonId));
+    }
+
+    @Test public void bulkCardMoveReplacesOnlyTheSourceAndKeepsExistingDestinationLinks() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Topic target = topic(owner), other = topic(owner);
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTopicId(lessonId);
+        List<Long> selected = cards.getVocabularySelection(search);
+        assertEquals(2, selected.size());
+        assertEquals(1, cards.getVocabularyPage(search, 1, 1).getNumberOfElements());
+        search.setStatus(5);
+        assertEquals(1, cards.getVocabularySelection(search).size());
+        search.setStatus(0); search.setTextSearch("alpha");
+        Long alphaId = cards.getVocabularySelection(search).get(0);
+        Question alpha = manager.find(Question.class, alphaId);
+        alpha.setCorrectAnswer(8);
+        for (Topic lesson : Arrays.asList(target, other)) {
+            QuestionTopic link = new QuestionTopic(); link.setQuestion(alpha); link.setTopic(lesson); manager.persist(link);
+        }
+        manager.flush(); manager.clear();
+        VocabularyBulkActionDto move = new VocabularyBulkActionDto();
+        move.cardIds = selected; move.sourceTopicId = lessonId; move.targetTopicId = foreignLessonId;
+        try { cards.moveVocabularyCards(move); fail("Cannot move cards into another owner's lesson"); }
+        catch (AccessDeniedException expected) { }
+        move.targetTopicId = target.getId();
+        assertEquals(2, cards.moveVocabularyCards(move));
+        manager.clear();
+        search.setTextSearch(null);
+        assertTrue(cards.getVocabularySelection(search).isEmpty());
+        search.setTopicId(target.getId());
+        assertEquals(new HashSet<Long>(selected), new HashSet<Long>(cards.getVocabularySelection(search)));
+        alpha = manager.find(Question.class, alphaId);
+        assertEquals(8, alpha.getCorrectAnswer());
+        assertEquals(2, alpha.getQuestionTopics().size());
+        assertTrue(alpha.getQuestionTopics().stream().anyMatch(link -> other.getId().equals(link.getTopic().getId())));
+        try { cards.moveVocabularyCards(move); fail("The previous source is no longer valid"); }
+        catch (IllegalStateException expected) { }
+    }
+
+    @Test public void bulkCardDeleteRejectsCardsOutsideTheConfirmedSource() {
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setWithoutTopics(true);
+        Long orphan = cards.getVocabularySelection(search).get(0);
+        VocabularyBulkActionDto request = new VocabularyBulkActionDto();
+        request.cardIds = Collections.singletonList(orphan); request.sourceTopicId = lessonId;
+        try { cards.deleteVocabularyCards(request); fail("The selected card is not in the source lesson"); }
+        catch (IllegalStateException expected) { }
+        assertNotNull(manager.find(Question.class, orphan));
+        request.sourceTopicId = null;
+        assertEquals(1, cards.deleteVocabularyCards(request));
+        assertNull(manager.find(Question.class, orphan));
+        search.setWithoutTopics(false); search.setTopicId(lessonId);
+        assertEquals(2, cards.getVocabularySelection(search).size());
+    }
+
+    @Test public void uncategorizedLessonBulkMoveKeepsCardsAndBulkDeleteOnlyUnlinksThem() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Topic remaining = topic(owner); remaining.setName("Keep until deleted");
+        Question kept = word(owner, "keep this card", "giữ thẻ", 1, remaining);
+        TopicCategory parent = new TopicCategory(); parent.setName("Parent"); manager.persist(parent);
+        TopicCategory child = new TopicCategory(); child.setName("Child"); child.setParent(parent); manager.persist(child);
+        manager.flush(); manager.clear();
+        assertEquals(Collections.singletonList(lessonId), lessons.getUncategorizedLessonSelection("Vocabu"));
+        VocabularyLessonBulkActionDto request = new VocabularyLessonBulkActionDto();
+        request.lessonIds = Collections.singletonList(lessonId); request.targetCategoryId = child.getId();
+        assertEquals(1, lessons.moveUncategorizedLessons(request));
+        manager.clear();
+        assertEquals(child.getId(), manager.find(Topic.class, lessonId).getTopicCategory().getId());
+        QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTopicId(lessonId);
+        assertEquals(2, cards.getVocabularyPage(search, 1, 8).getTotalElements());
+        try { lessons.deleteUncategorizedLessons(request); fail("Cannot remove a categorized lesson from the uncategorized list"); }
+        catch (IllegalStateException expected) { }
+        request.lessonIds = Collections.singletonList(remaining.getId()); request.targetCategoryId = null;
+        assertEquals(1, lessons.deleteUncategorizedLessons(request));
+        manager.clear();
+        assertNull(manager.find(Topic.class, remaining.getId()));
+        assertTrue(manager.find(Question.class, kept.getId()).getQuestionTopics().isEmpty());
         assertNotNull(manager.find(Topic.class, foreignLessonId));
     }
 }

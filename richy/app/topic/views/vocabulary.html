@@ -52,10 +52,14 @@
                 <div><button type="button" class="vw-btn vw-quiet" ng-repeat="child in vm.categoryChildren track by child.id" ng-click="vm.selectCategory(child)"><i class="fa fa-folder" aria-hidden="true"></i> {{child.name}}</button></div>
             </div>
             <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng trong nhóm" placeholder="Tìm tên bài trong nhóm..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons()"></label>
+            <div ng-if="vm.canDelete && vm.isUncategorized() && vm.lessonTotal" ng-include="'vocabulary_bulk_controls.html'"></div>
             <div class="vw-lesson-scroll" role="region" aria-label="Danh sách bài từ vựng" tabindex="0" vocabulary-load-more="vm.loadMoreLessons()">
-                <button type="button" class="vw-lesson" ng-repeat="lesson in vm.lessons track by lesson.id" ng-click="vm.selectLesson(lesson)">
-                    <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong></span><i class="fa fa-angle-right" aria-hidden="true"></i>
-                </button>
+                <div class="vw-lesson-row" ng-repeat="lesson in vm.lessons track by lesson.id" ng-class="{'is-selected':vm.selected[lesson.id]}">
+                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete && vm.isUncategorized()" ng-model="vm.selected[lesson.id]" ng-change="vm.toggleSelection(lesson.id)" aria-label="Chọn bài {{lesson.name}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
+                    <button type="button" class="vw-lesson" ng-click="vm.selectLesson(lesson)">
+                        <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong></span><i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </button>
+                </div>
                 <div class="vw-sidebar-state" ng-if="vm.lessonsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> {{vm.lessons.length ? 'Đang tải thêm bài...' : 'Đang tải bài...'}}</div>
                 <div class="vw-sidebar-state" ng-if="vm.lessonError" role="alert">{{vm.lessonError}} <button type="button" class="vw-link" ng-click="vm.retryLessons()">Thử lại</button></div>
                 <div class="vw-sidebar-state" ng-if="!vm.lessonsLoading && !vm.lessonError && !vm.lessons.length">
@@ -84,13 +88,13 @@
                 <div class="vw-actions"><button class="vw-btn vw-quiet" ng-click="vm.exportCards()" ng-disabled="vm.exporting"><i class="fa" ng-class="vm.exporting ? 'fa-spinner fa-spin' : 'fa-arrow-down'" aria-hidden="true"></i> {{vm.exporting ? 'Đang xuất...' : 'Export'}}</button><button class="vw-btn vw-quiet" ng-if="vm.isAdmin" question-excel-import import-template-url="question/views/excel_import_modal.html" topics="vm.importTopics" initial-topic="vm.activeLesson" user-id="vm.user.id" on-topic-created="vm.importTopicCreated(topic)" on-imported="vm.imported()"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Import</button><button class="vw-btn vw-primary" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ</button></div>
             </div>
             <div class="vw-list-bar"><div class="vw-segment-label"><i class="fa fa-clone" aria-hidden="true"></i><strong>Flashcard</strong><span class="vw-count">{{vm.total | number:0}}</span></div><select class="vw-type-filter" aria-label="Loại flashcard" ng-model="vm.status" ng-options="type.id as type.name for type in vm.typeFilters" ng-change="vm.loadCards(true)"></select></div>
-            <div class="vw-selection" ng-if="vm.canDelete && vm.cards.length && !vm.cardLoadError"><label><input type="checkbox" aria-label="Chọn tất cả thẻ trên trang" ng-checked="vm.allSelected()" ng-click="vm.togglePage()" ng-disabled="vm.cardsLoading || vm.deleting"> {{vm.selectedCards().length ? 'Đã chọn ' + vm.selectedCards().length + ' thẻ' : 'Chọn thẻ để xóa'}}</label><button class="vw-link vw-danger" ng-if="vm.selectedCards().length" ng-click="vm.confirmDelete()" ng-disabled="vm.deleting || vm.cardsLoading"><i class="fa fa-trash" aria-hidden="true"></i> Xóa đã chọn</button></div>
+            <div ng-if="vm.canDelete && vm.cards.length && !vm.cardLoadError" ng-include="'vocabulary_bulk_controls.html'"></div>
             <div class="vw-loading" ng-if="vm.cardsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải từ vựng...</div>
             <div class="vw-empty" ng-if="!vm.cardsLoading && vm.cardLoadError" role="alert"><span class="vw-empty-icon peach"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></span><h3>Chưa tải được từ vựng</h3><p>{{vm.cardLoadError}}</p><button class="vw-btn" ng-click="vm.loadCards()">Thử lại</button></div>
             <div class="vw-empty" ng-if="!vm.cardsLoading && !vm.cardLoadError && !vm.cards.length"><span class="vw-empty-icon lavender"><i class="fa" ng-class="vm.query ? 'fa-search' : 'fa-clone'" aria-hidden="true"></i></span><h3>{{vm.query ? 'Chưa tìm thấy từ phù hợp' : 'Sẵn sàng cho từ đầu tiên?'}}</h3><p>{{vm.query ? 'Thử một từ khóa khác hoặc đổi bộ lọc.' : (vm.activeLesson ? 'Từ mới sẽ được lưu ngay vào bài từ vựng này.' : 'Tạo một bài từ vựng hoặc thêm từ để bắt đầu thư viện của bạn.')}}</p><button class="vw-btn vw-primary" ng-if="!vm.query" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ đầu tiên</button></div>
             <div class="vw-card-list" ng-if="!vm.cardsLoading && !vm.cardLoadError && vm.cards.length">
                 <article class="vw-word-card" ng-repeat="card in vm.cards track by card.id" ng-class="{'is-selected':vm.selected[card.id]}">
-                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete" ng-model="vm.selected[card.id]" aria-label="Chọn từ {{card.question}}" ng-disabled="vm.deleting">
+                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete" ng-model="vm.selected[card.id]" ng-change="vm.toggleSelection(card.id)" aria-label="Chọn từ {{card.question}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
                     <span class="vw-word-monogram" ng-class="['lavender','mint','peach','blue'][$index % 4]">{{card.question.charAt(0).toUpperCase()}}</span>
                     <div class="vw-word-copy"><div class="vw-word-title"><h3>{{card.question}}</h3><button class="vw-sound" ng-click="vm.say(card)" aria-label="Nghe phát âm {{card.question}}"><i class="fa fa-volume-up" aria-hidden="true"></i></button><span class="vw-level" ng-if="card.level">{{card.level}}</span><span class="vw-listening-tag" ng-if="card.status === 5"><i class="fa fa-headphones" aria-hidden="true"></i> Listening</span></div><p>{{card.pronounce || 'Chưa có phiên âm'}}</p></div>
                     <div class="vw-meaning"><span>NGHĨA TIẾNG VIỆT</span><p>{{card.motherTongue || 'Chưa có nghĩa tiếng Việt'}}</p></div>
@@ -102,7 +106,7 @@
                 <form class="vw-page-size" name="vocabularyPageSize" ng-submit="vm.applyPageSize()">
                     <label for="vw-cards-per-page">Thẻ mỗi trang</label>
                     <input id="vw-cards-per-page" type="number" ng-model="vm.pageSizeInput" min="1" ng-attr-max="{{vm.pageSizeLimit}}" step="1" required>
-                    <button type="submit" class="vw-btn vw-quiet" ng-disabled="vocabularyPageSize.$invalid || vm.pageSizeInput === vm.pageSize || vm.deleting">Áp dụng</button>
+                    <button type="submit" class="vw-btn vw-quiet" ng-disabled="vocabularyPageSize.$invalid || vm.pageSizeInput === vm.pageSize || vm.bulkSaving">Áp dụng</button>
                 </form>
                 <div>
                     <button type="button" class="vw-icon-btn" ng-click="vm.changePage(-1)" ng-disabled="vm.page <= 1 || vm.cardsLoading" aria-label="Trang từ trước"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
@@ -180,8 +184,51 @@
         </div><div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="vm.cancelCard()" ng-disabled="vm.cardSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.cardSaving || vm.cardError(vm.cardDraft) || (!vm.cardDraft.id && vm.usage.wordLimitReached)"><i class="fa" ng-class="vm.cardSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.cardSaving ? 'Đang lưu...' : 'Lưu từ vựng'}}</button></div>
     </form>
 </script>
-<script type="text/ng-template" id="vocabulary_delete_modal.html">
-    <div class="vw-modal"><div class="vw-modal-head"><span class="vw-modal-symbol peach"><i class="fa fa-trash" aria-hidden="true"></i></span><h2>Xóa {{vm.deleteTargets.length}} thẻ từ vựng?</h2><p>Thẻ sẽ bị xóa khỏi thư viện và các bài có chứa thẻ đó. Bạn không thể hoàn tác thao tác này.</p></div><div class="vw-modal-body"><ul class="vw-delete-list"><li ng-repeat="card in vm.deleteTargets track by card.id">{{card.question}}</li></ul><p class="vw-form-error" role="alert" ng-if="vm.deleteError">{{vm.deleteError}}</p></div><div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="vm.cancelDelete()" ng-disabled="vm.deleting">Giữ lại</button><button type="button" class="vw-btn vw-destructive" ng-click="vm.deleteCards()" ng-disabled="vm.deleting"><i class="fa" ng-class="vm.deleting ? 'fa-spinner fa-spin' : 'fa-trash'" aria-hidden="true"></i>{{vm.deleting ? 'Đang xóa...' : 'Xác nhận xóa'}}</button></div></div>
+<script type="text/ng-template" id="vocabulary_bulk_controls.html">
+    <div class="vw-selection">
+        <label><input type="checkbox" aria-label="Chọn tất cả {{vm.isUncategorized() ? 'bài' : 'thẻ'}}" ng-model="vm.selectAllChecked" ng-change="vm.toggleAll()" ng-disabled="vm.selectionLoading || vm.bulkSaving"> Chọn tất cả</label>
+        <span role="status" ng-if="vm.selectionLoading || vm.selectedCount">{{vm.selectionLoading ? 'Đang chọn...' : 'Đã chọn ' + (vm.selectedCount | number:0) + (vm.isUncategorized() ? ' bài' : ' thẻ')}}</span>
+        <button type="button" class="vw-btn vw-quiet" ng-click="vm.confirmMove()" ng-disabled="!vm.selectedCount || vm.selectionLoading || vm.bulkSaving"><i class="fa fa-folder-open" aria-hidden="true"></i> Di chuyển</button>
+        <button type="button" class="vw-btn vw-delete-lesson" ng-click="vm.confirmDelete()" ng-disabled="!vm.selectedCount || vm.selectionLoading || vm.bulkSaving"><i class="fa fa-trash" aria-hidden="true"></i> Xóa đã chọn</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="vocabulary_bulk_modal.html">
+    <div class="vw-modal vw-lesson-modal">
+        <div class="vw-modal-head">
+            <span class="vw-modal-symbol" ng-class="vm.bulkDraft.move ? 'mint' : 'peach'"><i class="fa" ng-class="vm.bulkDraft.move ? 'fa-folder-open' : 'fa-trash'" aria-hidden="true"></i></span>
+            <h2>{{vm.bulkDraft.move ? 'Di chuyển' : 'Xóa'}} {{vm.bulkDraft.ids.length | number:0}} {{vm.bulkDraft.lessons ? 'bài' : 'thẻ'}} từ vựng?</h2>
+            <p><strong>{{vm.bulkDraft.word || vm.bulkDraft.sourceTitle}}</strong></p>
+        </div>
+        <div class="vw-modal-body">
+            <div class="vw-field" ng-if="vm.bulkDraft.move && vm.bulkDraft.lessons">
+                <label for="vw-bulk-category">Nhóm đích</label>
+                <ui-select class="vw-lesson-category" theme="bootstrap" dropdown-position="down" input-id="vw-bulk-category" ng-model="vm.bulkDraft.target" ng-disabled="vm.bulkSaving">
+                    <ui-select-match placeholder="Gõ để tìm nhóm đích...">{{$select.selected.pathLabel || $select.selected.name}}</ui-select-match>
+                    <ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel || category.name"></span></ui-select-choices>
+                </ui-select>
+            </div>
+            <div class="vw-field" ng-if="vm.bulkDraft.move && !vm.bulkDraft.lessons">
+                <label for="vw-bulk-lesson">Bài đích</label>
+                <ui-select class="vw-lesson-category" theme="bootstrap" dropdown-position="down" input-id="vw-bulk-lesson" ng-model="vm.bulkDraft.target" ng-disabled="vm.bulkSaving">
+                    <ui-select-match placeholder="Gõ để tìm bài đích...">{{$select.selected.name}}</ui-select-match>
+                    <ui-select-choices repeat="lesson in vm.moveLessonChoices track by lesson.id" refresh="vm.findMoveLessons($select.search)" refresh-delay="250">
+                        <span ng-bind="lesson.name"></span> <small ng-if="lesson.topicCategory.name">· {{lesson.topicCategory.name}}</small>
+                    </ui-select-choices>
+                </ui-select>
+            </div>
+            <p class="vw-help" ng-if="!vm.bulkDraft.move && vm.bulkDraft.lessons">Xóa các bài đã chọn và gỡ thẻ khỏi những bài đó. Bạn vẫn có thể tìm các thẻ trong thư viện.</p>
+            <p class="vw-help" ng-if="!vm.bulkDraft.move && !vm.bulkDraft.lessons">Xóa vĩnh viễn các thẻ đã chọn khỏi thư viện và mọi bài có chứa chúng.</p>
+            <p class="vw-form-error" role="alert" ng-if="vm.bulkError || vm.moveLessonError">{{vm.bulkError || vm.moveLessonError}}</p>
+        </div>
+        <div class="vw-modal-footer">
+            <button type="button" class="vw-btn" ng-click="vm.cancelBulkAction()" ng-disabled="vm.bulkSaving">{{vm.bulkDraft.move ? 'Hủy' : 'Giữ lại'}}</button>
+            <button type="button" class="vw-btn" ng-class="vm.bulkDraft.move ? 'vw-primary' : 'vw-destructive'" ng-click="vm.applyBulkAction()" ng-disabled="vm.bulkSaving || (vm.bulkDraft.move && !vm.bulkDraft.target)">
+                <i class="fa fa-spinner fa-spin" ng-if="vm.bulkSaving" aria-hidden="true"></i>
+                {{vm.bulkSaving ? 'Đang xử lý...' : (vm.bulkDraft.move ? 'Xác nhận di chuyển' : 'Xác nhận xóa')}}
+            </button>
+        </div>
+    </div>
 </script>
 
 <script type="text/ng-template" id="vocabulary_delete_lesson_modal.html">

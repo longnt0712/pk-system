@@ -1,9 +1,11 @@
 package com.globits.richy.rest;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,6 +29,7 @@ import com.globits.richy.dto.QuestionOnlyQuestionDto;
 import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
+import com.globits.richy.dto.VocabularyBulkActionDto;
 import com.globits.richy.service.QuestionExcelImportService;
 import com.globits.richy.service.QuestionService;
 
@@ -50,6 +53,32 @@ public class RestQuestionController {
     @RequestMapping(value = "/vocabulary/get_page/{page}/{size}", method = RequestMethod.POST)
     public Page<QuestionDto> getVocabularyPage(@RequestBody QuestionDto search, @PathVariable int page, @PathVariable int size) {
         return service.getVocabularyPage(search, page, size);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/vocabulary/selection", method = RequestMethod.POST)
+    public ResponseEntity<?> getVocabularySelection(@RequestBody QuestionDto search) {
+        try {
+            List<Long> ids = service.getVocabularySelection(search);
+            return ResponseEntity.ok(ids);
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", error.getMessage()));
+        }
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/vocabulary/bulk/{action:move|delete}", method = RequestMethod.POST)
+    public ResponseEntity<?> changeVocabularyCards(@PathVariable String action, @RequestBody VocabularyBulkActionDto request) {
+        try {
+            return ResponseEntity.ok("move".equals(action) ? service.moveVocabularyCards(request) : service.deleteVocabularyCards(request));
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", error.getMessage()));
+        } catch (IllegalStateException error) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Collections.singletonMap("message", error.getMessage()));
+        } catch (DataIntegrityViolationException error) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Collections.singletonMap("message",
+                    "Có dữ liệu đang được sử dụng hoặc vừa thay đổi. Chưa cập nhật thẻ nào."));
+        }
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})

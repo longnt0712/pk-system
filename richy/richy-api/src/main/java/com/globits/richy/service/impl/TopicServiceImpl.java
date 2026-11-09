@@ -1,11 +1,13 @@
 package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import com.globits.richy.domain.Topic;
 import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.dto.TopicDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.VocabularyLessonBulkActionDto;
 import com.globits.richy.repository.TopicCategoryRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.TopicService;
@@ -402,6 +405,76 @@ public class TopicServiceImpl implements TopicService {
 		ret.setMessage(message);
 		
 		return ret;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Long> getUncategorizedLessonSelection(String search) {
+		User owner = uncategorizedLessonOwner();
+		boolean searchByName = search != null && !search.isEmpty();
+		TypedQuery<Long> ids = manager.createQuery("select s.id from Topic s" + TopicRepository.UNCATEGORIZED_OWNER
+				+ (searchByName ? " and s.name like :search" : ""), Long.class);
+		ids.setParameter("owner", owner.getId());
+		if (searchByName) { ids.setParameter("search", "%" + search + "%"); }
+		return ids.getResultList();
+	}
+
+	@Override
+	@Transactional
+	public int moveUncategorizedLessons(VocabularyLessonBulkActionDto request) {
+		if (request == null || request.targetCategoryId == null) {
+			throw new IllegalArgumentException("Hãy chọn nhóm bài đích.");
+		}
+		return changeUncategorizedLessons(request, request.targetCategoryId);
+	}
+
+	@Override
+	@Transactional
+	public int deleteUncategorizedLessons(VocabularyLessonBulkActionDto request) {
+		return changeUncategorizedLessons(request, null);
+	}
+
+	private int changeUncategorizedLessons(VocabularyLessonBulkActionDto request, Long targetId) {
+		User owner = uncategorizedLessonOwner();
+		if (request == null || request.lessonIds == null || request.lessonIds.isEmpty()
+				|| request.lessonIds.stream().anyMatch(id -> id == null || id < 1)) {
+			throw new IllegalArgumentException("Hãy chọn ít nhất một bài hợp lệ.");
+		}
+		List<Long> ids = new ArrayList<Long>(new HashSet<Long>(request.lessonIds));
+		if (userRepository.findForVocabularyUpdate(owner.getId()) == null) {
+			throw new AccessDeniedException("Không xác định được chủ sở hữu bài từ vựng.");
+		}
+		TopicCategory category = targetId == null ? null : topicCategoryRepository.findOne(targetId);
+		if (targetId != null && category == null) { throw new IllegalStateException("Nhóm đích đã thay đổi. Hãy tải lại danh sách nhóm."); }
+		LocalDateTime now = LocalDateTime.now();
+		// Match the source group in each update so a concurrent move cannot be overwritten.
+		int batchSize = 500;
+		for (int from = 0; from < ids.size(); from += batchSize) {
+			List<Long> batch = ids.subList(from, Math.min(from + batchSize, ids.size()));
+			int changed;
+			if (category == null) {
+				manager.createQuery("delete from QuestionTopic link where link.topic.id in (select s.id from Topic s"
+						+ TopicRepository.UNCATEGORIZED_OWNER + " and s.id in :ids)")
+						.setParameter("owner", owner.getId()).setParameter("ids", batch).executeUpdate();
+				changed = topicRepository.deleteUncategorizedLessons(batch, owner.getId());
+			} else {
+				changed = topicRepository.moveUncategorizedLessons(batch, owner.getId(), category, owner.getUsername(), now);
+			}
+			if (changed != batch.size()) {
+				throw new IllegalStateException("Danh sách bài đã thay đổi. Hãy tải lại và chọn lại bài.");
+			}
+		}
+		return ids.size();
+	}
+
+	private User uncategorizedLessonOwner() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
+				|| ((User) authentication.getPrincipal()).getId() == null || "VIEWER".equals(VocabularyPolicy.role(authentication))
+				|| topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent() != null) {
+			throw new AccessDeniedException("Bạn không có quyền quản lý mục Bài chưa phân nhóm.");
+		}
+		return (User) authentication.getPrincipal();
 	}
 
 	@Override
