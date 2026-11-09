@@ -226,7 +226,7 @@ test('blocked local preferences do not prevent content toggling, resizing or que
 });
 
 
-test('header toolbar switch hides Listening controls independently while preserving the mounted media and current work',()=>{
+test('the Study header switch and hidden Serious strip preserve the mounted media and current work',()=>{
   const initializer=source.match(/vm\.showListeningToolbar\s*=\s*true\s*;/);assert.ok(initializer,'toolbar starts visible');
   const bar=openingTags('idp-instruction-bar')[0];assert.ok(bar);
   const hide=attribute(bar,'ng-hide');
@@ -236,8 +236,7 @@ test('header toolbar switch hides Listening controls independently while preserv
   assert.equal(attribute(toggle,'type'),'checkbox');assert.equal(attribute(toggle,'role'),'switch');
   assert.doesNotMatch(toggle,/\bng-(?:change|click)=/,'a display toggle does not invoke media or save handlers');
   const toggleLabel=header.slice(header.lastIndexOf('<label',header.indexOf(toggle)),header.indexOf(toggle));
-  assert.match(toggleLabel,/ng-if="vm\.isListeningRoute"/,'the header switch is available in both Listening modes');
-  assert.doesNotMatch(toggleLabel,/isStudyMode|testSessionMode/);
+  assert.match(toggleLabel,/ng-if="vm\.isListeningRoute && vm\.isStudyMode\(\)"/,'only Study has a toolbar switch');
   assert.match(header,/vm\.ieltsReadingActualTest\.title/,'header shows the actual test title');
   for(const tag of [bar,...openingTags('idp-listening-toolbar'),...openingTags('idp-listening-player')]){
     assert.doesNotMatch(tag,/\bng-if=/,'the toolbar and player stay mounted');
@@ -248,9 +247,9 @@ test('header toolbar switch hides Listening controls independently while preserv
     const f=fixture({mode}),audio=f.audio,answers=plain(f.vm.testResult),notes=plain(f.vm.annotationNotes);
     nodeVm.runInContext(initializer[0],f.c);f.vm.passageNumber=1;f.vm.showAudio=showAudio;f.vm.showListeningContent=content;
     f.vm.playbackValue=1.7;audio.playbackRate=1.7;audio.defaultPlaybackRate=1.7;
-    assert.equal(!!evaluate(hide,f),false);
+    assert.equal(!!evaluate(hide,f),mode==='SERIOUS');
     for(const visible of[false,true,false,true]){
-      f.vm.showListeningToolbar=visible;assert.equal(!!evaluate(hide,f),!visible);
+      f.vm.showListeningToolbar=visible;assert.equal(!!evaluate(hide,f),mode==='SERIOUS'||!visible);
       assert.equal(f.vm.showAudio,showAudio);assert.equal(f.vm.showListeningContent,content);
       assert.equal(f.c.document.getElementById('main-audio'),audio);assert.equal(audio.currentTime,18.5);
       assert.equal(audio.playbackRate,1.7);assert.equal(audio.defaultPlaybackRate,1.7);assert.equal(f.vm.playbackValue,1.7);

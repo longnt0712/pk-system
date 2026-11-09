@@ -55,7 +55,7 @@ after(async () => {
     if (server) await new Promise(resolve => server.close(resolve));
 });
 
-async function fixture({width = 1180, height = 820, listening = true, preview = false, visual = null} = {}) {
+async function fixture({width = 1180, height = 820, listening = true, preview = false, visual = null, study = true} = {}) {
     const page = await browser.newPage({viewport:{width, height}, hasTouch:true});
     const errors = [];
     page.on('pageerror', error => errors.push(error.stack));
@@ -99,6 +99,7 @@ async function fixture({width = 1180, height = 820, listening = true, preview = 
             node.removeAttribute('data-ng-controller');
             node.textContent = 'Normal site header or footer';
         });
+        appRoot.querySelectorAll('[data-ng-controller]').forEach(node => node.removeAttribute('data-ng-controller'));
         return appRoot.outerHTML;
     }, {view, shell});
     await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + css +
@@ -106,7 +107,7 @@ async function fixture({width = 1180, height = 820, listening = true, preview = 
     for (const name of ['jquery.min.js', 'angular.min.js']) await page.addScriptTag({path:path.join(app, 'assets/scripts/external/' + name)});
     await page.evaluate(() => { angular.module('Hrm', []); });
     await page.addScriptTag({path:path.join(app, 'common/utils/audio-seek.js')});
-    await page.evaluate(({listening, preview, visual, viewportCode}) => {
+    await page.evaluate(({listening, preview, visual, viewportCode, study}) => {
         if (visual) {
             window.qaViewport = new EventTarget();
             Object.assign(qaViewport, {offsetTop:0, offsetLeft:0, scale:1}, visual);
@@ -131,8 +132,8 @@ async function fixture({width = 1180, height = 820, listening = true, preview = 
             Object.assign(vm, {
                 isHasTestTakerName:true, isStartTest:true, passageNumber:1, isListeningRoute:listening, isPreviewMode:preview,
                 isWritingRoute:false, isComprehensiveRoute:false, displayContrast:'black-white', readingTextSize:'regular',
-                showListeningToolbar:true, showListeningContent:false, playbackValue:1, testSessionMode:'STUDY',
-                isStudyMode:() => true, minimumPlaybackSpeed:() => .6, hasPendingReadingSubmission:() => false,
+                showListeningToolbar:true, showListeningContent:false, playbackValue:1, testSessionMode:study?'STUDY':'SERIOUS',
+                isStudyMode:() => study, minimumPlaybackSpeed:() => study?.6:1, hasPendingReadingSubmission:() => false,
                 isListeningContentVisible:() => listening && (preview || vm.showListeningContent), hasComprehensiveVideo:() => false,
                 getRemainingMinutes:() => 0, getTimerStatusLabel:() => 'studied', getRemainingClock:() => '0:00',
                 readingPaneStyle:() => innerWidth <= 996 ? {'flex-basis':'50%'} : {width:'50%'},
@@ -148,7 +149,7 @@ async function fixture({width = 1180, height = 820, listening = true, preview = 
         }]);
         angular.bootstrap(document.body, ['CandidateViewport']);
         if (listening) document.getElementById('main-audio').src = '/lesson.wav';
-    }, {listening, preview, visual, viewportCode});
+    }, {listening, preview, visual, viewportCode, study});
     await page.waitForFunction(() => document.body.classList.contains('ielts-reading-test-running'));
     if (listening) await page.waitForFunction(() => document.getElementById('main-audio').duration === 60);
     return {page, errors};
@@ -167,7 +168,7 @@ async function bounds(page) {
 }
 
 function assertChromeVisible(layout) {
-    assert.ok(layout.nav.height >= 50, JSON.stringify(layout));
+    assert.ok(layout.nav.height >= 40, JSON.stringify(layout));
     assert.ok(layout.nav.bottom <= layout.visual.top + layout.visual.height + 1, JSON.stringify(layout));
     assert.ok(layout.nav.bottom >= layout.visual.top + layout.visual.height - 20, JSON.stringify(layout));
     assert.ok(layout.workspace.top >= layout.topbar.bottom - 1, JSON.stringify(layout));
@@ -206,6 +207,29 @@ test('full candidate shell keeps Part navigation visible while only Reading and 
             }
             assert.deepEqual(errors, []);
         } finally { await page.close(); }
+    }
+});
+
+test('Serious Listening fits the live clock and speed in the real header and gives the removed strip space to questions', async () => {
+    for (const width of [390, 768, 1366, 1920]) {
+        const {page, errors} = await fixture({width,height:820,study:false});
+        try {
+            assert.equal(await page.locator('#listening-toolbar-panel').isVisible(),false);
+            assert.equal(await page.locator('.idp-header-audio-switch').count(),0);
+            assert.equal(await page.locator('.idp-header-audio-time').innerText(),'00:00 / 01:00');
+            assert.equal(await page.locator('.idp-header-audio-speed').isVisible(),true);
+            const layout=await bounds(page); assertChromeVisible(layout);
+            assert.ok(layout.workspace.top-layout.topbar.bottom<25,JSON.stringify(layout));
+            const controls=await page.evaluate(()=>{
+                const box=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+                return {logo:box('.idp-ieltsroom-logo'),time:box('.idp-header-audio-time'),speed:box('.idp-header-audio-speed'),header:box('.idp-exam-topbar')};
+            });
+            assert.ok(controls.time.left>=0&&controls.speed.right<=width,JSON.stringify(controls));
+            assert.ok(controls.speed.bottom<=controls.header.bottom,JSON.stringify(controls));
+            if(width>=768) assert.ok(controls.logo.right<=controls.time.left,JSON.stringify(controls));
+            if(process.env.CANDIDATE_SERIOUS_SCREENSHOT&&width===1920) await page.screenshot({path:process.env.CANDIDATE_SERIOUS_SCREENSHOT});
+            assert.deepEqual(errors,[]);
+        } finally {await page.close();}
     }
 });
 

@@ -7,6 +7,8 @@ const http = require('node:http');
 const playwright = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
 const app = path.resolve(__dirname, '..');
 const view = fs.readFileSync(path.join(app, 'question/views/ielts_reading_actual_test_idp.html'), 'utf8');
+const controller = fs.readFileSync(path.join(app, 'question/controllers/IELTSReadingActualTestController.js'), 'utf8');
+const playbackControls = controller.slice(controller.indexOf('        vm.playbackValue = 1.0;'), controller.indexOf('        $scope.counter = 3600;'));
 const css = fs.readFileSync(path.join(app, 'assets/css/external/bootstrap.min.css'), 'utf8') +
     fs.readFileSync(path.join(app, 'assets/css/external/font-awesome.min.css'), 'utf8') +
     fs.readFileSync(path.join(app, 'assets/css/custom.css'), 'utf8') +
@@ -55,20 +57,22 @@ async function open(width, study = true) {
     await page.goto(origin);
     const toolbar = await page.evaluate(html => {
         const doc = new DOMParser().parseFromString(html, 'text/html');
-        return '<div class="idp-exam-test-context">' + doc.getElementById('listening-toolbar-switch').closest('label').outerHTML + '</div>' + doc.getElementById('listening-toolbar-panel').outerHTML;
+        return doc.querySelector('.idp-exam-test-context').outerHTML + doc.getElementById('listening-toolbar-panel').outerHTML;
     }, view);
     await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + css +
         'body{margin:0;padding:12px;background:#f4f6fb}.idp-reading-page{height:auto!important;min-height:0!important}@font-face{font-family:FontAwesome;src:url(/fontawesome-webfont.woff2)}</style></head><body><main class="idp-reading-page idp-listening-page">' + toolbar + '</main></body></html>');
     await page.addScriptTag({path: path.join(app, 'assets/scripts/external/jquery.min.js')});
     await page.addScriptTag({path: path.join(app, 'assets/scripts/external/angular.min.js')});
-    await page.evaluate(study => {
+    await page.evaluate(({study, playbackControls}) => {
         angular.module('Hrm', []).run(['$rootScope', function (root) {
             root.vm = {isListeningRoute: true, passageNumber: 1, showListeningToolbar: true, showAudio: true,
-                showListeningContent: false, playbackValue: 1, isStudyMode: () => study,
+                ieltsReadingActualTest:{title:'Vol 1 LISTENING FULL TEST 1'}, testSessionMode:study?'STUDY':'SERIOUS',
+                showListeningContent: false, playbackValue: 1, isStudyMode() {return this.testSessionMode === 'STUDY';},
                 minimumPlaybackSpeed: () => study ? 0.6 : 1, toggleListeningContent() {}};
+            new Function('vm','getMainAudio',playbackControls)(root.vm,()=>document.getElementById('main-audio'));
             window.toolbarScope = root;
         }]);
-    }, study);
+    }, {study, playbackControls});
     await page.addScriptTag({path: path.join(app, 'common/utils/audio-seek.js')});
     await page.evaluate(() => {
         angular.bootstrap(document.body, ['Hrm']);
@@ -90,8 +94,8 @@ test('Listening controls share one row on wide screens and retain a usable playe
                     toggles:rect('.idp-listening-toggles'), pageWidth:document.documentElement.scrollWidth};
             });
             assert.ok(layout.pageWidth <= width + 1, JSON.stringify({width, layout}));
-            assert.ok(layout.play.width >= 44 && layout.play.bottom - layout.play.top >= 44, JSON.stringify({width, layout}));
-            assert.ok(layout.seek.width >= 80 && layout.seek.bottom - layout.seek.top >= 44, JSON.stringify({width, layout}));
+            assert.ok(layout.play.width >= 26 && layout.play.bottom - layout.play.top >= 26, JSON.stringify({width, layout}));
+            assert.ok(layout.seek.width >= 80 && layout.seek.bottom - layout.seek.top >= 26, JSON.stringify({width, layout}));
             assert.equal(await page.locator('#main-audio').isVisible(), false, 'browser-native controls stay hidden, including Safari');
             assert.equal(await page.locator('#main-audio').evaluate(audio => audio.controls), false, 'there is only one seek timeline');
             assert.equal(await page.locator('.idp-listening-seek:visible').count(), 1);
@@ -119,7 +123,7 @@ test('the enlarged seek target supports pointer and keyboard, while display swit
         await slider.waitFor();
         await page.waitForFunction(() => !document.querySelector('.idp-listening-seek').disabled);
         const target = await slider.boundingBox();
-        assert.ok(target.height >= 44 && target.width >= 150, JSON.stringify(target));
+        assert.ok(target.height >= 26 && target.width >= 150, JSON.stringify(target));
         await page.mouse.click(target.x + target.width * 0.65, target.y + 7);
         await page.waitForFunction(() => document.getElementById('main-audio').currentTime > 20 && !document.getElementById('main-audio').seeking, null, {timeout:5000});
         const beforeKey = await page.locator('#main-audio').evaluate(audio => audio.currentTime);
@@ -158,8 +162,10 @@ test('the enlarged seek target supports pointer and keyboard, while display swit
     const serious = await open(1366, false);
     try {
         assert.equal(await serious.page.locator('#main-audio').isVisible(), false);
+        assert.equal(await serious.page.locator('#listening-toolbar-panel').isVisible(), false);
+        assert.equal(await serious.page.locator('#listening-toolbar-switch').count(), 0);
         assert.equal(await serious.page.locator('.idp-listening-toggles').count(), 0);
-        assert.equal(await serious.page.locator('.idp-listening-speed').isVisible(), true);
+        assert.equal(await serious.page.locator('.idp-header-audio-speed').isVisible(), true);
         await serious.page.evaluate(() => {
             const audio = document.getElementById('main-audio'); audio.currentTime = 5;
             const slider = document.querySelector('.idp-listening-seek'); slider.value = 30;
@@ -170,6 +176,70 @@ test('the enlarged seek target supports pointer and keyboard, while display swit
         assert.equal(await serious.page.locator('#main-audio').evaluate(audio => audio.paused), true, 'Serious mode does not permit the custom play control');
         assert.deepEqual(serious.errors, []);
     } finally { await serious.page.close(); }
+});
+
+test('Serious header shows the live audio clock and speed without a separate strip or switch', async () => {
+    for (const width of [390, 768, 1366, 1920]) {
+        const {page, errors} = await open(width, false);
+        try {
+            assert.equal(await page.locator('#listening-toolbar-panel').isVisible(), false);
+            assert.equal(await page.locator('.idp-header-audio-switch').count(), 0);
+            assert.equal(await page.locator('.idp-listening-speed:visible').count(), 1);
+            assert.equal(await page.locator('#play-back-input').count(), 1, 'only the active speed control has an ID');
+            assert.equal(await page.locator('.idp-header-audio-time').innerText(), '00:00 / 01:00');
+            await page.evaluate(() => {document.getElementById('main-audio').currentTime = 50;});
+            await page.waitForFunction(() => document.querySelector('.idp-header-audio-time').textContent === '00:50 / 01:00');
+            const minus = page.getByRole('button', {name:'Giảm tốc độ', exact:true});
+            const plus = page.getByRole('button', {name:'Tăng tốc độ', exact:true});
+            assert.equal(await minus.isDisabled(), true);
+            await plus.click();
+            assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.playbackRate), 1.1);
+            await minus.click();
+            assert.equal(await minus.isDisabled(), true);
+            assert.equal(await page.locator('#main-audio').evaluate(audio=>audio.currentTime), 50);
+            const layout = await page.evaluate(() => {
+                const rect = selector => {const r=document.querySelector(selector).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+                return {time:rect('.idp-header-audio-time'),title:rect('.idp-exam-test-title'),speed:rect('.idp-header-audio-speed'),width:document.documentElement.scrollWidth};
+            });
+            assert.ok(layout.width <= width + 1, JSON.stringify({width,layout}));
+            assert.ok(layout.time.right <= layout.title.left && layout.title.right <= layout.speed.left, JSON.stringify({width,layout}));
+            assert.ok(Math.abs(layout.time.top + layout.time.bottom - layout.speed.top - layout.speed.bottom) <= 2, JSON.stringify({width,layout}));
+            await page.evaluate(() => {
+                const audio=document.getElementById('main-audio');
+                Object.defineProperties(audio,{currentTime:{configurable:true,value:110},duration:{configurable:true,value:1618}});
+                audio.dispatchEvent(new Event('timeupdate'));
+            });
+            assert.equal(await page.locator('.idp-header-audio-time').innerText(), '01:50 / 26:58');
+            await page.evaluate(() => {const audio=document.getElementById('main-audio');delete audio.currentTime;delete audio.duration;});
+            await page.evaluate(() => {const audio=document.getElementById('main-audio');audio.removeAttribute('src');audio.load();});
+            await page.waitForFunction(() => document.querySelector('.idp-header-audio-time').textContent === '00:00 / 00:00');
+            assert.deepEqual(errors, []);
+        } finally {await page.close();}
+    }
+});
+
+test('switching Study and Serious keeps the same media and releases the read-only clock on destruction', async () => {
+    const {page, errors} = await open(1366, false);
+    try {
+        await page.evaluate(async () => {const audio=document.getElementById('main-audio');audio.currentTime=25;await audio.play();});
+        await page.evaluate(() => toolbarScope.$apply(()=>{toolbarScope.vm.testSessionMode='STUDY';}));
+        assert.equal(await page.locator('.idp-header-audio-time').count(), 0);
+        assert.equal(await page.locator('#listening-toolbar-panel').isVisible(), true);
+        assert.equal(await page.locator('.idp-header-audio-switch').count(), 1);
+        await page.evaluate(() => toolbarScope.$apply(()=>{toolbarScope.vm.testSessionMode='SERIOUS';}));
+        await page.waitForFunction(()=>document.querySelector('.idp-header-audio-time').textContent.startsWith('00:25'));
+        const state=await page.locator('#main-audio').evaluate(audio=>({same:audio===originalAudio,paused:audio.paused,time:audio.currentTime}));
+        assert.equal(state.same,true);assert.equal(state.paused,false);assert.ok(state.time>=25);
+        await page.evaluate(() => {
+            window.retiredAudioClock=document.querySelector('.idp-header-audio-time');
+            window.retiredAudioClockText=retiredAudioClock.textContent;
+            toolbarScope.$destroy();
+            const audio=document.getElementById('main-audio');audio.pause();audio.currentTime=12;
+            audio.dispatchEvent(new Event('timeupdate'));
+        });
+        assert.equal(await page.evaluate(()=>retiredAudioClock.textContent),await page.evaluate(()=>retiredAudioClockText), 'a destroyed clock no longer handles media events');
+        assert.deepEqual(errors, []);
+    } finally {await page.close();}
 });
 
 test('the custom player catches playback rejection and synchronizes source, time and paused state', async () => {

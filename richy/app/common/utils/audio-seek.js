@@ -67,6 +67,32 @@
                 });
             }
         };
+    }]).directive('audioTimeFor', ['$document', '$timeout', function ($document, $timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var audio = null;
+                var events = ['loadedmetadata', 'durationchange', 'timeupdate', 'seeked', 'ended', 'emptied', 'loadstart'];
+                function clock(seconds) {
+                    seconds = Number(seconds);
+                    seconds = isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+                    var minutes = Math.floor(seconds / 60);
+                    return (minutes < 10 ? '0' : '') + minutes + ':' + ('0' + (seconds % 60)).slice(-2);
+                }
+                function refresh() {
+                    element[0].textContent = clock(audio && audio.currentTime) + ' / ' + clock(audio && audio.duration);
+                }
+                var pending = $timeout(function () {
+                    audio = $document[0].getElementById(attrs.audioTimeFor);
+                    if (audio) { events.forEach(function (name) { audio.addEventListener(name, refresh); }); }
+                    refresh();
+                }, 0, false);
+                scope.$on('$destroy', function () {
+                    $timeout.cancel(pending);
+                    if (audio) { events.forEach(function (name) { audio.removeEventListener(name, refresh); }); }
+                });
+            }
+        };
     }]).directive('audioSeekFor', ['$document', '$timeout', function ($document, $timeout) {
         return {
             restrict: 'A',
