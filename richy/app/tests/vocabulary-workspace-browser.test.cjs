@@ -7,9 +7,11 @@ const playwright = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-
 const app = path.resolve(__dirname, '..');
 const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
 const css = ['assets/css/external/bootstrap.min.css', 'assets/css/components-md.min.css', 'assets/css/external/select.min.css',
-    'assets/fontawesome/css/all.css', 'topic/vocabulary.css'].map(file => fs.readFileSync(path.join(app, file), 'utf8')).join('\n');
+    'assets/fontawesome/css/all.css'].map(file => fs.readFileSync(path.join(app, file), 'utf8')).join('\n');
+const productionCss = ['assets/css/custom.css', 'assets/css/ui-layer-safety.css'].map(file => fs.readFileSync(path.join(app, file), 'utf8')).join('\n');
+const vocabularyCss = fs.readFileSync(path.join(app, 'topic/vocabulary.css'), 'utf8');
 
-async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, initialCategory = null, holdInitial = false, clock = false} = {}) {
+async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, initialCategory = null, holdInitial = false, clock = false, productionStyles = false} = {}) {
     const page = await browser.newPage({viewport: {width, height: 1120}});
     const waitForInitialLesson = initialLesson && !holdInitial;
     if (clock) await page.clock.install();
@@ -89,7 +91,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
     if (initialCategory) search.set('category', initialCategory);
     if (initialLesson) search.set('lesson', initialLesson);
     await page.goto('http://vocabulary.test/topics' + (search.size ? '?' + search : ''));
-    await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>' + css +
+    await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>' + css + '\n' + (productionStyles ? productionCss : '') + '\n' + vocabularyCss +
         'body{padding:24px!important;background:#f3f4f0} @media(max-width:767px){body{padding:8px!important}}</style></head><body><div ng-controller="VocabularyController as vm">' +
         fs.readFileSync(path.join(app, 'topic/views/vocabulary.html'), 'utf8') + '</div></body></html>');
     for (const file of ['jquery.min.js', 'angular.min.js', 'angular-sanitize.min.js', 'ui-bootstrap-tpls.min.js', 'select.min.js']) await page.addScriptTag({path: path.join(app, 'assets/scripts/external', file)});
@@ -191,6 +193,56 @@ test('administrators can create and move groups, and a slower group cannot overw
     } finally { await browser.close(); }
 });
 
+test('the lesson category picker stays inside the scrolled dialog and leaves its footer clickable', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const [width, height] of [[1366, 768], [390, 560]]) {
+            const {page, state} = await fixture(browser, {width, initialCategory: 3, productionStyles: true});
+            await page.setViewportSize({width, height});
+            await page.waitForFunction(() => window.vm.lessonCategory?.id === 3);
+            await page.evaluate(() => {
+                const spacer = document.createElement('div');
+                spacer.style.height = '430px';
+                document.body.prepend(spacer);
+                window.scrollTo(0, 420);
+            });
+            if (width < 768) await page.locator('.vw-mobile-picker').click();
+            const create = page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true});
+            await create.scrollIntoViewIfNeeded();
+            assert.ok(await page.evaluate(() => window.scrollY > 0));
+            await create.click();
+
+            const dialog = page.locator('.modal-dialog');
+            const toggle = dialog.locator('.ui-select-toggle');
+            assert.match(await toggle.innerText(), /IELTS & học thuật \/ Reading/);
+            await toggle.click();
+            assert.equal(await page.locator('body > .ui-select-container.open').count(), 0, 'opening the picker does not detach it from the dialog');
+            const search = dialog.locator('input.ui-select-search');
+            const footer = await dialog.locator('.vw-modal-footer').boundingBox();
+            assert.ok(footer && footer.y + footer.height <= height, 'the footer fits while all groups are listed');
+            await search.fill('Cambridge IELTS 19');
+            const option = dialog.getByRole('option', {name: 'IELTS & học thuật / Reading / Cambridge IELTS 19', exact: true});
+            await option.waitFor();
+            const position = await option.evaluate(node => {
+                const box = node.getBoundingClientRect();
+                const input = node.closest('.ui-select-container').querySelector('input.ui-select-search').getBoundingClientRect();
+                const footer = node.closest('.vw-modal').querySelector('.vw-modal-footer').getBoundingClientRect();
+                return {gap: box.top - input.bottom, optionBottom: box.bottom, footerTop: footer.top, footerBottom: footer.bottom,
+                    hit: node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2))};
+            });
+            assert.ok(position.gap >= 0 && position.gap < 20, JSON.stringify(position));
+            assert.ok(position.optionBottom <= position.footerTop && position.footerBottom <= height, JSON.stringify(position));
+            assert.equal(position.hit, true);
+            await option.click();
+            assert.match(await toggle.innerText(), /Reading \/ Cambridge IELTS 19/);
+            await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+            await dialog.waitFor({state: 'hidden'});
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
 test('one workspace selects a lesson, creates a lesson with category and saves words directly inside it', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
@@ -210,7 +262,7 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
         await page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).click();
         await page.getByLabel('Tên bài từ vựng', {exact: true}).fill('My new vocabulary');
         await page.locator('.modal-dialog .ui-select-toggle').click();
-        await page.locator('body > .vw-overlay-select.open input.ui-select-search').fill('IELTS');
+        await page.locator('.modal-dialog .vw-lesson-category input.ui-select-search').fill('IELTS');
         await page.getByRole('option', {name: 'IELTS & học thuật', exact: true}).click();
         await page.getByRole('button', {name: 'Lưu bài từ vựng', exact: true}).click();
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});

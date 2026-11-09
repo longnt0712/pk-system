@@ -132,6 +132,33 @@
 .vw-modal-head p{font-size:12px;color:#93a087;line-height:1.8;margin:0;overflow-wrap:anywhere}
 .vw-modal-body{padding:20px 30px 15px;max-height:65vh;overflow-y:auto}
 .vw-modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:18px 30px;border-top:1px solid #eef1e7}
+/* Keep the category picker in the lesson form's scroll area. */
+.vw-lesson-modal {
+    --vw-lesson-modal-margins: 120px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--vw-lesson-modal-margins));
+    max-height: calc(100dvh - var(--vw-lesson-modal-margins));
+    border-radius: inherit;
+    overflow: hidden;
+}
+.vw-lesson-modal > .vw-modal-head,
+.vw-lesson-modal > .vw-modal-footer { flex: none; }
+.vw-lesson-modal > .vw-modal-body { min-height: 0; max-height: none; overscroll-behavior: contain; }
+.vw-lesson-modal .vw-lesson-category > .ui-select-choices {
+    position: static !important;
+    float: none;
+    margin: 4px 0 0;
+    max-height: min(200px, 30vh) !important;
+    box-shadow: none !important;
+}
+.vw-lesson-modal .vw-lesson-category .ui-select-choices-row-inner {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+    .vw-lesson-modal { --vw-lesson-modal-margins: 50px; }
+}
 .vw-field{display:block;font-size:12px;font-weight:600;color:#7e8e71;margin:0 0 15px}
 .vw-field input,.vw-field textarea,.vw-field select{display:block;width:100%;border:1px solid #e2e9d8;border-radius:11px!important;background:#fff;padding:11px 13px;font-size:13px;font-weight:400;color:#4b6440;box-shadow:0 2px 3px rgba(49,77,35,.015);margin-top:7px;outline:none}
 .vw-field input::placeholder,.vw-field textarea::placeholder{color:#bac3ae;font-size:12px}

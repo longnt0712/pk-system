@@ -136,8 +136,28 @@
 </script>
 
 <script type="text/ng-template" id="vocabulary_lesson_modal.html">
-    <form class="vw-modal" ng-submit="vm.saveLesson()" novalidate><div class="vw-modal-head"><span class="vw-modal-symbol mint"><i class="fa fa-book" aria-hidden="true"></i></span><button type="button" class="vw-icon-btn" aria-label="Đóng tạo bài" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving"><i class="fa fa-times" aria-hidden="true"></i></button><h2>{{vm.lessonDraft.id ? 'Sửa bài từ vựng' : 'Một bài từ vựng mới'}}</h2><p>Đặt tên, chọn nhóm và bắt đầu thêm từ.</p></div>
-        <div class="vw-modal-body"><div class="vw-notice warning" role="alert" ng-if="!vm.lessonDraft.id && vm.usage.topicLimitReached">{{vm.usage.topicLimitMessage}}</div><label class="vw-field">Tên bài từ vựng<input aria-label="Tên bài từ vựng" ng-model="vm.lessonDraft.name" ng-model-options="{allowInvalid:true}" ng-maxlength="200" placeholder="Ví dụ: Những điều nhỏ bé mỗi ngày" autofocus><small>{{(vm.lessonDraft.name || '').trim().length}}/200 ký tự</small></label><label class="vw-field" for="vw-lesson-category">Nhóm bài từ vựng</label><ui-select class="vw-overlay-select" append-to-body="true" vocabulary-select-portal input-id="vw-lesson-category" ng-model="vm.lessonDraft.topicCategory" theme="bootstrap"><ui-select-match placeholder="Gõ để tìm nhóm bài...">{{$select.selected.pathLabel || $select.selected.name}}</ui-select-match><ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel"></span></ui-select-choices></ui-select><div class="vw-form-error" role="alert" ng-if="vm.categoriesError">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div><p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p><p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p></div>
+    <form class="vw-modal vw-lesson-modal" ng-submit="vm.saveLesson()" novalidate>
+        <div class="vw-modal-head">
+            <span class="vw-modal-symbol mint"><i class="fa fa-book" aria-hidden="true"></i></span>
+            <button type="button" class="vw-icon-btn" aria-label="Đóng tạo bài" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving"><i class="fa fa-times" aria-hidden="true"></i></button>
+            <h2>{{vm.lessonDraft.id ? 'Sửa bài từ vựng' : 'Một bài từ vựng mới'}}</h2>
+            <p>Đặt tên, chọn nhóm và bắt đầu thêm từ.</p>
+        </div>
+        <div class="vw-modal-body">
+            <div class="vw-notice warning" role="alert" ng-if="!vm.lessonDraft.id && vm.usage.topicLimitReached">{{vm.usage.topicLimitMessage}}</div>
+            <label class="vw-field">Tên bài từ vựng
+                <input aria-label="Tên bài từ vựng" ng-model="vm.lessonDraft.name" ng-model-options="{allowInvalid:true}" ng-maxlength="200" placeholder="Ví dụ: Những điều nhỏ bé mỗi ngày" autofocus>
+                <small>{{(vm.lessonDraft.name || '').trim().length}}/200 ký tự</small>
+            </label>
+            <label class="vw-field" for="vw-lesson-category">Nhóm bài từ vựng</label>
+            <ui-select class="vw-lesson-category" dropdown-position="down" input-id="vw-lesson-category" ng-model="vm.lessonDraft.topicCategory" theme="bootstrap">
+                <ui-select-match placeholder="Gõ để tìm nhóm bài...">{{$select.selected.pathLabel || $select.selected.name}}</ui-select-match>
+                <ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel"></span></ui-select-choices>
+            </ui-select>
+            <div class="vw-form-error" role="alert" ng-if="vm.categoriesError">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
+            <p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p>
+            <p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p>
+        </div>
         <div class="vw-modal-footer"><button type="button" class="vw-link vw-danger" style="margin-right:auto" ng-if="vm.canDelete && vm.lessonDraft.id" ng-click="vm.confirmDeleteLesson()" ng-disabled="vm.lessonSaving">Xóa bài</button><button type="button" class="vw-btn" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.lessonSaving || (!vm.lessonDraft.id && vm.usage.topicLimitReached)"><i class="fa" ng-class="vm.lessonSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.lessonSaving ? 'Đang lưu...' : 'Lưu bài từ vựng'}}</button></div>
     </form>
 </script>
