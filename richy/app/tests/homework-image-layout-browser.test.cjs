@@ -9,6 +9,7 @@ const read = file => fs.readFileSync(path.join(app,file),'utf8');
 const listing = read('enrolment_class/views/listing.html');
 const controller = read('enrolment_class/controllers/EnrolmentClassController.js');
 const exporter = controller.slice(controller.indexOf('        function homeworkExportValue('),controller.indexOf('        function openClassImagePreview('));
+const progressHelpers = controller.slice(controller.indexOf('        vm.homeworkProgressPercent ='),controller.indexOf('\t\tvm.tasksForSection ='));
 const styles = ['external/bootstrap.min.css','components-md.min.css','layout-hoz.min.css','default.min.css','custom.css','ieltsroom-halloween.css']
     .map(file=>read('assets/css/'+file)).join('\n') + [...listing.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(match=>match[1]).join('\n');
 const markup = listing.match(/<div class="class-homework-review-table"[\s\S]*?<\/table>\s*<\/div>/)[0];
@@ -27,7 +28,7 @@ test('homework PNG layout bounds column widths and wraps full titles/comments in
             await page.route('**/*',route=>route.abort());
             await page.setContent('<!doctype html><html class="ieltsroom-halloween"><head><style>'+styles+'</style></head><body><section class="class-schedule-day-modal-window">'+markup+'</section></body></html>');
             await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
-            await page.evaluate(exporter=>{
+            await page.evaluate(({exporter,progressHelpers})=>{
                 const long = 'Học thuộc hết bảng giới từ và làm, dịch bài THI ONLINE: LÀM CHỦ KIẾN THỨC NGỮ PHÁP GIỚI TỪ & CỤM GIỚI TỪ (BUỔI 2).';
                 const tasks = Array.from({length:4},(_,index)=>({id:index+1,title:long,topicName:'Topic '+long,sourceQuestionTitle:'Bài kiểm tra '+long}));
                 const rows = Array.from({length:16},(_,index)=>({id:index+1,name:'Nguyễn Minh Anh '+(index+1),username:'student'+index,
@@ -36,13 +37,14 @@ test('homework PNG layout bounds column widths and wraps full titles/comments in
                 const vm = {scheduleStudents:rows,previousHomeworkTasks:tasks,scheduleClass:{name:'GRADE 9'},
                     filteredHomeworkRows:()=>rows,isHomeworkColumnVisible:()=>true,isHomeworkTaskColumnVisible:()=>true,homeworkProgressLevels:[50],
                     previousHomeworkLabel:()=> '31/10/2026',scheduleDayLabel:()=> '01/11/2026',homeworkHasExactProgress:()=>false};
+                new Function('vm',progressHelpers)(vm);
                 angular.module('HomeworkExportFixture',[]).run(['$rootScope',root=>{root.vm=vm;}]);
                 angular.bootstrap(document.body,['HomeworkExportFixture']);
                 const build = new Function('vm','angular','document',exporter+';return prepareHomeworkImageElement;')(vm,angular,document);
                 window.exportRoot = build(document.querySelector('.class-homework-review-table table'));
                 document.body.appendChild(exportRoot);
                 window.exportFixture = {vm,build};
-            },exporter);
+            },{exporter,progressHelpers});
             const layout = await page.evaluate(()=>{
                 const table = exportRoot.querySelector('table');
                 return {width:exportRoot.scrollWidth,height:exportRoot.scrollHeight,columns:[...table.querySelectorAll('col')].map(n=>n.getBoundingClientRect().width),

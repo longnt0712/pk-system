@@ -35,6 +35,7 @@ import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
@@ -1133,10 +1134,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                 : testResultRepository.findIeltsPartCompletions(studentIds, ieltsTestIds, start, maximumEnd);
         List<Object[]> directListeningCompletions = directListeningIds.isEmpty() ? new ArrayList<Object[]>()
                 : testResultRepository.findDirectListeningCompletions(studentIds, directListeningIds, start, maximumEnd);
+        List<Long> scoredTaskIds = new ArrayList<Long>();
+        for (EnrolmentClassScheduleTaskDto task : ends.keySet()) {
+            if (HomeworkTestScore.enabled(task)) { scoredTaskIds.add(task.getId()); }
+        }
+        List<TestResult> scoredResults = scoredTaskIds.isEmpty() ? new ArrayList<TestResult>()
+                : testResultRepository.findHomeworkTestScores(studentIds, scoredTaskIds, start, maximumEnd);
         for (Map.Entry<EnrolmentClassScheduleTaskDto, LocalDateTime> entry : ends.entrySet()) {
             HomeworkTopicCompletion.applyDirectListening(entry.getKey(), directListeningCompletions, start, entry.getValue());
             HomeworkTopicCompletion.apply(entry.getKey(), completions, start, entry.getValue());
             HomeworkTopicCompletion.applyIelts(entry.getKey(), ieltsCompletions, start, entry.getValue());
+            HomeworkTestScore.apply(entry.getKey(), scoredResults, start, entry.getValue());
         }
         return dto;
     }

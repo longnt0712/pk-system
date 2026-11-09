@@ -133,7 +133,7 @@ test('the teacher report aggregates exact topic percentages and labels rather th
     nodeVm.runInContext(section('        vm.buildHomeworkReviewRows =', '        vm.filteredHomeworkRows ='),f.context);
     f.vm.buildHomeworkReviewRows();
     assert.equal(f.vm.homeworkReviewRows[0].cells[0].editStatus,'PROGRESS_33');
-    assert.equal(f.vm.homeworkReviewRows[0].cells[0].label,'Đã làm 33%');
+    assert.equal(f.vm.homeworkReviewRows[0].cells[0].label,'Chưa làm (33%)');
     assert.equal(f.vm.homeworkReviewRows[0].progressPercent,33);
     f.vm.previousHomeworkTasks[0].studentProgress[0].status = 'PROGRESS_67'; f.vm.buildHomeworkReviewRows();
     assert.equal(f.vm.homeworkReviewRows[0].progressPercent,67);

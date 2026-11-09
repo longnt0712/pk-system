@@ -137,8 +137,9 @@
 		vm.taskEditorIndex = -1;
 		vm.taskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'IN_PROGRESS', name: 'Đang thực hiện'}, {id: 'DONE', name: 'Hoàn thành'}];
 		vm.homeworkProgressLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-		vm.studentTaskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
-        angular.forEach(vm.homeworkProgressLevels, function (percent) { vm.studentTaskStatuses.push({id: 'PROGRESS_' + percent, name: 'Đã làm ' + percent + '%'}); });
+		vm.studentTaskStatuses = [{id: 'TODO', name: 'Chưa làm (0%)'}, {id: 'DONE', name: 'Đã làm (100%)'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
+        angular.forEach(vm.homeworkProgressLevels, function (percent) { vm.studentTaskStatuses.push({id: 'PROGRESS_' + percent,
+            name: (percent >= 85 ? 'Đã làm' : percent > 40 ? 'Chưa hoàn thành' : 'Chưa làm') + ' (' + percent + '%)'}); });
 		var scheduleStudentsRequest = 0;
         var scheduleAttendanceRequest = 0;
         var homeworkReviewRequest = 0;
@@ -1894,17 +1895,18 @@
                     var progress = lookup[String(student.id)];
                     var status = progress && progress.status !== 'UNRECORDED' ? progress.status : 'TODO';
                     if (progress && progress.status !== 'UNRECORDED') { recorded++; }
-                    var percent = vm.homeworkProgressPercent({status: status});
-                    progressTotal += percent;
-                    if (percent > 0 && percent < 100) { partial++; }
-                    if (status === 'DONE') { done++; }
-                    if (status === 'NEEDS_REVIEW') { needsReview++; }
                     var taskId = vm.previousHomeworkTasks[index].id, key = taskId + ':' + student.id;
-                    return homeworkCellDrafts[key] || {status: status, notes: progress ? progress.notes || '' : '',
+                    var cell = homeworkCellDrafts[key] || {status: status, notes: progress ? progress.notes || '' : '',
                         taskId: taskId, key: key, editStatus: status, editNotes: progress ? progress.notes || '' : '',
                         automatic: !!(progress && progress.automatic), manualStatus: progress && progress.manualStatus,
-                        label: status === 'DONE' ? (progress.automatic ? 'Đã làm — tự động' : 'Đã làm') : status === 'NEEDS_REVIEW' ? 'Cần bổ sung'
-                            : percent ? 'Đã làm ' + percent + '%' : 'Chưa làm'};
+                        resultPercent: progress && progress.resultPercent};
+                    var percent = vm.homeworkProgressPercent(cell);
+                    progressTotal += percent;
+                    if (percent > 0 && percent < 100) { partial++; }
+                    if (percent >= 85 && status !== 'NEEDS_REVIEW') { done++; }
+                    if (status === 'NEEDS_REVIEW') { needsReview++; }
+                    cell.label = vm.homeworkProgressLabel(cell);
+                    return cell;
                 });
                 var total = cells.length;
                 var status = !total ? 'NO_TASKS' : done === total ? 'DONE' : needsReview ? 'NEEDS_REVIEW'
@@ -2201,9 +2203,30 @@
         };
         vm.homeworkProgressPercent = function (progress) {
             if (!progress) { return 0; }
-            if (progress.status === 'DONE') { return 100; }
-            var match = /^PROGRESS_([1-9]\d?)$/.exec(progress.status || '');
+            var status = progress.editStatus || progress.status;
+            if (progress.automatic && status === progress.status && progress.resultPercent != null
+                && isFinite(Number(progress.resultPercent))) {
+                return Math.max(0, Math.min(100, Number(progress.resultPercent)));
+            }
+            if (status === 'DONE') { return 100; }
+            var match = /^PROGRESS_([1-9]\d?)$/.exec(status || '');
             return match ? Number(match[1]) : 0;
+        };
+        vm.homeworkProgressClass = function (cell) {
+            if ((cell.editStatus || cell.status) === 'NEEDS_REVIEW') { return 'is-review'; }
+            var percent = vm.homeworkProgressPercent(cell);
+            return percent >= 85 ? 'is-done' : percent > 40 ? 'is-progress' : 'is-todo';
+        };
+        vm.homeworkProgressLabel = function (cell, optionStatus) {
+            var status = optionStatus || cell.editStatus || cell.status;
+            if (status === 'NEEDS_REVIEW') { return 'Cần bổ sung'; }
+            var percent = vm.homeworkProgressPercent(optionStatus && optionStatus !== (cell.editStatus || cell.status)
+                ? {status: optionStatus} : cell);
+            var display = Math.round(percent * 100) / 100;
+            // Display rounding must not move a result across either status boundary.
+            if (percent < 85 && display >= 85) { display = 84.99; }
+            if (percent > 40 && display <= 40) { display = 40.01; }
+            return (percent >= 85 ? 'Đã làm' : percent > 40 ? 'Chưa hoàn thành' : 'Chưa làm') + ' (' + display + '%)';
         };
         vm.homeworkHasExactProgress = function (cell) {
             return cell && cell.automatic && /^PROGRESS_([1-9]\d?)$/.test(cell.status || '')

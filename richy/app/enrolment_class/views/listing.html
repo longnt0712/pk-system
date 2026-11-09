@@ -1444,8 +1444,8 @@
                                                 data-ng-change="vm.bulkSetHomeworkTaskStatus(task)"
                                                 data-ng-attr-aria-label="Đánh dấu trạng thái cho tất cả học sinh ở {{task.title}}">
                                             <option value="">Đánh dấu tất cả...</option>
-                                            <option value="TODO">Tất cả: Chưa làm</option>
-                                            <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">Tất cả: Đã làm {{percent}}%</option>
+                                            <option value="TODO">Tất cả: Chưa làm (0%)</option>
+                                            <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">Tất cả: {{vm.homeworkProgressLabel({status: 'PROGRESS_' + percent})}}</option>
                                             <option value="DONE">Tất cả: Đã làm (100%)</option>
                                             <option value="NEEDS_REVIEW">Tất cả: Cần bổ sung</option>
                                         </select>
@@ -1481,14 +1481,14 @@
                                         <td class="class-homework-review-cell" data-ng-repeat="cell in row.cells track by $index" data-ng-if="vm.isHomeworkTaskColumnVisible(vm.previousHomeworkTasks[$index])">
                                             <select class="form-control input-sm class-homework-progress-select" data-ng-model="cell.editStatus"
                                                     homework-progress-wheel
-                                                    data-ng-class="{'is-done': cell.editStatus === 'DONE', 'is-review': cell.editStatus === 'NEEDS_REVIEW', 'is-todo': cell.editStatus === 'TODO', 'is-progress': cell.editStatus.indexOf('PROGRESS_') === 0}"
+                                                    data-ng-class="vm.homeworkProgressClass(cell)"
                                                     data-ng-disabled="vm.homeworkCellSaving || vm.scheduleDaySaving"
                                                     data-ng-change="vm.markHomeworkCellDirty(cell); vm.saveHomeworkCell(row, cell)"
                                                     data-ng-attr-aria-label="Trạng thái của {{row.name}}, {{vm.previousHomeworkTasks[$index].title}}">
-                                                <option value="TODO">Chưa làm</option>
-                                                <option data-ng-if="vm.homeworkHasExactProgress(cell)" value="{{cell.status}}">Đã làm {{cell.status.substring(9)}}% — tự động</option>
-                                                <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">Đã làm {{percent}}%</option>
-                                                <option value="DONE">{{cell.automatic && cell.editStatus === 'DONE' ? 'Đã làm — tự động' : 'Đã làm (100%)'}}</option>
+                                                <option value="TODO">{{vm.homeworkProgressLabel(cell, 'TODO')}}</option>
+                                                <option data-ng-if="vm.homeworkHasExactProgress(cell)" value="{{cell.status}}">{{vm.homeworkProgressLabel(cell, cell.status)}}</option>
+                                                <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">{{vm.homeworkProgressLabel(cell, 'PROGRESS_' + percent)}}</option>
+                                                <option value="DONE">{{vm.homeworkProgressLabel(cell, 'DONE')}}</option>
                                                 <option value="NEEDS_REVIEW">Cần bổ sung</option>
                                             </select>
                                             <div class="class-homework-note-field">

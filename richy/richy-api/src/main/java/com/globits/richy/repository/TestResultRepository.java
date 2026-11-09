@@ -107,5 +107,16 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             + "and r.createDate >= :fromDate and r.createDate <= :toDate order by r.createDate asc, r.id asc")
     List<Object[]> findIeltsPartCompletions(@Param("students") List<Long> students, @Param("tests") List<Long> tests,
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
+    // Include failed submissions so the teacher's review can show their actual score.
+    @Query("select r from TestResult r left join fetch r.user "
+            + "left join fetch r.questionAnswerTestResult response left join fetch response.questionAnswer answer "
+            + "left join fetch answer.question question left join fetch question.parent pack "
+            + "left join fetch pack.parent part left join fetch part.parent "
+            + "where r.user.id in :students and r.assignmentTaskId in :tasks and r.testType in (2, 4, 6) "
+            + "and r.resultStatus in ('SUCCESS', 'FAILED') "
+            + "and r.createDate >= :fromDate and r.createDate < :toDate order by r.createDate asc, r.id asc")
+    List<TestResult> findHomeworkTestScores(@Param("students") List<Long> students, @Param("tasks") List<Long> tasks,
+            @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 	
 }
