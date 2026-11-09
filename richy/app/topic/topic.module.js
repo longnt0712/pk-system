@@ -16,7 +16,7 @@
 
             // Event priority
             .state('application.topic', {
-                url: '/topics?lesson',
+                url: '/topics?category&lesson',
                 reloadOnSearch: false,
                 templateUrl: 'topic/views/vocabulary.html',
                 data: {pageTitle: 'Bài từ vựng'},

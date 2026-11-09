@@ -11,30 +11,64 @@
     </div>
     <div class="vw-notice" ng-if="vm.usageError" role="status">{{vm.usageError}} <button class="vw-link" ng-click="vm.loadUsage()">Thử lại</button></div>
     <div class="vw-layout">
-        <button class="vw-btn vw-mobile-picker" ng-click="vm.lessonPickerOpen = !vm.lessonPickerOpen" aria-expanded="{{!!vm.lessonPickerOpen}}"><i class="fa fa-bars" aria-hidden="true"></i> Chọn bài từ vựng <i class="fa fa-angle-down" aria-hidden="true"></i></button>
-        <aside class="vw-sidebar" ng-class="{'is-open':vm.lessonPickerOpen}">
+        <button type="button" class="vw-btn vw-mobile-picker" ng-click="vm.lessonPickerOpen = !vm.lessonPickerOpen" aria-controls="vw-category-sidebar" aria-expanded="{{!!vm.lessonPickerOpen}}"><i class="fa fa-folder-open" aria-hidden="true"></i><span>{{vm.lessonCategory.name || 'Chọn nhóm bài'}}</span><i class="fa" ng-class="vm.lessonPickerOpen ? 'fa-angle-up' : 'fa-angle-down'" aria-hidden="true"></i></button>
+        <aside id="vw-category-sidebar" class="vw-sidebar" ng-class="{'is-open':vm.lessonPickerOpen}">
             <div class="vw-sidebar-head"><h2>Thư viện của bạn</h2><span class="vw-count">{{vm.usage.topicCount || 0}}</span></div>
             <button class="vw-btn vw-create-lesson" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
-            <nav aria-label="Chọn bài từ vựng">
-                <button class="vw-library-link" ng-class="{'is-active':vm.view === 'all'}" aria-pressed="{{vm.view === 'all'}}" ng-click="vm.selectLesson(null, 'all')"><span class="vw-library-icon"><i class="fa fa-th-large" aria-hidden="true"></i></span><span>Tất cả từ vựng</span></button>
-                <button class="vw-library-link" ng-class="{'is-active':vm.view === 'unassigned'}" aria-pressed="{{vm.view === 'unassigned'}}" ng-click="vm.selectLesson(null, 'unassigned')"><span class="vw-library-icon"><i class="fa fa-inbox" aria-hidden="true"></i></span><span>Chưa vào bài</span></button>
-                <div class="vw-section-label">BÀI TỪ VỰNG <span>{{vm.lessonTotal | number:0}}</span></div>
-                <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng" placeholder="Tìm tên bài..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons()"></label>
-                <select class="vw-category-filter" aria-label="Lọc nhóm bài từ vựng" ng-model="vm.lessonCategory" ng-options="category.id as category.name for category in vm.categories" ng-change="vm.loadLessons()"><option value="">Tất cả nhóm bài</option></select>
-                <div class="vw-lesson-scroll" role="region" aria-label="Danh sách bài từ vựng" tabindex="0"
-                     vocabulary-load-more="vm.loadMoreLessons()">
-                    <button class="vw-lesson" ng-repeat="lesson in vm.lessons track by lesson.id" ng-class="{'is-active':vm.activeLesson.id === lesson.id}" aria-pressed="{{vm.activeLesson.id === lesson.id}}" ng-click="vm.selectLesson(lesson)">
-                        <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong><small>{{lesson.topicCategory.name || 'Chưa phân nhóm'}}</small></span><i class="fa fa-angle-right" aria-hidden="true"></i>
-                    </button>
-                    <div class="vw-sidebar-state" ng-if="vm.lessonsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> {{vm.lessons.length ? 'Đang tải thêm bài...' : 'Đang tải bài...'}}</div>
-                    <div class="vw-sidebar-state" ng-if="vm.lessonError" role="alert">{{vm.lessonError}} <button type="button" class="vw-link" ng-click="vm.retryLessons()">Thử lại</button></div>
-                    <div class="vw-sidebar-state" ng-if="!vm.lessonsLoading && !vm.lessonError && !vm.lessons.length">{{vm.lessonQuery || vm.lessonCategory ? 'Không tìm thấy bài phù hợp.' : 'Chưa có bài nào. Tạo bài đầu tiên để bắt đầu nhé.'}}</div>
-                    <div class="vw-lesson-end" aria-hidden="true" ng-show="vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError"></div>
+            <nav aria-label="Nhóm bài từ vựng">
+                <div class="vw-section-label vw-category-heading">NHÓM BÀI <button type="button" class="vw-link" ng-if="vm.isAdmin" ng-click="vm.editCategory()" ng-disabled="vm.categoriesLoading || vm.categoriesError"><i class="fa fa-plus" aria-hidden="true"></i> Nhóm mới</button></div>
+                <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm bài" placeholder="Tìm nhóm bài..." ng-model="vm.categoryQuery" ng-change="vm.rebuildCategoryRows()"></label>
+                <div class="vw-sidebar-state" ng-if="vm.categoriesLoading" role="status">Đang tải nhóm bài...</div>
+                <div class="vw-sidebar-state" ng-if="vm.categoriesError" role="alert">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
+                <div class="vw-sidebar-state" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categoryRows.length">{{vm.categoryQuery ? 'Không tìm thấy nhóm phù hợp.' : 'Chưa có nhóm bài.'}}</div>
+                <ul class="vw-category-tree" aria-label="Cây nhóm bài" ng-if="vm.categoryRows.length">
+                    <li class="vw-category-row" ng-repeat="row in vm.categoryRows track by row.category.id" ng-style="{'padding-left':row.indent + 'px'}" ng-class="{'is-active':vm.lessonCategory.id === row.category.id}">
+                        <button type="button" class="vw-category-toggle" ng-if="row.hasChildren" ng-click="vm.toggleCategory(row)" ng-disabled="vm.categoryQuery.trim()" aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.category.name}}"><i class="fa" ng-class="row.expanded ? 'fa-angle-down' : 'fa-angle-right'" aria-hidden="true"></i></button>
+                        <span class="vw-category-spacer" ng-if="!row.hasChildren" aria-hidden="true"></span>
+                        <button type="button" class="vw-category-choice" ng-click="vm.selectCategory(row.category)" aria-pressed="{{vm.lessonCategory.id === row.category.id}}" ng-attr-title="{{row.category.pathLabel}}"><i class="fa" ng-class="row.expanded ? 'fa-folder-open' : 'fa-folder'" aria-hidden="true"></i><span>{{row.category.name}}</span></button>
+                    </li>
+                </ul>
+                <div class="vw-category-special" ng-if="!vm.categoryQuery.trim()">
+                    <button type="button" class="vw-library-link" ng-class="{'is-active':vm.lessonCategory.id === 'uncategorized'}" aria-pressed="{{vm.lessonCategory.id === 'uncategorized'}}" ng-click="vm.selectUncategorized()"><span class="vw-library-icon"><i class="fa fa-folder" aria-hidden="true"></i></span>Bài chưa phân nhóm</button>
+                    <button type="button" class="vw-library-link" ng-class="{'is-active':vm.view === 'unassigned'}" aria-pressed="{{vm.view === 'unassigned'}}" ng-click="vm.openUnassigned()"><span class="vw-library-icon"><i class="fa fa-inbox" aria-hidden="true"></i></span>Chưa vào bài</button>
                 </div>
             </nav>
             <div class="vw-library-note"><span class="vw-note-orb"><i class="fa fa-leaf" aria-hidden="true"></i></span><p>Một bài, nhiều từ mới.<br><strong>Tiến bộ từng ngày.</strong></p></div>
         </aside>
-        <section class="vw-content" aria-labelledby="vocabulary-heading">
+        <section class="vw-content" ng-if="vm.view === 'browse'" aria-labelledby="vw-browse-heading">
+            <div class="vw-empty vw-browse-empty"><span class="vw-empty-icon mint"><i class="fa fa-folder-open" aria-hidden="true"></i></span><h2 id="vw-browse-heading">Chọn nhóm bài từ vựng</h2><p>Mở nhóm cha để xem các nhóm con. Chọn tên một nhóm để xem các bài trong nhóm đó.</p></div>
+        </section>
+        <section class="vw-content vw-category-content" ng-if="vm.view === 'category'" aria-labelledby="vw-category-title">
+            <div ng-include="'vocabulary_breadcrumbs.html'"></div>
+            <div class="vw-content-head">
+                <div class="vw-context"><h2 id="vw-category-title">{{vm.lessonCategory.name}}</h2><p>{{vm.lessonTotal | number:0}} bài{{vm.lessonQuery ? ' phù hợp' : ' trong nhóm này'}}</p></div>
+                <div class="vw-category-actions" ng-if="vm.isAdmin && vm.lessonCategory.id !== 'uncategorized'">
+                    <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(vm.lessonCategory)"><i class="fa fa-pencil" aria-hidden="true"></i> Sửa nhóm</button>
+                    <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(null, vm.lessonCategory)"><i class="fa fa-plus" aria-hidden="true"></i> Thêm nhóm con</button>
+                </div>
+            </div>
+            <div class="vw-child-categories" ng-if="vm.categoryChildren.length">
+                <h3>Nhóm con</h3>
+                <div><button type="button" class="vw-btn vw-quiet" ng-repeat="child in vm.categoryChildren track by child.id" ng-click="vm.selectCategory(child)"><i class="fa fa-folder" aria-hidden="true"></i> {{child.name}}</button></div>
+            </div>
+            <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm bài từ vựng trong nhóm" placeholder="Tìm tên bài trong nhóm..." ng-model="vm.lessonQuery" ng-model-options="{debounce:300}" ng-change="vm.loadLessons()"></label>
+            <div class="vw-lesson-scroll" role="region" aria-label="Danh sách bài từ vựng" tabindex="0" vocabulary-load-more="vm.loadMoreLessons()">
+                <button type="button" class="vw-lesson" ng-repeat="lesson in vm.lessons track by lesson.id" ng-click="vm.selectLesson(lesson)">
+                    <span class="vw-lesson-icon" ng-class="['lavender','mint','peach','blue'][$index % 4]"><i class="fa fa-book" aria-hidden="true"></i></span><span class="vw-lesson-copy"><strong>{{lesson.name}}</strong></span><i class="fa fa-angle-right" aria-hidden="true"></i>
+                </button>
+                <div class="vw-sidebar-state" ng-if="vm.lessonsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> {{vm.lessons.length ? 'Đang tải thêm bài...' : 'Đang tải bài...'}}</div>
+                <div class="vw-sidebar-state" ng-if="vm.lessonError" role="alert">{{vm.lessonError}} <button type="button" class="vw-link" ng-click="vm.retryLessons()">Thử lại</button></div>
+                <div class="vw-sidebar-state" ng-if="!vm.lessonsLoading && !vm.lessonError && !vm.lessons.length">
+                    <span ng-if="vm.lessonQuery">Không tìm thấy bài phù hợp.</span>
+                    <span ng-if="!vm.lessonQuery && vm.categoryChildren.length">Nhóm này chưa có bài riêng. Bạn có thể chọn một nhóm con ở trên.</span>
+                    <span ng-if="!vm.lessonQuery && !vm.categoryChildren.length">Nhóm này chưa có bài.</span>
+                </div>
+                <button type="button" class="vw-btn vw-quiet" ng-if="vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError" ng-click="vm.loadMoreLessons()">Xem thêm bài</button>
+                <div class="vw-lesson-end" aria-hidden="true" ng-show="vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError"></div>
+            </div>
+        </section>
+        <section class="vw-content" ng-if="vm.view === 'lesson' || vm.view === 'unassigned'" aria-labelledby="vocabulary-heading">
+            <div ng-if="vm.activeLesson" ng-include="'vocabulary_breadcrumbs.html'"></div>
             <div class="vw-content-head">
                 <div class="vw-context"><span class="vw-eyebrow">{{vm.activeLesson ? (vm.activeLesson.topicCategory.name || 'BÀI TỪ VỰNG') : 'THẺ TỪ VỰNG CỦA BẠN'}}</span><h2 id="vocabulary-heading">{{vm.title()}}</h2><p><span class="vw-live-dot"></span>{{vm.total | number:0}} thẻ{{vm.query ? ' phù hợp' : ''}} <span class="vw-separator">·</span> {{vm.activeLesson ? 'Thêm từ mới trực tiếp vào bài này' : 'Chọn một bài để học và quản lý từ cùng nhau'}}</p></div>
                 <button class="vw-icon-btn vw-edit-lesson" ng-if="vm.activeLesson" ng-click="vm.editLesson()" ng-disabled="vm.lessonOpening" aria-label="Sửa bài từ vựng" title="Sửa tên và nhóm bài"><i class="fa fa-pencil" aria-hidden="true"></i></button>
@@ -78,9 +112,32 @@
     <p class="vw-footnote"><i class="fa fa-heart-o" aria-hidden="true"></i> Từ vựng được lưu vào thư viện cá nhân của bạn.</p>
 </main>
 
+<script type="text/ng-template" id="vocabulary_breadcrumbs.html">
+    <nav class="vw-breadcrumb" aria-label="Đường dẫn nhóm bài">
+        <button type="button" class="vw-link" ng-click="vm.selectCategory(null)"><i class="fa fa-folder-open" aria-hidden="true"></i> Nhóm bài</button>
+        <span class="vw-breadcrumb-item" ng-repeat="category in vm.categoryPath track by category.id">
+            <i class="fa fa-angle-right" aria-hidden="true"></i>
+            <span ng-if="$last && vm.view === 'category'" aria-current="page">{{category.name}}</span>
+            <button type="button" class="vw-link" ng-if="!$last || vm.view !== 'category'" ng-click="$last ? vm.backToCategory() : vm.selectCategory(category)">{{category.name}}</button>
+        </span>
+    </nav>
+</script>
+
+<script type="text/ng-template" id="vocabulary_category_modal.html">
+    <form class="vw-modal" name="vocabularyCategoryForm" ng-submit="vocabularyCategoryForm.$valid && vm.saveCategory()" novalidate>
+        <div class="vw-modal-head"><span class="vw-modal-symbol mint"><i class="fa fa-folder-open" aria-hidden="true"></i></span><h2>{{vm.categoryDraft.id ? 'Sửa nhóm bài' : 'Tạo nhóm bài'}}</h2></div>
+        <div class="vw-modal-body">
+            <label class="vw-field">Tên nhóm<input type="text" ng-model="vm.categoryDraft.name" maxlength="200" required autofocus></label>
+            <div class="vw-field"><label for="vw-category-parent">Nhóm cha</label><select id="vw-category-parent" ng-model="vm.categoryDraft.parentId" ng-options="category.id as category.pathLabel for category in vm.categoryParentChoices"><option value="">Không có nhóm cha (nhóm gốc)</option></select></div>
+            <p class="vw-form-error" role="alert" ng-if="vm.categorySaveError">{{vm.categorySaveError}}</p>
+        </div>
+        <div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="$dismiss()" ng-disabled="vm.categorySaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vocabularyCategoryForm.$invalid || vm.categorySaving">{{vm.categorySaving ? 'Đang lưu...' : 'Lưu nhóm'}}</button></div>
+    </form>
+</script>
+
 <script type="text/ng-template" id="vocabulary_lesson_modal.html">
     <form class="vw-modal" ng-submit="vm.saveLesson()" novalidate><div class="vw-modal-head"><span class="vw-modal-symbol mint"><i class="fa fa-book" aria-hidden="true"></i></span><button type="button" class="vw-icon-btn" aria-label="Đóng tạo bài" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving"><i class="fa fa-times" aria-hidden="true"></i></button><h2>{{vm.lessonDraft.id ? 'Sửa bài từ vựng' : 'Một bài từ vựng mới'}}</h2><p>Đặt tên, chọn nhóm và bắt đầu thêm từ.</p></div>
-        <div class="vw-modal-body"><div class="vw-notice warning" role="alert" ng-if="!vm.lessonDraft.id && vm.usage.topicLimitReached">{{vm.usage.topicLimitMessage}}</div><label class="vw-field">Tên bài từ vựng<input aria-label="Tên bài từ vựng" ng-model="vm.lessonDraft.name" ng-model-options="{allowInvalid:true}" ng-maxlength="200" placeholder="Ví dụ: Những điều nhỏ bé mỗi ngày" autofocus><small>{{(vm.lessonDraft.name || '').trim().length}}/200 ký tự</small></label><label class="vw-field" for="vw-lesson-category">Nhóm bài từ vựng</label><ui-select class="vw-overlay-select" append-to-body="true" vocabulary-select-portal input-id="vw-lesson-category" ng-model="vm.lessonDraft.topicCategory" theme="bootstrap"><ui-select-match placeholder="Gõ để tìm nhóm bài...">{{$select.selected.name}}</ui-select-match><ui-select-choices repeat="category in vm.categories | filter: {name:$select.search} track by category.id"><span ng-bind="category.name"></span></ui-select-choices></ui-select><div class="vw-form-error" role="alert" ng-if="vm.categoriesError">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div><p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p><p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p></div>
+        <div class="vw-modal-body"><div class="vw-notice warning" role="alert" ng-if="!vm.lessonDraft.id && vm.usage.topicLimitReached">{{vm.usage.topicLimitMessage}}</div><label class="vw-field">Tên bài từ vựng<input aria-label="Tên bài từ vựng" ng-model="vm.lessonDraft.name" ng-model-options="{allowInvalid:true}" ng-maxlength="200" placeholder="Ví dụ: Những điều nhỏ bé mỗi ngày" autofocus><small>{{(vm.lessonDraft.name || '').trim().length}}/200 ký tự</small></label><label class="vw-field" for="vw-lesson-category">Nhóm bài từ vựng</label><ui-select class="vw-overlay-select" append-to-body="true" vocabulary-select-portal input-id="vw-lesson-category" ng-model="vm.lessonDraft.topicCategory" theme="bootstrap"><ui-select-match placeholder="Gõ để tìm nhóm bài...">{{$select.selected.pathLabel || $select.selected.name}}</ui-select-match><ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel"></span></ui-select-choices></ui-select><div class="vw-form-error" role="alert" ng-if="vm.categoriesError">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div><p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p><p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p></div>
         <div class="vw-modal-footer"><button type="button" class="vw-link vw-danger" style="margin-right:auto" ng-if="vm.canDelete && vm.lessonDraft.id" ng-click="vm.confirmDeleteLesson()" ng-disabled="vm.lessonSaving">Xóa bài</button><button type="button" class="vw-btn" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.lessonSaving || (!vm.lessonDraft.id && vm.usage.topicLimitReached)"><i class="fa" ng-class="vm.lessonSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.lessonSaving ? 'Đang lưu...' : 'Lưu bài từ vựng'}}</button></div>
     </form>
 </script>

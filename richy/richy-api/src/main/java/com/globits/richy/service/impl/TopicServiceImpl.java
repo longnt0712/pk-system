@@ -86,6 +86,7 @@ public class TopicServiceImpl implements TopicService {
 		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
 			whereClause += " and s.topicCategory.id = :topicCategoryId ";
 		}
+		if (searchDto.isWithoutCategory()) { whereClause += " and s.topicCategory is null"; }
 //		if(searchDto.getWebsite() != null) {
 //			whereClause += " and (s.website = :website) ";
 //		}
@@ -93,7 +94,7 @@ public class TopicServiceImpl implements TopicService {
 		sql += whereClause;
 		sqlCount += whereClause;
 		
-		sql += " order by s.createDate DESC ";
+		sql += " order by s.createDate DESC, s.id DESC ";
 
 		Query q = manager.createQuery(sql, TopicDto.class);
 		Query qCount = manager.createQuery(sqlCount);

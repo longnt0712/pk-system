@@ -1,6 +1,8 @@
 package com.globits.richy.service.impl;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.dto.TopicCategoryDto;
 import com.globits.richy.repository.TopicCategoryRepository;
@@ -54,7 +57,7 @@ public class TopicCategoryServiceImpl implements TopicCategoryService {
 //			whereClause += " and (s.text like :textSearch)";
 //		}
 
-		sql += whereClause;
+		sql += whereClause + " order by s.id";
 		sqlCount += whereClause;
 
 		Query q = manager.createQuery(sql, TopicCategoryDto.class);
@@ -93,49 +96,59 @@ public class TopicCategoryServiceImpl implements TopicCategoryService {
 	}
 
 	@Override
+	@Transactional
 	public boolean saveObject(TopicCategoryDto dto) {
+		if (dto == null || dto.getName() == null || dto.getName().trim().isEmpty() || dto.getName().trim().length() > 200) {
+			throw new IllegalArgumentException("Tên nhóm phải có từ 1 đến 200 ký tự.");
+		}
+		Map<Long, TopicCategory> categories = lockCategories();
+		TopicCategory domain = dto.getId() == null ? new TopicCategory() : categories.get(dto.getId());
+		if (domain == null) { throw new IllegalArgumentException("Nhóm bài không còn tồn tại."); }
+		if (dto.isParentSpecified()) {
+			TopicCategory parent = dto.getParentId() == null ? null : categories.get(dto.getParentId());
+			if (dto.getParentId() != null && parent == null) { throw new IllegalArgumentException("Nhóm cha không còn tồn tại."); }
+			Set<Long> visited = new HashSet<Long>();
+			for (TopicCategory ancestor = parent; ancestor != null; ancestor = ancestor.getParent()) {
+				if (ancestor.getId().equals(dto.getId()) || !visited.add(ancestor.getId())) {
+					throw new IllegalArgumentException("Không thể chuyển nhóm vào chính nó hoặc nhóm con của nó.");
+				}
+			}
+			domain.setParent(parent);
+		}
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
 		LocalDateTime currentDate = LocalDateTime.now();
-		String currentUserName = "Unknown User";
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-			currentUserName = modifiedUser.getUsername();
-		}
-		if(dto == null) {
-			return false;
-		}
-		TopicCategory domain = null;
-		if(dto.getId() != null) {
-			domain = topicCategoryRepository.getOne(dto.getId());
-		}
-		if(domain != null) {
+		String currentUserName = authentication == null ? "Unknown User" : authentication.getName();
+		if (domain.getId() == null) {
+			domain.setCreateDate(currentDate);
+			domain.setCreatedBy(currentUserName);
+		} else {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
 		}
-		if(domain == null) {
-			domain = new TopicCategory();
-			domain.setCreateDate(currentDate);
-			domain.setCreatedBy(currentUserName);
-		}
-		
-		domain.setName(dto.getName());
-		domain = topicCategoryRepository.save(domain);
-		
-		return false;
+		domain.setName(dto.getName().trim());
+		topicCategoryRepository.save(domain);
+		return true;
 	}
 
 	@Override
+	@Transactional
 	public boolean deleteObject(Long id) {
-		if(id == null) {
-			return false;
-		}
-		TopicCategory domain = topicCategoryRepository.getOne(id);
-		if(domain == null) {
-			return false;
+		Map<Long, TopicCategory> categories = lockCategories();
+		TopicCategory domain = categories.get(id);
+		if (domain == null) { return false; }
+		for (TopicCategory category : categories.values()) {
+			if (category.getParent() != null && id.equals(category.getParent().getId())) {
+				throw new IllegalArgumentException("Hãy chuyển các nhóm con trước khi xóa nhóm này.");
+			}
 		}
 		topicCategoryRepository.delete(domain);
 		return true;
+	}
+
+	private Map<Long, TopicCategory> lockCategories() {
+		Map<Long, TopicCategory> categories = new LinkedHashMap<Long, TopicCategory>();
+		for (TopicCategory category : topicCategoryRepository.lockHierarchy()) { categories.put(category.getId(), category); }
+		return categories;
 	}
 
 }

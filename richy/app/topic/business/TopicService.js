@@ -20,6 +20,9 @@
         // console.log(baseUrl);
         self.getPage = getPage;
         self.getPageTopicCategory = getPageTopicCategory;
+        self.saveCategory = function (category) {
+            return $http.post(baseUrl + 'topic_category/save', category).then(function (response) { return response.data; });
+        };
         self.saveObject = saveObject;
         self.getOne = getOne;
         self.deleteObject = deleteObject;

@@ -9,11 +9,14 @@ const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Pro
 const css = ['assets/css/external/bootstrap.min.css', 'assets/css/components-md.min.css', 'assets/css/external/select.min.css',
     'assets/fontawesome/css/all.css', 'topic/vocabulary.css'].map(file => fs.readFileSync(path.join(app, file), 'utf8')).join('\n');
 
-async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, holdInitial = false, clock = false} = {}) {
+async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, initialLesson = null, initialCategory = null, holdInitial = false, clock = false} = {}) {
     const page = await browser.newPage({viewport: {width, height: 1120}});
+    const waitForInitialLesson = initialLesson && !holdInitial;
     if (clock) await page.clock.install();
     page.setDefaultTimeout(8000);
-    const categories = [{id: 1, name: 'Đời sống hằng ngày'}, {id: 2, name: 'IELTS & học thuật'}];
+    const categories = [{id: 1, name: 'Đời sống hằng ngày'}, {id: 2, name: 'IELTS & học thuật'},
+        {id: 3, name: 'Reading', parentId: 2}, {id: 4, name: 'Cambridge IELTS 19', parentId: 3},
+        {id: 5, name: 'Listening', parentId: 2}, {id: 6, name: 'GRADE 12'}];
     const lessons = [{id: 101, name: 'Little things, every day', topicCategory: categories[0]},
         {id: 102, name: 'A world to discover', topicCategory: categories[0]},
         {id: 103, name: 'Work, dreams & ambitions', topicCategory: categories[1]},
@@ -24,7 +27,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
         ['cherish', '/ˈtʃer.ɪʃ/', 'Trân quý, yêu thương và gìn giữ', 'B2'], ['bloom', '/bluːm/', 'Nở hoa, phát triển rực rỡ', 'B1'],
         ['a fresh start', '/ə freʃ stɑːt/', 'Một khởi đầu mới', 'A2'], ['grateful', '/ˈɡreɪt.fəl/', 'Biết ơn, cảm kích', 'B1'],
         ['curiosity', '/ˌkjʊə.riˈɒs.ə.ti/', 'Sự tò mò, ham tìm hiểu', 'B2'], ['take a break', '/teɪk ə breɪk/', 'Nghỉ ngơi một chút', 'A2'], ['slow down', '/sləʊ daʊn/', 'Chậm lại, thong thả hơn', 'A2']];
-    const state = {requests: [], saves: [], errors: [], full, lessons, cards: words.map((word, index) =>
+    const state = {requests: [], saves: [], errors: [], full, lessons, categories, cards: words.map((word, index) =>
         ({id: index + 1, question: word[0], pronounce: word[1], motherTongue: word[2], level: word[3], status: index === 11 ? 5 : 1,
             questionTopics: index === 10 ? [] : [{topic: lessons[index === 4 ? 1 : 0]}]}))};
     page.on('pageerror', error => state.errors.push(error.message));
@@ -39,10 +42,18 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             wordLimitMessage: 'Bạn đã có 5000/5000 thẻ từ vựng. Bạn vẫn có thể sửa và học các thẻ đã có. Liên hệ quản trị viên để nâng hạn mức.',
             topicLimitMessage: 'Bạn đã có 50/50 bài từ vựng. Bạn vẫn có thể sửa và học các bài đã có. Liên hệ quản trị viên để được hỗ trợ.'});
         if (url.pathname.startsWith('/api/topic_category/get_page/')) return json({content: categories, totalPages: 1});
+        if (url.pathname === '/api/topic_category/save') {
+            const dto = request.postDataJSON();
+            if (dto.id) Object.assign(categories.find(category => category.id === dto.id), dto);
+            else categories.push({...dto, id: categories.length + 1});
+            return json(true);
+        }
         if (url.pathname.startsWith('/api/topic/get_page/')) {
-            const dto = request.postDataJSON(), list = lessons.filter(lesson => (!dto.textSearch || lesson.name.toLowerCase().includes(dto.textSearch.toLowerCase())) &&
-                (!dto.topicCategory || lesson.topicCategory.id === dto.topicCategory.id));
-            return json({content: list, totalElements: list.length});
+            const dto = request.postDataJSON(), [pageIndex, pageSize] = url.pathname.split('/').slice(-2).map(Number);
+            if (state.holdCategory === dto.topicCategory?.id && state.holdCategory) await new Promise(resolve => { state.releaseCategory = resolve; });
+            const list = lessons.filter(lesson => (!dto.textSearch || lesson.name.toLowerCase().includes(dto.textSearch.toLowerCase())) &&
+                (!dto.withoutCategory || !lesson.topicCategory) && (!dto.topicCategory || lesson.topicCategory?.id === dto.topicCategory.id));
+            return json({content: list.slice((pageIndex - 1) * pageSize, pageIndex * pageSize), totalElements: list.length});
         }
         if (url.pathname.startsWith('/api/topic/get_one/')) {
             if (holdInitial) { holdInitial = false; await new Promise(resolve => { state.releaseInitial = resolve; }); }
@@ -74,7 +85,10 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
         if (url.pathname.includes('/webfonts/')) return route.fulfill({body: fs.readFileSync(path.join(app, 'assets/fontawesome/webfonts', path.basename(url.pathname)))});
         return route.fulfill({contentType: 'text/html', body: '<html><body></body></html>'});
     });
-    await page.goto('http://vocabulary.test/topics' + (initialLesson ? '?lesson=' + initialLesson : ''));
+    const search = new URLSearchParams();
+    if (initialCategory) search.set('category', initialCategory);
+    if (initialLesson) search.set('lesson', initialLesson);
+    await page.goto('http://vocabulary.test/topics' + (search.size ? '?' + search : ''));
     await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>' + css +
         'body{padding:24px!important;background:#f3f4f0} @media(max-width:767px){body{padding:8px!important}}</style></head><body><div ng-controller="VocabularyController as vm">' +
         fs.readFileSync(path.join(app, 'topic/views/vocabulary.html'), 'utf8') + '</div></body></html>');
@@ -92,15 +106,96 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
     }, role);
     for (const file of ['question/business/QuestionService.js', 'topic/business/TopicService.js', 'question/controllers/QuestionExcelImportController.js', 'topic/controllers/VocabularyController.js']) await page.addScriptTag({path: path.join(app, file)});
     await page.evaluate(() => { angular.bootstrap(document, ['Fixture']); window.vm = angular.element(document.querySelector('[ng-controller]')).controller(); });
-    if (initialLesson) await page.locator('.vw-lesson').first().waitFor();
-    else await page.locator('.vw-word-card').first().waitFor();
+    await page.waitForFunction(() => !window.vm.categoriesLoading);
+    if (waitForInitialLesson) await page.locator('#vocabulary-heading').waitFor();
     return {page, state};
 }
+
+async function selectCategory(page, name = 'Đời sống hằng ngày') {
+    const sidebar = page.locator('.vw-sidebar');
+    if (!await sidebar.isVisible()) await page.locator('.vw-mobile-picker').click();
+    await sidebar.getByRole('button', {name, exact: true}).click();
+}
+
+test('categories open before lessons and the tree shows ancestors, direct lessons and uncategorized lessons separately', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const width of [1366, 390]) {
+            const {page, state} = await fixture(browser, {width});
+            const sidebar = page.locator('.vw-sidebar');
+            assert.equal(await page.locator('.vw-lesson,.vw-word-card').count(), 0);
+            assert.ok(!state.requests.some(request => /\/api\/(topic\/get_page|question\/vocabulary\/get_page)/.test(request.url)));
+            assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).count(), 0);
+            await sidebar.getByRole('button', {name: 'Mở rộng IELTS & học thuật', exact: true}).click();
+            assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).isVisible(), true);
+            assert.equal(await page.locator('.vw-lesson').count(), 0, 'expanding a folder does not open its lessons');
+            const search = page.getByLabel('Tìm nhóm bài', {exact: true});
+            await search.fill('cambridge');
+            assert.equal(await sidebar.getByRole('button', {name: 'Cambridge IELTS 19', exact: true}).isVisible(), true);
+            assert.equal(await sidebar.getByRole('button', {name: 'IELTS & học thuật', exact: true}).isVisible(), true);
+            await search.clear();
+
+            state.lessons.push({id: 120, name: 'Cambridge 19 · Test 1 · Reading', topicCategory: state.categories[3]},
+                {id: 121, name: 'Cambridge 19 · Test 2 · Reading', topicCategory: state.categories[3]},
+                {id: 122, name: 'Bài cũ chưa phân nhóm', topicCategory: null});
+            await selectCategory(page, 'IELTS & học thuật');
+            await page.locator('.vw-lesson').first().waitFor();
+            assert.equal(await page.locator('.vw-lesson').count(), 1);
+            await page.locator('.vw-child-categories').getByRole('button', {name: 'Reading', exact: true}).click();
+            await page.locator('.vw-child-categories').getByRole('button', {name: 'Cambridge IELTS 19', exact: true}).click();
+            await page.getByRole('button', {name: /Cambridge 19 · Test 1 · Reading/}).waitFor();
+            assert.equal(await page.locator('.vw-lesson').count(), 2);
+            assert.match(await page.locator('.vw-breadcrumb').innerText(), /IELTS & học thuật.*Reading.*Cambridge IELTS 19/s);
+            assert.equal(await page.locator('.vw-word-card').count(), 0);
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            if (process.env.VOCABULARY_TREE_PREVIEW && width === 1366) {
+                await page.locator('.vocab-workspace').screenshot({path: process.env.VOCABULARY_TREE_PREVIEW});
+            }
+            await page.getByLabel('Tìm bài từ vựng trong nhóm', {exact: true}).fill('Test 2');
+            await page.waitForFunction(() => window.vm.lessons.length === 1 && window.vm.lessons[0].id === 121);
+            await selectCategory(page, 'Bài chưa phân nhóm');
+            await page.getByRole('button', {name: /Bài cũ chưa phân nhóm/}).waitFor();
+            assert.equal(await page.locator('.vw-lesson').count(), 1);
+            assert.ok(state.requests.some(request => request.url.includes('/api/topic/get_page/') && request.data.withoutCategory));
+            assert.match(page.url(), /category=uncategorized/);
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
+test('administrators can create and move groups, and a slower group cannot overwrite the latest choice', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser);
+        state.holdCategory = 1;
+        await selectCategory(page);
+        await page.getByText('Đang tải bài...', {exact: true}).waitFor();
+        await selectCategory(page, 'IELTS & học thuật');
+        await page.getByRole('button', {name: /Work, dreams/}).waitFor();
+        state.holdCategory = null; state.releaseCategory();
+        await page.waitForTimeout(120);
+        assert.equal(await page.locator('.vw-lesson').count(), 1);
+        await page.getByRole('button', {name: 'Thêm nhóm con', exact: true}).click();
+        await page.getByLabel('Tên nhóm', {exact: true}).fill('Writing');
+        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option:checked').innerText(), 'IELTS & học thuật');
+        await page.getByRole('button', {name: 'Lưu nhóm', exact: true}).click();
+        await page.locator('.vw-child-categories').getByRole('button', {name: 'Writing', exact: true}).click();
+        await page.getByRole('button', {name: 'Sửa nhóm', exact: true}).click();
+        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option').filter({hasText: 'Writing'}).count(), 0);
+        await page.getByLabel('Nhóm cha', {exact: true}).selectOption({label: 'Đời sống hằng ngày'});
+        await page.getByRole('button', {name: 'Lưu nhóm', exact: true}).click();
+        await page.waitForFunction(() => window.vm.categoryPath[0]?.name === 'Đời sống hằng ngày');
+        assert.equal(state.categories.find(category => category.name === 'Writing').parentId, 1);
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
 
 test('one workspace selects a lesson, creates a lesson with category and saves words directly inside it', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {role: 'VIEWER'});
+        await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.activeLesson && window.vm.activeLesson.id === 101 && !window.vm.cardsLoading);
         assert.match(await page.locator('#vocabulary-heading').innerText(), /Little things/);
@@ -116,7 +211,7 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
         await page.getByLabel('Tên bài từ vựng', {exact: true}).fill('My new vocabulary');
         await page.locator('.modal-dialog .ui-select-toggle').click();
         await page.locator('body > .vw-overlay-select.open input.ui-select-search').fill('IELTS');
-        await page.locator('.ui-select-choices-row').filter({hasText: 'IELTS & học thuật'}).click();
+        await page.getByRole('option', {name: 'IELTS & học thuật', exact: true}).click();
         await page.getByRole('button', {name: 'Lưu bài từ vựng', exact: true}).click();
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});
         assert.equal(state.saves[1].topicCategory.id, 2);
@@ -134,6 +229,7 @@ test('word modal stays compact and its searchable lesson dropdown is clickable a
             await page.setViewportSize({width, height: 640});
             const target = {id: 120, name: 'iR.VOL5.4.PASSAGE2.Bristlecone Pines — A very long vocabulary lesson name', topicCategory: {id: 1}};
             state.lessons.push(target);
+            await page.getByRole('button', {name: 'Chưa vào bài', exact: true}).click();
             await page.getByRole('button', {name: 'Thêm từ', exact: true}).click();
             const header = page.locator('.modal-dialog .vw-modal-head');
             assert.ok((await header.boundingBox()).height <= 75, 'header uses one compact row');
@@ -196,7 +292,7 @@ test('a stalled unassigned request stops loading, shows retry, and can recover w
 test('full quotas explain the restriction, editing still works, and failed saves preserve typed input', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
-        const {page, state} = await fixture(browser, {role: 'VIEWER', full: true});
+        const {page, state} = await fixture(browser, {role: 'VIEWER', full: true, initialLesson: 101});
         assert.match(await page.locator('.vw-notice.warning').innerText(), /5000\/5000.*sửa và học.*quản trị viên/s);
         assert.equal(await page.getByRole('button', {name: 'Thêm từ', exact: true}).isDisabled(), true);
         assert.equal(await page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).isDisabled(), true);
@@ -217,7 +313,7 @@ test('full quotas explain the restriction, editing still works, and failed saves
 test('deletion requires confirmation, unassigned and Listening filters work, and switching lessons rejects stale responses', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
-        const {page, state} = await fixture(browser, {role: 'USER'});
+        const {page, state} = await fixture(browser, {role: 'USER', initialLesson: 101});
         await page.getByRole('checkbox', {name: 'Chọn từ serendipity', exact: true}).check();
         await page.getByRole('button', {name: 'Xóa đã chọn', exact: true}).click();
         assert.equal(state.cards.length, 12);
@@ -230,13 +326,16 @@ test('deletion requires confirmation, unassigned and Listening filters work, and
         await page.getByRole('button', {name: 'Chưa vào bài', exact: true}).click();
         await page.locator('.vw-word-card h3').filter({hasText: 'take a break'}).waitFor();
         assert.equal(await page.locator('.vw-word-card').count(), 1);
-        await page.getByRole('button', {name: 'Tất cả từ vựng', exact: true}).click();
+        await selectCategory(page);
+        await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.getByLabel('Loại flashcard').selectOption({label: 'Listening'});
         await page.getByRole('button', {name: 'Xóa từ slow down', exact: true}).waitFor();
         await page.getByLabel('Loại flashcard').selectOption({label: 'Tất cả thẻ'});
+        await selectCategory(page);
         state.holdLesson = 101;
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.cardsLoading);
+        await selectCategory(page);
         await page.getByRole('button', {name: /A world to discover/}).click();
         await page.locator('.vw-word-card h3').filter({hasText: 'wanderlust'}).waitFor();
         state.holdLesson = null; state.releaseLesson();
@@ -252,7 +351,7 @@ test('desktop and phone layouts fit the viewport; ADMIN imports in the same work
     try {
         for (const width of [1600, 390]) {
             const {page, state} = await fixture(browser, {width});
-            if (width < 768) await page.getByRole('button', {name: 'Chọn bài từ vựng', exact: true}).click();
+            await selectCategory(page);
             await page.getByRole('button', {name: /Little things, every day/}).click();
             await page.waitForFunction(() => !window.vm.cardsLoading && window.vm.activeLesson);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -272,6 +371,7 @@ test('export follows the selected lesson and exports every result while preservi
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {role: 'USER'});
+        await selectCategory(page);
         state.cards = Array.from({length: 501}, (_, index) => ({id: index + 1, question: 'word ' + index, pronounce: '/word/',
             motherTongue: 'nghĩa ' + index, status: 1, questionTopics: [{topic: {id: 102}}]}));
         await page.getByRole('button', {name: /A world to discover/}).click();
@@ -299,6 +399,7 @@ test('deleting a lesson confirms first and keeps its vocabulary in the library',
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {role: 'USER'});
+        await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.getByRole('button', {name: 'Sửa bài từ vựng', exact: true}).click();
         await page.getByRole('button', {name: 'Xóa bài', exact: true}).click();
@@ -317,7 +418,7 @@ test('deleting a lesson confirms first and keeps its vocabulary in the library',
 test('a slow bookmarked lesson never replaces the newer lesson selected by the user', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
-        const {page, state} = await fixture(browser, {initialLesson: 101, holdInitial: true});
+        const {page, state} = await fixture(browser, {initialCategory: 1, initialLesson: 101, holdInitial: true});
         await page.getByRole('button', {name: /A world to discover/}).click();
         await page.locator('.vw-word-card h3').filter({hasText: 'wanderlust'}).waitFor();
         state.releaseInitial();

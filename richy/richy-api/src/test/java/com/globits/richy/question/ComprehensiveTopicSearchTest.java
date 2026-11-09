@@ -6,6 +6,10 @@ import com.globits.richy.service.impl.QuestionServiceImpl;
 import com.globits.richy.service.impl.EnrolmentClassServiceImpl;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.QuestionTopicRepository;
+import com.globits.richy.repository.TopicCategoryRepository;
+import com.globits.richy.service.impl.TopicCategoryServiceImpl;
+import com.globits.richy.service.impl.TopicCategoryVisibilityService;
+import com.globits.richy.service.impl.TopicServiceImpl;
 import com.globits.security.domain.User;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,6 +71,69 @@ public class ComprehensiveTopicSearchTest {
         if (manager != null) { if (manager.getTransaction().isActive()) manager.getTransaction().rollback(); manager.close(); }
     }
     private Topic topic(String name) { Topic value = new Topic(); value.setName(name); value.setTopicCategory(category); value.setUser(owner); manager.persist(value); return value; }
+
+    @Test public void categoryHierarchyPersistsMovesAndRejectsCyclesWithoutFlatteningLegacyEdits() throws Exception {
+        TopicCategoryRepository repository = mock(TopicCategoryRepository.class);
+        String lockQuery = TopicCategoryRepository.class.getMethod("lockHierarchy")
+                .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        when(repository.lockHierarchy()).thenAnswer(call -> manager.createQuery(lockQuery, TopicCategory.class)
+                .setLockMode(javax.persistence.LockModeType.PESSIMISTIC_WRITE).getResultList());
+        when(repository.save(any(TopicCategory.class))).thenAnswer(call -> {
+            TopicCategory saved = (TopicCategory) call.getArguments()[0];
+            if (saved.getId() == null) { manager.persist(saved); }
+            return saved;
+        });
+        TopicCategoryServiceImpl groups = new TopicCategoryServiceImpl();
+        ReflectionTestUtils.setField(groups, "manager", manager);
+        ReflectionTestUtils.setField(groups, "topicCategoryRepository", repository);
+        TopicCategoryVisibilityService visibility = mock(TopicCategoryVisibilityService.class);
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(null);
+        ReflectionTestUtils.setField(groups, "topicCategoryVisibilityService", visibility);
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        TopicCategoryDto child = json.readValue("{\"name\":\"Reading\",\"parentId\":" + category.getId() + "}", TopicCategoryDto.class);
+        assertTrue(groups.saveObject(child));
+        manager.flush(); manager.clear();
+        TopicCategoryDto savedChild = groups.getPageObject(new TopicCategoryDto(), 1, 20).getContent().stream()
+                .filter(row -> "Reading".equals(row.getName())).findFirst().get();
+        assertEquals(category.getId(), savedChild.getParentId());
+
+        TopicCategoryDto cycle = new TopicCategoryDto(category);
+        cycle.setParentId(savedChild.getId());
+        try { groups.saveObject(cycle); fail("A child cannot become its own ancestor"); }
+        catch (IllegalArgumentException expected) { assertTrue(expected.getMessage().contains("nhóm con")); }
+        try { groups.deleteObject(category.getId()); fail("A parent with children cannot be deleted"); }
+        catch (IllegalArgumentException expected) { assertTrue(expected.getMessage().contains("nhóm con")); }
+
+        String childId = savedChild.getId().toString();
+        assertTrue(groups.saveObject(json.readValue("{\"id\":" + childId + ",\"name\":\"Reading 2\"}", TopicCategoryDto.class)));
+        assertEquals(category.getId(), manager.find(TopicCategory.class, savedChild.getId()).getParent().getId());
+        assertTrue(groups.saveObject(json.readValue("{\"id\":" + childId + ",\"name\":\"Reading 2\",\"parentId\":null}", TopicCategoryDto.class)));
+        manager.flush(); manager.clear();
+        assertNull(manager.find(TopicCategory.class, savedChild.getId()).getParent());
+    }
+
+    @Test public void lessonPageFiltersDirectGroupAndKeepsUncategorizedLessonsReachable() {
+        TopicCategory child = new TopicCategory(); child.setName("Reading"); child.setParent(manager.find(TopicCategory.class, category.getId())); manager.persist(child);
+        Topic uncategorized = topic("Old lesson"); uncategorized.setTopicCategory(null);
+        Topic nested = topic("Nested lesson"); nested.setTopicCategory(child);
+        manager.flush(); manager.clear();
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "", Collections.emptyList()));
+        TopicServiceImpl lessons = new TopicServiceImpl();
+        ReflectionTestUtils.setField(lessons, "manager", manager);
+        TopicCategoryVisibilityService visibility = mock(TopicCategoryVisibilityService.class);
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(null);
+        ReflectionTestUtils.setField(lessons, "topicCategoryVisibilityService", visibility);
+
+        TopicDto filter = new TopicDto(); filter.setUserId(owner.getId()); filter.setTopicCategory(new TopicCategoryDto(category));
+        assertEquals(2, lessons.getPageObject(filter, 1, 20).getTotalElements());
+        filter.setTopicCategory(new TopicCategoryDto(child));
+        assertEquals("Nested lesson", lessons.getPageObject(filter, 1, 20).getContent().get(0).getName());
+        filter.setTopicCategory(null); filter.setWithoutCategory(true);
+        assertEquals(Collections.singletonList("Old lesson"), lessons.getPageObject(filter, 1, 20).getContent().stream()
+                .map(TopicDto::getName).collect(Collectors.toList()));
+    }
     @Test public void dailyLibraryAndLegacyPickerUseSharedQueriesWithoutSourceOrReviewBounds() throws Exception {
         for (long id : Arrays.asList(6L, 11L)) {
             if (manager.find(QuestionType.class, id) == null) {

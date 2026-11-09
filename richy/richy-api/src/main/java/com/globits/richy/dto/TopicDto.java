@@ -17,6 +17,9 @@ public class TopicDto implements Serializable{
 	private String username;
 	private String message;
 	private TopicCategoryDto topicCategory;
+	private boolean withoutCategory;
+	public boolean isWithoutCategory() { return withoutCategory; }
+	public void setWithoutCategory(boolean withoutCategory) { this.withoutCategory = withoutCategory; }
 	private Boolean isShow;
 	
 	public Boolean getIsShow() {

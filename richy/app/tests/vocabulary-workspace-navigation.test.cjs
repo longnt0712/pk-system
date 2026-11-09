@@ -54,8 +54,10 @@ test('exact search is sent to the API and word details show all linked lessons',
         let resolve; const promise = new Promise(done => { resolve = done; }); return {promise, resolve};
     }};
     const workspace = new Controller({$on() {}}, q, modal, {get: () => '{"id":26,"username":"english"}'},
-        {search: () => ({})}, {isAdmin: true}, cards, lessons, {}, {}, timeout);
+        {search: (...args) => args.length ? {replace() {}} : {}}, {isAdmin: true}, cards, lessons, {}, {}, timeout);
     await new Promise(resolve => setImmediate(resolve));
+    assert.equal(lastSearch, undefined, 'entering the library does not fetch unfiltered cards');
+    await workspace.selectLesson({id: 101, name: 'My lesson', topicCategory: {id: 1, name: 'Group'}});
     assert.equal(lastSearch.findExactWord, true);
     workspace.findExactWord = false; workspace.query = 'minimal';
     await workspace.loadCards(true);
