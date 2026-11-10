@@ -196,10 +196,20 @@
                 function render() {
                     var root = element[0], doc = root.ownerDocument; controls = []; renderRevision++;
                     root.innerHTML = $sanitize(String(scope.content || '').replace(/\}\{ENTER\}\{/gi, '<br><br>'));
-                    function makeControl(item) {
+                    function makeControl(item, kind) {
                         var control;
                         if (scope.mode === 'TEXT') {
-                            control = doc.createElement('input'); control.className = 'battle-exercise-gap'; control.type = 'text'; control.maxLength = 1000;
+                            var sentence = kind === 'SENTENCE';
+                            control = doc.createElement(sentence ? 'textarea' : 'input');
+                            control.className = 'battle-exercise-gap';
+                            if (sentence) {
+                                control.classList.add('battle-exercise-sentence');
+                                control.rows = 3;
+                                control.spellcheck = false;
+                            } else {
+                                control.type = 'text';
+                            }
+                            control.maxLength = 1000;
                             control.placeholder = String(item.number || 'Điền từ'); control.autocomplete = 'off'; control.setAttribute('aria-label', 'Câu ' + item.number);
                             control.addEventListener('input', function () {
                                 if (scope.disabled) { return; }
@@ -217,13 +227,16 @@
                     while ((node = walker.nextNode())) { nodes.push(node); }
                     (scope.items || []).forEach(function (item, itemIndex) { byIndex[item.gapIndex == null ? itemIndex : item.gapIndex] = item; });
                     nodes.forEach(function (textNode) {
-                        var chunks = textNode.nodeValue.split(/\}\{\s*(?:SPACE|HEADING)\s*\}\{/gi); if (chunks.length < 2) { return; }
+                        var chunks = textNode.nodeValue.split(/\}\{\s*(SPACE|SENTENCE|HEADING)\s*\}\{/gi); if (chunks.length < 2) { return; }
                         var fragment = doc.createDocumentFragment();
-                        chunks.forEach(function (chunk, chunkIndex) {
-                            fragment.appendChild(doc.createTextNode(chunk)); if (chunkIndex === chunks.length - 1) { return; }
-                            var item = byIndex[index++]; if (!item) { fragment.appendChild(doc.createTextNode('[…]')); return; }
-                            rendered[item.id] = true; fragment.appendChild(makeControl(item));
-                        });
+                        for (var chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 2) {
+                            fragment.appendChild(doc.createTextNode(chunks[chunkIndex]));
+                            if (chunkIndex + 1 === chunks.length) { break; }
+                            var item = byIndex[index++];
+                            if (!item) { fragment.appendChild(doc.createTextNode('[…]')); continue; }
+                            rendered[item.id] = true;
+                            fragment.appendChild(makeControl(item, chunks[chunkIndex + 1].toUpperCase()));
+                        }
                         textNode.parentNode.replaceChild(fragment, textNode);
                     });
                     (scope.items || []).filter(function (item) { return !rendered[item.id]; }).forEach(function (item) {

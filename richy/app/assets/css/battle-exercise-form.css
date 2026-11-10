@@ -24,6 +24,7 @@
 .battle-exercise-form .battle-exercise-choice.is-selected { border-color:#8071db; background:#f4f1ff; }
 .battle-exercise-form .battle-exercise-item-prompt { margin-bottom:10px; }
 .battle-exercise-form .battle-exercise-gap { min-height:38px; }
+.battle-exercise-form .battle-exercise-sentence { display:block; width:100%; margin:4px 0; resize:vertical; }
 .battle-exercise-form .battle-exercise-interaction-status { min-height:20px; margin:6px 0; font-size:13px; color:#586b83; }
 .battle-exercise-form .battle-listening-transcript { white-space:pre-wrap; line-height:2.4; margin:16px 0; }
 .battle-exercise-form .battle-listening-transcript .battle-exercise-gap { width:140px; }

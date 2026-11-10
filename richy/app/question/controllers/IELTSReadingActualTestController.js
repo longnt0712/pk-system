@@ -162,9 +162,8 @@
         };
     });
 
-    /* Start Writing answers at 60% of their pane and grow with the content.
-       The pane itself owns scrolling, so the candidate never has to scroll
-       inside the answer box. */
+    /* Writing answers start at 60% of their pane. Inline sentence answers
+       start at their declared row count. Both grow with the content. */
     angular.module('Hrm.Question').directive('writingTaskAutoGrow', function ($timeout, $window) {
         return {
             restrict: 'A',
@@ -205,7 +204,8 @@
                         return;
                     }
                     var scrollState = rememberScrollPosition();
-                    var baseHeight = Math.round(node.parentElement.clientHeight * 0.6);
+                    var baseHeight = attrs.writingTaskAutoGrow === 'content'
+                        ? 0 : Math.round(node.parentElement.clientHeight * 0.6);
                     var currentHeight = Math.round(node.getBoundingClientRect().height);
                     var targetHeight = Math.max(baseHeight, node.scrollHeight + 2);
 
@@ -4989,8 +4989,8 @@
             var text = String(source == null ? '' : source)
                 .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
                 .replace(/(?:\{\{|\}\{|\{)ENTER(?:\}\}|\}\{|\})/gi, '\n')
-                .replace(/(?:\{\{|\}\{|\{)(SPACE|HEADING)(?:\}\}|\}\{|\})/gi, function (whole, kind) {
-                    return shared && kind.toUpperCase() === 'SPACE' && index++ === target ? ' ' + marker + ' ' : ' _____ ';
+                .replace(/(?:\{\{|\}\{|\{)\s*(SPACE|SENTENCE|HEADING)\s*(?:\}\}|\}\{|\})/gi, function (whole, kind) {
+                    return shared && kind.toUpperCase() !== 'HEADING' && index++ === target ? ' ' + marker + ' ' : ' _____ ';
                 })
                 .replace(/<(?:input|textarea)\b[^>]*>/gi, ' _____ ')
                 .replace(/<br\s*\/?\s*>/gi, '\n')
@@ -5362,24 +5362,48 @@
             return root.innerHTML;
         }
 
+        function isRewriteSentencePrompt(value) {
+            return /\brewrite\s+(?:the\s+)?(?:whole|entire)\s+sentence\b/i.test(cleanStudyAnswerText(value));
+        }
+
+        function sentenceAnswerField(ordinalNumber, bindings) {
+            return '<textarea class="text-question-filling-root reading-sentence-answer" rows="3" ' +
+                'writing-task-auto-grow="content" spellcheck="false" autocorrect="off" autocapitalize="off" ' +
+                'aria-label="Câu ' + ordinalNumber + '" ' + bindings + '></textarea>';
+        }
+
         function buildOneEditorQuestion(questionPackage) {
             var questions = questionPackage.subQuestions || [];
             questions.sort(function (left, right) {
                 return Number(left.ordinalNumber) - Number(right.ordinalNumber);
             });
             var content = questions.length ? String(questions[0].question || '') : '';
+            var allowSentences = vm.isComprehensiveRoute && Number(questionPackage.type) === 11;
+            var markers = allowSentences
+                ? /\}\{\s*(SPACE|SENTENCE)\s*\}\{/gi
+                : /\}\{\s*(SPACE)\s*\}\{/gi;
+            var legacy = allowSentences && !/\}\{\s*SENTENCE\s*\}\{/i.test(content);
+            var legacyGroup = legacy && isRewriteSentencePrompt(questionPackage.question);
+            var questionIndex = 0, lastMarkerEnd = 0;
 
-            angular.forEach(questions, function (question, questionIndex) {
+            content = content.replace(markers, function (marker, kind, offset, source) {
+                var question = questions[questionIndex];
+                if (!question) { return marker; }
+                var sentence = kind.toUpperCase() === 'SENTENCE' || legacyGroup ||
+                    (legacy && isRewriteSentencePrompt(source.slice(lastMarkerEnd, offset)));
+                lastMarkerEnd = offset + marker.length;
                 var ordinalNumber = question.ordinalNumber;
                 var answerExpression = 'item.subQuestions[' + questionIndex + '].questionAnswers[0]';
                 var questionExpression = 'item.subQuestions[' + questionIndex + ']';
-                var input = '<input autocomplete="off" type="text" ' +
+                questionIndex++;
+                var bindings = 'autocomplete="off" ' +
                     'ng-click="vm.clickShowChildren(' + questionExpression + ',item.subQuestions)" ' +
                     'ng-change="vm.changeTextQuestionAnswer(' + answerExpression + ',' + answerExpression + '.answer.answer,' + questionExpression + ')" ' +
                     'ng-model="' + answerExpression + '.clientAnswer" ' +
-                    'class="text-question-filling-root reading-one-editor-input" ' +
-                    'id="text-question-number-' + ordinalNumber + '" placeholder="' + ordinalNumber + '">';
-                content = content.replace(/\}\{SPACE\}\{/i, input);
+                    'id="text-question-number-' + ordinalNumber + '" placeholder="' + ordinalNumber + '"';
+                return sentence
+                    ? sentenceAnswerField(ordinalNumber, bindings)
+                    : '<input type="text" class="text-question-filling-root reading-one-editor-input" ' + bindings + '>';
             });
 
             questionPackage.oneEditorRenderedQuestion = isolateListeningEditorParts(content.replace(/\}\{ENTER\}\{/gi, '<br><br>'));
@@ -5840,7 +5864,13 @@
                                 var type = data.subQuestions[k].subQuestions[i].type;
                                 var ordinalNumber = data.subQuestions[k].subQuestions[i].subQuestions[j].ordinalNumber;
                                 var question = data.subQuestions[k].subQuestions[i].subQuestions[j];
-                                var input = '<input autocomplete="off" type="text" ng-click="vm.clickShowChildren(q)" ng-change="vm.changeTextQuestionAnswer(a,a.answer.answer,q)" ng-model="a.clientAnswer" class="text-question-filling-root" id="text-question-number-'+ordinalNumber+'" placeholder="'+ordinalNumber+'">';
+                                var bindings = 'autocomplete="off" ng-click="vm.clickShowChildren(q)" ' +
+                                    'ng-change="vm.changeTextQuestionAnswer(a,a.answer.answer,q)" ng-model="a.clientAnswer" ' +
+                                    'id="text-question-number-' + ordinalNumber + '" placeholder="' + ordinalNumber + '"';
+                                var rewriteSentence = vm.isComprehensiveRoute && (isRewriteSentencePrompt(question.question) ||
+                                    isRewriteSentencePrompt(data.subQuestions[k].subQuestions[i].question));
+                                var input = rewriteSentence ? sentenceAnswerField(ordinalNumber, bindings) :
+                                    '<input type="text" class="text-question-filling-root" ' + bindings + '>';
                                 data.subQuestions[k].subQuestions[i].subQuestions[j].question = data.subQuestions[k].subQuestions[i].subQuestions[j].question.replaceAll('}{ENTER}{', '<br> <br>');
                                 data.subQuestions[k].subQuestions[i].subQuestions[j].question = data.subQuestions[k].subQuestions[i].subQuestions[j].question.replaceAll('}{SPACE}{', input);
                                 // data.subQuestions[k].subQuestions[i].subQuestions[j].question = $sce.trustAsHtml(data.subQuestions[k].subQuestions[i].subQuestions[j].question);

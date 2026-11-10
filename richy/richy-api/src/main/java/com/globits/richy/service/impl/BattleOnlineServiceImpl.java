@@ -4440,7 +4440,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         : content.items.isEmpty() ? question.question : content.items.get(0).promptHtml;
                 if (isBlank(text)) { text = question.question; }
                 text = org.springframework.web.util.HtmlUtils.htmlUnescape(clean(text).replaceAll("<[^>]*>", " "))
-                        .replaceAll("\\}\\{(?:SPACE|HEADING|ENTER)\\}\\{", " ___ ")
+                        .replaceAll("(?i)\\}\\{\\s*(?:SPACE|SENTENCE|HEADING|ENTER)\\s*\\}\\{", " ___ ")
                         .replace('\u00a0', ' ').replaceAll("\\s+", " ").trim();
                 if (text.codePointCount(0, text.length()) > 56) { text = text.substring(0, text.offsetByCodePoints(0, 56)) + "…"; }
                 com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto preview = new com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto();

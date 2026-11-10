@@ -70,6 +70,7 @@
                     <div>
                         <strong>Import nhanh bài tập tổng hợp bằng Excel</strong>
                         <span>Tải mẫu Tổng hợp dùng chung cho bài văn bản và video, đọc sheet <b>HUONG_DAN</b>, thay dữ liệu ví dụ trong <b>NOI_DUNG</b>, rồi chọn “Import Excel”. Với bài video, nhập <b>Video URL</b> trong <b>THONG_TIN</b> và <b>Mốc video</b> như 01:30 cho câu hỏi. Bài tổng hợp chỉ dùng Part 1, đánh số câu liên tục từ 1.</span>
+                        <span>Để học sinh viết cả câu, dùng mã <b>11</b> và đặt <b>}{SENTENCE}{</b> tại vị trí cần trả lời. Nhập câu hoàn chỉnh vào <b>Đáp án 1</b> và điền <b>A</b> ở cột <b>Đáp án đúng</b>.</span>
                     </div>
                 </div>
 
@@ -442,13 +443,14 @@
                                 <div class="reading-one-editor-builder__header">
                                     <div>
                                         <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
-                                        <small>Mỗi lần bấm “Chèn ô điền từ” sẽ là câu tiếp theo theo thứ tự.</small>
+                                        <small ng-if="!vm.isComprehensiveMode">Mỗi lần bấm “Chèn ô điền từ” sẽ là câu tiếp theo theo thứ tự.</small>
+                                        <small ng-if="vm.isComprehensiveMode">Dùng “Chèn ô viết cả câu” cho câu trả lời dài, hoặc “Chèn ô điền từ” cho đáp án ngắn. Mỗi ô tương ứng một câu theo thứ tự.</small>
                                     </div>
-                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
-                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question, 11) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question, 11)}}/{{item.subQuestions.length}} ô
                                     </span>
                                 </div>
-                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce-lazy ui-tinymce="tinyConFigOneEditorQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
                                     <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
                                 </button>

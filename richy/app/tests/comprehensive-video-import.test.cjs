@@ -100,6 +100,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
     vmModule.runInContext(['flushBuilderEditors', 'ensureComprehensiveBuilder', 'ensureDailyListeningPackage', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
         'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage', 'prepareTestFolderForSave'].map(productionFunction).join('\n') + '\n' +
         productionFunction('prepareSharedChoicePackagesForSave') + '\n' +
+        section('        vm.countOneEditorGaps =', '        function ensureOneEditorPackage(') + '\n' +
         section('        function readingTestSaveError(', '        var readingPartRules =') + '\n' +
         section('        function readingQuestionType(', '        vm.status = {id: 3, name: "Tất cả (no listening)"};'), context);
     return {
@@ -136,7 +137,15 @@ test('the existing Tổng hợp download always includes video fields, full inst
     }
     assert.match(JSON.stringify(book.Sheets.HUONG_DAN.rows), /01:30/);
     assert.match(JSON.stringify(book.Sheets.PROMPT_CHATGPT.rows), /Video URL/);
-    assert.equal(qa.parse(book).importedQuestionCount, 4);
+    for (const sheet of ['HUONG_DAN', 'PROMPT_CHATGPT', 'LOAI_CAU_HOI']) {
+        assert.match(JSON.stringify(book.Sheets[sheet].rows), /\}\{SENTENCE\}\{/);
+    }
+    const imported = qa.parse(book);
+    assert.equal(imported.importedQuestionCount, 4);
+    const questions = imported.subQuestions[0].subQuestions[1].subQuestions;
+    assert.match(questions[0].question, /\}\{SPACE\}\{[\s\S]+\}\{SENTENCE\}\{/);
+    assert.equal(questions[0].questionAnswers[0].answer.answer, 'Harbour');
+    assert.equal(questions[1].questionAnswers[0].answer.answer, 'The number of participants increased from 1,200 to 1,500.');
 });
 
 test('a teacher fills video fields in the default template and uses the existing Import Excel action', async () => {
@@ -158,7 +167,7 @@ test('a teacher fills video fields in the default template and uses the existing
     const [single, gaps] = part.subQuestions;
     assert.deepEqual(Array.from(single.subQuestions, question => question.videoTimeSeconds), [90, 150]);
     assert.equal(gaps.videoTimeSeconds, 210);
-    assert.equal(gaps.subQuestions[1].questionAnswers[0].answer.answer, 'Tuesday');
+    assert.equal(gaps.subQuestions[1].questionAnswers[0].answer.answer, 'The number of participants increased from 1,200 to 1,500.');
     assert.equal(gaps.subQuestions[1].questionAnswers[0].correct, true);
     assert.ok(!qa.messages.some(message => message.type === 'error'));
     assert.equal(qa.loading.count, 0);
@@ -183,6 +192,8 @@ test('old text templates without video fields or the new column still import', (
     const qa = harness(), {book} = qa.download();
     book.Sheets.THONG_TIN.rows = book.Sheets.THONG_TIN.rows.filter(row => !['Video URL', 'Loại nội dung'].includes(row[0]));
     book.Sheets.NOI_DUNG.rows.forEach(row => row.pop());
+    book.Sheets.NOI_DUNG.rows[3][6] = 'Name: }{SPACE}{. Preferred day: }{SPACE}{.';
+    book.Sheets.NOI_DUNG.rows[4][7] = 'Tuesday';
     const imported = qa.parse(book);
     assert.equal(imported.importedQuestionCount, 4);
     assert.equal(imported.subQuestions[0].videoUrl, null);

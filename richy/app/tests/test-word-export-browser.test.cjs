@@ -107,7 +107,7 @@ test('Word export packages genuine OOXML and includes prompts/options for suppor
             subQuestions: [question('STEM_TYPE_' + type, ['CHOICE_' + type + '_FIRST', 'CHOICE_' + type + '_SECOND', 'CHOICE_' + type + '_THIRD'])]}));
         for (const type of [2, 3, 11, 13]) {
             packages.push({type, question: 'INSTRUCTIONS_TYPE_' + type, motherTongue: '<p>GAP_TYPE_' + type + ' }{SPACE}{ and }{SPACE}{.</p>',
-                subQuestions: [question('<p>GAP_TYPE_' + type + ' }{SPACE}{' + (type >= 11 ? ' and }{SPACE}{.' : '.') + '</p>', ['PRIVATE_GAP_SOLUTION_' + type + '_FIRST / PRIVATE_ACCEPTED_ALTERNATIVE']),
+                subQuestions: [question('<p>GAP_TYPE_' + type + ' }{SPACE}{' + (type === 11 ? ' and }{SENTENCE}{.' : type === 13 ? ' and }{SPACE}{.' : '.') + '</p>', ['PRIVATE_GAP_SOLUTION_' + type + '_FIRST / PRIVATE_ACCEPTED_ALTERNATIVE']),
                     question(type >= 11 ? '' : 'GAP_STEM_' + type + '_SECOND }{SPACE}{', ['PRIVATE_GAP_SOLUTION_' + type + '_SECOND'])]});
         }
         // Type 13 is a word bank exercise: the options themselves remain part
@@ -138,7 +138,7 @@ test('Word export packages genuine OOXML and includes prompts/options for suppor
         }
         for (const type of [2, 3, 11, 13]) { assert.match(result.text, new RegExp('GAP_TYPE_' + type + '\\b')); }
         for (const marker of ['WRITING_PROMPT_ONE', 'WRITING_PROMPT_TWO', 'WORD_BANK_OPTION_0', 'WORD_BANK_OPTION_1']) { assert.ok(result.text.includes(marker), marker); }
-        assert.doesNotMatch(result.text, /PRIVATE_|\}\{SPACE\}\{|\}\{HEADING\}\{/);
+        assert.doesNotMatch(result.text, /PRIVATE_|\}\{(?:SPACE|SENTENCE|HEADING)\}\{/);
         saveQa('supported-question-types.docx', result);
         assert.deepEqual(errors, []);
     } finally { await browser.close(); }

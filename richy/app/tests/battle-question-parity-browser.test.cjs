@@ -166,12 +166,18 @@ test('stored gap HTML remains sanitized text rather than executable Angular mark
  const browser=await playwright.chromium.launch({headless:true,executablePath});
  try{for(const type of [4,11,13]){
   const exercise=fixture(type),content='<p ng-init="exploit=99">{{7*7}}<img src=x onerror="window.exploit=100"><script>window.exploit=101</script> }{SPACE}{ }{SPACE}{</p>';
-  if(type===4)exercise.passageHtml=content;else exercise.contentHtml=content;
+  if(type===4)exercise.passageHtml=content;
+  else exercise.contentHtml=type===11?content.replace('}{SPACE}{</p>','}{SENTENCE}{</p>'):content;
   exercise.instructionsHtml='<p ng-init="exploit=2">Instructions {{7*7}}</p>';
   const {page,errors}=await open(browser,exercise);
   assert.equal(await page.evaluate(()=>window.exploit),0);assert.match(await page.locator('.battle-exercise-form').innerText(),/\{\{7\*7\}\}/);
   assert.equal(await page.locator('.battle-exercise-form [ng-init],.battle-exercise-form [onerror],.battle-exercise-form script').count(),0);
-  if(type===11){assert.equal(await page.locator('input[type=text]').count(),2);await page.locator('input[type=text]').first().fill('typed answer');assert.deepEqual((await answers(page))['q:101'],['typed answer']);}
+  if(type===11){
+   const short = page.locator('input[type=text]'), sentence = page.locator('textarea');
+   assert.equal(await short.count(),1);assert.equal(await sentence.count(),1);
+   await short.fill('typed answer');await sentence.fill('A full sentence goes in the second gap.');
+   assert.deepEqual(await answers(page),{'q:101':['typed answer'],'q:102':['A full sentence goes in the second gap.']});
+  }
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

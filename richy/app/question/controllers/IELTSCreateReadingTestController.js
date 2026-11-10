@@ -1027,8 +1027,11 @@
                 .trim();
         }
 
-        vm.countOneEditorGaps = function (content) {
-            var matches = String(content || '').match(/\}\{SPACE\}\{/gi);
+        vm.countOneEditorGaps = function (content, type) {
+            var markers = vm.isComprehensiveMode && Number(type) === 11
+                ? /\}\{\s*(?:SPACE|SENTENCE)\s*\}\{/gi
+                : /\}\{\s*SPACE\s*\}\{/gi;
+            var matches = String(content || '').match(markers);
             return matches ? matches.length : 0;
         };
 
@@ -1638,7 +1641,7 @@
                     }
                     if (Number(questionPackage.type) === 11 && (questionPackage.subQuestions || []).length) {
                         var oneEditorContent = questionPackage.subQuestions[0].question;
-                        var gapCount = vm.countOneEditorGaps(oneEditorContent);
+                        var gapCount = vm.countOneEditorGaps(oneEditorContent, 11);
                         var expectedGapCount = questionPackage.subQuestions.length;
                         if (!plainText(oneEditorContent)) {
                             addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa nhập nội dung vào editor chung.', packageTarget, partIndex);
@@ -2902,49 +2905,56 @@
             ],
             toolbar1: 'insertReadingGap | table | bold underline italic | forecolor backcolor | removeformat | bullist numlist | alignleft aligncenter alignright alignjustify',
             setup: function (editor) {
-                editor.addButton('insertReadingGap', {
-                    text: 'Chèn ô điền từ',
-                    icon: false,
-                    tooltip: 'Chèn ký hiệu }{SPACE}{ tại vị trí con trỏ',
-                    onclick: function () {
-                        var bookmark = null;
-                        try {
-                            bookmark = editor.selection.getBookmark(2, true);
-                        } catch (ignoreBookmarkError) {
-                            bookmark = null;
-                        }
-                        editor.focus();
-                        if (bookmark) {
-                            try {
-                                editor.selection.moveToBookmark(bookmark);
-                            } catch (ignoreRestoreBookmarkError) {
-                                // TinyMCE still inserts at its last valid caret when a saved bookmark is stale.
-                            }
-                        }
-                        editor.undoManager.transact(function () {
-                            editor.execCommand('mceInsertContent', false, '}{SPACE}{');
-                        });
-                        editor.nodeChanged();
-                        editor.fire('input');
-                        editor.fire('change');
-                        editor.save();
-
-                        // ui-tinymce can miss a toolbar-generated change on an editor
-                        // loaded from an existing test. Push the content into ngModel
-                        // explicitly so the gap counter and the saved payload update now.
-                        var textarea = editor.getElement();
-                        var ngModelController = textarea ? angular.element(textarea).controller('ngModel') : null;
-                        var currentContent = editor.getContent();
-                        $scope.$evalAsync(function () {
-                            if (ngModelController) {
-                                ngModelController.$setViewValue(currentContent);
-                                ngModelController.$setTouched();
-                                ngModelController.$setDirty();
-                            }
-                            vm.changeInTheProcessOfCreatingReadingTest();
-                        });
+                function insertGap(marker) {
+                    var bookmark = null;
+                    try {
+                        bookmark = editor.selection.getBookmark(2, true);
+                    } catch (ignoreBookmarkError) {
+                        bookmark = null;
                     }
-                });
+                    editor.focus();
+                    if (bookmark) {
+                        try {
+                            editor.selection.moveToBookmark(bookmark);
+                        } catch (ignoreRestoreBookmarkError) {
+                            // TinyMCE still inserts at its last valid caret when a saved bookmark is stale.
+                        }
+                    }
+                    editor.undoManager.transact(function () {
+                        editor.execCommand('mceInsertContent', false, marker);
+                    });
+                    editor.nodeChanged();
+                    editor.fire('input');
+                    editor.fire('change');
+                    editor.save();
+
+                    // ui-tinymce can miss a toolbar-generated change on an editor
+                    // loaded from an existing test. Push the content into ngModel
+                    // explicitly so the gap counter and the saved payload update now.
+                    var textarea = editor.getElement();
+                    var ngModelController = textarea ? angular.element(textarea).controller('ngModel') : null;
+                    var currentContent = editor.getContent();
+                    $scope.$evalAsync(function () {
+                        if (ngModelController) {
+                            ngModelController.$setViewValue(currentContent);
+                            ngModelController.$setTouched();
+                            ngModelController.$setDirty();
+                        }
+                        vm.changeInTheProcessOfCreatingReadingTest();
+                    });
+                }
+                function insertGapButton(name, label, marker) {
+                    editor.addButton(name, {
+                        text: label,
+                        icon: false,
+                        tooltip: 'Chèn ký hiệu ' + marker + ' tại vị trí con trỏ',
+                        onclick: function () { insertGap(marker); }
+                    });
+                }
+                insertGapButton('insertReadingGap', 'Chèn ô điền từ', '}{SPACE}{');
+                if (vm.isComprehensiveMode) {
+                    insertGapButton('insertReadingSentence', 'Chèn ô viết cả câu', '}{SENTENCE}{');
+                }
             },
             content_css: [
                 '//fonts.googleapis.com/css?family=Poppins:300,400,500,600,700',
@@ -2954,6 +2964,12 @@
             statusbar: false,
             menubar: false
         };
+
+        $scope.tinyConFigOneEditorQuestion = vm.isComprehensiveMode
+            ? angular.extend({}, $scope.tinyConFigQuestion, {
+                toolbar1: $scope.tinyConFigQuestion.toolbar1.replace('insertReadingGap', 'insertReadingGap insertReadingSentence')
+            })
+            : $scope.tinyConFigQuestion;
 
         vm.bsTableControlCreateIELTSReadingTest = {
             options: {
@@ -3508,9 +3524,10 @@
                     var type = Number(group.type);
                     var label = 'Dòng ' + first.sourceRow + ', nhóm ' + group.ordinalNumber;
                     if (type === 11 || type === 13) {
-                        var gaps = (String(first.text).match(/\}\{\s*SPACE\s*\}\{/g) || []).length;
+                        var gaps = vm.countOneEditorGaps(first.text, type);
                         if (!first.hasText || gaps !== questions.length) {
-                            throw new Error(label + ': có ' + gaps + ' ký hiệu }{SPACE}{ nhưng cần đúng ' + questions.length +
+                            var markerLabel = vm.isComprehensiveMode && type === 11 ? '}{SPACE}{ hoặc }{SENTENCE}{' : '}{SPACE}{';
+                            throw new Error(label + ': có ' + gaps + ' ký hiệu ' + markerLabel + ' nhưng cần đúng ' + questions.length +
                                 '. Đặt toàn bộ nội dung ở dòng đầu nhóm và tạo một dòng đáp án cho từng ô trống.');
                         }
                     }
@@ -4095,6 +4112,11 @@
                 Author: 'IELTS Room'
             };
 
+            var oneEditorMarkers = vm.isComprehensiveMode ? '}{SPACE}{ hoặc }{SENTENCE}{' : '}{SPACE}{';
+            var oneEditorAnswer = vm.isComprehensiveMode ? 'từ hoặc câu đúng' : 'từ đúng';
+            var sentenceImportGuide = vm.isComprehensiveMode
+                ? ' Dùng }{SPACE}{ cho đáp án ngắn và }{SENTENCE}{ cho yêu cầu viết hoặc viết lại cả câu. Có thể dùng cả hai trong cùng nhóm theo thứ tự số câu. Với ô viết cả câu, chép nguyên câu đáp án vào Đáp án 1.'
+                : '';
             var guideRows = [
                 ['HƯỚNG DẪN IMPORT ' + (vm.isComprehensiveMode ? 'BÀI TẬP ' : 'IELTS ') + modeUpper, 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
                 ['Mục tiêu', vm.isComprehensiveMode
@@ -4121,7 +4143,7 @@
                 ['TABLE AND LIST - đáp án', 'Các cột Đáp án 1–12 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng lựa chọn đúng. Trên bài làm, bảng hiện A/B/C… và danh sách hiện dưới bảng.'],
                 ['LISTENING TWO-COLUMN DRAG & DROP (mã 15)', 'Dùng cho dạng kéo-thả hai cột. Mỗi dòng là một nhãn/câu bên trái. Danh sách dùng chung là ngân hàng đáp án bên phải; Tiêu đề danh sách có thể là Features, Places, People…; Đáp án đúng nhập A/B/C…'],
                 ['SENTENCE ENDINGS (mã 14)', 'Dùng cho “Complete each sentence with the correct ending”. Cột Danh sách dùng chung nhập A=is not backed... | B=is provided... ở dòng đầu nhóm. Nội dung câu hỏi là phần đầu của câu; Đáp án đúng nhập A/B/C... Học sinh kéo ending vào ô sau câu.'],
-                ['FILLING GAPS MỚI / ONE EDITOR (mã 11)', 'Mọi dạng điền từ mới phải dùng mã 11. Dòng đầu nhóm chứa toàn bộ đoạn/các câu và đúng một ký hiệu }{SPACE}{ cho mỗi số câu. Mỗi số câu bắt buộc có một dòng riêng; Đáp án 1 của từng dòng là từ đúng của chính câu đó, Đáp án đúng nhập A. Các dòng sau chỉ được để trống Nội dung câu hỏi, không được bỏ dòng hoặc bỏ Đáp án 1.'],
+                ['FILLING GAPS MỚI / ONE EDITOR (mã 11)', 'Mọi dạng điền từ mới phải dùng mã 11. Dòng đầu nhóm chứa toàn bộ đoạn/các câu và đúng một ký hiệu ' + oneEditorMarkers + ' cho mỗi số câu. Mỗi số câu bắt buộc có một dòng riêng; Đáp án 1 của từng dòng là ' + oneEditorAnswer + ' của chính câu đó, Đáp án đúng nhập A. Các dòng sau chỉ được để trống Nội dung câu hỏi, không được bỏ dòng hoặc bỏ Đáp án 1.'],
                 ['FILLING GAPS MỚI - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nhóm 2 câu phải có đúng 2 ký hiệu, đúng 2 dòng câu và cả 2 dòng đều phải có Đáp án 1. Không gõ dấu chấm/gạch dưới thay cho ô trống.'],
                 ['FILLING GAPS CŨ (mã 2 và 3)', 'Chỉ giữ để tương thích và chỉnh sửa dữ liệu cũ. Không dùng mã 2 hoặc 3 khi ChatGPT tạo file import mới; luôn chuyển dạng điền từ mới sang mã 11.'],
                 ['COMPLETE LIST OF WORDS (mã 13)', 'Dùng một editor và đúng một }{SPACE}{ cho mỗi câu. Nếu nhóm có N câu, phải tạo đủ N dòng câu. Trên MỌI dòng của nhóm, lặp lại nguyên vẹn cùng danh sách ở Đáp án 1–12: N đáp án đúng đặt trước theo đúng thứ tự số câu, rồi mới tới từ nhiễu. Danh sách A–J phải điền đủ cả 10 cột, không được dừng ở đáp án đầu. Đáp án đúng của dòng thứ 1/2/3... lần lượt là A/B/C...; không được chỉ nhập đáp án cho dòng đầu.'],
@@ -4132,11 +4154,12 @@
             ];
             guideRows.push(
                 ['Cấu trúc NOI_DUNG bắt buộc', 'Dòng 1 là tiêu đề cột; không gộp ô hoặc thêm tiêu đề phía trên. Giữ thứ tự và tên: ' + contentHeader.join(' | ')],
-                ['Kiểm tra tự động trước lưu', 'Importer kiểm tra tên cột, số nguyên, số câu bị thiếu/lặp, loại trong cùng nhóm, lựa chọn bị lệch cột, đáp án đúng và số }{SPACE}{. Lỗi sẽ ghi rõ dòng hoặc ô cần sửa; file chưa hợp lệ chưa được gửi lên máy chủ.'],
+                ['Kiểm tra tự động trước lưu', 'Importer kiểm tra tên cột, số nguyên, số câu bị thiếu/lặp, loại trong cùng nhóm, lựa chọn bị lệch cột, đáp án đúng và số ký hiệu ô trống. Lỗi sẽ ghi rõ dòng hoặc ô cần sửa; file chưa hợp lệ chưa được gửi lên máy chủ.'],
                 ['Xác nhận đã lưu', 'Chỉ thông báo import thành công sau khi máy chủ trả về mã bài đã lưu. Nếu API báo lỗi, câu hỏi đã đọc vẫn ở màn hình; đọc lỗi, sửa hoặc đăng nhập lại rồi bấm Lưu nháp. Không coi thông báo đã đọc file là đã lưu.']
             );
             if (vm.isComprehensiveMode) {
                 guideRows.splice(3, 0,
+                    ['VIẾT CẢ CÂU (mã 11)', sentenceImportGuide.trim() + ' Điền A tại Đáp án đúng. Xem câu 4 trong NOI_DUNG.'],
                     ['VIDEO - dùng chung mẫu này', 'Import bằng nút Import Excel hiện có. Điền Video URL trong THONG_TIN để hệ thống tự chuyển sang bài video: video bên trái, câu hỏi bên phải. Mỗi bài dùng một video. Link và câu hỏi ví dụ chỉ minh họa định dạng; thay bằng dữ liệu thật trước khi xuất bản.'],
                     ['VIDEO - link hỗ trợ', 'YouTube: link watch, youtu.be, Shorts hoặc live. TikTok: dùng link đầy đủ https://www.tiktok.com/@ten/video/123...; mở link rút gọn để lấy link đầy đủ. Có thể dùng link trực tiếp MP4/WebM/OGG. Video cần xem và nhúng được.'],
                     ['VIDEO - Mốc video', 'Cột Mốc video trong NOI_DUNG dùng văn bản phút:giây, ví dụ 01:30 = 1 phút 30 giây, 00:00 = đầu video; trên một giờ dùng 1:02:03. Không nhập 01:75 hoặc giờ Excel. Mốc phải nằm trong thời lượng video. Bài văn bản để trống cột này.'],
@@ -4160,13 +4183,13 @@
                 ['5. Chọn mã theo LOAI_CAU_HOI: Multiple Choice một đáp án=1 cho cả Reading/Listening; Multiple Answers=5 cho cả Reading/Listening; Matching Headings=4; Table and List=10; mọi dạng điền từ/gap mới=11; Complete List of Words=13; Sentence Endings=14; Listening Two-column Drag & Drop=15. TUYỆT ĐỐI không dùng mã 2, 3, 6 hoặc 7 trong file mới. Mã 6/7 chỉ là dữ liệu cũ và importer sẽ chuyển 6→1, 7→5.'],
                 ['6. Với mã 4, 10, 14 hoặc 15, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–12 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
                 ['6A. Riêng Matching Headings mã 4: Passage HTML phải có đúng một }{HEADING}{ sau từng nhãn đoạn được hỏi, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số }{HEADING}{ phải bằng số câu của nhóm và thứ tự A/B/C... phải trùng Nội dung câu hỏi Section A/Section B/Section C...'],
-                ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu theo đúng thứ tự. BẮT BUỘC tạo một dòng cho từng số câu; trên mỗi dòng nhập đầy đủ từ đúng của chính câu đó tại Đáp án 1 và nhập A tại Đáp án đúng. Chỉ Nội dung câu hỏi ở các dòng sau được để trống. Không được bỏ Đáp án 1 của câu thứ hai trở đi và không thay }{SPACE}{ bằng dấu chấm/gạch dưới.'],
+                ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một ký hiệu ' + oneEditorMarkers + ' cho mỗi số câu theo đúng thứ tự. BẮT BUỘC tạo một dòng cho từng số câu; trên mỗi dòng nhập đầy đủ ' + oneEditorAnswer + ' của chính câu đó tại Đáp án 1 và nhập A tại Đáp án đúng. Chỉ Nội dung câu hỏi ở các dòng sau được để trống. Không được bỏ Đáp án 1 của câu thứ hai trở đi và không thay ký hiệu ô trống bằng dấu chấm/gạch dưới.' + sentenceImportGuide],
                 ['7A. Với mã 13 Complete List of Words: nhóm N câu phải có đúng N ký hiệu }{SPACE}{ và đúng N dòng. Xác định đủ N đáp án đúng trước, sắp theo số câu tăng dần, rồi mới thêm từ nhiễu. Lặp lại TOÀN BỘ danh sách giống hệt ở các cột Đáp án 1–12 trên TẤT CẢ N dòng; Đáp án đúng của các dòng lần lượt A, B, C... Không chỉ điền dòng đầu và không được bỏ bất kỳ lựa chọn nào ở cuối danh sách. Ví dụ câu 31–35 có danh sách A–J: cả 5 dòng đều phải điền đủ cùng 10 đáp án, và Đáp án đúng lần lượt A/B/C/D/E.'],
                 ['8. Với mã 1, nhập lựa chọn vào Đáp án 1–12 và đúng một Đáp án đúng. Tất cả Multiple Choice import từ Reading/Listening đều là một cột dọc; không dùng mã 6.'],
                 ['8A. Với mã 5 Multiple Answers, nhóm N số câu phải có đúng N dòng liên tiếp, cùng Part + Nhóm, cùng câu hỏi và cùng danh sách lựa chọn. Ví dụ Questions 21–22: dòng 21 và 22 lặp nguyên câu hỏi và 5 đáp án; nếu A và C đúng thì nhập A ở dòng 21, C ở dòng 22 (hoặc A,C trên cả hai dòng). Importer hợp nhất thành một khối Questions 21–22, tự tích A và C, người dùng chỉ thấy một câu hỏi và một danh sách checkbox.'],
                 ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
                 ['10. Không tạo macro, công thức, liên kết tới workbook ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.' + (vm.isComprehensiveMode ? ' Video URL là trường link video được phép sử dụng.' : '')],
-                ['11. Tự kiểm tra từng dòng trước khi xuất file: ' + (vm.isComprehensiveMode ? 'số câu phải liên tục từ 1; chỉ dùng Part 1' : 'đủ 40 câu nếu đề đủ 40; đúng part') + '; không trùng/thiếu số; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
+                ['11. Tự kiểm tra từng dòng trước khi xuất file: ' + (vm.isComprehensiveMode ? 'số câu phải liên tục từ 1; chỉ dùng Part 1' : 'đủ 40 câu nếu đề đủ 40; đúng part') + '; không trùng/thiếu số; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số ký hiệu ô trống bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
                 ['KẾT QUẢ ĐẦU RA'],
                 ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
             ];
@@ -4175,7 +4198,7 @@
                 ['SCHEMA NOI_DUNG: đúng ' + contentHeader.length + ' cột, dòng 1 theo thứ tự: ' + contentHeader.join(' | ') + '. Không đổi tên, bỏ, dịch hoặc gộp cột. Không thêm hàng tiêu đề/trang bìa trên dòng 1. Ô không sử dụng để trống thật, không ghi None, N/A, dấu gạch hoặc dấu ba chấm.'],
                 ['MỖI DÒNG: một số câu nguyên dương duy nhất; không ghi 1–3 hoặc 1.5. Điền rõ Part, Nhóm và Loại câu hỏi trên từng dòng để tránh nhầm kế thừa. Các dòng cùng Part + Nhóm bắt buộc cùng loại; đổi Nhóm khi thay loại hoặc thay nội dung dùng chung.'],
                 ['LỰA CHỌN: nhập liền từ Đáp án 1, không bỏ trống cột giữa. Mã 1 có ít nhất hai lựa chọn và đúng một đáp án đúng. Mã 5 dùng chung câu hỏi và danh sách lựa chọn trên mọi dòng. Mã 4/10/14/15 dùng một danh sách chung; không thay danh sách giữa nhóm.'],
-                ['KIỂM TRA CUỐI: đọc lại file .xlsx đã lưu, kiểm tra từng dòng và từng nhóm theo các quy tắc dưới đây. Với mã 11/13, đếm }{SPACE}{ và đối chiếu đúng số dòng đáp án. Với mã 13, các dòng lặp cùng danh sách đủ từ và đáp án đúng A/B/C... theo thứ tự. Không trả file còn sai cột, thiếu câu hoặc thiếu đáp án.'],
+                ['KIỂM TRA CUỐI: đọc lại file .xlsx đã lưu, kiểm tra từng dòng và từng nhóm theo các quy tắc dưới đây. Với mã 11/13, đếm các ký hiệu ô trống được phép và đối chiếu số dòng đáp án. Với mã 13, các dòng lặp cùng danh sách đủ từ và đáp án đúng A/B/C... theo thứ tự. Không trả file còn sai cột, thiếu câu hoặc thiếu đáp án.'],
                 ['NẾU THIẾU DỮ LIỆU: hỏi đúng phần thiếu trước khi tạo file; không suy đoán câu hỏi, đáp án, link hay mốc video. Nếu công cụ hiện tại không tạo được file Excel, nói rõ giới hạn; không thay bằng Markdown/CSV/JSON hoặc hứa đã tạo file nhưng không đính kèm.']
             );
             if (vm.isComprehensiveMode) {
@@ -4219,8 +4242,8 @@
                     contentHeader,
                     [1, '', 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A', ''],
                     ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                    ['', '', 2, 11, '<p><strong>Questions 3–4</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 3, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                    ['', '', '', '', '', 4, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', '']
+                    ['', '', 2, 11, '<p><strong>Questions 3–4</strong></p>', 3, '<p>Write one word. Name: }{SPACE}{</p><p>Rewrite the whole sentence correctly: The number of participants increase from 1,200 to 1,500. }{SENTENCE}{</p>', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 4, '', 'The number of participants increased from 1,200 to 1,500.', '', '', '', '', '', '', '', '', '', '', '', '', 'A', '']
                 ];
             } else if (vm.isListeningMode) {
                 contentRows = [
@@ -4258,6 +4281,7 @@
                 {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}, {wch: 30}
             ];
             if (vm.isComprehensiveMode) {
+                contentSheet['!cols'][7] = {wch: 55};
                 contentSheet['!cols'].push({wch: 16});
                 angular.forEach(contentRows.slice(1), function (row, rowIndex) {
                     var cueCell = contentSheet['W' + (rowIndex + 2)];
@@ -4278,7 +4302,7 @@
                 8: vm.isListeningMode ? 'Matching/drop box cho Listening; giữ đúng danh sách lựa chọn và thứ tự đáp án.' : 'Matching Heading kiểu Listening/drop box; không ưu tiên cho IELTS Reading.',
                 9: vm.isListeningMode ? 'Map/diagram Listening; Passage HTML giữ ảnh/bản đồ và các vị trí cần trả lời.' : 'Map/diagram kiểu Listening; không ưu tiên cho IELTS Reading.',
                 10: 'TABLE AND LIST. Danh sách dùng chung nhập ở cột Danh sách dùng chung; tiêu đề hiển thị nhập ở cột Tiêu đề danh sách; mỗi câu dùng Đáp án đúng A–Z.',
-                11: 'Filling Gaps New / ONE WORD ONLY / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một }{SPACE}{ cho mỗi câu; bắt buộc đủ một dòng cho từng số câu; Đáp án 1 từng dòng là từ đúng, Đáp án đúng=A. Không dùng mã 2 hoặc 3 cho đề mới.',
+                11: 'Filling Gaps New / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một ký hiệu ' + oneEditorMarkers + ' cho mỗi câu; bắt buộc đủ một dòng cho từng số câu; Đáp án 1 từng dòng là ' + oneEditorAnswer + ', Đáp án đúng=A. Không dùng mã 2 hoặc 3 cho đề mới.',
                 12: 'MATCHING INFORMATION. Nhập cùng danh sách lựa chọn theo thứ tự ở Đáp án 1–12 cho mỗi câu.',
                 13: 'Complete List of Words. Một editor; N đáp án đúng đặt trước theo thứ tự N câu, sau đó mới tới từ nhiễu. Phải lặp nguyên danh sách Đáp án 1–12 trên mọi dòng trong nhóm; danh sách A–J phải đủ 10 mục; Đáp án đúng lần lượt A/B/C... Không chỉ nhập dòng đầu.',
                 14: 'Complete each sentence with the correct ending. Danh sách endings chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.',

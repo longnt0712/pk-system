@@ -5,19 +5,20 @@ const app=path.join(__dirname,'..');
 const captures=path.join(app,'../target');fs.mkdirSync(captures,{recursive:true});
 const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
 function slice(view,start,end){const a=view.indexOf(start),b=view.indexOf(end,a);assert.ok(a>=0&&b>a);return view.slice(a,b);}
-async function open(browser,type,width){
+async function open(browser,type,width,gapContent){
  const page=await browser.newPage({viewport:{width,height:1000},hasTouch:width<500,isMobile:width<500});page.setDefaultTimeout(7000);
  const errors=[];page.on('pageerror',error=>errors.push(String(error)));
  const view=fs.readFileSync(path.join(app,'question/views/ielts_reading_actual_test_idp.html'),'utf8');
  const drag=slice(view,'                                    <div class="complete-list-runtime','                                    <!--<div class="col-md-12" style="margin-bottom: 20px"');
+ const gaps=type===11?slice(view,'                                    <div class="idp-one-editor-runtime','                                    <div class="complete-list-runtime') : '';
  const css=fs.readFileSync(path.join(app,'assets/css/external/bootstrap.min.css'),'utf8')+'\n'+Array.from(view.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g),m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(app,'assets/css/question-drag-drop.css'),'utf8');
  await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html></html>'}));
  await page.goto('http://candidate-drag.test/comprehensive_test/72513?assignmentTaskId=238&assignmentPart=1&assignmentParts=1&sessionMode=SERIOUS');
- await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'\n#qa{padding:12px}.matching-heading-drop-box{display:inline-block!important;min-width:130px;min-height:40px}.sentence-ending-choice,.complete-list-word,.drag-matching-heading{display:inline-block;min-height:40px;margin:7px;padding:9px}.sentence-ending-slot,.complete-list-drop-box{display:inline-block;min-width:130px;min-height:42px}.sentence-ending-bank,.complete-list-word-bank{padding:14px;border:1px solid #aaa}.drag-matching-heading-root{min-height:48px}</style></head><body><main id="qa" ng-controller="IELTSReadingActualTestController as vm"><audio id="audio1"></audio><div id="passage-text-1" compile="vm.ieltsReadingActualTest.subQuestions[0].question"></div><div id="passage-text-2"></div><div id="passage-text-3"></div><div ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions" ng-show="vm.videoPackageVisible(item)">'+drag+'</div></main></body></html>');
+ await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'\n#qa{padding:12px}.matching-heading-drop-box{display:inline-block!important;min-width:130px;min-height:40px}.sentence-ending-choice,.complete-list-word,.drag-matching-heading{display:inline-block;min-height:40px;margin:7px;padding:9px}.sentence-ending-slot,.complete-list-drop-box{display:inline-block;min-width:130px;min-height:42px}.sentence-ending-bank,.complete-list-word-bank{padding:14px;border:1px solid #aaa}.drag-matching-heading-root{min-height:48px}</style></head><body><main id="qa" '+(type===11?'class="idp-reading-page"':'')+' ng-controller="IELTSReadingActualTestController as vm"><audio id="audio1"></audio><div id="passage-text-1" compile="vm.ieltsReadingActualTest.subQuestions[0].question"></div><div id="passage-text-2"></div><div id="passage-text-3"></div><div ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions" ng-show="vm.videoPackageVisible(item)">'+gaps+drag+'</div></main></body></html>');
  for(const script of ['jquery.min.js','angular.min.js','angular-drag-and-drop-lists.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',script)});
- await page.evaluate(type=>{
+ await page.evaluate(({type,gapContent})=>{
   window.App={initAjax(){}};window.saved=[];window.toasts=[];
-  const questions=[1,2].map((number,index)=>({id:1001+index,ordinalNumber:number,question:type===13?'A paragraph }{SPACE}{ then }{SPACE}{.':'Sentence '+number,
+  const questions=[1,2].map((number,index)=>({id:1001+index,ordinalNumber:number,question:type===11?gapContent:type===13?'A paragraph }{SPACE}{ then }{SPACE}{.':'Sentence '+number,
    parent:{id:99,type},questionAnswers:[0,1,2].map(option=>({id:2000+index*10+option,ordinalNumberQuestionAnswer:option+1,correct:option===index,
     answer:{id:3000+option,answer:['First answer','Second answer','Third answer'][option]},question:{id:1001+index,ordinalNumber:number,parent:{id:99,type}}}))}));
   const data={id:72513,title:'Assigned video drag',subQuestions:[{id:10,type:1,question:type===4?'<p>First }{HEADING}{</p><p>Second }{HEADING}{</p>':'Video text',videoUrl:'https://school.test/clip.mp4',questionType:{code:'IELTSRTP1'},subQuestions:[{id:99,type,question:'Match the answers',videoTimeSeconds:10,subQuestions:questions}]},{id:11,type:1,question:'',subQuestions:[]},{id:12,type:1,question:'',subQuestions:[]}]};
@@ -28,9 +29,9 @@ async function open(browser,type,width){
    .value('$cookies',{getAll:()=>({'education.user':cookie})}).value('blockUI',{start(){},stop(){}})
    .value('toastr',Object.fromEntries(['success','warning','error','info'].map(level=>[level,(...args)=>toasts.push({level,args})])))
    .run(['$rootScope',root=>{root.settings={layout:{}};}])
-   .factory('QuestionService',['$q',q=>({getAssignedTask:()=>q.when({activityType:'COMPREHENSIVE',ieltsTestId:72513,shuffleQuestions:false}),getOne:()=>q.when(angular.copy(data)),getLearningDrafts:()=>q.when([]),
+   .factory('QuestionService',['$q',q=>({getAssignedTask:()=>q.when({taskId:238,activityType:'COMPREHENSIVE',ieltsTestId:72513,shuffleQuestions:false}),getOne:()=>q.when(angular.copy(data)),getLearningDrafts:()=>q.when([]),
     saveLearningDraft(dto){saved.push(structuredClone(dto));return q.when(true);},deleteLearningDraft:()=>q.when(true)})]);
- },type);
+ },{type,gapContent});
  for(const script of ['question/business/QuestionDragDrop.js','question/business/ComprehensiveVideo.js','question/business/ComprehensiveListening.js','question/controllers/IELTSReadingActualTestController.js'])await page.addScriptTag({path:path.join(app,script)});
  await page.evaluate(()=>{angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.qaScope=angular.element(document.getElementById('qa')).scope();window.qaVm=qaScope.vm;});
  await page.waitForFunction(()=>qaVm.isStartTest||qaVm.startTestError);assert.equal(await page.evaluate(()=>qaVm.startTestError),'',errors.join('\n'));
@@ -41,6 +42,37 @@ function selectors(page,type){return type===4?{bank:page.locator('.drag-matching
  type===13?{bank:page.locator('.complete-list-word-bank'),tokens:page.locator('.complete-list-word'),slots:page.locator('.complete-list-drop-box'),filled:index=>page.locator('.complete-list-slot-answer').nth(index)}:
  {bank:page.locator('.sentence-ending-bank'),tokens:page.locator('.sentence-ending-choice'),slots:page.locator('.sentence-ending-slot'),filled:index=>page.locator('.sentence-ending-slot').nth(index).locator('[touch-dnd-source]')};}
 async function results(page){return page.evaluate(()=>qaVm.testResult.questionAnswerTestResult.map(r=>({number:r.ordinalNumber,value:r.clientAnswer})).sort((a,b)=>a.number-b.number));}
+
+test('Comprehensive uses a full-width growing sentence field alongside a short gap and keeps both answers', async () => {
+ const browser = await playwright.chromium.launch({headless:true, executablePath});
+ try {
+  const prompts = [
+   '<p>Name: }{SPACE}{</p><p>Correct this sentence. }{SENTENCE}{</p>',
+   '<p>Name: }{SPACE}{</p><p><strong>Rewrite the whole sentence</strong> correctly: }{SPACE}{</p>'
+  ];
+  for (const width of [1280, 390]) {
+   const {page, errors} = await open(browser, 11, width, prompts[width === 390 ? 1 : 0]);
+   const short = page.locator('input#text-question-number-1');
+   const sentence = page.locator('textarea#text-question-number-2');
+   await sentence.waitFor();
+   const initial = await sentence.boundingBox();
+   const availableWidth = await sentence.evaluate(node => node.parentElement.clientWidth);
+   assert.ok(initial.width >= availableWidth - 1 && initial.width <= width);
+   await short.click();
+   await short.fill('Harbour');
+   await page.evaluate(() => qaVm.autoFocusOnText(2));
+   assert.equal(await sentence.evaluate(node => node === document.activeElement), true);
+   const answer = 'The number of participants increased steadily from 1,200 to 1,500. '.repeat(14).trim();
+   await sentence.fill(answer);
+   await page.waitForFunction(initialHeight => document.getElementById('text-question-number-2').offsetHeight > initialHeight, initial.height);
+   assert.deepEqual(await results(page), [{number:1,value:'Harbour'}, {number:2,value:answer}]);
+   assert.deepEqual(errors, []);
+   await page.close();
+  }
+ } finally {
+  await browser.close();
+ }
+});
 async function touchDrag(page,from,to,cancel=false){
  await from.scrollIntoViewIfNeeded();await to.scrollIntoViewIfNeeded();const a=await from.boundingBox(),b=await to.boundingBox();assert.ok(a&&b);
  const start={x:a.x+a.width/2,y:a.y+a.height/2},end={x:b.x+b.width/2,y:b.y+b.height/2};

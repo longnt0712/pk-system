@@ -69,7 +69,7 @@
                 function range(numbers) { return numbers.length > 1 ? numbers[0] + '–' + numbers[numbers.length - 1] : String(numbers[0]); }
                 function blanked(value, numbers) {
                     var index = 0;
-                    return html(value).replace(/}\{\s*ENTER\s*}\{/gi, '<br>').replace(/}\{\s*(?:SPACE|HEADING)\s*}\{/gi, function () {
+                    return html(value).replace(/}\{\s*ENTER\s*}\{/gi, '<br>').replace(/}\{\s*(?:SPACE|SENTENCE|HEADING)\s*}\{/gi, function () {
                         var number = numbers[Math.min(index++, numbers.length - 1)]; return (number ? '(' + number + ') ' : '') + '____________';
                     });
                 }
