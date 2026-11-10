@@ -102,6 +102,8 @@
 }
 .teaching-pdf-explorer.is-grid .teaching-pdf-folder-open i, .teaching-pdf-explorer.is-grid .teaching-pdf-file-name i { font-size: 30px; }
 .teaching-pdf-explorer.is-grid .teaching-pdf-organize { align-self: flex-end; }
+.teaching-pdf-folder-actions { justify-content: flex-end; }
+.teaching-pdf-library .teaching-pdf-delete { color: #b42332; }
 .teaching-pdf-explorer.is-grid .teaching-pdf-file-row .teaching-pdf-toolbar { justify-content: center; }
 .teaching-pdf-explorer.is-grid .is-pdf-drop-target { background: #eeebff; }
 .teaching-pdf-explorer-empty { margin: 0; padding: 18px 12px; color: #556583; }

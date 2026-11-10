@@ -12,8 +12,8 @@ const text = id => ({id, subQuestions: [{videoUrl: ''}]});
 const summary = id => ({id, title: 'Exercise ' + id, testFormat: 'COMPREHENSIVE'});
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function editor(catalog = [summary(1), summary(2)]) {
-    const requests = [], picks = [];
-    const vm = {assignableIeltsTests: structuredClone(catalog), scheduleTopics: [], scheduleListeningItems: [],
+    const requests = [], picks = [], selectedRequests = [];
+    const vm = {assignableIeltsTests: [], scheduleTopics: [], scheduleListeningItems: [],
         scheduleDay: {tasks: [], scheduleDate: '2026-10-19'}, taskEditor: null,
         taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
         isIeltsTask: task => task?.activityType === 'COMPREHENSIVE', ieltsPartsForTask: () => [1],
@@ -23,21 +23,29 @@ function editor(catalog = [summary(1), summary(2)]) {
         angular: {noop() {}, isArray: Array.isArray, copy: structuredClone, forEach: (items, fn) => (items || []).forEach(fn)},
         toastr: {warning(message) { vm.warning = message; }}, scheduleListeningItemsRequest: 0,
         service: {getAssignmentExerciseDetails(id) { return new Promise((resolve, reject) => requests.push({id, resolve, reject})); }},
-        assignmentPicker: {open() { return new Promise(resolve => picks.push(resolve)); }}});
+        assignmentPicker: {
+            open() { return new Promise(resolve => picks.push(resolve)); },
+            getSelected(type, id) {
+                selectedRequests.push([type, id]);
+                return Promise.resolve(catalog.find(test => test.id === id));
+            }
+        }});
     nodeVm.runInContext(section('        vm.taskTopicIds =', '\t\tvm.tasksForSection ='), context);
     nodeVm.runInContext(section('        vm.taskSelectedExerciseTitle =', '\t\tvm.isIeltsTask ='), context);
     nodeVm.runInContext(section('\t\tvm.openScheduleTask =', '        vm.taskDeadlineChanged ='), context);
     nodeVm.runInContext(section('\t\tfunction scheduleTaskPayload(', '\t\tvm.removeScheduleTask ='), context);
-    vm.ieltsTestsForTask = () => vm.assignableIeltsTests;
-    function open(task = {ieltsTestId: 1, shuffleQuestions: true}) {
+    async function open(task = {ieltsTestId: 1, shuffleQuestions: true}) {
         vm.openScheduleTask('IN_CLASS', {activityType: 'COMPREHENSIVE', title: 'Practice', requiredAttempts: 1,
             section: 'IN_CLASS', ieltsParts: [1], ...task});
+        await tick();
     }
     async function choose(test) { vm.openTaskExercisePicker(); picks.shift()({test}); await tick(); }
-    return {vm, context, requests, open, choose};
+    return {vm, context, requests, selectedRequests, open, choose};
 }
 test('editing a saved video assignment loads real metadata and enforces an unchecked payload', async () => {
-    const e = editor(); e.open();
+    const e = editor(); await e.open();
+    assert.deepEqual(e.selectedRequests, [['COMPREHENSIVE', 1]]);
+    assert.deepEqual(Array.from(e.vm.assignableIeltsTests, test => test.id), [1]);
     assert.equal(e.vm.taskExerciseVideoLoading, true); assert.equal(e.requests[0].id, '1');
     e.vm.commitScheduleTask(); assert.match(e.vm.warning, /thông tin bài tập/); assert.equal(e.vm.scheduleDay.tasks.length, 0);
     e.requests[0].resolve(video(1)); await tick();
@@ -48,21 +56,22 @@ test('editing a saved video assignment loads real metadata and enforces an unche
     assert.equal(e.context.scheduleTaskPayload(e.vm.taskEditor).shuffleQuestions, false);
     e.vm.commitScheduleTask(); assert.equal(e.vm.saved.shuffleQuestions, false);
 });
-test('selecting video from a full catalog needs no request and switching to text restores the preference', async () => {
+test('selecting a video with known metadata needs no detail request and switching to text restores the preference', async () => {
     for (const initial of [true, false]) {
-        const e = editor([{...summary(1), ...video(1)}, {...summary(2), ...text(2)}]);
-        e.open({ieltsTestId: 2, shuffleQuestions: initial});
+        const catalog = [{...summary(1), ...video(1)}, {...summary(2), ...text(2)}];
+        const e = editor(catalog);
+        await e.open({ieltsTestId: 2, shuffleQuestions: initial});
         assert.equal(e.vm.taskEditor.shuffleQuestions, initial);
-        await e.choose(e.vm.assignableIeltsTests[0]);
+        await e.choose(catalog[0]);
         assert.equal(e.vm.taskExerciseVideo, true); assert.equal(e.vm.taskEditor.shuffleQuestions, false);
         assert.equal(e.requests.length, 0);
-        await e.choose(e.vm.assignableIeltsTests[1]);
+        await e.choose(catalog[1]);
         assert.equal(e.vm.taskExerciseVideo, false); assert.equal(e.vm.taskEditor.shuffleQuestions, initial);
         assert.equal(e.context.scheduleTaskPayload(e.vm.taskEditor).shuffleQuestions, initial);
     }
 });
 test('late video replies cannot change the newly selected exercise or a different task', async () => {
-    const e = editor(); e.open();
+    const e = editor(); await e.open();
     await e.choose(summary(2));
     assert.equal(e.requests.length, 2);
     e.requests[0].resolve(video(1)); await tick();
@@ -70,23 +79,23 @@ test('late video replies cannot change the newly selected exercise or a differen
     assert.equal(e.vm.taskExerciseVideoLoading, true); assert.equal(e.vm.taskEditor.shuffleQuestions, true);
     e.requests[1].resolve(text(2)); await tick();
     assert.equal(e.vm.taskExerciseVideoLoading, false);
-    e.vm.cancelScheduleTask(); e.open({ieltsTestId: 2, shuffleQuestions: false});
+    e.vm.cancelScheduleTask(); await e.open({ieltsTestId: 2, shuffleQuestions: false});
     assert.equal(e.requests.length, 2); assert.equal(e.vm.taskEditor.shuffleQuestions, false);
     assert.equal(e.vm.taskExerciseVideo, false);
 });
 test('cancelled editors ignore pending replies and cached metadata is reused when reopened', async () => {
-    const e = editor(); e.open(); e.vm.cancelScheduleTask();
-    e.open({ieltsTestId: 2, shuffleQuestions: false});
+    const e = editor(); await e.open(); e.vm.cancelScheduleTask();
+    await e.open({ieltsTestId: 2, shuffleQuestions: false});
     e.requests[0].resolve(video(1)); await tick();
     assert.equal(e.vm.taskEditor.ieltsTestId, 2); assert.equal(e.vm.taskExerciseVideo, false);
     assert.equal(e.vm.taskExerciseVideoLoading, true);
     e.requests[1].resolve(text(2)); await tick();
-    e.vm.cancelScheduleTask(); e.open({ieltsTestId: 1, shuffleQuestions: true});
+    e.vm.cancelScheduleTask(); await e.open({ieltsTestId: 1, shuffleQuestions: true});
     assert.equal(e.vm.taskExerciseVideo, true); assert.equal(e.vm.taskEditor.shuffleQuestions, false);
     assert.equal(e.requests.length, 2);
 });
 test('failed or incomplete metadata is visible, blocks saving and can be retried', async () => {
-    const e = editor(); e.open();
+    const e = editor(); await e.open();
     e.requests[0].reject(Error('offline')); await tick();
     assert.equal(e.vm.taskExerciseVideoError, true); assert.equal(e.vm.taskExerciseVideoLoading, false);
     e.vm.commitScheduleTask(); assert.equal(e.vm.scheduleDay.tasks.length, 0);

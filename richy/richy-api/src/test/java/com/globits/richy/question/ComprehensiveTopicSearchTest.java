@@ -250,30 +250,60 @@ public class ComprehensiveTopicSearchTest {
         }
         manager.flush();
 
-        List<DailyListeningAssignmentItemDto> root = assignments.getAssignableDailyListeningPage(null, "", 1, null).getContent();
-        assertEquals(Collections.singletonList(legacy.getId()), root.stream().map(DailyListeningAssignmentItemDto::getId).collect(Collectors.toList()));
-        List<DailyListeningAssignmentItemDto> direct = assignments.getAssignableDailyListeningPage(folder.getId(), "", 1, null).getContent();
+        List<AssignmentExerciseItemDto> root = assignments.getAssignableExercisePage("DAILY_LISTENING", null, "", 1, null).getContent();
+        assertEquals(Collections.singletonList(legacy.getId()), root.stream().map(AssignmentExerciseItemDto::getId).collect(Collectors.toList()));
+        List<AssignmentExerciseItemDto> direct = assignments.getAssignableExercisePage("DAILY_LISTENING", folder.getId(), "", 1, null).getContent();
         assertEquals(1, direct.size());
         assertEquals(published.getId(), direct.get(0).getId());
         assertEquals(1, direct.get(0).getTopics().size());
         assertEquals(topic.getName(), direct.get(0).getTopics().get(0).getName());
         assertEquals(category.getId(), direct.get(0).getTopics().get(0).getCategoryId());
 
-        org.springframework.data.domain.Slice<DailyListeningAssignmentItemDto> first =
-                assignments.getAssignableDailyListeningPage(folder.getId(), "TRACK", 1, null);
+        org.springframework.data.domain.Slice<AssignmentExerciseItemDto> first =
+                assignments.getAssignableExercisePage("DAILY_LISTENING", folder.getId(), "TRACK", 1, null);
         assertEquals(50, first.getNumberOfElements());
         assertTrue(first.hasNext());
         assertEquals("Track 01", first.getContent().get(0).getTitle());
-        org.springframework.data.domain.Slice<DailyListeningAssignmentItemDto> second =
-                assignments.getAssignableDailyListeningPage(folder.getId(), "TRACK", 2, null);
+        org.springframework.data.domain.Slice<AssignmentExerciseItemDto> second =
+                assignments.getAssignableExercisePage("DAILY_LISTENING", folder.getId(), "TRACK", 2, null);
         assertFalse(second.hasNext());
         assertEquals(1, second.getNumberOfElements());
         assertEquals("Track 51", second.getContent().get(0).getTitle());
-        assertEquals(second.getContent().get(0).getId(), assignments.getAssignableDailyListeningPage(null, "", 1,
+        assertEquals(second.getContent().get(0).getId(), assignments.getAssignableExercisePage("DAILY_LISTENING", null, "", 1,
                 second.getContent().get(0).getId()).getContent().get(0).getId());
-        assertEquals(legacy.getId(), assignments.getAssignableDailyListeningPage(null, "old track", 1, null).getContent().get(0).getId());
-        assertTrue(assignments.getAssignableDailyListeningPage(null, "Track %", 1, null).getContent().isEmpty());
-        assertTrue(assignments.getAssignableDailyListeningPage(null, "", 1, draft.getId()).getContent().isEmpty());
+        assertEquals(legacy.getId(), assignments.getAssignableExercisePage("DAILY_LISTENING", null, "old track", 1, null).getContent().get(0).getId());
+        assertTrue(assignments.getAssignableExercisePage("DAILY_LISTENING", null, "Track %", 1, null).getContent().isEmpty());
+        assertTrue(assignments.getAssignableExercisePage("DAILY_LISTENING", null, "", 1, draft.getId()).getContent().isEmpty());
+    }
+
+    @Test public void assignmentPagesFilterAllIeltsModesAndKeepWritingTaskAvailability() {
+        if (manager.find(QuestionType.class, 11L) == null) {
+            manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) "
+                    + "values (11, 'IELTS', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+        }
+        QuestionType ielts = manager.find(QuestionType.class, 11L);
+        TestFolder folder = new TestFolder();
+        folder.setName("Assignment folder"); folder.setTestMode("COMPREHENSIVE"); folder.setOwner(owner);
+        manager.persist(folder);
+        Question reading = question("Legacy Reading", 7, null); reading.setQuestionType(ielts);
+        Question listening = question("Legacy Listening", 7, null); listening.setQuestionType(ielts); listening.setPronounce("test.mp3");
+        Question writing = question("Task 2 only", 7, "WRITING"); writing.setQuestionType(ielts);
+        Question writingPart = question(null, 7, null); writingPart.setParent(writing);
+        Question task2 = question(null, 7, null); task2.setParent(writingPart); task2.setType(17);
+        Question comprehensive = question("Practice", 7, "COMPREHENSIVE"); comprehensive.setQuestionType(ielts); comprehensive.setTestFolder(folder);
+        Question hidden = question("Hidden", 8, "COMPREHENSIVE"); hidden.setQuestionType(ielts); hidden.setTestFolder(folder);
+        manager.flush();
+        EnrolmentClassServiceImpl assignments = new EnrolmentClassServiceImpl();
+        ReflectionTestUtils.setField(assignments, "teamEntityManager", manager);
+        assertEquals(reading.getId(), assignments.getAssignableExercisePage("READING", null, "legacy", 1, null).getContent().get(0).getId());
+        assertEquals(listening.getId(), assignments.getAssignableExercisePage("LISTENING", null, "legacy", 1, null).getContent().get(0).getId());
+        assertTrue(assignments.getAssignableExercisePage("LISTENING", null, "", 1, reading.getId()).getContent().isEmpty());
+        AssignmentExerciseItemDto selected = assignments.getAssignableExercisePage("WRITING", null, "", 1, writing.getId()).getContent().get(0);
+        assertFalse(selected.isHasWritingTask1());
+        assertTrue(selected.isHasWritingTask2());
+        List<AssignmentExerciseItemDto> inFolder = assignments.getAssignableExercisePage("COMPREHENSIVE", folder.getId(), "", 1, null).getContent();
+        assertEquals(Collections.singletonList(comprehensive.getId()), inFolder.stream().map(AssignmentExerciseItemDto::getId).collect(Collectors.toList()));
+        assertTrue(assignments.getAssignableExercisePage("COMPREHENSIVE", null, "", 1, hidden.getId()).getContent().isEmpty());
     }
 
     private Question question(String title, int status, String format) {

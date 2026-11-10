@@ -13,6 +13,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,7 +48,8 @@ public class TeachingPdfService {
     public Map<String, Object> list(Long classId, String date) {
         TeachingPdfSession session = classes.teachingPdfSession(classId, date, false);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("library", jdbc.queryForList("SELECT id, name, folder_id AS folderId FROM dbo.tbl_class_teaching_pdf WHERE owner_id = ? ORDER BY name, id", session.ownerId));
+        result.put("library", jdbc.queryForList("SELECT id, name, folder_id AS folderId FROM dbo.tbl_class_teaching_pdf "
+                + "WHERE owner_id = ? AND library_deleted = 0 ORDER BY name, id", session.ownerId));
         result.put("folders", folders(session.ownerId));
         result.put("current", lessons(session.dayId, false));
         result.put("previous", lessons(session.previousDayId, true));
@@ -102,10 +104,38 @@ public class TeachingPdfService {
         Long ownerId = classes.teachingPdfSession(classId, date, false).ownerId;
         name = libraryName(name, 255);
         folderId = ownedFolder(ownerId, folderId);
-        int changed = jdbc.update("UPDATE dbo.tbl_class_teaching_pdf SET name = ?, folder_id = ? WHERE id = ? AND owner_id = ?",
+        int changed = jdbc.update("UPDATE dbo.tbl_class_teaching_pdf SET name = ?, folder_id = ? "
+                + "WHERE id = ? AND owner_id = ? AND library_deleted = 0",
                 name, folderId, id, ownerId);
         if (changed != 1) { throw error(HttpStatus.NOT_FOUND, "PDF không có trong kho của bạn."); }
         return libraryEntry(id, name, "folderId", folderId);
+    }
+
+    public Map<String, String> deleteFile(Long classId, String date, String id) {
+        Long ownerId = classes.teachingPdfSession(classId, date, false).ownerId;
+        int changed = jdbc.update("UPDATE dbo.tbl_class_teaching_pdf SET library_deleted = 1, folder_id = NULL "
+                + "WHERE id = ? AND owner_id = ?", id, ownerId);
+        if (changed != 1) { throw error(HttpStatus.NOT_FOUND, "PDF không có trong kho của bạn."); }
+        return Collections.singletonMap("id", id);
+    }
+
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public Map<String, String> deleteFolder(Long classId, String date, String id) {
+        Long ownerId = classes.teachingPdfSession(classId, date, false).ownerId;
+        String occupied = "Thư mục còn PDF hoặc thư mục con. Hãy chuyển hoặc xóa các mục bên trong trước.";
+        try {
+            int removed = jdbc.update("DELETE FROM dbo.tbl_class_teaching_pdf_folder WHERE id = ? AND owner_id = ? "
+                    + "AND NOT EXISTS (SELECT 1 FROM dbo.tbl_class_teaching_pdf_folder WHERE parent_id = ? AND owner_id = ?) "
+                    + "AND NOT EXISTS (SELECT 1 FROM dbo.tbl_class_teaching_pdf WHERE folder_id = ? AND owner_id = ?)",
+                    id, ownerId, id, ownerId, id, ownerId);
+            if (removed != 1) {
+                ownedFolder(ownerId, id);
+                throw error(HttpStatus.CONFLICT, occupied);
+            }
+        } catch (DataIntegrityViolationException e) {
+            throw error(HttpStatus.CONFLICT, occupied);
+        }
+        return Collections.singletonMap("id", id);
     }
 
     private String ownedFolder(Long ownerId, String folderId) {
@@ -179,7 +209,8 @@ public class TeachingPdfService {
                     Integer.class, run, classId, session.previousDayId);
             if (valid == null || valid != 1) { throw error(HttpStatus.CONFLICT, "Lượt dạy này không còn có thể tiếp tục."); }
         } else {
-            Integer owned = jdbc.queryForObject("SELECT COUNT(*) FROM dbo.tbl_class_teaching_pdf WHERE id = ? AND owner_id = ?",
+            Integer owned = jdbc.queryForObject("SELECT COUNT(*) FROM dbo.tbl_class_teaching_pdf "
+                    + "WHERE id = ? AND owner_id = ? AND library_deleted = 0",
                     Integer.class, pdfId, session.ownerId);
             if (owned == null || owned != 1) { throw error(HttpStatus.NOT_FOUND, "PDF không có trong kho của bạn."); }
             List<String> current = jdbc.queryForList("SELECT r.id FROM dbo.tbl_class_teaching_pdf_run r "

@@ -66,6 +66,16 @@ public class RestTeachingPdfController {
         return pdf.attach(classId, date, request.get("pdfId"), request.get("previousRun"));
     }
 
+    @RequestMapping(value = "/folders/{id}", method = RequestMethod.DELETE)
+    public Map<String, String> deleteFolder(@PathVariable Long classId, @PathVariable String date, @PathVariable String id) {
+        return pdf.deleteFolder(classId, date, id);
+    }
+
+    @RequestMapping(value = "/files/{id}", method = RequestMethod.DELETE)
+    public Map<String, String> deleteFile(@PathVariable Long classId, @PathVariable String date, @PathVariable String id) {
+        return pdf.deleteFile(classId, date, id);
+    }
+
     @RequestMapping(value = "/run/{runId}", method = RequestMethod.GET)
     public ResponseEntity<Map<String, Object>> open(@PathVariable Long classId, @PathVariable String date, @PathVariable String runId) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(pdf.open(classId, date, runId));

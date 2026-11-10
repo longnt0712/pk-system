@@ -1724,7 +1724,7 @@
                     <small class="help-block" data-ng-if="!vm.taskExerciseVideo && !vm.taskExerciseVideoLoading && !vm.taskExerciseVideoError">Mỗi lượt làm có thứ tự riêng; tiếp tục bản nháp sẽ giữ thứ tự đang làm.</small>
                 </div>
             </div>
-            <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
+            <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải thông tin đề đã giao...</p>
             <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING'">
                 <div class="form-group">
                     <label>{{vm.taskEditor.activityType === 'DAILY_VOCAB' ? 'Chọn category' : 'Category (không bắt buộc)'}}</label>

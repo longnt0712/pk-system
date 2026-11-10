@@ -111,9 +111,14 @@
                                 ng-attr-aria-label="Mở thư mục {{folder.name}}">
                             <i class="fa fa-folder" aria-hidden="true"></i><span ng-bind="folder.name"></span>
                         </button>
-                        <button type="button" class="btn btn-default teaching-pdf-organize" ng-click="pdf.editLibrary('folder', folder)"
-                                ng-disabled="pdf.busy" ng-attr-aria-label="Đổi tên hoặc di chuyển thư mục {{folder.name}}"
-                                title="Đổi tên hoặc di chuyển"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                        <div class="teaching-pdf-toolbar teaching-pdf-folder-actions">
+                            <button type="button" class="btn btn-default teaching-pdf-organize" ng-click="pdf.editLibrary('folder', folder)"
+                                    ng-disabled="pdf.busy" ng-attr-aria-label="Đổi tên hoặc di chuyển thư mục {{folder.name}}"
+                                    title="Đổi tên hoặc di chuyển"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                            <button type="button" class="btn btn-default teaching-pdf-delete" ng-click="pdf.deleteLibrary('folder', folder)"
+                                    ng-disabled="pdf.busy" ng-attr-aria-label="Xóa thư mục {{folder.name}}"
+                                    title="Xóa thư mục"><i class="fa fa-trash-o" aria-hidden="true"></i></button>
+                        </div>
                     </div>
                     <div class="teaching-pdf-file-row" ng-repeat="item in pdf.visibleFiles | orderBy:'name' track by item.id">
                         <span class="teaching-pdf-file-name" data-pdf-drag="file" ng-attr-data-pdf-entry-id="{{item.id}}"
@@ -124,6 +129,9 @@
                             <button type="button" class="btn btn-default teaching-pdf-organize" ng-click="pdf.editLibrary('file', item)"
                                     ng-disabled="pdf.busy" ng-attr-aria-label="Đổi tên hoặc di chuyển {{item.name}}"
                                     title="Đổi tên hoặc di chuyển"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                            <button type="button" class="btn btn-default teaching-pdf-delete" ng-click="pdf.deleteLibrary('file', item)"
+                                    ng-disabled="pdf.busy" ng-attr-aria-label="Xóa PDF {{item.name}} khỏi kho"
+                                    title="Xóa khỏi kho"><i class="fa fa-trash-o" aria-hidden="true"></i></button>
                             <button type="button" class="btn btn-primary" ng-click="pdf.attach({pdfId: item.id})"
                                     ng-disabled="pdf.busy">Gắn vào buổi này</button>
                         </div>

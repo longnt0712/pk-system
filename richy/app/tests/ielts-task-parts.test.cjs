@@ -17,6 +17,7 @@ function editor() {
                 {id: 22, title: 'Writing Task 1', hasWritingTask1: true, hasWritingTask2: false}],
             scheduleDay: {tasks: [], scheduleDate: '2026-10-06'}, scheduleTopics: [], scheduleListeningItems: [],
             taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
+            refreshTaskExerciseVideo() {}, taskHasComprehensiveVideo() { return false; },
             saveScheduleDay(options) { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); if (options.onSuccess) { options.onSuccess(); } }
         },
         angular: {isArray: Array.isArray, copy: value => JSON.parse(JSON.stringify(value)), forEach: (items, callback) => (items || []).forEach(callback)},
@@ -24,7 +25,7 @@ function editor() {
     });
     const run = (start, end) => nodeVm.runInContext(source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))), context);
     run('        vm.taskTopicIds =', '\t\tvm.tasksForSection =');
-    run('vm.taskActivityTypeChanged = function', 'vm.ieltsTestsForTask = function');
+    run('vm.taskActivityTypeChanged = function', 'vm.comprehensiveTaskTopics = function');
     run('vm.openScheduleTask = function', 'vm.cancelScheduleTask = function');
     run('function scheduleTaskPayload(task)', 'vm.removeScheduleTask = function');
     nodeVm.runInContext('vm.cancelScheduleTask = function () {vm.taskEditor = null;};', context);
@@ -38,7 +39,7 @@ test('new Reading, Listening and Writing assignments select every part by defaul
         vm.taskEditor.activityType = type; vm.taskActivityTypeChanged();
         assert.deepEqual(array(vm.taskEditor.ieltsParts), parts);
     }
-    vm.taskEditor.ieltsTestId = 21; vm.selectAllTaskParts();
+    vm.taskEditor.ieltsTestId = 21; vm.assignableIeltsTests = [{id: 21, hasWritingTask2: true}]; vm.selectAllTaskParts();
     assert.deepEqual(array(vm.taskEditor.ieltsParts), [2], 'Writing selects only available tasks');
 });
 
@@ -51,10 +52,28 @@ test('editing retains the saved subset and legacy single part', () => {
     assert.deepEqual(array(vm.taskEditor.ieltsParts), [2]);
 });
 
+test('editing a legacy Writing assignment only fetches the selected test and defaults to its actual task', async () => {
+    const context = editor(), {vm} = context;
+    const requests = [];
+    context.assignmentPicker = {
+        getSelected(type, id) {
+            requests.push([type, id]);
+            return Promise.resolve({id, title: 'Task 2 only', hasWritingTask2: true});
+        }
+    };
+    vm.taskEditor = null;
+    vm.openScheduleTask('HOMEWORK', {activityType: 'IELTS_WRITING', ieltsTestId: 21});
+    assert.equal(vm.assignableIeltsTestsLoading, true);
+    await new Promise(setImmediate);
+    assert.deepEqual(requests, [['IELTS_WRITING', 21]]);
+    assert.equal(vm.assignableIeltsTestsLoading, false);
+    assert.deepEqual(array(vm.taskEditor.ieltsParts), [2]);
+});
+
 test('a Writing test with only Task 1 automatically selects it and can be saved', () => {
     const {vm} = editor();
     vm.taskEditor.activityType = 'IELTS_WRITING'; vm.taskActivityTypeChanged();
-    vm.taskEditor.ieltsTestId = 22; vm.selectAllTaskParts();
+    vm.taskEditor.ieltsTestId = 22; vm.assignableIeltsTests = [{id: 22, title: 'Writing Task 1', hasWritingTask1: true}]; vm.selectAllTaskParts();
     assert.deepEqual(array(vm.ieltsPartsForTask()), [1]);
     assert.deepEqual(array(vm.taskEditor.ieltsParts), [1]);
     vm.commitScheduleTask();

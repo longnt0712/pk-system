@@ -170,6 +170,40 @@
                                 .finally(function () { vm.busy = false; });
                         }
 
+                        vm.deleteLibrary = function (kind, item) {
+                            if (vm.busy || !item || !item.id) { return; }
+                            var isFolder = kind === 'folder';
+                            vm.error = ''; vm.libraryNotice = '';
+                            if (isFolder && (vm.folders.some(function (folder) { return folder.parentId === item.id; }) ||
+                                    vm.library.some(function (file) { return file.folderId === item.id; }))) {
+                                vm.error = 'Thư mục còn PDF hoặc thư mục con. Hãy chuyển hoặc xóa các mục bên trong trước.';
+                                return;
+                            }
+                            var message = isFolder ? 'Xóa thư mục trống “' + item.name + '”?'
+                                : 'Xóa “' + item.name + '” khỏi kho PDF? Tài liệu đã gắn vào buổi dạy vẫn mở được.';
+                            if (!window.confirm(message)) { return; }
+                            vm.busy = true;
+                            var url = base + (isFolder ? '/folders/' : '/files/') + encodeURIComponent(item.id);
+                            return http.delete(url).then(function (response) {
+                                if (!response.data || response.data.id !== item.id) {
+                                    vm.error = 'Chưa xác nhận được thao tác xóa. Hãy mở lại kho PDF để kiểm tra.';
+                                    return;
+                                }
+                                if (isFolder) {
+                                    vm.folders = vm.folders.filter(function (folder) { return folder.id !== item.id; });
+                                } else {
+                                    vm.library = vm.library.filter(function (file) { return file.id !== item.id; });
+                                    if (vm.selected === item.id) { vm.selected = null; }
+                                }
+                                if (vm.libraryForm && vm.libraryForm.kind === kind && vm.libraryForm.id === item.id) {
+                                    vm.libraryForm = null;
+                                }
+                                refreshExplorer();
+                                vm.libraryNotice = 'Đã xóa ' + item.name + ' khỏi kho PDF.';
+                            }, function (error) { fail(error, 'Không xóa được mục trong kho PDF.'); })
+                                .finally(function () { vm.busy = false; });
+                        };
+
                         vm.upload = function (file) {
                             if (file) { return uploadFiles([file], vm.folderId || null); }
                         };

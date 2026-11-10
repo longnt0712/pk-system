@@ -27,12 +27,14 @@ function contains(id, selected) {
 async function setup(activityType, selectedId, overrides = {}) {
     let definition, dialog, opened;
     nodeVm.runInNewContext(source, {window: {APP_VERSION: 'test'}, angular: {module: () => ({factory(name, value) { definition = value; }})}});
-    const dailyRequests = [];
-    const api = {getAssignableIeltsTests: () => Promise.resolve(structuredClone(tests)),
-        getAssignableDailyListeningPage(folderId, search, page, selectedId) {
-            dailyRequests.push([folderId, search, page, selectedId]);
+    const requests = [];
+    const api = {
+        getAssignableExercisePage(mode, folderId, search, page, selectedId) {
+            requests.push([mode, folderId, search, page, selectedId]);
+            const exercises = mode === 'DAILY_LISTENING' ? daily : tests.filter(file =>
+                (file.testFormat || (file.pronounce ? 'LISTENING' : 'READING')) === mode);
             const term = search.trim().toLowerCase();
-            const matches = daily.filter(file => {
+            const matches = exercises.filter(file => {
                 const id = file.testFolder?.id ?? null;
                 if (selectedId) return file.id === selectedId;
                 return term ? contains(id, folderId) && file.title.toLowerCase().includes(term) : id === folderId;
@@ -42,34 +44,38 @@ async function setup(activityType, selectedId, overrides = {}) {
     const folders = {load: () => Promise.resolve(folderTree), contains, options: items => items.map(item => ({...item, label: item.name}))};
     const instance = {close(value) { dialog.confirmed = value; }, dismiss(value) { dialog.dismissed = value; }};
     const modal = {open(options) { opened = options; dialog = new (options.controller.at(-1))(instance); return {result: Promise.resolve()}; }};
-    const factory = definition.at(-1)(modal, api, folders, {all: Promise.all.bind(Promise), when: Promise.resolve.bind(Promise)});
+    const factory = definition.at(-1)(modal, api, folders);
     factory.open({activityType, selectedId});
     await new Promise(resolve => setImmediate(resolve));
-    return {dialog, opened, factory, dailyRequests};
+    return {dialog, opened, factory, requests};
 }
 test('each test type opens its own catalog and the selected test starts in its real folder', async () => {
-    for (const [type, ids, mode] of [['IELTS_READING', [11, 10], 'READING'], ['IELTS_LISTENING', [12], 'LISTENING'],
-        ['IELTS_WRITING', [13], 'WRITING'], ['COMPREHENSIVE', [14], 'COMPREHENSIVE']]) {
-        const {dialog} = await setup(type, ids[0]);
-        assert.equal(dialog.mode, mode); assert.deepEqual(Array.from(dialog.catalog, file => file.id), ids);
-        assert.equal(dialog.folderId, tests.find(file => file.id === ids[0]).testFolder?.id || null);
-        dialog.confirm(); assert.equal(dialog.confirmed.test.id, ids[0]);
+    for (const [type, id, mode] of [['IELTS_READING', 11, 'READING'], ['IELTS_LISTENING', 12, 'LISTENING'],
+        ['IELTS_WRITING', 13, 'WRITING'], ['COMPREHENSIVE', 14, 'COMPREHENSIVE']]) {
+        const {dialog, factory, requests} = await setup(type, id);
+        const folder = tests.find(file => file.id === id).testFolder.id;
+        assert.equal(dialog.mode, mode); assert.deepEqual(Array.from(dialog.catalog, file => file.id), [id]);
+        assert.equal(dialog.folderId, folder);
+        assert.deepEqual(requests, [[mode, null, '', 1, id], [mode, folder, '', 1, undefined]]);
+        assert.equal((await factory.getSelected(type, id)).id, id);
+        assert.deepEqual(requests.at(-1), [mode, null, '', 1, id]);
+        dialog.confirm(); assert.equal(dialog.confirmed.test.id, id);
     }
 });
 test('browsing shows direct contents and search finds descendants without losing the provisional choice', async () => {
     const {dialog} = await setup('IELTS_READING');
     assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [10]);
     dialog.select(dialog.catalog.find(file => file.id === 10));
-    dialog.openFolder(1); assert.deepEqual(Array.from(dialog.visibleFiles()), []);
-    dialog.search = 'READING'; assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [11]);
-    dialog.openFolder(2); assert.equal(dialog.search, ''); assert.equal(dialog.selected.id, 10);
+    await dialog.openFolder(1); assert.deepEqual(Array.from(dialog.visibleFiles()), []);
+    dialog.search = 'READING'; await dialog.searchChanged(); assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [11]);
+    await dialog.openFolder(2); assert.equal(dialog.search, ''); assert.equal(dialog.selected.id, 10);
     dialog.cancel(); assert.equal(dialog.dismissed, 'cancel'); assert.equal(dialog.confirmed, undefined);
 });
 test('Daily Listening preserves linked topics and legacy tracks while allowing standalone modern lessons', async () => {
-    const {dialog, dailyRequests} = await setup('DAILY_LISTENING', 21);
+    const {dialog, requests} = await setup('DAILY_LISTENING', 21);
     assert.equal(dialog.folderId, 2);
     assert.equal(dialog.selected.id, 21);
-    assert.deepEqual(dailyRequests, [[null, '', 1, 21], [2, '', 1, undefined]]);
+    assert.deepEqual(requests, [['DAILY_LISTENING', null, '', 1, 21], ['DAILY_LISTENING', 2, '', 1, undefined]]);
     dialog.select(dialog.catalog.find(file => file.id === 21)); assert.equal(dialog.selectedTopicId, 50);
     dialog.selectedTopicId = 51; dialog.confirm();
     assert.equal(dialog.confirmed.test.id, 21); assert.equal(dialog.confirmed.topic.name, 'Food');
@@ -91,7 +97,7 @@ test('Daily Listening preserves linked topics and legacy tracks while allowing s
 test('a slow Daily Listening request cannot replace a newer folder and failures can be retried', async () => {
     let finishOld, fail = true;
     const {dialog} = await setup('DAILY_LISTENING', null, {
-        getAssignableDailyListeningPage(folderId) {
+        getAssignableExercisePage(mode, folderId) {
             if (folderId === 1) return new Promise(resolve => {finishOld = resolve;});
             if (folderId === 2 && fail) return Promise.reject(Error('offline'));
             return Promise.resolve({content: [folderId === 2 ? daily[1] : daily[0]], last: true});
@@ -105,7 +111,11 @@ test('a slow Daily Listening request cannot replace a newer folder and failures 
 });
 test('catalog failures can be retried and confirming waits for a loaded catalog', async () => {
     let calls = 0;
-    const {dialog} = await setup('IELTS_READING', 11, {getAssignableIeltsTests() { return ++calls === 1 ? Promise.reject(Error('offline')) : Promise.resolve(tests); }});
+    const {dialog} = await setup('IELTS_READING', 11, {
+        getAssignableExercisePage() {
+            return ++calls === 1 ? Promise.reject(Error('offline')) : Promise.resolve({content: [tests[1]], last: true});
+        }
+    });
     assert.ok(dialog.error); assert.equal(dialog.canSelect(), false);
     await dialog.load(); assert.equal(dialog.error, ''); assert.equal(dialog.selected.id, 11); assert.equal(dialog.canSelect(), true);
 });
@@ -166,9 +176,10 @@ test('real modal browses folders, searches, selects topics and keeps its footer 
                     .value('settings', {api: {baseUrl: '/', apiV1Url: 'api/'}})
                     .value('QuestionService', {})
                     .factory('EnrolmentClassService', ['$q', function ($q) {
-                        return {getAssignableIeltsTests: () => $q.when(tests), getAssignableDailyListeningPage: (folderId, search, page) => {
-                            const items = search ? daily.filter(file => file.title.toLowerCase().includes(search.toLowerCase()))
-                                : daily.filter(file => (file.testFolder?.id ?? null) === folderId);
+                        return {getAssignableExercisePage: (mode, folderId, search, page) => {
+                            const catalog = mode === 'DAILY_LISTENING' ? daily : tests.filter(file => !file.testFormat && !file.pronounce);
+                            const items = search ? catalog.filter(file => file.title.toLowerCase().includes(search.toLowerCase()))
+                                : catalog.filter(file => (file.testFolder?.id ?? null) === folderId);
                             return $q.when({content: items.slice(page - 1, page), last: page >= items.length});
                         }};
                     }]);

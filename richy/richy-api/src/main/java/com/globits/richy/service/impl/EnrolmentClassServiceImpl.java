@@ -52,7 +52,7 @@ import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
 import org.springframework.http.HttpStatus;
 import com.globits.richy.dto.EnrolmentClassDto;
-import com.globits.richy.dto.DailyListeningAssignmentItemDto;
+import com.globits.richy.dto.AssignmentExerciseItemDto;
 import com.globits.richy.dto.EnrolmentClassCalendarDayDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassWeeklySessionDto;
@@ -1994,14 +1994,27 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public Slice<DailyListeningAssignmentItemDto> getAssignableDailyListeningPage(Long folderId, String search, int page, Long selectedId) {
+	public Slice<AssignmentExerciseItemDto> getAssignableExercisePage(String mode, Long folderId, String search, int page, Long selectedId) {
 		Pageable pageable = new PageRequest(selectedId == null ? Math.max(1, Math.min(page, 100000)) - 1 : 0, 50);
 		String term = search == null ? "" : search.trim();
-		String title = QuestionRepository.DAILY_LISTENING_ASSIGNMENT_TITLE;
-		StringBuilder hql = new StringBuilder("select new com.globits.richy.dto.DailyListeningAssignmentItemDto(q.id, ")
+		boolean daily = "DAILY_LISTENING".equals(mode);
+		String title = daily ? QuestionRepository.DAILY_LISTENING_ASSIGNMENT_TITLE : "q.title";
+		StringBuilder hql = new StringBuilder("select new com.globits.richy.dto.AssignmentExerciseItemDto(q.id, ")
 				.append(title).append(", q.testFormat, f.id) from Question q left join q.testFolder f where ")
-				.append(QuestionRepository.ASSIGNABLE_DAILY_LISTENING);
+				.append(daily ? QuestionRepository.ASSIGNABLE_DAILY_LISTENING : QuestionRepository.PUBLISHED_IELTS_ASSIGNMENT);
 		Map<String, Object> parameters = new HashMap<>();
+		if ("COMPREHENSIVE".equals(mode) || "WRITING".equals(mode)) {
+			hql.append(" and q.testFormat = :mode");
+			parameters.put("mode", mode);
+		} else if ("READING".equals(mode) || "LISTENING".equals(mode)) {
+			hql.append(" and (q.testFormat is null or q.testFormat not in ('COMPREHENSIVE', 'WRITING'))");
+			// Match the legacy classification used when validating the selected test at save time.
+			hql.append("LISTENING".equals(mode)
+					? " and q.pronounce is not null and length(trim(q.pronounce)) > 0"
+					: " and (q.pronounce is null or length(trim(q.pronounce)) = 0)");
+		} else if (!daily) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Loại đề giao bài không hợp lệ.");
+		}
 		if (selectedId != null) {
 			hql.append(" and q.id = :selectedId");
 			parameters.put("selectedId", selectedId);
@@ -2023,19 +2036,22 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 			hql.append(" order by lower(").append(title).append("), q.id");
 		}
-		TypedQuery<DailyListeningAssignmentItemDto> query = teamEntityManager.createQuery(hql.toString(), DailyListeningAssignmentItemDto.class);
+		TypedQuery<AssignmentExerciseItemDto> query = teamEntityManager.createQuery(hql.toString(), AssignmentExerciseItemDto.class);
 		parameters.forEach(query::setParameter);
-		List<DailyListeningAssignmentItemDto> result = query.setFirstResult(pageable.getOffset())
+		List<AssignmentExerciseItemDto> result = query.setFirstResult(pageable.getOffset())
 				.setMaxResults(selectedId == null ? pageable.getPageSize() + 1 : 1).getResultList();
 		boolean hasNext = result.size() > pageable.getPageSize();
 		if (hasNext) { result = new ArrayList<>(result.subList(0, pageable.getPageSize())); }
-		if (!result.isEmpty()) { addListeningAssignmentTopics(result); }
+		if (!result.isEmpty() && (daily || "WRITING".equals(mode))) {
+			Map<Long, AssignmentExerciseItemDto> byId = new HashMap<>();
+			for (AssignmentExerciseItemDto item : result) { byId.put(item.getId(), item); }
+			if (daily) { addListeningAssignmentTopics(byId); }
+			else { addWritingAssignmentParts(byId); }
+		}
 		return new SliceImpl<>(result, pageable, hasNext);
 	}
 
-	private void addListeningAssignmentTopics(List<DailyListeningAssignmentItemDto> items) {
-		Map<Long, DailyListeningAssignmentItemDto> byId = new HashMap<>();
-		for (DailyListeningAssignmentItemDto item : items) { byId.put(item.getId(), item); }
+	private void addListeningAssignmentTopics(Map<Long, AssignmentExerciseItemDto> byId) {
 		List<Object[]> rows = teamEntityManager.createQuery(
 				"select distinct link.question.id, topic.id, topic.name, category.id, category.name, "
 				+ "owner.id, owner.username, topic.createDate from QuestionTopic link join link.topic topic "
@@ -2046,6 +2062,18 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		for (Object[] row : rows) {
 			byId.get((Long) row[0]).getTopics().add(new TopicForListAllDto((Long) row[1], (String) row[2],
 					(Long) row[3], (String) row[4], (Long) row[5], (String) row[6]));
+		}
+	}
+
+	private void addWritingAssignmentParts(Map<Long, AssignmentExerciseItemDto> byId) {
+		List<Object[]> rows = teamEntityManager.createQuery(
+				"select distinct part.parent.id, task.type from Question task join task.parent part "
+				+ "where part.parent.id in (:ids) and task.type in (16, 17)", Object[].class)
+				.setParameter("ids", byId.keySet()).getResultList();
+		for (Object[] row : rows) {
+			AssignmentExerciseItemDto item = byId.get((Long) row[0]);
+			if (Integer.valueOf(16).equals(row[1])) { item.setHasWritingTask1(true); }
+			if (Integer.valueOf(17).equals(row[1])) { item.setHasWritingTask2(true); }
 		}
 	}
 

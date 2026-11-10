@@ -145,7 +145,7 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration) {
     config.controller.at(-1).call(ctrl, {$on() {}, $evalAsync(fn) { fn(); }}, timer, {});
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
-    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers,
+    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers, window,
         async sync() { const callback = polls.values().next().value; assert.ok(polls.delete(callback)); callback(); await tick(); },
         select(number, top = 150) {
             const page = sheet(number);
@@ -565,6 +565,45 @@ test('explorer navigates nested folders and moves a PDF back to the root', async
     assert.equal(h.ctrl.visibleFiles.length, 0);
     h.ctrl.browseFolder(null);
     assert.deepEqual(Array.from(h.ctrl.visibleFiles, file => file.id), ['original', 'moved']);
+});
+
+test('PDF library deletion confirms, blocks folders with children, and leaves attached runs available', async () => {
+    const h = fixture({}, false, {
+        folders: [{id: 'class', name: 'Class'}, {id: 'week', name: 'Week', parentId: 'class'}],
+        library: [{id: 'lesson', name: 'Lesson.pdf', folderId: 'week'}],
+        current: [{id: 'run', pdfId: 'lesson', name: 'Lesson.pdf'}]
+    });
+    await h.tick();
+    const requests = [], confirms = [];
+    let approved = false, reject = false;
+    h.window.confirm = message => { confirms.push(message); return approved; };
+    h.http.delete = async url => {
+        requests.push(url);
+        if (reject) throw {data: {message: 'Thư mục vừa có thêm tài liệu.'}};
+        return {data: {id: url.split('/').at(-1)}};
+    };
+    for (const folder of h.ctrl.folders) {
+        await h.ctrl.deleteLibrary('folder', folder);
+        assert.match(h.ctrl.error, /còn PDF hoặc thư mục con/);
+    }
+    assert.equal(requests.length, 0); assert.equal(confirms.length, 0);
+    const file = h.ctrl.library[0];
+    await h.ctrl.deleteLibrary('file', file);
+    assert.equal(requests.length, 0); assert.match(confirms.at(-1), /buổi dạy/);
+    approved = true;
+    await h.ctrl.deleteLibrary('file', file);
+    assert.match(requests.at(-1), /\/files\/lesson$/);
+    assert.equal(h.ctrl.library.length, 0);
+    assert.equal(h.ctrl.current[0].id, 'run');
+    reject = true;
+    await h.ctrl.deleteLibrary('folder', h.ctrl.folders[1]);
+    assert.equal(h.ctrl.error, 'Thư mục vừa có thêm tài liệu.');
+    assert.equal(h.ctrl.folders.length, 2);
+    reject = false;
+    await h.ctrl.deleteLibrary('folder', h.ctrl.folders[1]);
+    await h.ctrl.deleteLibrary('folder', h.ctrl.folders[0]);
+    assert.equal(h.ctrl.folders.length, 0);
+    assert.equal(h.ctrl.current[0].id, 'run');
 });
 
 test('the PDF explorer routes drags to the destination and keeps successful uploads from a mixed drop', async () => {

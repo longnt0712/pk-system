@@ -196,6 +196,7 @@ test('real Angular renders shuffled choices and clicks save original answer IDs 
                     eval(shuffleCode + '\nvm.test = vm.ieltsReadingActualTest = applyComprehensiveAssignmentShuffle(data);');
                     vm.clickShowChildren = () => {};
                     vm.videoQuestionVisible = () => true;
+                    vm.listeningQuestionVisible = () => true;
                     vm.testResult = {questionAnswerTestResult: []};
                     eval(selectCode);
                     vm.settingActualTest = {fontSize: '17px'};

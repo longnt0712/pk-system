@@ -42,10 +42,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders', 'ClassAssignmentPicker', 'TeachingPdf'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ClassAssignmentPicker', 'TeachingPdf'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders, assignmentPicker, teachingPdf) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, assignmentPicker, teachingPdf) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -726,7 +726,7 @@
 				+ ' / ' + vm.scheduleMonthDate.getFullYear();
 			vm.scheduleSettingsLoading = true;
 			vm.scheduleSettingsError = false;
-			vm.assignableIeltsTestsLoading = true;
+			vm.assignableIeltsTestsLoading = false;
 			vm.scheduleLoading = true;
 			if (!vm.schedulePageMode) {
 				vm.scheduleModal = modal.open({
@@ -765,7 +765,6 @@
 				toastr.error('Không tải được các buổi học đã thiết lập.', 'Lỗi');
 			});
 
-			refreshAssignableIeltsTests();
 			vm.refreshScheduleTopicCategories();
 
 			vm.loadScheduleMonth();
@@ -2409,25 +2408,6 @@
             });
         };
 
-        var ieltsTaskCatalogRequest = 0;
-        function refreshAssignableIeltsTests() {
-            var request = ++ieltsTaskCatalogRequest;
-            vm.assignableIeltsTestsLoading = true;
-
-            service.getAssignableIeltsTests().then(function (tests) {
-                if (request !== ieltsTaskCatalogRequest) { return; }
-                vm.assignableIeltsTestsLoading = false;
-                if (angular.isArray(tests) && !angular.equals(vm.assignableIeltsTests, tests)) {
-                    vm.assignableIeltsTests = tests;
-                    taskExerciseVideoCache = {};
-                }
-            }, function () {
-                if (request !== ieltsTaskCatalogRequest) { return; }
-                vm.assignableIeltsTestsLoading = false;
-                toastr.warning('Không cập nhật được danh sách đề. Bạn có thể mở Chọn bài để thử lại.');
-            });
-        }
-
         vm.taskEditorLoading = function () {
             var task = vm.taskEditor;
             if (!task) { return false; }
@@ -2442,10 +2422,7 @@
         vm.openNewScheduleTask = function (section) {
             if (vm.taskEditor) { return; }
             vm.openScheduleTask(section);
-            if (vm.taskEditor) {
-                vm.refreshScheduleTopicCategories();
-                refreshAssignableIeltsTests();
-            }
+            if (vm.taskEditor) { vm.refreshScheduleTopicCategories(); }
         };
 
 
@@ -2459,6 +2436,7 @@
             vm.taskEditor.topicIds = vm.taskTopicIds(vm.taskEditor);
             vm.taskEditorError = '';
 			vm.taskEditor.shuffleQuestions = task ? task.shuffleQuestions === true : true;
+            var defaultParts = !angular.isArray(vm.taskEditor.ieltsParts) && vm.taskEditor.ieltsPart == null;
 			if (vm.isIeltsTask(vm.taskEditor)) {
 				vm.taskEditor.ieltsParts = angular.isArray(vm.taskEditor.ieltsParts) ? vm.taskEditor.ieltsParts.slice()
 					: (vm.taskEditor.ieltsPart != null ? [Number(vm.taskEditor.ieltsPart)] : vm.ieltsPartsForTask());
@@ -2480,7 +2458,7 @@
 			vm.rememberScheduleTopics(vm.taskSelectedTopics(vm.taskEditor));
 			vm.loadTaskCategoryTopics();
 			vm.loadTaskListeningItems(true);
-            vm.refreshTaskExerciseVideo();
+            loadTaskIeltsExercise(vm.taskEditor, defaultParts);
             if (typeof modal !== 'undefined' && modal.open) {
                 var editor = vm.taskEditor;
                 var editorModal = vm.taskEditorModal = modal.open({
@@ -2499,6 +2477,28 @@
                 }
             }
 		};
+
+        function loadTaskIeltsExercise(task, defaultParts) {
+            var id = task.ieltsTestId, type = task.activityType;
+            vm.assignableIeltsTests = [];
+            vm.assignableIeltsTestsLoading = !!id && vm.isIeltsTask(task);
+            if (!vm.assignableIeltsTestsLoading) { vm.refreshTaskExerciseVideo(); return; }
+            function stillLoading() {
+                return vm.assignableIeltsTestsLoading && vm.taskEditor === task && task.activityType === type && task.ieltsTestId === id;
+            }
+            function unavailable() {
+                if (stillLoading()) { toastr.warning('Không tải được thông tin đề đã giao. Mở Chọn bài để chọn lại.'); }
+            }
+            return assignmentPicker.getSelected(type, id).then(function (test) {
+                if (!stillLoading()) { return; }
+                if (!test || String(test.id) !== String(id)) { unavailable(); return; }
+                vm.assignableIeltsTests = [test];
+                if (type === 'IELTS_WRITING' && defaultParts) { vm.selectAllTaskParts(); }
+                vm.refreshTaskExerciseVideo();
+            }, unavailable).finally(function () {
+                if (stillLoading()) { vm.assignableIeltsTestsLoading = false; }
+            });
+        }
 
 		vm.cancelScheduleTask = function () {
             if (vm.scheduleDaySaving || vm.taskExercisePickerOpen) { return; }
@@ -2560,6 +2560,8 @@
 		};
 		vm.taskActivityTypeChanged = function (browse) {
 			if (!vm.taskEditor) { return; }
+            vm.assignableIeltsTests = [];
+            vm.assignableIeltsTestsLoading = false;
 			vm.taskEditor.testFolderId = null; vm.taskEditor.ieltsTestTitle = ''; vm.taskEditor.sourceQuestionTitle = '';
             vm.taskEditor.topicIds = vm.taskEditor.activityType === 'DAILY_VOCAB'
                 ? (vm.taskEditor.topicId == null ? [] : [vm.taskEditor.topicId]) : [];
@@ -2684,8 +2686,8 @@
                     vm.scheduleListeningItems = [{id: test.id, question: test.title, direct: !topic && test.testFormat === 'DAILY_LISTENING'}];
                 } else {
                     task.ieltsTestId = test.id; task.ieltsTestTitle = test.title;
-                    var index = vm.assignableIeltsTests.findIndex(function (item) { return String(item.id) === String(test.id); });
-                    if (index < 0) { vm.assignableIeltsTests.push(test); } else { vm.assignableIeltsTests[index] = test; }
+                    vm.assignableIeltsTests = [test];
+                    vm.assignableIeltsTestsLoading = false;
                     vm.selectAllTaskParts();
                 }
                 if (!(task.title || '').trim()) { task.title = test.title || ''; }
@@ -2713,18 +2715,6 @@
 		vm.taskIeltsPartsLabel = function (task) {
 			var parts = angular.isArray(task.ieltsParts) ? task.ieltsParts : (task.ieltsPart != null ? [task.ieltsPart] : []);
 			return (task.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + parts.slice().sort(function (a, b) { return a - b; }).join(', ');
-		};
-		vm.ieltsTestsForTask = function () {
-			if (!vm.taskEditor) { return []; }
-			var comprehensive = vm.taskEditor.activityType === 'COMPREHENSIVE';
-			var writing = vm.taskEditor.activityType === 'IELTS_WRITING';
-			var listening = vm.taskEditor.activityType === 'IELTS_LISTENING';
-			return vm.assignableIeltsTests.filter(function (test) {
-				var isComprehensive = test.testFormat === 'COMPREHENSIVE';
-				var isWriting = test.testFormat === 'WRITING';
-				return comprehensive ? isComprehensive && folders.contains(test.testFolder && test.testFolder.id, vm.taskEditor.testFolderId)
-					: (writing ? isWriting : (!isComprehensive && !isWriting && listening === !!(test.pronounce && String(test.pronounce).trim())));
-			});
 		};
 		vm.comprehensiveTaskTopics = function () {
 			if (!vm.taskEditor || vm.taskEditor.topicSourceId == null || !vm.taskEditor.categoryKey) { return []; }
@@ -2778,7 +2768,7 @@
 
 		vm.commitScheduleTask = function () {
 			if (!vm.taskEditor || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskExercisePickerOpen) { return; }
-            if (vm.taskExerciseVideoLoading || vm.taskExerciseVideoError) {
+            if (vm.assignableIeltsTestsLoading || vm.taskExerciseVideoLoading || vm.taskExerciseVideoError) {
                 toastr.warning('Hãy tải xong thông tin bài tập trước khi lưu task.'); return;
             }
             vm.taskEditorError = '';
@@ -2861,9 +2851,6 @@
 			var ieltsTest = null;
 			angular.forEach(vm.assignableIeltsTests, function (item) { if (String(item.id) === String(task.ieltsTestId)) { ieltsTest = item; } });
 			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề bài tập không còn tồn tại. Hãy chọn lại.'); return; }
-			if (task.activityType === 'COMPREHENSIVE' && !vm.ieltsTestsForTask().some(function (item) {
-				return String(item.id) === String(task.ieltsTestId);
-			})) { toastr.warning('Bài tập tổng hợp không thuộc folder đã chọn. Hãy chọn lại.'); return; }
 			task.ieltsTestTitle = ieltsTest ? ieltsTest.title : '';
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task.topicSourceId;

@@ -38,7 +38,8 @@ public class TeachingPdfServiceTest {
         source.setDriverClassName("org.h2.Driver");
         JdbcTemplate jdbc = new JdbcTemplate(source);
         jdbc.execute("CREATE SCHEMA dbo");
-        jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, name NVARCHAR(255), content VARBINARY(MAX), folder_id VARCHAR(36))");
+        jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, "
+                + "name NVARCHAR(255), content VARBINARY(MAX), folder_id VARCHAR(36), library_deleted BIT NOT NULL DEFAULT 0)");
         jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf_folder (id VARCHAR(36) PRIMARY KEY, owner_id BIGINT, parent_id VARCHAR(36), name NVARCHAR(200))");
         jdbc.execute("CREATE TABLE dbo.tbl_class_teaching_pdf_run (id VARCHAR(36) PRIMARY KEY, class_id BIGINT, "
                 + "pdf_id VARCHAR(36), revision INT NOT NULL DEFAULT 0, completed BIT NOT NULL DEFAULT 0, progress NVARCHAR(MAX))");
@@ -81,6 +82,48 @@ public class TeachingPdfServiceTest {
 
     private int previous(Long classId) {
         return ((List<?>) pdf.list(classId, "2026-11-06").get("previous")).size();
+    }
+
+    @Test
+    public void removingLibraryItemsKeepsTeachingRunsAndRequiresAnEmptyFolder() throws Exception {
+        String date = "2026-11-04";
+        String parent = pdf.saveFolder(1L, date, null, null, "Class").get("id");
+        String child = pdf.saveFolder(1L, date, null, parent, "Week").get("id");
+        String file = pdf.upload(1L, date, lessonFile(), child).get("id");
+        String run = pdf.attach(1L, date, file, null).get("id");
+        pdf.save(1L, date, run, state(0, 5, false));
+
+        for (String folder : new String[]{parent, child}) {
+            try {
+                pdf.deleteFolder(1L, date, folder);
+                fail("Cannot delete a folder containing a file or a subfolder");
+            } catch (EnrolmentClassScheduleException expected) { assertEquals(HttpStatus.CONFLICT, expected.getStatus()); }
+        }
+        owner = 8L;
+        try {
+            pdf.deleteFile(1L, date, file);
+            fail("Cannot delete another teacher's file");
+        } catch (EnrolmentClassScheduleException expected) { assertEquals(HttpStatus.NOT_FOUND, expected.getStatus()); }
+        try {
+            pdf.deleteFolder(1L, date, child);
+            fail("Cannot delete another teacher's folder");
+        } catch (EnrolmentClassScheduleException expected) { assertEquals(HttpStatus.NOT_FOUND, expected.getStatus()); }
+        owner = 7L;
+
+        assertEquals(file, pdf.deleteFile(1L, date, file).get("id"));
+        assertEquals(file, pdf.deleteFile(1L, date, file).get("id"));
+        assertEquals(child, pdf.deleteFolder(1L, date, child).get("id"));
+        assertEquals(parent, pdf.deleteFolder(1L, date, parent).get("id"));
+        assertEquals(Collections.emptyList(), pdf.list(1L, date).get("library"));
+        assertEquals(Collections.emptyList(), pdf.list(1L, date).get("folders"));
+        assertEquals("Lesson.pdf", pdf.open(1L, date, run).get("name"));
+        assertEquals(5, json.readTree((String) pdf.open(1L, date, run).get("progress")).path("page").asInt());
+        assertArrayEquals("%PDF-1.7".getBytes(StandardCharsets.US_ASCII), pdf.content(1L, date, run));
+        assertEquals(run, pdf.attach(1L, "2026-11-06", null, run).get("id"));
+        try {
+            pdf.attach(2L, date, file, null);
+            fail("Cannot newly attach a removed library PDF");
+        } catch (EnrolmentClassScheduleException expected) { assertEquals(HttpStatus.NOT_FOUND, expected.getStatus()); }
     }
 
     @Test

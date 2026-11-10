@@ -7,8 +7,7 @@
     <div class="modal-body">
         <label class="class-assignment-search">Tìm bài trong thư viện
             <input type="search" class="form-control" ng-model="picker.search" ng-change="picker.searchChanged()"
-                   ng-model-options="{debounce: picker.dailyListening ? 250 : 0}" placeholder="Nhập tên bài..." aria-label="Tìm bài"
-                   ng-disabled="picker.loading && !picker.dailyListening">
+                   ng-model-options="{debounce: 250}" placeholder="Nhập tên bài..." aria-label="Tìm bài">
         </label>
         <p ng-if="picker.loading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải bài tập...</p>
         <p class="test-folder-error" role="alert" ng-if="picker.error">{{picker.error}} <button type="button" class="btn btn-link btn-sm" ng-click="picker.load()">Thử lại</button></p>

@@ -100,9 +100,6 @@
                 'GET', angular.noop, angular.noop);
         };
 
-        self.getAssignableIeltsTests = function () {
-            return utils.resolve(baseUrl + '/schedule/ielts-tests', 'GET', angular.noop, angular.noop);
-        };
         self.getAssignmentExerciseDetails = function (id) {
             if (!id) { return $q.when(null); }
             return utils.resolve(settings.api.baseUrl + settings.api.apiV1Url + 'question/get_one/' + encodeURIComponent(id),
@@ -113,8 +110,8 @@
                 'Content-Type': 'application/json; charset=utf-8'
             });
         };
-        self.getAssignableDailyListeningPage = function (folderId, search, page, selectedId) {
-            var url = baseUrl + '/schedule/daily-listening-tests/page?page=' + encodeURIComponent(page);
+        self.getAssignableExercisePage = function (mode, folderId, search, page, selectedId) {
+            var url = baseUrl + '/schedule/assignment-exercises?mode=' + encodeURIComponent(mode) + '&page=' + encodeURIComponent(page);
             if (selectedId) {
                 url += '&selectedId=' + encodeURIComponent(selectedId);
             } else {

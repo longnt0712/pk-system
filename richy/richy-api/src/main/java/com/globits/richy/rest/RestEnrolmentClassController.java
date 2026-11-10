@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.globits.core.dto.OrganizationDto;
 import com.globits.core.dto.PersonDto;
 import com.globits.richy.dto.EnrolmentClassDto;
-import com.globits.richy.dto.DailyListeningAssignmentItemDto;
+import com.globits.richy.dto.AssignmentExerciseItemDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
@@ -252,10 +252,18 @@ public class RestEnrolmentClassController {
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
 	@RequestMapping(value = "/schedule/daily-listening-tests/page", method = RequestMethod.GET)
-	public Slice<DailyListeningAssignmentItemDto> getAssignableDailyListeningPage(
+	public Slice<AssignmentExerciseItemDto> getAssignableDailyListeningPage(
 			@RequestParam(required = false) Long folderId, @RequestParam(required = false) String search,
 			@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) Long selectedId) {
-		return service.getAssignableDailyListeningPage(folderId, search, page, selectedId);
+		return service.getAssignableExercisePage("DAILY_LISTENING", folderId, search, page, selectedId);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
+	@RequestMapping(value = "/schedule/assignment-exercises", method = RequestMethod.GET)
+	public Slice<AssignmentExerciseItemDto> getAssignableExercisePage(@RequestParam String mode,
+			@RequestParam(required = false) Long folderId, @RequestParam(required = false) String search,
+			@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) Long selectedId) {
+		return service.getAssignableExercisePage(mode, folderId, search, page, selectedId);
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})

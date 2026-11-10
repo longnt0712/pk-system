@@ -12,7 +12,7 @@ function section(start, end) {
 }
 const helpers = section('        vm.taskTopicIds =', '\t\tvm.tasksForSection =');
 const openCode = section('\t\tvm.openScheduleTask =', '\t\tvm.loadTaskListeningItems =');
-const topicLoadCode = section('        var taskCategoryTopicsRequest =', '        var ieltsTaskCatalogRequest =');
+const topicLoadCode = section('        var taskCategoryTopicsRequest =', '        vm.taskEditorLoading =');
 const topicChoicesCode = section('\t\tvm.taskTopics =', '\t\tvm.taskStudentProgress =');
 const commitCode = section('\t\tfunction scheduleTaskPayload(', '\t\tvm.removeScheduleTask =');
 const saveCode = section('\t\tvm.saveScheduleDay =', '\t\tvm.loadScheduleStudents =');

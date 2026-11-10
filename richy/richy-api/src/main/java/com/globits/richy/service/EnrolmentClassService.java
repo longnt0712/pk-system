@@ -8,7 +8,7 @@ import org.springframework.data.domain.Slice;
 import com.globits.core.dto.OrganizationDto;
 import com.globits.core.dto.PersonDto;
 import com.globits.richy.dto.EnrolmentClassDto;
-import com.globits.richy.dto.DailyListeningAssignmentItemDto;
+import com.globits.richy.dto.AssignmentExerciseItemDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
@@ -59,7 +59,7 @@ public interface EnrolmentClassService {
 	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId);
 	public List<QuestionForTestsDto> getAssignableIeltsTests();
 	public List<QuestionForTestsDto> getAssignableDailyListeningTests();
-	public Slice<DailyListeningAssignmentItemDto> getAssignableDailyListeningPage(Long folderId, String search, int page, Long selectedId);
+	public Slice<AssignmentExerciseItemDto> getAssignableExercisePage(String mode, Long folderId, String search, int page, Long selectedId);
 	public List<UserDto> getScheduleStudents(Long classId);
     public List<PersonDateDto> getScheduleAttendance(Long classId, String date);
     public PersonDateDto updateScheduleAttendance(Long classId, Long studentUserId, String date, PersonDateDto dto);
