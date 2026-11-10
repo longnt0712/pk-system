@@ -235,6 +235,45 @@ public class ComprehensiveTopicSearchTest {
         when(topicRepository.findOne(topic.getId())).thenReturn(topic); ReflectionTestUtils.setField(assignments, "topicRepository", topicRepository);
         List<QuestionForGamesDto> eligible = assignments.getScheduleListeningItems(topic.getId());
         assertEquals(1, eligible.size()); assertEquals("Published Daily", eligible.get(0).getQuestion());
+
+        ReflectionTestUtils.setField(assignments, "teamEntityManager", manager);
+        TestFolder child = new TestFolder();
+        child.setName("Wimpy 1"); child.setParent(folder); child.setTestMode("DAILY_LISTENING"); child.setOwner(owner);
+        manager.persist(child);
+        com.globits.richy.service.impl.TestFolderServiceImpl folders = mock(com.globits.richy.service.impl.TestFolderServiceImpl.class);
+        when(folders.descendantIds(folder.getId(), true)).thenReturn(Arrays.asList(folder.getId(), child.getId()));
+        ReflectionTestUtils.setField(assignments, "testFolderService", folders);
+        Topic hiddenTopic = topic("Hidden topic"); hiddenTopic.setIsShow(false); link(published, hiddenTopic);
+        for (int i = 1; i <= 51; i++) {
+            Question item = question(String.format("Track %02d", i), 7, "DAILY_LISTENING");
+            item.setQuestionType(dailyType); item.setTestFolder(child);
+        }
+        manager.flush();
+
+        List<DailyListeningAssignmentItemDto> root = assignments.getAssignableDailyListeningPage(null, "", 1, null).getContent();
+        assertEquals(Collections.singletonList(legacy.getId()), root.stream().map(DailyListeningAssignmentItemDto::getId).collect(Collectors.toList()));
+        List<DailyListeningAssignmentItemDto> direct = assignments.getAssignableDailyListeningPage(folder.getId(), "", 1, null).getContent();
+        assertEquals(1, direct.size());
+        assertEquals(published.getId(), direct.get(0).getId());
+        assertEquals(1, direct.get(0).getTopics().size());
+        assertEquals(topic.getName(), direct.get(0).getTopics().get(0).getName());
+        assertEquals(category.getId(), direct.get(0).getTopics().get(0).getCategoryId());
+
+        org.springframework.data.domain.Slice<DailyListeningAssignmentItemDto> first =
+                assignments.getAssignableDailyListeningPage(folder.getId(), "TRACK", 1, null);
+        assertEquals(50, first.getNumberOfElements());
+        assertTrue(first.hasNext());
+        assertEquals("Track 01", first.getContent().get(0).getTitle());
+        org.springframework.data.domain.Slice<DailyListeningAssignmentItemDto> second =
+                assignments.getAssignableDailyListeningPage(folder.getId(), "TRACK", 2, null);
+        assertFalse(second.hasNext());
+        assertEquals(1, second.getNumberOfElements());
+        assertEquals("Track 51", second.getContent().get(0).getTitle());
+        assertEquals(second.getContent().get(0).getId(), assignments.getAssignableDailyListeningPage(null, "", 1,
+                second.getContent().get(0).getId()).getContent().get(0).getId());
+        assertEquals(legacy.getId(), assignments.getAssignableDailyListeningPage(null, "old track", 1, null).getContent().get(0).getId());
+        assertTrue(assignments.getAssignableDailyListeningPage(null, "Track %", 1, null).getContent().isEmpty());
+        assertTrue(assignments.getAssignableDailyListeningPage(null, "", 1, draft.getId()).getContent().isEmpty());
     }
 
     private Question question(String title, int status, String format) {

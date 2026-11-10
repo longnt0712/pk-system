@@ -12,6 +12,9 @@ import com.globits.richy.dto.QuestionImportExistingDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
+	String ASSIGNABLE_DAILY_LISTENING = "(q.questionType.id = 6 or "
+	        + "(q.questionType.id = 11 and q.testFormat = 'DAILY_LISTENING' and q.status = 7))";
+	String DAILY_LISTENING_ASSIGNMENT_TITLE = "case when q.questionType.id = 6 then q.question else q.title end";
 	@Query("select count(u.id) from Question u where u.user.id = ?1")
 	Long countByUserId(Long userId);
 	@Query("select count(q.id) from Question q where q.user.id = ?1 and q.questionType.id = 6 and q.parent is null")
@@ -32,10 +35,9 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, q.title, q.pronounce, q.status, q.testFormat, f) from Question q left join q.testFolder f "
 	        + "where q.questionType.id = 11 and q.status = 7 and (q.testFormat is null or q.testFormat <> 'DAILY_LISTENING') order by lower(q.title), q.id")
 	List<QuestionForTestsDto> findPublishedIeltsTests();
-	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, "
-	        + "case when q.questionType.id = 6 then q.question else q.title end, q.pronounce, q.status, q.testFormat, f) "
-	        + "from Question q left join q.testFolder f where q.questionType.id = 6 "
-	        + "or (q.questionType.id = 11 and q.testFormat = 'DAILY_LISTENING' and q.status = 7) order by q.id")
+	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, " + DAILY_LISTENING_ASSIGNMENT_TITLE
+	        + ", q.pronounce, q.status, q.testFormat, f) from Question q left join q.testFolder f where "
+	        + ASSIGNABLE_DAILY_LISTENING + " order by q.id")
 	List<QuestionForTestsDto> findAssignableDailyListeningTests();
 	@Query("select distinct test.id, task.type from Question task join task.parent part join part.parent test "
 	        + "where test.questionType.id = 11 and test.status = 7 and test.testFormat = 'WRITING' and task.type in (16, 17)")

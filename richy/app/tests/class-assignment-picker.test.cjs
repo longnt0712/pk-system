@@ -14,10 +14,10 @@ const tests = [{id: 10, title: 'Reading root', testFormat: null, testFolder: nul
     {id: 12, title: 'Listening', pronounce: 'audio.mp3', testFolder: {id: 1}},
     {id: 13, title: 'Writing', testFormat: 'WRITING', hasWritingTask2: true, testFolder: {id: 1}},
     {id: 14, title: 'Comprehensive', testFormat: 'COMPREHENSIVE', testFolder: {id: 1}}];
-const daily = [{id: 20, title: 'Daily root', testFormat: 'DAILY_LISTENING', testFolder: null, topics: [{id: 50}]},
-    {id: 21, title: 'Daily nested', testFormat: 'DAILY_LISTENING', testFolder: {id: 2}, topics: [{id: 50}, {id: 51}]},
+const daily = [{id: 20, title: 'Daily root', testFormat: 'DAILY_LISTENING', testFolder: null, topics: [topics[0]]},
+    {id: 21, title: 'Daily nested', testFormat: 'DAILY_LISTENING', testFolder: {id: 2}, topics: topics},
     {id: 22, title: 'Missing topic', testFormat: 'DAILY_LISTENING', testFolder: {id: 1}, topics: []},
-    {id: 23, title: 'Old Track', testFormat: null, testFolder: null, topics: [{id: 51}]}];
+    {id: 23, title: 'Old Track', testFormat: null, testFolder: null, topics: [topics[1]]}];
 function contains(id, selected) {
     if (selected == null) { return true; }
     const seen = new Set();
@@ -27,15 +27,25 @@ function contains(id, selected) {
 async function setup(activityType, selectedId, overrides = {}) {
     let definition, dialog, opened;
     nodeVm.runInNewContext(source, {window: {APP_VERSION: 'test'}, angular: {module: () => ({factory(name, value) { definition = value; }})}});
+    const dailyRequests = [];
     const api = {getAssignableIeltsTests: () => Promise.resolve(structuredClone(tests)),
-        getAssignableDailyListeningTests: () => Promise.resolve(structuredClone(daily)), getScheduleTopics: () => Promise.resolve(structuredClone(topics)), ...overrides};
+        getAssignableDailyListeningPage(folderId, search, page, selectedId) {
+            dailyRequests.push([folderId, search, page, selectedId]);
+            const term = search.trim().toLowerCase();
+            const matches = daily.filter(file => {
+                const id = file.testFolder?.id ?? null;
+                if (selectedId) return file.id === selectedId;
+                return term ? contains(id, folderId) && file.title.toLowerCase().includes(term) : id === folderId;
+            });
+            return Promise.resolve({content: structuredClone(matches.slice(page - 1, page)), last: page >= matches.length});
+        }, ...overrides};
     const folders = {load: () => Promise.resolve(folderTree), contains, options: items => items.map(item => ({...item, label: item.name}))};
     const instance = {close(value) { dialog.confirmed = value; }, dismiss(value) { dialog.dismissed = value; }};
     const modal = {open(options) { opened = options; dialog = new (options.controller.at(-1))(instance); return {result: Promise.resolve()}; }};
     const factory = definition.at(-1)(modal, api, folders, {all: Promise.all.bind(Promise), when: Promise.resolve.bind(Promise)});
     factory.open({activityType, selectedId});
     await new Promise(resolve => setImmediate(resolve));
-    return {dialog, opened, factory};
+    return {dialog, opened, factory, dailyRequests};
 }
 test('each test type opens its own catalog and the selected test starts in its real folder', async () => {
     for (const [type, ids, mode] of [['IELTS_READING', [11, 10], 'READING'], ['IELTS_LISTENING', [12], 'LISTENING'],
@@ -56,15 +66,42 @@ test('browsing shows direct contents and search finds descendants without losing
     dialog.cancel(); assert.equal(dialog.dismissed, 'cancel'); assert.equal(dialog.confirmed, undefined);
 });
 test('Daily Listening preserves linked topics and legacy tracks while allowing standalone modern lessons', async () => {
-    const {dialog} = await setup('DAILY_LISTENING');
-    assert.equal(dialog.catalog.length, 4);
+    const {dialog, dailyRequests} = await setup('DAILY_LISTENING', 21);
+    assert.equal(dialog.folderId, 2);
+    assert.equal(dialog.selected.id, 21);
+    assert.deepEqual(dailyRequests, [[null, '', 1, 21], [2, '', 1, undefined]]);
     dialog.select(dialog.catalog.find(file => file.id === 21)); assert.equal(dialog.selectedTopicId, 50);
     dialog.selectedTopicId = 51; dialog.confirm();
     assert.equal(dialog.confirmed.test.id, 21); assert.equal(dialog.confirmed.topic.name, 'Food');
+    await dialog.openFolder(1);
+    assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [22]);
+    dialog.search = 'nested'; await dialog.searchChanged();
+    assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [21]);
+    await dialog.openFolder(1);
     dialog.select(dialog.catalog.find(file => file.id === 22)); assert.equal(dialog.canSelect(), true);
     dialog.confirm(); assert.equal(dialog.confirmed.test.id, 22); assert.equal(dialog.confirmed.topic, null);
     dialog.select({id: 24, title: 'Unlinked legacy Track', testFormat: null, topics: []}); assert.equal(dialog.canSelect(), false);
+    await dialog.openFolder(null);
+    assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [20]);
+    await dialog.loadMore();
+    assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [20, 23]);
+    assert.equal(dialog.hasMore, false);
     dialog.select(dialog.catalog.find(file => file.id === 23)); assert.equal(dialog.selectedTopicId, 51); assert.equal(dialog.canSelect(), true);
+});
+test('a slow Daily Listening request cannot replace a newer folder and failures can be retried', async () => {
+    let finishOld, fail = true;
+    const {dialog} = await setup('DAILY_LISTENING', null, {
+        getAssignableDailyListeningPage(folderId) {
+            if (folderId === 1) return new Promise(resolve => {finishOld = resolve;});
+            if (folderId === 2 && fail) return Promise.reject(Error('offline'));
+            return Promise.resolve({content: [folderId === 2 ? daily[1] : daily[0]], last: true});
+        }
+    });
+    const old = dialog.openFolder(1);
+    await dialog.openFolder(2); assert.ok(dialog.error);
+    fail = false; await dialog.load(); assert.equal(dialog.error, '');
+    finishOld({content: [daily[2]], last: true}); await old;
+    assert.deepEqual(Array.from(dialog.visibleFiles(), file => file.id), [21]);
 });
 test('catalog failures can be retried and confirming waits for a loaded catalog', async () => {
     let calls = 0;
@@ -122,16 +159,20 @@ test('real modal browses folders, searches, selects topics and keeps its footer 
             await page.setContent('<style>' + css + '</style><main id="qa" ng-controller="Qa as vm"><button ng-click="vm.open()">Chọn bài</button><output>{{vm.chosen.test.title}}</output></main>');
             await page.addScriptTag({path: path.join(app, 'assets/scripts/external/angular.min.js')});
             await page.addScriptTag({path: path.join(app, 'assets/scripts/external/ui-bootstrap-tpls.min.js')});
-            await page.evaluate(({tests, daily, topics}) => {
+            await page.evaluate(({tests, daily}) => {
                 window.APP_VERSION = 'test';
                 angular.module('Hrm.Question', []);
                 angular.module('Hrm.EnrolmentClass', ['Hrm.Question', 'ui.bootstrap'])
                     .value('settings', {api: {baseUrl: '/', apiV1Url: 'api/'}})
                     .value('QuestionService', {})
                     .factory('EnrolmentClassService', ['$q', function ($q) {
-                        return {getAssignableIeltsTests: () => $q.when(tests), getAssignableDailyListeningTests: () => $q.when(daily), getScheduleTopics: () => $q.when(topics)};
+                        return {getAssignableIeltsTests: () => $q.when(tests), getAssignableDailyListeningPage: (folderId, search, page) => {
+                            const items = search ? daily.filter(file => file.title.toLowerCase().includes(search.toLowerCase()))
+                                : daily.filter(file => (file.testFolder?.id ?? null) === folderId);
+                            return $q.when({content: items.slice(page - 1, page), last: page >= items.length});
+                        }};
                     }]);
-            }, {tests, daily, topics});
+            }, {tests, daily});
             await page.addScriptTag({path: path.join(app, 'question/business/ComprehensiveFolders.js')});
             await page.addScriptTag({path: path.join(app, 'enrolment_class/business/ClassAssignmentPicker.js')});
             await page.evaluate(() => {
@@ -156,6 +197,8 @@ test('real modal browses folders, searches, selects topics and keeps its footer 
             await page.waitForFunction(() => document.querySelector('output').textContent === 'Reading nested');
             await page.evaluate(() => { const scope = angular.element(document.getElementById('qa')).scope(); scope.$apply(() => {scope.vm.type = 'DAILY_LISTENING';}); });
             await page.getByRole('button', {name: 'Chọn bài', exact: true}).click();
+            await page.getByRole('button', {name: 'Tải thêm bài', exact: true}).click();
+            await page.getByRole('button', {name: /Old Track/}).waitFor();
             await page.getByRole('searchbox', {name: 'Tìm bài'}).fill('Daily nested');
             await page.getByRole('button', {name: /Daily nested/}).click();
             await page.getByRole('combobox').selectOption({label: 'Food'});

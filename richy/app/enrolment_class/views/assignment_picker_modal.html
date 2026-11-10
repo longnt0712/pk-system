@@ -6,7 +6,9 @@
     </div>
     <div class="modal-body">
         <label class="class-assignment-search">Tìm bài trong thư viện
-            <input type="search" class="form-control" ng-model="picker.search" placeholder="Nhập tên bài..." aria-label="Tìm bài" ng-disabled="picker.loading">
+            <input type="search" class="form-control" ng-model="picker.search" ng-change="picker.searchChanged()"
+                   ng-model-options="{debounce: picker.dailyListening ? 250 : 0}" placeholder="Nhập tên bài..." aria-label="Tìm bài"
+                   ng-disabled="picker.loading && !picker.dailyListening">
         </label>
         <p ng-if="picker.loading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải bài tập...</p>
         <p class="test-folder-error" role="alert" ng-if="picker.error">{{picker.error}} <button type="button" class="btn btn-link btn-sm" ng-click="picker.load()">Thử lại</button></p>
@@ -20,6 +22,8 @@
                 <i class="fa fa-check-circle class-assignment-check" ng-if="picker.selected.id === file.id" aria-hidden="true"></i>
             </button>
             <p class="class-assignment-empty" ng-if="!picker.loading && !picker.error && !picker.visibleFiles().length">{{picker.search ? 'Không tìm thấy bài phù hợp.' : 'Folder này chưa có bài được phép giao. Hãy mở folder con hoặc chọn folder khác.'}}</p>
+            <button type="button" class="btn btn-default btn-sm" ng-if="picker.hasMore && !picker.error"
+                    ng-disabled="picker.loading" ng-click="picker.loadMore()">Tải thêm bài</button>
         </test-folder-explorer>
     </div>
     <div class="modal-footer">

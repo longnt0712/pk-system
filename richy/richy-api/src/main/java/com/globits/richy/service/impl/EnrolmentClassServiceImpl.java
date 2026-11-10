@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import javax.persistence.TypedQuery;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,6 +52,7 @@ import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
 import org.springframework.http.HttpStatus;
 import com.globits.richy.dto.EnrolmentClassDto;
+import com.globits.richy.dto.DailyListeningAssignmentItemDto;
 import com.globits.richy.dto.EnrolmentClassCalendarDayDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassWeeklySessionDto;
@@ -102,6 +106,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	QuestionRepository questionRepository;
 	@Autowired
 	QuestionTopicRepository questionTopicRepository;
+	@Autowired
+	TestFolderServiceImpl testFolderService;
 	@Autowired
 	PersonDateRepository personDateRepository;
 
@@ -1984,6 +1990,63 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		}
 		return result;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Slice<DailyListeningAssignmentItemDto> getAssignableDailyListeningPage(Long folderId, String search, int page, Long selectedId) {
+		Pageable pageable = new PageRequest(selectedId == null ? Math.max(1, Math.min(page, 100000)) - 1 : 0, 50);
+		String term = search == null ? "" : search.trim();
+		String title = QuestionRepository.DAILY_LISTENING_ASSIGNMENT_TITLE;
+		StringBuilder hql = new StringBuilder("select new com.globits.richy.dto.DailyListeningAssignmentItemDto(q.id, ")
+				.append(title).append(", q.testFormat, f.id) from Question q left join q.testFolder f where ")
+				.append(QuestionRepository.ASSIGNABLE_DAILY_LISTENING);
+		Map<String, Object> parameters = new HashMap<>();
+		if (selectedId != null) {
+			hql.append(" and q.id = :selectedId");
+			parameters.put("selectedId", selectedId);
+		} else {
+			if (Long.valueOf(-1L).equals(folderId) || (folderId == null && term.isEmpty())) {
+				hql.append(" and f.id is null");
+			} else if (folderId != null) {
+				List<Long> folderIds = term.isEmpty() ? Collections.singletonList(folderId)
+						: testFolderService.descendantIds(folderId, true);
+				if (folderIds.isEmpty()) { return new SliceImpl<>(Collections.emptyList(), pageable, false); }
+				hql.append(" and f.id in (:folderIds)");
+				parameters.put("folderIds", folderIds);
+			}
+			if (!term.isEmpty()) {
+				hql.append(" and lower(").append(title).append(") like :pattern escape '!'");
+				String pattern = term.toLowerCase(Locale.ROOT).replace("!", "!!").replace("%", "!%")
+						.replace("_", "!_").replace("[", "![");
+				parameters.put("pattern", "%" + pattern + "%");
+			}
+			hql.append(" order by lower(").append(title).append("), q.id");
+		}
+		TypedQuery<DailyListeningAssignmentItemDto> query = teamEntityManager.createQuery(hql.toString(), DailyListeningAssignmentItemDto.class);
+		parameters.forEach(query::setParameter);
+		List<DailyListeningAssignmentItemDto> result = query.setFirstResult(pageable.getOffset())
+				.setMaxResults(selectedId == null ? pageable.getPageSize() + 1 : 1).getResultList();
+		boolean hasNext = result.size() > pageable.getPageSize();
+		if (hasNext) { result = new ArrayList<>(result.subList(0, pageable.getPageSize())); }
+		if (!result.isEmpty()) { addListeningAssignmentTopics(result); }
+		return new SliceImpl<>(result, pageable, hasNext);
+	}
+
+	private void addListeningAssignmentTopics(List<DailyListeningAssignmentItemDto> items) {
+		Map<Long, DailyListeningAssignmentItemDto> byId = new HashMap<>();
+		for (DailyListeningAssignmentItemDto item : items) { byId.put(item.getId(), item); }
+		List<Object[]> rows = teamEntityManager.createQuery(
+				"select distinct link.question.id, topic.id, topic.name, category.id, category.name, "
+				+ "owner.id, owner.username, topic.createDate from QuestionTopic link join link.topic topic "
+				+ "left join topic.topicCategory category left join topic.user owner "
+				+ "where link.question.id in (:ids) and (topic.isShow = true or topic.isShow is null) "
+				+ "order by topic.createDate desc, topic.id desc", Object[].class)
+				.setParameter("ids", byId.keySet()).getResultList();
+		for (Object[] row : rows) {
+			byId.get((Long) row[0]).getTopics().add(new TopicForListAllDto((Long) row[1], (String) row[2],
+					(Long) row[3], (String) row[4], (Long) row[5], (String) row[6]));
+		}
 	}
 
 	@Override

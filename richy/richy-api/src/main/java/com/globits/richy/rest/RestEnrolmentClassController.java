@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.globits.core.dto.OrganizationDto;
 import com.globits.core.dto.PersonDto;
 import com.globits.richy.dto.EnrolmentClassDto;
+import com.globits.richy.dto.DailyListeningAssignmentItemDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
@@ -246,6 +248,14 @@ public class RestEnrolmentClassController {
 	@RequestMapping(value = "/schedule/daily-listening-tests", method = RequestMethod.GET)
 	public List<QuestionForTestsDto> getAssignableDailyListeningTests() {
 		return service.getAssignableDailyListeningTests();
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})
+	@RequestMapping(value = "/schedule/daily-listening-tests/page", method = RequestMethod.GET)
+	public Slice<DailyListeningAssignmentItemDto> getAssignableDailyListeningPage(
+			@RequestParam(required = false) Long folderId, @RequestParam(required = false) String search,
+			@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) Long selectedId) {
+		return service.getAssignableDailyListeningPage(folderId, search, page, selectedId);
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGEMENT","ROLE_STUDENT_MANAGEMENT"})

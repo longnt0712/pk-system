@@ -113,8 +113,15 @@
                 'Content-Type': 'application/json; charset=utf-8'
             });
         };
-        self.getAssignableDailyListeningTests = function () {
-            return utils.resolve(baseUrl + '/schedule/daily-listening-tests', 'GET', angular.noop, angular.noop);
+        self.getAssignableDailyListeningPage = function (folderId, search, page, selectedId) {
+            var url = baseUrl + '/schedule/daily-listening-tests/page?page=' + encodeURIComponent(page);
+            if (selectedId) {
+                url += '&selectedId=' + encodeURIComponent(selectedId);
+            } else {
+                if (folderId != null) { url += '&folderId=' + encodeURIComponent(folderId); }
+                if (search && search.trim()) { url += '&search=' + encodeURIComponent(search.trim()); }
+            }
+            return utils.resolve(url, 'GET', angular.noop, angular.noop);
         };
 
         self.getScheduleSession = function (classId, date) {
