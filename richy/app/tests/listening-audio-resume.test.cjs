@@ -16,7 +16,8 @@ function fixture(options = {}) {
         load() { current = 0; this.currentSrc = ''; this.readyState = 0; this.duration = NaN; this.emit('timeupdate'); },
         play() { plays++; return Promise.resolve(); },
         emit(type) { for (const callback of listeners.get(type) || []) callback({type}); },
-        metadata(duration = 1800) { this.duration = duration; this.readyState = 1; this.currentSrc = this.src; this.emit('loadedmetadata'); }};
+        metadata(duration = 1800) { this.duration = duration; this.readyState = 1; this.currentSrc = this.src; this.emit('loadedmetadata'); },
+        finish() { current = this.duration; this.emit('ended'); }};
     Object.defineProperty(audio, 'currentTime', {get: () => current, set(value) { if (failSeek) throw Error('media not seekable yet'); current = value; }});
     const vm = {isListeningRoute: options.listening !== false, isPreviewMode: !!options.preview, isWritingRoute: false,
         isComprehensiveRoute: false, isStartTest: true, isStartingTest: false, passageNumber: 1, currentUser: {id: 7},
@@ -86,6 +87,46 @@ test('full recordings and assigned Part sources keep separate positions, includi
     f.vm.assignedPart = 2; f.play(); f.audio.metadata(); assert.equal(f.audio.currentTime, 75);
     assert.deepEqual(f.records(), [{source: 'full.mp3', seconds: 300}, {source: 'part2.mp3', seconds: 75}]);
     assert.equal(f.listenerCount(), 7, 'Repeated setup must not duplicate listeners');
+});
+
+function assignedAudio(parts, urls = ['part1.mp3', 'part2.mp3', 'part3.mp3', 'part4.mp3']) {
+    const f = fixture({mode: 'SERIOUS'});
+    Object.assign(f.vm, {isPartAssignment: true, assignedParts: parts, assignedPart: parts[0], listeningPartAudioUrls: urls});
+    return f;
+}
+
+test('a four-Part assignment plays all four recordings in order regardless of question navigation', () => {
+    const f = assignedAudio([1, 2, 3, 4]); f.play();
+    for (const part of [1, 2, 3, 4]) {
+        assert.equal(f.audio.src, 'part' + part + '.mp3');
+        f.audio.metadata(450); assert.equal(f.audio.playbackRate, 1.4);
+        f.vm.assignedPart = 4;
+        f.audio.finish();
+    }
+    assert.equal(f.audio.src, 'part4.mp3'); assert.equal(f.plays(), 4); assert.equal(f.listenerCount(), 7);
+    assert.deepEqual(f.records(), [1, 2, 3, 4].map(part => ({source: 'part' + part + '.mp3', seconds: 450})));
+});
+
+test('an old draft stuck at the end of Part 1 advances, and later drafts resume the current recording', () => {
+    const old = assignedAudio([1, 2, 3, 4]);
+    old.restore([{source: 'part1.mp3', seconds: 450}]); old.play();
+    assert.equal(old.plays(), 0, 'wait for metadata before replaying a restored track');
+    old.audio.metadata(450);
+    assert.equal(old.audio.src, 'part2.mp3'); assert.equal(old.plays(), 1);
+    old.audio.metadata(480); old.audio.currentTime = 123; old.audio.emit('timeupdate');
+    const resumed = assignedAudio([1, 2, 3, 4]); resumed.restore(old.records()); resumed.play();
+    assert.equal(resumed.audio.src, 'part2.mp3'); assert.equal(resumed.plays(), 0);
+    resumed.audio.metadata(480);
+    assert.equal(resumed.audio.currentTime, 123); assert.equal(resumed.plays(), 1);
+    resumed.context.readingDraftSubmitted = true; resumed.audio.finish();
+    assert.equal(resumed.audio.src, 'part2.mp3', 'finishing a submitted test cannot start another track');
+});
+
+test('a subset plays only its own recordings and a missing Part file uses the full recording once', () => {
+    const split = assignedAudio([2, 4]); split.play(); split.audio.metadata(); split.audio.finish();
+    assert.equal(split.audio.src, 'part4.mp3'); split.audio.metadata(); split.audio.finish(); assert.equal(split.plays(), 2);
+    const fallback = assignedAudio([1, 2, 3, 4], ['part1.mp3']); fallback.play();
+    assert.equal(fallback.audio.src, 'full.mp3'); fallback.audio.metadata(); fallback.audio.finish(); assert.equal(fallback.plays(), 1);
 });
 
 test('pause saves positions through the existing local/cloud draft alongside answers, annotations and embedded audio', () => {

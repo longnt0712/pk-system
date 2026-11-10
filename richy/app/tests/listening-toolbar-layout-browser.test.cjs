@@ -218,6 +218,37 @@ test('Serious header shows the live audio clock and speed without a separate str
     }
 });
 
+test('native audio advances through all four assigned Serious Parts and keeps the selected speed', async () => {
+    const {page, errors} = await open(1366, false);
+    try {
+        const playback = controller.slice(controller.indexOf('        var mainAudio = null;'), controller.indexOf('        function stripEmbeddedReadingIntro(')) +
+            controller.slice(controller.indexOf('        function selectedListeningAudioUrl()'), controller.indexOf('        $scope.counter = 3600;'));
+        await page.getByRole('button', {name: 'Tăng tốc độ', exact: true}).click();
+        await page.evaluate(script => {
+            const scope = window.toolbarScope;
+            Object.assign(scope.vm, {isPartAssignment: true, assignedPart: 1, assignedParts: [1, 2, 3, 4],
+                listeningPartAudioUrls: [1, 2, 3, 4].map(part => '/part-' + part + '.wav')});
+            const timeout = angular.element(document.body).injector().get('$timeout');
+            new Function('vm', '$scope', '$timeout', 'readingDraftSubmitted', 'saveReadingDraft', 'trackAudioDuration', script)(
+                scope.vm, scope, timeout, false, () => {}, () => {});
+            scope.vm.playbackValue = 1.2;
+            scope.vm.setUpAudio();
+        }, playback);
+        const audio = page.locator('#main-audio');
+        for (const part of [1, 2, 3, 4]) {
+            await page.waitForFunction(part => {
+                const element = document.getElementById('main-audio');
+                return element.currentSrc.endsWith('/part-' + part + '.wav') && !element.paused && Number.isFinite(element.duration);
+            }, part);
+            assert.equal(await audio.evaluate(element => element.playbackRate), 1.2);
+            await audio.evaluate(element => { element.currentTime = element.duration - 0.15; });
+        }
+        await page.waitForFunction(() => document.getElementById('main-audio').ended);
+        assert.match(await audio.evaluate(element => element.currentSrc), /\/part-4\.wav$/);
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
 test('switching Study and Serious keeps the same media and releases the read-only clock on destruction', async () => {
     const {page, errors} = await open(1366, false);
     try {

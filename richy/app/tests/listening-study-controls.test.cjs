@@ -46,12 +46,12 @@ function fixture(options={}){
       localStorage:{getItem(key){log.storageReads.push(key);if(options.blockedStorage)throw Error('blocked');return values.get(key)||null;},
         setItem(key,value){if(options.blockedStorage)throw Error('blocked');log.storageWrites.push([key,value]);values.set(key,value);}}},
     service:new Proxy({},{get(){return()=>{log.requests++;throw Error('Listening toolbar must not call an API');};}}),
-    trackAudioDuration(){}});
+    trackAudioDuration(){},readingDraftSubmitted:false});
   nodeVm.runInContext(section('        /* Adjustable exam panels','        /* Reading display preferences'),c);
   nodeVm.runInContext(section('        vm.playbackValue = 1.0;','        $scope.counter = 3600;'),c);
   nodeVm.runInContext(section('        var mainAudio = null;','        function stripEmbeddedReadingIntro('),c);
-  nodeVm.runInContext(functionCode('selectedListeningAudioUrl'),c);
-  for(const name of ['isListeningContentVisible','toggleListeningContent','setUpAudio'])nodeVm.runInContext(functionCode(name,true),c);
+  nodeVm.runInContext(section('        function selectedListeningAudioUrl()','        vm.playbackValue = 1.0;'),c);
+  for(const name of ['isListeningContentVisible','toggleListeningContent'])nodeVm.runInContext(functionCode(name,true),c);
   return{vm,c,audio,values,listeners,log,flushFrames(){const pending=[...frames.values()];frames.clear();pending.forEach(callback=>callback());},
     changeContent(value){vm.showListeningContent=value;vm.toggleListeningContent();},
     drag(percent){const target={parentNode:{getBoundingClientRect:()=>({left:0,top:0,width:1000,height:800})}};

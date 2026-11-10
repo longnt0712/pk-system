@@ -4102,6 +4102,7 @@
         // Keep source-specific positions inside the existing user/mode/task draft.
         var mainListeningPositions = [], resumeAudio = null, resumeAudioSource = '';
         var resumeAudioPending = null, resumeAudioReady = false, resumeAudioDestroyed = false;
+        var mainListeningSources = [], mainListeningSourceIndex = 0;
         var resumeAudioEvents = ['loadedmetadata', 'durationchange', 'canplay', 'timeupdate', 'seeked', 'pause', 'ended'];
 
         function mainListeningPosition(source) {
@@ -4143,6 +4144,7 @@
             if (!resumeAudio || resumeAudio.readyState < 1 ||
                     (resumeAudio.currentSrc && resumeAudio.src && resumeAudio.currentSrc !== resumeAudio.src)) { return; }
             if (!resumeAudioReady && event && /^(loadedmetadata|durationchange|canplay)$/.test(event.type)) { resumeAudioReady = true; }
+            var resumedAtEnd = false;
             if (resumeAudioPending !== null) {
                 var duration = Number(resumeAudio.duration);
                 if (!resumeAudioReady || !isFinite(duration) || duration <= 0) { return; }
@@ -4152,9 +4154,15 @@
                     if (Math.abs(Number(resumeAudio.currentTime) - target) > 0.25) { return; }
                     resumeAudioPending = null;
                 } catch (unavailableAudioSeek) { return; }
+                if (mainListeningSources.length > 1) {
+                    // Older drafts only stored the position, including the exact end of a Part.
+                    resumedAtEnd = target > 0 && duration - target <= 0.05;
+                    if (!resumedAtEnd) { playMainListeningAudio(resumeAudio); }
+                }
             }
             rememberMainListeningAudioPosition();
-            if (event && /^(pause|ended)$/.test(event.type) && resumeAudioReady) { saveReadingDraft(); }
+            if (resumedAtEnd || (event && /^(pause|ended)$/.test(event.type) && resumeAudioReady)) { saveReadingDraft(); }
+            if (resumedAtEnd || (event && event.type === 'ended')) { advanceMainListeningAudio(); }
         }
 
         function detachMainListeningAudioResume() {
@@ -4216,6 +4224,47 @@
             return vm.listeningPartAudioUrls[selectedPart - 1] || mainAudioUrl;
         }
 
+        function selectedListeningAudioSources() {
+            var parts = vm.assignedParts || [];
+            if (!vm.isPartAssignment || vm.isPreviewMode || parts.length < 2) {
+                return [selectedListeningAudioUrl()].filter(Boolean);
+            }
+            var fullAudio = String(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.pronounce || '').trim();
+            var partAudio = vm.listeningPartAudioUrls || [];
+            var sources = parts.map(function (part) { return partAudio[part - 1]; });
+            if (fullAudio && !sources.every(Boolean)) { return [fullAudio]; }
+            return sources.filter(function (source, index) { return source && sources.indexOf(source) === index; });
+        }
+
+        function playMainListeningAudio(audioElement) {
+            if (resumeAudioDestroyed || readingDraftSubmitted || vm.passageNumber === 4) { return; }
+            var playPromise = audioElement.play();
+            if (playPromise && angular.isFunction(playPromise.catch)) { playPromise.catch(angular.noop); }
+        }
+
+        function loadMainListeningAudio(audioElement, index) {
+            mainListeningSourceIndex = index;
+            var source = mainListeningSources[index];
+            prepareMainListeningAudioResume(audioElement, source);
+            var waitForResume = mainListeningSources.length > 1 && resumeAudioPending !== null;
+            audioElement.src = source;
+            audioElement.loop = false;
+            trackAudioDuration(audioElement);
+            audioElement.load();
+            applyPlaybackSpeed(vm.playbackValue);
+            if (!waitForResume) { playMainListeningAudio(audioElement); }
+        }
+
+        function advanceMainListeningAudio() {
+            var sources = mainListeningSources, index = mainListeningSourceIndex, audioElement = resumeAudio;
+            if (index + 1 >= sources.length) { return; }
+            $timeout(function () {
+                if (sources !== mainListeningSources || index !== mainListeningSourceIndex || audioElement !== resumeAudio ||
+                        resumeAudioDestroyed || readingDraftSubmitted || vm.passageNumber === 4) { return; }
+                loadMainListeningAudio(audioElement, index + 1);
+            }, 0);
+        }
+
         vm.setUpAudio = function () {
             if (!vm.isListeningRoute) { return; }
             // The audio element is created by ng-if/ng-show after the test data
@@ -4224,17 +4273,17 @@
                 if (resumeAudioDestroyed) { return; }
                 var audioElement = getMainAudio();
                 if (!audioElement) { return; }
-                var source = selectedListeningAudioUrl();
-                prepareMainListeningAudioResume(audioElement, source);
-                audioElement.src = source;
-                audioElement.loop = false;
-                trackAudioDuration(audioElement);
-                audioElement.load();
-                applyPlaybackSpeed(vm.playbackValue);
-                var playPromise = audioElement.play();
-                if (playPromise && angular.isFunction(playPromise.catch)) {
-                    playPromise.catch(angular.noop);
+                rememberMainListeningAudioPosition();
+                mainListeningSources = selectedListeningAudioSources();
+                if (!mainListeningSources.length) { return; }
+                var index = 0;
+                // A track is recorded when it starts. In a sequence, resume the latest
+                // started track after the contiguous Parts already played in this draft.
+                while (index + 1 < mainListeningSources.length && mainListeningPosition(mainListeningSources[index]) &&
+                        mainListeningPosition(mainListeningSources[index + 1])) {
+                    index++;
                 }
+                loadMainListeningAudio(audioElement, index);
             }, 0);
         };
 
