@@ -9,6 +9,8 @@
 .vw-title-dot{display:inline-block;width:8px;height:8px;background:#8eab99;border-radius:50%!important;margin-left:5px}
 .vw-topbar p{font-size:13px;color:#85918b;margin:0}
 .vw-overview{display:flex;gap:12px;flex-shrink:0}
+.vw-topbar-end{display:grid;justify-items:end;gap:8px;min-width:0}
+@media(max-width:767px){.vw-topbar-end .vw-overview{width:100%}}
 .vw-stat{display:flex;gap:12px;align-items:center;position:relative;min-width:196px;padding:16px 20px 21px;border:1px solid rgba(255,255,255,.8);border-radius:20px!important;background:rgba(255,255,255,.62);box-shadow:0 8px 24px rgba(43,63,51,.025);backdrop-filter:blur(20px)}
 .vw-stat strong{font-size:20px;letter-spacing:-.6px;display:block;line-height:1.3}
 .vw-stat strong small{font-weight:400;font-size:12px;color:#87918c;letter-spacing:0}
@@ -28,7 +30,8 @@
 .vw-btn:not(:disabled):active{transform:scale(.98)}
 .vw-primary{background:#516e5e;border-color:#516e5e;color:#fff;box-shadow:0 4px 8px rgba(53,82,64,.12)}
 .vw-primary:not(:disabled):hover{background:#435f50;color:#fff}
-.vw-create-lesson{background:rgba(231,237,232,.85);border-color:rgba(91,119,99,.10);margin-top:12px}
+.vw-create-lesson{background:rgba(231,237,232,.85);border-color:rgba(91,119,99,.10)}
+.vw-category-content .vw-create-lesson{flex-shrink:0;max-width:46%;white-space:normal}
 .vw-library-link{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;border-radius:12px!important;text-align:left;padding:12px 12px;font-size:12px;color:#8b958f;margin:3px 0}
 .vw-library-link.is-active{background:#e5ece6;color:#526d5a;font-weight:650}
 .vw-library-icon{font-size:15px;width:20px;text-align:center;color:#a2aea5}
@@ -243,8 +246,6 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-lesson-scroll{max-height:clamp(390px,70vh,850px);overflow-y:auto;scrollbar-width:thin;padding-right:4px}
 .vw-lesson-scroll:focus-visible{outline:2px solid #9dbaa9;outline-offset:2px;border-radius:12px}
 .vw-category-heading{padding-top:4px}
-.vw-library-category-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.vw-library-category-actions .vw-btn{flex:1 1 auto}
 .vw-category-tree{list-style:none;max-height:clamp(260px,55vh,650px);overflow:auto;scrollbar-width:thin;padding:4px;margin:0}
 .vw-category-row{display:flex;align-items:center;min-width:0;margin:2px 0;border-radius:10px}
 .vw-category-row:hover{background:#eef3ef}

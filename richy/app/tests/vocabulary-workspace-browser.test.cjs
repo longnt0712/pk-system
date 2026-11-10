@@ -249,27 +249,19 @@ test('administrators can create and move groups, and a slower group cannot overw
     } finally { await browser.close(); }
 });
 
-test('group actions live in the sidebar and only empty groups can be deleted from the tree', async () => {
+test('group actions live on tree rows and only empty groups can be deleted', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser);
-        const actions = page.locator('.vw-library-category-actions');
-        const edit = actions.getByRole('button', {name: 'Sửa nhóm', exact: true});
-        assert.equal(await edit.isDisabled(), true);
-        assert.equal(await page.locator('.vw-sidebar').getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).count(), 0);
-        assert.equal(await page.locator('.vw-topbar').getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).isVisible(), true);
-        await actions.getByRole('button', {name: 'Thêm nhóm', exact: true}).click();
-        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option:checked').innerText(), 'Không có nhóm cha (nhóm gốc)');
-        await page.getByRole('button', {name: 'Hủy', exact: true}).click();
-
+        const sidebar = page.locator('.vw-sidebar');
+        assert.equal(await sidebar.getByRole('button', {name: /^(Sửa nhóm|Thêm nhóm|Tạo bài từ vựng)$/}).count(), 0);
         await selectCategory(page);
-        assert.equal(await edit.isEnabled(), true);
         assert.equal(await page.locator('.vw-category-content').getByRole('button', {name: /Sửa nhóm|Thêm nhóm con/}).count(), 0);
-        await edit.click();
+        const tree = page.getByRole('list', {name: 'Cây nhóm bài'});
+        await tree.getByRole('button', {name: 'Sửa nhóm Đời sống hằng ngày', exact: true}).click();
         assert.equal(await page.getByLabel('Tên nhóm', {exact: true}).inputValue(), 'Đời sống hằng ngày');
         await page.getByRole('button', {name: 'Hủy', exact: true}).click();
 
-        const tree = page.getByRole('list', {name: 'Cây nhóm bài'});
         for (const [name, error] of [['Đời sống hằng ngày', /còn bài từ vựng/], ['IELTS & học thuật', /chuyển các nhóm con/]]) {
             await tree.getByRole('button', {name: 'Xóa nhóm ' + name, exact: true}).click();
             await page.getByRole('button', {name: 'Xác nhận xóa nhóm', exact: true}).click();
@@ -303,7 +295,12 @@ test('the lesson category picker stays inside the scrolled dialog and leaves its
                 window.scrollTo(0, 420);
             });
             if (width < 768) await page.locator('.vw-mobile-picker').click();
-            const create = page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true});
+            const header = page.locator('.vw-category-content .vw-content-head');
+            const create = header.getByRole('button', {name: 'Tạo bài từ vựng', exact: true});
+            const [button, title, heading] = await Promise.all([create.boundingBox(), header.locator('.vw-context').boundingBox(), header.boundingBox()]);
+            assert.ok(Math.abs((button.y + button.height / 2) - (title.y + title.height / 2)) < 1);
+            assert.ok(Math.abs((button.x + button.width) - (heading.x + heading.width)) < 1);
+            assert.equal(await page.getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).count(), 1);
             await create.scrollIntoViewIfNeeded();
             assert.ok(await page.evaluate(() => window.scrollY > 0));
             await create.click();

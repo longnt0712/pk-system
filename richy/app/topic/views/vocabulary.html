@@ -2,11 +2,13 @@
     <header class="vw-topbar">
         <div>
             <span class="vw-eyebrow">YOUR PERSONAL LIBRARY</span><h1>Bài từ vựng<span class="vw-title-dot"></span></h1><p>Mỗi bài một chủ đề. Mỗi ngày thêm một chút.</p>
-            <button type="button" class="vw-btn vw-create-lesson" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
         </div>
-        <div class="vw-overview" aria-label="Hạn mức từ vựng" ng-if="vm.usage">
-            <div class="vw-stat"><span class="vw-stat-icon lavender"><i class="fa fa-clone" aria-hidden="true"></i></span><div><strong>{{vm.usage.wordCount | number:0}}<small ng-if="vm.usage.wordLimit >= 0"> / {{vm.usage.wordLimit | number:0}}</small></strong><span>Thẻ từ vựng</span></div><div class="vw-meter" ng-if="vm.usage.wordLimit > 0"><span ng-style="{width:vm.wordPercent()+'%'}"></span></div></div>
-            <div class="vw-stat"><span class="vw-stat-icon mint"><i class="fa fa-book" aria-hidden="true"></i></span><div><strong>{{vm.usage.topicCount | number:0}}<small ng-if="vm.usage.topicLimit >= 0"> / {{vm.usage.topicLimit | number:0}}</small></strong><span>Bài từ vựng</span></div><div class="vw-meter mint" ng-if="vm.usage.topicLimit > 0"><span ng-style="{width:vm.lessonPercent()+'%'}"></span></div></div>
+        <div class="vw-topbar-end">
+            <div class="vw-overview" aria-label="Hạn mức từ vựng" ng-if="vm.usage">
+                <div class="vw-stat"><span class="vw-stat-icon lavender"><i class="fa fa-clone" aria-hidden="true"></i></span><div><strong>{{vm.usage.wordCount | number:0}}<small ng-if="vm.usage.wordLimit >= 0"> / {{vm.usage.wordLimit | number:0}}</small></strong><span>Thẻ từ vựng</span></div><div class="vw-meter" ng-if="vm.usage.wordLimit > 0"><span ng-style="{width:vm.wordPercent()+'%'}"></span></div></div>
+                <div class="vw-stat"><span class="vw-stat-icon mint"><i class="fa fa-book" aria-hidden="true"></i></span><div><strong>{{vm.usage.topicCount | number:0}}<small ng-if="vm.usage.topicLimit >= 0"> / {{vm.usage.topicLimit | number:0}}</small></strong><span>Bài từ vựng</span></div><div class="vw-meter mint" ng-if="vm.usage.topicLimit > 0"><span ng-style="{width:vm.lessonPercent()+'%'}"></span></div></div>
+            </div>
+            <button type="button" class="vw-btn vw-create-lesson" ng-if="vm.view !== 'category'" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
         </div>
     </header>
     <div class="vw-notice warning" ng-if="vm.usage.wordLimitReached || vm.usage.topicLimitReached" role="alert">
@@ -17,21 +19,15 @@
         <button type="button" class="vw-btn vw-mobile-picker" ng-click="vm.lessonPickerOpen = !vm.lessonPickerOpen" aria-controls="vw-category-sidebar" aria-expanded="{{!!vm.lessonPickerOpen}}"><i class="fa fa-folder-open" aria-hidden="true"></i><span>{{vm.lessonCategory.name || 'Chọn nhóm bài'}}</span><i class="fa" ng-class="vm.lessonPickerOpen ? 'fa-angle-up' : 'fa-angle-down'" aria-hidden="true"></i></button>
         <aside id="vw-category-sidebar" class="vw-sidebar" ng-class="{'is-open':vm.lessonPickerOpen}">
             <div class="vw-sidebar-head"><h2>Thư viện của bạn</h2><span class="vw-count">{{vm.usage.topicCount || 0}}</span></div>
-            <div class="vw-library-category-actions" ng-if="vm.isAdmin">
-                <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(vm.lessonCategory)"
-                        ng-disabled="!(vm.lessonCategory.id > 0) || vm.categoriesLoading || vm.categoriesError">
-                    <i class="fa fa-pencil" aria-hidden="true"></i> Sửa nhóm
-                </button>
-                <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory()" ng-disabled="vm.categoriesLoading || vm.categoriesError">
-                    <i class="fa fa-plus" aria-hidden="true"></i> Thêm nhóm
-                </button>
-            </div>
             <nav aria-label="Nhóm bài từ vựng">
                 <div class="vw-section-label vw-category-heading">NHÓM BÀI</div>
                 <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm bài" placeholder="Tìm nhóm bài..." ng-model="vm.categoryQuery" ng-change="vm.rebuildCategoryRows()"></label>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesLoading" role="status">Đang tải nhóm bài...</div>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesError" role="alert">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
-                <div class="vw-sidebar-state" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categoryRows.length">{{vm.categoryQuery ? 'Không tìm thấy nhóm phù hợp.' : 'Chưa có nhóm bài.'}}</div>
+                <div class="vw-sidebar-state" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categoryRows.length">
+                    {{vm.categoryQuery ? 'Không tìm thấy nhóm phù hợp.' : 'Chưa có nhóm bài.'}}
+                    <button type="button" class="vw-link" ng-if="vm.isAdmin && !vm.categories.length && !vm.categoryQuery.trim()" ng-click="vm.editCategory()">Tạo nhóm đầu tiên</button>
+                </div>
                 <ul class="vw-category-tree" aria-label="Cây nhóm bài" ng-if="vm.categoryRows.length">
                     <li class="vw-category-row" ng-repeat="row in vm.categoryRows track by row.category.id" ng-style="{'padding-left':'min(' + row.indent + 'px, ' + (row.indent / 4) + '%)'}" ng-class="{'is-active':vm.lessonCategory.id === row.category.id}">
                         <button type="button" class="vw-category-toggle" ng-if="row.hasChildren" ng-click="vm.toggleCategory(row)" ng-disabled="vm.categoryQuery.trim()" aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.category.name}}"><i class="fa" ng-class="row.expanded ? 'fa-angle-down' : 'fa-angle-right'" aria-hidden="true"></i></button>
@@ -58,6 +54,7 @@
             <div ng-include="'vocabulary_breadcrumbs.html'"></div>
             <div class="vw-content-head">
                 <div class="vw-context"><h2 id="vw-category-title">{{vm.lessonCategory.name}}</h2><p>{{vm.lessonTotal | number:0}} bài{{vm.lessonQuery ? ' phù hợp' : ' trong nhóm này'}}</p></div>
+                <button type="button" class="vw-btn vw-create-lesson" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
             </div>
             <div class="vw-child-categories" ng-if="vm.categoryChildren.length">
                 <h3>Nhóm con</h3>
