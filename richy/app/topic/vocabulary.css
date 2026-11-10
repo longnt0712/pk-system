@@ -28,7 +28,7 @@
 .vw-btn:not(:disabled):active{transform:scale(.98)}
 .vw-primary{background:#516e5e;border-color:#516e5e;color:#fff;box-shadow:0 4px 8px rgba(53,82,64,.12)}
 .vw-primary:not(:disabled):hover{background:#435f50;color:#fff}
-.vw-create-lesson{width:100%;background:rgba(231,237,232,.85);border-color:rgba(91,119,99,.10);margin-bottom:21px}
+.vw-create-lesson{background:rgba(231,237,232,.85);border-color:rgba(91,119,99,.10);margin-top:12px}
 .vw-library-link{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;border-radius:12px!important;text-align:left;padding:12px 12px;font-size:12px;color:#8b958f;margin:3px 0}
 .vw-library-link.is-active{background:#e5ece6;color:#526d5a;font-weight:650}
 .vw-library-icon{font-size:15px;width:20px;text-align:center;color:#a2aea5}
@@ -204,11 +204,37 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-destructive:not(:disabled):hover{background:#a86660;color:white}
 .vocab-dialog .ui-select-bootstrap>.ui-select-match>.btn{border:1px solid #e2e9d8!important;border-radius:11px!important;padding:10px 13px!important;height:auto;min-height:42px;background:#fff!important;color:#7b8f68!important;font-size:12px;box-shadow:none!important}
 .vocab-dialog .ui-select-search{border-radius:10px!important;min-height:42px}
-.vocab-import-dialog .modal-dialog{width:min(1480px,calc(100% - 32px));margin:30px auto}
+.vocab-import-dialog .modal-dialog{width:min(1480px,calc(100% - 32px));margin:16px auto}
 .vocab-import-dialog .modal-content{border-radius:24px!important;overflow:hidden;border:1px solid #e1e8df;box-shadow:0 22px 90px rgba(34,51,29,.18)}
 .vocab-import-dialog .modal-header{background:#f1f5ed;border-bottom:1px solid #e5ebdf;padding:20px 25px}
-.vocab-import-dialog .modal-body{max-height:74vh;overflow-y:auto;padding:22px 25px}
-.vocab-import-dialog .modal-footer{border-top:1px solid #e5ebdf}
+.vocab-import-dialog .modal-body{padding:22px 25px}
+.vocab-import-dialog .question-import-shell.is-preview{
+    display:flex;flex-direction:column;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px)
+}
+.vocab-import-dialog .question-import-shell.is-preview>.modal-body{
+    display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden auto!important
+}
+.vocab-import-dialog .modal-header,.vocab-import-dialog .modal-footer,
+.vocab-import-dialog .question-import-shell.is-preview>.modal-body>.alert,
+.vocab-import-dialog .question-import-preview>:not(.question-import-scroll){flex:0 0 auto}
+.vocab-import-dialog .question-import-preview{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.vocab-import-dialog .question-import-scroll{
+    flex:1 1 auto;min-height:140px;max-height:420px;overflow:auto;margin-bottom:0;border:1px solid #ddd
+}
+.vocab-import-dialog .question-import-scroll thead th{position:sticky;top:0;z-index:1;background:#f2f5fa}
+.vocab-import-dialog .modal-footer{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 12px;border-top:1px solid #e5ebdf
+}
+.vocab-import-dialog .modal-footer::before,.vocab-import-dialog .modal-footer::after{display:none}
+.vocab-import-dialog .modal-footer .btn+.btn{margin:0}
+.vocab-import-dialog .question-import-selection{margin:0 auto 0 0;text-align:left}
+@media(max-width:767px){
+    .vocab-import-dialog .modal-dialog{width:calc(100% - 16px);margin:8px auto}
+    .vocab-import-dialog .question-import-shell.is-preview{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+    .vocab-import-dialog .modal-header,.vocab-import-dialog .modal-body,.vocab-import-dialog .modal-footer{padding:12px}
+    .vocab-import-dialog .modal-footer .btn{white-space:normal}
+    .vocab-import-dialog .question-import-selection{flex-basis:100%}
+}
 @media(min-width:1600px){.vw-word-card{min-height:96px}.vw-content{padding:30px 32px 10px}.vw-layout{gap:28px}.vocab-workspace{padding:35px 40px 18px}.vw-topbar h1{font-size:36px}}
 @media(max-width:1199px){.vocab-workspace{padding:22px 16px 12px}.vw-layout{gap:15px}.vw-content{padding:23px 18px 8px}.vw-content-head h2{font-size:22px}.vw-stat{min-width:155px;padding:13px 13px 20px;gap:8px}.vw-stat strong{font-size:18px}.vw-stat-icon{width:32px;height:34px;font-size:14px}.vw-toolbar{flex-wrap:wrap}.vw-search-options{flex-basis:100%}.vw-card-search{min-width:150px;}.vw-actions{margin-left:auto}.vw-word-monogram{display:none}.vw-word-card{padding:15px 12px;gap:10px}.vw-meaning{padding-left:14px}}
 @media(max-width:767px){.vocab-workspace{padding:20px 12px 8px;border-radius:20px!important}.vw-topbar{display:block;margin-bottom:18px}.vw-topbar h1{font-size:28px}.vw-topbar p{font-size:12px}.vw-overview{margin-top:20px;gap:9px}.vw-stat{min-width:0;flex:1;padding:12px 12px 19px;border-radius:16px!important}.vw-stat strong{font-size:18px}.vw-stat strong small{font-size:10px}.vw-stat-icon{width:29px;height:32px;font-size:13px;border-radius:10px!important}.vw-meter{left:13px;right:13px}.vw-layout{display:block}.vw-mobile-picker{display:flex;width:100%;margin-bottom:12px;justify-content:flex-start;background:rgba(255,255,255,.72)}.vw-mobile-picker>i:last-child{margin-left:auto}.vw-sidebar{display:none;margin-bottom:15px}.vw-sidebar.is-open{display:block}.vw-library-note{display:none}.vw-content{padding:21px 14px 5px;border-radius:20px!important}.vw-content-head{margin-bottom:18px}.vw-content-head h2{font-size:21px}.vw-content-head p{line-height:1.8;font-size:10px}.vw-toolbar{gap:10px;margin-bottom:19px}.vw-search-options .vw-card-search{min-width:100%}.vw-actions{width:100%;justify-content:flex-end}.vw-actions .vw-btn{flex:1;font-size:11px;min-height:38px;padding:9px 10px}.vw-word-card{flex-wrap:wrap;gap:9px;padding:15px 11px;border-radius:14px!important}.vw-word-copy{flex:1;min-width:100px}.vw-word-title h3{font-size:14px}.vw-word-monogram{display:none}.vw-row-actions{margin-left:auto}.vw-meaning{order:5;flex:0 0 100%;border-left:0;padding:9px 0 0 23px;border-top:1px solid #f1f4eb;margin-top:2px}.vw-word-card:not(:has(.vw-row-check)) .vw-meaning{padding-left:0}.vw-meaning>span{font-size:8px}.vw-meaning>p{font-size:12px}.vw-pagination{font-size:9px}.vw-modal-head{padding:24px 20px 15px}.vw-modal-body{padding:18px 20px 14px}.vw-modal-footer{padding:15px 20px}.vw-form-grid{grid-template-columns:1fr;gap:0}.vw-notice{font-size:11px;padding:12px}.vocab-dialog .modal-dialog{margin:25px auto}.vw-empty{padding:45px 15px 50px}.vw-empty h3{font-size:17px}.vw-eyebrow{font-size:9px}}
@@ -217,7 +243,8 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-lesson-scroll{max-height:clamp(390px,70vh,850px);overflow-y:auto;scrollbar-width:thin;padding-right:4px}
 .vw-lesson-scroll:focus-visible{outline:2px solid #9dbaa9;outline-offset:2px;border-radius:12px}
 .vw-category-heading{padding-top:4px}
-.vw-category-heading .vw-link{letter-spacing:0;font-size:12px}
+.vw-library-category-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.vw-library-category-actions .vw-btn{flex:1 1 auto}
 .vw-category-tree{list-style:none;max-height:clamp(260px,55vh,650px);overflow:auto;scrollbar-width:thin;padding:4px;margin:0}
 .vw-category-row{display:flex;align-items:center;min-width:0;margin:2px 0;border-radius:10px}
 .vw-category-row:hover{background:#eef3ef}
@@ -231,6 +258,7 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-category-choice span,.vw-mobile-picker span{overflow-wrap:anywhere;min-width:0;white-space:normal}
 .vw-category-row-actions{display:flex;flex-shrink:0;gap:3px;padding-right:4px}
 .vw-category-row-actions .vw-icon-btn{padding:0;border-color:transparent;background:transparent;color:#526c5e}
+.vw-category-row-actions .vw-delete-category{color:#a24848}
 .vw-category-row-actions .vw-icon-btn:hover:not(:disabled){background:#dce9e0}
 .vw-category-special{margin:10px 4px 0;padding-top:7px;border-top:1px solid var(--vw-border)}
 .vw-category-special .vw-library-link{min-height:40px;color:#526c5e}
@@ -239,7 +267,6 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-breadcrumb-item .fa{color:#829a8b}
 .vw-breadcrumb .vw-link{white-space:normal;text-align:left}
 .vw-category-content{padding-bottom:20px}
-.vw-category-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .vw-child-categories{margin-bottom:16px}
 .vw-child-categories h3{margin:0 0 8px;color:#526c5e;font-size:12px;font-weight:650}
 .vw-child-categories>div{display:flex;flex-wrap:wrap;gap:6px}

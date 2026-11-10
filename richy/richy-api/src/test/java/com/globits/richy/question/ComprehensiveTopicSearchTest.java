@@ -111,6 +111,19 @@ public class ComprehensiveTopicSearchTest {
         assertTrue(groups.saveObject(json.readValue("{\"id\":" + childId + ",\"name\":\"Reading 2\",\"parentId\":null}", TopicCategoryDto.class)));
         manager.flush(); manager.clear();
         assertNull(manager.find(TopicCategory.class, savedChild.getId()).getParent());
+
+        Topic hiddenLesson = topic("Hidden lesson");
+        hiddenLesson.setIsShow(false);
+        hiddenLesson.setTopicCategory(manager.find(TopicCategory.class, savedChild.getId()));
+        manager.flush();
+        try { groups.deleteObject(savedChild.getId()); fail("A group with a hidden lesson cannot be deleted"); }
+        catch (IllegalArgumentException expected) { assertTrue(expected.getMessage().contains("còn bài từ vựng")); }
+        hiddenLesson.setTopicCategory(null);
+        doAnswer(call -> { manager.remove(call.getArguments()[0]); return null; }).when(repository).delete(any(TopicCategory.class));
+        assertTrue(groups.deleteObject(savedChild.getId()));
+        manager.flush();
+        assertNull(manager.find(TopicCategory.class, savedChild.getId()));
+        assertNotNull(manager.find(Topic.class, hiddenLesson.getId()));
     }
 
     @Test public void lessonPageFiltersDirectGroupAndKeepsUncategorizedLessonsReachable() {

@@ -1,6 +1,9 @@
 <main class="vocab-workspace">
     <header class="vw-topbar">
-        <div><span class="vw-eyebrow">YOUR PERSONAL LIBRARY</span><h1>Bài từ vựng<span class="vw-title-dot"></span></h1><p>Mỗi bài một chủ đề. Mỗi ngày thêm một chút.</p></div>
+        <div>
+            <span class="vw-eyebrow">YOUR PERSONAL LIBRARY</span><h1>Bài từ vựng<span class="vw-title-dot"></span></h1><p>Mỗi bài một chủ đề. Mỗi ngày thêm một chút.</p>
+            <button type="button" class="vw-btn vw-create-lesson" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
+        </div>
         <div class="vw-overview" aria-label="Hạn mức từ vựng" ng-if="vm.usage">
             <div class="vw-stat"><span class="vw-stat-icon lavender"><i class="fa fa-clone" aria-hidden="true"></i></span><div><strong>{{vm.usage.wordCount | number:0}}<small ng-if="vm.usage.wordLimit >= 0"> / {{vm.usage.wordLimit | number:0}}</small></strong><span>Thẻ từ vựng</span></div><div class="vw-meter" ng-if="vm.usage.wordLimit > 0"><span ng-style="{width:vm.wordPercent()+'%'}"></span></div></div>
             <div class="vw-stat"><span class="vw-stat-icon mint"><i class="fa fa-book" aria-hidden="true"></i></span><div><strong>{{vm.usage.topicCount | number:0}}<small ng-if="vm.usage.topicLimit >= 0"> / {{vm.usage.topicLimit | number:0}}</small></strong><span>Bài từ vựng</span></div><div class="vw-meter mint" ng-if="vm.usage.topicLimit > 0"><span ng-style="{width:vm.lessonPercent()+'%'}"></span></div></div>
@@ -14,9 +17,17 @@
         <button type="button" class="vw-btn vw-mobile-picker" ng-click="vm.lessonPickerOpen = !vm.lessonPickerOpen" aria-controls="vw-category-sidebar" aria-expanded="{{!!vm.lessonPickerOpen}}"><i class="fa fa-folder-open" aria-hidden="true"></i><span>{{vm.lessonCategory.name || 'Chọn nhóm bài'}}</span><i class="fa" ng-class="vm.lessonPickerOpen ? 'fa-angle-up' : 'fa-angle-down'" aria-hidden="true"></i></button>
         <aside id="vw-category-sidebar" class="vw-sidebar" ng-class="{'is-open':vm.lessonPickerOpen}">
             <div class="vw-sidebar-head"><h2>Thư viện của bạn</h2><span class="vw-count">{{vm.usage.topicCount || 0}}</span></div>
-            <button class="vw-btn vw-create-lesson" ng-click="vm.newLesson()" ng-disabled="vm.usage.topicLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài từ vựng</button>
+            <div class="vw-library-category-actions" ng-if="vm.isAdmin">
+                <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(vm.lessonCategory)"
+                        ng-disabled="!(vm.lessonCategory.id > 0) || vm.categoriesLoading || vm.categoriesError">
+                    <i class="fa fa-pencil" aria-hidden="true"></i> Sửa nhóm
+                </button>
+                <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory()" ng-disabled="vm.categoriesLoading || vm.categoriesError">
+                    <i class="fa fa-plus" aria-hidden="true"></i> Thêm nhóm
+                </button>
+            </div>
             <nav aria-label="Nhóm bài từ vựng">
-                <div class="vw-section-label vw-category-heading">NHÓM BÀI <button type="button" class="vw-link" ng-if="vm.isAdmin" ng-click="vm.editCategory()" ng-disabled="vm.categoriesLoading || vm.categoriesError"><i class="fa fa-plus" aria-hidden="true"></i> Nhóm mới</button></div>
+                <div class="vw-section-label vw-category-heading">NHÓM BÀI</div>
                 <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm bài" placeholder="Tìm nhóm bài..." ng-model="vm.categoryQuery" ng-change="vm.rebuildCategoryRows()"></label>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesLoading" role="status">Đang tải nhóm bài...</div>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesError" role="alert">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
@@ -29,6 +40,7 @@
                         <div class="vw-category-row-actions" ng-if="vm.isAdmin">
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Sửa nhóm {{row.category.name}}" title="Sửa nhóm"><i class="fa fa-pencil" aria-hidden="true"></i></button>
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(null, row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Thêm nhóm con vào {{row.category.name}}" title="Thêm nhóm con"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                            <button type="button" class="vw-icon-btn vw-delete-category" ng-click="vm.confirmDeleteCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError || vm.categoryDeleting" aria-label="Xóa nhóm {{row.category.name}}" title="Xóa nhóm"><i class="fa fa-trash-o" aria-hidden="true"></i></button>
                         </div>
                     </li>
                 </ul>
@@ -46,10 +58,6 @@
             <div ng-include="'vocabulary_breadcrumbs.html'"></div>
             <div class="vw-content-head">
                 <div class="vw-context"><h2 id="vw-category-title">{{vm.lessonCategory.name}}</h2><p>{{vm.lessonTotal | number:0}} bài{{vm.lessonQuery ? ' phù hợp' : ' trong nhóm này'}}</p></div>
-                <div class="vw-category-actions" ng-if="vm.isAdmin && vm.lessonCategory.id !== 'uncategorized'">
-                    <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(vm.lessonCategory)"><i class="fa fa-pencil" aria-hidden="true"></i> Sửa nhóm</button>
-                    <button type="button" class="vw-btn vw-quiet" ng-click="vm.editCategory(null, vm.lessonCategory)"><i class="fa fa-plus" aria-hidden="true"></i> Thêm nhóm con</button>
-                </div>
             </div>
             <div class="vw-child-categories" ng-if="vm.categoryChildren.length">
                 <h3>Nhóm con</h3>
@@ -89,7 +97,7 @@
                     <label class="vw-search vw-card-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm từ hoặc nghĩa" ng-attr-placeholder="{{vm.findExactWord ? 'Nhập đúng từ hoặc cụm từ...' : 'Tìm từ hoặc nghĩa tiếng Việt...'}}" ng-model="vm.query" ng-model-options="{debounce:300}" ng-change="vm.loadCards(true)"></label>
                     <label class="vw-exact-switch"><input type="checkbox" role="switch" aria-label="Tìm đúng từ" ng-model="vm.findExactWord" ng-change="vm.loadCards(true)"><span class="vw-switch-track" aria-hidden="true"></span><span>Tìm đúng từ</span></label>
                 </div>
-                <div class="vw-actions"><button class="vw-btn vw-quiet" ng-click="vm.exportCards()" ng-disabled="vm.exporting"><i class="fa" ng-class="vm.exporting ? 'fa-spinner fa-spin' : 'fa-arrow-down'" aria-hidden="true"></i> {{vm.exporting ? 'Đang xuất...' : 'Export'}}</button><button class="vw-btn vw-quiet" ng-if="vm.isAdmin" question-excel-import import-template-url="question/views/excel_import_modal.html" topics="vm.importTopics" initial-topic="vm.activeLesson" user-id="vm.user.id" on-topic-created="vm.importTopicCreated(topic)" on-imported="vm.imported()"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Import</button><button class="vw-btn vw-primary" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ</button></div>
+                <div class="vw-actions"><button class="vw-btn vw-quiet" ng-click="vm.exportCards()" ng-disabled="vm.exporting"><i class="fa" ng-class="vm.exporting ? 'fa-spinner fa-spin' : 'fa-arrow-down'" aria-hidden="true"></i> {{vm.exporting ? 'Đang xuất...' : 'Export'}}</button><button class="vw-btn vw-quiet" ng-if="vm.isAdmin" question-excel-import import-template-url="question/views/excel_import_modal.html?layout=2" topics="vm.importTopics" initial-topic="vm.activeLesson" user-id="vm.user.id" on-topic-created="vm.importTopicCreated(topic)" on-imported="vm.imported()"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Import</button><button class="vw-btn vw-primary" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ</button></div>
             </div>
             <div class="vw-list-bar"><div class="vw-segment-label"><i class="fa fa-clone" aria-hidden="true"></i><strong>Flashcard</strong><span class="vw-count">{{vm.total | number:0}}</span></div><select class="vw-type-filter" aria-label="Loại flashcard" ng-model="vm.status" ng-options="type.id as type.name for type in vm.typeFilters" ng-change="vm.loadCards(true)"></select></div>
             <div ng-if="vm.canDelete && vm.cards.length && !vm.cardLoadError" ng-include="'vocabulary_bulk_controls.html'"></div>
@@ -144,6 +152,20 @@
         </div>
         <div class="vw-modal-footer"><button type="button" class="vw-btn" ng-click="$dismiss()" ng-disabled="vm.categorySaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vocabularyCategoryForm.$invalid || vm.categorySaving">{{vm.categorySaving ? 'Đang lưu...' : 'Lưu nhóm'}}</button></div>
     </form>
+</script>
+
+<script type="text/ng-template" id="vocabulary_delete_category_modal.html">
+    <div class="vw-modal">
+        <div class="vw-modal-head"><span class="vw-modal-symbol peach"><i class="fa fa-folder" aria-hidden="true"></i></span><h2>Xóa nhóm bài?</h2><p><strong>{{vm.categoryDeleteDraft.name}}</strong></p></div>
+        <div class="vw-modal-body">
+            <p class="vw-help">Chỉ xóa được nhóm trống. Hãy chuyển các bài từ vựng và nhóm con sang nhóm khác trước.</p>
+            <p class="vw-form-error" role="alert" ng-if="vm.categoryDeleteError">{{vm.categoryDeleteError}}</p>
+        </div>
+        <div class="vw-modal-footer">
+            <button type="button" class="vw-btn" ng-click="$dismiss()" ng-disabled="vm.categoryDeleting">Hủy</button>
+            <button type="button" class="vw-btn vw-destructive" ng-click="vm.deleteCategory()" ng-disabled="vm.categoryDeleting">{{vm.categoryDeleting ? 'Đang xóa...' : 'Xác nhận xóa nhóm'}}</button>
+        </div>
+    </div>
 </script>
 
 <script type="text/ng-template" id="vocabulary_lesson_modal.html">

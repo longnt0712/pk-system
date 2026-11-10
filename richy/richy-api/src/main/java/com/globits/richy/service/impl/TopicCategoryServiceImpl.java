@@ -141,6 +141,10 @@ public class TopicCategoryServiceImpl implements TopicCategoryService {
 				throw new IllegalArgumentException("Hãy chuyển các nhóm con trước khi xóa nhóm này.");
 			}
 		}
+		if (!manager.createQuery("select topic.id from Topic topic where topic.topicCategory.id = :id", Long.class)
+				.setParameter("id", id).setMaxResults(1).getResultList().isEmpty()) {
+			throw new IllegalArgumentException("Nhóm còn bài từ vựng. Hãy chuyển các bài sang nhóm khác trước khi xóa.");
+		}
 		topicCategoryRepository.delete(domain);
 		return true;
 	}

@@ -37,13 +37,25 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
     await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
         const json = (data, status = 200) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(data)});
-        if (url.pathname.startsWith('/api/')) state.requests.push({url: url.pathname, data: request.method() === 'POST' ? request.postDataJSON() : null});
+        if (url.pathname.startsWith('/api/')) {
+            const contentType = request.headers()['content-type'] || '';
+            state.requests.push({url: url.pathname, data: contentType.includes('application/json') ? request.postDataJSON() : null});
+        }
         if (url.pathname === '/api/question/vocabulary_usage') return json({role, wordCount: state.full ? 5000 : state.cards.length, wordLimit: role === 'ADMIN' ? -1 : role === 'USER' ? 10000 : 5000,
             topicCount: state.full ? 50 : lessons.length, topicLimit: role === 'ADMIN' ? -1 : role === 'USER' ? 100 : 50,
             wordLimitReached: state.full, topicLimitReached: state.full,
             wordLimitMessage: 'Bạn đã có 5000/5000 thẻ từ vựng. Bạn vẫn có thể sửa và học các thẻ đã có. Liên hệ quản trị viên để nâng hạn mức.',
             topicLimitMessage: 'Bạn đã có 50/50 bài từ vựng. Bạn vẫn có thể sửa và học các bài đã có. Liên hệ quản trị viên để được hỗ trợ.'});
         if (url.pathname.startsWith('/api/topic_category/get_page/')) return json({content: categories, totalPages: 1});
+        if (url.pathname.startsWith('/api/topic_category/delete/')) {
+            const id = Number(url.pathname.split('/').at(-1));
+            if (categories.some(category => category.parentId === id)) return json({message: 'Hãy chuyển các nhóm con trước khi xóa nhóm này.'}, 400);
+            if (lessons.some(lesson => lesson.topicCategory?.id === id)) return json({message: 'Nhóm còn bài từ vựng.'}, 400);
+            const index = categories.findIndex(category => category.id === id);
+            if (index < 0) return json(false);
+            categories.splice(index, 1);
+            return json(true);
+        }
         if (url.pathname === '/api/topic_category/save') {
             const dto = request.postDataJSON();
             if (dto.id) Object.assign(categories.find(category => category.id === dto.id), dto);
@@ -117,6 +129,11 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             state.cards = state.cards.filter(card => card.id !== dto.id); state.cards.unshift(dto); return json(dto);
         }
         if (url.pathname.startsWith('/api/question/delete/')) { const id = Number(url.pathname.split('/').at(-1)); state.cards = state.cards.filter(card => card.id !== id); return json(true); }
+        if (url.pathname === '/api/question/import_excel/preview') return json({rows: state.importRows || []});
+        if (url.pathname === '/api/question/import_excel/confirm') {
+            if (state.importGate) await state.importGate;
+            return json({success: true, message: 'Đã nhập từ vựng.'});
+        }
         if (url.pathname.startsWith('/question/views/')) return route.fulfill({contentType: 'text/html', body: fs.readFileSync(path.join(app, url.pathname), 'utf8')});
         if (url.pathname.includes('/webfonts/')) return route.fulfill({body: fs.readFileSync(path.join(app, 'assets/fontawesome/webfonts', path.basename(url.pathname)))});
         return route.fulfill({contentType: 'text/html', body: '<html><body></body></html>'});
@@ -228,6 +245,46 @@ test('administrators can create and move groups, and a slower group cannot overw
         await page.getByRole('button', {name: 'Lưu nhóm', exact: true}).click();
         await page.waitForFunction(() => window.vm.categoryPath[0]?.name === 'Đời sống hằng ngày');
         assert.equal(state.categories.find(category => category.name === 'Writing').parentId, 1);
+        assert.deepEqual(state.errors, []);
+    } finally { await browser.close(); }
+});
+
+test('group actions live in the sidebar and only empty groups can be deleted from the tree', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        const {page, state} = await fixture(browser);
+        const actions = page.locator('.vw-library-category-actions');
+        const edit = actions.getByRole('button', {name: 'Sửa nhóm', exact: true});
+        assert.equal(await edit.isDisabled(), true);
+        assert.equal(await page.locator('.vw-sidebar').getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).count(), 0);
+        assert.equal(await page.locator('.vw-topbar').getByRole('button', {name: 'Tạo bài từ vựng', exact: true}).isVisible(), true);
+        await actions.getByRole('button', {name: 'Thêm nhóm', exact: true}).click();
+        assert.equal(await page.getByLabel('Nhóm cha', {exact: true}).locator('option:checked').innerText(), 'Không có nhóm cha (nhóm gốc)');
+        await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+
+        await selectCategory(page);
+        assert.equal(await edit.isEnabled(), true);
+        assert.equal(await page.locator('.vw-category-content').getByRole('button', {name: /Sửa nhóm|Thêm nhóm con/}).count(), 0);
+        await edit.click();
+        assert.equal(await page.getByLabel('Tên nhóm', {exact: true}).inputValue(), 'Đời sống hằng ngày');
+        await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+
+        const tree = page.getByRole('list', {name: 'Cây nhóm bài'});
+        for (const [name, error] of [['Đời sống hằng ngày', /còn bài từ vựng/], ['IELTS & học thuật', /chuyển các nhóm con/]]) {
+            await tree.getByRole('button', {name: 'Xóa nhóm ' + name, exact: true}).click();
+            await page.getByRole('button', {name: 'Xác nhận xóa nhóm', exact: true}).click();
+            await page.getByRole('alert').filter({hasText: error}).waitFor();
+            await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+        }
+        await tree.getByRole('button', {name: 'Mở rộng IELTS & học thuật', exact: true}).click();
+        await tree.getByRole('button', {name: 'Mở rộng Reading', exact: true}).click();
+        await tree.getByRole('button', {name: 'Cambridge IELTS 19', exact: true}).click();
+        await tree.getByRole('button', {name: 'Xóa nhóm Cambridge IELTS 19', exact: true}).click();
+        await page.getByRole('button', {name: 'Xác nhận xóa nhóm', exact: true}).click();
+        await tree.getByRole('button', {name: 'Cambridge IELTS 19', exact: true}).waitFor({state: 'hidden'});
+        assert.equal(await page.locator('#vw-category-title').innerText(), 'Reading');
+        assert.equal(new URL(page.url()).searchParams.get('category'), '3');
+        assert.equal(state.lessons.length, 4);
         assert.deepEqual(state.errors, []);
     } finally { await browser.close(); }
 });
@@ -563,6 +620,62 @@ test('desktop and phone layouts fit the viewport; ADMIN imports in the same work
             assert.match(await page.locator('.modal-dialog .ui-select-match').first().innerText(), /Little things/i);
             await page.getByRole('button', {name: 'Close', exact: true}).click();
             await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
+test('large Excel previews keep the selected count and footer in view while importing', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const [width, height] of [[1366, 768], [390, 560]]) {
+            const {page, state} = await fixture(browser, {width, initialLesson: 101, productionStyles: true});
+            await page.setViewportSize({width, height});
+            state.importRows = Array.from({length: 369}, (_, index) => ({
+                rowNumber: index + 2, word: 'Word ' + index, firstLanguage: 'Nghĩa của từ', level: 'B2', status: 'NEW'
+            }));
+            let releaseImport;
+            state.importGate = new Promise(resolve => {releaseImport = resolve;});
+            await page.getByRole('button', {name: 'Import', exact: true}).click();
+            const modal = page.locator('.vocab-import-dialog');
+            await modal.locator('input[type=file]').setInputFiles(path.join(app, 'question/templates/flashcard_import_template.xlsx'));
+            await modal.getByRole('button', {name: 'Read and preview', exact: true}).click();
+            const confirm = modal.locator('.modal-footer button[ng-click="importVm.confirmImport()"]');
+            await confirm.waitFor();
+            assert.match(await confirm.textContent(), /Confirm import \(369\)/);
+            async function assertLayout() {
+                const layout = await modal.evaluate(element => {
+                    const body = element.querySelector('.modal-body').getBoundingClientRect();
+                    const footer = element.querySelector('.modal-footer').getBoundingClientRect();
+                    const table = element.querySelector('.question-import-scroll');
+                    const count = element.querySelector('.question-import-selection');
+                    const actions = Array.from(element.querySelectorAll('.modal-footer .btn'), button => button.getBoundingClientRect());
+                    return {bodyBottom: body.bottom, footerTop: footer.top, footerBottom: footer.bottom,
+                        footerRight: footer.right, actionsFit: actions.every(rect => rect.left >= 0 && rect.right <= innerWidth),
+                        countBottom: count.getBoundingClientRect().bottom, tableHeight: table.clientHeight,
+                        tableContentHeight: table.scrollHeight, pageWidth: document.documentElement.scrollWidth, width: innerWidth, height: innerHeight};
+                });
+                assert.ok(layout.bodyBottom <= layout.footerTop + 1 && layout.footerBottom <= layout.height + 1
+                    && layout.countBottom <= layout.footerBottom && layout.tableContentHeight > layout.tableHeight
+                    && layout.footerRight <= layout.width && layout.actionsFit && layout.pageWidth <= layout.width, JSON.stringify(layout));
+            }
+            await page.waitForFunction(() => {
+                const transform = getComputedStyle(document.querySelector('.vocab-import-dialog .modal-dialog')).transform;
+                return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)';
+            });
+            await assertLayout();
+            const scrollTop = await modal.locator('.question-import-scroll').evaluate(table => {
+                table.scrollTop = 120;
+                return table.scrollTop;
+            });
+            assert.ok(scrollTop > 0);
+            await confirm.click();
+            await modal.getByText('Đang nhập các dòng đã chọn...').waitFor();
+            await assertLayout();
+            assert.equal(await confirm.isDisabled(), true);
+            releaseImport();
+            await modal.waitFor({state: 'hidden'});
             assert.deepEqual(state.errors, []);
             await page.close();
         }

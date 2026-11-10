@@ -562,6 +562,32 @@
             }, function (error) { vm.categorySaveError = errorMessage(error, 'Không lưu được nhóm bài. Vui lòng thử lại.'); })
                 .finally(function () { vm.categorySaving = false; });
         };
+        vm.confirmDeleteCategory = function (category) {
+            if (!vm.isAdmin || !category || !(category.id > 0) || vm.categoryDeleteDialog) { return; }
+            vm.categoryDeleteDraft = category;
+            vm.categoryDeleteError = '';
+            var dialog = vm.categoryDeleteDialog = openDialog('vocabulary_delete_category_modal.html');
+            function clearConfirmation() { vm.categoryDeleteDialog = null; vm.categoryDeleteDraft = null; }
+            dialog.result.then(clearConfirmation, clearConfirmation);
+        };
+        vm.deleteCategory = function () {
+            if (!vm.isAdmin || vm.categoryDeleting || !vm.categoryDeleteDraft || !vm.categoryDeleteDialog) { return; }
+            var category = vm.categoryDeleteDraft, dialog = vm.categoryDeleteDialog;
+            vm.categoryDeleting = true; vm.categoryDeleteError = '';
+            return lessons.deleteCategory(category.id).then(function (ok) {
+                if (!alive || vm.categoryDeleteDialog !== dialog) { return; }
+                if (ok !== true) { vm.categoryDeleteError = 'Máy chủ chưa xác nhận xóa nhóm. Vui lòng thử lại.'; return; }
+                dialog.close();
+                expandedCategories.delete(String(category.id));
+                if (vm.lessonCategory && String(vm.lessonCategory.id) === String(category.id)) {
+                    vm.selectCategory(categoriesById.get(String(category.parentId)) || null);
+                }
+                vm.loadCategories();
+                toastr.success('Đã xóa nhóm bài từ vựng.');
+            }, function (error) {
+                vm.categoryDeleteError = errorMessage(error, 'Không xóa được nhóm bài. Vui lòng thử lại.');
+            }).finally(function () { vm.categoryDeleting = false; });
+        };
         vm.loadUsage();
         var initial = $location.search();
         var initialCategory = initial.category, initialLesson = initial.lesson;
