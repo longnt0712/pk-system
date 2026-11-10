@@ -38,6 +38,7 @@ import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.question.ComprehensiveListeningScore;
+import com.globits.richy.question.IeltsNumberedAnswers;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
@@ -48,7 +49,6 @@ import com.globits.richy.dto.TestResultDto;
 import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
 import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
-import com.globits.richy.dto.TestResultDto.sortByOrdinalNumberQuestionAnswerTestResult;
 import com.globits.richy.repository.AnswerRepository;
 import com.globits.richy.repository.QuestionAnswerRepository;
 import com.globits.richy.repository.QuestionAnswerTestResultRepository;
@@ -899,6 +899,14 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
 				|| Integer.valueOf(6).equals(dto.getTestType())) {
+			Set<QuestionAnswerTestResult> submitted = domain.getQuestionAnswerTestResult();
+			if (IeltsNumberedAnswers.supports(domain.getTestType()) && submitted != null) {
+				List<QuestionAnswerTestResult> rows = IeltsNumberedAnswers.scoringRows(domain);
+				if (rows.size() != submitted.size()) {
+					submitted.clear();
+					submitted.addAll(rows);
+				}
+			}
 			boolean passedObjectiveQuestions = passedIeltsObjectiveThreshold(domain.getQuestionAnswerTestResult());
 			if (Integer.valueOf(6).equals(dto.getTestType())) {
 				passedObjectiveQuestions = passedComprehensive && (comprehensiveSection!=null
@@ -1039,7 +1047,7 @@ public class TestResultServiceImpl implements TestResultService {
 			total++;
 			if (Boolean.TRUE.equals(new QuestionAnswerTestResultDto(answer).getIsCorrectTestResultDetail())) { correct++; }
 		}
-		return total > 0 ? correct * 100D / total >= 85D : listeningFound;
+		return total > 0 ? IeltsNumberedAnswers.passes(correct, total) : listeningFound;
 	}
 
 	private boolean passedComprehensiveListening(Long sourceId, Set<QuestionAnswerTestResult> answers) {

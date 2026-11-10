@@ -16,11 +16,13 @@ import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.QuestionAnswerRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
+import com.globits.richy.question.IeltsNumberedAnswers;
 import com.globits.richy.service.impl.TestResultServiceImpl;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 import com.globits.security.repository.UserRepository;
 import java.util.*;
+import org.joda.time.LocalDateTime;
 import org.junit.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -207,6 +209,73 @@ public class IeltsNotePersistenceTest {
     @Test public void objectiveIeltsRequiresAtLeastEightyFivePercent() {
         assertTrue((Boolean) ReflectionTestUtils.invokeMethod(service, "passedIeltsObjectiveThreshold", objectiveAnswers(20, 17)));
         assertFalse((Boolean) ReflectionTestUtils.invokeMethod(service, "passedIeltsObjectiveThreshold", objectiveAnswers(20, 16)));
+    }
+
+    private QuestionAnswerTestResult listeningChoice(Question question, int number, String text, boolean correct) {
+        QuestionAnswer option = new QuestionAnswer(); option.setId(3000L + number);
+        option.setQuestion(question); option.setCorrect(correct);
+        Answer value = new Answer(); value.setAnswer(text); option.setAnswer(value);
+        QuestionAnswerTestResult row = new QuestionAnswerTestResult(); row.setId((long) number);
+        row.setQuestionAnswer(option); row.setOrdinalNumber(question.getOrdinalNumber()); row.setClientAnswer(text);
+        return row;
+    }
+
+    private void addRepeatedListeningPair(Set<QuestionAnswerTestResult> rows, int first, String firstChoice,
+            String secondChoice, boolean secondCorrect) {
+        Question pack = new Question(); pack.setType(5);
+        Question head = new Question(); head.setOrdinalNumber(first); head.setParent(pack);
+        Question tail = new Question(); tail.setOrdinalNumber(first + 1); tail.setParent(pack);
+        rows.add(listeningChoice(head, first * 10, firstChoice, true));
+        rows.add(listeningChoice(head, first * 10 + 1, secondChoice, secondCorrect));
+        rows.add(listeningChoice(tail, first * 10 + 2, secondChoice, secondCorrect));
+    }
+
+    @Test public void repeatedListeningNumbersAreScoredOnceInSavedResultsAndNewSubmissions() {
+        Set<QuestionAnswerTestResult> rows = objectiveAnswers(34, 29);
+        Iterator<QuestionAnswerTestResult> individual = rows.iterator();
+        List<Integer> grouped = Arrays.asList(17, 18, 19, 20, 27, 28);
+        for (int number = 1; number <= 40; number++) {
+            if (!grouped.contains(number)) { individual.next().setOrdinalNumber(number); }
+        }
+        addRepeatedListeningPair(rows, 17, "Off-peak", "All-in", true);
+        addRepeatedListeningPair(rows, 19, "heart monitor", "water bottle", false);
+        addRepeatedListeningPair(rows, 27, "A", "C", true);
+        assertEquals(43, rows.size());
+        assertEquals(36L, rows.stream().map(QuestionAnswerTestResultDto::new)
+                .filter(row -> Boolean.TRUE.equals(row.getIsCorrectTestResultDetail())).count());
+
+        TestResult legacy = new TestResult(); legacy.setTestType(2); legacy.setCreateDate(LocalDateTime.now());
+        legacy.setResultStatus("FAILED"); legacy.setQuestionAnswerTestResult(rows);
+        TestResultDto detail = new TestResultDto(legacy, true);
+        assertEquals(34, detail.getCorrectAnswer());
+        assertEquals(40, detail.getQuestionAnswerTestResult().size());
+        assertEquals("SUCCESS", detail.getResultStatus());
+        assertEquals("Off-peak", detail.getQuestionAnswerTestResult().get(16).getClientAnswer());
+        assertEquals("All-in", detail.getQuestionAnswerTestResult().get(17).getClientAnswer());
+        assertEquals("heart monitor", detail.getQuestionAnswerTestResult().get(18).getClientAnswer());
+        assertEquals("water bottle", detail.getQuestionAnswerTestResult().get(19).getClientAnswer());
+        assertEquals(6L, detail.getQuestionAnswerTestResult().stream().filter(row -> !row.getIsCorrectTestResultDetail()).count());
+        assertEquals(1, IeltsNumberedAnswers.completionAdjustment(legacy));
+        assertEquals(43, legacy.getQuestionAnswerTestResult().size());
+        assertEquals("FAILED", legacy.getResultStatus());
+
+        QuestionAnswerRepository answers = mock(QuestionAnswerRepository.class);
+        ReflectionTestUtils.setField(service, "questionAnswerRepository", answers);
+        TestResultDto submission = new TestResultDto(); submission.setTestType(2); submission.setUser(new UserDto(user));
+        List<QuestionAnswerTestResultDto> payload = new ArrayList<>();
+        for (QuestionAnswerTestResult row : rows) {
+            QuestionAnswer option = row.getQuestionAnswer();
+            when(answers.getOne(option.getId())).thenReturn(option);
+            QuestionAnswerTestResultDto response = new QuestionAnswerTestResultDto();
+            QuestionAnswerDto ref = new QuestionAnswerDto(); ref.setId(option.getId()); response.setQuestionAnswer(ref);
+            response.setOrdinalNumber(row.getOrdinalNumber()); response.setClientAnswer(row.getClientAnswer());
+            payload.add(response);
+        }
+        submission.setQuestionAnswerTestResult(payload);
+        TestResultDto saved = service.saveObject(submission);
+        assertEquals(34, saved.getCorrectAnswer());
+        assertEquals("SUCCESS", saved.getResultStatus());
+        assertEquals(40, results.findOne(saved.getId()).getQuestionAnswerTestResult().size());
     }
 
     @Test public void dailyListeningAcceptsExactlyEightyFivePercent() {

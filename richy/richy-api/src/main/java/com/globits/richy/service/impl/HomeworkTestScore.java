@@ -7,6 +7,7 @@ import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
 import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
 import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
+import com.globits.richy.question.IeltsNumberedAnswers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -47,24 +48,22 @@ public final class HomeworkTestScore {
                     || (sections ? !units.contains(result.getAssignmentSectionKey()) : result.getAssignmentSectionKey() != null)
                     || !seen.add(result.getId())) { continue; }
             Map<String, int[]> counts = new LinkedHashMap<String, int[]>();
-            if (result.getQuestionAnswerTestResult() != null) {
-                for (QuestionAnswerTestResult response : result.getQuestionAnswerTestResult()) {
-                    if (response == null) { continue; }
-                    String unit = sections ? result.getAssignmentSectionKey() : partOf(response, result);
-                    if (!units.contains(unit)) { continue; }
-                    QuestionAnswerTestResultDto scored = new QuestionAnswerTestResultDto(response);
-                    Question question = response.getQuestionAnswer() == null ? null : response.getQuestionAnswer().getQuestion();
-                    Integer type = question == null || question.getParent() == null ? null : question.getParent().getType();
-                    // Writing uses its own word requirements, not the objective-score denominator.
-                    if (Integer.valueOf(16).equals(type) || Integer.valueOf(17).equals(type)) { continue; }
-                    int[] count = counts.get(unit);
-                    if (count == null) { count = new int[2]; counts.put(unit, count); }
-                    if (scored.getListeningTotalGaps() != null) {
-                        count[0] += scored.getListeningCorrectGaps(); count[1] += scored.getListeningTotalGaps();
-                    } else {
-                        if (Boolean.TRUE.equals(scored.getIsCorrectTestResultDetail())) { count[0]++; }
-                        count[1]++;
-                    }
+            for (QuestionAnswerTestResult response : IeltsNumberedAnswers.scoringRows(result)) {
+                if (response == null) { continue; }
+                String unit = sections ? result.getAssignmentSectionKey() : partOf(response, result);
+                if (!units.contains(unit)) { continue; }
+                QuestionAnswerTestResultDto scored = new QuestionAnswerTestResultDto(response);
+                Question question = response.getQuestionAnswer() == null ? null : response.getQuestionAnswer().getQuestion();
+                Integer type = question == null || question.getParent() == null ? null : question.getParent().getType();
+                // Writing uses its own word requirements, not the objective-score denominator.
+                if (Integer.valueOf(16).equals(type) || Integer.valueOf(17).equals(type)) { continue; }
+                int[] count = counts.get(unit);
+                if (count == null) { count = new int[2]; counts.put(unit, count); }
+                if (scored.getListeningTotalGaps() != null) {
+                    count[0] += scored.getListeningCorrectGaps(); count[1] += scored.getListeningTotalGaps();
+                } else {
+                    if (Boolean.TRUE.equals(scored.getIsCorrectTestResultDetail())) { count[0]++; }
+                    count[1]++;
                 }
             }
             Long student = result.getUser().getId();

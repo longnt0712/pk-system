@@ -22,7 +22,7 @@ function candidate(parts, format = 'READING') {
         readingDraftSubmitted:false, readingAttemptKey:null, readingSubmissionState:null, restoredExpiredReadingDraft:false, readingDraftDestroyed:false,
         $window:{}, persistReadingSubmissionState(){return null;},
         readingDraftAutosaveTimer: null,
-        saveReadingDraft() {}, syncTimerForPersistence() {}, getActiveDurationSeconds: () => 60,
+        saveReadingDraft() {}, syncTimerForPersistence() {}, getActiveDurationSeconds: () => 60, usesHomeworkPracticeTimer: () => false,
         formatTimerClock: () => '01:00', buildIeltsLearningState: () => ({annotationNotes: [{id: 'n1', specificNote: 'Student note'}]}),
         getWritingTaskPackages: () => [],
         $scope: {counter: 3600},
@@ -42,6 +42,7 @@ function candidate(parts, format = 'READING') {
     run('        vm.assignmentTaskId =', '        function getResultQuestionType(');
     run('        function listeningPartNumberForOrdinal(', '        vm.ieltsNavigationAnsweredCount =');
     run('        function getReadingDraftPartNumbers()', '        function saveReadingDraft()');
+    run('        function findDraftResults(', '        function findQuestionAnswer(');
     run('        function synchronizeReadingResultsBeforeSubmit()', '        function getCurrentReadingQuestionIndex(');
     run('        function readingSubmissionType()', '        function persistReadingSubmissionState()');
     run('        function submitReadingAttemptSnapshot()', '        vm.saveTestResult =');
@@ -108,6 +109,36 @@ test('Listening subsets include Part 4 and preserve both selected navigation tab
     assert.deepEqual(Array.from(c.submitted.completedParts), [2, 4]);
     assert.ok(c.submitted.testTakerPerformance.includes('passage-text-3'), 'Part 4 uses the third display workspace');
     assert.deepEqual(c.submitted.questionAnswerTestResult.map(row => row.ordinalNumber), [11, 12, 31, 32]);
+});
+
+test('restored Listening groups submit one choice per numbered slot and keep an unanswered slot blank', () => {
+    const c = candidate('1,2,3,4', 'LISTENING');
+    const part = c.vm.ieltsReadingActualTest.subQuestions[1];
+    function pair(first, labels, checked) {
+        const subQuestions = [first, first + 1].map(ordinal => ({id: ordinal, ordinalNumber: ordinal,
+            questionAnswers: labels.map((label, index) => ({id: ordinal * 10 + index,
+                question: {id: ordinal, parent: {type: 5}}, answer: {answer: label},
+                selected: ordinal === first && index < checked}))}));
+        part.subQuestions.push({type: 5, subQuestions});
+        return subQuestions;
+    }
+    const [q17, q18] = pair(17, ['Off-peak', 'All-in'], 2);
+    const [q19, q20] = pair(19, ['heart monitor', 'water bottle'], 1);
+    const savedDraft = {results: [
+        {ordinalNumber: 17, questionId: q17.id, clientAnswer: 'Off-peak'},
+        {ordinalNumber: 18, questionId: q17.id, clientAnswer: 'All-in'}
+    ]};
+    assert.deepEqual(Array.from(c.findDraftResults(savedDraft, q17), row => row.clientAnswer), ['Off-peak']);
+    assert.deepEqual(Array.from(c.findDraftResults(savedDraft, q18), row => row.clientAnswer), ['All-in']);
+    c.vm.testResult.questionAnswerTestResult = [
+        [17, q17.questionAnswers[0]], [17, q17.questionAnswers[1]], [18, q18.questionAnswers[1]],
+        [19, q19.questionAnswers[0]], [19, q19.questionAnswers[1]], [20, q20.questionAnswers[1]]
+    ].map(([ordinalNumber, questionAnswer]) => ({ordinalNumber, questionAnswer, clientAnswer: questionAnswer.answer.answer}));
+    c.vm.saveTestResult();
+    const rows = c.submitted.questionAnswerTestResult;
+    assert.equal(rows.length, c.vm.resultQuestionTotal);
+    assert.deepEqual(rows.filter(row => row.ordinalNumber >= 17 && row.ordinalNumber <= 20)
+        .map(row => [row.ordinalNumber, row.clientAnswer]), [[17, 'Off-peak'], [18, 'All-in'], [19, 'heart monitor'], [20, '']]);
 });
 
 test('homework always starts directly in Serious mode', () => {

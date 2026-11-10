@@ -36,6 +36,7 @@ import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.domain.TestResult;
+import com.globits.richy.question.IeltsNumberedAnswers;
 import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
@@ -804,6 +805,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		LocalDateTime now = LocalDateTime.now();
 		List<StudentAssignedTaskDto> result = new ArrayList<StudentAssignedTaskDto>();
 		Set<Long> seenTasks = new HashSet<Long>();
+		List<TestResult> repeatedIeltsAttempts = null;
 
 		for (Long classId : classIds) {
 			EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
@@ -858,10 +860,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					}
 					if (HomeworkTopicCompletion.ieltsEnabled(task)) {
 						Map<Integer, Integer> partCounts = new LinkedHashMap<Integer, Integer>();
+						Integer testType = HomeworkTopicCompletion.ieltsTestType(task);
+						if (IeltsNumberedAnswers.supports(testType) && repeatedIeltsAttempts == null) {
+							repeatedIeltsAttempts = testResultRepository.findIeltsAttemptsWithRepeatedNumbers(student.getId(),
+									HomeworkTopicCompletion.midnight(today.minusDays(45)));
+						}
+						Map<Integer, Integer> adjustments = correctedIeltsPartAttempts(repeatedIeltsAttempts, task, testType, start, completionEnd);
 						for (Integer part : task.getIeltsParts()) {
-							partCounts.put(part, (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
+							long savedCount = testResultRepository.countIeltsPartAssignmentAttempts(
 									student.getId(), task.getId(), task.getIeltsTestId(), part, "%," + part + ",%",
-									Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, completionEnd)));
+									testType, start, completionEnd);
+							partCounts.put(part, (int) Math.min(Integer.MAX_VALUE, Math.max(0L, savedCount + adjustments.getOrDefault(part, 0))));
 							if (partCounts.get(part) < task.getRequiredAttempts()) { remainingIeltsParts.add(part); }
 						}
 						required = HomeworkTopicCompletion.requiredIeltsAttempts(task);
@@ -909,6 +918,22 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         int limit = Math.min(20, result.size());
         while (limit < result.size() && result.get(limit - 1).getTaskId().equals(result.get(limit).getTaskId())) { limit++; }
         return new ArrayList<StudentAssignedTaskDto>(result.subList(0, limit));
+	}
+
+	private Map<Integer, Integer> correctedIeltsPartAttempts(List<TestResult> attempts, EnrolmentClassScheduleTaskDto task,
+			Integer testType, LocalDateTime start, LocalDateTime end) {
+		if (attempts == null || !IeltsNumberedAnswers.supports(testType)) { return Collections.emptyMap(); }
+		Map<Integer, Integer> adjustments = new HashMap<>();
+		for (TestResult result : attempts) {
+			if (!task.getId().equals(result.getAssignmentTaskId()) || !task.getIeltsTestId().equals(result.getSourceQuestionId())
+					|| !testType.equals(result.getTestType()) || result.getCreateDate().isBefore(start)
+					|| result.getCreateDate().isAfter(end)) { continue; }
+			int change = IeltsNumberedAnswers.completionAdjustment(result);
+			if (change != 0) {
+				for (Integer part : result.getCompletedParts()) { adjustments.merge(part, change, Integer::sum); }
+			}
+		}
+		return adjustments;
 	}
 
     private void appendVocabularyTopicAssignments(List<StudentAssignedTaskDto> result,

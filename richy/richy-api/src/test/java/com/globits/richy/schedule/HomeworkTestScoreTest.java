@@ -54,6 +54,18 @@ public class HomeworkTestScoreTest {
         assertEquals(65D, apply(task, best, best, worse).getResultPercent(), 0.000001);
         task = task(); assertEquals(90D, apply(task, best, worse).getResultPercent(), 0.000001);
     }
+    @Test public void repeatedQuestionNumbersDoNotChangeTheTeacherScore() {
+        TestResult attempt = result(100, 34, 40);
+        int number = 0;
+        for (QuestionAnswerTestResult response : attempt.getQuestionAnswerTestResult()) { response.setOrdinalNumber(++number); }
+        QuestionAnswerTestResult first = attempt.getQuestionAnswerTestResult().iterator().next();
+        QuestionAnswerTestResult duplicate = new QuestionAnswerTestResult(); duplicate.setId(first.getId() + 1000);
+        duplicate.setOrdinalNumber(first.getOrdinalNumber()); duplicate.setQuestionAnswer(first.getQuestionAnswer());
+        duplicate.setClientAnswer(first.getClientAnswer()); attempt.getQuestionAnswerTestResult().add(duplicate);
+        EnrolmentClassTaskProgressDto progress = apply(task(), attempt);
+        assertEquals(85D, progress.getResultPercent(), 0.000001);
+        assertEquals("DONE", progress.getStatus());
+    }
     @Test public void selectedPartsAndSectionsIncludeUnattemptedWorkAsZero() {
         EnrolmentClassScheduleTaskDto task = task(); task.setIeltsParts(Arrays.asList(1, 2));
         assertEquals(50D, apply(task, result(100, 100, 100)).getResultPercent(), 0.000001);
@@ -127,6 +139,18 @@ public class HomeworkTestScoreTest {
                 assertEquals(2, found.size()); assertEquals("SUCCESS", found.get(0).getResultStatus()); assertEquals("FAILED", found.get(1).getResultStatus());
                 assertTrue(em.createQuery(query, TestResult.class).setParameter("students", Collections.singletonList(-1L))
                         .setParameter("tasks", Collections.singletonList(10L)).setParameter("fromDate", start).setParameter("toDate", end).getResultList().isEmpty());
+
+                TestResult repeated = found.get(1);
+                for (int i = 0; i < 2; i++) {
+                    QuestionAnswerTestResult response = new QuestionAnswerTestResult();
+                    response.setTestResult(repeated); response.setOrdinalNumber(17); em.persist(response);
+                }
+                em.flush();
+                String repeatedQuery = TestResultRepository.class.getMethod("findIeltsAttemptsWithRepeatedNumbers", Long.class, LocalDateTime.class)
+                        .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+                List<TestResult> repeatedAttempts = em.createQuery(repeatedQuery, TestResult.class)
+                        .setParameter("studentId", student.getId()).setParameter("fromDate", start).getResultList();
+                assertEquals(Collections.singletonList(repeated), repeatedAttempts);
             } finally { em.getTransaction().rollback(); em.close(); }
         }
     }

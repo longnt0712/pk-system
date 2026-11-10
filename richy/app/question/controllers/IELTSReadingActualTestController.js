@@ -2385,8 +2385,10 @@
 
         function findDraftResults(draft, question) {
             return ((draft && draft.results) || []).filter(function (result) {
-                return (question.id != null && result.questionId == question.id) ||
-                    result.ordinalNumber == question.ordinalNumber;
+                // Shared choices can point at the first question even when selected for a later slot.
+                return result.ordinalNumber != null && question.ordinalNumber != null
+                    ? result.ordinalNumber == question.ordinalNumber
+                    : question.id != null && result.questionId == question.id;
             });
         }
 
@@ -4819,11 +4821,27 @@
 
                 angular.forEach(results, function (result) {
                     var resultQuestion = result.questionAnswer && result.questionAnswer.question;
-                    if ((question.id != null && resultQuestion && resultQuestion.id == question.id) ||
-                        (question.ordinalNumber != null && result.ordinalNumber == question.ordinalNumber)) {
+                    var matchesSlot = result.ordinalNumber != null && question.ordinalNumber != null
+                        ? result.ordinalNumber == question.ordinalNumber
+                        : question.id != null && resultQuestion && resultQuestion.id == question.id;
+                    if (matchesSlot) {
                         existingResults.push(result);
                     }
                 });
+
+                if (type === 5 || type === 7) {
+                    var choices = selectedReadingMultipleChoices(entry);
+                    if (choices.length) {
+                        var selected = choices[studyQuestionIndex(entry)];
+                        var reference = selected || questionAnswers[0];
+                        results = results.filter(function (result) { return existingResults.indexOf(result) < 0; });
+                        if (reference && reference.id != null) {
+                            results.push({questionAnswer: reference, ordinalNumber: question.ordinalNumber,
+                                clientAnswer: studyAnswerRaw(selected).trim()});
+                        }
+                        return;
+                    }
+                }
 
                 var representativeAnswer = null;
                 var submittedAnswer = '';
@@ -4983,19 +5001,27 @@
             return matched;
         }
 
+        function selectedReadingMultipleChoices(entry) {
+            var questions = (entry.questionPackage || {}).subQuestions || entry.packageQuestions || [];
+            var source = (questions[0] || {}).questionAnswers || [];
+            var choices = [], identities = [];
+            angular.forEach(source, function (answer) {
+                var identity = answer && answer.id != null ? 'id:' + answer.id : answer;
+                if (answer && answer.selected === true && identities.indexOf(identity) < 0) {
+                    identities.push(identity);
+                    choices.push(answer);
+                }
+            });
+            return choices;
+        }
+
         function studyCurrentAnswer(entry) {
             var question = entry.question || {}, answers = question.questionAnswers || [], pack = entry.questionPackage || {};
             var type = Number(entry.packageType), selected = null, raw = '', slot, item;
             if (type === 2 || type === 3 || type === 11 || type === 18) {
                 raw = answers[0] && answers[0].clientAnswer;
             } else if (type === 5 || type === 7) {
-                var source = ((pack.subQuestions || entry.packageQuestions || [])[0] || {}).questionAnswers || [];
-                var choices = [], identities = [];
-                angular.forEach(source, function (answer) {
-                    var identity = answer && answer.id != null ? 'id:' + answer.id : answer;
-                    if (answer && answer.selected === true && identities.indexOf(identity) < 0) { identities.push(identity); choices.push(answer); }
-                });
-                selected = choices[studyQuestionIndex(entry)] || null;
+                selected = selectedReadingMultipleChoices(entry)[studyQuestionIndex(entry)] || null;
                 raw = studyAnswerRaw(selected);
             } else if (type === 4) {
                 slot = studyHeadingSlot(entry);

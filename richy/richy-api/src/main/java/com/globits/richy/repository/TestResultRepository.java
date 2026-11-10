@@ -92,6 +92,13 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             @Param("part") Integer part, @Param("partToken") String partToken, @Param("testType") Integer testType,
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 
+    @Query("select r from TestResult r where r.user.id = :studentId and r.assignmentTaskId is not null "
+            + "and r.testType in (2, 4) and r.assignmentSectionKey is null "
+            + "and r.resultStatus in ('SUCCESS', 'FAILED') and r.createDate >= :fromDate "
+            + "and exists (select a.ordinalNumber from QuestionAnswerTestResult a where a.testResult.id = r.id "
+            + "and a.ordinalNumber is not null group by a.ordinalNumber having count(a.id) > 1)")
+    List<TestResult> findIeltsAttemptsWithRepeatedNumbers(@Param("studentId") Long studentId, @Param("fromDate") LocalDateTime fromDate);
+
     @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
             + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :testId and r.testType = 6 "
             + "and r.assignmentSectionKey = :sectionKey and r.resultStatus = 'SUCCESS' "

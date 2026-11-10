@@ -6,18 +6,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 
 import org.joda.time.LocalDateTime;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import com.globits.richy.domain.Answer;
-import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
-import com.globits.richy.dto.QuestionDto.sortByOrdinalNumberQuestionAnswer;
+import com.globits.richy.question.IeltsNumberedAnswers;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
@@ -452,13 +449,6 @@ public class TestResultDto implements Serializable{
 		
 	}
 	
-	public class sortByOrdinalNumberQuestionAnswerTestResult implements Comparator<QuestionAnswerTestResultDto> {
-		public int compare(QuestionAnswerTestResultDto a, QuestionAnswerTestResultDto b)
-	    {
-	        return a.ordinalNumber - b.ordinalNumber;
-	    }
-	}
-	
 	public TestResultDto(TestResult domain) {
 		copyTopics(domain);
 		this.id = domain.getId();
@@ -482,65 +472,7 @@ public class TestResultDto implements Serializable{
 		if(domain.getUser() != null) {
 			this.user = new UserDto(domain.getUser());
 		}
-		if(domain.getQuestionAnswerTestResult() != null && domain.getQuestionAnswerTestResult().size() > 0) {
-			this.questionAnswerTestResult = new ArrayList<QuestionAnswerTestResultDto>();
-			List<QuestionAnswerTestResultDto> ret = new ArrayList<QuestionAnswerTestResultDto>();
-			
-			for (QuestionAnswerTestResult item : domain.getQuestionAnswerTestResult()) {
-//				if(item.getQuestionAnswer() != null) {
-//					if(item.getClientAnswer() == null || item.getClientAnswer().length() > 0) {
-//						if(item.getQuestionAnswer().isCorrect()) {
-//							correctAnswer += 1;
-//						} else if(item.getQuestionAnswer() != null && item.getQuestionAnswer().getAnswer() != null) { //type = 1 or 3 filling gaps
-//							
-//							String[] parts = (item.getQuestionAnswer().getAnswer().getAnswer()).split("/");
-//							
-//							if(parts.length > 1) {
-//								for(int i = 0; i < parts.length; i++) {
-//									if(item.getClientAnswer().toLowerCase().trim().equals(parts[i].toLowerCase().trim())) {
-//										correctAnswer += 1;
-//										break;
-//									}
-//								}
-//							}else {
-//								if(item.getClientAnswer().toLowerCase().trim().equals(item.getQuestionAnswer().getAnswer().getAnswer().toLowerCase().trim())) {
-//									correctAnswer += 1;
-//								}
-//							}
-//							
-//
-//							
-//						}
-//					} else {
-//						if(item.getQuestionAnswer().getAnswer() != null && item.getQuestionAnswer().getAnswer().getAnswer() != null && item.getClientAnswer() != null) {
-//							if(item.getQuestionAnswer().getAnswer().getAnswer().equals(item.getClientAnswer()))
-//							correctAnswer += 1;
-//						}
-//					}
-//					
-//				}
-				QuestionAnswerTestResultDto itemDto = new QuestionAnswerTestResultDto(item);
-				
-				if(itemDto.getIsCorrectTestResultDetail() == true) {
-					correctAnswer += 1;
-				}
-				
-				ret.add(itemDto);
-			}
-			
-			
-			Collections.sort(ret, new sortByOrdinalNumberQuestionAnswerTestResult());
-			
-//			this.questionAnswerTestResult.addAll(ret);
-		}
-		
-		
-		
-		BandScoreDto dto = new BandScoreDto(this.correctAnswer, Integer.valueOf(4).equals(this.testType) ? 1
-				: Integer.valueOf(2).equals(this.testType) ? 2 : 0);
-		if(dto.getBandScoreReading() != null) {
-			this.bandScore = dto.getBandScoreReading();
-		}
+		populateScore(domain, false);
 		populateWritingIntegrity(domain);
         populateTiming(domain);
 		
@@ -572,70 +504,33 @@ public class TestResultDto implements Serializable{
 				this.userDisplayName = domain.getUser().getPerson().getDisplayName();
 			}
 		}
-		if(domain.getQuestionAnswerTestResult() != null && domain.getQuestionAnswerTestResult().size() > 0) {
-			this.questionAnswerTestResult = new ArrayList<QuestionAnswerTestResultDto>();
-			List<QuestionAnswerTestResultDto> ret = new ArrayList<QuestionAnswerTestResultDto>();
-			
-			for (QuestionAnswerTestResult item : domain.getQuestionAnswerTestResult()) {
-//				if(item.getQuestionAnswer() != null) {
-//					if(item.getClientAnswer() == null || item.getClientAnswer().length() > 0) {
-//						if(item.getQuestionAnswer().isCorrect()) {
-//							correctAnswer += 1;
-//						} else if(item.getQuestionAnswer() != null && item.getQuestionAnswer().getAnswer() != null) { //type = 1 or 3 filling gaps
-//							
-//							String[] parts = (item.getQuestionAnswer().getAnswer().getAnswer()).split("/");
-//							
-//							if(parts.length > 1) {
-//								for(int i = 0; i < parts.length; i++) {
-//									if(item.getClientAnswer().toLowerCase().trim().equals(parts[i].toLowerCase().trim())) {
-//										correctAnswer += 1;
-//										break;
-//									}
-//								}
-//							}else {
-//								if(item.getClientAnswer().toLowerCase().trim().equals(item.getQuestionAnswer().getAnswer().getAnswer().toLowerCase().trim())) {
-//									correctAnswer += 1;
-//								}
-//							}
-//							
-//
-//							
-//						}
-//					} else {
-//						if(item.getQuestionAnswer().getAnswer() != null && item.getQuestionAnswer().getAnswer().getAnswer() != null && item.getClientAnswer() != null) {
-//							if(item.getQuestionAnswer().getAnswer().getAnswer().equals(item.getClientAnswer()))
-//							correctAnswer += 1;
-//						}
-//					}
-//					
-//				}
-				QuestionAnswerTestResultDto itemDto = new QuestionAnswerTestResultDto(item);
-				
-				if(itemDto.getIsCorrectTestResultDetail() == true) {
-					correctAnswer += 1;
-				}
-				
-				ret.add(itemDto);
-			}
-			
-			
-			Collections.sort(ret, new sortByOrdinalNumberQuestionAnswerTestResult());
-			
-			this.questionAnswerTestResult.addAll(ret);
-		}
-		
-		
-		
-		BandScoreDto dto = new BandScoreDto(this.correctAnswer, Integer.valueOf(4).equals(this.testType) ? 1
-				: Integer.valueOf(2).equals(this.testType) ? 2 : 0);
-		if(dto.getBandScoreReading() != null) {
-			this.bandScore = dto.getBandScoreReading();
-		}
+		populateScore(domain, true);
 		populateWritingIntegrity(domain);
         populateTiming(domain);
 		
 	}
 	
+	private void populateScore(TestResult domain, boolean includeAnswers) {
+		List<QuestionAnswerTestResult> rows = IeltsNumberedAnswers.scoringRows(domain);
+		if (!rows.isEmpty()) {
+			questionAnswerTestResult = new ArrayList<QuestionAnswerTestResultDto>();
+			for (QuestionAnswerTestResult row : rows) {
+				QuestionAnswerTestResultDto scored = new QuestionAnswerTestResultDto(row);
+				if (Boolean.TRUE.equals(scored.getIsCorrectTestResultDetail())) { correctAnswer++; }
+				if (includeAnswers) { questionAnswerTestResult.add(scored); }
+			}
+			Collections.sort(questionAnswerTestResult, Comparator.comparing(QuestionAnswerTestResultDto::getOrdinalNumber,
+					Comparator.nullsLast(Comparator.naturalOrder())));
+		}
+		if (IeltsNumberedAnswers.supports(domain.getTestType())) {
+			resultStatus = IeltsNumberedAnswers.correctedStatus(domain, correctAnswer, rows.size());
+			messageCode = "FAILED".equals(resultStatus) ? 1 : 0;
+		}
+		BandScoreDto band = new BandScoreDto(correctAnswer, Integer.valueOf(4).equals(testType) ? 1
+				: Integer.valueOf(2).equals(testType) ? 2 : 0);
+		if (band.getBandScoreReading() != null) { bandScore = band.getBandScoreReading(); }
+	}
+
 	public boolean checkRestult(TestResultDto dto) {
 		if (dto.getTotalWord() == null || dto.getTotalWord() <= 0 || dto.getNumberOfWords() == null
 				|| dto.getNumberOfWords() < 0 || dto.getNumberOfWords() > dto.getTotalWord()) { return false; }
