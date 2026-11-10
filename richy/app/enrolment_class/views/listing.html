@@ -801,6 +801,18 @@
     .class-task-editor-footer { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:14px 24px; background:#fff; }
     .class-task-editor-footer:before,.class-task-editor-footer:after { display:none; }
     .class-task-topic-count { border-radius:20px; background:#eee9ff; padding:4px 9px; color:#6d50b5; font-size:11px; font-weight:700; }
+    .class-task-category-trigger { display:flex; align-items:center; gap:9px; height:auto; min-height:38px; text-align:left; }
+    .class-task-category-trigger span { flex:1; min-width:0; overflow-wrap:anywhere; }
+    .class-task-category-panel { margin-top:6px; padding:8px; border:1px solid #dddff0; border-radius:10px; background:#fff; }
+    .class-task-category-tree { list-style:none; padding:0; margin:8px 0 0; max-height:min(256px,36vh); overflow:auto; }
+    .class-task-category-tree li { display:flex; align-items:center; gap:3px; min-width:0; }
+    .class-task-category-branch,.class-task-category-spacer { flex:0 0 28px; }
+    .class-task-category-branch,.class-task-category-choice { border:0; background:transparent; color:inherit; border-radius:7px; }
+    .class-task-category-branch { padding:6px 0; }
+    .class-task-category-choice { display:flex; align-items:center; gap:8px; flex:1; min-width:0; padding:7px 8px; text-align:left; overflow-wrap:anywhere; }
+    .class-task-category-choice:hover,.class-task-category-branch:hover { background:#f4f1ff; }
+    .class-task-category-choice[aria-pressed="true"] { background:#ebe5ff; color:#59439b; font-weight:700; }
+    .class-task-category-choice .fa { flex:none; }
     .class-task-vocab-select .ui-select-match-item { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:left; }
     .class-task-topic-summary { margin:10px 0 0; border-left:3px solid #9b7ef5; padding:9px 12px; border-radius:5px; background:#f0ebff; color:#604394; font-size:12px; }
     .class-task-comprehensive-settings { margin:14px 0; padding:16px; border:1px solid #e0dcf1; border-radius:14px; background:#f8f6ff; }
@@ -816,6 +828,9 @@
     .global-dark-mode .class-task-editor-modal > .class-task-editor,.global-dark-mode .class-task-editor-footer { background:#202330; color:#e2e6f1; }
     .global-dark-mode .class-task-editor-modal label { color:#d9deed; }
     .global-dark-mode .class-task-topic-count,.global-dark-mode .class-task-topic-summary { background:#37304e; color:#ded1ff; }
+    .global-dark-mode .class-task-category-panel { background:#292737; border-color:#464256; }
+    .global-dark-mode .class-task-category-choice:hover,.global-dark-mode .class-task-category-branch:hover,
+    .global-dark-mode .class-task-category-choice[aria-pressed="true"] { background:#37304e; color:#ded1ff; }
     .global-dark-mode .class-task-comprehensive-settings { background:#292737; border-color:#464256; }
     @media (max-width:991px) and (min-width:768px) { .class-task-editor-modal-window .modal-dialog { width:86vw; max-width:86vw; } }
     @media (max-width:767px) {
@@ -1727,8 +1742,38 @@
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải thông tin đề đã giao...</p>
             <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING'">
                 <div class="form-group">
-                    <label>{{vm.taskEditor.activityType === 'DAILY_VOCAB' ? 'Chọn category' : 'Category (không bắt buộc)'}}</label>
-                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
+                    <div data-ng-if="vm.taskEditor.activityType === 'DAILY_VOCAB'">
+                        <label for="class-task-category-trigger">Nhóm bài từ vựng</label>
+                        <button type="button" id="class-task-category-trigger" class="form-control class-task-category-trigger"
+                                data-ng-click="vm.toggleTaskCategoryPicker()" data-ng-disabled="vm.scheduleTopicCategoriesLoading || vm.scheduleTopicCategoriesError || vm.scheduleDaySaving"
+                                aria-expanded="{{!!vm.taskCategoryPickerOpen}}" aria-controls="class-task-category-panel">
+                            <i class="fa fa-folder-o" aria-hidden="true"></i><span>{{vm.taskCategoryLabel() || 'Chọn nhóm bài...'}}</span>
+                            <i class="fa" data-ng-class="vm.taskCategoryPickerOpen ? 'fa-angle-up' : 'fa-angle-down'" aria-hidden="true"></i>
+                        </button>
+                        <div id="class-task-category-panel" class="class-task-category-panel" data-ng-if="vm.taskCategoryPickerOpen">
+                            <input type="search" class="form-control" aria-label="Tìm nhóm bài" placeholder="Tìm nhóm bài..."
+                                   data-ng-model="vm.taskCategorySearch" data-ng-change="vm.rebuildTaskCategoryTree()">
+                            <ul class="class-task-category-tree" role="list" aria-label="Cây nhóm bài từ vựng" data-ng-if="vm.taskCategoryTreeRows.length">
+                                <li data-ng-repeat="row in vm.taskCategoryTreeRows track by row.category.id" data-ng-style="{'padding-left': 'min(' + row.indent + 'px, 22%)'}">
+                                    <button type="button" class="class-task-category-branch" data-ng-if="row.hasChildren"
+                                            data-ng-click="vm.toggleTaskCategoryBranch(row)" data-ng-disabled="vm.taskCategorySearch.trim()"
+                                            aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.category.name}}">
+                                        <i class="fa" data-ng-class="row.expanded ? 'fa-angle-down' : 'fa-angle-right'" aria-hidden="true"></i>
+                                    </button>
+                                    <span class="class-task-category-spacer" aria-hidden="true" data-ng-if="!row.hasChildren"></span>
+                                    <button type="button" class="class-task-category-choice" data-ng-click="vm.selectTaskCategory(row.category.id)"
+                                            aria-pressed="{{vm.taskEditor.categoryKey === row.category.id}}">
+                                        <i class="fa" data-ng-class="row.expanded ? 'fa-folder-open' : 'fa-folder'" aria-hidden="true"></i>
+                                        <span data-ng-bind="row.category.name"></span>
+                                    </button>
+                                </li>
+                            </ul>
+                            <small class="help-block" data-ng-if="!vm.taskCategoryTreeRows.length">Không tìm thấy nhóm phù hợp.</small>
+                            <button type="button" class="btn btn-link btn-sm" data-ng-if="vm.taskEditor.categoryKey" data-ng-click="vm.selectTaskCategory(null)">Bỏ chọn nhóm</button>
+                        </div>
+                    </div>
+                    <label data-ng-if="vm.taskEditor.activityType !== 'DAILY_VOCAB'">Category (không bắt buộc)</label>
+                    <ui-select theme="bootstrap" data-ng-if="vm.taskEditor.activityType !== 'DAILY_VOCAB'" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
                                data-ng-disabled="vm.scheduleTopicCategoriesLoading" allow-clear="true">
                         <ui-select-match placeholder="Chọn category..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="category.id as category in vm.scheduleTaskCategories | propsFilter:{name:$select.search}">

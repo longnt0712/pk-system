@@ -13,6 +13,8 @@ function section(start, end) {
 const helpers = section('        vm.taskTopicIds =', '\t\tvm.tasksForSection =');
 const openCode = section('\t\tvm.openScheduleTask =', '\t\tvm.loadTaskListeningItems =');
 const topicLoadCode = section('        var taskCategoryTopicsRequest =', '        vm.taskEditorLoading =');
+const categoryTreeCode = section('        function normalizeVietnameseText(', '        function removeNameNote(')
+    + section('\t\tvar taskCategoriesById =', '\t\tvar DEFAULT_SCHEDULE_TOPIC_SOURCE_ID =');
 const topicChoicesCode = section('\t\tvm.taskTopics =', '\t\tvm.taskStudentProgress =');
 const commitCode = section('\t\tfunction scheduleTaskPayload(', '\t\tvm.removeScheduleTask =');
 const saveCode = section('\t\tvm.saveScheduleDay =', '\t\tvm.loadScheduleStudents =');
@@ -146,7 +148,7 @@ test('real modal and multi-select work on desktop and mobile, including save fai
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     const css = view.slice(view.indexOf('<style>') + 7, view.indexOf('</style>'));
     const template = view.match(/<script type="text\/ng-template" id="class_schedule_task_editor_modal\.html">([\s\S]*?)<\/script>/)[1];
-    const runtime = helpers + topicLoadCode + topicChoicesCode + openCode + dayPayloadCode + saveCode + commitCode;
+    const runtime = helpers + categoryTreeCode + topicLoadCode + topicChoicesCode + openCode + dayPayloadCode + saveCode + commitCode;
     try {
         for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
             const page = await browser.newPage({viewport}); const errors = [];
@@ -163,15 +165,21 @@ test('real modal and multi-select work on desktop and mobile, including save fai
                     var toastr = {warning: angular.noop,error: angular.noop,success: angular.noop};
                     vm.scheduleClass = {id:5,multiTopicVocabEnabled:true};
                     vm.scheduleDay = {scheduleDate:'2026-10-19',tasks:[],defaultHomeworkDeadline:'2026-10-31T18:00'};
-                    vm.scheduleTopics = topics; vm.scheduleTaskCategories = [{id:'1',name:'Travel'},{id:'2',name:'Animals'}];
+                    vm.scheduleTopics = topics;
+                    vm.scheduleTopicCategories = [{id:10,name:'Theo chủ đề'},{id:1,name:'Du lịch',parentId:10},{id:2,name:'Động vật',parentId:10}];
                     vm.scheduleEntries = []; vm.scheduleListeningItems = []; vm.assignableIeltsTests = [];
                     vm.isIeltsTask = function () { return false; }; vm.ieltsPartsForTask = function () { return [1]; };
                     vm.taskHasComprehensiveVideo = function () { return false; };
                     vm.loadTaskListeningItems = vm.refreshTaskExerciseVideo = vm.buildScheduleCalendar = angular.noop;
                     vm.taskStartLabel = function () { return '19/10/2026 18:00'; };
-                    var service = {getScheduleTopicsByCategory: function (key) { return $q.when(topics.filter(topic => String(topic.categoryId) === key)); },
+                    window.qaCategoryLoads = [];
+                    var service = {getScheduleTopicsByCategory: function (key) {
+                        window.qaCategoryLoads.push(key);
+                        return $q.when(topics.filter(topic => String(topic.categoryId) === key));
+                    },
                         saveScheduleDay: function (id,payload) { window.qaPayload = payload; window.qaPending = $q.defer(); return window.qaPending.promise; }};
                     eval(runtime);
+                    vm.buildScheduleTaskCategories();
                     window.qaVm = vm; window.qaScope = $scope;
                     window.qaParent = modal.open({scope:$scope,template:'<div class="qa-parent modal-body"><button id="new-task" ng-click="vm.openScheduleTask(\'HOMEWORK\')">Tạo task</button><span>Parent schedule stays open</span></div>',backdrop:'static'});
                 });
@@ -186,14 +194,27 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             await page.locator('.class-task-editor input[name="title"]').fill('Learn two topics');
             const search = page.locator('.class-task-vocab-select input.ui-select-search');
             const chips = page.locator('.class-task-vocab-select .ui-select-match-item');
-            const selectCategory = key => page.evaluate(value => qaScope.$apply(function () {
-                qaVm.taskEditor.categoryKey = value; qaVm.taskCategoryChanged();
-            }), key);
-            await selectCategory('2');
+            const picker = dialog.locator('.class-task-category-trigger');
+            const tree = dialog.getByRole('list', {name: 'Cây nhóm bài từ vựng'});
+            await picker.click();
+            assert.equal(await tree.getByRole('button', {name:'Động vật',exact:true}).count(), 0);
+            assert.equal(await tree.getByRole('button', {name:'Không phân loại',exact:true}).isVisible(), true);
+            await tree.getByRole('button', {name:'Mở rộng Theo chủ đề',exact:true}).click();
+            assert.deepEqual(await page.evaluate(() => qaCategoryLoads), []);
+            await tree.getByRole('button', {name:'Động vật',exact:true}).click();
+            assert.match(await picker.innerText(), /Theo chủ đề \/ Động vật/);
             await search.fill(topics[2].name);
             await page.locator('.class-task-vocab-select .ui-select-choices-row').filter({hasText: topics[2].name}).click();
             assert.equal(await chips.count(), 1);
-            await selectCategory('1');
+            await picker.click();
+            assert.equal(await tree.getByRole('button', {name:'Động vật',exact:true}).getAttribute('aria-pressed'), 'true');
+            await dialog.getByRole('searchbox', {name:'Tìm nhóm bài',exact:true}).fill('du lich');
+            assert.equal(await tree.getByRole('button', {name:'Theo chủ đề',exact:true}).isVisible(), true);
+            assert.equal(await tree.getByRole('button', {name:'Động vật',exact:true}).count(), 0);
+            assert.deepEqual(await page.evaluate(() => qaCategoryLoads), ['2']);
+            await tree.getByRole('button', {name:'Du lịch',exact:true}).click();
+            assert.match(await picker.innerText(), /Theo chủ đề \/ Du lịch/);
+            assert.deepEqual(await page.evaluate(() => qaCategoryLoads), ['2','1']);
             assert.equal(await chips.count(), 0);
             for (const topic of topics.slice(0, 2)) {
                 await search.fill(topic.name);
@@ -209,10 +230,19 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             await page.getByRole('alert').waitFor();
             assert.equal(await chips.count(), 2);
             await page.getByRole('button',{name:'Thêm task',exact:true}).click();
-            await page.evaluate(() => qaScope.$apply(function () { const saved = angular.copy(qaPayload); saved.version = 1; saved.tasks[0].id = 91; qaPending.resolve(saved); }));
+            await page.evaluate(() => qaScope.$apply(function () {
+                const saved = angular.copy(qaPayload), task = saved.tasks[0];
+                const firstTopic = qaVm.scheduleTopics.find(topic => topic.id === task.topicIds[0]);
+                saved.version = 1;
+                task.id = 91;
+                task.categoryId = firstTopic.categoryId;
+                task.categoryName = firstTopic.categoryName;
+                qaPending.resolve(saved);
+            }));
             await page.locator('.class-task-editor-modal-window').waitFor({state:'detached'});
             assert.equal(await page.locator('.qa-parent').isVisible(),true);
             await page.evaluate(() => qaScope.$apply(function () { qaVm.openScheduleTask('HOMEWORK',qaVm.scheduleDay.tasks[0]); }));
+            assert.match(await picker.innerText(), /Theo chủ đề \/ Du lịch/);
             await page.locator('.class-task-editor-modal-window').waitFor();
             assert.equal(await chips.count(), 2);
             await page.waitForFunction(() => {

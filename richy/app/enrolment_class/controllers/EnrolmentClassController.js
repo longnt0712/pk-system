@@ -2066,12 +2066,91 @@
 			});
 		};
 
+		var taskCategoriesById = new Map(), taskCategoryChildren = new Map(), expandedTaskCategories = new Set();
 		vm.buildScheduleTaskCategories = function () {
 			vm.scheduleTaskCategories = vm.scheduleTopicCategories.map(function (category) {
-				return {id: String(category.id), name: category.name || 'Category #' + category.id};
+				return {id: String(category.id), name: category.name || 'Category #' + category.id,
+					parentId: category.parentId == null ? null : String(category.parentId)};
 			});
 			vm.scheduleTaskCategories.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
 			vm.scheduleTaskCategories.push({id: 'uncategorized', name: 'Không phân loại'});
+			taskCategoriesById = new Map();
+			taskCategoryChildren = new Map();
+			vm.scheduleTaskCategories.forEach(function (category) { taskCategoriesById.set(category.id, category); });
+			vm.scheduleTaskCategories.forEach(function (category) {
+				var parentId = taskCategoriesById.has(category.parentId) ? category.parentId : null;
+				if (!taskCategoryChildren.has(parentId)) { taskCategoryChildren.set(parentId, []); }
+				taskCategoryChildren.get(parentId).push(category);
+			});
+			if (vm.taskCategoryPickerOpen) { vm.rebuildTaskCategoryTree(); }
+		};
+
+		function taskCategoryPath(id) {
+			var path = [], seen = new Set(), category = taskCategoriesById.get(id);
+			while (category && !seen.has(category.id)) {
+				seen.add(category.id);
+				path.unshift(category);
+				category = taskCategoriesById.get(category.parentId);
+			}
+			return path;
+		}
+
+		function taskCategorySearchText(value) {
+			return normalizeVietnameseText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+		}
+
+		vm.rebuildTaskCategoryTree = function () {
+			var query = taskCategorySearchText(vm.taskCategorySearch), matches = new Set(), rows = [];
+			if (query) {
+				vm.scheduleTaskCategories.forEach(function (category) {
+					if (taskCategorySearchText(category.name).indexOf(query) >= 0) {
+						taskCategoryPath(category.id).forEach(function (ancestor) { matches.add(ancestor.id); });
+					}
+				});
+			}
+			function visibleChildren(parentId) {
+				var children = taskCategoryChildren.get(parentId) || [];
+				return query ? children.filter(function (child) { return matches.has(child.id); }) : children;
+			}
+			function append(parentId, depth) {
+				visibleChildren(parentId).forEach(function (category) {
+					var hasChildren = visibleChildren(category.id).length > 0;
+					var expanded = hasChildren && (!!query || expandedTaskCategories.has(category.id));
+					rows.push({category: category, hasChildren: hasChildren, expanded: expanded, indent: Math.min(depth, 6) * 16});
+					if (expanded) { append(category.id, depth + 1); }
+				});
+			}
+			append(null, 0);
+			vm.taskCategoryTreeRows = rows;
+		};
+
+		vm.taskCategoryLabel = function () {
+			var task = vm.taskEditor;
+			if (!task || !task.categoryKey) { return ''; }
+			return taskCategoryPath(task.categoryKey).map(function (category) { return category.name; }).join(' / ') || task.categoryName;
+		};
+
+		vm.toggleTaskCategoryPicker = function () {
+			vm.taskCategoryPickerOpen = !vm.taskCategoryPickerOpen;
+			if (!vm.taskCategoryPickerOpen) { return; }
+			vm.taskCategorySearch = '';
+			taskCategoryPath(vm.taskEditor.categoryKey).slice(0, -1).forEach(function (ancestor) {
+				expandedTaskCategories.add(ancestor.id);
+			});
+			vm.rebuildTaskCategoryTree();
+		};
+
+		vm.toggleTaskCategoryBranch = function (row) {
+			if (row.expanded) { expandedTaskCategories.delete(row.category.id); }
+			else { expandedTaskCategories.add(row.category.id); }
+			vm.rebuildTaskCategoryTree();
+		};
+
+		vm.selectTaskCategory = function (id) {
+			vm.taskCategoryPickerOpen = false;
+			if (!vm.taskEditor || vm.taskEditor.categoryKey === id) { return; }
+			vm.taskEditor.categoryKey = id;
+			return vm.taskCategoryChanged();
 		};
 
 		var DEFAULT_SCHEDULE_TOPIC_SOURCE_ID = 26;
@@ -2433,6 +2512,7 @@
 			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null,
 				activityType: 'DAILY_VOCAB', requiredAttempts: 1, studentProgress: []});
 			vm.taskEditor.activityType = vm.taskEditor.activityType || 'DAILY_VOCAB';
+            vm.taskCategoryPickerOpen = false;
             vm.taskEditor.topicIds = vm.taskTopicIds(vm.taskEditor);
             vm.taskEditorError = '';
 			vm.taskEditor.shuffleQuestions = task ? task.shuffleQuestions === true : true;
@@ -2560,6 +2640,7 @@
 		};
 		vm.taskActivityTypeChanged = function (browse) {
 			if (!vm.taskEditor) { return; }
+            vm.taskCategoryPickerOpen = false;
             vm.assignableIeltsTests = [];
             vm.assignableIeltsTestsLoading = false;
 			vm.taskEditor.testFolderId = null; vm.taskEditor.ieltsTestTitle = ''; vm.taskEditor.sourceQuestionTitle = '';
