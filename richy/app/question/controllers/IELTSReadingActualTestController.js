@@ -6974,6 +6974,7 @@
 
         function hideSelectionMenu(clearRange) {
             vm.isShowContextMenu = false;
+            vm.selectionVocabulary = null;
             if (clearRange) {
                 savedAnnotationRange = null;
                 var selection = window.getSelection && window.getSelection();
@@ -6982,6 +6983,49 @@
                 }
             }
         }
+
+        var pendingVocabularySaves = Object.create(null);
+
+        function canSaveSelectionVocabulary() {
+            var user = vm.currentUser;
+            return !vm.isPreviewMode && isActiveTestNavigationProtected() && (vm.isStudyMode() || vm.assignmentTaskId > 0) &&
+                user && Number(user.id) > 0 && (user.roles || []).some(function (role) {
+                    return role && (role.name === 'ROLE_ADMIN' || role.name === 'ROLE_USER' || role.name === 'ROLE_VIEWER');
+                });
+        }
+
+        function updateSelectionVocabulary(text) {
+            var word = text.replace(/\s+/g, ' ').trim();
+            if (!word || word.length > 200 || !canSaveSelectionVocabulary()) {
+                vm.selectionVocabulary = null;
+                return;
+            }
+            var key = word.toLowerCase();
+            if (vm.isShowContextMenu && !vm.isAnnotationRemoveMenu && vm.selectionVocabulary && vm.selectionVocabulary.key === key) {
+                return;
+            }
+            vm.selectionVocabulary = pendingVocabularySaves[key] || {word: word, key: key};
+        }
+
+        vm.saveSelectionVocabulary = function () {
+            var vocabulary = vm.selectionVocabulary;
+            if (!vocabulary || !vm.isShowContextMenu || vm.isAnnotationRemoveMenu || !canSaveSelectionVocabulary() ||
+                    vocabulary.status === 'saving' || vocabulary.status === 'saved') {
+                return;
+            }
+            vocabulary.status = 'saving';
+            vocabulary.message = 'Đang lưu từ vựng';
+            pendingVocabularySaves[vocabulary.key] = vocabulary;
+            return service.saveUnassignedVocabularyWord(vocabulary.word, vm.currentUser.id).then(function (result) {
+                vocabulary.status = 'saved';
+                vocabulary.message = result.alreadyExists ? 'Đã có trong thư viện' : 'Đã lưu vào Chưa vào bài';
+            }, function (error) {
+                vocabulary.status = 'error';
+                vocabulary.message = error && error.message || 'Chưa lưu được từ. Bấm để thử lại.';
+            }).finally(function () {
+                delete pendingVocabularySaves[vocabulary.key];
+            });
+        };
 
         function updateSelectionState(range) {
             var elements = annotationElementsInRange(range);
@@ -6999,7 +7043,8 @@
             }
 
             var selection = window.getSelection && window.getSelection();
-            if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selection.toString().trim()) {
+            var selectedText = selection && selection.toString().trim();
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selectedText) {
                 hideSelectionMenu(false);
                 return;
             }
@@ -7012,12 +7057,13 @@
 
             savedAnnotationRange = range.cloneRange();
             updateSelectionState(savedAnnotationRange);
+            updateSelectionVocabulary(selectedText);
             vm.activeAnnotationNote = null;
             vm.isAnnotationRemoveMenu = false;
             clickedAnnotationMarker = null;
 
             var rect = range.getBoundingClientRect();
-            var menuWidth = 102;
+            var menuWidth = vm.selectionVocabulary ? 156 : 102;
             var left = Math.max(8, Math.min(rect.left + (rect.width / 2) - (menuWidth / 2), window.innerWidth - menuWidth - 8));
             var top = rect.top - 52;
             if (top < 8) {

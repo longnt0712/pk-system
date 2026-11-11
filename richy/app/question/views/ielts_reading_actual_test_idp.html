@@ -1895,7 +1895,7 @@
 
 
 <div ng-show="vm.isShowContextMenu == true"
-     ng-class="{'is-remove-menu': vm.isAnnotationRemoveMenu}"
+     ng-class="{'is-remove-menu': vm.isAnnotationRemoveMenu, 'has-vocabulary-action': vm.selectionVocabulary && !vm.isAnnotationRemoveMenu && vm.passageNumber !== 4}"
      ng-style="vm.selectionMenuStyle"
      ng-mousedown="$event.preventDefault(); $event.stopPropagation()"
      ng-mouseup="$event.stopPropagation()"
@@ -1911,6 +1911,21 @@
         <i class="fa fa-paint-brush" aria-hidden="true"></i>
         <span>Highlight</span>
     </button>
+    <button type="button" class="context-menu-highlight idp-selection-vocabulary"
+            ng-if="vm.selectionVocabulary && !vm.isAnnotationRemoveMenu && vm.passageNumber !== 4"
+            ng-class="{'is-saved': vm.selectionVocabulary.status === 'saved', 'has-error': vm.selectionVocabulary.status === 'error'}"
+            ng-click="$event.stopPropagation(); vm.saveSelectionVocabulary()"
+            ng-attr-aria-disabled="{{vm.selectionVocabulary.status === 'saved' || vm.selectionVocabulary.status === 'saving'}}"
+            ng-attr-title="{{vm.selectionVocabulary.message || 'Lưu từ vựng'}}"
+            ng-attr-aria-label="{{vm.selectionVocabulary.message || 'Lưu từ vựng'}}">
+        <i class="fa" ng-class="{'fa-bookmark-o': !vm.selectionVocabulary.status,
+                               'fa-spinner fa-spin': vm.selectionVocabulary.status === 'saving',
+                               'fa-check': vm.selectionVocabulary.status === 'saved',
+                               'fa-exclamation-circle': vm.selectionVocabulary.status === 'error'}" aria-hidden="true"></i>
+        <span ng-if="!vm.selectionVocabulary.status">Lưu từ</span>
+        <span ng-if="vm.selectionVocabulary.status === 'error'">Thử lại</span>
+    </button>
+    <span class="sr-only" role="status">{{vm.selectionVocabulary.message}}</span>
     <button type="button" class="context-menu-highlight is-remove idp-remove-annotation-action" ng-click="$event.stopPropagation(); removeClickedAnnotation()" ng-show="vm.isAnnotationRemoveMenu">
         <i class="fa fa-times" aria-hidden="true"></i>
         <span>Remove</span>
@@ -5542,6 +5557,11 @@
         z-index: 10020;
     }
 
+    .idp-reading-page .dropdown-menu-highlight.has-vocabulary-action {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 156px !important;
+    }
+
     .idp-reading-page .dropdown-menu-highlight.is-remove-menu {
         grid-template-columns: 1fr;
         width: 86px !important;
@@ -5571,7 +5591,6 @@
         width: 100%;
         padding: 3px 2px;
         border: 0;
-        border-right: 1px solid #e3e3e1;
         border-radius: 0;
         color: #2a2c30;
         background: #ffffff;
@@ -5580,9 +5599,8 @@
         line-height: 1.25;
     }
 
-    .idp-reading-page .context-menu-highlight:nth-child(even),
-    .idp-reading-page .context-menu-highlight:last-child {
-        border-right: 0;
+    .idp-reading-page .context-menu-highlight + .context-menu-highlight:not(.is-remove) {
+        border-left: 1px solid #e3e3e1;
     }
 
     .idp-reading-page .context-menu-highlight i {
@@ -5599,6 +5617,24 @@
 
     .idp-reading-page .context-menu-highlight:hover {
         background: #f1f4f7;
+    }
+
+    .idp-reading-page .idp-selection-vocabulary[aria-disabled="true"] {
+        cursor: default;
+    }
+
+    .idp-reading-page .idp-selection-vocabulary.is-saved {
+        background: #e8f6ed;
+    }
+
+    .idp-reading-page .idp-selection-vocabulary.is-saved i {
+        margin: 0;
+        color: #147446;
+        font-size: 17px !important;
+    }
+
+    .idp-reading-page .idp-selection-vocabulary.has-error i {
+        color: #a04324;
     }
 
     .idp-reading-page .context-menu-highlight.is-remove:hover {

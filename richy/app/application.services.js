@@ -562,7 +562,7 @@
         function ($q, toastr, blockUI, networkStatus) {
             return {
                 request: function (config) {
-                    networkStatus.begin(config);
+                    if (!config.handleErrorsLocally) { networkStatus.begin(config); }
                     return config;
                 },
                 response: function (response) {
@@ -571,6 +571,7 @@
                 },
                 responseError: function (rejection) {
                     var config = rejection.config || {};
+                    if (config.handleErrorsLocally) { return $q.reject(rejection); }
                     networkStatus.failure(rejection);
                     // Login errors are displayed beside the login form.
                     if (rejection.status == 400 && !config.loginRequest && !config.sessionRefreshRequest) {

@@ -54,8 +54,26 @@
         };
         self.getVocabularyPage = function (search, page, size, options) {
             return $http.post(baseUrl + 'question/vocabulary/get_page/' + page + '/' + size, search,
-                {timeout: options && options.timeout || 30000})
+                {timeout: options && options.timeout || 30000, handleErrorsLocally: !!(options && options.handleErrorsLocally)})
                 .then(function (response) { return response.data; });
+        };
+        self.saveUnassignedVocabularyWord = function (word, userId) {
+            var options = {timeout: 12000, handleErrorsLocally: true};
+            return self.getVocabularyPage({textSearch: word, findExactWord: true}, 1, 1, options).then(function (page) {
+                if (!page || !angular.isArray(page.content) ||
+                        (page.content.length && !(Number(page.content[0] && page.content[0].id) > 0))) {
+                    throw new Error('Chưa kiểm tra được từ trong thư viện.');
+                }
+                if (page.content.length) { return {alreadyExists: true}; }
+                return saveObject({
+                    question: word, userId: userId, questionType: {id: 6}, status: 1, questionTopics: []
+                }, null, null, options).then(function (card) {
+                    if (!card || !(Number(card.id) > 0)) {
+                        throw new Error(card && card.message || 'Máy chủ chưa xác nhận lưu từ.');
+                    }
+                    return {alreadyExists: false};
+                });
+            });
         };
         self.getVocabularySelection = function (search) {
             return $http.post(baseUrl + 'question/vocabulary/selection', search, {timeout: 30000})
@@ -376,14 +394,15 @@
             }, successCallback, errorCallback);
         }
 
-        function saveObject(object, successCallback, errorCallback) {
+        function saveObject(object, successCallback, errorCallback, options) {
             var url = baseUrl + restUrl + '/save';
             // Keep the status and response body so the builder can explain a
             // rejected save. resolveAlt only forwards statusText.
             return $http({
                 method: 'POST', url: url, data: object,
                 headers: {'Content-Type': 'application/json; charset=utf-8'},
-                timeout: 120000
+                timeout: options && options.timeout || 120000,
+                handleErrorsLocally: !!(options && options.handleErrorsLocally)
             }).then(function (response) {
                 if (angular.isFunction(successCallback)) { successCallback(response.data); }
                 return response.data;
