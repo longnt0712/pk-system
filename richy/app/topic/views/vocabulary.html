@@ -36,7 +36,7 @@
                         <div class="vw-category-row-actions" ng-if="vm.isAdmin">
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Sửa nhóm {{row.category.name}}" title="Sửa nhóm"><i class="fa fa-pencil" aria-hidden="true"></i></button>
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(null, row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Thêm nhóm con vào {{row.category.name}}" title="Thêm nhóm con"><i class="fa fa-plus" aria-hidden="true"></i></button>
-                            <button type="button" class="vw-icon-btn vw-delete-category" ng-click="vm.confirmDeleteCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError || vm.categoryDeleting" aria-label="Xóa nhóm {{row.category.name}}" title="Xóa nhóm"><i class="fa fa-trash-o" aria-hidden="true"></i></button>
+                            <button type="button" class="vw-icon-btn vw-delete-category" ng-click="vm.confirmDeleteCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError || vm.categoryDeleting" aria-label="Xóa nhóm {{row.category.name}}" title="Xóa nhóm"><i class="fa fa-trash" aria-hidden="true"></i></button>
                         </div>
                     </li>
                 </ul>
