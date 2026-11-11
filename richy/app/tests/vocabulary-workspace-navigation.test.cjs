@@ -77,3 +77,41 @@ test('exact search is sent to the API and word details show all linked lessons',
     workspace.openCard({id: 42, question: 'new word'});
     assert.equal(workspace.cardTopics.length, 0);
 });
+
+test('a viewer can create a personal folder and opens old category links under uncategorized', async () => {
+    let Controller;
+    const module = {
+        controller(name, fn) { Controller = fn; return this; },
+        directive() { return this; }
+    };
+    const context = vm.createContext({angular: {module: () => module, noop() {}}});
+    vm.runInContext(fs.readFileSync(path.join(app, 'topic/controllers/VocabularyController.js'), 'utf8'), context);
+    const categoryReads = [], lessonReads = [], saves = [];
+    const lessons = {
+        getPageTopicCategory(search) {
+            categoryReads.push(search);
+            return Promise.resolve({content: [{id: 42, name: 'Nhóm của tôi', personal: true}], totalPages: 1});
+        },
+        getPage(search) {
+            lessonReads.push(search);
+            return Promise.resolve({content: [{id: 101, name: 'Bài cũ', topicCategory: {id: 5}}], totalElements: 1});
+        },
+        saveCategory(draft) { saves.push(draft); return Promise.resolve(true); }
+    };
+    const workspace = new Controller({$on() {}}, {}, {open: () => ({result: Promise.resolve(), close() {}})},
+        {get: () => '{"id":7,"roles":[{"name":"ROLE_VIEWER"}]}'},
+        {search: (...args) => args.length ? {replace() {}} : {category: '5'}}, {},
+        {getVocabularyUsage: () => Promise.resolve({role: 'VIEWER'})}, lessons, {success() {}}, {}, {});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(categoryReads[0].personalLibrary, true);
+    assert.equal(workspace.canManageCategories, true);
+    assert.equal(workspace.canDelete, false);
+    assert.equal(workspace.lessonCategory.id, 'uncategorized');
+    assert.equal(lessonReads[0].withoutCategory, true);
+    assert.equal(workspace.lessons[0].id, 101);
+    workspace.editCategory();
+    workspace.categoryDraft.name = 'Nhóm mới';
+    await workspace.saveCategory();
+    assert.equal(saves[0].parentId, null);
+    assert.equal(saves[0].name, 'Nhóm mới');
+});

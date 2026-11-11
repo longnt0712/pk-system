@@ -1000,7 +1000,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         dto.setTopicIds(selectedTopicIds); dto.setTopics(selectedTopics);
         if (task.getTopic() != null) {
             dto.setTopicId(task.getTopic().getId()); dto.setTopicName(task.getTopic().getName());
-            if (task.getTopic().getTopicCategory() != null) {
+            if (task.getTopic().getTopicCategory() != null && task.getTopic().getTopicCategory().getOwnerId() == null) {
                 dto.setCategoryId(task.getTopic().getTopicCategory().getId()); dto.setCategoryName(task.getTopic().getTopicCategory().getName());
             }
         }
@@ -2057,6 +2057,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				+ "owner.id, owner.username, topic.createDate from QuestionTopic link join link.topic topic "
 				+ "left join topic.topicCategory category left join topic.user owner "
 				+ "where link.question.id in (:ids) and (topic.isShow = true or topic.isShow is null) "
+				+ "and category.ownerId is null "
 				+ "order by topic.createDate desc, topic.id desc", Object[].class)
 				.setParameter("ids", byId.keySet()).getResultList();
 		for (Object[] row : rows) {
@@ -2079,7 +2080,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<TopicCategoryDto> getScheduleTopicCategories() {
-		List<TopicCategory> categories = topicCategoryRepository.findAll();
+		List<TopicCategory> categories = topicCategoryRepository.findByOwnerIdIsNull();
 		Collections.sort(categories, new Comparator<TopicCategory>() {
 			@Override
 			public int compare(TopicCategory first, TopicCategory second) {
@@ -2109,7 +2110,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		Set<TopicCategory> hiddenCategories = new LinkedHashSet<TopicCategory>();
 		for (Long categoryId : new LinkedHashSet<Long>(dto.getHiddenTopicCategoryIds())) {
 			TopicCategory category = categoryId == null ? null : topicCategoryRepository.findOne(categoryId);
-			if (category == null) {
+			if (category == null || category.getOwnerId() != null) {
 				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Category bài học không hợp lệ.");
 			}
 			hiddenCategories.add(category);

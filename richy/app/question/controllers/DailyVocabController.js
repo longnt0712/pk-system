@@ -389,8 +389,11 @@
                 angular.forEach(task.topics || [], function (topic) {
                     if (String(topic.topicId) === String(requested)) { assignedTopic = topic; }
                 });
-                vm.assignmentLaunch.categoryId = (assignedTopic || {}).categoryId
-                    || (String(task.topicId) === String(requested) ? task.categoryId : null) || vm.assignmentLaunch.categoryId;
+                vm.assignmentLaunch.categoryId = assignedTopic ? assignedTopic.categoryId || null
+                    : (String(task.topicId) === String(requested) ? task.categoryId : null) || vm.assignmentLaunch.categoryId;
+                if (assignedTopic && !assignedTopic.categoryId) {
+                    vm.assignmentLaunch.topicWithoutSharedCategory = assignedTopic;
+                }
                 return vm.assignmentLaunch.canStartNewAttempt;
             }, function () {
                 vm.assignmentLaunch.invalid = true;
@@ -632,17 +635,17 @@
 
         vm.getPageTopicCategory = function () {
             blockUI.start();
+            var categories = [];
+            function read(page) {
+                return service.getPageTopicCategory(vm.searchTopicCategory, page, 100).then(function (data) {
+                    categories = categories.concat(data && data.content || []);
+                    if (data && page < data.totalPages) { return read(page + 1); }
+                });
+            }
 
-            service.getPageTopicCategory(
-                vm.searchTopicCategory,
-                1,
-                100
-            ).then(
-                function (data) {
-                    vm.topicCategories =
-                        data && data.content
-                            ? data.content
-                            : [];
+            read(1).then(
+                function () {
+                    vm.topicCategories = categories;
 
                     if (vm.topicCategories.length === 0) {
                         vm.topics = [];
@@ -4080,6 +4083,16 @@
                 activeDailyResumeDraft = readActiveDailyDraft();
             }
             if (!activeDailyResumeDraft) { chooseActiveDailyResume(); }
+            var assignedTopic = vm.assignmentLaunch.topicWithoutSharedCategory;
+            if (assignedTopic) {
+                if (assignedTopic.sourceUserId != null) {
+                    vm.selectedUser = findById(vm.users, assignedTopic.sourceUserId)
+                        || {id: assignedTopic.sourceUserId, name: 'Bài được giao'};
+                }
+                vm.topics = [{id: assignedTopic.topicId, name: assignedTopic.topicName}];
+                if (!applyResumeTopics()) { applyAssignedTopic(); }
+                return;
+            }
             vm.getPageTopicCategory();
         }
         if (dailyLearningDraftsReady && angular.isFunction(dailyLearningDraftsReady.finally)) {

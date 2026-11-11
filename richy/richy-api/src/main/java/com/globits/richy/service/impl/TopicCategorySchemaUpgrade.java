@@ -11,7 +11,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Component;
 
-/** Adds the category hierarchy column on deployments with Hibernate DDL disabled. */
+/** Upgrades vocabulary folder storage on deployments with Hibernate DDL disabled. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TopicCategorySchemaUpgrade implements ApplicationRunner {

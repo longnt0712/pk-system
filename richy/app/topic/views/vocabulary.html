@@ -20,20 +20,22 @@
         <aside id="vw-category-sidebar" class="vw-sidebar" ng-class="{'is-open':vm.lessonPickerOpen}">
             <div class="vw-sidebar-head"><h2>Thư viện của bạn</h2><span class="vw-count">{{vm.usage.topicCount || 0}}</span></div>
             <nav aria-label="Nhóm bài từ vựng">
-                <div class="vw-section-label vw-category-heading">NHÓM BÀI</div>
+                <div class="vw-category-heading">
+                    <span class="vw-section-label">{{vm.isAdmin ? 'NHÓM BÀI' : 'NHÓM BÀI CỦA TÔI'}}</span>
+                    <button type="button" class="vw-btn vw-category-create" ng-if="vm.canManageCategories" ng-click="vm.editCategory()" ng-disabled="vm.categoriesLoading || vm.categoriesError"><i class="fa fa-plus" aria-hidden="true"></i> Tạo nhóm</button>
+                </div>
                 <label class="vw-search vw-lesson-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm nhóm bài" placeholder="Tìm nhóm bài..." ng-model="vm.categoryQuery" ng-change="vm.rebuildCategoryRows()"></label>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesLoading" role="status">Đang tải nhóm bài...</div>
                 <div class="vw-sidebar-state" ng-if="vm.categoriesError" role="alert">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
                 <div class="vw-sidebar-state" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categoryRows.length">
                     {{vm.categoryQuery ? 'Không tìm thấy nhóm phù hợp.' : 'Chưa có nhóm bài.'}}
-                    <button type="button" class="vw-link" ng-if="vm.isAdmin && !vm.categories.length && !vm.categoryQuery.trim()" ng-click="vm.editCategory()">Tạo nhóm đầu tiên</button>
                 </div>
                 <ul class="vw-category-tree" aria-label="Cây nhóm bài" ng-if="vm.categoryRows.length">
                     <li class="vw-category-row" ng-repeat="row in vm.categoryRows track by row.category.id" ng-style="{'padding-left':'min(' + row.indent + 'px, ' + (row.indent / 4) + '%)'}" ng-class="{'is-active':vm.lessonCategory.id === row.category.id}">
                         <button type="button" class="vw-category-toggle" ng-if="row.hasChildren" ng-click="vm.toggleCategory(row)" ng-disabled="vm.categoryQuery.trim()" aria-expanded="{{row.expanded}}" aria-label="{{row.expanded ? 'Thu gọn' : 'Mở rộng'}} {{row.category.name}}"><i class="fa" ng-class="row.expanded ? 'fa-angle-down' : 'fa-angle-right'" aria-hidden="true"></i></button>
                         <span class="vw-category-spacer" ng-if="!row.hasChildren" aria-hidden="true"></span>
                         <button type="button" class="vw-category-choice" ng-click="vm.selectCategory(row.category)" aria-pressed="{{vm.lessonCategory.id === row.category.id}}" ng-attr-title="{{row.category.pathLabel}}"><i class="fa" ng-class="row.expanded ? 'fa-folder-open' : 'fa-folder'" aria-hidden="true"></i><span>{{row.category.name}}</span></button>
-                        <div class="vw-category-row-actions" ng-if="vm.isAdmin">
+                        <div class="vw-category-row-actions" ng-if="vm.canManageCategories">
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Sửa nhóm {{row.category.name}}" title="Sửa nhóm"><i class="fa fa-pencil" aria-hidden="true"></i></button>
                             <button type="button" class="vw-icon-btn" ng-click="vm.editCategory(null, row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError" aria-label="Thêm nhóm con vào {{row.category.name}}" title="Thêm nhóm con"><i class="fa fa-plus" aria-hidden="true"></i></button>
                             <button type="button" class="vw-icon-btn vw-delete-category" ng-click="vm.confirmDeleteCategory(row.category)" ng-disabled="vm.categoriesLoading || vm.categoriesError || vm.categoryDeleting" aria-label="Xóa nhóm {{row.category.name}}" title="Xóa nhóm"><i class="fa fa-trash" aria-hidden="true"></i></button>
@@ -185,7 +187,7 @@
                 <ui-select-choices repeat="category in vm.categories | filter: {pathLabel:$select.search} track by category.id"><span ng-bind="category.pathLabel"></span></ui-select-choices>
             </ui-select>
             <div class="vw-form-error" role="alert" ng-if="vm.categoriesError">{{vm.categoriesError}} <button type="button" class="vw-link" ng-click="vm.loadCategories()">Thử lại</button></div>
-            <p class="vw-help" ng-if="!vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chưa có nhóm bài. Liên hệ quản trị viên để thêm nhóm trước khi tạo bài.</p>
+            <p class="vw-help" ng-if="!vm.lessonDraft.id && !vm.categoriesLoading && !vm.categoriesError && !vm.categories.length">Chọn “Tạo nhóm” trong thư viện để thêm nhóm đầu tiên.</p>
             <p class="vw-form-error" role="alert" ng-if="vm.lessonSaveError">{{vm.lessonSaveError}}</p>
         </div>
         <div class="vw-modal-footer"><button type="button" class="vw-link vw-danger" style="margin-right:auto" ng-if="vm.canDelete && vm.lessonDraft.id" ng-click="vm.confirmDeleteLesson(true)" ng-disabled="vm.lessonSaving">Xóa bài</button><button type="button" class="vw-btn" ng-click="vm.cancelLesson()" ng-disabled="vm.lessonSaving">Hủy</button><button type="submit" class="vw-btn vw-primary" ng-disabled="vm.lessonSaving || (!vm.lessonDraft.id && vm.usage.topicLimitReached)"><i class="fa" ng-class="vm.lessonSaving ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>{{vm.lessonSaving ? 'Đang lưu...' : 'Lưu bài từ vựng'}}</button></div>

@@ -3,6 +3,7 @@ package com.globits.richy.question;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.util.HtmlUtils;
+import com.globits.security.domain.User;
 
 /** Shared rules for manual flashcards, lesson creation and Excel imports. */
 public final class VocabularyPolicy {
@@ -15,6 +16,13 @@ public final class VocabularyPolicy {
     public static boolean hasRole(Authentication authentication, String role) {
         return authentication != null && authentication.getAuthorities() != null
             && authentication.getAuthorities().stream().anyMatch(authority -> role.equals(authority.getAuthority()));
+    }
+    public static User authenticatedUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)) {
+            return null;
+        }
+        User user = (User) authentication.getPrincipal();
+        return user.getId() == null ? null : user;
     }
     public static String role(Authentication authentication) {
         if (hasRole(authentication, "ROLE_ADMIN")) { return "ADMIN"; }

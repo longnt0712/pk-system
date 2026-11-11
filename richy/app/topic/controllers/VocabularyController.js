@@ -56,6 +56,7 @@
         vm.user = JSON.parse($cookies.get('education.user') || '{}');
         vm.isAdmin = settings.isAdmin === true;
         vm.canDelete = vm.isAdmin || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_USER'; });
+        vm.canManageCategories = vm.canDelete || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_VIEWER'; });
         vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {}; vm.selectedCount = 0;
         vm.lessonPage = 0; vm.lessonPageSize = 20; vm.lessonTotal = 0;
         vm.page = 1; vm.pageSize = 8; vm.total = 0; vm.status = 0; vm.query = '';
@@ -200,7 +201,7 @@
             vm.query = ''; vm.lessonPickerOpen = false;
             if (lesson) {
                 var category = lesson.topicCategory;
-                var selectedCategory = category ? categoriesById.get(String(category.id)) || category : uncategorized;
+                var selectedCategory = lessonFolder(category) || uncategorized;
                 if (!vm.lessonCategory || String(vm.lessonCategory.id) !== String(selectedCategory.id)) {
                     setLessonCategory(selectedCategory);
                 } else if (refreshLessons) {
@@ -217,6 +218,9 @@
             vm.cards = []; vm.total = 0; vm.cardsLoading = false; vm.cardLoadError = '';
         };
         vm.title = function () { return vm.activeLesson ? vm.activeLesson.name : 'Từ chưa vào bài'; };
+        function lessonFolder(category) {
+            return category ? categoriesById.get(String(category.id)) || (vm.isAdmin ? category : null) : null;
+        }
         function categoryPath(category) {
             var path = [], visited = new Set();
             while (category && !visited.has(String(category.id))) {
@@ -337,7 +341,7 @@
             return lessons.getOne(vm.activeLesson.id).then(function (data) {
                 if (!data || !data.id) { throw new Error('Bài không còn tồn tại.'); }
                 vm.lessonDraft = angular.copy(data);
-                if (data.topicCategory) { vm.lessonDraft.topicCategory = categoriesById.get(String(data.topicCategory.id)) || data.topicCategory; }
+                vm.lessonDraft.topicCategory = lessonFolder(data.topicCategory);
                 vm.lessonSaveError = ''; vm.lessonDialog = openDialog('vocabulary_lesson_modal.html');
             }).catch(function (error) { toastr.error(errorMessage(error, error.message || 'Không mở được bài từ vựng.')); })
                 .finally(function () { vm.lessonOpening = false; });
@@ -371,7 +375,9 @@
             var draft = vm.lessonDraft; vm.lessonSaveError = '';
             if (!draft.name || !draft.name.trim()) { vm.lessonSaveError = 'Vui lòng nhập tên bài từ vựng.'; return; }
             if (draft.name.trim().length > 200) { vm.lessonSaveError = 'Tên bài tối đa 200 ký tự.'; return; }
-            if (!draft.topicCategory || !draft.topicCategory.id) { vm.lessonSaveError = 'Vui lòng chọn nhóm bài từ vựng.'; return; }
+            if (!draft.id && (!draft.topicCategory || !draft.topicCategory.id)) {
+                vm.lessonSaveError = 'Vui lòng chọn nhóm bài từ vựng.'; return;
+            }
             if (!draft.id && vm.usage && vm.usage.topicLimitReached) { vm.lessonSaveError = vm.usage.topicLimitMessage; return; }
             vm.lessonSaving = true;
             var payload = angular.copy(draft); payload.name = payload.name.trim();
@@ -515,7 +521,7 @@
             if (vm.categoriesLoading) { return; }
             vm.categoriesError = ''; vm.categoriesLoading = true; var collected = [];
             function read(page) {
-                return lessons.getPageTopicCategory({}, page, 100).then(function (data) {
+                return lessons.getPageTopicCategory({personalLibrary: true}, page, 100).then(function (data) {
                     collected = collected.concat(data && data.content || []);
                     if (page < (data && data.totalPages || 1)) { return read(page + 1); }
                     if (!alive) { return; }
@@ -541,17 +547,19 @@
                 .finally(function () { vm.categoriesLoading = false; });
         };
         vm.editCategory = function (category, parent) {
-            if (!vm.isAdmin) { return; }
+            if (!vm.canManageCategories || vm.categoriesLoading || vm.categoriesError || vm.categorySaving) { return; }
             vm.categoryDraft = {id: category ? category.id : null, name: category ? category.name : '',
                 parentId: category ? category.parentId || null : parent ? parent.id : null};
+            var personal = !vm.isAdmin || !!((category || parent || {}).personal);
             vm.categoryParentChoices = vm.categories.filter(function (candidate) {
-                return !category || !categoryPath(candidate).some(function (node) { return node.id === category.id; });
+                return (!vm.isAdmin || !!candidate.personal === personal) &&
+                    (!category || !categoryPath(candidate).some(function (node) { return node.id === category.id; }));
             });
             vm.categorySaveError = '';
             vm.categoryDialog = openDialog('vocabulary_category_modal.html');
         };
         vm.saveCategory = function () {
-            if (!vm.isAdmin || vm.categorySaving) { return; }
+            if (!vm.canManageCategories || vm.categorySaving) { return; }
             var draft = vm.categoryDraft;
             vm.categorySaving = true; vm.categorySaveError = '';
             return lessons.saveCategory(draft).then(function (saved) {
@@ -563,7 +571,7 @@
                 .finally(function () { vm.categorySaving = false; });
         };
         vm.confirmDeleteCategory = function (category) {
-            if (!vm.isAdmin || !category || !(category.id > 0) || vm.categoryDeleteDialog) { return; }
+            if (!vm.canManageCategories || !category || !(category.id > 0) || vm.categoryDeleteDialog) { return; }
             vm.categoryDeleteDraft = category;
             vm.categoryDeleteError = '';
             var dialog = vm.categoryDeleteDialog = openDialog('vocabulary_delete_category_modal.html');
@@ -571,7 +579,7 @@
             dialog.result.then(clearConfirmation, clearConfirmation);
         };
         vm.deleteCategory = function () {
-            if (!vm.isAdmin || vm.categoryDeleting || !vm.categoryDeleteDraft || !vm.categoryDeleteDialog) { return; }
+            if (!vm.canManageCategories || vm.categoryDeleting || !vm.categoryDeleteDraft || !vm.categoryDeleteDialog) { return; }
             var category = vm.categoryDeleteDraft, dialog = vm.categoryDeleteDialog;
             vm.categoryDeleting = true; vm.categoryDeleteError = '';
             return lessons.deleteCategory(category.id).then(function (ok) {
@@ -594,7 +602,10 @@
         vm.loadCategories().then(function () {
             if (!alive || lessonSelection) { return; }
             if (initialLesson === 'unassigned' || initialCategory === unassignedWords.id) { vm.openUnassigned(); return; }
-            var category = initialCategory === uncategorized.id ? uncategorized : categoriesById.get(String(initialCategory));
+            var category = categoriesById.get(String(initialCategory));
+            if (initialCategory === uncategorized.id || (!category && !vm.isAdmin && /^\d+$/.test(initialCategory || ''))) {
+                category = uncategorized;
+            }
             if (category) {
                 vm.view = 'category'; vm.lessonPickerOpen = false;
                 setLessonCategory(category);
@@ -603,7 +614,7 @@
                 var initialSelection = lessonSelection;
                 lessons.getOne(Number(initialLesson)).then(function (lesson) {
                     if (!alive || lessonSelection !== initialSelection) { return; }
-                    if (lesson && lesson.id) { vm.selectLesson(lesson); }
+                    if (lesson && lesson.id && (vm.isAdmin || String(lesson.userId) === String(vm.user.id))) { vm.selectLesson(lesson); }
                     else {
                         $location.search('lesson', null).replace();
                         toastr.info('Bài không còn khả dụng. Hãy chọn nhóm để tìm bài khác.');

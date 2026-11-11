@@ -23,6 +23,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
         {id: 102, name: 'A world to discover', topicCategory: categories[0]},
         {id: 103, name: 'Work, dreams & ambitions', topicCategory: categories[1]},
         {id: 104, name: 'Feelings & connections', topicCategory: categories[0]}];
+    lessons.forEach(lesson => { lesson.userId = 7; });
     const words = [['serendipity', '/ˌser.ənˈdɪp.ə.ti/', 'Một điều tốt đẹp tình cờ tìm thấy', 'B2'],
         ['embrace', '/ɪmˈbreɪs/', 'Đón nhận, trân trọng', 'B1'], ['mindful', '/ˈmaɪnd.fəl/', 'Chú tâm, lưu tâm đến hiện tại', 'B2'],
         ['little by little', '/ˈlɪt.əl baɪ ˈlɪt.əl/', 'Từng chút một, dần dần', 'A2'], ['wanderlust', '/ˈwɒn.də.lʌst/', 'Niềm khao khát đi khám phá', 'C1'],
@@ -340,7 +341,9 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const {page, state} = await fixture(browser, {role: 'VIEWER'});
-        assert.equal(await page.locator('.vw-category-row-actions').count(), 0);
+        assert.ok(await page.getByRole('button', {name: 'Tạo nhóm', exact: true}).isVisible());
+        assert.ok(state.requests.some(request => request.url.startsWith('/api/topic_category/get_page/')
+            && request.data.personalLibrary === true));
         await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.activeLesson && window.vm.activeLesson.id === 101 && !window.vm.cardsLoading);

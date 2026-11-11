@@ -245,7 +245,9 @@ body>.vw-overlay-select.ui-select-container.open{z-index:10080!important}
 .vw-topbar p{font-size:14px;color:#6e7d72}
 .vw-lesson-scroll{max-height:clamp(390px,70vh,850px);overflow-y:auto;scrollbar-width:thin;padding-right:4px}
 .vw-lesson-scroll:focus-visible{outline:2px solid #9dbaa9;outline-offset:2px;border-radius:12px}
-.vw-category-heading{padding-top:4px}
+.vw-category-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 8px}
+.vw-category-heading .vw-section-label{margin:0;padding:0}
+.vw-category-create.vw-btn{min-height:32px;padding:5px 10px;font-size:12px}
 .vw-category-tree{list-style:none;max-height:clamp(260px,55vh,650px);overflow:auto;scrollbar-width:thin;padding:4px;margin:0}
 .vw-category-row{display:flex;align-items:center;min-width:0;margin:2px 0;border-radius:10px}
 .vw-category-row:hover{background:#eef3ef}

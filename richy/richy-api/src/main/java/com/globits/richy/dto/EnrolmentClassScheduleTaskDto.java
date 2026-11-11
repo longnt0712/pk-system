@@ -98,7 +98,7 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
         }
         if (task.getTopic() != null) {
             topicId = task.getTopic().getId(); topicName = task.getTopic().getName();
-            if (task.getTopic().getTopicCategory() != null) {
+            if (task.getTopic().getTopicCategory() != null && task.getTopic().getTopicCategory().getOwnerId() == null) {
                 categoryId = task.getTopic().getTopicCategory().getId();
                 categoryName = task.getTopic().getTopicCategory().getName();
             }

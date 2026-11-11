@@ -48,7 +48,7 @@ public class TopicForListAllDto implements Serializable{
 	public TopicForListAllDto(Topic item) {
 		this.id = item.getId();
 		this.name = item.getName();
-		if (item.getTopicCategory() != null) {
+		if (TopicCategoryDto.visibleInTopic(item.getTopicCategory())) {
 			categoryId = item.getTopicCategory().getId();
 			categoryName = item.getTopicCategory().getName();
 		}

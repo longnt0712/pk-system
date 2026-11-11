@@ -1,7 +1,10 @@
 package com.globits.richy.question;
 
 import com.globits.richy.domain.*;
+import com.globits.richy.dto.AssignmentTopicDto;
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.dto.TopicCategoryDto;
+import com.globits.richy.dto.TopicDto;
 import com.globits.richy.dto.VocabularyBulkActionDto;
 import com.globits.richy.dto.VocabularyLessonBulkActionDto;
 import com.globits.richy.repository.QuestionRepository;
@@ -214,10 +217,16 @@ public class VocabularyWorkspacePersistenceTest {
         User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Topic remaining = topic(owner); remaining.setName("Keep until deleted");
         Question kept = word(owner, "keep this card", "giữ thẻ", 1, remaining);
-        TopicCategory parent = new TopicCategory(); parent.setName("Parent"); manager.persist(parent);
-        TopicCategory child = new TopicCategory(); child.setName("Child"); child.setParent(parent); manager.persist(child);
+        TopicCategory shared = new TopicCategory(); shared.setName("Shared"); manager.persist(shared);
+        manager.find(Topic.class, lessonId).setTopicCategory(shared);
+        TopicCategory parent = new TopicCategory(); parent.setName("Parent"); parent.setOwnerId(owner.getId()); manager.persist(parent);
+        TopicCategory child = new TopicCategory(); child.setName("Child"); child.setParent(parent); child.setOwnerId(owner.getId()); manager.persist(child);
         manager.flush(); manager.clear();
         assertEquals(Collections.singletonList(lessonId), lessons.getLessonSelection(null, "Vocabu"));
+        TopicDto ungrouped = new TopicDto(); ungrouped.setWithoutCategory(true);
+        assertEquals(2, lessons.getPageObject(ungrouped, 1, 10).getTotalElements());
+        TopicDto rename = lessons.getObjectById(lessonId); rename.setTopicCategory(null); rename.setName("Vocabulary renamed");
+        assertEquals(shared.getId(), lessons.saveObject(rename).getTopicCategory().getId());
         VocabularyLessonBulkActionDto request = new VocabularyLessonBulkActionDto();
         request.lessonIds = Collections.singletonList(lessonId); request.targetCategoryId = child.getId();
         assertEquals(1, lessons.moveLessons(null, request));
@@ -237,10 +246,11 @@ public class VocabularyWorkspacePersistenceTest {
 
     @Test public void groupedLessonSelectionAndMoveUseTheDirectSourceAndAllowedDestination() {
         User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        TopicCategory source = new TopicCategory(); source.setName("IELTS Reading"); manager.persist(source);
-        TopicCategory child = new TopicCategory(); child.setName("Volume"); child.setParent(source); manager.persist(child);
+        TopicCategory source = new TopicCategory(); source.setName("IELTS Reading"); source.setOwnerId(owner.getId()); manager.persist(source);
+        TopicCategory child = new TopicCategory(); child.setName("Volume"); child.setParent(source); child.setOwnerId(owner.getId()); manager.persist(child);
+        TopicCategory shared = new TopicCategory(); shared.setName("Shared"); manager.persist(shared);
         Topic match = manager.find(Topic.class, lessonId); match.setName("VOL 1"); match.setTopicCategory(source);
-        Topic foreign = manager.find(Topic.class, foreignLessonId); foreign.setName("VOL 2"); foreign.setTopicCategory(source);
+        Topic foreign = manager.find(Topic.class, foreignLessonId); foreign.setName("VOL 2");
         Topic nonmatch = topic(owner); nonmatch.setName("Grammar"); nonmatch.setTopicCategory(source);
         Topic alreadyInChild = topic(owner); alreadyInChild.setName("VOL 3"); alreadyInChild.setTopicCategory(child);
         manager.flush(); manager.clear();
@@ -252,13 +262,11 @@ public class VocabularyWorkspacePersistenceTest {
         try { lessons.moveLessons(source.getId(), request); fail("The destination must differ from the source"); }
         catch (IllegalArgumentException expected) { }
 
-        TopicCategoryVisibilityService visibility = (TopicCategoryVisibilityService) ReflectionTestUtils.getField(lessons, "topicCategoryVisibilityService");
-        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(Collections.singleton(source.getId()));
-        request.targetCategoryId = child.getId();
-        try { lessons.moveLessons(source.getId(), request); fail("The destination is hidden"); }
+        request.targetCategoryId = shared.getId();
+        try { lessons.moveLessons(source.getId(), request); fail("A personal lesson cannot move into the shared hierarchy"); }
         catch (AccessDeniedException expected) { }
 
-        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(new HashSet<Long>(Arrays.asList(source.getId(), child.getId())));
+        request.targetCategoryId = child.getId();
         request.lessonIds = Collections.singletonList(foreignLessonId);
         try { lessons.moveLessons(source.getId(), request); fail("The lesson belongs to another user"); }
         catch (IllegalStateException expected) { }
@@ -267,9 +275,36 @@ public class VocabularyWorkspacePersistenceTest {
         manager.clear();
         assertTrue(lessons.getLessonSelection(source.getId(), "VOL").isEmpty());
         assertEquals(2, lessons.getLessonSelection(child.getId(), "VOL").size());
-        assertEquals(source.getId(), manager.find(Topic.class, foreignLessonId).getTopicCategory().getId());
+        assertNull(manager.find(Topic.class, foreignLessonId).getTopicCategory());
         assertEquals(source.getId(), manager.find(Topic.class, nonmatch.getId()).getTopicCategory().getId());
         QuestionDto search = new QuestionDto(); search.setStatus(0); search.setTopicId(lessonId);
         assertEquals(2, cards.getVocabularyPage(search, 1, 8).getTotalElements());
+    }
+
+    @Test public void privateLessonCategoriesAreOwnerScopedAndHiddenFromSharedReaders() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User other = manager.find(Topic.class, foreignLessonId).getUser();
+        TopicCategory privateFolder = new TopicCategory();
+        privateFolder.setName("Private folder");
+        privateFolder.setOwnerId(owner.getId());
+        manager.persist(privateFolder);
+        TopicDto move = lessons.getObjectById(lessonId);
+        move.setTopicCategory(new TopicCategoryDto(privateFolder));
+        assertEquals(privateFolder.getId(), lessons.saveObject(move).getTopicCategory().getId());
+        assertEquals(1, lessons.getPageObjectForGames(new TopicDto(), 1, 10).getTotalElements());
+        assertNull(new AssignmentTopicDto(manager.find(Topic.class, lessonId)).getCategoryId());
+
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(other, "",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_VIEWER"))));
+        TopicDto otherSource = new TopicDto(); otherSource.setUserId(owner.getId());
+        assertEquals(foreignLessonId, lessons.getPageObject(otherSource, 1, 10).getContent().get(0).getId());
+        assertEquals(0, lessons.getPageObjectForGames(otherSource, 1, 10).getTotalElements());
+        assertTrue(lessons.getAllTopics(otherSource).isEmpty());
+        assertNull(lessons.getObjectById(lessonId));
+        assertNull(new TopicDto(manager.find(Topic.class, lessonId)).getTopicCategory());
+        move = lessons.getObjectById(foreignLessonId);
+        move.setTopicCategory(new TopicCategoryDto(privateFolder));
+        try { lessons.saveObject(move); fail("Viewer cannot attach a lesson to another user's folder"); }
+        catch (AccessDeniedException expected) { }
     }
 }

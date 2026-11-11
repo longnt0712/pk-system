@@ -169,7 +169,7 @@ public class VocabularyAccessTest {
         assertNull(lessons.saveObject(dto).getId()); verify(topics, never()).save(any(Topic.class));
         assertTrue(cards.getVocabularyUsage().isTopicLimitReached());
         Topic stored = new Topic(); stored.setId(11L); stored.setUser(owner); stored.setContent("Keep"); stored.setIsShow(false);
-        when(topics.getOne(11L)).thenReturn(stored); dto.setId(11L); dto.setIsShow(true);
+        when(topics.findOne(11L)).thenReturn(stored); dto.setId(11L); dto.setIsShow(true);
         assertNotNull(lessons.saveObject(dto).getId()); assertEquals("Keep", stored.getContent()); assertEquals(Boolean.FALSE, stored.getIsShow());
         dto.setUserId(8L); denied(() -> lessons.saveObject(dto));
     }

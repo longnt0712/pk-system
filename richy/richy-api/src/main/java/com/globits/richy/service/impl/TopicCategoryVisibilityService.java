@@ -88,7 +88,7 @@ public class TopicCategoryVisibilityService {
         }
 
         Set<Long> allowed = new LinkedHashSet<Long>();
-        for (TopicCategory category : topicCategoryRepository.findAll()) {
+        for (TopicCategory category : topicCategoryRepository.findByOwnerIdIsNull()) {
             if (category != null && category.getId() != null && !hiddenForEveryClass.contains(category.getId())) {
                 allowed.add(category.getId());
             }

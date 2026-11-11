@@ -29,19 +29,19 @@ public class RestTopicCategoryController {
 	public Page<TopicCategoryDto> getPage(@RequestBody TopicCategoryDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public TopicCategoryDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public boolean saveOne(@RequestBody TopicCategoryDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);

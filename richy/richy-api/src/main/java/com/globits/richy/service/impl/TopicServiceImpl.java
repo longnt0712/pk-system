@@ -1,12 +1,15 @@
 package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
-import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 
 import org.joda.time.LocalDateTime;
@@ -48,278 +51,122 @@ public class TopicServiceImpl implements TopicService {
 	TopicCategoryVisibilityService topicCategoryVisibilityService;
 	
 	@Override
+	@Transactional(readOnly = true)
 	public Page<TopicDto> getPageObject(TopicDto searchDto, int pageIndex, int pageSize) {
-		if (pageIndex > 0)
-			pageIndex = pageIndex - 1;
-		else
-			pageIndex = 0;
-		Pageable pageable = new PageRequest(pageIndex, pageSize);
-
-		String textSearch = searchDto.getTextSearch();
-		String contentSearch = searchDto.getContentSearch();
-		
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-		}
-
-		String sql = "select new com.globits.richy.dto.TopicDto(s) from Topic s where (1=1)";
-		String sqlCount = "select count(s.id) from Topic s where (1=1)";
-		String whereClause = "";
-		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-		if (allowedCategoryIds != null) {
-			whereClause += allowedCategoryIds.isEmpty()
-					? " and (1=0)"
-					: " and s.topicCategory.id in (:allowedCategoryIds)";
-		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			whereClause += " and s.user.id = :userId ";
-		}
-
-		if (textSearch != null && textSearch.length() > 0) {
-			whereClause += " and (s.name like :textSearch)";
-		}
-		
-		if (contentSearch != null && contentSearch.length() > 0) {
-			whereClause += " and (s.content like :contentSearch or s.contentHtml like :contentSearch)";
-		}
-		
-		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
-			whereClause += " and s.topicCategory.id = :topicCategoryId ";
-		}
-		if (searchDto.isWithoutCategory()) { whereClause += " and s.topicCategory is null"; }
-//		if(searchDto.getWebsite() != null) {
-//			whereClause += " and (s.website = :website) ";
-//		}
-
-		sql += whereClause;
-		sqlCount += whereClause;
-		
-		sql += " order by s.createDate DESC, s.id DESC ";
-
-		Query q = manager.createQuery(sql, TopicDto.class);
-		Query qCount = manager.createQuery(sqlCount);
-		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
-			q.setParameter("allowedCategoryIds", allowedCategoryIds);
-			qCount.setParameter("allowedCategoryIds", allowedCategoryIds);
-		}
-
-		if (textSearch != null && textSearch.length() > 0) {
-			q.setParameter("textSearch", '%' + textSearch + '%');
-			qCount.setParameter("textSearch", '%' + textSearch + '%');
-		}
-		
-		if (contentSearch != null && contentSearch.length() > 0) {
-			q.setParameter("contentSearch", '%' + contentSearch + '%');
-			qCount.setParameter("contentSearch", '%' + contentSearch + '%');
-		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			q.setParameter("userId",  modifiedUser.getId() );
-			qCount.setParameter("userId",  modifiedUser.getId());
-		}
-		
-		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
-			q.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId() );
-			qCount.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId());
-		}
-		
-//		if(searchDto.getWebsite() != null) {
-//			q.setParameter("website",searchDto.getWebsite());
-//			qCount.setParameter("website",searchDto.getWebsite());
-//		}
-		
-		if(searchDto.getUserId() != null) {
-			q.setParameter("userId", searchDto.getUserId());
-			qCount.setParameter("userId", searchDto.getUserId());
-		}
-		
-
-		q.setFirstResult((pageIndex) * pageSize);
-		q.setMaxResults(pageSize);
-
-		Long numberResult = (Long) qCount.getSingleResult();
-
-		Page<TopicDto> page = new PageImpl<TopicDto>(q.getResultList(), pageable, numberResult);
-		return page;
+		return getPage(searchDto, pageIndex, pageSize, false);
 	}
-	
+
 	@Override
+	@Transactional(readOnly = true)
 	public Page<TopicDto> getPageObjectForGames(TopicDto searchDto, int pageIndex, int pageSize) {
-		if (pageIndex > 0)
-			pageIndex = pageIndex - 1;
-		else
-			pageIndex = 0;
-		Pageable pageable = new PageRequest(pageIndex, pageSize);
+		return getPage(searchDto, pageIndex, pageSize, true);
+	}
 
-		String textSearch = searchDto.getTextSearch();
-		String contentSearch = searchDto.getContentSearch();
-		
+	private Page<TopicDto> getPage(TopicDto searchDto, int pageIndex, int pageSize, boolean forGames) {
+		Pageable pageable = new PageRequest(Math.max(1, pageIndex) - 1, pageSize);
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
+		User user = VocabularyPolicy.authenticatedUser(authentication);
+		boolean admin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
+		Map<String, Object> parameters = new LinkedHashMap<>();
+		StringBuilder from = new StringBuilder(" from Topic s left join s.topicCategory category where ");
+		if (forGames) {
+			appendPlayableTopics(from, parameters, user, searchDto.getUserId());
+		} else {
+			if (user == null) { return new PageImpl<>(Collections.emptyList(), pageable, 0); }
+			Long ownerId = admin && searchDto.getUserId() != null ? searchDto.getUserId() : user.getId();
+			from.append("s.user.id = :lessonOwner and (category.ownerId is null or category.ownerId = :viewerId)");
+			parameters.put("lessonOwner", ownerId);
+			parameters.put("viewerId", user.getId());
+			if (searchDto.isWithoutCategory()) {
+				from.append(admin ? " and s.topicCategory is null" : " and category.ownerId is null");
+			}
 		}
-
-		String sql = "select new com.globits.richy.dto.TopicDto(s) from Topic s where (1=1)";
-		String sqlCount = "select count(s.id) from Topic s where (1=1)";
-		String whereClause = "";
-		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-		if (allowedCategoryIds != null) {
-			whereClause += allowedCategoryIds.isEmpty()
-					? " and (1=0)"
-					: " and s.topicCategory.id in (:allowedCategoryIds)";
+		String textSearch = searchDto.getTextSearch();
+		if (textSearch != null && !textSearch.isEmpty()) {
+			from.append(" and s.name like :textSearch");
+			parameters.put("textSearch", "%" + textSearch + "%");
 		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			whereClause += " and s.user.id = :userId ";
+		String contentSearch = searchDto.getContentSearch();
+		if (contentSearch != null && !contentSearch.isEmpty()) {
+			from.append(" and (s.content like :contentSearch or s.contentHtml like :contentSearch)");
+			parameters.put("contentSearch", "%" + contentSearch + "%");
 		}
-
-		if (textSearch != null && textSearch.length() > 0) {
-			whereClause += " and (s.name like :textSearch)";
+		if (searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null) {
+			from.append(" and category.id = :topicCategoryId");
+			parameters.put("topicCategoryId", searchDto.getTopicCategory().getId());
+			if (!admin && !forGames) { from.append(" and category.ownerId = :viewerId"); }
 		}
-		
-		if (contentSearch != null && contentSearch.length() > 0) {
-			whereClause += " and (s.content like :contentSearch or s.contentHtml like :contentSearch)";
-		}
-		
-		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
-			whereClause += " and s.topicCategory.id = :topicCategoryId ";
-		}
-		
-		whereClause += " and (s.isShow = true or s.isShow is null) ";
-//		if(searchDto.getWebsite() != null) {
-//			whereClause += " and (s.website = :website) ";
-//		}
-
-		sql += whereClause;
-		sqlCount += whereClause;
-		
-		sql += " order by s.createDate DESC ";
-
-		Query q = manager.createQuery(sql, TopicDto.class);
-		Query qCount = manager.createQuery(sqlCount);
-		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
-			q.setParameter("allowedCategoryIds", allowedCategoryIds);
-			qCount.setParameter("allowedCategoryIds", allowedCategoryIds);
-		}
-
-		if (textSearch != null && textSearch.length() > 0) {
-			q.setParameter("textSearch", '%' + textSearch + '%');
-			qCount.setParameter("textSearch", '%' + textSearch + '%');
-		}
-		
-		if (contentSearch != null && contentSearch.length() > 0) {
-			q.setParameter("contentSearch", '%' + contentSearch + '%');
-			qCount.setParameter("contentSearch", '%' + contentSearch + '%');
-		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			q.setParameter("userId",  modifiedUser.getId() );
-			qCount.setParameter("userId",  modifiedUser.getId());
-		}
-		
-		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
-			q.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId() );
-			qCount.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId());
-		}
-		
-//		if(searchDto.getWebsite() != null) {
-//			q.setParameter("website",searchDto.getWebsite());
-//			qCount.setParameter("website",searchDto.getWebsite());
-//		}
-		
-		if(searchDto.getUserId() != null) {
-			q.setParameter("userId", searchDto.getUserId());
-			qCount.setParameter("userId", searchDto.getUserId());
-		}
-		
-
-		q.setFirstResult((pageIndex) * pageSize);
-		q.setMaxResults(pageSize);
-
-		Long numberResult = (Long) qCount.getSingleResult();
-
-		Page<TopicDto> page = new PageImpl<TopicDto>(q.getResultList(), pageable, numberResult);
-		return page;
+		TypedQuery<TopicDto> page = manager.createQuery("select new com.globits.richy.dto.TopicDto(s)" + from
+				+ " order by s.createDate desc, s.id desc", TopicDto.class);
+		TypedQuery<Long> count = manager.createQuery("select count(s.id)" + from, Long.class);
+		parameters.forEach(page::setParameter);
+		parameters.forEach(count::setParameter);
+		return new PageImpl<>(page.setFirstResult(pageable.getOffset()).setMaxResults(pageSize).getResultList(),
+				pageable, count.getSingleResult());
 	}
 
 	@Override
 	public List<TopicDto> getListObject() {
 		return topicRepository.getListObject();
 	}
-	
+
 	@Override
+	@Transactional(readOnly = true)
 	public List<TopicForListAllDto> getAllTopics(TopicDto searchDto) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-		}
+		User user = VocabularyPolicy.authenticatedUser(SecurityContextHolder.getContext().getAuthentication());
+		Map<String, Object> parameters = new LinkedHashMap<>();
+		StringBuilder from = new StringBuilder(" from Topic s left join s.topicCategory category where ");
+		appendPlayableTopics(from, parameters, user, searchDto.getUserId());
+		TypedQuery<TopicForListAllDto> query = manager.createQuery("select new com.globits.richy.dto.TopicForListAllDto(s)"
+				+ from + " order by s.createDate desc, s.id desc", TopicForListAllDto.class);
+		parameters.forEach(query::setParameter);
+		return query.getResultList();
+	}
 
-		String sql = "select new com.globits.richy.dto.TopicForListAllDto(s) from Topic s where (1=1)";
-		String whereClause = " and (s.isShow = true or s.isShow is null) ";
-		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-		if (allowedCategoryIds != null) {
-			whereClause += allowedCategoryIds.isEmpty()
-					? " and (1=0)"
-					: " and s.topicCategory.id in (:allowedCategoryIds)";
+	private void appendPlayableTopics(StringBuilder from, Map<String, Object> parameters, User user, Long sourceId) {
+		Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		String shared = "category.ownerId is null";
+		if (allowed != null) {
+			shared = allowed.isEmpty() ? "1=0" : shared + " and category.id in (:allowed)";
+			if (!allowed.isEmpty()) { parameters.put("allowed", allowed); }
 		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			whereClause += " and s.user.id = :userId ";
+		from.append("(s.isShow = true or s.isShow is null) and ((").append(shared).append(")");
+		if (user != null) {
+			from.append(" or category.ownerId = :viewerId");
+			parameters.put("viewerId", user.getId());
 		}
-		
-//		if(searchDto.getWebsite() != null) {
-//			whereClause += " and (s.website = :website) ";
-//		}
-
-		sql += whereClause;
-		
-		sql += " order by s.createDate DESC ";
-
-		Query q = manager.createQuery(sql, TopicForListAllDto.class);
-		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
-			q.setParameter("allowedCategoryIds", allowedCategoryIds);
+		from.append(")");
+		Long owner = sourceId != null ? sourceId : user == null ? null : user.getId();
+		if (owner != null) {
+			from.append(" and s.user.id = :lessonOwner");
+			parameters.put("lessonOwner", owner);
 		}
-		
-		if(modifiedUser!= null && modifiedUser.getId() != null) {
-			q.setParameter("userId",  modifiedUser.getId() );
-		}
-		
-//		if(searchDto.getWebsite() != null) {
-//			q.setParameter("website",searchDto.getWebsite());
-//		}
-		
-		if(searchDto.getUserId() != null) {
-			q.setParameter("userId", searchDto.getUserId());
-		}
-
-		return q.getResultList();
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public TopicDto getObjectById(Long id) {
 		Topic topic = topicRepository.findOne(id);
 		if (topic == null) { return null; }
-		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-		Long categoryId = topic.getTopicCategory() == null ? null : topic.getTopicCategory().getId();
-		if (allowedCategoryIds != null && (categoryId == null || !allowedCategoryIds.contains(categoryId))) {
-			return null;
+		User user = VocabularyPolicy.authenticatedUser(SecurityContextHolder.getContext().getAuthentication());
+		Long userId = user == null ? null : user.getId();
+		TopicCategory category = topic.getTopicCategory();
+		if (category != null && category.getOwnerId() != null && !category.getOwnerId().equals(userId)) { return null; }
+		if (userId != null && topic.getUser() != null && userId.equals(topic.getUser().getId())) {
+			return new TopicDto(topic, true);
 		}
-		return new TopicDto(topic,true);
+		Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		return allowed == null || (category != null && allowed.contains(category.getId())) ? new TopicDto(topic, true) : null;
 	}
 
 	@Override
 	@Transactional
 	public TopicDto saveObject(TopicDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)) {
+		User modifiedUser = VocabularyPolicy.authenticatedUser(authentication);
+		if (modifiedUser == null) {
 			throw new AccessDeniedException("Bạn cần đăng nhập để lưu bài từ vựng.");
 		}
-		User modifiedUser = (User) authentication.getPrincipal();
 		boolean isAdmin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
 		VocabularyPolicy.role(authentication);
 		LocalDateTime currentDate = LocalDateTime.now();
@@ -334,28 +181,24 @@ public class TopicServiceImpl implements TopicService {
 		if (dto.getName() == null || dto.getName().trim().isEmpty()) {
 			ret.setMessage("Vui lòng nhập tên bài từ vựng."); return ret;
 		}
-		if (!isAdmin && (modifiedUser.getId() == null
-				|| (dto.getUserId() != null && !modifiedUser.getId().equals(dto.getUserId())))) {
+		if (!isAdmin && dto.getUserId() != null && !modifiedUser.getId().equals(dto.getUserId())) {
 			throw new AccessDeniedException("Bạn chỉ được lưu bài từ vựng của chính mình.");
 		}
-		Topic domain = null;
-		if(dto.getId() != null) {
-			domain = topicRepository.getOne(dto.getId());
+		User newOwner = null;
+		if (!isAdmin) {
+			newOwner = userRepository.findForVocabularyUpdate(modifiedUser.getId());
+			if (newOwner == null) { throw new AccessDeniedException("Không xác định được chủ sở hữu bài từ vựng."); }
 		}
+		Topic domain = dto.getId() == null ? null : topicRepository.findOne(dto.getId());
 		if (!isAdmin && dto.getId() != null && (domain == null || domain.getUser() == null
 				|| !modifiedUser.getId().equals(domain.getUser().getId()))) {
 			throw new AccessDeniedException("Bạn chỉ được sửa bài từ vựng do chính mình tạo.");
 		}
-		if (!isAdmin && dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
-			Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-			if (allowed != null && !allowed.contains(dto.getTopicCategory().getId())) {
-				throw new AccessDeniedException("Bạn không có quyền chọn nhóm bài từ vựng này.");
-			}
+		if (dto.getId() != null && domain == null) {
+			ret.setMessage("Bài từ vựng không còn tồn tại.");
+			return ret;
 		}
-		User newOwner = null;
 		if (domain == null && !isAdmin) {
-			newOwner = userRepository.findForVocabularyUpdate(modifiedUser.getId());
-			if (newOwner == null) { throw new AccessDeniedException("Không xác định được chủ sở hữu bài từ vựng."); }
 			Long count = topicRepository.countByUserId(modifiedUser.getId());
 			long limit = VocabularyPolicy.lessonLimit(authentication);
 			if (count != null && count >= limit) { ret.setMessage(VocabularyPolicy.lessonLimitMessage(count, limit)); return ret; }
@@ -392,11 +235,16 @@ public class TopicServiceImpl implements TopicService {
 			domain.setIsShow(dto.getIsShow());
 		}
 		
-		if(dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
-			TopicCategory topicCategory = topicCategoryRepository.getOne(dto.getTopicCategory().getId());
-			if(topicCategory != null) {
-				domain.setTopicCategory(topicCategory);
-			}
+		Long categoryId = dto.getTopicCategory() == null ? null : dto.getTopicCategory().getId();
+		TopicCategory category = domain.getTopicCategory();
+		if (categoryId != null && (category == null || !categoryId.equals(category.getId()))) {
+			category = requireLessonCategory(categoryId, modifiedUser, isAdmin);
+			domain.setTopicCategory(category);
+		}
+		if (category != null && category.getOwnerId() != null
+				&& (!category.getOwnerId().equals(modifiedUser.getId())
+					|| domain.getUser() == null || !category.getOwnerId().equals(domain.getUser().getId()))) {
+			throw new AccessDeniedException("Nhóm riêng chỉ chứa bài từ vựng của chủ sở hữu.");
 		}
 		
 		domain = topicRepository.save(domain);
@@ -410,11 +258,14 @@ public class TopicServiceImpl implements TopicService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<Long> getLessonSelection(Long sourceCategoryId, String search) {
-		User owner = lessonBulkOwner(sourceCategoryId, null);
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		User owner = lessonBulkOwner(authentication);
+		boolean admin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
+		if (sourceCategoryId != null) { requireLessonCategory(sourceCategoryId, owner, admin); }
 		boolean searchByName = search != null && !search.isEmpty();
 		TypedQuery<Long> ids = manager.createQuery("select s.id from Topic s" + TopicRepository.LESSON_SOURCE
 				+ (searchByName ? " and s.name like :search" : ""), Long.class);
-		ids.setParameter("owner", owner.getId()).setParameter("source", sourceCategoryId);
+		ids.setParameter("owner", owner.getId()).setParameter("source", sourceCategoryId).setParameter("includeShared", !admin);
 		if (searchByName) { ids.setParameter("search", "%" + search + "%"); }
 		return ids.getResultList();
 	}
@@ -438,7 +289,9 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	private int changeLessons(Long sourceCategoryId, VocabularyLessonBulkActionDto request, Long targetId) {
-		User owner = lessonBulkOwner(sourceCategoryId, targetId);
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		User owner = lessonBulkOwner(authentication);
+		boolean admin = VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN");
 		if (request == null || request.lessonIds == null || request.lessonIds.isEmpty()
 				|| request.lessonIds.stream().anyMatch(id -> id == null || id < 1)) {
 			throw new IllegalArgumentException("Hãy chọn ít nhất một bài hợp lệ.");
@@ -447,8 +300,8 @@ public class TopicServiceImpl implements TopicService {
 		if (userRepository.findForVocabularyUpdate(owner.getId()) == null) {
 			throw new AccessDeniedException("Không xác định được chủ sở hữu bài từ vựng.");
 		}
-		TopicCategory category = targetId == null ? null : topicCategoryRepository.findOne(targetId);
-		if (targetId != null && category == null) { throw new IllegalStateException("Nhóm đích đã thay đổi. Hãy tải lại danh sách nhóm."); }
+		if (sourceCategoryId != null) { requireLessonCategory(sourceCategoryId, owner, admin); }
+		TopicCategory category = targetId == null ? null : requireLessonCategory(targetId, owner, admin);
 		LocalDateTime now = LocalDateTime.now();
 		// Match the source group in each update so a concurrent move cannot be overwritten.
 		int batchSize = 500;
@@ -458,10 +311,11 @@ public class TopicServiceImpl implements TopicService {
 			if (category == null) {
 				manager.createQuery("delete from QuestionTopic link where link.topic.id in (select s.id from Topic s"
 						+ TopicRepository.UNCATEGORIZED_OWNER + " and s.id in :ids)")
-						.setParameter("owner", owner.getId()).setParameter("ids", batch).executeUpdate();
-				changed = topicRepository.deleteUncategorizedLessons(batch, owner.getId());
+						.setParameter("owner", owner.getId()).setParameter("includeShared", !admin)
+						.setParameter("ids", batch).executeUpdate();
+				changed = topicRepository.deleteUncategorizedLessons(batch, owner.getId(), !admin);
 			} else {
-				changed = topicRepository.moveLessons(batch, owner.getId(), sourceCategoryId, category, owner.getUsername(), now);
+				changed = topicRepository.moveLessons(batch, owner.getId(), sourceCategoryId, !admin, category, owner.getUsername(), now);
 			}
 			if (changed != batch.size()) {
 				throw new IllegalStateException("Danh sách bài đã thay đổi. Hãy tải lại và chọn lại bài.");
@@ -470,18 +324,20 @@ public class TopicServiceImpl implements TopicService {
 		return ids.size();
 	}
 
-	private User lessonBulkOwner(Long sourceCategoryId, Long targetCategoryId) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)
-				|| ((User) authentication.getPrincipal()).getId() == null || "VIEWER".equals(VocabularyPolicy.role(authentication))) {
+	private User lessonBulkOwner(Authentication authentication) {
+		User user = VocabularyPolicy.authenticatedUser(authentication);
+		if (user == null || "VIEWER".equals(VocabularyPolicy.role(authentication))) {
 			throw new AccessDeniedException("Bạn không có quyền quản lý bài từ vựng.");
 		}
-		Set<Long> allowed = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
-		if (allowed != null && (sourceCategoryId == null || !allowed.contains(sourceCategoryId)
-				|| (targetCategoryId != null && !allowed.contains(targetCategoryId)))) {
+		return user;
+	}
+
+	private TopicCategory requireLessonCategory(Long id, User owner, boolean admin) {
+		TopicCategory category = topicCategoryRepository.findOne(id);
+		if (category == null || !(owner.getId().equals(category.getOwnerId()) || (admin && category.getOwnerId() == null))) {
 			throw new AccessDeniedException("Bạn không có quyền sử dụng nhóm bài này.");
 		}
-		return (User) authentication.getPrincipal();
+		return category;
 	}
 
 	@Override

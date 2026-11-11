@@ -25,9 +25,9 @@ function storage() {
     };
 }
 
-async function setup({category = church, resume = false, legacyTopic = false, assigned = false} = {}) {
+async function setup({category = church, resume = false, legacyTopic = false, assigned = false, assignedWithoutFolder = false} = {}) {
     let Controller, previewScroll;
-    const calls = {pages: [], dialogs: [], speech: [], audio: [], drafts: [], errors: [], timers: []};
+    const calls = {pages: [], catalogs: [], dialogs: [], speech: [], audio: [], drafts: [], errors: [], timers: []};
     const topic = {id: 101, name: 'Bài 1', ...(legacyTopic ? {} : {topicCategory: category})};
     const first = cards(1, resume ? 1 : 50);
     const localStorage = storage();
@@ -72,15 +72,18 @@ async function setup({category = church, resume = false, legacyTopic = false, as
 
     const service = {
         getLearningDrafts: async () => [],
-        getAssignedTask: async () => ({activityType: 'DAILY_VOCAB', topicId: 101, categoryId: category.id, canStartNewAttempt: true}),
+        getAssignedTask: async () => assignedWithoutFolder
+            ? {activityType: 'DAILY_VOCAB', topicId: 101, canStartNewAttempt: true,
+                topics: [{topicId: 101, topicName: topic.name, sourceUserId: 37}]}
+            : {activityType: 'DAILY_VOCAB', topicId: 101, categoryId: category.id, canStartNewAttempt: true},
         saveLearningDraft: async request => { calls.drafts.push(JSON.parse(request.payload)); },
         deleteLearningDraft: async () => true,
-        getPageTopicCategory: async () => ({content: [category]}),
+        getPageTopicCategory: async () => { calls.catalogs.push('categories'); return {content: [category]}; },
         getTopicsForGames: async () => ({content: [topic]}),
         getPageForDailyVocab(dto, page, pageSize) {
             let resolve, reject;
             const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
-            calls.pages.push({page, pageSize, topicId: dto.questionTopics[0].topic.id, resolve, reject});
+            calls.pages.push({page, pageSize, topicId: dto.questionTopics[0].topic.id, userId: dto.userId, resolve, reject});
             if (page === 1) {
                 resolve({content: first, last: resume, totalPages: resume ? 1 : 3, totalElements: resume ? 1 : 102});
             }
@@ -96,7 +99,7 @@ async function setup({category = church, resume = false, legacyTopic = false, as
     }};
     const toastr = {warning() {}, success() {}, error(message) { calls.errors.push(message); }};
     const vm = new Controller({settings: {layout: {}}}, scope, toastr, timeout, {}, service,
-        assigned ? {assignmentTaskId: 55, assignmentTopicId: 101} : {}, {start() {}, stop() {}},
+        assigned ? {assignmentTaskId: 55, assignmentTopicId: 101, assignmentCategoryId: category.id} : {}, {start() {}, stop() {}},
         {get() { return '{"id":7}'; }}, modal);
     assert.equal(vm.canPreviewDailyWords(), false);
     await tick();
@@ -265,6 +268,15 @@ test('legacy topics use the selected Church category and other lessons retain th
     other.vm.sayingWhenWrong();
     assert.deepEqual(other.calls.audio, ['sai']);
     assert.deepEqual(other.calls.speech, []);
+});
+
+test('a previously assigned lesson can open after being moved out of the shared folder tree', async () => {
+    const {vm, calls} = await setup({assigned: true, assignedWithoutFolder: true});
+    assert.deepEqual(calls.catalogs, []);
+    assert.equal(vm.assignmentLaunch.categoryId, null);
+    assert.equal(vm.selectedTopicToSearch[0].id, 101);
+    assert.equal(calls.pages[0].topicId, 101);
+    assert.equal(calls.pages[0].userId, 37);
 });
 
 test('the preview UI is hidden when locked and displays words, pronunciation and meaning', () => {

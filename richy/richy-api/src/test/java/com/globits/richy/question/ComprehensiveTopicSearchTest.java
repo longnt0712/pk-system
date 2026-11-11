@@ -11,6 +11,7 @@ import com.globits.richy.service.impl.TopicCategoryServiceImpl;
 import com.globits.richy.service.impl.TopicCategoryVisibilityService;
 import com.globits.richy.service.impl.TopicServiceImpl;
 import com.globits.security.domain.User;
+import com.globits.security.repository.UserRepository;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.persistence.Entity;
@@ -22,6 +23,10 @@ import org.junit.*;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -72,23 +77,29 @@ public class ComprehensiveTopicSearchTest {
     }
     private Topic topic(String name) { Topic value = new Topic(); value.setName(name); value.setTopicCategory(category); value.setUser(owner); manager.persist(value); return value; }
 
-    @Test public void categoryHierarchyPersistsMovesAndRejectsCyclesWithoutFlatteningLegacyEdits() throws Exception {
-        TopicCategoryRepository repository = mock(TopicCategoryRepository.class);
-        String lockQuery = TopicCategoryRepository.class.getMethod("lockHierarchy")
-                .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
-        when(repository.lockHierarchy()).thenAnswer(call -> manager.createQuery(lockQuery, TopicCategory.class)
-                .setLockMode(javax.persistence.LockModeType.PESSIMISTIC_WRITE).getResultList());
-        when(repository.save(any(TopicCategory.class))).thenAnswer(call -> {
-            TopicCategory saved = (TopicCategory) call.getArguments()[0];
-            if (saved.getId() == null) { manager.persist(saved); }
-            return saved;
-        });
+    private void login(User user, String role) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, "",
+                Collections.singletonList(new SimpleGrantedAuthority(role))));
+    }
+
+    private TopicCategoryServiceImpl categoryService() {
         TopicCategoryServiceImpl groups = new TopicCategoryServiceImpl();
         ReflectionTestUtils.setField(groups, "manager", manager);
-        ReflectionTestUtils.setField(groups, "topicCategoryRepository", repository);
+        ReflectionTestUtils.setField(groups, "topicCategoryRepository",
+                new JpaRepositoryFactory(manager).getRepository(TopicCategoryRepository.class));
         TopicCategoryVisibilityService visibility = mock(TopicCategoryVisibilityService.class);
         when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(null);
         ReflectionTestUtils.setField(groups, "topicCategoryVisibilityService", visibility);
+        UserRepository users = mock(UserRepository.class);
+        when(users.findForVocabularyUpdate(anyLong())).thenAnswer(call -> manager.find(
+                User.class, call.getArguments()[0], javax.persistence.LockModeType.PESSIMISTIC_WRITE));
+        ReflectionTestUtils.setField(groups, "userRepository", users);
+        return groups;
+    }
+
+    @Test public void categoryHierarchyPersistsMovesAndRejectsCyclesWithoutFlatteningLegacyEdits() throws Exception {
+        login(owner, "ROLE_ADMIN");
+        TopicCategoryServiceImpl groups = categoryService();
         com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
 
         TopicCategoryDto child = json.readValue("{\"name\":\"Reading\",\"parentId\":" + category.getId() + "}", TopicCategoryDto.class);
@@ -119,11 +130,54 @@ public class ComprehensiveTopicSearchTest {
         try { groups.deleteObject(savedChild.getId()); fail("A group with a hidden lesson cannot be deleted"); }
         catch (IllegalArgumentException expected) { assertTrue(expected.getMessage().contains("còn bài từ vựng")); }
         hiddenLesson.setTopicCategory(null);
-        doAnswer(call -> { manager.remove(call.getArguments()[0]); return null; }).when(repository).delete(any(TopicCategory.class));
         assertTrue(groups.deleteObject(savedChild.getId()));
         manager.flush();
         assertNull(manager.find(TopicCategory.class, savedChild.getId()));
         assertNotNull(manager.find(Topic.class, hiddenLesson.getId()));
+    }
+
+    @Test public void userAndViewerEachOwnTheirFolderTreeWhileTheClassCatalogStaysShared() throws Exception {
+        TopicCategoryServiceImpl groups = categoryService();
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        TopicCategoryDto personal = json.readValue("{\"personalLibrary\":true}", TopicCategoryDto.class);
+        login(owner, "ROLE_USER");
+        assertEquals(0, groups.getPageObject(personal, 1, 10).getTotalElements());
+        TopicCategoryDto folder = new TopicCategoryDto(); folder.setName("My folder");
+        assertTrue(groups.saveObject(folder));
+        TopicCategoryDto userFolder = groups.getPageObject(personal, 1, 10).getContent().get(0);
+        assertTrue(userFolder.isPersonal());
+        assertEquals(owner.getId(), manager.find(TopicCategory.class, userFolder.getId()).getOwnerId());
+
+        User viewer = new User(); viewer.setUsername("viewer"); viewer.setEmail("viewer@example.test");
+        viewer.setPassword("unused"); manager.persist(viewer);
+        login(viewer, "ROLE_VIEWER");
+        assertEquals(0, groups.getPageObject(personal, 1, 10).getTotalElements());
+        assertNull(groups.getObjectById(userFolder.getId()));
+        assertFalse(groups.deleteObject(userFolder.getId()));
+        try { groups.saveObject(userFolder); fail("Viewer cannot rename another user's folder"); }
+        catch (IllegalArgumentException expected) { }
+        folder.setParentId(category.getId());
+        try { groups.saveObject(folder); fail("Viewer cannot create a child inside a shared folder"); }
+        catch (IllegalArgumentException expected) { }
+        folder.setParentId(userFolder.getId());
+        try { groups.saveObject(folder); fail("Viewer cannot create a child in another user's folder"); }
+        catch (IllegalArgumentException expected) { }
+        folder.setParentId(null);
+        assertTrue(groups.saveObject(folder));
+        TopicCategoryDto viewerFolder = groups.getPageObject(personal, 1, 10).getContent().get(0);
+        assertNotEquals(userFolder.getId(), viewerFolder.getId());
+        folder.setParentId(viewerFolder.getId()); folder.setName("Child");
+        assertTrue(groups.saveObject(folder));
+        assertEquals(2, groups.getPageObject(personal, 1, 1).getTotalElements());
+        assertEquals(viewerFolder.getId(), groups.getPageObject(personal, 2, 1).getContent().get(0).getParentId());
+        assertEquals(3, groups.getPageObject(new TopicCategoryDto(), 1, 10).getTotalElements());
+
+        EnrolmentClassServiceImpl classes = new EnrolmentClassServiceImpl();
+        ReflectionTestUtils.setField(classes, "topicCategoryRepository", ReflectionTestUtils.getField(groups, "topicCategoryRepository"));
+        assertEquals(Collections.singletonList(category.getId()), classes.getScheduleTopicCategories().stream()
+                .map(TopicCategoryDto::getId).collect(Collectors.toList()));
+        login(owner, "ROLE_USER");
+        assertNull(groups.getObjectById(viewerFolder.getId()));
     }
 
     @Test public void lessonPageFiltersDirectGroupAndKeepsUncategorizedLessonsReachable() {
@@ -131,8 +185,7 @@ public class ComprehensiveTopicSearchTest {
         Topic uncategorized = topic("Old lesson"); uncategorized.setTopicCategory(null);
         Topic nested = topic("Nested lesson"); nested.setTopicCategory(child);
         manager.flush(); manager.clear();
-        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
-                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "", Collections.emptyList()));
+        login(owner, "ROLE_ADMIN");
         TopicServiceImpl lessons = new TopicServiceImpl();
         ReflectionTestUtils.setField(lessons, "manager", manager);
         TopicCategoryVisibilityService visibility = mock(TopicCategoryVisibilityService.class);

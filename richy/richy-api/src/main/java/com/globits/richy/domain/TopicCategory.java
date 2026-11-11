@@ -23,8 +23,13 @@ public class TopicCategory extends BaseObject{
 	@JoinColumn(name = "parent_id")
 	private TopicCategory parent;
 
+	@Column(name = "owner_id")
+	private Long ownerId;
+
 	public TopicCategory getParent() { return parent; }
 	public void setParent(TopicCategory parent) { this.parent = parent; }
+	public Long getOwnerId() { return ownerId; }
+	public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
 
 	public String getName() {
 		return name;
