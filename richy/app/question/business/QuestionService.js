@@ -12,14 +12,16 @@
         '$filter',
         'settings',
         'Utilities',
+        'AuthSession',
     ];
 
-    function QuestionService($http, $q, $filter, settings, utils) {
+    function QuestionService($http, $q, $filter, settings, utils, authSession) {
         var self = this;
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url;
         var learningDraftSaveInFlight = {};
         var learningDraftQueued = {};
         var learningDraftDeleting = {};
+        var vocabularySaves = Object.create(null);
         // console.log(baseUrl);
         self.getPage = getPage;
         self.getPageForGames = getPageForGames;
@@ -58,8 +60,18 @@
                 .then(function (response) { return response.data; });
         };
         self.saveUnassignedVocabularyWord = function (word, userId) {
+            var identity = authSession.capture();
+            var key = userId + ':' + word.toLowerCase();
+            var active = vocabularySaves[key];
+            if (active && authSession.isCurrent(active.identity)) { return active.promise; }
+
+            function requireCurrentSession() {
+                if (!authSession.isCurrent(identity)) { throw new Error('Phiên đăng nhập đã đổi.'); }
+            }
             var options = {timeout: 12000, handleErrorsLocally: true};
-            return self.getVocabularyPage({textSearch: word, findExactWord: true}, 1, 1, options).then(function (page) {
+            var pending = {identity: identity};
+            pending.promise = self.getVocabularyPage({textSearch: word, findExactWord: true}, 1, 1, options).then(function (page) {
+                requireCurrentSession();
                 if (!page || !angular.isArray(page.content) ||
                         (page.content.length && !(Number(page.content[0] && page.content[0].id) > 0))) {
                     throw new Error('Chưa kiểm tra được từ trong thư viện.');
@@ -68,12 +80,17 @@
                 return saveObject({
                     question: word, userId: userId, questionType: {id: 6}, status: 1, questionTopics: []
                 }, null, null, options).then(function (card) {
-                    if (!card || !(Number(card.id) > 0)) {
-                        throw new Error(card && card.message || 'Máy chủ chưa xác nhận lưu từ.');
+                    requireCurrentSession();
+                    if (!card || !(Number(card.id) > 0) || !card.user || Number(card.user.id) !== Number(userId)) {
+                        throw new Error(card && !card.id && card.message || 'Máy chủ chưa xác nhận lưu từ vào kho của bạn.');
                     }
                     return {alreadyExists: false};
                 });
+            }).finally(function () {
+                if (vocabularySaves[key] === pending) { delete vocabularySaves[key]; }
             });
+            vocabularySaves[key] = pending;
+            return pending.promise;
         };
         self.getVocabularySelection = function (search) {
             return $http.post(baseUrl + 'question/vocabulary/selection', search, {timeout: 30000})

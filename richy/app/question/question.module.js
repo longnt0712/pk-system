@@ -386,6 +386,7 @@
                         return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
                             'question/speaking.css?v=' + window.APP_VERSION,
                             'question/business/SpeakingService.js?v=' + window.APP_VERSION,
+                            'question/business/QuestionService.js?v=' + window.APP_VERSION,
                             'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,
                             'question/business/speaking-student-answer-editor.js?v=' + window.APP_VERSION,
                             'question/business/speaking-question-notebook.js?v=' + window.APP_VERSION,
@@ -408,6 +409,7 @@
                             'common/directives/ClassTreePicker.js?v=' + window.APP_VERSION,
                             'question/speaking.css?v=' + window.APP_VERSION,
                             'question/business/SpeakingService.js?v=' + window.APP_VERSION,
+                            'question/business/QuestionService.js?v=' + window.APP_VERSION,
                             'question/business/SpeakingRecorder.js?v=' + window.APP_VERSION,
                             'question/business/speaking-student-answer-editor.js?v=' + window.APP_VERSION,
                             'question/business/speaking-question-notebook.js?v=' + window.APP_VERSION,

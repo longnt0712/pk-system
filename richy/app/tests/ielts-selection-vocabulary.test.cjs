@@ -7,7 +7,7 @@ const nodeVm = require('node:vm');
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 
-function vocabularyService(responses) {
+function vocabularyService(responses, session = {capture: () => 1, isCurrent: () => true}) {
     let Service;
     const calls = [];
     const angular = {
@@ -17,13 +17,13 @@ function vocabularyService(responses) {
     };
     function http(config) {
         calls.push(config);
-        return Promise.resolve({data: responses.shift()});
+        return Promise.resolve(responses.shift()).then(data => ({data}));
     }
     http.post = (url, data, options) => http({method: 'POST', url, data, ...options});
     nodeVm.runInNewContext(read('question/business/QuestionService.js'), {angular});
     const api = new Service(http, {reject: Promise.reject.bind(Promise)}, null, {
         api: {baseUrl: '/', apiV1Url: 'api/'}
-    }, {});
+    }, {}, session);
     return {api, calls};
 }
 
@@ -81,7 +81,7 @@ function selectionMenu() {
 }
 
 test('selected text uses exact lookup before creating a personal card without a topic', async () => {
-    const {api, calls} = vocabularyService([{content: []}, {id: 17}]);
+    const {api, calls} = vocabularyService([{content: []}, {id: 17, user: {id: 7}}]);
     assert.equal((await api.saveUnassignedVocabularyWord('Weather forecast', 7)).alreadyExists, false);
     assert.equal(calls[0].url, '/api/question/vocabulary/get_page/1/1');
     assert.deepEqual(plain(calls[0].data), {textSearch: 'Weather forecast', findExactWord: true});
@@ -101,6 +101,24 @@ test('an existing word is accepted without writing and a malformed response neve
     assert.equal(invalidLookup.calls.length, 1);
     const missingId = vocabularyService([{content: []}, {message: 'Kho đã đầy'}]);
     await assert.rejects(missingId.api.saveUnassignedVocabularyWord('weather', 7), /Kho đã đầy/);
+});
+
+test('simultaneous saves share one exact lookup and a session change prevents writing', async () => {
+    let resolveLookup;
+    const lookup = new Promise(resolve => { resolveLookup = resolve; });
+    const sameSession = vocabularyService([lookup, {id: 17, user: {id: 7}}]);
+    const first = sameSession.api.saveUnassignedVocabularyWord('Wind', 7);
+    assert.equal(sameSession.api.saveUnassignedVocabularyWord('wind', 7), first);
+    resolveLookup({content: []});
+    await first;
+    assert.equal(sameSession.calls.length, 2);
+
+    let marker = 1;
+    const switched = vocabularyService([{content: []}], {capture: () => marker, isCurrent: captured => captured === marker});
+    const pending = switched.api.saveUnassignedVocabularyWord('wind', 7);
+    marker++;
+    await assert.rejects(pending, /Phiên đăng nhập đã đổi/);
+    assert.equal(switched.calls.length, 1);
 });
 
 test('the selection menu offers save only in active Study or an assigned test', () => {

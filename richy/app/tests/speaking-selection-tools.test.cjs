@@ -89,7 +89,7 @@ function editorFixture(touch=false, mobile={}){
  const state={ready:true,loading:false,dirty:false,html:mobile.text || 'memorising',notes:[],history:{versions:[]}};
  const session={state,load:()=>Promise.resolve(),save(){saves++;return Promise.resolve();},change(html,notes){changes++;state.html=html;state.notes=notes;state.dirty=true;},destroy(){},backup(){}};
  const timeout=(fn,delay)=>{const key=++timerId;timers.set(key,{fn,delay});return key;};timeout.cancel=key=>timers.delete(key);
- const scope={readOnly:!!mobile.readOnly,$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
+ const scope={readOnly:!!mobile.readOnly,canSaveVocabulary:!!mobile.saveVocabulary,saveVocabulary:mobile.saveVocabulary,$evalAsync:fn=>fn(),$watchGroup(names,fn){identity=fn;},$on(name,fn){destroy=fn;}};
  const classes = new Set();
  editable.classList = {add: name => classes.add(name), remove: name => classes.delete(name),
   toggle(name, on) { if (on) { classes.add(name); } else { classes.delete(name); } }};
@@ -138,6 +138,34 @@ function runEditorTimer(fixture, delay) {
  if (!pending) { return false; }
  fixture.timers.delete(pending[0]); pending[1].fn(); return true;
 }
+
+test('Saving selected Speaking text confirms the word in place and leaves the answer untouched', async () => {
+ const calls = [];
+ const f = editorFixture(false, {saveVocabulary: payload => {
+  calls.push(payload.word);
+  return Promise.resolve({alreadyExists:false});
+ }});
+ f.identity([11,7,42,9]); await settle();
+ f.select('take    part');
+ const word = f.scope.ed.selectionVocabulary;
+ assert.equal(word.word, 'take part');
+ const save = f.scope.ed.saveSelectionVocabulary();
+ assert.equal(word.status, 'saving');
+ assert.equal(f.scope.ed.saveSelectionVocabulary(), undefined);
+ await save;
+ assert.equal(word.status, 'saved');
+ assert.equal(f.scope.ed.hasSelection, true);
+ assert.deepEqual(calls, ['take part']);
+ assert.equal(f.changes, 0);
+ assert.equal(f.saves, 0);
+ f.destroy();
+
+ const shared = editorFixture();
+ shared.identity([11,7,42,9]); await settle();
+ shared.select('take part');
+ assert.equal(shared.scope.ed.selectionVocabulary, null);
+ shared.destroy();
+});
 
 test('iPhone touch selection paints and reads the English range even if the browser selects the nearby hint',async()=>{
  const f = editorFixture(true, {text:'Playing or experimenting today',platform:'iPhone'});

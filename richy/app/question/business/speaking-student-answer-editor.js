@@ -190,7 +190,8 @@
 
     angular.module('Hrm.Question').directive('speakingStudentAnswerEditor', ['$window', '$timeout', 'SpeakingStudentAnswerStore', function ($window, $timeout, store) {
         return {
-            restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?'},
+            restrict: 'E', scope: {setId: '<', studentId: '<', questionId: '<', userId: '<', studentLabel: '@', readOnly: '<?', hideHistory: '<?',
+                canSaveVocabulary: '<?', saveVocabulary: '&?'},
             template: '<section class="sp-answer-editor" ng-class="{\'is-touch-selecting\': ed.touchMode && !readOnly && !ed.editing}"><header class="sp-toolbar"><strong class="sp-grow">{{studentLabel}}</strong><span class="sp-answer-sync" role="status" ng-class="{\'is-error\':ed.state.error}">{{ed.state.status}}</span>' +
                 '<button type="button" class="sp-button sp-answer-edit-mode" ng-if="ed.touchMode && !readOnly" ng-click="ed.toggleEditing()" ng-disabled="!ed.state.ready || ed.state.loading"><i class="fa" ng-class="ed.editing ? \'fa-check\' : \'fa-pencil\'" aria-hidden="true"></i> {{ed.editing ? \'Xong\' : \'Sửa câu trả lời\'}}</button>' +
                 '<button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
@@ -199,7 +200,15 @@
                 '<div class="sp-answer-editable" contenteditable="false" role="textbox" aria-readonly="true" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
                 '<small class="sp-muted" ng-if="ed.touchMode && !readOnly && !ed.editing && ed.state.ready">Nhấn giữ một từ rồi kéo để chọn cả đoạn.</small>' +
                 '<span class="sp-answer-touch-highlight" ng-repeat="rect in ed.selectionRects track by $index" ng-style="rect" aria-hidden="true"></span>' +
-                '<div class="sp-answer-selection" ng-if="!readOnly && (!ed.touchMode || !ed.editing) && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ" ng-mousedown="!ed.touchMode && $event.preventDefault()"><button type="button" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-if="ed.selectionMarker" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
+                '<div class="sp-answer-selection" ng-if="!readOnly && (!ed.touchMode || !ed.editing) && ed.hasSelection && ed.state.ready && !ed.state.loading" ng-style="ed.selectionStyle" role="toolbar" aria-label="Công cụ đoạn chữ" ng-mousedown="!ed.touchMode && $event.preventDefault()"><button type="button" ng-click="ed.readSelection()" ng-attr-aria-label="{{ed.speaking ? \'Dừng đọc\' : \'Đọc đoạn đã chọn\'}}" aria-pressed="{{ed.speaking}}"><i class="fa" ng-class="ed.speaking ? \'fa-stop\' : \'fa-volume-up\'"></i> {{ed.speaking ? \'Dừng\' : \'Nghe\'}}</button><button type="button" ng-click="ed.addPhonetic()" title="Mở Cambridge Dictionary trong tab mới"><i class="fa fa-language"></i> Phiên âm</button><button type="button" ng-click="ed.annotate(true)"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-click="ed.annotate(false)"><i class="fa fa-pencil"></i> Highlight</button>' +
+                '<button type="button" class="sp-selection-vocabulary" ng-if="canSaveVocabulary && ed.selectionVocabulary" ng-click="ed.saveSelectionVocabulary()" ' +
+                'ng-class="{\'is-saved\':ed.selectionVocabulary.status===\'saved\', \'has-error\':ed.selectionVocabulary.status===\'error\'}" ' +
+                'ng-attr-aria-disabled="{{ed.selectionVocabulary.status===\'saved\' || ed.selectionVocabulary.status===\'saving\'}}" ' +
+                'ng-attr-title="{{ed.selectionVocabulary.message || \'Lưu từ vựng\'}}" ng-attr-aria-label="{{ed.selectionVocabulary.message || \'Lưu từ vựng\'}}">' +
+                '<i class="fa" ng-class="{\'fa-bookmark-o\':!ed.selectionVocabulary.status, \'fa-spinner fa-spin\':ed.selectionVocabulary.status===\'saving\', \'fa-check\':ed.selectionVocabulary.status===\'saved\', \'fa-exclamation-circle\':ed.selectionVocabulary.status===\'error\'}" aria-hidden="true"></i>' +
+                '<span ng-if="!ed.selectionVocabulary.status"> Lưu từ</span><span ng-if="ed.selectionVocabulary.status===\'error\'"> Thử lại</span></button>' +
+                '<span class="sr-only" ng-if="canSaveVocabulary && ed.selectionVocabulary" role="status">{{ed.selectionVocabulary.message}}</span>' +
+                '<button type="button" ng-if="ed.selectionMarker" ng-click="ed.removeAnnotation()"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.speechError">{{ed.speechError}}</p>' +
                 '<p class="sp-error-text" role="status" ng-if="ed.phoneticError">{{ed.phoneticError}}</p>' +
                 '<aside class="sp-answer-note" ng-if="ed.activeNote" ng-style="ed.noteStyle" role="dialog" aria-label="Ghi chú đoạn chữ"><header><strong><i class="fa fa-sticky-note"></i> Ghi chú</strong><button type="button" class="sp-close" ng-click="ed.closeNote()" aria-label="Đóng ghi chú">×</button></header><div class="sp-note-lookup" ng-if="ed.lookupText"><a ng-href="{{ed.cambridgeUrl()}}" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> Tra Cambridge · {{ed.lookupText}}</a><small>Copy phiên âm IPA rồi dán vào ghi chú bên dưới. Ghi chú tự lưu.</small></div><textarea aria-label="Nội dung ghi chú" maxlength="2000" ng-readonly="readOnly" ng-model="ed.activeNote.text" ng-change="ed.noteChanged()" placeholder="Ghi điều cần nhớ…"></textarea><footer><small>Bấm vào đoạn đã đánh dấu để mở hoặc đóng.</small><button type="button" class="sp-note-delete" ng-if="!readOnly" ng-click="ed.deleteNote()"><i class="fa fa-trash-o"></i> Xóa ghi chú</button></footer></aside>' +
@@ -209,6 +218,7 @@
                 var doc = $window.document, root = element[0], editable = root.querySelector('.sp-answer-editable'), current, timer, pollTimer, previewTimer, selectedRange, composing = false, destroyed = false, generation = 0;
                 var ed = scope.ed = {state: {loading: true, status: 'Đang tải câu trả lời…'}, hasSelection: false, speaking: false};
                 var speechOwner = {}, speechRequest = 0;
+                var vocabularySelection;
                 var touchSelection = !!($window.matchMedia && $window.matchMedia('(pointer: coarse)').matches);
                 var visual = $window.visualViewport, selectionTimer, touchHighlight, detachedSelection = false;
                 var highlights = $window.CSS && $window.CSS.highlights, highlightName = 'speaking-touch-selection';
@@ -243,6 +253,20 @@
                             ed.speaking = false; ed.speechError = 'Chưa đọc được đoạn chữ. Bạn thử lại nhé.';
                         }
                     } catch (error) { complete({error: 'synthesis-failed'}); }
+                };
+                ed.saveSelectionVocabulary = function () {
+                    var vocabulary = ed.selectionVocabulary;
+                    if (destroyed || scope.readOnly || !scope.canSaveVocabulary || !scope.saveVocabulary ||
+                            !ed.hasSelection || !vocabulary || vocabulary.status === 'saved' || vocabulary.status === 'saving') { return; }
+                    vocabulary.status = 'saving';
+                    vocabulary.message = 'Đang lưu từ vựng';
+                    return scope.saveVocabulary({word: vocabulary.word}).then(function (result) {
+                        vocabulary.status = 'saved';
+                        vocabulary.message = result.alreadyExists ? 'Đã có trong thư viện' : 'Đã lưu vào Chưa vào bài';
+                    }, function (error) {
+                        vocabulary.status = 'error';
+                        vocabulary.message = error && error.message || 'Chưa lưu được từ. Bấm để thử lại.';
+                    });
                 };
                 var tags = {B: 1, STRONG: 1, I: 1, EM: 1, U: 1, P: 1, DIV: 1, BR: 1, UL: 1, OL: 1, LI: 1, SPAN: 1}, forbidden = {SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, SVG: 1, MATH: 1, TEMPLATE: 1};
                 function clean(html, notes) {
@@ -325,6 +349,7 @@
                     if (touchHighlight && highlights.get(highlightName) === touchHighlight) { highlights.delete(highlightName); }
                     touchHighlight = null; detachedSelection = false;
                     selectedRange = null; ed.hasSelection = false; ed.selectionMarker = null; ed.selectionRects = [];
+                    ed.selectionVocabulary = null;
                 }
                 function positionSelection() {
                     if (!selectedRange || !editable.contains(selectedRange.commonAncestorContainer)) { return; }
@@ -361,6 +386,14 @@
                     var opening = !ed.hasSelection;
                     selectedRange = range; ed.hasSelection = true;
                     ed.selectionMarker = markerAt(range.commonAncestorContainer);
+                    ed.selectionVocabulary = null;
+                    if (scope.canSaveVocabulary && scope.saveVocabulary) {
+                        var word = range.toString().replace(/\s+/g, ' ').trim();
+                        if (word && word.length <= 200) {
+                            if (!vocabularySelection || vocabularySelection.word !== word) { vocabularySelection = {word: word}; }
+                            ed.selectionVocabulary = vocabularySelection;
+                        }
+                    }
                     positionSelection();
                     if (opening && !(ed.touchMode && ed.editing)) {
                         positionTimer = $timeout(function () { positionTimer = null; positionSelection(); }, 0);
@@ -656,7 +689,7 @@
                 $window.addEventListener('resize', selectionViewportChanged);
                 if (visual) { visual.addEventListener('resize', selectionViewportChanged); visual.addEventListener('scroll', selectionViewportChanged); }
                 scope.$watchGroup(['setId', 'studentId', 'questionId', 'userId'], function (values) {
-                    var next = ++generation; stopSpeech(); ed.speechError = ''; ed.phoneticError = ''; ed.lookupText = ''; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
+                    var next = ++generation; vocabularySelection = null; stopSpeech(); ed.speechError = ''; ed.phoneticError = ''; ed.lookupText = ''; cancelTimer(); stopPolling(); $timeout.cancel(previewTimer); if (current) { current.save(); current.destroy(); } ed.activeNote = null; ed.marker = null; ed.hasSelection = false; ed.historyOpen = false; selectedRange = null;
                     if (ed.editing) { editable.blur(); ed.editing = false; }
                     endTouchGesture(); clearSelection();
                     if (!values.every(function (id) { return Number.isInteger(Number(id)) && Number(id) > 0; })) { return; }

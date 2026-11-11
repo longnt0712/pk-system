@@ -7,8 +7,8 @@
             element.on('change', changed); scope.$on('$destroy', function () { element.off('change', changed); });
         }};
     }]);
-    angular.module('Hrm.Question').controller('SpeakingController', ['$scope', '$rootScope', '$window', '$location', '$interval', '$q', 'settings', 'SpeakingService', 'SpeakingRecorder', '$sce', '$state',
-        function ($scope, $rootScope, $window, $location, $interval, $q, settings, api, recorder, $sce, $state) {
+    angular.module('Hrm.Question').controller('SpeakingController', ['$scope', '$rootScope', '$window', '$location', '$interval', '$q', 'settings', 'SpeakingService', 'SpeakingRecorder', '$sce', '$state', 'QuestionService',
+        function ($scope, $rootScope, $window, $location, $interval, $q, settings, api, recorder, $sce, $state, questionService) {
             var vm = this, alive = true, bankGeneration = 0, practiceGeneration = 0, rosterGeneration = 0, studentViewGeneration = 0, topicJumpGeneration = 0, progressQueue = $q.when(), lastTick = Date.now(), tickCount = 0, audioUrl = null;
             vm.managementMode = !!($state && $state.current && $state.current.data && $state.current.data.speakingManagement === true);
             vm.directorySchoolId = 1;
@@ -31,6 +31,13 @@
                 if (!vm.selectedSet) { return false; }
                 return vm.managementMode ? !!(vm.canReviewStudents() && vm.studentId)
                     : vm.canManage === true && vm.selectedSet.canMarkOwnPass === true && Number(vm.userId) > 0;
+            };
+            vm.canSaveVocabulary = function () {
+                return Number(vm.userId) > 0 && !!(settings.isAdmin || settings.isFlashCardUser || settings.isViewer);
+            };
+            vm.saveVocabularyWord = function (word) {
+                if (!vm.canSaveVocabulary()) { return $q.reject(new Error('Tài khoản này chưa có quyền lưu từ vựng.')); }
+                return questionService.saveUnassignedVocabularyWord(word, vm.userId);
             };
             vm.answerStudentId = function () { return Number((vm.managementMode && vm.studentId) || vm.userId); };
             vm.answerStudentLabel = function () { return vm.managementMode && vm.studentId ? vm.studentLabel(vm.studentId) : 'Câu trả lời của tôi'; };
