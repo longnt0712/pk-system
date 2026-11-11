@@ -5,12 +5,22 @@ import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
+import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.impl.BattleOnlineServiceImpl;
 import java.lang.reflect.Constructor;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -269,23 +279,74 @@ public class BattleOnlineDemonDefenseTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private Queue<Runnable> queueExercisePreload(QuestionDto test) {
+        BattleExercisePreload loader = spy(new BattleExercisePreload());
+        EntityManager em = mock(EntityManager.class);
+        TypedQuery<Object[]> headers = mock(TypedQuery.class);
+        TypedQuery<Object[]> references = mock(TypedQuery.class);
+        when(em.createQuery(startsWith("select t.id, t.title"), eq(Object[].class))).thenReturn(headers);
+        when(em.createQuery(startsWith("select t.id, p.id"), eq(Object[].class))).thenReturn(references);
+        when(headers.setParameter(anyString(), anyObject())).thenReturn(headers);
+        when(headers.setHint(anyString(), anyObject())).thenReturn(headers);
+        when(references.setParameter(anyString(), anyObject())).thenReturn(references);
+        when(references.setMaxResults(anyInt())).thenReturn(references);
+        when(references.setHint(anyString(), anyObject())).thenReturn(references);
+        when(headers.getResultList()).thenReturn(Collections.singletonList(
+                new Object[] {100L, test.getTitle(), 1L, 7, "COMPREHENSIVE", 11L, null}));
+        List<BattleExerciseQuestions.Turn> turns = BattleExerciseQuestions.fromTest(test);
+        List<Object[]> rows = new ArrayList<>();
+        for (BattleExerciseQuestions.Turn turn : turns) {
+            rows.add(new Object[] {100L, 101L, null, 102L, turn.content.type, null, turn.id, null});
+        }
+        when(references.getResultList()).thenReturn(rows);
+        set(loader, "manager", em);
+        doAnswer(call -> {
+            int offset = (Integer) call.getArguments()[1], size = (Integer) call.getArguments()[2];
+            assertEquals(50, size);
+            return turns.subList(offset, Math.min(turns.size(), offset + size));
+        }).when(loader).loadBatch(any(BattleExercisePreload.Plan.class), anyInt(), anyInt());
+        set(service, "exercisePreload", loader);
+
+        Queue<Runnable> queued = new ArrayDeque<>();
+        ScheduledExecutorService scheduler = mock(ScheduledExecutorService.class);
+        when(scheduler.schedule(any(Runnable.class), anyLong(), any(TimeUnit.class))).thenAnswer(call -> {
+            long delay = (Long) call.getArguments()[1];
+            if (call.getArguments()[2] == TimeUnit.MILLISECONDS && delay < 1000L) {
+                queued.add((Runnable) call.getArguments()[0]);
+            }
+            return mock(ScheduledFuture.class);
+        });
+        when(scheduler.scheduleAtFixedRate(any(Runnable.class), anyLong(), anyLong(), any(TimeUnit.class)))
+                .thenAnswer(call -> mock(ScheduledFuture.class));
+        ((ScheduledExecutorService) get(service, "scheduler")).shutdownNow();
+        set(service, "scheduler", scheduler);
+        return queued;
+    }
+
     @Test public void comprehensiveSourceStartsAndGradesInEveryOnlineMode() throws Exception {
         for (int type : new int[] {1, 11, 5, 16}) {
         for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD", "LUM_NGAY"}) {
             cleanup(); setup(); set(room, "status", "LOBBY");
             set(room, "hostUserId", 1L);
-            com.globits.richy.service.QuestionService questions = mock(com.globits.richy.service.QuestionService.class);
-            com.globits.richy.dto.QuestionDto test = BattleExerciseQuestionsTest.test(type);
+            QuestionDto test = BattleExerciseQuestionsTest.test(type);
             if (type == 5) { test.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0).getQuestionAnswers().get(2).setCorrect(true); }
-            when(questions.getObjectById(100L)).thenReturn(test);
-            ReflectionTestUtils.setField(service, "questionService", questions);
+            Queue<Runnable> preload = queueExercisePreload(test);
             BattleOnlineRoomSettingsDto settings = new BattleOnlineRoomSettingsDto();
             settings.setMode(mode); settings.setQuestionSource("COMPREHENSIVE"); settings.setSkillsEnabled(false);
             settings.setExerciseTestIds(java.util.Collections.singletonList(100L)); settings.setQuestionCount(1);
             settings.setTeamCount(2); settings.setSecondsPerQuestion(60);
             BattleOnlineRoomDto saved = service.updateSettings("DEMON1", "host", settings);
-            assertTrue(mode, saved.isQuestionsReady());
+            assertFalse(mode, saved.isQuestionsReady());
             assertEquals("COMPREHENSIVE", saved.getSettings().getQuestionSource());
+            try {
+                service.startMatch("DEMON1", "host");
+                fail("An incomplete question pool cannot start");
+            } catch (BattleOnlineException expected) {
+                assertTrue(expected.getMessage().contains("Đang nạp câu hỏi"));
+            }
+            preload.remove().run();
+            assertTrue(mode, service.getRoom("DEMON1", "host").isQuestionsReady());
             service.startMatch("DEMON1", "host");
             BattleOnlineRoomDto playing = service.getRoom("DEMON1", "alice");
             if (playing.isPasswordSelectionRequired()) {
@@ -318,15 +379,16 @@ public class BattleOnlineDemonDefenseTest {
         for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD", "LUM_NGAY"}) {
             for (boolean shuffle : new boolean[] {false, true}) {
                 cleanup(); setup(); set(room, "status", "LOBBY"); set(room, "hostUserId", 1L);
-                com.globits.richy.service.QuestionService questions = mock(com.globits.richy.service.QuestionService.class);
-                when(questions.getObjectById(100L)).thenReturn(BattleExerciseQuestionsTest.testWithQuestions(1, 12));
-                set(service, "questionService", questions);
+                Queue<Runnable> preload = queueExercisePreload(BattleExerciseQuestionsTest.testWithQuestions(1, 12));
                 BattleOnlineRoomSettingsDto settings = new BattleOnlineRoomSettingsDto();
                 settings.setMode(mode); settings.setQuestionSource("COMPREHENSIVE"); settings.setExerciseTestIds(java.util.Collections.singletonList(100L));
                 settings.setShuffleExerciseQuestions(shuffle); settings.setQuestionCount(12); settings.setSecondsPerQuestion(60);
                 settings.setTeamCount(2); settings.setSkillsEnabled(false);
                 BattleOnlineRoomDto saved = service.updateSettings("DEMON1", "host", settings);
-                assertEquals(shuffle, saved.getSettings().isShuffleExerciseQuestions()); assertEquals(12, saved.getAvailableQuestionCount());
+                assertEquals(shuffle, saved.getSettings().isShuffleExerciseQuestions());
+                assertEquals(0, saved.getAvailableQuestionCount());
+                preload.remove().run();
+                assertEquals(12, service.getRoom("DEMON1", "host").getAvailableQuestionCount());
                 ((java.util.Random) get(service, "random")).setSeed(0);
                 service.startMatch("DEMON1", "host");
                 List<Long> actual = new java.util.ArrayList<Long>();
@@ -357,7 +419,7 @@ public class BattleOnlineDemonDefenseTest {
         }
     }
 
-    @Test public void creatingAnExerciseRoomNeedsNoVocabularyAndLoadsTheTestOnlyOnce() {
+    @Test public void creatingAnExerciseRoomLoadsFourBatchesOfFiftyWhilePlayersCanJoin() {
         ((Map<?, ?>) get(service, "rooms")).clear();
         javax.persistence.EntityManager entity = mock(javax.persistence.EntityManager.class);
         javax.persistence.Query account = mock(javax.persistence.Query.class), roles = mock(javax.persistence.Query.class);
@@ -366,24 +428,34 @@ public class BattleOnlineDemonDefenseTest {
         when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
         when(account.getResultList()).thenReturn(java.util.Collections.singletonList(new Object[] {1L, "", "", "Host", 0L, "MAM_HOC"}));
         when(roles.getResultList()).thenReturn(java.util.Collections.emptyList());
-        com.globits.richy.service.QuestionService questions = mock(com.globits.richy.service.QuestionService.class);
-        when(questions.getObjectById(100L)).thenReturn(BattleExerciseQuestionsTest.testWithQuestions(1, 200)); set(service, "questionService", questions);
+        Queue<Runnable> preload = queueExercisePreload(BattleExerciseQuestionsTest.testWithQuestions(1, 200));
         com.globits.richy.dto.BattleOnlineCreateRoomDto request = new com.globits.richy.dto.BattleOnlineCreateRoomDto();
         request.setTopicIds(null); request.setQuestionSource("COMPREHENSIVE"); request.setExerciseTestIds(java.util.Collections.singletonList(100L));
         BattleOnlineRoomDto created = service.createRoom("host", request);
-        assertTrue(created.isQuestionsReady()); assertEquals(200, created.getAvailableQuestionCount());
+        assertFalse(created.isQuestionsReady());
+        assertEquals(0, created.getLoadedQuestionCount());
         assertTrue(created.getSettings().isShuffleExerciseQuestions());
         assertEquals(200, created.getTotalLessonWords());
         assertEquals("Đề tổng hợp", created.getSettings().getTopicNames().get(0));
         assertTrue(created.getSettings().getTopicIds().isEmpty());
-        verify(questions, times(1)).getObjectById(100L);
+        assertFalse(service.joinRoom(created.getCode(), "student").isQuestionsReady());
+        for (int loaded = 50; loaded <= 200; loaded += 50) {
+            preload.remove().run();
+            BattleOnlineRoomDto snapshot = service.getRoom(created.getCode(), "host");
+            assertEquals(loaded, snapshot.getLoadedQuestionCount());
+            assertEquals(200, snapshot.getTotalLessonWords());
+            assertEquals(loaded == 200, snapshot.isQuestionsReady());
+            assertEquals(loaded == 200, snapshot.isAllQuestionsLoaded());
+        }
+        assertTrue(preload.isEmpty());
     }
 
     @Test public void someoneElsesUnpublishedExerciseCannotReplaceTheCurrentRoomSource() {
         set(room, "status", "LOBBY"); set(room, "hostUserId", 1L);
-        com.globits.richy.service.QuestionService questions = mock(com.globits.richy.service.QuestionService.class);
-        com.globits.richy.dto.QuestionDto test = BattleExerciseQuestionsTest.test(1); test.setStatus(6);
-        when(questions.getObjectById(100L)).thenReturn(test); set(service, "questionService", questions);
+        BattleExercisePreload loader = mock(BattleExercisePreload.class);
+        when(loader.plan(Collections.singletonList(100L), 1L))
+                .thenThrow(new BattleOnlineException(org.springframework.http.HttpStatus.FORBIDDEN, "Đề chưa xuất bản."));
+        set(service, "exercisePreload", loader);
         BattleOnlineRoomSettingsDto settings = new BattleOnlineRoomSettingsDto();
         settings.setQuestionSource("COMPREHENSIVE"); settings.setExerciseTestIds(java.util.Collections.singletonList(100L));
         try { service.updateSettings("DEMON1", "host", settings); fail("Draft must stay private"); }

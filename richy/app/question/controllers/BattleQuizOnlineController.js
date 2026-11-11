@@ -2693,7 +2693,7 @@
                         toastr.success(
                             'Đã tạo phòng ' +
                             room.code +
-                            (vm.questionSource === 'COMPREHENSIVE' ? '. Đề đã sẵn sàng.' : '. Server đang nạp bài ở background.'),
+                            (room.allQuestionsLoaded ? '. Đề đã sẵn sàng.' : '. Đang nạp bài trong phòng chờ.'),
                             'BATTLE ONLINE'
                         );
 
@@ -8619,13 +8619,45 @@
             }
         );
 
-        if ($stateParams.exerciseId && questionService.getOne) {
-            questionService.getOne($stateParams.exerciseId).then(function (test) {
-                if (test && test.testFormat === 'COMPREHENSIVE') {
-                    vm.questionSource = 'COMPREHENSIVE'; vm.addExerciseTest(test); vm.loadExerciseTests(1);
+        function selectExerciseFromLink(testId) {
+            var requestId = ++exerciseRequestId;
+            var request = battleService.getExerciseTests({id: testId}, 1, 1);
+            exerciseTestLoad = request;
+
+            function isCurrent() {
+                return !destroyed && requestId === exerciseRequestId;
+            }
+            function select(test) {
+                if (!isCurrent()) { return; }
+                if (!test || String(test.id) !== testId) {
+                    toastr.warning('Không tìm thấy đề Tổng hợp trong thư viện Battle.');
+                    return;
                 }
-            }, showRequestError);
+                vm.questionSource = 'COMPREHENSIVE';
+                vm.addExerciseTest(test);
+            }
+            function failed(error) {
+                if (!isCurrent()) { return; }
+                exerciseTestLoad = null;
+                showRequestError(error);
+            }
+
+            request.then(function (page) {
+                if (!isCurrent()) { return; }
+                exerciseTestLoad = null;
+                var test = page && page.content && page.content[0];
+                if (test && String(test.id) !== testId && questionService.getOne) {
+                    // The previous backend ignores the catalog's ID filter.
+                    return questionService.getOne(testId).then(function (legacyTest) {
+                        select(legacyTest && legacyTest.testFormat === 'COMPREHENSIVE' ? legacyTest : null);
+                    }, failed);
+                }
+                select(test);
+            }, failed);
         }
+
+        var linkedExerciseId = String($stateParams.exerciseId || '');
+        if (/^[1-9]\d*$/.test(linkedExerciseId)) { selectExerciseFromLink(linkedExerciseId); }
         loadBattleViewMusicConfig();
         getPageTopicCategory();
 

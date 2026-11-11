@@ -189,7 +189,7 @@ public class BattleOnlineAdminRoomsTest {
         when(questions.getPageObjectForGames(any(QuestionDto.class),anyInt(),anyInt())).thenAnswer(call->{
             fetching.countDown();assertTrue(release.await(2,TimeUnit.SECONDS));return new org.springframework.data.domain.PageImpl<QuestionForGamesDto>(Collections.emptyList());
         });set(service,"questionService",questions);
-        Thread worker=new Thread(()->ReflectionTestUtils.invokeMethod(service,"loadNextPreloadBatch","LOAD1",0L));
+        Thread worker=new Thread(()->ReflectionTestUtils.invokeMethod(service,"loadNextPreloadBatch",room,0L));
         try {
             worker.start();assertTrue(fetching.await(1,TimeUnit.SECONDS));service.terminateRoomAsAdmin("LOAD1");
         }finally{release.countDown();worker.join(2000L);}

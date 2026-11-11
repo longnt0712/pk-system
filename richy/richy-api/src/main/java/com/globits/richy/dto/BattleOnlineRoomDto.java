@@ -115,6 +115,7 @@ public class BattleOnlineRoomDto implements Serializable {
     private boolean allQuestionsLoaded;
     private boolean questionsReady;
     private boolean preloadError;
+    private String preloadErrorMessage;
 
     private int loadedQuestionCount;
     private int totalLessonWords;
@@ -333,6 +334,9 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setPreloadError(boolean preloadError) {
         this.preloadError = preloadError;
     }
+
+    public String getPreloadErrorMessage() { return preloadErrorMessage; }
+    public void setPreloadErrorMessage(String value) { preloadErrorMessage = value; }
 
     public int getLoadedQuestionCount() {
         return loadedQuestionCount;

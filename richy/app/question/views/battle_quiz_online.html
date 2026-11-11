@@ -328,9 +328,10 @@
                     </b>
                 </span>
 
-                <span ng-if="vm.room.loadingQuestions">
-                    <i class="fa fa-circle-o-notch fa-spin"></i>
-                    đang load ẩn
+                <span ng-if="!vm.room.preloadError && (vm.room.loadingQuestions ||
+                             (vm.room.settings.questionSource === 'COMPREHENSIVE' && !vm.room.allQuestionsLoaded))">
+                    <i class="fa fa-circle-o-notch fa-spin" aria-hidden="true"></i>
+                    {{vm.room.settings.questionSource === 'COMPREHENSIVE' ? 'Đang nạp 50 câu mỗi đợt' : 'Đang nạp bài'}}
                 </span>
 
                 <span class="is-done"
@@ -340,7 +341,7 @@
 
                 <span class="is-error"
                       ng-if="vm.room.preloadError">
-                    ! lỗi preload
+                    {{vm.room.preloadErrorMessage || 'Chưa tải được bài'}}
                 </span>
             </div>
 
@@ -465,8 +466,8 @@
             </div>
 
 
-            <div class="battle-online-lobby-tip">
-                💡 Trong lúc mọi người JOIN/READY, server đang tự preload bài theo batch 50 từ.
+            <div class="battle-online-lobby-tip" ng-if="!vm.room.allQuestionsLoaded && !vm.room.preloadError">
+                💡 Mọi người có thể vào phòng trong khi hệ thống nạp bài.
             </div>
 
             <div class="battle-online-display-name-editor">

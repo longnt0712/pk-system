@@ -104,6 +104,106 @@ public class BattleExerciseCatalogTest {
         try { request.run(); fail("Expected " + code); } catch (BattleOnlineException expected) { assertEquals(code,expected.getStatus()); }
     }
 
+    private Question child(Question parent, int order, int type, String text) {
+        Question question = new Question();
+        question.setParent(parent);
+        question.setOrdinalNumber(order);
+        question.setType(type);
+        question.setQuestion(text);
+        em.persist(question);
+        return question;
+    }
+
+    private void addAnswer(Question question, String text) {
+        Answer answer = new Answer();
+        answer.setAnswer(text);
+        em.persist(answer);
+        QuestionAnswer link = new QuestionAnswer();
+        link.setQuestion(question);
+        link.setAnswer(answer);
+        link.setOrdinalNumber(1);
+        link.setCorrect(true);
+        em.persist(link);
+    }
+
+    private BattleExercisePreload preloader() {
+        BattleExercisePreload loader = new BattleExercisePreload();
+        ReflectionTestUtils.setField(loader, "manager", em);
+        return loader;
+    }
+
+    @Test public void roomQuestionsLoadInFiftiesAndKeepVideoOrderAndSharedGapContent() {
+        Question gaps = test("Gaps");
+        Question gapsPart = child(gaps, 1, 0, "Passage");
+        Question gapGroup = child(gapsPart, 1, 11, "Instructions");
+        for (int n = 1; n <= 52; n++) {
+            addAnswer(child(gapGroup, n, 0, n == 1 ? "Shared gap text" : ""), "gap " + n);
+        }
+        child(gapsPart, 2, 16, "Writing without a child question");
+
+        Question video = test("Video");
+        Question videoPart = child(video, 1, 0, "Video passage");
+        videoPart.setVideoUrl("https://www.youtube.com/watch?v=ABCDEFGHIJK");
+        Question videoGroup = child(videoPart, 1, 1, "Watch the video");
+        List<Long> videoOrder = new ArrayList<>();
+        for (int n = 1; n <= 54; n++) {
+            Question question = child(videoGroup, n, 0, "Question " + n);
+            question.setVideoTimeSeconds(55 - n);
+            addAnswer(question, "Answer " + n);
+            videoOrder.add(question.getId());
+        }
+        Collections.reverse(videoOrder);
+        prepare();
+
+        BattleExercisePreload loader = preloader();
+        BattleExercisePreload.Plan plan = loader.plan(Arrays.asList(video.getId(), gaps.getId()), owner.getId());
+        assertEquals(Arrays.asList("Video", "Gaps"), plan.titles());
+        assertEquals(107, plan.size());
+        noHydration(2);
+
+        List<BattleExerciseQuestions.Turn> first = loader.loadBatch(plan, 0, 50);
+        List<BattleExerciseQuestions.Turn> second = loader.loadBatch(plan, 50, 50);
+        List<BattleExerciseQuestions.Turn> last = loader.loadBatch(plan, 100, 50);
+        assertEquals(50, first.size());
+        assertEquals(50, second.size());
+        assertEquals(7, last.size());
+        List<BattleExerciseQuestions.Turn> turns = new ArrayList<>(first);
+        turns.addAll(second);
+        turns.addAll(last);
+        assertEquals(videoOrder, turns.subList(0, 54).stream().map(turn -> turn.id).collect(Collectors.toList()));
+        assertEquals(Integer.valueOf(51), second.get(0).content.videoTimeSeconds);
+        BattleExerciseQuestions.Turn gap = last.get(4);
+        assertEquals("Shared gap text", gap.content.contentHtml);
+        assertEquals(Integer.valueOf(50), gap.content.items.get(0).gapIndex);
+        assertTrue(gap.grade(Collections.singletonMap(gap.id.toString(), Collections.singletonList("gap 51"))));
+        assertEquals("WRITING", last.get(6).content.answerMode);
+        noHydration(11);
+    }
+
+    @Test public void aChangedOrPrivateTestCannotSupplyQuestionsToAnExistingPlan() {
+        Question root = test("Editable");
+        Question part = child(root, 1, 0, "Passage");
+        Question group = child(part, 1, 1, "Instructions");
+        addAnswer(child(group, 1, 0, "Question"), "Answer");
+        Long testId = root.getId();
+        prepare();
+
+        BattleExercisePreload loader = preloader();
+        List<Long> ids = Collections.singletonList(testId);
+        BattleExercisePreload.Plan plan = loader.plan(ids, other.getId());
+        Question edited = em.find(Question.class, testId);
+        edited.setModifyDate(new LocalDateTime(2026, 11, 11, 12, 0));
+        prepare();
+        error(HttpStatus.CONFLICT, () -> loader.loadBatch(plan, 0, 50));
+
+        BattleExercisePreload.Plan afterEdit = loader.plan(ids, other.getId());
+        em.find(Question.class, testId).setStatus(6);
+        prepare();
+        error(HttpStatus.FORBIDDEN, () -> loader.loadBatch(afterEdit, 0, 50));
+        error(HttpStatus.FORBIDDEN, () -> loader.plan(ids, other.getId()));
+        assertEquals(1, loader.loadBatch(loader.plan(ids, owner.getId()), 0, 50).size());
+    }
+
     @Test public void onlyPublishedComprehensiveRootsAreVisibleRegardlessOfClientStatusOrOwner() {
         test("Published"); Question legacy = test("Legacy root"); legacy.setType(0); legacy.setUser(other);
         test("Draft").setStatus(6); test("Hidden").setStatus(8); test("Reading").setTestFormat(null);
@@ -141,6 +241,22 @@ public class BattleExerciseCatalogTest {
         filters.setTopicCategoryId(categoryId); filters.setTopicId(firstId); expect(filters,"Tagged");
         filters.setWithoutTopics(true); expect(filters,"Standalone","Empty link");
         filters.setWithoutTopics(false); filters.setTopicOwnerUserId(Long.MAX_VALUE); expect(filters);
+    }
+
+    @Test public void openingALibraryLinkOnlyLoadsItsPublishedTestSummary() {
+        Question chosen = test("Chosen test");
+        test("Another test");
+        Question draft = test("Draft");
+        draft.setStatus(6);
+        prepare();
+
+        QuestionDto filter = new QuestionDto();
+        filter.setId(chosen.getId());
+        expect(filter, "Chosen test");
+        noHydration(2);
+
+        filter.setId(draft.getId());
+        expect(filter);
     }
 
     @Test public void titleSearchIsCaseInsensitiveLiteralAndDoesNotSearchQuestionBodies() {

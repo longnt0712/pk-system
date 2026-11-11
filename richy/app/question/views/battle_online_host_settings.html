@@ -527,8 +527,8 @@
             </div>
 
             <div class="battle-online-host-note"
-                 ng-if="!vm.lobbyTopicEditorOpen && !vm.room.questionsReady">
-                {{vm.questionSource === 'COMPREHENSIVE' ? 'Đề cần ít nhất một nhóm câu hợp lệ để START.' : 'Server cần READY tối thiểu 4 từ để START.'}}
+                 ng-if="!vm.lobbyTopicEditorOpen && !vm.room.questionsReady && !vm.room.preloadError">
+                {{vm.room.settings.questionSource === 'COMPREHENSIVE' ? 'Có thể bắt đầu khi đề đã nạp đủ câu hỏi.' : 'Server cần READY tối thiểu 4 từ để START.'}}
             </div>
 
             <div class="battle-online-host-note"

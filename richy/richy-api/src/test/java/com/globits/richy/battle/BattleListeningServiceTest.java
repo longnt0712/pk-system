@@ -37,7 +37,7 @@ public class BattleListeningServiceTest {
             if ("host".equals(username)) { set(player, "host", true); set(player, "spectator", true); }
             players.put(username, player);
         }
-        ReflectionTestUtils.invokeMethod(service, "setExerciseSourceLocked", room, Collections.singletonList(100L), BattleExerciseQuestions.fromTest(source));
+        BattleExerciseQuestionsTest.prepareRoomWithExercise(service, room, source);
         ((Map<String, Object>) get(service, "rooms")).put("LISTEN1", room);
         service.startMatch("LISTEN1", "host");
         for (String username : new String[] {"alice", "bob"}) { set(players.get(username), "passwordSelectionRequired", false); }

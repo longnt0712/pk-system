@@ -16,7 +16,7 @@ function service(){
  return {api,requests,timers};
 }
 
-function controller({ignoreAbort=false}={}){
+function controller({ignoreAbort=false,exerciseId}={}){
  let Controller,destroy;const lists=[],folders=[],topics=[],timers=[],events={};
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(){},off(){}};}};
  nodeVm.runInNewContext(read('question/controllers/BattleQuizOnlineController.js').replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,''),{angular});
@@ -25,8 +25,8 @@ function controller({ignoreAbort=false}={}){
  const scope={$on(name,fn){events[name]=fn;if(name==='$destroy')destroy=fn;},$evalAsync(fn){fn();}};
  const api={getExerciseTests(...args){return request(lists,args);},getExerciseFolders(...args){return request(folders,args);},disconnectRealtime(){}};
  const window={Promise,location:{origin:'http://battle.test'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
- const vm=new Controller({},scope,{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username:'host'});}},window,{warning(){},error(){}},{},
-  {getPageForTests(){throw Error('The expensive general Question endpoint must not be used');},getTopicsForGames(...args){return request(topics,args);}},api);
+ const vm=new Controller({},scope,{go(){}},{exerciseId},timer,timer,{get(){return JSON.stringify({id:1,username:'host'});}},window,{warning(){},error(){}},{},
+  {getOne(){throw Error('A library link must use the exact catalog summary');},getPageForTests(){throw Error('The expensive general Question endpoint must not be used');},getTopicsForGames(...args){return request(topics,args);}},api);
  return {vm,lists,folders,topics,destroy(){destroy();}};
 }
 
@@ -47,6 +47,17 @@ test('catalog timeout and explicit cancellation abort real HTTP requests with di
  const folders=h.api.getExerciseFolders(),folderFailure=assert.rejects(folders,error=>error.battleCatalogTimeout===true);
  assert.equal(h.requests[2].url,'/api/v1/test_folder');assert.deepEqual(plain(h.requests[2].options.params),{allTeachers:true,testMode:'COMPREHENSIVE'});
  h.timers[2].fn();await folderFailure;assert.equal(h.requests[2].aborted,true);
+});
+
+test('opening a library link selects only its exact test summary', async () => {
+ const h = controller({exerciseId: '12'});
+ assert.equal(h.lists.length, 1);
+ assert.deepEqual(plain(h.lists[0].args), [{id: '12'}, 1, 1]);
+ h.lists[0].resolve({content: [{id: 12, title: 'Chosen test'}], totalElements: 1});
+ await tick();
+ assert.equal(h.vm.questionSource, 'COMPREHENSIVE');
+ assert.deepEqual(plain(h.vm.selectedExerciseTests), [{id: 12, title: 'Chosen test'}]);
+ h.destroy();
 });
 
 test('folder and search navigation cancel superseded requests and only the latest catalog response wins',async()=>{

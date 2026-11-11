@@ -48,7 +48,7 @@ public class BattleOnlineVideoHostControlsTest {
         set(settings,"shuffleExerciseQuestions",true); set(settings,"teamCount",2);
         alice=player("alice",false,1); Object bob=player("bob",false,2), host=player("host",true,1); set(host,"host",true);
         Map<String,Object> players=(Map<String,Object>)get(room,"players"); players.put("host",host); players.put("alice",alice); players.put("bob",bob);
-        ReflectionTestUtils.invokeMethod(service,"setExerciseSourceLocked",room,Collections.singletonList(100L),BattleExerciseQuestions.fromTest(test()));
+        BattleExerciseQuestionsTest.prepareRoomWithExercise(service, room, test());
         ((Map<String,Object>)get(service,"rooms")).put("VIDEO1",room);
         service.startMatch("VIDEO1","host");
         // Money mode still has its usual password setup; complete it before testing answer pacing.

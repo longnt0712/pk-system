@@ -3,8 +3,10 @@ package com.globits.richy.battle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.globits.richy.dto.*;
 import com.globits.richy.service.BattleOnlineException;
+import com.globits.richy.service.impl.BattleOnlineServiceImpl;
 import java.util.*;
 import org.junit.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.Assert.*;
 
 public class BattleExerciseQuestionsTest {
@@ -44,6 +46,17 @@ public class BattleExerciseQuestionsTest {
         }
         root.getSubQuestions().get(0).getSubQuestions().get(0).setSubQuestions(questions);
         return root;
+    }
+
+    static void prepareRoomWithExercise(BattleOnlineServiceImpl service, Object room, QuestionDto test) {
+        List<BattleExerciseQuestions.Turn> turns = BattleExerciseQuestions.fromTest(test);
+        Object settings = ReflectionTestUtils.getField(room, "settings");
+        ReflectionTestUtils.setField(settings, "questionSource", "COMPREHENSIVE");
+        ReflectionTestUtils.setField(settings, "exerciseTestIds", Collections.singletonList(test.getId()));
+        ReflectionTestUtils.setField(settings, "topicNames", Collections.singletonList(test.getTitle()));
+        ReflectionTestUtils.invokeMethod(service, "appendExerciseTurnsLocked", room, turns);
+        ReflectionTestUtils.setField(room, "totalLessonWords", turns.size());
+        ReflectionTestUtils.setField(room, "allQuestionsLoaded", true);
     }
 
     @Test public void preservesOriginalTypesAndBanksWithoutPublishingAnswerKeys() throws Exception {

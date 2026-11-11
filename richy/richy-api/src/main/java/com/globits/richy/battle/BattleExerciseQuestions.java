@@ -72,23 +72,8 @@ public final class BattleExerciseQuestions {
                 }
                 if (questions.isEmpty()) { throw invalid("Có nhóm chưa có câu hỏi hoặc đáp án."); }
                 for (int q = 0; q < questions.size(); q++) {
-                    Turn turn = build(group, questions.get(q), part.getQuestion(), q, questions.get(0).getQuestion(), random);
-                    turn.sourceTestId = test.getId(); turn.sourceTestTitle = test.getTitle();
-                    if (part.getVideoUrl() != null && !part.getVideoUrl().trim().isEmpty()) {
-                        turn.content.videoUrl = part.getVideoUrl().trim();
-                        turn.content.videoSourceId = test.getId() + ":" + part.getId();
-                        turn.content.videoTimeSeconds = group.getType() == 1
-                                ? questions.get(q).getVideoTimeSeconds() : group.getVideoTimeSeconds();
-                        Integer duration = questions.get(q).getVideoAnswerSeconds();
-                        if (duration == null) { duration = group.getVideoAnswerSeconds(); }
-                        turn.content.videoAnswerSeconds = duration == null ? 20 : duration;
-                        if (!com.globits.richy.question.ComprehensiveVideoValidation.isSupportedUrl(turn.content.videoUrl) ||
-                                turn.content.videoTimeSeconds == null || turn.content.videoTimeSeconds < 0 || turn.content.videoTimeSeconds > 359999 ||
-                                turn.content.videoAnswerSeconds < 1 || turn.content.videoAnswerSeconds > 3600) {
-                            throw invalid("Câu hỏi video cần mốc thời gian và thời gian trả lời hợp lệ.");
-                        }
-                    }
-                    partTurns.add(turn);
+                    partTurns.add(fromQuestion(test.getId(), test.getTitle(), part, group,
+                            questions.get(q), q, questions.get(0), random));
                 }
             }
             if (part.getVideoUrl() != null && !part.getVideoUrl().trim().isEmpty()) {
@@ -100,12 +85,35 @@ public final class BattleExerciseQuestions {
         return turns;
     }
 
-    private static Turn build(QuestionDto group, QuestionDto source, String passage, int questionIndex, String sharedContent, Random random) {
+    static Turn fromQuestion(Long testId, String testTitle, QuestionDto part, QuestionDto group,
+            QuestionDto source, int questionIndex, QuestionDto firstQuestion, Random random) {
+        Turn turn = build(group, source, part.getQuestion(), questionIndex, firstQuestion, random);
+        turn.sourceTestId = testId;
+        turn.sourceTestTitle = testTitle;
+        if (part.getVideoUrl() == null || part.getVideoUrl().trim().isEmpty()) {
+            return turn;
+        }
+        turn.content.videoUrl = part.getVideoUrl().trim();
+        turn.content.videoSourceId = testId + ":" + part.getId();
+        turn.content.videoTimeSeconds = group.getType() == 1 ? source.getVideoTimeSeconds() : group.getVideoTimeSeconds();
+        Integer duration = source.getVideoAnswerSeconds();
+        if (duration == null) { duration = group.getVideoAnswerSeconds(); }
+        turn.content.videoAnswerSeconds = duration == null ? 20 : duration;
+        if (!com.globits.richy.question.ComprehensiveVideoValidation.isSupportedUrl(turn.content.videoUrl) ||
+                turn.content.videoTimeSeconds == null || turn.content.videoTimeSeconds < 0 || turn.content.videoTimeSeconds > 359999 ||
+                turn.content.videoAnswerSeconds < 1 || turn.content.videoAnswerSeconds > 3600) {
+            throw invalid("Câu hỏi video cần mốc thời gian và thời gian trả lời hợp lệ.");
+        }
+        return turn;
+    }
+
+    private static Turn build(QuestionDto group, QuestionDto source, String passage, int questionIndex,
+            QuestionDto firstQuestion, Random random) {
         Turn turn = new Turn();
         turn.id = source.getId();
         if (turn.id == null) { throw invalid("Có câu hỏi chưa được lưu."); }
         int type = group.getType();
-        if (type == 18 && isRuntimeListening(group)) { return buildListening(turn, group, source, passage, random); }
+        if (type == 18 && isRuntimeListening(firstQuestion)) { return buildListening(turn, group, source, passage, random); }
         String mode;
         switch (type) {
             case 2: case 3: case 11: case 18: mode = "TEXT"; break;
@@ -120,7 +128,7 @@ public final class BattleExerciseQuestions {
         content.type = type; content.answerMode = mode; content.title = group.getTitle();
         content.passageHtml = passage; content.instructionsHtml = group.getQuestion();
         content.minimumWords = type == 16 ? 150 : type == 17 ? 250 : 0;
-        if (type == 11 || type == 13 || type == 18) { content.contentHtml = sharedContent; }
+        if (type == 11 || type == 13 || type == 18) { content.contentHtml = firstQuestion.getQuestion(); }
         if (type == 18) { content.audioUrl = listeningAudio(group); }
         BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
         item.id = String.valueOf(source.getId()); item.number = source.getOrdinalNumber(); item.promptHtml = source.getQuestion();
@@ -193,10 +201,10 @@ public final class BattleExerciseQuestions {
         return turn;
     }
 
-    private static boolean isRuntimeListening(QuestionDto group) {
-        List<QuestionDto> questions = children(group);
-        if (questions.isEmpty() || questions.get(0).getQuestionAnswers() == null || questions.get(0).getQuestionAnswers().isEmpty()) { return false; }
-        QuestionAnswerDto answer = questions.get(0).getQuestionAnswers().get(0);
+    private static boolean isRuntimeListening(QuestionDto firstQuestion) {
+        List<QuestionAnswerDto> answers = firstQuestion.getQuestionAnswers();
+        if (answers == null || answers.isEmpty()) { return false; }
+        QuestionAnswerDto answer = answers.get(0);
         return answer != null && answer.getAnswer() != null && ComprehensiveListeningScore.RESPONSE.equals(answer.getAnswer().getAnswer());
     }
 

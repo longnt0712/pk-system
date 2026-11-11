@@ -40,6 +40,10 @@ public class BattleExerciseCatalogServiceImpl implements BattleExerciseCatalogSe
         StringBuilder where = new StringBuilder(" from Question s where s.questionType.id = 11 and s.status = 7")
                 .append(" and s.testFormat = 'COMPREHENSIVE' and s.parent is null")
                 .append(" and s.timeReviewd >= 0 and s.timeReviewd <= 100");
+        if (request.getId() != null) {
+            where.append(" and s.id = :testId");
+            parameters.put("testId", request.getId());
+        }
         if (request.getUserId() != null) { where.append(" and s.user.id = :userId"); parameters.put("userId",request.getUserId()); }
         if (request.isWithoutTestFolder()) { where.append(" and s.testFolder is null"); }
         else if (request.getTestFolderId() != null) {
