@@ -55,8 +55,14 @@
         var selectionRequest = 0, moveLessonRequest = 0;
         vm.user = JSON.parse($cookies.get('education.user') || '{}');
         vm.isAdmin = settings.isAdmin === true;
-        vm.canDelete = vm.isAdmin || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_USER'; });
-        vm.canManageCategories = vm.canDelete || (vm.user.roles || []).some(function (role) { return role.name === 'ROLE_VIEWER'; });
+        var roles = vm.user.roles || [];
+        var canManageOwnVocabulary = roles.some(function (role) { return role.name === 'ROLE_USER' || role.name === 'ROLE_VIEWER'; });
+        vm.canDelete = vm.isAdmin || roles.some(function (role) { return role.name === 'ROLE_USER'; });
+        vm.canManageCategories = vm.isAdmin || canManageOwnVocabulary;
+        vm.canDeleteLesson = function (lesson) {
+            return !!(lesson && lesson.id && (vm.isAdmin ||
+                (canManageOwnVocabulary && vm.user.id != null && String(lesson.userId) === String(vm.user.id))));
+        };
         vm.lessons = []; vm.categories = []; vm.cards = []; vm.selected = {}; vm.selectedCount = 0;
         vm.lessonPage = 0; vm.lessonPageSize = 20; vm.lessonTotal = 0;
         vm.page = 1; vm.pageSize = 8; vm.total = 0; vm.status = 0; vm.query = '';
@@ -349,8 +355,8 @@
         vm.cancelLesson = function () { if (!vm.lessonSaving) { vm.lessonDialog.dismiss(); } };
         vm.confirmDeleteLesson = function (fromEditor) {
             var lesson = fromEditor ? vm.lessonDraft : vm.activeLesson;
-            if (!vm.canDelete || !lesson || !lesson.id || vm.lessonOpening || vm.lessonSaving || vm.lessonDeleteDialog) { return; }
-            vm.lessonDeleteDraft = {id: lesson.id, name: lesson.name};
+            if (!vm.canDeleteLesson(lesson) || vm.lessonOpening || vm.lessonSaving || vm.lessonDeleteDialog) { return; }
+            vm.lessonDeleteDraft = {id: lesson.id, name: lesson.name, userId: lesson.userId};
             vm.lessonDeleteError = '';
             if (fromEditor) { vm.lessonDialog.dismiss(); }
             var dialog = vm.lessonDeleteDialog = openDialog('vocabulary_delete_lesson_modal.html');
@@ -359,7 +365,7 @@
         };
         vm.cancelDeleteLesson = function () { if (!vm.lessonDeleting && vm.lessonDeleteDialog) { vm.lessonDeleteDialog.dismiss(); } };
         vm.deleteLesson = function () {
-            if (!vm.canDelete || vm.lessonDeleting || !vm.lessonDeleteDialog || !vm.lessonDeleteDraft) { return; }
+            if (!vm.canDeleteLesson(vm.lessonDeleteDraft) || vm.lessonDeleting || !vm.lessonDeleteDialog) { return; }
             var dialog = vm.lessonDeleteDialog;
             vm.lessonDeleting = true; vm.lessonDeleteError = '';
             return lessons.deleteObject(vm.lessonDeleteDraft.id).then(function (ok) {

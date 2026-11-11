@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import javax.persistence.TypedQuery;
 
 import org.joda.time.LocalDateTime;
@@ -343,18 +344,16 @@ public class TopicServiceImpl implements TopicService {
 	@Override
 	@Transactional
 	public boolean deleteObject(Long id) {
-		if(id == null) {
-			return false;
-		}
-		Topic domain = topicRepository.getOne(id);
-		if(domain == null) {
-			return false;
-		}
+		if (id == null) { return false; }
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !(authentication.getPrincipal() instanceof User)
-				|| (!VocabularyPolicy.hasRole(authentication, "ROLE_ADMIN")
-					&& (domain.getUser() == null || domain.getUser().getId() == null
-						|| !domain.getUser().getId().equals(((User) authentication.getPrincipal()).getId())))) {
+		User actor = VocabularyPolicy.authenticatedUser(authentication);
+		if (actor == null) {
+			throw new AccessDeniedException("Bạn cần đăng nhập để xóa bài từ vựng.");
+		}
+		boolean admin = "ADMIN".equals(VocabularyPolicy.role(authentication));
+		Topic domain = manager.find(Topic.class, id, LockModeType.PESSIMISTIC_WRITE);
+		if (domain == null) { return false; }
+		if (!admin && (domain.getUser() == null || !actor.getId().equals(domain.getUser().getId()))) {
 			throw new AccessDeniedException("Bạn chỉ được xóa bài từ vựng do chính mình tạo.");
 		}
 		// Removing a vocabulary lesson must never remove its flashcards.

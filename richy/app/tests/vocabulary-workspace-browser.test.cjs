@@ -348,7 +348,7 @@ test('one workspace selects a lesson, creates a lesson with category and saves w
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.waitForFunction(() => window.vm.activeLesson && window.vm.activeLesson.id === 101 && !window.vm.cardsLoading);
         assert.match(await page.locator('#vocabulary-heading').innerText(), /Little things/);
-        assert.equal(await page.getByRole('button', {name: 'Xóa bài', exact: true}).count(), 0, 'viewers cannot delete lessons');
+        assert.ok(await page.getByRole('button', {name: 'Xóa bài', exact: true}).isVisible());
         assert.ok(!await page.locator('.vw-word-card').filter({hasText: 'wanderlust'}).count());
         await page.getByRole('button', {name: 'Thêm từ', exact: true}).click();
         await page.getByLabel('Từ / cụm từ', {exact: true}).fill('stay curious');
@@ -710,10 +710,10 @@ test('export follows the selected lesson and exports every result while preservi
     } finally { await browser.close(); }
 });
 
-test('deleting a lesson from its header confirms first and keeps its vocabulary in the library', async () => {
+test('a viewer can delete an owned lesson after confirming and keep its vocabulary in the library', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
-        const {page, state} = await fixture(browser, {role: 'USER', width: 390});
+        const {page, state} = await fixture(browser, {role: 'VIEWER', width: 390});
         await selectCategory(page);
         await page.getByRole('button', {name: /Little things, every day/}).click();
         await page.getByRole('button', {name: 'Sửa bài từ vựng', exact: true}).click();

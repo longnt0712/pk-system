@@ -152,10 +152,16 @@ public class VocabularyWorkspacePersistenceTest {
         }
         assertEquals(36, topicIds.size());
     }
-    @Test public void deletingLessonUnlinksItsCardsWithoutDeletingVocabulary() {
+    @Test public void viewerCanDeleteOwnLessonAndKeepItsVocabularyButCannotDeleteAnotherLesson() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, "",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_VIEWER"))));
         Long before = manager.createQuery("select count(q.id) from Question q", Long.class).getSingleResult();
+        try { lessons.deleteObject(foreignLessonId); fail("Viewer cannot delete someone else's lesson"); }
+        catch (AccessDeniedException expected) { }
         assertTrue(lessons.deleteObject(lessonId)); manager.flush(); manager.clear();
         assertNull(manager.find(Topic.class, lessonId));
+        assertFalse(lessons.deleteObject(lessonId));
         assertEquals(before, manager.createQuery("select count(q.id) from Question q", Long.class).getSingleResult());
         QuestionDto search = new QuestionDto(); search.setStatus(0); search.setWithoutTopics(true);
         assertEquals(3, cards.getVocabularyPage(search, 1, 8).getTotalElements());

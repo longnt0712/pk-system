@@ -7,10 +7,12 @@ import com.globits.richy.service.impl.QuestionServiceImpl;
 import com.globits.richy.service.impl.TopicServiceImpl;
 import com.globits.richy.service.impl.TopicCategoryVisibilityService;
 import com.globits.richy.rest.RestQuestionController;
+import com.globits.richy.rest.RestTopicController;
 import com.globits.security.domain.User;
 import com.globits.security.repository.UserRepository;
 import java.util.*;
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
 import javax.persistence.TypedQuery;
 import org.junit.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -206,6 +208,8 @@ public class VocabularyAccessTest {
         Secured save = RestQuestionController.class.getMethod("saveOne", QuestionDto.class).getAnnotation(Secured.class);
         assertTrue(Arrays.asList(save.value()).contains("ROLE_VIEWER"));
         assertTrue(Arrays.asList(save.value()).contains("ROLE_USER"));
+        Secured deleteLesson = RestTopicController.class.getMethod("deleteOne", Long.class).getAnnotation(Secured.class);
+        assertArrayEquals(new String[]{"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"}, deleteLesson.value());
         assertNotNull(QuestionServiceImpl.class.getMethod("saveForCurrentUser", QuestionDto.class)
             .getAnnotation(org.springframework.transaction.annotation.Transactional.class));
         assertNotNull(TopicServiceImpl.class.getMethod("saveObject", TopicDto.class)
@@ -223,7 +227,9 @@ public class VocabularyAccessTest {
     }
     @Test public void deletionCannotRemoveAnotherAccountsCardsOrLessons() {
         login("ROLE_USER"); Question card = existing(); User other = new User(); other.setId(99L); card.setUser(other);
-        Topic lesson = new Topic(); lesson.setId(11L); lesson.setUser(other); when(topics.getOne(11L)).thenReturn(lesson);
+        Topic lesson = new Topic(); lesson.setId(11L); lesson.setUser(other);
+        EntityManager manager = (EntityManager) ReflectionTestUtils.getField(lessons, "manager");
+        when(manager.find(Topic.class, 11L, LockModeType.PESSIMISTIC_WRITE)).thenReturn(lesson);
         denied(() -> cards.deleteObject(31L)); denied(() -> lessons.deleteObject(11L));
         verify(questions, never()).delete(card); verify(topics, never()).delete(lesson);
         card.setUser(owner); lesson.setUser(owner);

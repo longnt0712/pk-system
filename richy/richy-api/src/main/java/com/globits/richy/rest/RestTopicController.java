@@ -79,9 +79,9 @@ public class RestTopicController {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
-	public boolean saveOne(@PathVariable Long id) {
+	public boolean deleteOne(@PathVariable Long id) {
 		return service.deleteObject(id);
 	}
 	

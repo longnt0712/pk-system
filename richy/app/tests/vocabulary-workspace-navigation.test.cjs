@@ -78,7 +78,7 @@ test('exact search is sent to the API and word details show all linked lessons',
     assert.equal(workspace.cardTopics.length, 0);
 });
 
-test('a viewer can create a personal folder and opens old category links under uncategorized', async () => {
+test('a viewer can manage personal folders and delete only their own lesson after confirmation', async () => {
     let Controller;
     const module = {
         controller(name, fn) { Controller = fn; return this; },
@@ -86,7 +86,8 @@ test('a viewer can create a personal folder and opens old category links under u
     };
     const context = vm.createContext({angular: {module: () => module, noop() {}}});
     vm.runInContext(fs.readFileSync(path.join(app, 'topic/controllers/VocabularyController.js'), 'utf8'), context);
-    const categoryReads = [], lessonReads = [], saves = [];
+    const categoryReads = [], lessonReads = [], saves = [], deletedIds = [], dialogs = [];
+    const ownLesson = {id: 101, userId: 7, name: 'Bài cũ', topicCategory: {id: 5}};
     const lessons = {
         getPageTopicCategory(search) {
             categoryReads.push(search);
@@ -94,14 +95,26 @@ test('a viewer can create a personal folder and opens old category links under u
         },
         getPage(search) {
             lessonReads.push(search);
-            return Promise.resolve({content: [{id: 101, name: 'Bài cũ', topicCategory: {id: 5}}], totalElements: 1});
+            return Promise.resolve(deletedIds.length ? {content: [], totalElements: 0} : {content: [ownLesson], totalElements: 1});
         },
-        saveCategory(draft) { saves.push(draft); return Promise.resolve(true); }
+        saveCategory(draft) { saves.push(draft); return Promise.resolve(true); },
+        deleteObject(id) { deletedIds.push(id); return Promise.resolve(true); }
     };
-    const workspace = new Controller({$on() {}}, {}, {open: () => ({result: Promise.resolve(), close() {}})},
+    const modal = {open(options) {
+        dialogs.push(options.templateUrl);
+        let close; const result = new Promise(resolve => { close = resolve; });
+        return {result, close};
+    }};
+    const q = {defer() { return {promise: new Promise(() => {}), resolve() {}}; }};
+    const timeout = () => ({}); timeout.cancel = () => {};
+    const cards = {
+        getVocabularyUsage: () => Promise.resolve({role: 'VIEWER'}),
+        getVocabularyPage: () => Promise.resolve({content: [], totalElements: 0})
+    };
+    const workspace = new Controller({$on() {}}, q, modal,
         {get: () => '{"id":7,"roles":[{"name":"ROLE_VIEWER"}]}'},
         {search: (...args) => args.length ? {replace() {}} : {category: '5'}}, {},
-        {getVocabularyUsage: () => Promise.resolve({role: 'VIEWER'})}, lessons, {success() {}}, {}, {});
+        cards, lessons, {success() {}}, {}, timeout);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(categoryReads[0].personalLibrary, true);
     assert.equal(workspace.canManageCategories, true);
@@ -114,4 +127,15 @@ test('a viewer can create a personal folder and opens old category links under u
     await workspace.saveCategory();
     assert.equal(saves[0].parentId, null);
     assert.equal(saves[0].name, 'Nhóm mới');
+
+    await workspace.selectLesson(ownLesson);
+    assert.equal(workspace.canDeleteLesson(ownLesson), true);
+    assert.equal(workspace.canDeleteLesson({id: 102, userId: 9}), false);
+    workspace.confirmDeleteLesson();
+    assert.equal(dialogs.at(-1), 'vocabulary_delete_lesson_modal.html');
+    assert.deepEqual(deletedIds, []);
+    await workspace.deleteLesson();
+    assert.deepEqual(deletedIds, [101]);
+    assert.equal(workspace.view, 'category');
+    assert.equal(workspace.lessons.length, 0);
 });
