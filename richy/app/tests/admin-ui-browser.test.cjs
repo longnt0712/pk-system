@@ -63,7 +63,7 @@ test('class table preserves readable columns and contained keyboard scrolling at
             }));
             assert.ok(dimensions.columns[0] >= 220, JSON.stringify(dimensions));
             assert.ok(dimensions.columns[1] >= 220, JSON.stringify(dimensions));
-            assert.ok(dimensions.columns[2] >= 300, JSON.stringify(dimensions));
+            assert.ok(dimensions.columns[2] >= 250 && dimensions.columns[2] <= 280, JSON.stringify(dimensions));
             assert.ok(dimensions.heights.every(height => height < 180), JSON.stringify(dimensions));
             assert.ok(dimensions.pageWidth <= dimensions.viewport + 1, JSON.stringify(dimensions));
             if (width < 1000) {
@@ -72,6 +72,14 @@ test('class table preserves readable columns and contained keyboard scrolling at
                 await page.keyboard.press('ArrowRight');
                 await page.waitForFunction(() => document.querySelector('.class-tree-scroll').scrollLeft > 0);
             }
+            const actions = await page.locator('.class-tree-actions').first().locator('.btn').evaluateAll(buttons =>
+                buttons.map(button => ({text: button.textContent.trim(), title: button.title, label: button.getAttribute('aria-label')}))
+            );
+            assert.equal(actions.length, 5);
+            assert.ok(actions.every(action => action.text === '' && action.title && action.label));
+            const scheduleLink = page.getByRole('link', {name: 'Thiết lập lớp'});
+            assert.equal(await scheduleLink.getAttribute('href'), '#/schedule');
+            assert.equal(await scheduleLink.getAttribute('target'), null);
             await page.locator('.class-tree-actions button[title="Mở bảng phân đội"]').click();
             assert.equal(await page.evaluate(() => window.teamBoardOpened), true);
             await page.close();

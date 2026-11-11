@@ -54,22 +54,30 @@
     }
     .class-tree-scroll { max-width:100%; overflow-x:auto; }
     .class-tree-table th, .class-tree-table td { vertical-align:middle; white-space:normal; word-break:normal; }
-    .class-tree-table .class-name-column { width:30%; }
-    .class-tree-table .class-responsible-column { width:30%; }
-    .class-tree-table .class-actions-column { width:40%; }
+    .class-tree-table .class-actions-column { width:264px; }
     .class-tree-responsible {
         overflow-wrap:anywhere;
         word-break:normal;
     }
     .class-tree-responsible strong { white-space:nowrap; }
     .class-tree-actions {
-        white-space:normal;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex-wrap:wrap;
+        gap:6px;
     }
-    .class-tree-actions .btn {
-        white-space:nowrap;
-        margin:3px 2px 3px 0;
-        padding-left:9px;
-        padding-right:9px;
+    .class-tree-actions > .btn {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:44px;
+        height:44px;
+        margin:0;
+    }
+    .class-tree-actions > .btn > .fa {
+        margin:0;
+        font-size:16px;
     }
     .class-teacher-empty { color:#9aa4b2; font-style:italic; }
     .class-team-link { border:0; background:transparent; color:#337ab7; padding:0; font-weight:inherit; text-align:left; }
@@ -911,25 +919,29 @@
                                 </div>
                                 <span class="class-teacher-empty" data-ng-if="!row.teachers.length">Chưa gán</span>
                             </td>
-                            <td class="class-tree-actions">
-                                <a class="btn btn-xs btn-warning" data-ng-if="row.canEdit && !row.parentId"
-                                        data-ng-href="{{vm.schedulePageUrl(row)}}" target="_blank" rel="noopener noreferrer"
-                                        title="Mở trang thiết lập giờ học và kế hoạch theo ngày trong tab mới">
-                                    <i class="fa fa-calendar"></i> Thiết lập lớp
-                                </a>
-                                <button class="btn btn-xs btn-primary" data-ng-if="row.canManageTeams && !row.parentId"
-                                        data-ng-click="vm.openTeamBoard(row)" title="Mở bảng phân đội">
-                                    <i class="fa fa-random"></i> Phân đội
-                                </button>
-                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild && !row.parentId" title="Tạo đội"
-                                        data-ng-click="vm.openEditor(null, row.id)"><i class="fa fa-plus"></i> Tạo đội</button>
-                                <button class="btn btn-xs btn-info" data-ng-if="row.canEdit"
-                                        title="Sửa thông tin / thêm trưởng phó"
-                                        data-ng-click="vm.openEditor(row)">
-                                    <i class="fa fa-pencil"></i> Sửa / Trưởng phó
-                                </button>
-                                <button class="btn btn-xs btn-danger" data-ng-if="row.canEdit"
-                                        data-ng-click="vm.confirmDelete(row)"><i class="fa fa-trash"></i></button>
+                            <td>
+                                <div class="class-tree-actions">
+                                    <a class="btn btn-xs btn-warning" data-ng-if="row.canEdit && !row.parentId"
+                                       data-ng-href="{{vm.schedulePageUrl(row)}}" title="Thiết lập lớp" aria-label="Thiết lập lớp">
+                                        <i class="fa fa-calendar" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-xs btn-primary" data-ng-if="row.canManageTeams && !row.parentId"
+                                            data-ng-click="vm.openTeamBoard(row)" title="Mở bảng phân đội" aria-label="Phân đội">
+                                        <i class="fa fa-random" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-success" data-ng-if="row.canAddChild && !row.parentId"
+                                            data-ng-click="vm.openEditor(null, row.id)" title="Tạo đội" aria-label="Tạo đội">
+                                        <i class="fa fa-plus" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-info" data-ng-if="row.canEdit"
+                                            data-ng-click="vm.openEditor(row)" title="Sửa thông tin / thêm trưởng phó" aria-label="Sửa / Trưởng phó">
+                                        <i class="fa fa-pencil" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-danger" data-ng-if="row.canEdit"
+                                            data-ng-click="vm.confirmDelete(row)" title="Xóa lớp hoặc đội" aria-label="Xóa lớp hoặc đội">
+                                        <i class="fa fa-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         <tr data-ng-if="!vm.visibleClasses.length">
