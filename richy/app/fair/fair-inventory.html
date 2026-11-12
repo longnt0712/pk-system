@@ -56,14 +56,26 @@
                     <label class="fair-inventory-search">Tìm theo tên
                         <input type="search" placeholder="Nhập tên mặt hàng…" ng-model="inventory.filters.name" ng-change="inventory.updateTable()">
                     </label>
-                    <label ng-repeat="group in inventory.groups track by group.field">{{group.label}}
-                        <select ng-model="inventory.filters[group.field]" ng-change="inventory.updateTable()"
-                            ng-options="option.id as option.name for option in group.options">
-                            <option value="">{{group.all}}</option>
-                        </select>
-                    </label>
+                    <div class="fair-inventory-filter" ng-repeat="group in inventory.groups track by group.field">
+                        <span class="fair-inventory-filter-label" id="fair-filter-{{group.field}}">{{group.label}}</span>
+                        <details class="fair-multi-select" ng-class="{'is-disabled': inventory.busy || inventory.itemForm}">
+                            <summary aria-labelledby="fair-filter-{{group.field}}" ng-class="{'is-active': inventory.filters[group.field].length}"
+                                title="{{inventory.filterSummary(group)}}">
+                                <span>{{inventory.filterSummary(group)}}</span>
+                            </summary>
+                            <div class="fair-multi-select-menu" role="group" aria-labelledby="fair-filter-{{group.field}}">
+                                <p class="fair-muted" ng-if="!group.options.length">Chưa có danh mục.</p>
+                                <label class="fair-multi-select-option" ng-repeat="option in group.options track by option.id">
+                                    <input type="checkbox" ng-checked="inventory.isFiltered(group, option)" ng-click="inventory.toggleFilter(group, option)">
+                                    <span>{{option.name}}</span>
+                                </label>
+                                <button type="button" class="fair-multi-select-reset" ng-if="inventory.filters[group.field].length"
+                                    ng-click="inventory.clearGroupFilter(group)">Bỏ chọn {{group.label.toLowerCase()}}</button>
+                            </div>
+                        </details>
+                    </div>
                     <button class="fair-button" type="button" ng-click="inventory.clearFilters()"
-                        ng-disabled="!inventory.filters.name && !inventory.filters.categoryId && !inventory.filters.difficultyId">Xóa lọc</button>
+                        ng-disabled="!inventory.hasFilters()">Xóa lọc</button>
                 </fieldset>
                 <p class="fair-muted fair-inventory-status" role="status">
                     <span ng-if="!inventory.exporting">Hiển thị {{inventory.count(inventory.visibleItems.length)}} / {{inventory.count(inventory.items.length)}} mặt hàng</span>

@@ -16,7 +16,7 @@
             var nameOrder = new Intl.Collator('vi', {numeric: true, sensitivity: 'base'});
             vm.items = [];
             vm.visibleItems = [];
-            vm.filters = {};
+            vm.filters = emptyFilters();
             vm.groups = [
                 {kind: 'CATEGORY', field: 'categoryId', label: 'Thể loại', all: 'Tất cả thể loại'},
                 {kind: 'DIFFICULTY', field: 'difficultyId', label: 'Mức độ', all: 'Tất cả mức độ'}
@@ -37,11 +37,15 @@
                 photoViewport = dialog.querySelector('.fair-photo-viewport');
                 dialog.addEventListener('close', onDialogClose);
                 win.addEventListener('resize', resizePhoto);
+                win.document.addEventListener('click', closeFilterMenus);
+                win.document.addEventListener('keydown', closeFilterMenusOnEscape);
             };
             vm.$onDestroy = function () {
                 disposed = true;
                 if (dialog) { dialog.removeEventListener('close', onDialogClose); }
                 win.removeEventListener('resize', resizePhoto);
+                win.document.removeEventListener('click', closeFilterMenus);
+                win.document.removeEventListener('keydown', closeFilterMenusOnEscape);
                 clearPreview();
                 vm.cancelItem();
             };
@@ -56,10 +60,25 @@
                 vm.groups.forEach(function (group) {
                     group.options = options.filter(function (option) { return option.kind === group.kind; });
                     group.options.forEach(function (option) { vm.optionsById[option.id] = option.name; });
-                    if (vm.filters[group.field] != null && !vm.optionsById[vm.filters[group.field]]) {
-                        vm.filters[group.field] = null;
-                    }
+                    vm.filters[group.field] = (vm.filters[group.field] || []).filter(function (id) {
+                        return vm.optionsById.hasOwnProperty(id);
+                    });
                 });
+            }
+            function emptyFilters() { return {name: '', categoryId: [], difficultyId: []}; }
+            function closeFilterMenus(event) {
+                var menus = element[0].querySelectorAll('.fair-multi-select[open]');
+                Array.prototype.forEach.call(menus, function (menu) {
+                    if (!event || !menu.contains(event.target)) { menu.open = false; }
+                });
+            }
+            function closeFilterMenusOnEscape(event) {
+                if (event.key !== 'Escape') { return; }
+                var menu = element[0].querySelector('.fair-multi-select[open]');
+                if (menu) {
+                    menu.open = false;
+                    menu.querySelector('summary').focus();
+                }
             }
             function searchName(value) {
                 return (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
@@ -77,7 +96,8 @@
                 vm.visibleItems = vm.items.filter(function (item) {
                     return (!query || searchName(item.name).includes(query)) &&
                         vm.groups.every(function (group) {
-                            return vm.filters[group.field] == null || vm.filters[group.field] === item[group.field];
+                            var selected = vm.filters[group.field];
+                            return !selected.length || selected.indexOf(item[group.field]) !== -1;
                         });
                 });
                 if (vm.sortField) {
@@ -122,8 +142,30 @@
             vm.photoUrl = function (item) { return itemPath(item.id) + '/photo?v=' + item.revision; };
             vm.updateTable = updateTable;
             vm.clearFilters = function () {
-                vm.filters = {};
+                vm.filters = emptyFilters();
+                closeFilterMenus();
                 updateTable();
+            };
+            vm.hasFilters = function () {
+                return !!vm.filters.name || vm.groups.some(function (group) { return vm.filters[group.field].length; });
+            };
+            vm.isFiltered = function (group, option) {
+                return vm.filters[group.field].indexOf(option.id) !== -1;
+            };
+            vm.toggleFilter = function (group, option) {
+                var selected = vm.filters[group.field], index = selected.indexOf(option.id);
+                if (index === -1) { selected.push(option.id); } else { selected.splice(index, 1); }
+                updateTable();
+            };
+            vm.clearGroupFilter = function (group) {
+                vm.filters[group.field] = [];
+                updateTable();
+            };
+            vm.filterSummary = function (group) {
+                var selected = vm.filters[group.field];
+                if (!selected.length) { return group.all; }
+                if (selected.length === 1) { return vm.optionsById[selected[0]]; }
+                return 'Đã chọn ' + selected.length + ' ' + group.label.toLowerCase();
             };
             vm.sortBy = function (field) {
                 vm.sortDirection = vm.sortField === field ? -vm.sortDirection : 1;
