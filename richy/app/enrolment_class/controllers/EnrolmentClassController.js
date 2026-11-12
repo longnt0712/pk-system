@@ -3,6 +3,28 @@
 
     angular.module('Hrm.EnrolmentClass').controller('EnrolmentClassController', EnrolmentClassController);
 
+    // Gọi biểu thức một lần khi phần tử sắp cuộn tới (cách 200px). Trình duyệt cũ: gọi ngay.
+    angular.module('Hrm.EnrolmentClass').directive('revealOnScroll', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var onReveal = $parse(attrs.revealOnScroll), done = false, observer = null;
+                function reveal() {
+                    if (done) { return; }
+                    done = true;
+                    if (observer) { observer.disconnect(); observer = null; }
+                    scope.$evalAsync(function () { onReveal(scope); });
+                }
+                if (!window.IntersectionObserver) { reveal(); return; }
+                observer = new window.IntersectionObserver(function (entries) {
+                    if (entries.some(function (entry) { return entry.isIntersecting; })) { reveal(); }
+                }, {rootMargin: '200px 0px'});
+                observer.observe(element[0]);
+                scope.$on('$destroy', function () { if (observer) { observer.disconnect(); } });
+            }
+        };
+    }]);
+
     angular.module('Hrm.EnrolmentClass').directive('homeworkProgressWheel', function () {
         return {
             restrict: 'A',
@@ -713,8 +735,12 @@
 			vm.scheduleClass.weeklySessions = [];
 			vm.scheduleTopics = [];
 			vm.scheduleTopicCategories = [];
-			vm.scheduleTopicCategoriesLoading = true;
+			// Category chỉ tải khi cuộn tới "Thiết lập bài học" hoặc khi mở form task.
+			vm.scheduleTopicCategoriesRequested = false;
+			vm.scheduleTopicCategoriesLoading = false;
 			vm.scheduleTopicCategoriesError = false;
+			vm.weeklySessionsRevealed = false;
+			vm.learningSettingsRevealed = false;
 			vm.scheduleTopicCategoriesSaving = false;
 			vm.topicCategorySettingsLoaded = false;
 			vm.topicCategorySearch = '';
@@ -765,9 +791,21 @@
 				toastr.error('Không tải được các buổi học đã thiết lập.', 'Lỗi');
 			});
 
-			vm.refreshScheduleTopicCategories();
-
 			vm.loadScheduleMonth();
+		};
+
+		vm.revealWeeklySessions = function () {
+			vm.weeklySessionsRevealed = true;
+		};
+
+		vm.revealLearningSettings = function () {
+			vm.learningSettingsRevealed = true;
+			vm.ensureScheduleTopicCategories();
+		};
+
+		vm.ensureScheduleTopicCategories = function () {
+			if (!vm.scheduleClass || vm.scheduleTopicCategoriesRequested) { return; }
+			vm.refreshScheduleTopicCategories();
 		};
 
 		vm.loadScheduleMonth = function () {
@@ -956,7 +994,7 @@
 
 		vm.saveTopicCategoryVisibility = function () {
 			if (!vm.scheduleClass || !vm.scheduleClass.id || vm.scheduleTopicCategoriesSaving
-					|| !vm.topicCategorySettingsLoaded || vm.scheduleSettingsError
+					|| !vm.topicCategorySettingsLoaded || vm.scheduleSettingsError || !vm.scheduleTopicCategoriesRequested
 					|| vm.scheduleTopicCategoriesLoading || vm.scheduleTopicCategoriesError) { return; }
 			var visible = {};
 			angular.forEach(vm.scheduleClass.visibleTopicCategoryIds || [], function (id) {
@@ -2448,6 +2486,7 @@
         var taskCategoryListRequest = 0;
         vm.refreshScheduleTopicCategories = function () {
             var request = ++taskCategoryListRequest;
+            vm.scheduleTopicCategoriesRequested = true;
             vm.scheduleTopicCategoriesLoading = true;
             vm.scheduleTopicCategoriesError = false;
             return service.getScheduleTopicCategories().then(function (categories) {
@@ -2512,6 +2551,7 @@
 			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null,
 				activityType: 'DAILY_VOCAB', requiredAttempts: 1, studentProgress: []});
 			vm.taskEditor.activityType = vm.taskEditor.activityType || 'DAILY_VOCAB';
+            vm.ensureScheduleTopicCategories();
             vm.taskCategoryPickerOpen = false;
             vm.taskEditor.topicIds = vm.taskTopicIds(vm.taskEditor);
             vm.taskEditorError = '';

@@ -1120,7 +1120,7 @@
                 </div>
             </section>
 
-            <section class="class-schedule-time-card">
+            <section class="class-schedule-time-card" data-reveal-on-scroll="vm.revealWeeklySessions()">
                 <div class="class-schedule-time-header">
                     <div class="class-schedule-time-title">
                         <strong><i class="fa fa-clock-o"></i> Lịch học hằng tuần</strong>
@@ -1140,7 +1140,10 @@
                     Không tải được lịch học hằng tuần. Hãy đóng cửa sổ và mở lại để tránh ghi đè dữ liệu cũ.
                 </div>
 
-                <div class="class-schedule-session-list" data-ng-if="!vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
+                <div class="class-schedule-settings-loading" data-ng-if="!vm.weeklySessionsRevealed && !vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
+                    <i class="fa fa-spinner fa-spin"></i> Đang tải...
+                </div>
+                <div class="class-schedule-session-list" data-ng-if="vm.weeklySessionsRevealed && !vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
                     <div class="class-schedule-session-row"
                          data-ng-repeat="session in vm.scheduleClass.weeklySessions track by $index">
                         <span class="class-schedule-session-number">{{$index + 1}}</span>
@@ -1171,7 +1174,7 @@
                     </div>
                 </div>
 
-                <div class="class-schedule-time-footer" data-ng-if="!vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
+                <div class="class-schedule-time-footer" data-ng-if="vm.weeklySessionsRevealed && !vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
                     <span class="class-schedule-session-note">
                         <i class="fa fa-info-circle"></i> Có thể thêm nhiều buổi trong cùng một ngày nếu cần.
                     </span>
@@ -1183,7 +1186,7 @@
                 </div>
             </section>
 
-            <section class="class-learning-settings-card">
+            <section class="class-learning-settings-card" data-reveal-on-scroll="vm.revealLearningSettings()">
                 <div class="class-learning-settings-header">
                     <div class="class-learning-settings-title">
                         <strong><i class="fa fa-book"></i> Thiết lập bài học</strong>
@@ -1192,7 +1195,7 @@
                 </div>
 
                 <div class="class-learning-settings-toolbar"
-                     data-ng-if="vm.topicCategorySettingsLoaded && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
+                     data-ng-if="vm.topicCategorySettingsLoaded && vm.scheduleTopicCategoriesRequested && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
                     <input type="text" class="form-control class-learning-settings-search"
                            data-ng-model="vm.topicCategorySearch" placeholder="Tìm category..." />
                     <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.selectAllTopicCategories(true)"
@@ -1202,7 +1205,7 @@
                 </div>
 
                 <div class="class-schedule-settings-loading"
-                     data-ng-if="vm.scheduleTopicCategoriesLoading || (!vm.topicCategorySettingsLoaded && !vm.scheduleSettingsError)">
+                     data-ng-if="vm.scheduleTopicCategoriesLoading || !vm.scheduleTopicCategoriesRequested || (!vm.topicCategorySettingsLoaded && !vm.scheduleSettingsError)">
                     <i class="fa fa-spinner fa-spin"></i> Đang tải danh sách category...
                 </div>
                 <div class="alert alert-danger" data-ng-if="vm.scheduleTopicCategoriesError || vm.scheduleSettingsError">
@@ -1210,7 +1213,7 @@
                 </div>
 
                 <div class="class-learning-category-grid"
-                     data-ng-if="vm.topicCategorySettingsLoaded && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
+                     data-ng-if="vm.topicCategorySettingsLoaded && vm.scheduleTopicCategoriesRequested && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
                     <label class="class-learning-category-option"
                            data-ng-repeat="category in vm.scheduleTopicCategories | filter:{name:vm.topicCategorySearch} track by category.id"
                            data-ng-class="{'is-selected': vm.isVisibleTopicCategory(category)}">
@@ -1221,12 +1224,12 @@
                     </label>
                 </div>
                 <div class="class-learning-settings-empty"
-                     data-ng-if="vm.topicCategorySettingsLoaded && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError && !(vm.scheduleTopicCategories | filter:{name:vm.topicCategorySearch}).length">
+                     data-ng-if="vm.topicCategorySettingsLoaded && vm.scheduleTopicCategoriesRequested && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError && !(vm.scheduleTopicCategories | filter:{name:vm.topicCategorySearch}).length">
                     Không có category phù hợp.
                 </div>
 
                 <div class="class-learning-settings-footer"
-                     data-ng-if="vm.topicCategorySettingsLoaded && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
+                     data-ng-if="vm.topicCategorySettingsLoaded && vm.scheduleTopicCategoriesRequested && !vm.scheduleTopicCategoriesLoading && !vm.scheduleTopicCategoriesError && !vm.scheduleSettingsError">
                     <span class="class-learning-settings-count"
                           data-ng-class="{'is-empty': !vm.scheduleClass.visibleTopicCategoryIds.length}">
                         <i class="fa fa-info-circle"></i>
