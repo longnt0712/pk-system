@@ -549,6 +549,101 @@
             return found;
         }
 
+        // =====================================================
+        // KHỐI DẠNG CÂY (vẫn gõ để tìm trong ui-select)
+        // Thuộc tính gắn lên category dùng tiền tố $$ để angular.toJson
+        // tự bỏ khi gửi searchTopicDto lên server.
+        // =====================================================
+        var categoryChildren = {};
+        var categoryExpanded = {};
+        var categoryTreeCache = {key: null, rows: []};
+        var categoryTreeVersion = 0;
+
+        function foldText(value) {
+            return String(value || '').toLowerCase().normalize('NFD')
+                .replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').trim();
+        }
+
+        function buildCategoryTree(categories) {
+            var byId = {};
+            categoryChildren = {};
+            categories.forEach(function (category) { byId[String(category.id)] = category; });
+            categories.slice().sort(function (left, right) {
+                return (left.name || '').localeCompare(right.name || '', 'vi', {numeric: true});
+            }).forEach(function (category) {
+                var parentKey = category.parentId != null && byId[String(category.parentId)] ? String(category.parentId) : '';
+                category.$$parentKey = parentKey;
+                (categoryChildren[parentKey] = categoryChildren[parentKey] || []).push(category);
+            });
+            function walk(parentKey, depth, path) {
+                (categoryChildren[parentKey] || []).forEach(function (category) {
+                    var key = String(category.id);
+                    category.$$depth = depth;
+                    category.$$path = path.concat(category.name).join(' / ');
+                    category.$$fold = foldText(category.name);
+                    category.$$hasChildren = !!(categoryChildren[key] && categoryChildren[key].length);
+                    walk(key, depth + 1, path.concat(category.name));
+                });
+            }
+            walk('', 0, []);
+            categoryExpanded = {};
+            categoryTreeVersion++;
+        }
+
+        function expandCategoryPath(category) {
+            var guard = 0;
+            while (category && category.$$parentKey && guard++ < 50) {
+                categoryExpanded[category.$$parentKey] = true;
+                category = findById(vm.topicCategories, category.$$parentKey);
+            }
+            categoryTreeVersion++;
+        }
+
+        vm.categoryTreeChoices = function (search) {
+            var query = foldText(search);
+            var cacheKey = categoryTreeVersion + '|' + query;
+            if (categoryTreeCache.key === cacheKey) { return categoryTreeCache.rows; }
+            var rows = [];
+            if (!query) {
+                (function walk(parentKey) {
+                    (categoryChildren[parentKey] || []).forEach(function (category) {
+                        category.$$expanded = !!categoryExpanded[String(category.id)];
+                        category.$$context = false;
+                        rows.push(category);
+                        if (category.$$expanded) { walk(String(category.id)); }
+                    });
+                })('');
+            } else {
+                // Hiện mục khớp + toàn bộ nhánh cha để vẫn thấy vị trí trong cây.
+                (function walk(parentKey) {
+                    var any = false;
+                    (categoryChildren[parentKey] || []).forEach(function (category) {
+                        var start = rows.length;
+                        rows.push(category);
+                        var selfMatch = category.$$fold.indexOf(query) !== -1;
+                        var childMatch = walk(String(category.id));
+                        if (selfMatch || childMatch) {
+                            category.$$expanded = childMatch;
+                            category.$$context = !selfMatch;
+                            any = true;
+                        } else {
+                            rows.splice(start, rows.length - start);
+                        }
+                    });
+                    return any;
+                })('');
+            }
+            categoryTreeCache = {key: cacheKey, rows: rows};
+            return rows;
+        };
+
+        vm.toggleCategoryNode = function (category, $event) {
+            if ($event) { $event.stopPropagation(); $event.preventDefault(); }
+            var key = String(category.id);
+            categoryExpanded[key] = !categoryExpanded[key];
+            categoryTreeVersion++;
+        };
+
         function findById(items, id) {
             var found = null;
             angular.forEach(items || [], function (item) {
@@ -646,6 +741,7 @@
             read(1).then(
                 function () {
                     vm.topicCategories = categories;
+                    buildCategoryTree(categories);
 
                     if (vm.topicCategories.length === 0) {
                         vm.topics = [];
@@ -659,6 +755,7 @@
                         findById(vm.topicCategories, activeDailyResumeDraft && activeDailyResumeDraft.categoryId) ||
                         findById(vm.topicCategories, vm.assignmentLaunch.categoryId) ||
                         findGrade6Category(vm.topicCategories) || vm.topicCategories[0];
+                    expandCategoryPath(vm.searchTopicDto.topicCategory);
 
                     vm.getTopics();
                 },

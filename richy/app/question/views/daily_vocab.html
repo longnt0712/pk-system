@@ -120,19 +120,34 @@
                     ng-disabled="vm.assignmentSelectionLocked"
                     sortable="true"
                     close-on-select="true"
-                    class="daily-ui-select daily-single-select">
+                    class="daily-ui-select daily-single-select daily-category-tree-select">
 
                     <ui-select-match
                         allow-clear="false"
-                        placeholder="Chọn Grade">
-                        {{$select.selected.name}}
+                        placeholder="Gõ hoặc chọn khối">
+                        <span ng-attr-title="{{$select.selected.$$path}}">{{$select.selected.name}}</span>
                     </ui-select-match>
 
                     <ui-select-choices
-                        repeat="so in vm.topicCategories | propsFilter: {name: $select.search}">
+                        repeat="so in vm.categoryTreeChoices($select.search)">
                         <div
-                            class="bold"
-                            ng-bind-html="so.name | highlight: $select.search">
+                            class="daily-cat-node"
+                            ng-class="{'is-context': so.$$context, 'is-root': !so.$$depth}"
+                            ng-style="{'padding-left': (so.$$depth * 18) + 'px'}"
+                            ng-attr-title="{{so.$$path}}">
+                            <span class="daily-cat-guide" ng-if="so.$$depth" ng-style="{'left': (so.$$depth * 18 - 10) + 'px'}"></span>
+                            <button
+                                type="button"
+                                class="daily-cat-toggle"
+                                ng-if="so.$$hasChildren && !$select.search"
+                                ng-click="vm.toggleCategoryNode(so, $event)"
+                                ng-attr-aria-label="{{so.$$expanded ? 'Thu gọn' : 'Mở rộng'}} {{so.name}}">
+                                <i class="fa" ng-class="so.$$expanded ? 'fa-caret-down' : 'fa-caret-right'"></i>
+                            </button>
+                            <span class="daily-cat-spacer" ng-if="!so.$$hasChildren || $select.search"></span>
+                            <i class="fa daily-cat-icon"
+                               ng-class="so.$$hasChildren ? (so.$$expanded ? 'fa-folder-open' : 'fa-folder') : 'fa-book'"></i>
+                            <span class="daily-cat-name" ng-bind-html="so.name | highlight: $select.search"></span>
                         </div>
                     </ui-select-choices>
                 </ui-select>
@@ -2371,6 +2386,59 @@
        - Không override cấu trúc nội bộ ui-select.
        - Chỉ style outer container + toggle button.
        ===================================================== */
+
+    /* ===== Khối dạng cây ===== */
+    .daily-vocab-page .daily-category-tree-select .ui-select-choices {
+        min-width: 300px !important;
+        max-height: 360px !important;
+    }
+    .daily-vocab-page .daily-category-tree-select .ui-select-choices-row > span {
+        padding: 0 10px !important;
+    }
+    .daily-vocab-page .daily-cat-node {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #26324b;
+        white-space: nowrap;
+    }
+    .daily-vocab-page .daily-cat-node.is-root { font-weight: 700; }
+    .daily-vocab-page .daily-cat-node.is-context { color: #8a93a8; }
+    .daily-vocab-page .daily-cat-guide {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: #dfe3f2;
+    }
+    .daily-vocab-page .daily-cat-toggle,
+    .daily-vocab-page .daily-cat-spacer {
+        flex: 0 0 18px;
+        width: 18px;
+        height: 18px;
+    }
+    .daily-vocab-page .daily-cat-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #6b74e8;
+        cursor: pointer;
+    }
+    .daily-vocab-page .daily-cat-toggle:hover { background: #eceefe; }
+    .daily-vocab-page .daily-cat-icon { flex: 0 0 auto; color: #f0a93b; }
+    .daily-vocab-page .daily-cat-icon.fa-book { color: #6b74e8; }
+    .daily-vocab-page .daily-cat-name { overflow: hidden; text-overflow: ellipsis; }
+    .daily-vocab-page .ui-select-choices-row.active .daily-cat-node,
+    .daily-vocab-page .ui-select-choices-row.active .daily-cat-icon,
+    .daily-vocab-page .ui-select-choices-row.active .daily-cat-toggle { color: #fff; }
 
     .daily-vocab-page .daily-single-select.ui-select-bootstrap {
         position: relative !important;
