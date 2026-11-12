@@ -89,6 +89,10 @@ public class BattleOnlineRoomDto implements Serializable {
     private int dumbBallPosition;
     private int dumbBallMaxDistance;
     private DemonDefenseGame.Snapshot demonDefense;
+    private DemonDefenseGame.BagState demonBag;
+
+    public DemonDefenseGame.BagState getDemonBag() { return demonBag; }
+    public void setDemonBag(DemonDefenseGame.BagState value) { demonBag = value; }
     private GiftDropGame.Snapshot giftDrop;
     private GiftLightningGame.Snapshot giftLightning;
     private String lumLuckyAppearance;

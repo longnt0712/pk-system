@@ -6,12 +6,19 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 
 /** Server-authoritative simulation. Call under the containing room's lock. */
 public final class DemonDefenseGame {
     public static final long WAVE_MS = 30000L;
     public static final double DANGER_PROGRESS = 0.75D;
     public static final int BREAK_STREAK_DEDUCTION = 5;
+    private static final int WRONG_ANSWER_STREAK_DEDUCTION = 15;
+    private static final int BAG_CHANCE_PERCENT = 20;
+    public static final int BAG_CHOICES = 3;
+    private static final long TEMPORARY_GUN_MS = 20000L;
+    private static final int LIGHTNING_DAMAGE = 5;
     // Spawn pressure is about 70% of the previous rate (intervals divided by 0.7).
     public static final long BASE_SPAWN_INTERVAL_MS = 11430L;
     private static final long MIN_SPAWN_INTERVAL_MS = 515L;
@@ -34,6 +41,7 @@ public final class DemonDefenseGame {
 
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
     public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
+    public static int wrongAnswerStreak(int streak) { return Math.max(0, streak - WRONG_ANSWER_STREAK_DEDUCTION); }
     public static int pointsRequiredForLevel(int value) {
         int index = Math.max(1, value) - 1;
         return index < LEVEL_TARGETS.length ? LEVEL_TARGETS[index]
@@ -46,6 +54,72 @@ public final class DemonDefenseGame {
     public int bulletsForPlayer(String username, int streak) {
         return Math.max(minimumBulletsForPlayer(username), bulletsForStreak(streak));
     }
+    public int minimumBulletsForPlayer(String username, boolean carry) {
+        PlayerProgress player = players.get(username);
+        return minimumBulletsForPlayer(username) * (carry ? 2 : 1) + (player == null ? 0 : player.permanentGuns);
+    }
+    public int bulletsForPlayer(String username, int streak, long now, boolean carry) {
+        PlayerProgress player = players.get(username);
+        int bullets = bulletsForPlayer(username, streak) * (carry ? 2 : 1);
+        if (player != null) {
+            bullets += player.permanentGuns;
+            for (long endsAt : player.temporaryGuns) {
+                if (endsAt > now) { bullets++; }
+            }
+        }
+        return bullets;
+    }
+    public long gunBoostUntil(String username) {
+        PlayerProgress player = players.get(username);
+        return player == null || player.temporaryGuns.isEmpty() ? 0L
+                : player.temporaryGuns.get(player.temporaryGuns.size() - 1);
+    }
+
+    public void rollBag(String username, Random random) {
+        PlayerProgress player = players.get(username);
+        if (player == null || stoppedAt > 0L || isEliminated(player.teamNumber) || random.nextInt(100) >= BAG_CHANCE_PERCENT) {
+            return;
+        }
+        if (player.bagCount++ == 0) { player.bagId = UUID.randomUUID().toString(); }
+        player.bagVersion++;
+    }
+
+    public BagState bagForPlayer(String username) {
+        PlayerProgress player = players.get(username);
+        return player == null ? null : new BagState(player);
+    }
+
+    public BagReward openBag(String username, String bagId, int choice, long now, Random random) {
+        advance(now);
+        PlayerProgress player = players.get(username);
+        if (player == null || stoppedAt > 0L || isEliminated(player.teamNumber) || player.bagCount == 0 ||
+                choice < 1 || choice > BAG_CHOICES || !player.bagId.equals(bagId)) {
+            return null;
+        }
+
+        int roll = random.nextInt(100);
+        BagPrize prize;
+        ShotResult strike = null;
+        if (roll < 20) {
+            prize = BagPrize.PERMANENT_GUN;
+            player.permanentGuns++;
+        } else if (roll < 50) {
+            prize = BagPrize.TEMPORARY_GUN;
+            player.temporaryGuns.removeIf(endsAt -> endsAt <= now);
+            player.temporaryGuns.add(now + TEMPORARY_GUN_MS);
+        } else if (roll < 90) {
+            prize = BagPrize.LIGHTNING;
+            strike = fire(teams.get(player.teamNumber), username, LIGHTNING_DAMAGE, now, true);
+        } else {
+            prize = BagPrize.EMPTY;
+        }
+
+        player.lastBagReward = new BagReward(bagId, choice, prize, strike);
+        player.bagId = --player.bagCount > 0 ? UUID.randomUUID().toString() : null;
+        player.bagVersion++;
+        return player.lastBagReward;
+    }
+
     public void updatePlayerStreak(String username, int streak) {
         if (username == null) { return; }
         PlayerProgress player = players.get(username);
@@ -163,12 +237,17 @@ public final class DemonDefenseGame {
         TeamState team = teams.get(number);
         updatePlayerStreak(username, streak);
         if (username != null) { players.get(username).teamNumber = number; }
-        int bullets = bulletsForPlayer(username, streak) * (carry ? 2 : 1), hits = 0, kills = 0, points = 0;
-        boolean rescued = false;
         if (team == null || team.eliminatedAt > 0L || stoppedAt > 0L) {
             return new ShotResult(0, 0, 0, 0, false);
         }
-        for (int index = 0; index < bullets; index++) {
+        return fire(team, username, bulletsForPlayer(username, streak, now, carry), now, false);
+    }
+
+    private ShotResult fire(TeamState team, String username, int bullets, long now, boolean lightning) {
+        int hits = 0, kills = 0, points = 0;
+        boolean rescued = false;
+        int remaining = bullets;
+        while (remaining > 0) {
             Enemy nearest = null;
             for (Enemy enemy : team.demons) {
                 if (nearest == null || enemy.progress(now) > nearest.progress(now) ||
@@ -177,15 +256,23 @@ public final class DemonDefenseGame {
                 }
             }
             double progress = nearest == null ? 0D : nearest.progress(now);
-            team.shots.add(new Shot(++nextShotId, username, progress, now, nearest != null));
-            if (nearest != null) {
-                hits++;
-                if (--nearest.health == 0) {
-                    rescued |= progress >= DANGER_PROGRESS;
-                    team.demons.remove(nearest);
-                    kills++;
-                    points += nearest.points;
-                }
+            if (nearest != null || remaining == bullets || !lightning) {
+                team.shots.add(new Shot(++nextShotId, username, progress, now, nearest != null, lightning));
+            }
+            if (nearest == null) {
+                if (lightning) { break; }
+                remaining--;
+                continue;
+            }
+            int damage = lightning ? Math.min(remaining, nearest.health) : 1;
+            remaining -= damage;
+            hits += damage;
+            nearest.health -= damage;
+            if (nearest.health == 0) {
+                rescued |= progress >= DANGER_PROGRESS;
+                team.demons.remove(nearest);
+                kills++;
+                points += nearest.points;
             }
         }
         team.kills += kills;
@@ -264,7 +351,11 @@ public final class DemonDefenseGame {
         }
     }
     private static final class PlayerProgress {
-        int teamNumber, streak, bulletFloor = 1;
+        int teamNumber, streak, bulletFloor = 1, permanentGuns, bagCount;
+        long bagVersion;
+        String bagId;
+        BagReward lastBagReward;
+        final List<Long> temporaryGuns = new ArrayList<>();
     }
     private static final class Enemy {
         final long id, spawnedAt, arrivesAt;
@@ -338,11 +429,41 @@ public final class DemonDefenseGame {
         public final long id, at;
         public final String username;
         public final double progress;
-        public final boolean hit;
-        Shot(long id, String username, double progress, long at, boolean hit) {
+        public final boolean hit, lightning;
+        Shot(long id, String username, double progress, long at, boolean hit, boolean lightning) {
             this.id = id; this.username = username; this.progress = progress; this.at = at; this.hit = hit;
+            this.lightning = lightning;
         }
     }
+
+    public enum BagPrize { PERMANENT_GUN, TEMPORARY_GUN, LIGHTNING, EMPTY }
+
+    public static final class BagReward {
+        public final String bagId;
+        public final int choice, hits, points;
+        public final BagPrize prize;
+        public final boolean rescued;
+
+        BagReward(String bagId, int choice, BagPrize prize, ShotResult strike) {
+            this.bagId = bagId; this.choice = choice; this.prize = prize;
+            this.hits = strike == null ? 0 : strike.hits;
+            this.points = strike == null ? 0 : strike.points;
+            this.rescued = strike != null && strike.rescued;
+        }
+    }
+
+    public static final class BagState {
+        public final String id;
+        public final int count;
+        public final long version;
+        public final BagReward lastReward;
+
+        BagState(PlayerProgress player) {
+            this.id = player.bagId; this.count = player.bagCount; this.version = player.bagVersion;
+            this.lastReward = player.lastBagReward;
+        }
+    }
+
     public static final class ShotResult {
         public final int bullets, hits, kills, points;
         public final boolean rescued;

@@ -1218,6 +1218,70 @@
         vm.unfreezeModalOpen = false;
         vm.getDemonTeamPlayers = getDemonTeamPlayers;
         vm.getDemonShotStyle = getDemonShotStyle;
+        vm.getDemonLightningPath = function (team, shot) {
+            var start = getDemonGunX(team, shot.username), endY = 7 + shot.progress * 73;
+            var midX = (start + 50) / 2, midY = (88 + endY) / 2;
+            return 'M ' + start + ' 88 L ' + (midX + 4) + ' ' + (midY + 7) +
+                ' L ' + (midX - 4) + ' ' + (midY - 2) + ' L ' + (midX + 3) + ' ' + (midY - 5) + ' L 50 ' + endY;
+        };
+        vm.demonBagExpanded = false;
+        vm.demonBagOpening = false;
+        vm.demonBagError = '';
+        var demonBagAttempt = null, demonBagOpenedId = null;
+        vm.getDemonBagReward = function () {
+            var bag = vm.room && vm.room.demonBag;
+            return bag && bag.lastReward && bag.lastReward.bagId === demonBagOpenedId ? bag.lastReward : null;
+        };
+        vm.getDemonBagRewardText = function (reward) {
+            if (reward.prize === 'PERMANENT_GUN') { return '+1 súng đến hết trận'; }
+            if (reward.prize === 'TEMPORARY_GUN') { return '+1 súng trong 20 giây'; }
+            if (reward.prize === 'LIGHTNING') {
+                return reward.hits ? 'Sét đánh trúng ' + reward.hits + ' máu quỷ · +' + reward.points + ' điểm'
+                    : 'Sét đã bắn, hiện chưa có quỷ trong làn';
+            }
+            return 'Túi này trống';
+        };
+        vm.toggleDemonBag = function () {
+            if (vm.demonBagOpening) { return; }
+            vm.demonBagExpanded = !vm.demonBagExpanded;
+            vm.showNextDemonBag();
+        };
+        vm.showNextDemonBag = function () {
+            demonBagOpenedId = null;
+            vm.demonBagError = '';
+        };
+        vm.openDemonBag = function (choice) {
+            var room = vm.room, bag = room && room.demonBag;
+            if (!bag || !bag.id || vm.demonBagOpening || vm.getDemonBagReward() ||
+                    room.status !== 'PLAYING' || isSpectator() || vm.isDemonPlayerEliminated()) { return; }
+            var attempt = {room: room};
+            demonBagAttempt = attempt;
+            demonBagOpenedId = bag.id;
+            vm.demonBagOpening = true;
+            vm.demonBagError = '';
+            function isCurrent() {
+                return !destroyed && !vm.sessionLoginRequired && demonBagAttempt === attempt &&
+                    vm.room && vm.room.status === 'PLAYING' && sameDemonMatch(room, vm.room);
+            }
+            return battleService.openDemonBag(room.code, bag.id, choice).then(function (incoming) {
+                if (!isCurrent()) { return; }
+                if (incoming && Number(incoming.serverTime) >= Number(vm.room.serverTime)) {
+                    applyRoom(incoming, false);
+                } else {
+                    mergeDemonBag(vm.room, incoming);
+                }
+                if (!vm.getDemonBagReward()) { vm.demonBagError = 'Chưa xác nhận được phần thưởng. Hãy mở lại túi.'; }
+            }, function (error) {
+                if (!isCurrent()) { return; }
+                vm.demonBagError = error && error.data && error.data.message || 'Chưa mở được túi. Hãy thử lại.';
+                refreshPrivateRoomState();
+            }).finally(function () {
+                if (demonBagAttempt === attempt) {
+                    demonBagAttempt = null;
+                    vm.demonBagOpening = false;
+                }
+            });
+        };
         vm.getDemonPosition = getDemonPosition;
         vm.getMyDemonTeam = getMyDemonTeam;
         vm.getDemonTeamProgress = getDemonTeamProgress;
@@ -2218,6 +2282,19 @@
                 }
             } catch (ignoreDemonPulse) { /* No effect on questions. */ }
         }
+        function sameDemonMatch(first, second) {
+            return !!(first && second && first.code === second.code && first.demonDefense && second.demonDefense &&
+                first.demonDefense.startedAt === second.demonDefense.startedAt);
+        }
+        function mergeDemonBag(previous, incoming) {
+            if (!sameDemonMatch(previous, incoming) || previous.status !== 'PLAYING' || incoming.status !== 'PLAYING') { return; }
+            var bag = incoming.demonBag;
+            if (bag && (!previous.demonBag || bag.version >= previous.demonBag.version)) {
+                previous.demonBag = bag;
+            } else {
+                incoming.demonBag = previous.demonBag;
+            }
+        }
         function applyDemonArena(arena) {
             if (!isHost() || !isDemonDefenseMode() || !arena) { return; }
             if (vm.demonArena && (arena.startedAt < vm.demonArena.startedAt ||
@@ -3119,6 +3196,7 @@
 
             var previousRoom =
                 vm.room;
+            mergeDemonBag(previousRoom, incoming);
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.adminTerminated) {
                 if (incoming.status !== 'FINISHED' ||
                         (previousRoom.serverTime && incoming.serverTime && incoming.serverTime < previousRoom.serverTime)) { return; }
@@ -3384,6 +3462,13 @@
             if (previousRoom && previousRoom.code === incoming.code &&
                     previousRoom.hostUsername !== incoming.hostUsername && isDemonDefenseMode()) {
                 connectRealtime(incoming.code);
+            }
+            if (!sameDemonMatch(previousRoom, incoming) || incoming.status !== 'PLAYING' ||
+                    isSpectator() || vm.isDemonPlayerEliminated()) {
+                vm.demonBagExpanded = false;
+                vm.demonBagOpening = false;
+                demonBagAttempt = null;
+                vm.showNextDemonBag();
             }
             if (vm.isDemonPlayerEliminated()) {
                 incoming.currentQuestion = null;

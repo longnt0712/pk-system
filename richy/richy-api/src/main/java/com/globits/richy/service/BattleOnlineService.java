@@ -26,6 +26,7 @@ public interface BattleOnlineService {
     BattleOnlineRoomDto videoEvent(String roomCode, String username, com.globits.richy.dto.BattleOnlineVideoDto dto);
     BattleOnlineRoomDto controlQuestionTimer(String roomCode, String username, com.globits.richy.dto.BattleOnlineTimerControlDto dto);
     BattleOnlineGiftClaimResultDto claimGift(String roomCode, String username, BattleOnlineGiftClaimDto request);
+    BattleOnlineRoomDto openDemonBag(String roomCode, String username, String bagId, int choice);
     BattleOnlineRoomDto finishGiftOpening(String roomCode, String username);
     BattleOnlineRoomDto extendGiftOpening(String roomCode, String username);
 

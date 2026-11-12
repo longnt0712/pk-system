@@ -22,6 +22,10 @@ public class BattleOnlinePlayerDto implements Serializable {
     private int demonRescues;
     private int demonBullets;
     private int demonMinimumBullets;
+    private long demonGunBoostUntil;
+
+    public long getDemonGunBoostUntil() { return demonGunBoostUntil; }
+    public void setDemonGunBoostUntil(long value) { demonGunBoostUntil = value; }
 
     public int getDemonBullets() { return demonBullets; }
     public void setDemonBullets(int value) { demonBullets = value; }

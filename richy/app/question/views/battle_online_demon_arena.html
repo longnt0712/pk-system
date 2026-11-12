@@ -37,19 +37,23 @@
                     <span class="demon-enemy-health" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health >= 3 ? '♥♥♥' : demon.health === 2 ? '♥♥' : '♥'}} • {{demon.points || demon.maxHealth || 1}}đ</span>
                 </span>
                 <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                    <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)">
-                        <line ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="88" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
+                    <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)"
+                       ng-class="{'is-lightning': shot.lightning}">
+                        <path ng-if="shot.lightning" class="demon-lightning-glow" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
+                        <path ng-if="shot.lightning" class="demon-lightning-bolt" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
+                        <line ng-if="!shot.lightning" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="88" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
                         <circle cx="50" ng-attr-cy="{{7 + shot.progress * 73}}" r="2" ng-if="shot.hit" />
                     </g>
                 </svg>
                 <div class="demon-gun-row">
                     <div class="demon-player-gun" ng-repeat="player in vm.getDemonTeamPlayers(team.number) track by player.username"
                          ng-attr-title="{{vm.getPlayerDisplayName(player)}}"
-                         ng-class="{'is-frozen': player.frozenUntil > vm.demonClock, 'is-offline': !player.connected}">
+                         ng-class="{'is-frozen': player.frozenUntil > vm.demonClock, 'is-offline': !player.connected, 'has-gun-boost': player.demonGunBoostUntil > vm.demonClock}">
                         <span class="demon-gun-barrels" aria-hidden="true"><i></i><i ng-if="vm.getDemonBullets(player) >= 2"></i><i ng-if="vm.getDemonBullets(player) >= 3"></i></span>
                         <b>{{vm.getPlayerDisplayName(player)}}</b><small>🔥 {{player.streak}} • {{vm.getDemonBullets(player)}} viên</small>
                         <em ng-if="player.frozenUntil > vm.demonClock">❄️ {{((player.frozenUntil - vm.demonClock) / 1000) | number:0}}s</em>
                         <small>Giữ {{player.demonMinimumBullets || 1}} đạn <span ng-if="vm.isDoubleActionPlayer(player)">• ⚡ Gánh</span></small>
+                        <em ng-if="player.demonGunBoostUntil > vm.demonClock">⚡ Súng tăng cường</em>
                         <em ng-if="player.unfreezeCharges">🧊 Giải băng</em>
                     </div>
                 </div>

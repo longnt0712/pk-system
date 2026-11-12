@@ -214,6 +214,12 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.openDemonBag = function (roomCode, bagId, choice) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/demon-bag', null, {
+                params: {bagId: bagId, choice: choice}
+            }).then(function (response) { return response.data; });
+        };
+
         self.claimGift = function (roomCode, giftId) {
             return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/gift', {giftId: giftId})
                 .then(function (response) { return response.data; });

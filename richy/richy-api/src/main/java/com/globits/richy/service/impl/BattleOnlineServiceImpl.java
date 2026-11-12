@@ -2768,25 +2768,32 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireBoostApplied
             );
 
+            boolean demonMode = MODE_DEMON_DEFENSE.equals(room.settings.mode);
             double scoreDelta;
-            if (MODE_LUM_NGAY.equals(room.settings.mode)) {
-                player.streak = correct ? player.streak + 1 : 0;
-                if (correct) { player.correctCount++; } else { player.wrongCount++; }
+            if (demonMode || MODE_LUM_NGAY.equals(room.settings.mode)) {
+                if (correct) {
+                    player.streak++;
+                    player.correctCount++;
+                } else {
+                    player.streak = demonMode ? DemonDefenseGame.wrongAnswerStreak(player.streak) : 0;
+                    player.wrongCount++;
+                }
                 scoreDelta = 0D;
             } else {
-                scoreDelta = applyScore(player, correct, !MODE_DEMON_DEFENSE.equals(room.settings.mode), now);
+                scoreDelta = applyScore(player, correct, true, now);
             }
 
             DemonDefenseGame.ShotResult demonShot = null;
-            if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
+            if (demonMode) {
                 syncDemonPlayersLocked(room, now);
-                demonShot = correct ? room.demonDefense.shoot(player.teamNumber, player.username, player.streak,
-                        demonGameTime(room, now), isDoubleActionPlayerLocked(room, player)) : null;
-                // Demon scores measure actual killed health points; carry changes bullets, never duplicates points.
-                double previousScore = player.score - scoreDelta;
-                scoreDelta = demonShot == null ? 0D : demonShot.points;
-                player.score = previousScore + scoreDelta;
-                if (demonShot != null && demonShot.rescued) { player.demonRescues++; }
+                if (correct) {
+                    demonShot = room.demonDefense.shoot(player.teamNumber, player.username, player.streak,
+                            demonGameTime(room, now), isDoubleActionPlayerLocked(room, player));
+                    scoreDelta = demonShot.points;
+                    player.score += scoreDelta;
+                    if (demonShot.rescued) { player.demonRescues++; }
+                }
+                room.demonDefense.rollBag(player.username, random);
             }
 
             int scoreMultiplier = correct && !MODE_DEMON_DEFENSE.equals(room.settings.mode) && !MODE_LUM_NGAY.equals(room.settings.mode)
@@ -2842,7 +2849,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 result.setMessage(correct
                         ? "CHÍNH XÁC! Bắn " + demonShot.bullets + " viên, trúng " + demonShot.hits + " phát, diệt " + demonShot.kills + " quỷ." +
                             " +" + demonShot.points + " điểm." + (demonShot.rescued ? " CỨU ĐỘI!" : "")
-                        : "SAI RỒI! Streak về 0; vẫn giữ mức súng đã chốt khi lên level.");
+                        : "SAI RỒI! Trừ 15 streak. Streak hiện tại: " + player.streak + ".");
             }
 
             if (correct && scoreMultiplier > 1) {
@@ -3119,6 +3126,41 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         broadcastGeneric(room);
 
         return dto;
+    }
+
+    @Override
+    public BattleOnlineRoomDto openDemonBag(String roomCode, String username, String bagId, int choice) {
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room);
+            if (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng này không có túi mù Diệt Quỷ Ngu.");
+            }
+            PlayerState player = requirePlayer(room, username);
+            requireActivePlayer(player);
+            if (choice < 1 || choice > DemonDefenseGame.BAG_CHOICES) {
+                throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Hãy chọn một trong ba túi.");
+            }
+            long now = System.currentTimeMillis();
+            advanceDemonDefenseLocked(room, now);
+            requirePlaying(room);
+            requireLivingDemonPlayerLocked(room, player);
+            DemonDefenseGame.BagState bag = room.demonDefense.bagForPlayer(username);
+            if (bag != null && bag.lastReward != null && bag.lastReward.bagId.equals(bagId)) {
+                return snapshotLocked(room, username);
+            }
+            DemonDefenseGame.BagReward reward = room.demonDefense.openBag(username, bagId, choice, demonGameTime(room, now), random);
+            if (reward == null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Lượt mở túi đã đổi. Hãy chọn lại túi đang có.");
+            }
+            player.score += reward.points;
+            if (reward.rescued) { player.demonRescues++; }
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room);
+        return result;
     }
 
     @Override
@@ -7525,8 +7567,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setGiftOpeningEndsAt(room.giftOpeningEndsAt);
         dto.setMatchEndsAt(room.giftOpening ? room.giftOpeningEndsAt : (room.videoSynchronized ? 0L : room.matchEndsAt));
         if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && room.demonDefense != null) {
-            dto.setDemonDefense(room.demonDefense.snapshot(demonGameTime(room, System.currentTimeMillis()),
+            dto.setDemonDefense(room.demonDefense.snapshot(demonGameTime(room, snapshotTime),
                     room.hostUsername.equals(viewerUsername)));
+            PlayerState viewer = room.players.get(viewerUsername);
+            if (PLAYING.equals(room.status) && viewer != null && !viewer.spectator &&
+                    !room.demonDefense.isEliminated(viewer.teamNumber)) {
+                dto.setDemonBag(room.demonDefense.bagForPlayer(viewerUsername));
+            }
         }
 
         if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
@@ -7794,9 +7841,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.setUnfreezeCharges(state.unfreezeCharges);
             player.setDemonRescues(state.demonRescues);
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && room.demonDefense != null && !state.spectator) {
-                int multiplier = isDoubleActionPlayerLocked(room, state) ? 2 : 1;
-                player.setDemonBullets(room.demonDefense.bulletsForPlayer(state.username, state.streak) * multiplier);
-                player.setDemonMinimumBullets(room.demonDefense.minimumBulletsForPlayer(state.username) * multiplier);
+                boolean carry = isDoubleActionPlayerLocked(room, state);
+                player.setDemonBullets(room.demonDefense.bulletsForPlayer(state.username, state.streak,
+                        demonGameTime(room, snapshotTime), carry));
+                player.setDemonMinimumBullets(room.demonDefense.minimumBulletsForPlayer(state.username, carry));
+                player.setDemonGunBoostUntil(room.demonDefense.gunBoostUntil(state.username));
             }
             player.setDemonEliminated(MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                     !state.spectator && room.demonDefense != null && room.demonDefense.isEliminated(state.teamNumber));

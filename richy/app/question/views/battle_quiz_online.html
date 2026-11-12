@@ -901,7 +901,7 @@
                 </span>
                 <span ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">
                     Trả lời đúng để súng của mình bắn quỷ; streak 20/30/40 bắn 2/3/4 viên.
-                    Sai mất streak nhưng giữ mức đạn đã chốt khi lên level. Quỷ 1/2/3 máu cho 1/2/3 điểm. Một đội đủ điểm thì cả phòng lên level. Dùng Giải băng để cứu đồng đội.
+                    Sai trừ 15 streak. Mỗi câu trả lời có 20% cơ hội nhận túi mù. Quỷ 1/2/3 máu cho 1/2/3 điểm. Một đội đủ điểm thì cả phòng lên level. Dùng Giải băng để cứu đồng đội.
                     Theo dõi trận đấu trên màn hình host; thiết bị của bạn chỉ hiện câu hỏi và cảnh báo.
                 </span>
             </div>
@@ -1158,6 +1158,29 @@
                     <span>⚡ Ai skill ai</span><b>{{vm.room.recentEvents.length || 0}}</b>
                 </button>
             </div>
+            <section class="demon-bag-panel" aria-label="Túi mù" ng-if="vm.isDemonDefenseMode() && vm.room.status === 'PLAYING' &&
+                     !vm.isSpectator() && !vm.isDemonPlayerEliminated() && (vm.room.demonBag.count || vm.getDemonBagReward())">
+                <button class="demon-bag-toggle" type="button" ng-click="vm.toggleDemonBag()" ng-disabled="vm.demonBagOpening"
+                        ng-attr-aria-expanded="{{vm.demonBagExpanded}}" aria-controls="demon-bag-choices">
+                    <span aria-hidden="true">🎁</span> Túi mù <b ng-if="vm.room.demonBag.count">{{vm.room.demonBag.count}}</b>
+                    <i class="fa" ng-class="vm.demonBagExpanded ? 'fa-chevron-up' : 'fa-chevron-down'" aria-hidden="true"></i>
+                </button>
+                <div id="demon-bag-choices" ng-if="vm.demonBagExpanded">
+                    <div class="demon-bag-options" ng-if="!vm.getDemonBagReward()">
+                        <button type="button" ng-repeat="choice in [1, 2, 3] track by choice" ng-click="vm.openDemonBag(choice)"
+                                ng-disabled="vm.demonBagOpening" ng-attr-aria-label="Mở túi {{choice}}">
+                            <span aria-hidden="true">🎁</span> Túi {{choice}}
+                        </button>
+                    </div>
+                    <div class="demon-bag-result" ng-if="vm.getDemonBagReward() as reward">
+                        <strong role="status">Túi {{reward.choice}} · {{vm.getDemonBagRewardText(reward)}}</strong>
+                        <button type="button" ng-if="vm.room.demonBag.count" ng-click="vm.showNextDemonBag()">Mở túi tiếp</button>
+                        <button type="button" ng-if="!vm.room.demonBag.count" ng-click="vm.toggleDemonBag()">Đóng</button>
+                    </div>
+                    <small ng-if="vm.demonBagOpening && !vm.getDemonBagReward()" role="status">Đang mở túi…</small>
+                    <small ng-if="vm.demonBagError && !vm.getDemonBagReward()" role="alert">{{vm.demonBagError}}</small>
+                </div>
+            </section>
             <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning}">
                 {{vm.demonWarning || 'Trả lời đúng để bảo vệ đội mình!'}}
             </div>
@@ -2794,6 +2817,17 @@
     .battle-online-game-layout.is-demon-layout { grid-template-columns: 1fr !important; }
     .demon-student-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
     .demon-student-status button { border: 1px solid #85bfdb; border-radius: 10px; background: #e8f6ff; color: #174864; padding: 9px 12px; }
+    .demon-bag-panel { margin-bottom: 12px; padding: 8px; border: 1px solid #dbc8ec; border-radius: 12px; background: #faf5ff; color: #492762; }
+    .demon-bag-panel button { min-height: 40px; border: 1px solid #d6c3e9; border-radius: 8px; background: #fff; color: #492762; font-weight: 700; padding: 6px 10px; }
+    .demon-bag-panel button:focus-visible { outline: 2px solid #7043a6; outline-offset: 2px; }
+    .demon-bag-panel button:disabled { opacity: .55; cursor: wait; }
+    .demon-bag-panel .demon-bag-toggle { display: flex; width: 100%; align-items: center; gap: 8px; justify-content: flex-start; background: #f0e3ff; }
+    .demon-bag-toggle i { margin-left: auto; }
+    .demon-bag-toggle b { border-radius: 8px; padding: 2px 7px; background: #fff; }
+    .demon-bag-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+    .demon-bag-options span { display: block; font-size: 1.2em; }
+    .demon-bag-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; }
+    .demon-bag-panel small { display: block; margin-top: 6px; }
     .demon-student-tools { display: flex; gap: 8px; margin-bottom: 12px; }
     .demon-student-tools button { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; min-height: 40px; padding: 8px 12px; border: 1px solid #ddd3ee; border-radius: 10px; background: #f5f0ff; color: #51378b; font-size: 13px; font-weight: 700; }
     .demon-student-tools .is-wrong { border-color: #efd0cf; background: #fff3f1; color: #92362f; }
@@ -2962,6 +2996,10 @@
     .demon-shot-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
     .demon-shot-layer line { stroke: #ffe08a; stroke-width: .6; stroke-linecap: round; }
     .demon-shot-layer circle { fill: #ffe5a5; }
+    .demon-shot-layer .is-lightning path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .demon-lightning-glow { stroke: #55d5ff; stroke-width: 2.4; opacity: .75; }
+    .demon-lightning-bolt { stroke: #e9fbff; stroke-width: .85; }
+    .demon-shot-layer .is-lightning circle { fill: #b7f6ff; }
     .demon-shot-layer g { animation: demon-shot-flash .7s ease-out both; }
     @keyframes demon-shot-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
     .demon-gun-row { position: absolute; top: 83%; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-start; z-index: 4; background: #122338; }
@@ -2972,6 +3010,7 @@
     .demon-gun-barrels { display: inline-flex; justify-content: center; align-items: center; gap: 3px; width: 34px; height: 24px; background: #487f86; border-radius: 5px 5px 9px 9px; border-bottom: 4px solid #b8e8d9; }
     .demon-gun-barrels i { width: 5px; height: 22px; display: block; margin-top: -15px; border-radius: 3px; background: #c4ede2; border: 1px solid #5ca89d; }
     .demon-player-gun.is-frozen .demon-gun-barrels { background: #91d3ff; box-shadow: 0 0 12px #73c8ff; }
+    .demon-player-gun.has-gun-boost .demon-gun-barrels { outline: 2px solid #ffdf78; box-shadow: 0 0 14px #ffbb4a; }
     .demon-player-gun.is-offline { opacity: .45; }
     .demon-team-alert { position: absolute; top: 6%; left: 5%; width: 90%; border-radius: 8px; padding: 7px; text-align: center; font-size: 13px; font-weight: 900; color: #ffe1c8; background: #963c2c; z-index: 5; }
     .demon-rescue-callout { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 23px; color: #ffdc6f; font-weight: 900; z-index: 6; text-shadow: 0 2px 5px #000; }

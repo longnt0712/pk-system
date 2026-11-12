@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.globits.richy.dto.BattleOnlineAnswerDto;
@@ -286,6 +287,12 @@ public class RestBattleOnlineController {
     public BattleOnlineGiftClaimResultDto claimGift(@PathVariable String roomCode,
             @RequestBody BattleOnlineGiftClaimDto dto) {
         return battleOnlineService.claimGift(roomCode, currentUsername(), dto);
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/demon-bag", method = RequestMethod.POST)
+    public BattleOnlineRoomDto openDemonBag(@PathVariable String roomCode,
+            @RequestParam("bagId") String bagId, @RequestParam("choice") int choice) {
+        return battleOnlineService.openDemonBag(roomCode, currentUsername(), bagId, choice);
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/gift-opening/finish", method = RequestMethod.POST)
