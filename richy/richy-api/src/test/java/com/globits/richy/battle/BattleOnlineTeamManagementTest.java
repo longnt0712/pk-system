@@ -158,7 +158,7 @@ public class BattleOnlineTeamManagementTest {
         set(alice,"currentQuestion",question);set(alice,"currentQuestionSequence",2L);
         request.setQuestionSequence(2L);request.setAnswerKey("B");
         BattleOnlineAnswerResultDto wrong=service.answer("TEAMS1","alice",request);
-        assertEquals(0,wrong.getStreak());assertEquals(2,playerDto(wrong.getRoom(),"alice").getDemonBullets());
+        assertEquals(5,wrong.getStreak());assertEquals(2,playerDto(wrong.getRoom(),"alice").getDemonBullets());
         assertEquals(2,game.minimumBulletsForPlayer("alice"));
     }
     @Test public void kickingASelectedPlayerClearsOnlyTheirCarrySelection(){

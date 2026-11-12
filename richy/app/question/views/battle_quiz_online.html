@@ -1172,8 +1172,8 @@
                             <span aria-hidden="true">🎁</span> Túi {{choice}}
                         </button>
                     </div>
-                    <div class="demon-bag-result" ng-if="vm.getDemonBagReward() as reward">
-                        <strong role="status">Túi {{reward.choice}} · {{vm.getDemonBagRewardText(reward)}}</strong>
+                    <div class="demon-bag-result" ng-if="vm.getDemonBagReward()">
+                        <strong role="status">Túi {{vm.getDemonBagReward().choice}} · {{vm.getDemonBagRewardText(vm.getDemonBagReward())}}</strong>
                         <button type="button" ng-if="vm.room.demonBag.count" ng-click="vm.showNextDemonBag()">Mở túi tiếp</button>
                         <button type="button" ng-if="!vm.room.demonBag.count" ng-click="vm.toggleDemonBag()">Đóng</button>
                     </div>

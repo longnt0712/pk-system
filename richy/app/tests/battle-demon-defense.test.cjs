@@ -44,7 +44,7 @@ function setup(username = 'alice') {
                 teams: [{number: 1, rank: 1, kills: 10, memberCount: 2, danger: false, nearestDemonProgress: 0, nearestDemonSpeed: 0, demons: [], shots: []},
                     {number: 2, rank: 2, kills: 5, memberCount: 1, danger: false, nearestDemonProgress: 0, nearestDemonSpeed: 0, demons: [], shots: []}]}};
     }
-    return {vm, hooks, room, realtimeCalls};
+    return {vm, hooks, room, realtimeCalls, battleService};
 }
 
 test('DEMON_DEFENSE is preserved in room settings and requires teams with authoritative bullet counts', () => {
@@ -74,6 +74,42 @@ test('a newly promoted host reconnects with the arena subscription', () => {
     h.hooks.applyRoom(incoming, true);
     assert.equal(h.realtimeCalls.length, 1);
     assert.equal(typeof h.realtimeCalls[0][3], 'function');
+});
+
+test('the bag stays visible across room broadcasts and a slow claim leaves the current question in place', async () => {
+    const h = setup();
+    const privateRoom = h.room();
+    privateRoom.demonBag = {id: 'bag-one', count: 2, version: 2};
+    privateRoom.currentQuestion = {id: 7, sequence: 1, question: 'Word'};
+    h.vm.room = privateRoom;
+    let resolveClaim;
+    const calls = [];
+    h.battleService.openDemonBag = (...args) => {
+        calls.push(args);
+        return new Promise(resolve => { resolveClaim = resolve; });
+    };
+
+    h.vm.toggleDemonBag();
+    const claim = h.vm.openDemonBag(2);
+    h.vm.openDemonBag(3);
+    assert.deepEqual(calls, [['DEMON1', 'bag-one', 2]]);
+    const generic = h.room();
+    generic.demonDefense.startedAt = privateRoom.demonDefense.startedAt;
+    generic.serverTime = privateRoom.serverTime + 1000;
+    h.hooks.applyRoom(generic, true);
+    assert.equal(h.vm.room.demonBag.id, 'bag-one');
+    h.vm.room.currentQuestion = {id: 8};
+    resolveClaim({...privateRoom, demonBag: {id: 'bag-two', count: 1, version: 3,
+        lastReward: {bagId: 'bag-one', choice: 2, prize: 'TEMPORARY_GUN'}}});
+    await claim;
+
+    assert.equal(h.vm.room.currentQuestion.id, 8);
+    assert.equal(h.vm.room.demonBag.id, 'bag-two');
+    assert.equal(h.vm.getDemonBagReward().choice, 2);
+    assert.equal(h.vm.demonBagOpening, false);
+    h.vm.showNextDemonBag();
+    assert.equal(h.vm.getDemonBagReward(), null);
+    assert.equal(h.vm.demonBagExpanded, true);
 });
 
 test('students are warned only for their own living team and cannot see the animation feed', () => {

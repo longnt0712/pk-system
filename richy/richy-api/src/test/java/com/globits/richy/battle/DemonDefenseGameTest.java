@@ -3,6 +3,7 @@ package com.globits.richy.battle;
 import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Random;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -38,6 +39,81 @@ public class DemonDefenseGameTest {
         assertEquals(30,DemonDefenseGame.breakStreak(35)); assertEquals(15,DemonDefenseGame.breakStreak(20));
         assertEquals(4,DemonDefenseGame.breakStreak(9)); assertEquals(0,DemonDefenseGame.breakStreak(5));
     }
+    private Random roll(int value) {
+        return new Random() {
+            @Override public int nextInt(int bound) {
+                assertEquals(100, bound);
+                return value;
+            }
+        };
+    }
+
+    @Test public void blindBagDropAndPrizeBoundariesAreExact() {
+        int[] prizeRolls = {0, 19, 20, 49, 50, 89, 90, 99};
+        DemonDefenseGame.BagPrize[] prizes = DemonDefenseGame.BagPrize.values();
+        for (int i = 0; i < prizeRolls.length; i++) {
+            DemonDefenseGame game = game(1);
+            game.syncPlayers(values("alice", "1", "bob", "2"), values("alice", "0", "bob", "0"), START);
+            game.rollBag("alice", roll(20));
+            assertEquals(0, game.bagForPlayer("alice").count);
+            game.rollBag("alice", roll(19));
+            DemonDefenseGame.BagState bag = game.bagForPlayer("alice");
+            assertEquals(1, bag.count);
+            assertNull(game.openBag("alice", bag.id, 4, START, roll(0)));
+            assertNull(game.openBag("bob", bag.id, 1, START, roll(0)));
+            int choice = 1 + i % 3;
+            DemonDefenseGame.BagReward reward = game.openBag("alice", bag.id, choice, START, roll(prizeRolls[i]));
+            assertEquals(choice, reward.choice);
+            assertEquals(prizes[i / 2], reward.prize);
+            assertEquals(0, reward.points);
+            assertEquals(0, game.bagForPlayer("alice").count);
+            assertNull(game.openBag("alice", bag.id, 2, START, roll(0)));
+        }
+        assertEquals(20, DemonDefenseGame.wrongAnswerStreak(35));
+        assertEquals(0, DemonDefenseGame.wrongAnswerStreak(14));
+    }
+
+    @Test public void gunRewardsStackAndEachTemporaryGunExpiresAtTwentySeconds() {
+        DemonDefenseGame game = game(1);
+        game.syncPlayers(values("alice", "1", "bob", "2"), values("alice", "0", "bob", "0"), START);
+        for (int i = 0; i < 3; i++) { game.rollBag("alice", roll(0)); }
+        assertEquals(3, game.bagForPlayer("alice").count);
+
+        String firstBag = game.bagForPlayer("alice").id;
+        game.openBag("alice", firstBag, 1, START, roll(0));
+        assertNotEquals(firstBag, game.bagForPlayer("alice").id);
+        game.openBag("alice", game.bagForPlayer("alice").id, 2, START, roll(20));
+        game.openBag("alice", game.bagForPlayer("alice").id, 3, START + 5000L, roll(49));
+
+        assertEquals(5, game.shoot(1, "alice", 20, START + 6000L).bullets);
+        assertEquals(4, game.bulletsForPlayer("alice", 0, START + 19999L, false));
+        assertEquals(3, game.bulletsForPlayer("alice", 0, START + 20000L, false));
+        assertEquals(2, game.bulletsForPlayer("alice", 0, START + 25000L, false));
+        assertEquals(3, game.bulletsForPlayer("alice", 0, START + 25000L, true));
+        assertEquals(1, game.bulletsForPlayer("bob", 0, START + 25000L, false));
+        assertEquals(START + 25000L, game.gunBoostUntil("alice"));
+    }
+
+    @Test public void lightningHitsAtMostFiveHealthInThePlayersLaneAndOnlyTheHostGetsShots() {
+        DemonDefenseGame game = game(4);
+        Map<String, Integer> roster = values("alice", "1", "a2", "1", "a3", "1", "a4", "1",
+                "bob", "2", "b2", "2", "b3", "2", "b4", "2");
+        game.syncPlayers(roster, values(), START);
+        game.rollBag("alice", roll(0));
+        DemonDefenseGame.BagReward reward = game.openBag("alice", game.bagForPlayer("alice").id, 2,
+                START + 15000L, roll(50));
+        assertEquals(5, reward.hits);
+        assertEquals(5, reward.points);
+        assertEquals(5, team(game, 1, 15000L, true).kills);
+        assertEquals(5, team(game, 2, 15000L, true).demons.size());
+        assertFalse(team(game, 1, 15000L, true).shots.isEmpty());
+        for (DemonDefenseGame.Shot shot : team(game, 1, 15000L, true).shots) {
+            assertTrue(shot.lightning);
+            assertTrue(shot.hit);
+        }
+        assertTrue(team(game, 1, 15000L, false).shots.isEmpty());
+    }
+
     @Test public void levelTargetsIncreaseWithoutMultiplyingByTeamSize() {
         int[] targets = {20,40,60,90,120,160,200,250,300,360};
         for (int level = 1; level <= targets.length; level++) { assertEquals(targets[level - 1],DemonDefenseGame.pointsRequiredForLevel(level)); }

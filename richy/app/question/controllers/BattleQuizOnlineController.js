@@ -1265,7 +1265,7 @@
             }
             return battleService.openDemonBag(room.code, bag.id, choice).then(function (incoming) {
                 if (!isCurrent()) { return; }
-                if (incoming && Number(incoming.serverTime) >= Number(vm.room.serverTime)) {
+                if (incoming && Number(incoming.serverTime) > Number(vm.room.serverTime)) {
                     applyRoom(incoming, false);
                 } else {
                     mergeDemonBag(vm.room, incoming);

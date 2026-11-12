@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -171,15 +172,50 @@ public class BattleOnlineDemonDefenseTest {
         catch (BattleOnlineException expected) { assertEquals(2D, (Double) get(alice, "score"), 0D); }
     }
 
-    @Test public void wrongAnswerResetsStreakWithoutKillingAnyDemon() throws Exception {
+    @Test public void wrongAnswerDeductsFifteenWithoutKillingAnyDemon() throws Exception {
         Object question = state("QuestionState");
         set(question, "id", 7L); set(question, "question", "hello"); set(question, "correctText", "xin chào"); set(question, "correctKey", "A");
         set(alice, "currentQuestion", question); set(alice, "currentQuestionSequence", 1L); set(alice, "streak", 35);
         BattleOnlineAnswerDto request = new BattleOnlineAnswerDto(); request.setQuestionId(7L); request.setQuestionSequence(1L); request.setAnswerKey("B");
         BattleOnlineAnswerResultDto result = service.answer("DEMON1", "alice", request);
-        assertFalse(result.isCorrect()); assertEquals(0, result.getStreak()); assertEquals(0D, result.getScore(), 0D);
+        assertFalse(result.isCorrect()); assertEquals(20, result.getStreak()); assertEquals(0D, result.getScore(), 0D);
         assertTrue(result.getRoom().getDemonDefense().teams.get(0).shots.isEmpty());
         assertTrue(result.getRoom().getDemonDefense().teams.get(0).demons.isEmpty());
+    }
+
+    @Test public void anAcceptedWrongAnswerCanDropAPrivateBagAndRetryingTheClaimDoesNotAddAGun() throws Exception {
+        Random random = mock(Random.class);
+        when(random.nextInt(100)).thenReturn(19, 0);
+        set(service, "random", random);
+        Object question = state("QuestionState");
+        set(question, "id", 7L); set(question, "question", "hello");
+        set(question, "correctText", "xin chào"); set(question, "correctKey", "A");
+        set(alice, "currentQuestion", question); set(alice, "currentQuestionSequence", 1L);
+        BattleOnlineAnswerDto request = new BattleOnlineAnswerDto();
+        request.setQuestionId(7L); request.setQuestionSequence(1L); request.setAnswerKey("B");
+
+        BattleOnlineAnswerResultDto answer = service.answer("DEMON1", "alice", request);
+        DemonDefenseGame.BagState offer = answer.getRoom().getDemonBag();
+        assertFalse(answer.isCorrect());
+        assertEquals(1, offer.count);
+        BattleOnlineRoomDto host = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "host");
+        BattleOnlineRoomDto teammate = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "bob");
+        assertNull(host.getDemonBag());
+        assertEquals(0, teammate.getDemonBag().count);
+        try {
+            service.openDemonBag("DEMON1", "bob", offer.id, 1);
+            fail("The bag belongs to Alice");
+        } catch (BattleOnlineException expected) {
+            assertEquals(1, ((DemonDefenseGame) get(room, "demonDefense")).bagForPlayer("alice").count);
+        }
+
+        BattleOnlineRoomDto opened = service.openDemonBag("DEMON1", "alice", offer.id, 2);
+        BattleOnlineRoomDto retried = service.openDemonBag("DEMON1", "alice", offer.id, 3);
+        assertEquals(0, opened.getDemonBag().count);
+        assertEquals(DemonDefenseGame.BagPrize.PERMANENT_GUN, opened.getDemonBag().lastReward.prize);
+        assertEquals(2, retried.getDemonBag().lastReward.choice);
+        assertEquals(2, ((DemonDefenseGame) get(room, "demonDefense")).bulletsForPlayer("alice", 0, 0L, false));
+        verify(random, times(2)).nextInt(100);
     }
 
     @Test public void correctAnswersFromTwoTeammatesShareDamageAndOnlyFinishingHitScores() throws Exception {
