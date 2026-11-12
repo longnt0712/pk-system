@@ -149,13 +149,6 @@
                 .then(function (response) { return response.data; });
         };
 
-        self.setReady = function (roomCode, ready) {
-            return $http.post(
-                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/ready',
-                {ready: ready === true}
-            ).then(function (response) { return response.data; });
-        };
-
         self.updateDisplayName = function (roomCode, displayName) {
             return $http.put(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/display-name',

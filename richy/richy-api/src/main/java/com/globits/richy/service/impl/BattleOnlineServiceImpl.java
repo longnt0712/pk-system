@@ -894,10 +894,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     existing.teamNumber = nextBalancedTeamLocked(room);
                 }
 
-                if (
-                    PLAYING.equals(room.status) &&
-                    !existing.spectator
-                ) {
+                if (!existing.spectator) {
                     existing.ready = true;
                 }
 
@@ -1135,11 +1132,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            if (player.host) {
-                player.ready = true;
-            } else {
-                player.ready = ready;
-            }
+            // Older clients still send this request. Joining the room now sets READY automatically.
+            player.ready = true;
 
             dto = snapshotLocked(room, username);
         }
@@ -1625,7 +1619,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             ensureDemonHostSpectatorLocked(room);
             normalizeTeamAssignmentsLocked(room);
             normalizeDoubleActionPlayerLocked(room);
-            validatePlayersReadyLocked(room);
+            validatePlayersCanStartLocked(room);
 
             if (isComprehensiveRoom(room) && !room.allQuestionsLoaded) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, room.preloadError
@@ -1763,7 +1757,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             for (PlayerState player : room.players.values()) {
                 resetPlayerMatchState(player);
-                player.ready = player.host && !player.spectator;
+                player.ready = !player.spectator;
             }
 
             /*
@@ -8226,7 +8220,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return selectedTeam;
     }
 
-    private void validatePlayersReadyLocked(
+    private void validatePlayersCanStartLocked(
             RoomState room) {
 
         int connected = 0;
@@ -8247,15 +8241,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 hasTeamOne = true;
             } else if (player.teamNumber == 2) {
                 hasTeamTwo = true;
-            }
-
-            if (
-                !player.ready
-            ) {
-                throw new BattleOnlineException(
-                        HttpStatus.BAD_REQUEST,
-                        "Tất cả người chơi phải READY trước khi START."
-                );
             }
         }
 

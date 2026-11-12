@@ -19,7 +19,7 @@ function setup(username = 'alice') {
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
     const context = nodeVm.createContext({angular, expose(value) { hooks = value; }});
     nodeVm.runInContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/, `
-        expose({applyRoom, applyDemonArena, updateDemonDefenseView, buildSettingsDto, processSkillEvents});
+        expose({applyRoom, applyDemonArena, updateDemonDefenseView, buildSettingsDto, processSkillEvents, keydownHandler});
     `), context);
     const timer = fn => { timers.push(fn); return timers.length; };
     timer.cancel = () => {};
@@ -89,7 +89,7 @@ test('the bag stays visible across room broadcasts and a slow claim leaves the c
         return new Promise(resolve => { resolveClaim = resolve; });
     };
 
-    h.vm.toggleDemonBag();
+    h.vm.openDemonBagModal();
     const claim = h.vm.openDemonBag(2);
     h.vm.openDemonBag(3);
     assert.deepEqual(calls, [['DEMON1', 'bag-one', 2]]);
@@ -109,7 +109,37 @@ test('the bag stays visible across room broadcasts and a slow claim leaves the c
     assert.equal(h.vm.demonBagOpening, false);
     h.vm.showNextDemonBag();
     assert.equal(h.vm.getDemonBagReward(), null);
-    assert.equal(h.vm.demonBagExpanded, true);
+    assert.equal(h.vm.demonBagModalOpen, true);
+});
+
+test('a new bag opens the modal once, and closing it preserves the question and pending bag', () => {
+    const h = setup();
+    const privateRoom = h.room();
+    privateRoom.currentQuestion = {id: 7, sequence: 1, question: 'Word'};
+    privateRoom.demonBag = {id: 'bag-one', count: 1, version: 1};
+    h.hooks.applyRoom(privateRoom, false);
+    assert.equal(h.vm.demonBagModalOpen, true);
+    assert.equal(h.vm.exerciseInputDisabled(), true);
+
+    let escapePrevented = false;
+    h.hooks.keydownHandler({key: 'Escape', preventDefault() { escapePrevented = true; }});
+    assert.equal(escapePrevented, true);
+    assert.equal(h.vm.demonBagModalOpen, false);
+    assert.equal(h.vm.hasDemonBag(), true);
+    assert.equal(h.vm.room.currentQuestion.id, 7);
+    const generic = {...privateRoom, demonBag: undefined, currentQuestion: undefined};
+    h.hooks.applyRoom(generic, true);
+    assert.equal(h.vm.demonBagModalOpen, false, 'a public refresh cannot reopen a dismissed bag');
+    h.vm.openDemonBagModal();
+    assert.equal(h.vm.demonBagModalOpen, true);
+    h.vm.closeDemonBagModal();
+
+    const nextDrop = {...privateRoom, demonBag: {id: 'bag-one', count: 2, version: 2}};
+    h.hooks.applyRoom(nextDrop, false);
+    assert.equal(h.vm.demonBagModalOpen, true);
+    h.hooks.applyRoom({...nextDrop, status: 'FINISHED', demonBag: undefined}, false);
+    assert.equal(h.vm.demonBagModalOpen, false);
+    assert.equal(h.vm.hasDemonBag(), false);
 });
 
 test('students are warned only for their own living team and cannot see the animation feed', () => {

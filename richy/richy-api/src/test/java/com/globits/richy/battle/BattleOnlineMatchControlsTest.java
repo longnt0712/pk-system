@@ -140,7 +140,7 @@ public class BattleOnlineMatchControlsTest {
         assertEquals("FINISHED",service.setClassicAutoAdvance("CONTROL1","host",true).getStatus());
         setup("COUNTDOWN",false);rejected(()->service.setClassicAutoAdvance("CONTROL1","host",false));
     }
-    @Test public void newPlayersJoinReadyInEveryModeAndCanStillChooseNotReady() throws Exception {
+    @Test public void playersStayAutomaticallyReadyOnJoinReconnectAndReplayInEveryMode() throws Exception {
         for (String mode : MODES) {
             setup(mode, false); set(room, "status", "LOBBY");
             javax.persistence.EntityManager em = mock(javax.persistence.EntityManager.class);
@@ -152,10 +152,15 @@ public class BattleOnlineMatchControlsTest {
             BattleOnlinePlayerDto player = joined.getPlayers().stream().filter(p -> "newbie".equals(p.getUsername())).findFirst().get();
             assertTrue(mode, player.isReady()); assertTrue(player.isConnected()); assertFalse(player.isSpectator());
             assertTrue(player.getTeamNumber() >= 1 && player.getTeamNumber() <= 2);
-            service.setReady("CONTROL1", "newbie", false);
+            BattleOnlineRoomDto legacyReady = service.setReady("CONTROL1", "newbie", false);
+            assertTrue(mode, legacyReady.getPlayers().stream().filter(p -> "newbie".equals(p.getUsername())).findFirst().get().isReady());
             BattleOnlineRoomDto rejoined = service.joinRoom("CONTROL1", "newbie");
-            assertFalse(rejoined.getPlayers().stream().filter(p -> "newbie".equals(p.getUsername())).findFirst().get().isReady());
-            assertTrue(service.setReady("CONTROL1", "newbie", true).getPlayers().stream().filter(p -> "newbie".equals(p.getUsername())).findFirst().get().isReady());
+            assertTrue(mode, rejoined.getPlayers().stream().filter(p -> "newbie".equals(p.getUsername())).findFirst().get().isReady());
+
+            set(room, "status", "FINISHED"); set(room, "allQuestionsLoaded", true);
+            BattleOnlineRoomDto replay = service.restartMatch("CONTROL1", "host");
+            assertEquals("LOBBY", replay.getStatus());
+            assertTrue(mode, replay.getPlayers().stream().filter(p -> !p.isSpectator()).allMatch(BattleOnlinePlayerDto::isReady));
         }
     }
     private BattleOnlineServiceImpl service;

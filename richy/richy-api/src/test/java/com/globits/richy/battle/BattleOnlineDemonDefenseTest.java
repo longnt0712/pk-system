@@ -114,6 +114,7 @@ public class BattleOnlineDemonDefenseTest {
         service.restartMatch("DEMON1", "alice");
         assertEquals("LOBBY", get(room, "status")); assertNull(get(room, "demonDefense"));
         assertTrue((Boolean) get(alice, "spectator"));
+        assertTrue((Boolean) get(bob, "ready")); assertTrue((Boolean) get(carol, "ready"));
     }
 
     @Test @SuppressWarnings("unchecked") public void breakSubtractsFiveFromOneRivalAndClassicStillResetsToZero() {

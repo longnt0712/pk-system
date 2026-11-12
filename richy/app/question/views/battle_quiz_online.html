@@ -556,7 +556,6 @@
                              dnd-dragend="vm.onLobbyPlayerDragEnd()"
                              ng-class="{
                                  'is-host': player.host,
-                                 'is-ready': player.ready,
                                  'is-offline': !player.connected,
                                  'is-double-action-player': vm.isDoubleActionPlayer(player),
                                  'is-being-assigned': vm.assigningTeamUsername === player.username
@@ -596,12 +595,6 @@
 
                             <span class="battle-online-ready-badge"
                                   ng-if="player.host">HOST</span>
-
-                            <span class="battle-online-ready-badge is-ready"
-                                  ng-if="!player.host && player.ready">READY</span>
-
-                            <span class="battle-online-ready-badge is-waiting"
-                                  ng-if="!player.host && !player.ready">WAITING</span>
 
                             <button type="button" class="battle-online-carry-toggle" dnd-nodrag
                                     ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
@@ -678,7 +671,6 @@
                      ng-class="{
                          'is-host': player.host,
                          'is-spectator': player.spectator,
-                         'is-ready': player.ready,
                          'is-offline': !player.connected,
                          'is-double-action-player': vm.isDoubleActionPlayer(player)
                      }">
@@ -725,16 +717,6 @@
                         KHÁN GIẢ
                     </span>
 
-                    <span class="battle-online-ready-badge is-ready"
-                          ng-if="!player.host && !player.spectator && player.ready">
-                        READY
-                    </span>
-
-                    <span class="battle-online-ready-badge is-waiting"
-                          ng-if="!player.host && !player.spectator && !player.ready">
-                        WAITING
-                    </span>
-
                     <button type="button" class="battle-online-carry-toggle" dnd-nodrag
                                     ng-if="vm.canToggleCarry(player)" ng-click="vm.toggleCarryPlayer(player); $event.stopPropagation()"
                                     ng-class="{'is-active': vm.isDoubleActionPlayer(player)}" ng-disabled="vm.teamManagementBusy()"
@@ -747,28 +729,6 @@
                         KÍCH
                     </button>
                 </div>
-
-            </div>
-
-
-            <div class="battle-online-ready-zone"
-                 ng-if="!vm.isHost() && !vm.isSpectator()">
-
-                <button type="button"
-                        class="battle-online-ready-btn"
-                        ng-class="{
-                            'is-ready': vm.me() && vm.me().ready
-                        }"
-                        ng-click="vm.toggleReady()">
-
-                    <span ng-if="!vm.me() || !vm.me().ready">
-                        ✅ TÔI ĐÃ SẴN SÀNG
-                    </span>
-
-                    <span ng-if="vm.me() && vm.me().ready">
-                        ↩️ HỦY READY
-                    </span>
-                </button>
 
             </div>
 
@@ -1158,29 +1118,6 @@
                     <span>⚡ Ai skill ai</span><b>{{vm.room.recentEvents.length || 0}}</b>
                 </button>
             </div>
-            <section class="demon-bag-panel" aria-label="Túi mù" ng-if="vm.isDemonDefenseMode() && vm.room.status === 'PLAYING' &&
-                     !vm.isSpectator() && !vm.isDemonPlayerEliminated() && (vm.room.demonBag.count || vm.getDemonBagReward())">
-                <button class="demon-bag-toggle" type="button" ng-click="vm.toggleDemonBag()" ng-disabled="vm.demonBagOpening"
-                        ng-attr-aria-expanded="{{vm.demonBagExpanded}}" aria-controls="demon-bag-choices">
-                    <span aria-hidden="true">🎁</span> Túi mù <b ng-if="vm.room.demonBag.count">{{vm.room.demonBag.count}}</b>
-                    <i class="fa" ng-class="vm.demonBagExpanded ? 'fa-chevron-up' : 'fa-chevron-down'" aria-hidden="true"></i>
-                </button>
-                <div id="demon-bag-choices" ng-if="vm.demonBagExpanded">
-                    <div class="demon-bag-options" ng-if="!vm.getDemonBagReward()">
-                        <button type="button" ng-repeat="choice in [1, 2, 3] track by choice" ng-click="vm.openDemonBag(choice)"
-                                ng-disabled="vm.demonBagOpening" ng-attr-aria-label="Mở túi {{choice}}">
-                            <span aria-hidden="true">🎁</span> Túi {{choice}}
-                        </button>
-                    </div>
-                    <div class="demon-bag-result" ng-if="vm.getDemonBagReward()">
-                        <strong role="status">Túi {{vm.getDemonBagReward().choice}} · {{vm.getDemonBagRewardText(vm.getDemonBagReward())}}</strong>
-                        <button type="button" ng-if="vm.room.demonBag.count" ng-click="vm.showNextDemonBag()">Mở túi tiếp</button>
-                        <button type="button" ng-if="!vm.room.demonBag.count" ng-click="vm.toggleDemonBag()">Đóng</button>
-                    </div>
-                    <small ng-if="vm.demonBagOpening && !vm.getDemonBagReward()" role="status">Đang mở túi…</small>
-                    <small ng-if="vm.demonBagError && !vm.getDemonBagReward()" role="alert">{{vm.demonBagError}}</small>
-                </div>
-            </section>
             <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning}">
                 {{vm.demonWarning || 'Trả lời đúng để bảo vệ đội mình!'}}
             </div>
@@ -2088,6 +2025,40 @@
         </button>
     </div>
 
+    <button id="battle-demon-bag-trigger" class="demon-bag-trigger" type="button"
+            ng-if="vm.hasDemonBag() && !vm.demonBagModalOpen" ng-click="vm.openDemonBagModal()" aria-haspopup="dialog">
+        <span aria-hidden="true">🎁</span> Túi mù <b>{{vm.room.demonBag.count}}</b>
+    </button>
+    <div class="battle-online-gift-modal-backdrop demon-bag-backdrop" ng-if="vm.demonBagModalOpen"
+         ng-click="vm.closeDemonBagModal()">
+        <section id="battle-demon-bag-modal" class="demon-bag-modal" role="dialog" aria-modal="true"
+                 aria-labelledby="battle-demon-bag-title" tabindex="-1" ng-click="$event.stopPropagation()">
+            <header>
+                <h2 id="battle-demon-bag-title"><span aria-hidden="true">🎁</span> Túi mù</h2>
+                <button type="button" class="demon-bag-close" aria-label="Đóng túi mù"
+                        ng-click="vm.closeDemonBagModal()" ng-disabled="vm.demonBagOpening">×</button>
+            </header>
+            <div ng-if="!vm.getDemonBagReward()">
+                <p>Chọn 1 trong 3 túi <span ng-if="vm.room.demonBag.count > 1">· Còn {{vm.room.demonBag.count}} lượt</span></p>
+                <div class="demon-bag-options" ng-if="vm.hasDemonBag()">
+                    <button type="button" ng-repeat="choice in [1, 2, 3] track by choice" ng-click="vm.openDemonBag(choice)"
+                            ng-disabled="vm.demonBagOpening" ng-attr-aria-label="Mở túi {{choice}}">
+                        <span aria-hidden="true">🎁</span> Túi {{choice}}
+                    </button>
+                </div>
+                <p ng-if="vm.demonBagOpening" role="status">Đang mở túi…</p>
+                <p ng-if="vm.demonBagError" role="alert">{{vm.demonBagError}}</p>
+                <button type="button" class="demon-bag-later" ng-click="vm.closeDemonBagModal()"
+                        ng-disabled="vm.demonBagOpening">Mở sau</button>
+            </div>
+            <div class="demon-bag-result" ng-if="vm.getDemonBagReward()">
+                <strong role="status">Túi {{vm.getDemonBagReward().choice}} · {{vm.getDemonBagRewardText(vm.getDemonBagReward())}}</strong>
+                <button type="button" ng-if="vm.hasDemonBag()" ng-click="vm.showNextDemonBag()">Mở túi tiếp</button>
+                <button type="button" ng-click="vm.closeDemonBagModal()">Tiếp tục chơi</button>
+            </div>
+        </section>
+    </div>
+
     <div class="battle-online-gift-modal-backdrop"
          ng-if="vm.giftModalOpen && vm.room && vm.room.status === 'PLAYING'"
          ng-click="vm.dismissGiftReward()">
@@ -2817,17 +2788,23 @@
     .battle-online-game-layout.is-demon-layout { grid-template-columns: 1fr !important; }
     .demon-student-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
     .demon-student-status button { border: 1px solid #85bfdb; border-radius: 10px; background: #e8f6ff; color: #174864; padding: 9px 12px; }
-    .demon-bag-panel { margin-bottom: 12px; padding: 8px; border: 1px solid #dbc8ec; border-radius: 12px; background: #faf5ff; color: #492762; }
-    .demon-bag-panel button { min-height: 40px; border: 1px solid #d6c3e9; border-radius: 8px; background: #fff; color: #492762; font-weight: 700; padding: 6px 10px; }
-    .demon-bag-panel button:focus-visible { outline: 2px solid #7043a6; outline-offset: 2px; }
-    .demon-bag-panel button:disabled { opacity: .55; cursor: wait; }
-    .demon-bag-panel .demon-bag-toggle { display: flex; width: 100%; align-items: center; gap: 8px; justify-content: flex-start; background: #f0e3ff; }
-    .demon-bag-toggle i { margin-left: auto; }
-    .demon-bag-toggle b { border-radius: 8px; padding: 2px 7px; background: #fff; }
-    .demon-bag-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
-    .demon-bag-options span { display: block; font-size: 1.2em; }
-    .demon-bag-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; }
-    .demon-bag-panel small { display: block; margin-top: 6px; }
+    .demon-bag-trigger { position: fixed; z-index: 1100; right: 16px; bottom: max(68px, calc(env(safe-area-inset-bottom, 0px) + 52px)); display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid #6a49b1; border-radius: 999px; background: #57378f; color: #fff; font-weight: 700; box-shadow: 0 5px 20px #31205b40; }
+    .demon-bag-trigger b { border-radius: 999px; padding: 2px 8px; background: #fff; color: #57378f; }
+    .battle-online-gift-modal-backdrop.demon-bag-backdrop { padding: 16px; background: #1c133b88; backdrop-filter: blur(2px); overflow: auto; overscroll-behavior: contain; }
+    .demon-bag-modal { width: min(100%, 420px); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; padding: clamp(14px, 4vw, 24px); border: 1px solid #d7c6f1; border-radius: 20px; background: linear-gradient(150deg, #fffaf0, #f7f0ff 70%); color: #39255e; box-shadow: 0 16px 52px #15082e66; }
+    .demon-bag-modal header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .demon-bag-modal h2 { margin: 0; font-size: 22px; font-weight: 800; }
+    .demon-bag-modal button { min-height: 44px; border: 1px solid #d5c5e8; border-radius: 10px; background: #fff; color: #49326e; font-weight: 700; padding: 6px 10px; }
+    .demon-bag-modal button:enabled:hover { background: #eee3fc; border-color: #a987ce; }
+    .demon-bag-modal button:focus-visible, .demon-bag-trigger:focus-visible { outline: 2px solid #7043a6; outline-offset: 2px; }
+    .demon-bag-modal button:disabled { opacity: .55; cursor: wait; }
+    .demon-bag-modal .demon-bag-close { min-width: 44px; border-radius: 50%; font-size: 22px; }
+    .demon-bag-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .demon-bag-options button { min-height: 70px; padding: 8px 4px; }
+    .demon-bag-options span { display: block; font-size: 24px; }
+    .demon-bag-modal .demon-bag-later { display: block; margin: 12px 0 0 auto; }
+    .demon-bag-result { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .demon-bag-result strong { flex-basis: 100%; padding: 12px; background: #eee4fc; border-radius: 10px; }
     .demon-student-tools { display: flex; gap: 8px; margin-bottom: 12px; }
     .demon-student-tools button { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; min-height: 40px; padding: 8px 12px; border: 1px solid #ddd3ee; border-radius: 10px; background: #f5f0ff; color: #51378b; font-size: 13px; font-weight: 700; }
     .demon-student-tools .is-wrong { border-color: #efd0cf; background: #fff3f1; color: #92362f; }
@@ -3700,7 +3677,6 @@
     .battle-online-btn,
     .battle-online-save-btn,
     .battle-online-start-btn,
-    .battle-online-ready-btn,
     .battle-online-copy-btn,
     .battle-online-leave-btn,
     .battle-online-mode-card {
@@ -5323,10 +5299,6 @@
         border-color: rgba(245,188,59,.55);
     }
 
-    .battle-online-player-card.is-ready {
-        border-color: rgba(40,185,128,.34);
-    }
-
     .battle-online-player-card.is-spectator {
         border-color: rgba(124,92,238,.48);
         background: linear-gradient(135deg, var(--bo-soft), rgba(124,92,238,.10));
@@ -5450,16 +5422,6 @@
         white-space: nowrap;
     }
 
-    .battle-online-ready-badge.is-ready {
-        color: #13704d;
-        background: #dff9ec;
-    }
-
-    .battle-online-ready-badge.is-waiting {
-        color: #7d879b;
-        background: #eef1f7;
-    }
-
     .battle-online-ready-badge.is-spectator {
         color: #5b3cc4;
         background: #eee9ff;
@@ -5528,34 +5490,6 @@
         background: linear-gradient(135deg, rgba(99,102,241,.14), rgba(168,85,247,.14));
         box-shadow: 0 8px 20px rgba(99,102,241,.14);
     }
-
-    .battle-online-ready-zone {
-        margin-top: 13px;
-    }
-
-    .battle-online-ready-btn {
-        width: 100%;
-        min-height: 46px;
-
-        color: #fff;
-
-        background:
-            linear-gradient(
-                135deg,
-                #6676e9,
-                #7858ee
-            );
-    }
-
-    .battle-online-ready-btn.is-ready {
-        background:
-            linear-gradient(
-                135deg,
-                #20a977,
-                #35c58c
-            );
-    }
-
 
     /* =====================================================
        MODES

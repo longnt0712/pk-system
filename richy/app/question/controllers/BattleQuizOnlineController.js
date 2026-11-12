@@ -300,7 +300,7 @@
         };
         vm.exerciseInputDisabled = function () {
             if (vm.sessionLoginRequired) { return true; }
-            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen ||
+            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.demonBagModalOpen ||
                 !!vm.hostVideoReplay ||
                 (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                 vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive() || vm.isDemonPlayerEliminated() ||
@@ -1224,10 +1224,60 @@
             return 'M ' + start + ' 88 L ' + (midX + 4) + ' ' + (midY + 7) +
                 ' L ' + (midX - 4) + ' ' + (midY - 2) + ' L ' + (midX + 3) + ' ' + (midY - 5) + ' L 50 ' + endY;
         };
-        vm.demonBagExpanded = false;
+        vm.demonBagModalOpen = false;
         vm.demonBagOpening = false;
         vm.demonBagError = '';
-        var demonBagAttempt = null, demonBagOpenedId = null;
+        var demonBagAttempt = null, demonBagOpenedId = null, demonBagSeenCount = 0, demonBagReturnFocus = null;
+
+        vm.hasDemonBag = function () {
+            return !!(vm.room && vm.room.status === 'PLAYING' && vm.room.demonBag && vm.room.demonBag.id &&
+                isDemonDefenseMode() && !isSpectator() && !vm.isDemonPlayerEliminated());
+        };
+        function focusDemonBagModal(selector) {
+            $timeout(function () {
+                if (!vm.demonBagModalOpen || vm.sessionLoginRequired || destroyed) { return; }
+                var modal = $window.document.getElementById('battle-demon-bag-modal');
+                var target = modal && selector && modal.querySelector(selector);
+                if (modal) { (target || modal).focus({preventScroll: true}); }
+            }, 0, false);
+        }
+        vm.openDemonBagModal = function () {
+            if (!vm.hasDemonBag() || vm.demonBagModalOpen || vm.sessionLoginRequired) { return; }
+            demonBagSeenCount = vm.room.demonBag.count;
+            demonBagReturnFocus = $window.document.activeElement;
+            vm.demonBagModalOpen = true;
+            focusDemonBagModal();
+        };
+        vm.closeDemonBagModal = function () {
+            if (vm.demonBagOpening) { return; }
+            var trigger = demonBagReturnFocus;
+            vm.demonBagModalOpen = false;
+            demonBagReturnFocus = null;
+            clearDemonBagReceipt();
+            $timeout(function () {
+                if (vm.demonBagModalOpen || vm.sessionLoginRequired || destroyed) { return; }
+                var target = trigger && trigger.isConnected ? trigger : $window.document.getElementById('battle-demon-bag-trigger');
+                if (target && target.focus) { target.focus({preventScroll: true}); }
+            }, 0, false);
+        };
+        function clearDemonBagReceipt() {
+            demonBagOpenedId = null;
+            vm.demonBagError = '';
+        }
+        function resetDemonBagModal() {
+            vm.demonBagModalOpen = false;
+            vm.demonBagOpening = false;
+            demonBagAttempt = null;
+            demonBagSeenCount = 0;
+            demonBagReturnFocus = null;
+            clearDemonBagReceipt();
+        }
+        function syncDemonBagModal() {
+            var count = vm.hasDemonBag() ? vm.room.demonBag.count : 0;
+            if (count > demonBagSeenCount) { vm.openDemonBagModal(); }
+            if (!count && vm.demonBagModalOpen && !vm.demonBagOpening && !vm.getDemonBagReward()) { vm.closeDemonBagModal(); }
+            demonBagSeenCount = count;
+        }
         vm.getDemonBagReward = function () {
             var bag = vm.room && vm.room.demonBag;
             return bag && bag.lastReward && bag.lastReward.bagId === demonBagOpenedId ? bag.lastReward : null;
@@ -1241,19 +1291,13 @@
             }
             return 'Túi này trống';
         };
-        vm.toggleDemonBag = function () {
-            if (vm.demonBagOpening) { return; }
-            vm.demonBagExpanded = !vm.demonBagExpanded;
-            vm.showNextDemonBag();
-        };
         vm.showNextDemonBag = function () {
-            demonBagOpenedId = null;
-            vm.demonBagError = '';
+            clearDemonBagReceipt();
+            focusDemonBagModal('.demon-bag-options button');
         };
         vm.openDemonBag = function (choice) {
             var room = vm.room, bag = room && room.demonBag;
-            if (!bag || !bag.id || vm.demonBagOpening || vm.getDemonBagReward() ||
-                    room.status !== 'PLAYING' || isSpectator() || vm.isDemonPlayerEliminated()) { return; }
+            if (!vm.demonBagModalOpen || !vm.hasDemonBag() || vm.demonBagOpening || vm.getDemonBagReward()) { return; }
             var attempt = {room: room};
             demonBagAttempt = attempt;
             demonBagOpenedId = bag.id;
@@ -1279,6 +1323,8 @@
                 if (demonBagAttempt === attempt) {
                     demonBagAttempt = null;
                     vm.demonBagOpening = false;
+                    syncDemonBagModal();
+                    if (vm.getDemonBagReward()) { focusDemonBagModal('.demon-bag-result button'); }
                 }
             });
         };
@@ -1361,7 +1407,6 @@
         vm.updateGuessVoiceVolume = updateGuessVoiceVolume;
         vm.previewGuessVoice = previewGuessVoice;
 
-        vm.toggleReady = toggleReady;
         vm.saveBattleDisplayName = saveBattleDisplayName;
         vm.toggleSpectator = toggleSpectator;
         vm.assignPlayerTeam = assignPlayerTeam;
@@ -2883,6 +2928,7 @@
                         stopRealtimeAndPolling();
 
                         vm.closeGiftModal(true);
+                        resetDemonBagModal();
                         vm.room = null;
                         vm.qrModalOpen = false;
                         vm.musicMenuOpen = false;
@@ -3155,6 +3201,7 @@
             stopRealtimeAndPolling();
 
             vm.closeGiftModal(true);
+            resetDemonBagModal();
             vm.room = null;
             vm.qrModalOpen = false;
             vm.musicMenuOpen = false;
@@ -3208,7 +3255,10 @@
                     incoming.passwordGuessEndsAt > 0 &&
                     incoming.passwordGuessEndsAt <= Number(expiredPasswordGuessDeadlines[incoming.code] || 0)) { return; }
             if (previousRoom && previousRoom.code === incoming.code && (previousRoom.videoSynchronized || incoming.videoSynchronized) &&
-                    Number(incoming.videoRevision || 0) < Number(previousRoom.videoRevision || 0)) { return; }
+                    Number(incoming.videoRevision || 0) < Number(previousRoom.videoRevision || 0)) {
+                syncDemonBagModal();
+                return;
+            }
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
                     previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && (incoming.status === 'PLAYING' || incoming.status === 'FINISHED')) {
                 // The collection is monotonic within a draw session, including a final-credit completion.
@@ -3465,11 +3515,9 @@
             }
             if (!sameDemonMatch(previousRoom, incoming) || incoming.status !== 'PLAYING' ||
                     isSpectator() || vm.isDemonPlayerEliminated()) {
-                vm.demonBagExpanded = false;
-                vm.demonBagOpening = false;
-                demonBagAttempt = null;
-                vm.showNextDemonBag();
+                resetDemonBagModal();
             }
+            syncDemonBagModal();
             if (vm.isDemonPlayerEliminated()) {
                 incoming.currentQuestion = null;
                 incoming.pendingSkillType = null;
@@ -4229,36 +4277,6 @@
                 });
         }
 
-        function toggleReady() {
-            var me =
-                getMe();
-
-            if (
-                !vm.room ||
-                !me ||
-                me.host
-            ) {
-                return;
-            }
-
-            battleService
-                .setReady(
-                    vm.room.code,
-                    me.ready !==
-                        true
-                )
-                .then(
-                    function (room) {
-                        applyRoom(
-                            room,
-                            false
-                        );
-                    },
-                    showRequestError
-                );
-        }
-
-
         function toggleSpectator() {
             var me = getMe();
             if (isDemonDefenseMode()) { return; }
@@ -4999,6 +5017,7 @@
                 vm.hostVideoReplay ||
                 vm.claimingGift ||
                 vm.giftModalOpen ||
+                vm.demonBagModalOpen ||
                 vm.room.pendingSkillType ||
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
@@ -8475,6 +8494,27 @@
                 }
                 return;
             }
+            if (vm.demonBagModalOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    event.preventDefault();
+                    $scope.$evalAsync(vm.closeDemonBagModal);
+                } else if (event.key === 'Tab' || event.keyCode === 9) {
+                    var bagModal = $window.document.getElementById('battle-demon-bag-modal');
+                    var bagControls = bagModal && bagModal.querySelectorAll('button:not([disabled])');
+                    var activeControl = $window.document.activeElement;
+                    if (!bagControls || !bagControls.length) {
+                        event.preventDefault();
+                    } else {
+                        var first = bagControls[0], last = bagControls[bagControls.length - 1];
+                        if (activeControl === bagModal || !bagModal.contains(activeControl) ||
+                                activeControl === (event.shiftKey ? first : last)) {
+                            event.preventDefault();
+                            (event.shiftKey ? last : first).focus({preventScroll: true});
+                        }
+                    }
+                }
+                return;
+            }
             if (vm.skillActivityModalOpen || vm.wrongQuestionsModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
                     event.preventDefault();
@@ -8649,6 +8689,7 @@
                 angular.element($window.document).off('fullscreenchange', hostVideoFullscreenChanged);
                 angular.element($window).off('scroll resize', refreshLobbySettingsViewport);
                 vm.closeGiftModal(true);
+                resetDemonBagModal();
                 if (demonAudioContext) {
                     var closingAudio = demonAudioContext.close();
                     if (closingAudio && closingAudio.catch) { closingAudio.catch(angular.noop); }
