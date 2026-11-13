@@ -9,7 +9,6 @@
 
         <div ng-if="inventory.loaded">
             <div class="fair-inventory-actions">
-                <button type="button" class="fair-button fair-button--primary" ng-click="inventory.config=false; inventory.startItem()" ng-disabled="inventory.busy || inventory.itemForm">Thêm mặt hàng</button>
                 <button type="button" class="fair-button" ng-click="inventory.config=!inventory.config; inventory.error=''" ng-disabled="inventory.exporting" ng-attr-aria-expanded="{{!!inventory.config}}">{{inventory.config ? 'Về bảng mặt hàng' : 'Cấu hình danh mục'}}</button>
                 <button type="button" class="fair-text-button" ng-click="inventory.load()" ng-disabled="inventory.busy || inventory.itemForm">Tải lại bảng</button>
                 <details class="fair-inventory-tools" ng-if="!inventory.config" ng-keydown="$event.key === 'Escape' && inventory.closeTools()">
@@ -53,9 +52,12 @@
 
             <div ng-if="!inventory.config">
                 <fieldset class="fair-inventory-filters" aria-label="Lọc mặt hàng" ng-disabled="inventory.busy || inventory.itemForm">
-                    <label class="fair-inventory-search">Tìm theo tên
-                        <input type="search" placeholder="Nhập tên mặt hàng…" ng-model="inventory.filters.name" ng-change="inventory.updateTable()">
-                    </label>
+                    <div class="fair-inventory-search-row">
+                        <button type="button" class="fair-button fair-button--primary fair-inventory-add" ng-click="inventory.config=false; inventory.startItem()" ng-disabled="inventory.busy || inventory.itemForm">Thêm mặt hàng</button>
+                        <label class="fair-inventory-search">Tìm theo tên
+                            <input type="search" placeholder="Nhập tên mặt hàng…" ng-model="inventory.filters.name" ng-change="inventory.updateTable()">
+                        </label>
+                    </div>
                     <div class="fair-inventory-filter" ng-repeat="group in inventory.groups track by group.field">
                         <span class="fair-inventory-filter-label" id="fair-filter-{{group.field}}">{{group.label}}</span>
                         <details class="fair-multi-select" ng-class="{'is-disabled': inventory.busy || inventory.itemForm}">

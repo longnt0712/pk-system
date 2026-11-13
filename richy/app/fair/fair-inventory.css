@@ -49,7 +49,7 @@ fair-inventory { display: block; }
 .fair-inventory-tools-menu button:not(:disabled):hover { background: #eaf4ed; }
 .fair-inventory-filters {
     display: grid;
-    grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(120px, 1fr)) auto;
+    grid-template-columns: minmax(300px, 2fr) repeat(2, minmax(120px, 1fr)) auto;
     align-items: end;
     gap: 10px;
     min-width: 0;
@@ -66,6 +66,10 @@ fair-inventory { display: block; }
     font-weight: 400;
 }
 .fair-inventory-filters .fair-button { white-space: nowrap; }
+/* "Thêm mặt hàng" đứng sát ngay trước ô tìm theo tên, cùng hàng. */
+.fair-inventory-search-row { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.fair-inventory-search-row .fair-inventory-search { flex: 1 1 auto; min-width: 0; }
+.fair-inventory-search-row .fair-inventory-add { flex: 0 0 auto; width: auto; }
 .fair-inventory-filter { min-width: 0; }
 .fair-inventory-filter-label { display: block; font-size: 14px; font-weight: 600; }
 .fair-multi-select { position: relative; margin-top: 6px; }
@@ -329,7 +333,7 @@ th[aria-sort="descending"] .fair-inventory-sort span::before { content: '↓'; c
 .fair-stats-groups tr > :nth-child(n+2) { text-align: end; }
 @media (max-width: 660px) {
     .fair-inventory-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .fair-inventory-search, .fair-inventory-filters > .fair-button { grid-column: 1 / -1; }
+    .fair-inventory-search-row, .fair-inventory-filters > .fair-button { grid-column: 1 / -1; }
     .fair-inventory-filters > .fair-button { justify-self: start; }
 }
 @media (max-width: 520px) {
