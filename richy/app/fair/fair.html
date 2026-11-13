@@ -86,7 +86,7 @@
 
         <section ng-if="vm.mode === 'admin' && vm.canManageItems && !vm.loading && !vm.needLogin" class="fair-admin">
             <div ng-if="vm.event">
-                <fair-inventory ng-repeat="fairId in [vm.event.id] track by fairId" event-id="fairId" open-on-load="!vm.canManageFair"></fair-inventory>
+                <fair-inventory ng-repeat="fairId in [vm.event.id] track by fairId" event-id="fairId" open-on-load="true"></fair-inventory>
             </div>
             <p class="fair-panel" ng-if="!vm.event && !vm.canManageFair && !vm.error">Chưa có hội chợ. Liên hệ Admin để tạo hội chợ.</p>
             <section class="fair-panel" ng-if="vm.canManageFair">

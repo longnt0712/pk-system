@@ -205,9 +205,9 @@ test('education management can configure categories and edit fair items with pho
         await page.close();
 
         const admin = await open(browser, {mode: 'admin', admin: true, width: 1300});
-        assert.equal(admin.requests.some(url => url.endsWith('/items')), false);
-        await admin.page.getByRole('button', {name: 'Mở bảng mặt hàng'}).click();
+        // Bảng mặt hàng mở sẵn cả với admin, không cần bấm "Mở bảng mặt hàng".
         await admin.page.getByRole('button', {name: 'Thêm mặt hàng', exact: true}).click();
+        assert.equal(admin.requests.some(url => url.endsWith('/items')), true);
         await admin.page.locator('.fair-inventory-table tr.is-editing').waitFor();
         const layout = await admin.page.locator('.fair-inventory-table-wrap').evaluate(table =>
             ({width: table.clientWidth, content: table.scrollWidth, viewport: innerWidth}));
