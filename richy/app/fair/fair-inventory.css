@@ -59,6 +59,13 @@ fair-inventory { display: block; }
     border-radius: 12px;
     background: #f7faf7;
 }
+/* Thanh lọc dính trên đầu khi cuộn bảng xuống (menu lọc z-index 4 nằm trong nên vẫn đè lên bảng). */
+.fair-inventory-filters {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    box-shadow: 0 6px 16px #193a3514;
+}
 .fair-inventory-filters label { min-width: 0; margin: 0; }
 .fair-inventory-filters input[type=search], .fair-inventory-filters select {
     min-height: 42px;
@@ -332,7 +339,8 @@ th[aria-sort="descending"] .fair-inventory-sort span::before { content: '↓'; c
 .fair-stats-groups thead { background: #eaf4ed; }
 .fair-stats-groups tr > :nth-child(n+2) { text-align: end; }
 @media (max-width: 660px) {
-    .fair-inventory-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Trên điện thoại thanh lọc cao 3 hàng, dính lại sẽ che gần hết bảng. */
+    .fair-inventory-filters { position: static; box-shadow: none; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .fair-inventory-search-row, .fair-inventory-filters > .fair-button { grid-column: 1 / -1; }
     .fair-inventory-filters > .fair-button { justify-self: start; }
 }
