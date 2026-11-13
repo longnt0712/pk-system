@@ -209,6 +209,61 @@ public class DemonDefenseGameTest {
         assertEquals(3,game.shoot(1,"carol",1,START + 14430L).points); assertEquals(0,game.shoot(1,"carol",1,START + 14430L).points);
         assertEquals(6,team(game,1,14430,true).points);
     }
+    private DemonDefenseGame readyForBossLevel(int bossLevel) throws Exception {
+        int previousLevel = bossLevel - 1;
+        DemonDefenseGame game = atLevel(previousLevel, 1);
+        Field teams = DemonDefenseGame.class.getDeclaredField("teams");
+        teams.setAccessible(true);
+        Object scoringTeam = ((Map<?, ?>) teams.get(game)).get(1);
+        Field levelPoints = scoringTeam.getClass().getDeclaredField("levelPoints");
+        levelPoints.setAccessible(true);
+        levelPoints.setInt(scoringTeam, DemonDefenseGame.pointsRequiredForLevel(previousLevel) - 1);
+        assertTrue(team(game, 1, 0L, true).demons.stream().noneMatch(demon -> demon.boss));
+
+        game.shoot(1, "starter", previousLevel * 10, START + 3000L);
+        assertEquals(bossLevel, game.snapshot(START + 3000L, false).level);
+        return game;
+    }
+
+    @Test public void everyThirdLevelSpawnsOneBossInEachLaneWithIncreasingHealthAndPoints() throws Exception {
+        for (int level : new int[] {3, 6, 9}) {
+            DemonDefenseGame game = readyForBossLevel(level);
+            int expectedPoints = 10 + 2 * (level / 3 - 1);
+            for (int lane : new int[] {1, 2}) {
+                DemonDefenseGame.Team atLevelUp = team(game, lane, 3000L, true);
+                assertEquals(1L, atLevelUp.demons.stream().filter(demon -> demon.boss).count());
+                DemonDefenseGame.Demon boss = atLevelUp.demons.stream().filter(demon -> demon.boss).findFirst().get();
+                assertEquals(expectedPoints, boss.health);
+                assertEquals(expectedPoints, boss.maxHealth);
+                assertEquals(expectedPoints, boss.points);
+            }
+
+            game.advance(START + 16000L);
+            for (int lane : new int[] {1, 2}) {
+                assertEquals(1L, team(game, lane, 16000L, true).demons.stream().filter(demon -> demon.boss).count());
+            }
+        }
+    }
+
+    @Test public void firstBossAwardsTenPointsOnlyOnTheTenthHit() throws Exception {
+        DemonDefenseGame game = readyForBossLevel(3);
+        long now = START + 3000L;
+        for (int hit = 1; hit < 10; hit++) {
+            DemonDefenseGame.ShotResult shot = game.shoot(1, "alice", 1, now);
+            assertEquals(1, shot.hits);
+            assertEquals(0, shot.kills);
+            assertEquals(0, shot.points);
+            assertEquals(10 - hit, team(game, 1, 3000L, true).demons.get(0).health);
+        }
+        DemonDefenseGame.ShotResult last = game.shoot(1, "alice", 1, now);
+        assertEquals(1, last.hits);
+        assertEquals(1, last.kills);
+        assertEquals(10, last.points);
+        assertEquals(0, game.shoot(1, "alice", 1, now).points);
+        assertTrue(team(game, 1, 3000L, true).demons.isEmpty());
+        assertTrue(team(game, 2, 3000L, true).demons.stream().anyMatch(demon -> demon.boss && demon.health == 10));
+    }
+
     @Test public void oneTeamAdvancesGlobalLevelAndCheckpointsEveryPlayersLatestGun() {
         DemonDefenseGame game = game(12); assertEquals(3,game.shoot(2,"other",30,START + 24000L).points);
         game.updatePlayerStreak("other",0); game.updatePlayerStreak("bob",30); game.updatePlayerStreak("carol",0);

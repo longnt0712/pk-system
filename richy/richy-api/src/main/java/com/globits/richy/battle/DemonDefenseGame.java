@@ -19,6 +19,9 @@ public final class DemonDefenseGame {
     public static final int BAG_CHOICES = 3;
     private static final long TEMPORARY_GUN_MS = 20000L;
     private static final int LIGHTNING_DAMAGE = 5;
+    private static final int BOSS_LEVEL_INTERVAL = 3;
+    private static final int BOSS_INITIAL_POINTS = 10;
+    private static final int BOSS_POINTS_INCREMENT = 2;
     // Spawn pressure is about 70% of the previous rate (intervals divided by 0.7).
     public static final long BASE_SPAWN_INTERVAL_MS = 11430L;
     private static final long MIN_SPAWN_INTERVAL_MS = 515L;
@@ -215,11 +218,21 @@ public final class DemonDefenseGame {
             int points = 1 + (int) ((batch + part++) % maximum);
             long id = ++team.nextDemonId;
             boolean fast = points == 1 && id % 7L == 0L;
-            long travelMs = Math.max(8500L, 26000L - (level - 1L) * 1300L);
+            long travelMs = demonTravelMillis();
             if (fast) { travelMs = travelMs * 2L / 3L; }
             team.demons.add(new Enemy(id, at, at + travelMs, fast, points));
             remaining -= points;
         }
+    }
+
+    private long demonTravelMillis() {
+        return Math.max(8500L, 26000L - (level - 1L) * 1300L);
+    }
+
+    private void spawnBoss(TeamState team, long now) {
+        int appearance = level / BOSS_LEVEL_INTERVAL;
+        int points = BOSS_INITIAL_POINTS + (appearance - 1) * BOSS_POINTS_INCREMENT;
+        team.demons.add(new Enemy(++team.nextDemonId, now, now + demonTravelMillis(), false, points, true));
     }
 
     private long firstCollision(TeamState team) {
@@ -283,7 +296,10 @@ public final class DemonDefenseGame {
             level++;
             for (TeamState other : teams.values()) {
                 other.levelPoints = 0;
-                if (other.eliminatedAt == 0L) { other.nextSpawnAt = now + spawnInterval(other, now); }
+                if (other.eliminatedAt == 0L) {
+                    other.nextSpawnAt = now + spawnInterval(other, now);
+                    if (level % BOSS_LEVEL_INTERVAL == 0) { spawnBoss(other, now); }
+                }
             }
             team.levelPoints = overflow;
             for (PlayerProgress player : players.values()) {
@@ -359,12 +375,15 @@ public final class DemonDefenseGame {
     }
     private static final class Enemy {
         final long id, spawnedAt, arrivesAt;
-        final boolean fast, tough;
+        final boolean fast, tough, boss;
         final int points;
         int health;
         Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int points) {
+            this(id, spawnedAt, arrivesAt, fast, points, false);
+        }
+        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int points, boolean boss) {
             this.id = id; this.spawnedAt = spawnedAt; this.arrivesAt = arrivesAt; this.fast = fast;
-            this.points = points; this.tough = points > 1; this.health = points;
+            this.points = points; this.tough = points > 1; this.health = points; this.boss = boss;
         }
         double progress(long now) { return Math.max(0D, Math.min(1D, (double) (now - spawnedAt) / (arrivesAt - spawnedAt))); }
     }
@@ -417,11 +436,11 @@ public final class DemonDefenseGame {
     public static final class Demon {
         public final long id;
         public final double progress, speed;
-        public final boolean fast, tough;
+        public final boolean fast, tough, boss;
         public final int health, maxHealth, points;
         Demon(Enemy enemy, long at) {
             id = enemy.id; progress = enemy.progress(at); fast = enemy.fast; tough = enemy.tough; health = enemy.health;
-            maxHealth = enemy.points; points = enemy.points;
+            maxHealth = enemy.points; points = enemy.points; boss = enemy.boss;
             speed = 1D / (enemy.arrivesAt - enemy.spawnedAt);
         }
     }

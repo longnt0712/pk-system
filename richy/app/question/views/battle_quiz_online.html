@@ -2970,6 +2970,11 @@
     .demon-enemy small { font-size: 8px; font-weight: 900; color: #ffd69f; background: #863e20; padding: 3px 5px; border-radius: 4px; white-space: nowrap; }
     .demon-enemy.is-tough small { background: #65431b; color: #ffe48f; }
     .demon-enemy-health { color: #ff8075; font-size: 13px; letter-spacing: 2px; text-shadow: 0 1px 3px #101e31; }
+    .demon-enemy.is-boss { z-index: 3; }
+    .demon-enemy.is-boss .demon-enemy-sprite { width: 76px; height: 70px; filter: drop-shadow(0 0 9px #e8aa39); }
+    .demon-enemy.is-boss small, .demon-enemy.is-boss .demon-enemy-health { background: #452508; color: #ffdf88; font-weight: 800; }
+    .demon-enemy.is-boss small { border: 1px solid #e8aa39; font-size: 10px; }
+    .demon-enemy.is-boss .demon-enemy-health { padding: 3px 6px; border-radius: 5px; letter-spacing: 0; white-space: nowrap; }
     .demon-shot-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
     .demon-shot-layer line { stroke: #ffe08a; stroke-width: .6; stroke-linecap: round; }
     .demon-shot-layer circle { fill: #ffe5a5; }

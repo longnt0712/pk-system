@@ -17,7 +17,7 @@
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'REST'">🌿 QUỶ ĐANG THƯA — LẤY LẠI NHỊP!</span>
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, súng của bạn bắn! • Streak 20: 2 viên • 30: 3 viên… • Lên level chốt mức đạn tối thiểu</span>
     </div>
-    <div class="demon-enemy-legend">NGU: 1 máu / 1 điểm • RẤT NGU: 2 máu / 2 điểm • SIÊU NGU: 3 máu / 3 điểm</div>
+    <div class="demon-enemy-legend">NGU: 1 máu / 1 điểm • RẤT NGU: 2 máu / 2 điểm • SIÊU NGU: 3 máu / 3 điểm • 👑 NGU SIÊU BÁ KHÍ: level 3, 6, 9…</div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
                  ng-class="{'is-danger': team.danger, 'is-eliminated': team.eliminatedAt, 'is-winner': vm.demonArena.finished && team.rank === 1}">
@@ -28,13 +28,14 @@
                 <div class="demon-spawn-label">QUỶ XUỐNG ↓</div>
                 <div class="demon-danger-zone"><span>VẠCH PHÒNG THỦ</span></div>
                 <span class="demon-enemy" ng-repeat="demon in team.demons track by demon.id"
-                      ng-class="{'is-fast': demon.fast, 'is-tough': demon.tough}"
-                      ng-style="{'top': vm.getDemonPosition(demon, team) + '%', 'left': (50 + (demon.id % 3 - 1) * 7) + '%'}">
+                      ng-class="{'is-fast': demon.fast, 'is-tough': demon.tough, 'is-boss': demon.boss}"
+                      ng-style="{'top': vm.getDemonPosition(demon, team) + '%', 'left': (demon.boss ? 50 : 50 + (demon.id % 3 - 1) * 7) + '%'}">
                     <img class="demon-enemy-sprite"
                          ng-src="{{demon.maxHealth >= 3 ? 'assets/images/battle-demons/terribly-dumb-demon.svg' : demon.maxHealth === 2 ? 'assets/images/battle-demons/very-dumb-demon.svg' : 'assets/images/battle-demons/dumb-demon.svg'}}"
-                         ng-attr-alt="{{demon.maxHealth >= 3 ? 'Quỷ siêu ngu' : demon.maxHealth === 2 ? 'Quỷ rất ngu' : 'Quỷ ngu'}}" draggable="false">
-                    <small>{{demon.maxHealth >= 3 ? 'SIÊU NGU' : demon.maxHealth === 2 ? 'RẤT NGU' : 'NGU'}}</small>
-                    <span class="demon-enemy-health" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health >= 3 ? '♥♥♥' : demon.health === 2 ? '♥♥' : '♥'}} • {{demon.points || demon.maxHealth || 1}}đ</span>
+                         alt="" draggable="false">
+                    <small>{{demon.boss ? '👑 NGU SIÊU BÁ KHÍ' : demon.maxHealth >= 3 ? 'SIÊU NGU' : demon.maxHealth === 2 ? 'RẤT NGU' : 'NGU'}}</small>
+                    <span class="demon-enemy-health" ng-if="demon.boss">♥ {{demon.health}}/{{demon.maxHealth}} • {{demon.points}}đ</span>
+                    <span class="demon-enemy-health" ng-if="!demon.boss" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health >= 3 ? '♥♥♥' : demon.health === 2 ? '♥♥' : '♥'}} • {{demon.points || demon.maxHealth || 1}}đ</span>
                 </span>
                 <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                     <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)"
