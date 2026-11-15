@@ -2,7 +2,10 @@
     <header class="demon-board-header">
         <div><small>BATTLE ONLINE • SINH TỒN THEO ĐỘI</small><h2>👹 DIỆT QUỶ NGU</h2></div>
         <div class="demon-board-meta">
-            <span>LEVEL <b>{{vm.demonArena.level || 1}}</b></span>
+            <span class="demon-level-badge" ng-attr-title="Quỷ ở level này có thêm {{vm.demonArena.demonHealthBonus || 0}} máu">
+                LEVEL <b>{{vm.demonArena.level || 1}}</b>
+                <small ng-if="vm.demonArena.demonHealthBonus">💪 Quỷ +{{vm.demonArena.demonHealthBonus}} máu</small>
+            </span>
             <span ng-if="vm.room.status === 'PLAYING'">⏱ {{vm.formatTime(vm.countdown)}}</span>
             <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
             <button type="button" ng-if="vm.canManageTeams()" ng-click="vm.openTeamManager($event)">👥 Xếp đội / Gánh</button>
@@ -15,46 +18,93 @@
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'WARNING'">⚠️ BẦY QUỶ ĐANG TỚI! {{vm.demonArena.warningSeconds}} GIÂY</span>
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'HORDE'">🔥 BẦY QUỶ TRÀN XUỐNG — CÙNG BẢO VỆ ĐỘI!</span>
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'REST'">🌿 QUỶ ĐANG THƯA — LẤY LẠI NHỊP!</span>
-        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, súng của bạn bắn! • Streak 20: 2 viên • 30: 3 viên… • Lên level chốt mức đạn tối thiểu</span>
+        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, tháp pha lê của bạn bắn tia sáng! • Streak 20: 2 tia • 30: 3 tia… • Lên level chốt số tia tối thiểu</span>
     </div>
-    <div class="demon-enemy-legend">NGU: 1 máu / 1 điểm • RẤT NGU: 2 máu / 2 điểm • SIÊU NGU: 3 máu / 3 điểm • 👑 NGU SIÊU BÁ KHÍ: level 3, 6, 9…</div>
+    <div class="demon-enemy-legend">
+        NGU {{1 + (vm.demonArena.demonHealthBonus || 0)}} máu • RẤT NGU {{2 + (vm.demonArena.demonHealthBonus || 0)}} máu • SIÊU NGU {{3 + (vm.demonArena.demonHealthBonus || 0)}} máu
+        (điểm = máu; mỗi level quỷ +1 máu, không nhanh hơn) • 👑 NGU SIÊU BÁ KHÍ: mỗi 50 quỷ diệt, lần sau +2 máu • Đội ít/nhiều người được chia tỉ lệ cho công bằng
+    </div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
                  ng-class="{'is-danger': team.danger, 'is-eliminated': team.eliminatedAt, 'is-winner': vm.demonArena.finished && team.rank === 1}">
-            <header><strong>ĐỘI {{team.number}}</strong><span>{{team.memberCount}} súng • {{team.points || 0}} điểm • 👹 {{team.kills}} diệt</span></header>
-            <div class="demon-level-progress">{{team.levelPoints || 0}} / {{vm.demonArena.levelTargetPoints || 20}} điểm lên level
-                <progress max="{{vm.demonArena.levelTargetPoints || 20}}" value="{{team.levelPoints || 0}}" aria-label="Tiến độ lên level của đội {{team.number}}"></progress></div>
+            <header><strong>ĐỘI {{team.number}}</strong><span>{{team.memberCount}} tháp • {{team.points || 0}} điểm • 👹 {{team.kills}} diệt</span></header>
+            <div class="demon-level-progress">
+                <div class="demon-level-progress-row">
+                    <span>⬆ Lên LEVEL {{(vm.demonArena.level || 1) + 1}}</span>
+                    <b>{{vm.getDemonLevelPercent(team)}}%</b>
+                </div>
+                <div class="demon-level-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                     aria-valuenow="{{vm.getDemonLevelPercent(team)}}" aria-label="Tiến độ lên level của đội {{team.number}}">
+                    <i ng-style="{'width': vm.getDemonLevelPercent(team) + '%'}"></i>
+                </div>
+                <small>Còn {{vm.getDemonPointsToLevel(team)}} điểm<span ng-if="team.memberCount"> (mục tiêu {{vm.getDemonLevelTarget(team)}} cho {{team.memberCount}} người)</span></small>
+                <div class="demon-boss-countdown" ng-class="{'is-active': team.bossActive}">
+                    <span ng-if="team.bossActive">👑 BÁ KHÍ ĐANG TẤN CÔNG!</span>
+                    <span ng-if="!team.bossActive">👑 Bá khí sau <b>{{team.killsUntilBoss || 50}}</b> quỷ</span>
+                    <span>• lần tới ♥ {{team.nextBossHealth || 10}}</span>
+                </div>
+            </div>
             <div class="demon-arena-stage">
                 <div class="demon-spawn-label">QUỶ XUỐNG ↓</div>
                 <div class="demon-danger-zone"><span>VẠCH PHÒNG THỦ</span></div>
                 <span class="demon-enemy" ng-repeat="demon in team.demons track by demon.id"
                       ng-class="{'is-fast': demon.fast, 'is-tough': demon.tough, 'is-boss': demon.boss}"
                       ng-style="{'top': vm.getDemonPosition(demon, team) + '%', 'left': (demon.boss ? 50 : 50 + (demon.id % 3 - 1) * 7) + '%'}">
-                    <img class="demon-enemy-sprite"
-                         ng-src="{{demon.maxHealth >= 3 ? 'assets/images/battle-demons/terribly-dumb-demon.svg' : demon.maxHealth === 2 ? 'assets/images/battle-demons/very-dumb-demon.svg' : 'assets/images/battle-demons/dumb-demon.svg'}}"
-                         alt="" draggable="false">
-                    <small>{{demon.boss ? '👑 NGU SIÊU BÁ KHÍ' : demon.maxHealth >= 3 ? 'SIÊU NGU' : demon.maxHealth === 2 ? 'RẤT NGU' : 'NGU'}}</small>
+                    <img class="demon-enemy-sprite" ng-src="{{vm.getDemonSprite(demon)}}" alt="" draggable="false">
+                    <small>{{vm.getDemonKindLabel(demon)}}</small>
                     <span class="demon-enemy-health" ng-if="demon.boss">♥ {{demon.health}}/{{demon.maxHealth}} • {{demon.points}}đ</span>
-                    <span class="demon-enemy-health" ng-if="!demon.boss" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health >= 3 ? '♥♥♥' : demon.health === 2 ? '♥♥' : '♥'}} • {{demon.points || demon.maxHealth || 1}}đ</span>
+                    <span class="demon-enemy-health" ng-if="!demon.boss && demon.maxHealth <= 3" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health >= 3 ? '♥♥♥' : demon.health === 2 ? '♥♥' : '♥'}} • {{demon.points || demon.maxHealth || 1}}đ</span>
+                    <span class="demon-enemy-health is-number" ng-if="!demon.boss && demon.maxHealth > 3" ng-attr-aria-label="Còn {{demon.health}} máu">♥ {{demon.health}}/{{demon.maxHealth}}</span>
                 </span>
                 <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                     <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)"
-                       ng-class="{'is-lightning': shot.lightning}">
+                       ng-class="[shot.lightning ? 'is-lightning' : 'is-beam', 'tier-' + vm.getDemonShotTier(team, shot.username)]">
                         <path ng-if="shot.lightning" class="demon-lightning-glow" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
                         <path ng-if="shot.lightning" class="demon-lightning-bolt" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
-                        <line ng-if="!shot.lightning" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="88" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
-                        <circle cx="50" ng-attr-cy="{{7 + shot.progress * 73}}" r="2" ng-if="shot.hit" />
+                        <line ng-if="!shot.lightning" class="demon-beam-glow" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="86" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
+                        <line ng-if="!shot.lightning" class="demon-beam-core" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="86" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
+                        <circle cx="50" ng-attr-cy="{{7 + shot.progress * 73}}" r="2.6" ng-if="shot.hit" />
                     </g>
                 </svg>
                 <div class="demon-gun-row">
                     <div class="demon-player-gun" ng-repeat="player in vm.getDemonTeamPlayers(team.number) track by player.username"
                          ng-attr-title="{{vm.getPlayerDisplayName(player)}}"
                          ng-class="{'is-frozen': player.frozenUntil > vm.demonClock, 'is-offline': !player.connected, 'has-gun-boost': player.demonGunBoostUntil > vm.demonClock}">
-                        <span class="demon-gun-barrels" aria-hidden="true"><i></i><i ng-if="vm.getDemonBullets(player) >= 2"></i><i ng-if="vm.getDemonBullets(player) >= 3"></i></span>
-                        <b>{{vm.getPlayerDisplayName(player)}}</b><small>🔥 {{player.streak}} • {{vm.getDemonBullets(player)}} viên</small>
+                        <!-- Tháp Pha Lê: ng-repeat theo bậc để khi lên bậc phần tử được tạo lại và chạy hiệu ứng "nâng cấp". -->
+                        <span class="demon-tower" ng-repeat="tier in [vm.getDemonTowerTier(player)] track by tier"
+                              ng-class="'tier-' + tier" ng-attr-title="{{vm.getDemonTowerName(player)}}" aria-hidden="true">
+                            <svg viewBox="0 0 60 52" focusable="false">
+                                <circle class="tower-halo" cx="30" cy="24" r="22" ng-if="tier >= 5" />
+                                <g class="tower-sparkles" ng-if="tier >= 5">
+                                    <path d="M6 10 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5z" />
+                                    <path d="M54 6 l1.2 2.8 2.8 1.2 -2.8 1.2 -1.2 2.8 -1.2 -2.8 -2.8 -1.2 2.8 -1.2z" />
+                                    <path d="M50 30 l1 2.2 2.2 1 -2.2 1 -1 2.2 -1 -2.2 -2.2 -1 2.2 -1z" />
+                                </g>
+                                <g class="tower-shard tower-shard-outer" ng-if="tier >= 4">
+                                    <polygon class="facet-light" points="8,24 4,33 8,41" /><polygon class="facet-dark" points="8,24 12,33 8,41" />
+                                    <polygon class="facet-light" points="52,24 48,33 52,41" /><polygon class="facet-dark" points="52,24 56,33 52,41" />
+                                </g>
+                                <g class="tower-shard" ng-if="tier >= 2">
+                                    <polygon class="facet-light" points="17,14 12,27 17,40" /><polygon class="facet-dark" points="17,14 22,27 17,40" />
+                                    <polygon class="facet-light" points="43,14 38,27 43,40" /><polygon class="facet-dark" points="43,14 48,27 43,40" />
+                                </g>
+                                <g class="tower-core">
+                                    <polygon class="facet-light" points="30,2 21,21 30,40" />
+                                    <polygon class="facet-dark" points="30,2 39,21 30,40" />
+                                    <polyline class="facet-shine" points="27,9 24.5,17" />
+                                </g>
+                                <ellipse class="tower-ring" cx="30" cy="25" rx="16" ry="4.5" ng-if="tier >= 3" />
+                                <polygon class="tower-base" points="13,41 47,41 51,50 9,50" />
+                                <rect class="tower-cap" x="11" y="38.5" width="38" height="4" rx="2" />
+                                <g class="tower-crown" ng-if="tier >= 4">
+                                    <polygon points="22,46 24.5,43 27,46 30,42.5 33,46 35.5,43 38,46" />
+                                </g>
+                            </svg>
+                        </span>
+                        <b>{{vm.getPlayerDisplayName(player)}}</b><small>🔥 {{player.streak}} • {{vm.getDemonBullets(player)}} tia</small>
                         <em ng-if="player.frozenUntil > vm.demonClock">❄️ {{((player.frozenUntil - vm.demonClock) / 1000) | number:0}}s</em>
-                        <small>Giữ {{player.demonMinimumBullets || 1}} đạn <span ng-if="vm.isDoubleActionPlayer(player)">• ⚡ Gánh</span></small>
-                        <em ng-if="player.demonGunBoostUntil > vm.demonClock">⚡ Súng tăng cường</em>
+                        <small>Giữ {{player.demonMinimumBullets || 1}} tia <span ng-if="vm.isDoubleActionPlayer(player)">• ⚡ Gánh</span></small>
+                        <em ng-if="player.demonGunBoostUntil > vm.demonClock">⚡ Pha lê tăng cường</em>
                         <em ng-if="player.unfreezeCharges">🧊 Giải băng</em>
                     </div>
                 </div>

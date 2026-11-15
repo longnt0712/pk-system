@@ -19,9 +19,12 @@ public final class DemonDefenseGame {
     public static final int BAG_CHOICES = 3;
     private static final long TEMPORARY_GUN_MS = 20000L;
     private static final int LIGHTNING_DAMAGE = 5;
-    private static final int BOSS_LEVEL_INTERVAL = 3;
+    /** A boss appears in a lane after every 50 kills by a team of average size. */
+    public static final int BOSS_KILL_INTERVAL = 50;
     private static final int BOSS_INITIAL_POINTS = 10;
     private static final int BOSS_POINTS_INCREMENT = 2;
+    /** Demons no longer speed up with level; they get tougher instead. */
+    public static final long DEMON_TRAVEL_MS = 26000L;
     // Spawn pressure is about 70% of the previous rate (intervals divided by 0.7).
     public static final long BASE_SPAWN_INTERVAL_MS = 11430L;
     private static final long MIN_SPAWN_INTERVAL_MS = 515L;
@@ -208,31 +211,42 @@ public final class DemonDefenseGame {
         return phase >= 23000L && phase < 27000L ? Math.max(MIN_SPAWN_INTERVAL_MS, interval / 2L) : interval;
     }
 
-    /** Every batch spends exactly this level's point budget, mixing one-, two-, and three-point enemies. */
-    private void spawnBatch(TeamState team, long at) {
-        int remaining = level;
-        long batch = ++team.spawnBatches;
-        int part = 0;
-        while (remaining > 0) {
-            int maximum = Math.min(3, remaining);
-            int points = 1 + (int) ((batch + part++) % maximum);
-            long id = ++team.nextDemonId;
-            boolean fast = points == 1 && id % 7L == 0L;
-            long travelMs = demonTravelMillis();
-            if (fast) { travelMs = travelMs * 2L / 3L; }
-            team.demons.add(new Enemy(id, at, at + travelMs, fast, points));
-            remaining -= points;
+    /** Extra health every normal demon gets at the current level (level 1: +0, level 4: +3). */
+    public static int healthBonusForLevel(int value) { return Math.max(0, value - 1); }
+
+    /**
+     * Team size relative to the average living team. Spawns are already per member, so scaling the
+     * level target, boss cadence and boss health by this keeps unequal teams equally challenged.
+     */
+    private double teamScale(TeamState team) {
+        int living = 0, members = 0;
+        for (TeamState other : teams.values()) {
+            if (other.eliminatedAt == 0L && other.memberCount > 0) { living++; members += other.memberCount; }
         }
+        if (living == 0 || team.memberCount <= 0) { return 1D; }
+        return team.memberCount / (members / (double) living);
+    }
+    private static int scaled(int value, double scale) { return Math.max(1, (int) Math.round(value * scale)); }
+    private int levelTargetForTeam(TeamState team) { return scaled(pointsRequiredForLevel(level), teamScale(team)); }
+    private int bossKillTarget(TeamState team) { return scaled(BOSS_KILL_INTERVAL, teamScale(team)); }
+    private int nextBossHealth(TeamState team) {
+        return scaled(BOSS_INITIAL_POINTS + team.bossCount * BOSS_POINTS_INCREMENT, teamScale(team));
     }
 
-    private long demonTravelMillis() {
-        return Math.max(8500L, 26000L - (level - 1L) * 1300L);
+    /** One demon per batch: higher levels unlock tougher kinds and add health instead of more/faster demons. */
+    private void spawnBatch(TeamState team, long at) {
+        long batch = ++team.spawnBatches;
+        int kind = 1 + (int) (batch % Math.min(3, level));
+        long id = ++team.nextDemonId;
+        boolean fast = kind == 1 && id % 7L == 0L;
+        long travelMs = fast ? DEMON_TRAVEL_MS * 2L / 3L : DEMON_TRAVEL_MS;
+        team.demons.add(new Enemy(id, at, at + travelMs, fast, kind, kind + healthBonusForLevel(level), false));
     }
 
     private void spawnBoss(TeamState team, long now) {
-        int appearance = level / BOSS_LEVEL_INTERVAL;
-        int points = BOSS_INITIAL_POINTS + (appearance - 1) * BOSS_POINTS_INCREMENT;
-        team.demons.add(new Enemy(++team.nextDemonId, now, now + demonTravelMillis(), false, points, true));
+        int health = nextBossHealth(team);
+        team.bossCount++;
+        team.demons.add(new Enemy(++team.nextDemonId, now, now + DEMON_TRAVEL_MS, false, 3, health, true));
     }
 
     private long firstCollision(TeamState team) {
@@ -286,19 +300,23 @@ public final class DemonDefenseGame {
                 team.demons.remove(nearest);
                 kills++;
                 points += nearest.points;
+                // Bosses come from this lane's own kill count (boss kills count too).
+                if (++team.killsSinceBoss >= bossKillTarget(team)) {
+                    team.killsSinceBoss = 0;
+                    spawnBoss(team, now);
+                }
             }
         }
         team.kills += kills;
         team.points += points;
         team.levelPoints += points;
-        while (team.levelPoints >= pointsRequiredForLevel(level)) {
-            int overflow = team.levelPoints - pointsRequiredForLevel(level);
+        while (team.levelPoints >= levelTargetForTeam(team)) {
+            int overflow = team.levelPoints - levelTargetForTeam(team);
             level++;
             for (TeamState other : teams.values()) {
                 other.levelPoints = 0;
                 if (other.eliminatedAt == 0L) {
                     other.nextSpawnAt = now + spawnInterval(other, now);
-                    if (level % BOSS_LEVEL_INTERVAL == 0) { spawnBoss(other, now); }
                 }
             }
             team.levelPoints = overflow;
@@ -334,7 +352,7 @@ public final class DemonDefenseGame {
         for (int index = 0; index < ranked.size(); index++) {
             TeamState team = ranked.get(index);
             if (previous == null || compareResults(previous, team) != 0) { rank = index + 1; }
-            result.add(new Team(team, at, startedAt, rank, includeArena));
+            result.add(new Team(team, new LaneRules(team), at, startedAt, rank, includeArena));
             previous = team;
         }
         long offset = Math.max(0L, at - startedAt), phaseMs = offset % WAVE_MS;
@@ -343,6 +361,17 @@ public final class DemonDefenseGame {
         return new Snapshot(startedAt, at, (int) (offset / WAVE_MS) + 1, level, pointsRequiredForLevel(level), phase,
                 "WARNING".equals(phase) ? (int) ((23000L - phaseMs + 999L) / 1000L) : 0,
                 result, stoppedAt > 0L);
+    }
+
+    /** Per-lane numbers that depend on the whole roster, computed once per snapshot. */
+    private final class LaneRules {
+        final int levelTargetPoints, bossKillTarget, killsUntilBoss, nextBossHealth;
+        LaneRules(TeamState team) {
+            levelTargetPoints = levelTargetForTeam(team);
+            bossKillTarget = bossKillTarget(team);
+            killsUntilBoss = Math.max(1, bossKillTarget - team.killsSinceBoss);
+            nextBossHealth = nextBossHealth(team);
+        }
     }
 
     private static int compareResults(TeamState a, TeamState b) {
@@ -358,7 +387,7 @@ public final class DemonDefenseGame {
         final int number;
         int memberCount;
         long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches;
-        int kills, points, levelPoints, rescues;
+        int kills, points, levelPoints, rescues, killsSinceBoss, bossCount;
         String rescueUsername;
         final List<Enemy> demons = new ArrayList<Enemy>();
         final List<Shot> shots = new ArrayList<Shot>();
@@ -376,14 +405,16 @@ public final class DemonDefenseGame {
     private static final class Enemy {
         final long id, spawnedAt, arrivesAt;
         final boolean fast, tough, boss;
-        final int points;
+        /** kind 1 NGU, 2 RẤT NGU, 3 SIÊU NGU (sprite/label); points always equal max health. */
+        final int kind, points;
         int health;
+        /** Plain enemy whose kind follows its health (kept for tests that seed lanes directly). */
         Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int points) {
-            this(id, spawnedAt, arrivesAt, fast, points, false);
+            this(id, spawnedAt, arrivesAt, fast, Math.max(1, Math.min(3, points)), points, false);
         }
-        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int points, boolean boss) {
+        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, int kind, int health, boolean boss) {
             this.id = id; this.spawnedAt = spawnedAt; this.arrivesAt = arrivesAt; this.fast = fast;
-            this.points = points; this.tough = points > 1; this.health = points; this.boss = boss;
+            this.kind = kind; this.points = health; this.tough = kind > 1; this.health = health; this.boss = boss;
         }
         double progress(long now) { return Math.max(0D, Math.min(1D, (double) (now - spawnedAt) / (arrivesAt - spawnedAt))); }
     }
@@ -392,27 +423,35 @@ public final class DemonDefenseGame {
     public static final class Snapshot {
         public final long startedAt, snapshotAt;
         public final double dangerProgress = DANGER_PROGRESS;
-        public final int wave, level, levelTargetPoints, warningSeconds;
+        public final int wave, level, levelTargetPoints, warningSeconds, demonHealthBonus;
         public final String phase;
         public final List<Team> teams;
         public final boolean finished;
         Snapshot(long startedAt, long snapshotAt, int wave, int level, int levelTargetPoints, String phase, int warningSeconds, List<Team> teams, boolean finished) {
             this.startedAt = startedAt; this.snapshotAt = snapshotAt; this.wave = wave; this.phase = phase;
             this.warningSeconds = warningSeconds; this.teams = teams; this.finished = finished;
-            this.level = level; this.levelTargetPoints = levelTargetPoints;
+            this.level = level; this.levelTargetPoints = levelTargetPoints; this.demonHealthBonus = healthBonusForLevel(level);
         }
     }
     public static final class Team {
         public final int number, memberCount, kills, points, levelPoints, rescues, rank;
+        /** This lane's own target (scaled by team size) and boss countdown; sent to students too. */
+        public final int levelTargetPoints, bossKillTarget, killsUntilBoss, nextBossHealth, bossCount;
+        public final boolean bossActive;
         public final long eliminatedAt, rescueAt, survivedMs;
         public final String rescueUsername;
         public final boolean danger;
         public final double nearestDemonProgress, nearestDemonSpeed;
         public final List<Demon> demons = new ArrayList<Demon>();
         public final List<Shot> shots;
-        Team(TeamState state, long at, long startedAt, int rank, boolean includeArena) {
+        Team(TeamState state, LaneRules rules, long at, long startedAt, int rank, boolean includeArena) {
             number = state.number; memberCount = state.memberCount; kills = state.kills; rescues = state.rescues;
             points = state.points; levelPoints = state.levelPoints;
+            levelTargetPoints = rules.levelTargetPoints; bossKillTarget = rules.bossKillTarget;
+            killsUntilBoss = rules.killsUntilBoss; nextBossHealth = rules.nextBossHealth; bossCount = state.bossCount;
+            boolean anyBoss = false;
+            for (Enemy enemy : state.demons) { anyBoss |= enemy.boss; }
+            bossActive = anyBoss;
             eliminatedAt = state.eliminatedAt; rescueAt = state.rescueAt; rescueUsername = state.rescueUsername;
             this.rank = rank;
             survivedMs = Math.max(0L, (eliminatedAt > 0L ? eliminatedAt : at) - startedAt);
@@ -437,10 +476,10 @@ public final class DemonDefenseGame {
         public final long id;
         public final double progress, speed;
         public final boolean fast, tough, boss;
-        public final int health, maxHealth, points;
+        public final int health, maxHealth, points, kind;
         Demon(Enemy enemy, long at) {
             id = enemy.id; progress = enemy.progress(at); fast = enemy.fast; tough = enemy.tough; health = enemy.health;
-            maxHealth = enemy.points; points = enemy.points; boss = enemy.boss;
+            maxHealth = enemy.points; points = enemy.points; boss = enemy.boss; kind = enemy.kind;
             speed = 1D / (enemy.arrivesAt - enemy.spawnedAt);
         }
     }

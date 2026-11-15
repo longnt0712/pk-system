@@ -178,75 +178,105 @@ public class DemonDefenseGameTest {
         game.advance(START + 21145L); assertEquals(3,enemyPoints(team(game,1,21145L,true)));
         assertEquals(3,enemyPoints(team(game,2,21145L,true)));
     }
-    @Test public void eachSpawnBatchSpendsItsLevelBudgetAndMixesHealthValues() throws Exception {
-        for (int level : new int[] {2,3,5}) {
+    @Test public void eachBatchIsOneDemonAndHigherLevelsAddHealthInsteadOfMoreDemons() throws Exception {
+        for (int level : new int[] {1,2,3,5}) {
             DemonDefenseGame game = atLevel(level,1); game.advance(START + 23000L);
-            DemonDefenseGame.Team team = team(game,1,23000,true); assertEquals(level * 3,enemyPoints(team));
-            boolean one = false, two = false, three = false;
+            DemonDefenseGame.Team team = team(game,1,23000,true);
+            assertEquals(3,team.demons.size()); // spawns at 3s, 14.43s and 23s regardless of level
+            assertEquals(level - 1,game.snapshot(START + 23000L,false).demonHealthBonus);
+            boolean[] kinds = new boolean[4];
             for (DemonDefenseGame.Demon demon : team.demons) {
                 assertEquals(demon.maxHealth,demon.health); assertEquals(demon.maxHealth,demon.points);
-                assertTrue(demon.health >= 1 && demon.health <= 3);
-                one |= demon.health == 1; two |= demon.health == 2; three |= demon.health == 3;
+                assertTrue(demon.kind >= 1 && demon.kind <= Math.min(3,level));
+                assertEquals(demon.kind + level - 1,demon.health);
+                assertEquals(demon.kind > 1,demon.tough);
+                kinds[demon.kind] = true;
             }
-            assertTrue(one); assertTrue(two); if (level >= 3) { assertTrue(three); }
+            for (int kind = 1; kind <= Math.min(3,level); kind++) { assertTrue("level " + level + " kind " + kind, kinds[kind]); }
         }
     }
-    @Test public void twoPointDemonKeepsMovingAfterOneHitAndAwardsFullValueToFinisher() throws Exception {
+    @Test public void toughDemonKeepsMovingAfterHitsAndAwardsItsFullHealthToTheFinisher() throws Exception {
         DemonDefenseGame game = atLevel(2,1);
         DemonDefenseGame.ShotResult first = game.shoot(1,"alice",1,START + 3000L);
         assertEquals(1,first.hits); assertEquals(0,first.kills); assertEquals(0,first.points);
         DemonDefenseGame.Demon before = team(game,1,3000,true).demons.get(0);
-        assertEquals(1,before.health); assertEquals(2,before.maxHealth); assertTrue(before.tough);
+        assertEquals(2,before.kind); assertEquals(2,before.health); assertEquals(3,before.maxHealth); assertTrue(before.tough);
         game.advance(START + 4000L); assertTrue(team(game,1,4000,true).demons.get(0).progress > before.progress);
-        DemonDefenseGame.ShotResult second = game.shoot(1,"bob",1,START + 4000L);
-        assertEquals(1,second.kills); assertEquals(2,second.points);
-        assertEquals(1,team(game,1,4000,true).kills); assertEquals(2,team(game,1,4000,true).points);
+        assertEquals(0,game.shoot(1,"bob",1,START + 4000L).points);
+        DemonDefenseGame.ShotResult last = game.shoot(1,"carol",1,START + 4000L);
+        assertEquals(1,last.kills); assertEquals(3,last.points);
+        assertEquals(1,team(game,1,4000,true).kills); assertEquals(3,team(game,1,4000,true).points);
+        assertEquals(0,game.shoot(1,"carol",1,START + 4000L).points);
     }
-    @Test public void threePointDemonNeedsThreeHitsAndAwardsThreePointsOnlyOnce() throws Exception {
-        DemonDefenseGame game = atLevel(3,1); assertEquals(3,game.shoot(1,"alice",30,START + 3000L).points);
-        game.advance(START + 14430L); assertEquals(3,team(game,1,14430,true).demons.get(0).health);
-        assertEquals(0,game.shoot(1,"alice",1,START + 14430L).points); assertEquals(0,game.shoot(1,"bob",1,START + 14430L).points);
-        assertEquals(3,game.shoot(1,"carol",1,START + 14430L).points); assertEquals(0,game.shoot(1,"carol",1,START + 14430L).points);
-        assertEquals(6,team(game,1,14430,true).points);
+    @Test public void levelsAddHealthButNeverSpeed() throws Exception {
+        DemonDefenseGame first = game(1), fifth = atLevel(5,1); first.advance(START + 3000L); fifth.advance(START + 3000L);
+        DemonDefenseGame.Demon easy = team(first,1,3000,true).demons.get(0), hard = team(fifth,1,3000,true).demons.get(0);
+        assertEquals(easy.speed,hard.speed,0D); assertEquals(1D / DemonDefenseGame.DEMON_TRAVEL_MS,hard.speed,0D);
+        assertTrue(hard.maxHealth > easy.maxHealth);
     }
-    private DemonDefenseGame readyForBossLevel(int bossLevel) throws Exception {
-        int previousLevel = bossLevel - 1;
-        DemonDefenseGame game = atLevel(previousLevel, 1);
-        Field teams = DemonDefenseGame.class.getDeclaredField("teams");
-        teams.setAccessible(true);
-        Object scoringTeam = ((Map<?, ?>) teams.get(game)).get(1);
-        Field levelPoints = scoringTeam.getClass().getDeclaredField("levelPoints");
-        levelPoints.setAccessible(true);
-        levelPoints.setInt(scoringTeam, DemonDefenseGame.pointsRequiredForLevel(previousLevel) - 1);
-        assertTrue(team(game, 1, 0L, true).demons.stream().noneMatch(demon -> demon.boss));
-
-        game.shoot(1, "starter", previousLevel * 10, START + 3000L);
-        assertEquals(bossLevel, game.snapshot(START + 3000L, false).level);
+    private void setLane(DemonDefenseGame game, int lane, String name, int value) throws Exception {
+        Field teams = DemonDefenseGame.class.getDeclaredField("teams"); teams.setAccessible(true);
+        Object state = ((Map<?, ?>) teams.get(game)).get(lane);
+        Field field = state.getClass().getDeclaredField(name); field.setAccessible(true); field.setInt(state, value);
+    }
+    /** Puts lane 1 one kill short of a boss, then makes that kill at +3s. */
+    private DemonDefenseGame bossSpawnedInLaneOne(DemonDefenseGame game) throws Exception {
+        setLane(game, 1, "killsSinceBoss", DemonDefenseGame.BOSS_KILL_INTERVAL - 1);
+        assertEquals(1, team(game, 1, 0L, false).killsUntilBoss);
+        assertEquals(1, game.shoot(1, "starter", 1, START + 3000L).kills);
         return game;
     }
 
-    @Test public void everyThirdLevelSpawnsOneBossInEachLaneWithIncreasingHealthAndPoints() throws Exception {
-        for (int level : new int[] {3, 6, 9}) {
-            DemonDefenseGame game = readyForBossLevel(level);
-            int expectedPoints = 10 + 2 * (level / 3 - 1);
-            for (int lane : new int[] {1, 2}) {
-                DemonDefenseGame.Team atLevelUp = team(game, lane, 3000L, true);
-                assertEquals(1L, atLevelUp.demons.stream().filter(demon -> demon.boss).count());
-                DemonDefenseGame.Demon boss = atLevelUp.demons.stream().filter(demon -> demon.boss).findFirst().get();
-                assertEquals(expectedPoints, boss.health);
-                assertEquals(expectedPoints, boss.maxHealth);
-                assertEquals(expectedPoints, boss.points);
+    @Test public void everyFiftyKillsSpawnsABossOnlyInThatLaneWithTwoMoreHealthEachTime() throws Exception {
+        DemonDefenseGame game = bossSpawnedInLaneOne(game(1));
+        // Two real appearances (10 then 12); nextBossHealth checks that the third would be 14.
+        int[] expected = {10, 12};
+        long[] times = {3000L, 14430L}; // a fresh one-health demon spawns at each of these
+        for (int appearance = 0; appearance < expected.length; appearance++) {
+            long at = times[appearance];
+            if (appearance > 0) {
+                setLane(game, 1, "killsSinceBoss", DemonDefenseGame.BOSS_KILL_INTERVAL - 1);
+                assertEquals(1, game.shoot(1, "alice", 1, START + at).kills); // the 50th kill brings the next boss
             }
-
-            game.advance(START + 16000L);
-            for (int lane : new int[] {1, 2}) {
-                assertEquals(1L, team(game, lane, 16000L, true).demons.stream().filter(demon -> demon.boss).count());
+            DemonDefenseGame.Team lane = team(game, 1, at, true);
+            DemonDefenseGame.Demon boss = lane.demons.stream().filter(demon -> demon.boss).findFirst().get();
+            assertEquals(expected[appearance], boss.health);
+            assertEquals(expected[appearance], boss.points);
+            assertEquals(appearance + 1, lane.bossCount);
+            assertTrue(lane.bossActive);
+            assertEquals(DemonDefenseGame.BOSS_KILL_INTERVAL, lane.killsUntilBoss);
+            assertEquals(expected[appearance] + 2, lane.nextBossHealth);
+            assertTrue(team(game, 2, at, true).demons.stream().noneMatch(demon -> demon.boss));
+            assertEquals(0, team(game, 2, at, false).bossCount);
+            if (appearance < expected.length - 1) {
+                for (int hit = 0; hit < expected[appearance]; hit++) { game.shoot(1, "alice", 1, START + at); }
+                assertFalse(team(game, 1, at, true).bossActive);
             }
         }
     }
 
+    @Test public void unequalTeamsScaleLevelTargetBossCadenceAndBossHealthBySize() throws Exception {
+        Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>(); members.put(1, 1); members.put(2, 3);
+        DemonDefenseGame game = new DemonDefenseGame(START, members); // average 2 members: scales 0.5 and 1.5
+        DemonDefenseGame.Team small = team(game, 1, 0L, false), large = team(game, 2, 0L, false);
+        assertEquals(10, small.levelTargetPoints); assertEquals(30, large.levelTargetPoints);
+        assertEquals(20, game.snapshot(START, false).levelTargetPoints);
+        assertEquals(25, small.bossKillTarget); assertEquals(75, large.bossKillTarget);
+        assertEquals(5, small.nextBossHealth); assertEquals(15, large.nextBossHealth);
+        // The small team levels up the whole room after 10 points instead of 20.
+        setLane(game, 1, "levelPoints", 9);
+        assertEquals(1, game.shoot(1, "solo", 1, START + 3000L).points);
+        assertEquals(2, game.snapshot(START + 3000L, false).level);
+        // ...and meets a proportionally smaller boss.
+        setLane(game, 1, "killsSinceBoss", 24);
+        game.advance(START + 14430L);
+        // Exactly enough bullets for the level-2 demon (2 health) so no spare bullet hits the new boss.
+        assertEquals(1, game.shoot(1, "solo", 20, START + 14430L).kills);
+        assertEquals(5, team(game, 1, 14430L, true).demons.stream().filter(demon -> demon.boss).findFirst().get().health);
+    }
+
     @Test public void firstBossAwardsTenPointsOnlyOnTheTenthHit() throws Exception {
-        DemonDefenseGame game = readyForBossLevel(3);
+        DemonDefenseGame game = bossSpawnedInLaneOne(game(1));
         long now = START + 3000L;
         for (int hit = 1; hit < 10; hit++) {
             DemonDefenseGame.ShotResult shot = game.shoot(1, "alice", 1, now);
@@ -261,7 +291,6 @@ public class DemonDefenseGameTest {
         assertEquals(10, last.points);
         assertEquals(0, game.shoot(1, "alice", 1, now).points);
         assertTrue(team(game, 1, 3000L, true).demons.isEmpty());
-        assertTrue(team(game, 2, 3000L, true).demons.stream().anyMatch(demon -> demon.boss && demon.health == 10));
     }
 
     @Test public void oneTeamAdvancesGlobalLevelAndCheckpointsEveryPlayersLatestGun() {
@@ -377,12 +406,12 @@ public class DemonDefenseGameTest {
         Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>(); members.put(1,1); members.put(2,2);
         DemonDefenseGame game = new DemonDefenseGame(START,members);
         Field field = DemonDefenseGame.class.getDeclaredField("level"); field.setAccessible(true); field.setInt(game,2);
-        assertEquals(2,game.shoot(1,"alice",20,START + 3000L).points); assertEquals(2,game.shoot(2,"bob",20,START + 3000L).points);
+        // Level 2: first demon is kind 2 with +1 health = 3 points, killed by 3 bullets (streak 30).
+        assertEquals(3,game.shoot(1,"alice",30,START + 3000L).points); assertEquals(3,game.shoot(2,"bob",30,START + 3000L).points);
         game.stop(START + 3000L); assertEquals(1,team(game,1,3000,true).rank); assertEquals(2,team(game,2,3000,true).rank);
     }
-    @Test public void levelsChangeSpeedButElapsedTimeAloneDoesNotRaiseDifficulty() throws Exception {
-        DemonDefenseGame first = game(1), third = atLevel(3,1); first.advance(START + 3000L); third.advance(START + 3000L);
-        assertTrue(team(third,1,3000,true).demons.get(0).speed > team(first,1,3000,true).demons.get(0).speed);
+    @Test public void elapsedTimeAloneDoesNotRaiseDifficulty() throws Exception {
+        DemonDefenseGame first = game(1);
         for (long elapsed = 3000L; elapsed <= 37000L; elapsed += 1000L) { first.shoot(1,"alice",100,START + elapsed); first.shoot(2,"bob",100,START + elapsed); }
         assertEquals(1,first.snapshot(START + 37000L,false).level); assertEquals(2,first.snapshot(START + 37000L,false).wave);
     }

@@ -860,7 +860,7 @@
                     skill ĐẢO LỘN sẽ lật ngược màn hình trả lời trong 7 giây.
                 </span>
                 <span ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">
-                    Trả lời đúng để súng của mình bắn quỷ; streak 20/30/40 bắn 2/3/4 viên.
+                    Trả lời đúng để tháp pha lê của mình bắn tia sáng diệt quỷ; streak 20/30/40 bắn 2/3/4 tia, tháp lớn dần theo số tia.
                     Sai trừ 15 streak. Mỗi câu trả lời có 20% cơ hội nhận túi mù. Quỷ 1/2/3 máu cho 1/2/3 điểm. Một đội đủ điểm thì cả phòng lên level. Dùng Giải băng để cứu đồng đội.
                     Theo dõi trận đấu trên màn hình host; thiết bị của bạn chỉ hiện câu hỏi và cảnh báo.
                 </span>
@@ -1096,8 +1096,13 @@
               }">
 
             <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
-                <span>LEVEL {{vm.room.demonDefense.level || 1}} • ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
-                <small class="demon-level-summary">{{vm.getMyDemonTeam().levelPoints || 0}} / {{vm.room.demonDefense.levelTargetPoints || 20}} điểm lên level • Giữ tối thiểu {{vm.me().demonMinimumBullets || 1}} đạn</small>
+                <span>LEVEL {{vm.room.demonDefense.level || 1}} • ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} tia / câu đúng</span>
+                <small class="demon-level-summary">
+                    Lên level {{(vm.room.demonDefense.level || 1) + 1}}: {{vm.getDemonLevelPercent(vm.getMyDemonTeam())}}%
+                    <span ng-if="vm.room.demonDefense.demonHealthBonus">• Quỷ +{{vm.room.demonDefense.demonHealthBonus}} máu</span>
+                    <span ng-if="vm.getMyDemonTeam().killsUntilBoss">• 👑 Bá khí sau {{vm.getMyDemonTeam().killsUntilBoss}} quỷ</span>
+                    • Giữ tối thiểu {{vm.me().demonMinimumBullets || 1}} tia
+                </small>
                 <button type="button" ng-if="vm.isGameSkillEnabled('UNFREEZE') && vm.me().unfreezeCharges"
                         ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
                         ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
@@ -1118,7 +1123,8 @@
                     <span>⚡ Ai skill ai</span><b>{{vm.room.recentEvents.length || 0}}</b>
                 </button>
             </div>
-            <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning}">
+            <div class="demon-boss-alert-frame" ng-if="vm.isDemonDefenseMode() && vm.demonBossAlert" aria-hidden="true"></div>
+            <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning, 'is-boss': vm.demonBossAlert}">
                 {{vm.demonWarning || 'Trả lời đúng để bảo vệ đội mình!'}}
             </div>
             <div class="demon-student-eliminated" role="status" ng-if="vm.isDemonPlayerEliminated()">
@@ -2775,6 +2781,27 @@
     .demon-level-summary { display:block; color:#596b80; font-size:11px; }
     .demon-level-progress { margin:8px 0; padding:7px 10px; border-radius:8px; background:#253d50; color:#d5f2a8; font-size:12px; }
     .demon-level-progress progress { width:100%; height:8px; display:block; margin-top:5px; accent-color:#82dcb5; }
+    .demon-level-progress-row { display:flex; justify-content:space-between; align-items:baseline; font-weight:800; letter-spacing:.3px; }
+    .demon-level-progress-row b { font-size:15px; color:#fff3b5; }
+    .demon-level-bar { position:relative; height:10px; margin:5px 0 4px; border-radius:6px; background:#17293a; overflow:hidden; box-shadow:inset 0 1px 2px #0008; }
+    .demon-level-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#4fd1a5,#a6e86a,#ffd45c);
+        box-shadow:0 0 8px #a6e86a88; transition:width .4s ease; }
+    .demon-level-progress > small { display:block; color:#a8c7b8; font-size:11px; }
+    .demon-boss-countdown { margin-top:6px; padding:4px 7px; border-radius:6px; background:#3a2a12; color:#ffd88a; font-size:11px; font-weight:700; }
+    .demon-boss-countdown b { color:#fff; }
+    .demon-boss-countdown.is-active { background:#7a1d16; color:#ffe1d6; animation:demon-boss-pulse 1s ease-in-out infinite; }
+    @keyframes demon-boss-pulse { 50% { background:#a82a1f; } }
+    .demon-level-badge { display:inline-flex; flex-direction:column; align-items:flex-start; line-height:1.1; }
+    .demon-level-badge small { font-size:11px; color:#ffb48a; font-weight:700; }
+    .demon-enemy-health.is-number { font-size:11px; letter-spacing:0; padding:2px 5px; border-radius:4px; background:#3a1414; white-space:nowrap; }
+    /* Học sinh: khi Ngu Siêu Bá Khí vào đường của đội mình -> viền đỏ nhấp nháy quanh màn hình (máy rung trong controller). */
+    .demon-boss-alert-frame { position:fixed; inset:0; z-index:2147483000; pointer-events:none;
+        box-shadow:inset 0 0 0 6px #ff2a2a, inset 0 0 60px 18px rgba(255,30,30,.55);
+        animation:demon-boss-frame .7s ease-in-out 4 both; }
+    @keyframes demon-boss-frame { 0%, 100% { opacity:.25; } 50% { opacity:1; } }
+    .demon-student-warning.is-boss { background:#ffe3e0; color:#b3120a; border-color:#ff6b5e; animation:demon-boss-shake .45s ease-in-out 2; }
+    @keyframes demon-boss-shake { 0%, 100% { transform:translateX(0); } 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+    @media (prefers-reduced-motion: reduce) { .demon-boss-alert-frame, .demon-student-warning.is-boss { animation:none; } }
     @media(max-width:600px) { .battle-team-manager-backdrop { padding:10px; } .battle-team-manager { max-height:calc(100dvh - 20px); padding:15px; border-radius:16px; } .battle-team-manager-grid { grid-template-columns:1fr; } .battle-team-manager-heading h2 { font-size:18px; } .battle-online-ranking-actions { justify-content:flex-end; } }
 
     .is-demon-student *, .is-demon-student *::before, .is-demon-student *::after {
@@ -2978,6 +3005,15 @@
     .demon-shot-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
     .demon-shot-layer line { stroke: #ffe08a; stroke-width: .6; stroke-linecap: round; }
     .demon-shot-layer circle { fill: #ffe5a5; }
+    /* Tia sáng của Tháp Pha Lê: lớp mờ phát sáng + lõi trắng, màu theo bậc tháp. */
+    .demon-shot-layer .is-beam { --beam: #7ff0c8; }
+    .demon-shot-layer .is-beam.tier-2 { --beam: #7cc8ff; }
+    .demon-shot-layer .is-beam.tier-3 { --beam: #c39bff; }
+    .demon-shot-layer .is-beam.tier-4 { --beam: #ffd26a; }
+    .demon-shot-layer .is-beam.tier-5 { --beam: #ff8fd8; }
+    .demon-shot-layer .demon-beam-glow { stroke: var(--beam); stroke-width: 7px; opacity: .45; vector-effect: non-scaling-stroke; }
+    .demon-shot-layer .demon-beam-core { stroke: #fffbea; stroke-width: 2px; vector-effect: non-scaling-stroke; }
+    .demon-shot-layer .is-beam circle { fill: var(--beam); filter: drop-shadow(0 0 1.5px #fff); }
     .demon-shot-layer .is-lightning path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
     .demon-lightning-glow { stroke: #55d5ff; stroke-width: 2.4; opacity: .75; }
     .demon-lightning-bolt { stroke: #e9fbff; stroke-width: .85; }
@@ -2986,7 +3022,7 @@
     @keyframes demon-shot-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
     .demon-gun-row { position: absolute; top: 83%; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-start; z-index: 4; background: #122338; }
     .demon-player-gun { flex: 1 1 0; min-width: 0; text-align: center; padding: 2px 3px; font-size: 11px; line-height: 1.1; }
-    .demon-player-gun b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; }
+    .demon-player-gun b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
     .demon-player-gun small { display: block; color: #c8b98a; font-size: 10px; }
     .demon-player-gun em { font-style: normal; display: inline-block; margin: 0 2px; color: #9adeff; font-size: 10px; }
     .demon-gun-barrels { display: inline-flex; justify-content: center; align-items: center; gap: 3px; width: 34px; height: 24px; background: #487f86; border-radius: 5px 5px 9px 9px; border-bottom: 4px solid #b8e8d9; }
@@ -2994,6 +3030,39 @@
     .demon-player-gun.is-frozen .demon-gun-barrels { background: #91d3ff; box-shadow: 0 0 12px #73c8ff; }
     .demon-player-gun.has-gun-boost .demon-gun-barrels { outline: 2px solid #ffdf78; box-shadow: 0 0 14px #ffbb4a; }
     .demon-player-gun.is-offline { opacity: .45; }
+    /* ===== Tháp Pha Lê Ánh Sáng (thay cho "súng"): 1 tia Mầm → 2 Song Tinh → 3 Tam Tinh → 4-5 Vương Miện → 6+ Huyền Thoại ===== */
+    .demon-tower { --light: #9ff7d6; --dark: #2fb98d; --glow: #5ff0bb; --base: #3c5a6e; --cap: #6d90a6;
+        position: relative; display: inline-block; width: 58px; height: 50px; margin-top: -22px;
+        filter: drop-shadow(0 0 5px var(--glow)); animation: demon-tower-upgrade .7s cubic-bezier(.3,1.6,.5,1) both; }
+    .demon-tower svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .demon-tower.tier-2 { --light: #b4e4ff; --dark: #3a8ee0; --glow: #6cbcff; }
+    .demon-tower.tier-3 { --light: #e2ccff; --dark: #8150e0; --glow: #b78bff; --base: #45406e; --cap: #7c74ad; }
+    .demon-tower.tier-4 { --light: #fff1b8; --dark: #e09a1f; --glow: #ffc94a; --base: #6b4a1e; --cap: #c8963a; }
+    .demon-tower.tier-5 { --light: #ffe0f5; --dark: #d445a8; --glow: #ff7fd0; --base: #5a2f6e; --cap: #e7b74a; }
+    .demon-tower .facet-light { fill: var(--light); }
+    .demon-tower .facet-dark { fill: var(--dark); }
+    .demon-tower .facet-shine { fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; opacity: .85; }
+    .demon-tower .tower-core { animation: demon-tower-float 2.4s ease-in-out infinite; }
+    .demon-tower .tower-shard { opacity: .95; }
+    .demon-tower .tower-shard-outer { opacity: .85; }
+    .demon-tower .tower-base { fill: var(--base); }
+    .demon-tower .tower-cap { fill: var(--cap); }
+    .demon-tower .tower-ring { fill: none; stroke: var(--glow); stroke-width: 1.4; stroke-dasharray: 5 3; opacity: .9;
+        transform-origin: 30px 25px; animation: demon-tower-ring 3s linear infinite; }
+    .demon-tower .tower-crown polygon { fill: #ffe27a; stroke: #b97a12; stroke-width: .6; }
+    .demon-tower .tower-halo { fill: var(--glow); opacity: .18; transform-origin: 30px 24px; animation: demon-tower-halo 1.8s ease-in-out infinite; }
+    .demon-tower .tower-sparkles path { fill: #fff6c9; transform-box: fill-box; transform-origin: center; animation: demon-tower-twinkle 1.4s ease-in-out infinite; }
+    .demon-tower .tower-sparkles path:nth-child(2) { animation-delay: .45s; }
+    .demon-tower .tower-sparkles path:nth-child(3) { animation-delay: .9s; }
+    .demon-player-gun.is-frozen .demon-tower { --light: #e6f6ff; --dark: #8fcfff; --glow: #73c8ff; --base: #5d86a3; --cap: #a9d6f2; filter: drop-shadow(0 0 7px #73c8ff) saturate(.6); }
+    .demon-player-gun.is-frozen .demon-tower * { animation-play-state: paused; }
+    .demon-player-gun.has-gun-boost .demon-tower { filter: drop-shadow(0 0 4px #fff3b0) drop-shadow(0 0 10px #ffbb4a); }
+    @keyframes demon-tower-upgrade { 0% { transform: scale(.4) translateY(8px); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
+    @keyframes demon-tower-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+    @keyframes demon-tower-ring { to { stroke-dashoffset: -16; } }
+    @keyframes demon-tower-halo { 0%, 100% { transform: scale(.9); opacity: .14; } 50% { transform: scale(1.05); opacity: .26; } }
+    @keyframes demon-tower-twinkle { 0%, 100% { opacity: .2; transform: scale(.7); } 50% { opacity: 1; transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .demon-tower, .demon-tower * { animation: none !important; } }
     .demon-team-alert { position: absolute; top: 6%; left: 5%; width: 90%; border-radius: 8px; padding: 7px; text-align: center; font-size: 13px; font-weight: 900; color: #ffe1c8; background: #963c2c; z-index: 5; }
     .demon-rescue-callout { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 23px; color: #ffdc6f; font-weight: 900; z-index: 6; text-shadow: 0 2px 5px #000; }
     .demon-rescue-callout strong { display: block; font-size: 15px; color: #fff; }

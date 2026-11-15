@@ -143,13 +143,14 @@ test('the real Demon host arena displays levels, point progress, three-hit enemi
   try{
    const arena=page.locator('.demon-host-board');await arena.waitFor({state:'visible'});
    assert.match(await arena.locator('.demon-board-meta').textContent(),/LEVEL\s*3/);
-   assert.match(await arena.locator('.demon-level-progress').first().textContent(),/7\s*\/\s*60/);
+   // 7 of 60 points -> 11% and 53 left (lane falls back to the room target when it has none of its own).
+   assert.match(await arena.locator('.demon-level-progress').first().textContent(),/11%[\s\S]*Còn 53 điểm/);
    assert.match(await arena.locator('.demon-enemy-health').first().textContent(),/♥♥♥.*3đ/);
    const alice=arena.locator('.demon-player-gun').filter({hasText:'Alice QA'});
-   assert.match(await alice.textContent(),/2 viên/);assert.match(await alice.textContent(),/Giữ 2 đạn/);
+   assert.match(await alice.textContent(),/2 tia/);assert.match(await alice.textContent(),/Giữ 2 tia/);
    await page.evaluate(()=>{const room=angular.copy(window.qaServerRoom);room.serverTime=Date.now();room.demonDefense.snapshotAt=room.serverTime;room.demonDefense.level=4;room.demonDefense.levelTargetPoints=90;room.demonDefense.teams.forEach(team=>team.levelPoints=0);window.qaApply(room);window.teamQaScope.$apply(()=>window.teamQaHooks.applyDemonArena(room.demonDefense));});
    assert.match(await arena.locator('.demon-board-meta').textContent(),/LEVEL\s*4/);
-   assert.match(await arena.locator('.demon-level-progress').first().textContent(),/0\s*\/\s*90/);
+   assert.match(await arena.locator('.demon-level-progress').first().textContent(),/0%[\s\S]*Còn 90 điểm/);
    if(process.env.BATTLE_TEAM_SCREENSHOTS){fs.mkdirSync(process.env.BATTLE_TEAM_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.BATTLE_TEAM_SCREENSHOTS,'demon-level-'+width+'.png'),fullPage:true});}
    await arena.getByRole('button',{name:'👥 Xếp đội / Gánh',exact:true}).click();await page.locator('#battle-team-manager').waitFor({state:'visible'});
    assert.deepEqual(errors,[]);

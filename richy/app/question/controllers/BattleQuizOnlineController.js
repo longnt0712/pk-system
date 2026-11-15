@@ -1283,8 +1283,8 @@
             return bag && bag.lastReward && bag.lastReward.bagId === demonBagOpenedId ? bag.lastReward : null;
         };
         vm.getDemonBagRewardText = function (reward) {
-            if (reward.prize === 'PERMANENT_GUN') { return '+1 súng đến hết trận'; }
-            if (reward.prize === 'TEMPORARY_GUN') { return '+1 súng trong 20 giây'; }
+            if (reward.prize === 'PERMANENT_GUN') { return '+1 tháp pha lê đến hết trận'; }
+            if (reward.prize === 'TEMPORARY_GUN') { return '+1 tháp pha lê trong 20 giây'; }
             if (reward.prize === 'LIGHTNING') {
                 return reward.hits ? 'Sét đánh trúng ' + reward.hits + ' máu quỷ · +' + reward.points + ' điểm'
                     : 'Sét đã bắn, hiện chưa có quỷ trong làn';
@@ -1336,6 +1336,41 @@
         vm.getDemonGunX = getDemonGunX;
         vm.getDemonPlayerName = getDemonPlayerName;
         vm.getDemonBullets = getDemonBullets;
+        // Tháp Pha Lê: số tia (đạn) quyết định bậc hình ảnh của tháp.
+        var demonTowerNames = ['', 'Mầm Pha Lê', 'Song Tinh', 'Tam Tinh', 'Vương Miện', 'Huyền Thoại'];
+        function getDemonTowerTier(player) {
+            var bullets = getDemonBullets(player);
+            return bullets >= 6 ? 5 : bullets >= 4 ? 4 : Math.max(1, bullets);
+        }
+        vm.getDemonTowerTier = getDemonTowerTier;
+        // Level progress: each lane has its own target scaled by team size (falls back to the room target).
+        function demonLevelTarget(team) {
+            var state = vm.demonArena || (vm.room && vm.room.demonDefense) || {};
+            return Math.max(1, Number(team && team.levelTargetPoints) || Number(state.levelTargetPoints) || 20);
+        }
+        vm.getDemonLevelTarget = demonLevelTarget;
+        vm.getDemonLevelPercent = function (team) {
+            return Math.min(100, Math.floor(100 * (Number(team && team.levelPoints) || 0) / demonLevelTarget(team)));
+        };
+        vm.getDemonPointsToLevel = function (team) {
+            return Math.max(0, demonLevelTarget(team) - (Number(team && team.levelPoints) || 0));
+        };
+        vm.getDemonKindLabel = function (demon) {
+            var kind = Number(demon.kind) || Math.min(3, Number(demon.maxHealth) || 1);
+            return demon.boss ? '👑 NGU SIÊU BÁ KHÍ' : kind >= 3 ? 'SIÊU NGU' : kind === 2 ? 'RẤT NGU' : 'NGU';
+        };
+        vm.getDemonSprite = function (demon) {
+            var kind = demon.boss ? 3 : Number(demon.kind) || Math.min(3, Number(demon.maxHealth) || 1);
+            return 'assets/images/battle-demons/' + (kind >= 3 ? 'terribly-dumb-demon.svg' : kind === 2 ? 'very-dumb-demon.svg' : 'dumb-demon.svg');
+        };
+        vm.getDemonTowerName = function (player) { return demonTowerNames[getDemonTowerTier(player)]; };
+        vm.getDemonShotTier = function (team, username) {
+            var players = getDemonTeamPlayers(team.number);
+            for (var i = 0; i < players.length; i++) {
+                if (players[i].username === username) { return getDemonTowerTier(players[i]); }
+            }
+            return 1;
+        };
         vm.getDemonResultLabel = function (team) {
             if (vm.demonArena && vm.demonArena.finished && team.rank === 1) {
                 return vm.demonArena.teams.filter(function (candidate) { return candidate.rank === 1; }).length > 1
@@ -2340,6 +2375,25 @@
                 incoming.demonBag = previous.demonBag;
             }
         }
+        // Boss alert for students: vibrate once and flash a red frame when a new boss enters MY lane.
+        // The first snapshot of a match (or after reload/team change) only records the baseline.
+        vm.demonBossAlert = false;
+        var demonBossSeen = {key: null, count: 0}, demonBossAlertTimer = null;
+        function checkDemonBossArrival(state, team) {
+            if (!team) { return; }
+            var key = state.startedAt + ':' + team.number, count = Number(team.bossCount) || 0;
+            if (demonBossSeen.key !== key) { demonBossSeen = {key: key, count: count}; return; }
+            if (count <= demonBossSeen.count) { return; }
+            demonBossSeen.count = count;
+            if (team.eliminatedAt) { return; }
+            try {
+                if ($window.navigator && typeof $window.navigator.vibrate === 'function') { $window.navigator.vibrate([220, 90, 220]); }
+            } catch (ignoreVibrate) { /* Unsupported devices (e.g. iPhone Safari) just show the frame. */ }
+            vm.demonBossAlert = true;
+            if (demonBossAlertTimer) { $timeout.cancel(demonBossAlertTimer); }
+            demonBossAlertTimer = $timeout(function () { vm.demonBossAlert = false; demonBossAlertTimer = null; updateDemonDefenseView(); }, 2800);
+        }
+        $scope.$on('$destroy', function () { if (demonBossAlertTimer) { $timeout.cancel(demonBossAlertTimer); } });
         function applyDemonArena(arena) {
             if (!isHost() || !isDemonDefenseMode() || !arena) { return; }
             if (vm.demonArena && (arena.startedAt < vm.demonArena.startedAt ||
@@ -2356,8 +2410,10 @@
             if (!state) { return; }
             if (!isHost()) {
                 var team = state.teams.filter(function (candidate) { return me && candidate.number === me.teamNumber; })[0];
+                checkDemonBossArrival(state, team);
                 if (team && !team.eliminatedAt) {
-                    if (team.danger) { vm.demonWarning = '🚨 ĐỘI MÌNH ĐANG NGUY HIỂM! Trả lời đúng để cứu đội!'; }
+                    if (vm.demonBossAlert) { vm.demonWarning = '👑 NGU SIÊU BÁ KHÍ XUẤT HIỆN! Cả đội tập trung bắn!'; }
+                    else if (team.danger) { vm.demonWarning = '🚨 ĐỘI MÌNH ĐANG NGUY HIỂM! Trả lời đúng để cứu đội!'; }
                     else if (state.phase === 'WARNING') { vm.demonWarning = '⚠️ Bầy quỷ đang tới!'; }
                     else if (state.phase === 'HORDE') { vm.demonWarning = '👹 Bầy quỷ đã tới!'; }
                 }
