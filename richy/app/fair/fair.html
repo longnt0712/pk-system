@@ -1,6 +1,6 @@
 <main class="fair-app" lang="vi" ng-class="{'fair-app--admin': vm.mode === 'admin', 'fair-app--work': vm.mode === 'work'}">
     <header class="fair-header">
-        <a class="fair-brand" href="/hoi-cho"><span aria-hidden="true">🎟</span><span>HỘI CHỢ<small>Niềm vui cùng nhau</small></span></a>
+        <a class="fair-brand" ui-sref="application.dashboard" title="Về Dashboard"><span aria-hidden="true">🎟</span><span>HỘI CHỢ<small>Niềm vui cùng nhau</small></span></a>
         <nav aria-label="Điều hướng hội chợ">
             <a ng-if="vm.mode !== 'lookup'" ng-href="{{vm.lookupLink()}}">Tra cứu</a>
             <a ng-if="vm.mode === 'lookup'" ui-sref="fair_work">Người trực</a>
