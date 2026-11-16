@@ -25,9 +25,9 @@ public final class DemonDefenseGame {
     private static final int BOSS_POINTS_INCREMENT = 2;
     /** Demons no longer speed up with level; they get tougher instead. */
     public static final long DEMON_TRAVEL_MS = 26000L;
-    // Twice as many demons as before: one every 5.715 s per member (previously 11.43 s).
-    public static final long BASE_SPAWN_INTERVAL_MS = 5715L;
-    public static final long MIN_SPAWN_INTERVAL_MS = 258L;
+    // One demon every 8.572 s per member (2/3 of the 5.715 s rate, 4/3 of the original 11.43 s).
+    public static final long BASE_SPAWN_INTERVAL_MS = 8572L;
+    public static final long MIN_SPAWN_INTERVAL_MS = 387L;
     private final long startedAt;
     private long stoppedAt;
     private long nextShotId;

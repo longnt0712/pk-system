@@ -1087,8 +1087,8 @@
     <div class="demon-student-sky" aria-hidden="true"
          ng-if="vm.room.status === 'PLAYING' && vm.isDemonDefenseMode() && !vm.isHost() && !vm.isSpectator() && vm.getMyDemonTeam()"
          ng-class="{'is-danger': vm.getMyDemonTeam().danger, 'is-eliminated': vm.getMyDemonTeam().eliminatedAt}">
-        <div class="demon-sky-line is-danger" ng-style="{'top': vm.demonScreenDangerTop + '%'}"><b>VẠCH NGUY HIỂM</b></div>
-        <div class="demon-sky-line is-lose" ng-style="{'top': vm.demonScreenLoseTop + '%'}"><b>VẠCH THUA</b></div>
+        <div class="demon-sky-line is-danger" ng-style="{'top': vm.demonScreenDangerTop + '%'}"></div>
+        <div class="demon-sky-line is-lose" ng-style="{'top': vm.demonScreenLoseTop + '%'}"></div>
         <span class="demon-sky-enemy" ng-repeat="demon in vm.demonLane.demons track by demon.id"
               ng-class="{'is-boss': demon.boss, 'is-tough': demon.tough}"
               ng-style="{'top': vm.getStudentDemonTop(demon) + '%', 'left': vm.getStudentDemonLeft(demon) + '%'}">
