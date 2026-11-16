@@ -1077,9 +1077,31 @@
 
                         function validTextSize(size, fallback) { return vm.textSizes.indexOf(size) >= 0 ? size : fallback; }
                         vm.textFontSize = function (mark) { return validTextSize(mark.fontSize, 14) + 'px'; };
-                        vm.beginTextDrag = function (mark, event) {
+                        function resizedTextWidth(mark, sheet, width, delta) {
+                            var pageWidth = sheet.getBoundingClientRect().width;
+                            var fromRight = mark.x > .76;
+                            var available = pageWidth * (fromRight ? mark.x : 1 - mark.x);
+                            var pixels = width + (fromRight ? -delta : delta);
+                            return Math.min(available, Math.max(80, pixels)) / pageWidth;
+                        }
+                        vm.textWidth = function (mark) {
+                            var drag = vm.textDrag;
+                            var width = drag && drag.mark === mark && drag.resize && drag.widthRatio || mark.textWidth;
+                            return Number.isFinite(width) && width > 0 && width <= 1 ? width * 100 + '%' : null;
+                        };
+                        vm.resizeTextWithKey = function (mark, event) {
+                            if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') ||
+                                    !vm.run || vm.run.completed || vm.busy || vm.inkTool || vm.textDrag) { return; }
+                            event.preventDefault();
+                            var label = event.currentTarget;
+                            var sheet = label.closest('[data-pdf-page]');
+                            var width = label.closest('.teaching-pdf-free-text').getBoundingClientRect().width;
+                            var next = resizedTextWidth(mark, sheet, width, event.key === 'ArrowRight' ? 24 : -24);
+                            if (mark.textWidth !== next) { mark.textWidth = next; changed(); }
+                        };
+                        vm.beginTextDrag = function (mark, event, resize) {
                             if (!vm.run || vm.run.completed || vm.busy || vm.inkTool || vm.textDrag ||
-                                    vm.editingText === mark || !event.isPrimary || event.button !== 0) { return; }
+                                    (!resize && vm.editingText === mark) || !event.isPrimary || event.button !== 0) { return; }
                             var label = event.currentTarget;
                             var sheet = label.closest('[data-pdf-page]');
                             var box = label.closest('.teaching-pdf-free-text').getBoundingClientRect();
@@ -1089,7 +1111,8 @@
                                 mark: mark, label: label, sheet: sheet, pointerId: event.pointerId,
                                 startX: event.clientX, startY: event.clientY,
                                 offsetX: event.clientX - box.left, offsetY: event.clientY - box.top,
-                                width: box.width, height: box.height, threshold: event.pointerType === 'touch' ? 8 : 3
+                                width: box.width, height: box.height, threshold: event.pointerType === 'touch' ? 8 : 3,
+                                resize: resize
                             };
                             vm.addingText = false;
                             closeContext();
@@ -1105,7 +1128,17 @@
                         }
                         function textDragPointer(event, drag) {
                             if (event.type === 'pointermove' || event.type === 'pointerup') {
-                                if (drag.position || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= drag.threshold) {
+                                if (drag.resize) {
+                                    var delta = event.clientX - drag.startX;
+                                    if (drag.widthRatio || Math.abs(delta) >= drag.threshold) {
+                                        lastTextTap = null;
+                                        drag.widthRatio = resizedTextWidth(drag.mark, drag.sheet, drag.width, delta);
+                                        if (event.type === 'pointerup' && drag.mark.textWidth !== drag.widthRatio) {
+                                            drag.mark.textWidth = drag.widthRatio;
+                                            changed();
+                                        }
+                                    }
+                                } else if (drag.position || Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= drag.threshold) {
                                     lastTextTap = null;
                                     var page = drag.sheet.getBoundingClientRect();
                                     var width = Math.min(1, drag.width / page.width);
@@ -1411,8 +1444,8 @@
     ]).directive('teachingPdfSurface', function () {
         return {link: function (scope, element) { scope.pdf.bindSurface(element[0]); }};
     }).directive('teachingPdfTextDrag', function () {
-        return {link: function (scope, element) {
-            function start(event) { scope.pdf.beginTextDrag(scope.mark, event); }
+        return {link: function (scope, element, attrs) {
+            function start(event) { scope.pdf.beginTextDrag(scope.mark, event, attrs.teachingPdfTextDrag === 'resize'); }
             element[0].addEventListener('pointerdown', start);
             scope.$on('$destroy', function () { element[0].removeEventListener('pointerdown', start); });
         }};

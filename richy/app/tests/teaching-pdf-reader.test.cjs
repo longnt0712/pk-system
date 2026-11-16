@@ -397,6 +397,57 @@ test('only two taps open free text for editing, while dragging saves its positio
     assert.equal(readonly.ctrl.state.marks.length, 2);
 });
 
+test('free text resizes independently from moving and saves its width on release', async () => {
+    const h = fixture({marks: [{page: 1, x: .2, y: .3, text: 'A long answer on the PDF'}]});
+    await h.tick(); await h.ctrl.open('run'); await h.tick();
+    const mark = h.ctrl.state.marks[0], sheet = h.sheet(1);
+    const box = {left: 100, top: 150, width: 180, height: 28};
+    let captured;
+    const handle = {
+        closest: selector => selector === '[data-pdf-page]' ? sheet : {getBoundingClientRect: () => box},
+        setPointerCapture: id => { captured = id; },
+        hasPointerCapture: id => captured === id,
+        releasePointerCapture: () => { captured = null; }
+    };
+    const start = {currentTarget: handle, isPrimary: true, button: 0, pointerId: 5, pointerType: 'touch',
+        clientX: box.left + box.width, clientY: box.top, preventDefault() {}};
+    const pointer = (type, delta) => h.events[type]({
+        type, pointerId: 5, clientX: start.clientX + delta, clientY: start.clientY, target: handle
+    });
+
+    assert.equal(h.ctrl.textWidth(mark), null);
+    h.ctrl.editText(mark, {stopPropagation() {}});
+    h.ctrl.beginTextDrag(mark, start, true);
+    assert.equal(captured, 5);
+    pointer('pointermove', 120);
+    const preview = h.ctrl.textWidth(mark);
+    assert.equal(parseFloat(preview), 300 / sheet.clientWidth * 100);
+    assert.equal(mark.textWidth, undefined);
+    pointer('pointercancel', 120);
+    assert.equal(h.ctrl.textWidth(mark), null);
+    assert.equal(h.writes.length, 0);
+
+    h.ctrl.beginTextDrag(mark, start, true);
+    pointer('pointerup', 120);
+    await h.tick();
+    assert.equal(h.ctrl.editingText, mark);
+    assert.equal(h.ctrl.textWidth(mark), preview);
+    assert.deepEqual(h.writes.at(-1).state.marks[0], {
+        page: 1, x: .2, y: .3, text: 'A long answer on the PDF', textWidth: 300 / sheet.clientWidth
+    });
+    h.ctrl.finishText(mark);
+    assert.equal(h.ctrl.textWidth(mark), preview);
+
+    const reopened = fixture(h.writes.at(-1).state);
+    await reopened.tick(); await reopened.ctrl.open('run');
+    assert.equal(reopened.ctrl.textWidth(reopened.ctrl.state.marks[0]), preview);
+
+    mark.x = .9;
+    h.ctrl.beginTextDrag(mark, start, true);
+    pointer('pointerup', -1000);
+    assert.equal(h.ctrl.textWidth(mark), '90%');
+});
+
 test('PDF pen color and width are saved and the eraser removes only the strokes swept on its page', async () => {
     const older = {page: 1, points: [['0.2000', '0.2000'], ['0.8000', '0.2000']]};
     const otherPage = {page: 2, points: older.points};

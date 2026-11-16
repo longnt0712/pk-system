@@ -252,13 +252,19 @@
                         <div class="textLayer"></div>
                         <div class="teaching-pdf-free-text" ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true"
                              ng-if="mark.text !== undefined"
-                             ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
-                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}}; color: {{pdf.textFontColor(mark)}};">
-                            <textarea ng-if="pdf.editingText === mark" ng-model="mark.text" ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
+                             ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'has-width': pdf.textWidth(mark), 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
+                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}}; color: {{pdf.textFontColor(mark)}}; width: {{pdf.textWidth(mark)}};">
+                            <textarea ng-if="pdf.editingText === mark" teaching-pdf-note-input ng-model="mark.text"
+                                      ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
                                       maxlength="4000" rows="1" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>
                             <button ng-if="pdf.editingText !== mark" type="button" class="teaching-pdf-text-value" teaching-pdf-text-drag
                                     ng-keydown="$event.key === 'Enter' && pdf.editText(mark, $event)" ng-disabled="pdf.run.completed || pdf.busy"
                                     ng-attr-title="{{pdf.run.completed ? undefined : 'Kéo để di chuyển · Nhấp đúp để sửa'}}" ng-bind="mark.text"></button>
+                            <button ng-if="!pdf.run.completed && !pdf.inkTool" type="button" class="teaching-pdf-text-resize"
+                                    teaching-pdf-text-drag="resize" ng-keydown="pdf.resizeTextWithKey(mark, $event)" ng-disabled="pdf.busy"
+                                    title="Kéo ngang để chỉnh độ rộng" aria-label="Chỉnh độ rộng ô chữ bằng phím mũi tên trái hoặc phải">
+                                <span aria-hidden="true"></span>
+                            </button>
                             <button ng-if="!pdf.run.completed && !pdf.inkTool" type="button" class="teaching-pdf-text-remove"
                                     title="Xóa chữ" aria-label="Xóa chữ trên PDF" ng-mousedown="$event.preventDefault()"
                                     ng-click="pdf.removeMark(mark)" ng-disabled="pdf.busy">
