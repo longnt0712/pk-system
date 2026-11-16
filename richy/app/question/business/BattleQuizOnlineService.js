@@ -59,6 +59,37 @@
         var roomSubscription = null;
         var arenaSubscription = null;
         var currentRoomCode = null;
+        // Diệt Quỷ Ngu: học sinh nghe kênh nhỏ chỉ có quỷ của đội mình (vẽ mờ trên màn hình).
+        var laneSubscription = null, laneKey = null;
+
+        self.subscribeDemonLane = function (roomCode, teamNumber, onLane) {
+            var key = roomCode + ':' + teamNumber;
+            if (laneSubscription && laneKey === key) { return true; }
+            self.unsubscribeDemonLane();
+            if (!socketClient || !socketClient.connected || currentRoomCode !== roomCode || !(Number(teamNumber) > 0)) { return false; }
+            try {
+                laneSubscription = socketClient.subscribe(
+                    '/topic/battle-online/room/' + roomCode + '/arena/lane/' + teamNumber,
+                    function (message) {
+                        var lane;
+                        try { lane = angular.fromJson(message.body); } catch (ignoreLaneJson) { return; }
+                        $rootScope.$evalAsync(function () { onLane(lane, Number(teamNumber)); });
+                    }
+                );
+                laneKey = key;
+                return true;
+            } catch (ignoreLaneSubscribe) {
+                laneSubscription = null; laneKey = null;
+                return false;
+            }
+        };
+
+        self.unsubscribeDemonLane = function () {
+            if (laneSubscription) {
+                try { laneSubscription.unsubscribe(); } catch (ignoreLaneDisconnect) {}
+            }
+            laneSubscription = null; laneKey = null;
+        };
 
         self.getActiveMusicTracks = function () {
             return $http.get(apiUrl.replace(/battle-online$/, 'battle-music-config/active'))
@@ -513,6 +544,7 @@
         }
 
         function disconnectRealtime() {
+            self.unsubscribeDemonLane();
             if (arenaSubscription) {
                 try { arenaSubscription.unsubscribe(); } catch (ignoreArenaDisconnect) {}
                 arenaSubscription = null;

@@ -19,16 +19,15 @@ public final class DemonDefenseGame {
     public static final int BAG_CHOICES = 3;
     private static final long TEMPORARY_GUN_MS = 20000L;
     private static final int LIGHTNING_DAMAGE = 5;
-    /** A boss appears in a lane after every 50 kills by a team of average size. */
-    public static final int BOSS_KILL_INTERVAL = 50;
+    /** Every 50 points (team of average size) the room levels up and the scoring team meets a boss. */
+    public static final int POINTS_PER_LEVEL = 50;
     private static final int BOSS_INITIAL_POINTS = 10;
     private static final int BOSS_POINTS_INCREMENT = 2;
     /** Demons no longer speed up with level; they get tougher instead. */
     public static final long DEMON_TRAVEL_MS = 26000L;
-    // Spawn pressure is about 70% of the previous rate (intervals divided by 0.7).
-    public static final long BASE_SPAWN_INTERVAL_MS = 11430L;
-    private static final long MIN_SPAWN_INTERVAL_MS = 515L;
-    private static final int[] LEVEL_TARGETS = {20, 40, 60, 90, 120, 160, 200, 250, 300, 360};
+    // Twice as many demons as before: one every 5.715 s per member (previously 11.43 s).
+    public static final long BASE_SPAWN_INTERVAL_MS = 5715L;
+    public static final long MIN_SPAWN_INTERVAL_MS = 258L;
     private final long startedAt;
     private long stoppedAt;
     private long nextShotId;
@@ -48,11 +47,8 @@ public final class DemonDefenseGame {
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
     public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
     public static int wrongAnswerStreak(int streak) { return Math.max(0, streak - WRONG_ANSWER_STREAK_DEDUCTION); }
-    public static int pointsRequiredForLevel(int value) {
-        int index = Math.max(1, value) - 1;
-        return index < LEVEL_TARGETS.length ? LEVEL_TARGETS[index]
-                : (int) Math.min(Integer.MAX_VALUE, 360L + (index - 9L) * 60L);
-    }
+    /** Flat 50 points per level; demons gaining health each level is what raises difficulty. */
+    public static int pointsRequiredForLevel(int value) { return POINTS_PER_LEVEL; }
     public int minimumBulletsForPlayer(String username) {
         PlayerProgress player = players.get(username);
         return player == null ? 1 : player.bulletFloor;
@@ -228,7 +224,6 @@ public final class DemonDefenseGame {
     }
     private static int scaled(int value, double scale) { return Math.max(1, (int) Math.round(value * scale)); }
     private int levelTargetForTeam(TeamState team) { return scaled(pointsRequiredForLevel(level), teamScale(team)); }
-    private int bossKillTarget(TeamState team) { return scaled(BOSS_KILL_INTERVAL, teamScale(team)); }
     private int nextBossHealth(TeamState team) {
         return scaled(BOSS_INITIAL_POINTS + team.bossCount * BOSS_POINTS_INCREMENT, teamScale(team));
     }
@@ -300,11 +295,6 @@ public final class DemonDefenseGame {
                 team.demons.remove(nearest);
                 kills++;
                 points += nearest.points;
-                // Bosses come from this lane's own kill count (boss kills count too).
-                if (++team.killsSinceBoss >= bossKillTarget(team)) {
-                    team.killsSinceBoss = 0;
-                    spawnBoss(team, now);
-                }
             }
         }
         team.kills += kills;
@@ -312,6 +302,8 @@ public final class DemonDefenseGame {
         team.levelPoints += points;
         while (team.levelPoints >= levelTargetForTeam(team)) {
             int overflow = team.levelPoints - levelTargetForTeam(team);
+            // The team that completes the level meets the next boss (sized before the level-up).
+            spawnBoss(team, now);
             level++;
             for (TeamState other : teams.values()) {
                 other.levelPoints = 0;
@@ -340,7 +332,13 @@ public final class DemonDefenseGame {
     public boolean isFinished() { return stoppedAt > 0L; }
     public void stop(long now) { advance(now); if (stoppedAt == 0L) { stoppedAt = now; } }
 
-    public Snapshot snapshot(long now, boolean includeArena) {
+    public Snapshot snapshot(long now, boolean includeArena) { return snapshot(now, includeArena, 0); }
+
+    /**
+     * @param viewerLane a student's own team: only that lane's demon positions are added (for the faint
+     *                   background on their screen). Other lanes and shot animations stay host-only.
+     */
+    public Snapshot snapshot(long now, boolean includeArena, int viewerLane) {
         final long at = stoppedAt > 0L ? stoppedAt : now;
         List<TeamState> ranked = new ArrayList<TeamState>(teams.values());
         Collections.sort(ranked, new Comparator<TeamState>() {
@@ -352,7 +350,8 @@ public final class DemonDefenseGame {
         for (int index = 0; index < ranked.size(); index++) {
             TeamState team = ranked.get(index);
             if (previous == null || compareResults(previous, team) != 0) { rank = index + 1; }
-            result.add(new Team(team, new LaneRules(team), at, startedAt, rank, includeArena));
+            result.add(new Team(team, new LaneRules(team), at, startedAt, rank, includeArena,
+                    includeArena || (viewerLane > 0 && team.number == viewerLane)));
             previous = team;
         }
         long offset = Math.max(0L, at - startedAt), phaseMs = offset % WAVE_MS;
@@ -365,11 +364,10 @@ public final class DemonDefenseGame {
 
     /** Per-lane numbers that depend on the whole roster, computed once per snapshot. */
     private final class LaneRules {
-        final int levelTargetPoints, bossKillTarget, killsUntilBoss, nextBossHealth;
+        final int levelTargetPoints, pointsUntilBoss, nextBossHealth;
         LaneRules(TeamState team) {
             levelTargetPoints = levelTargetForTeam(team);
-            bossKillTarget = bossKillTarget(team);
-            killsUntilBoss = Math.max(1, bossKillTarget - team.killsSinceBoss);
+            pointsUntilBoss = Math.max(1, levelTargetPoints - team.levelPoints);
             nextBossHealth = nextBossHealth(team);
         }
     }
@@ -387,7 +385,7 @@ public final class DemonDefenseGame {
         final int number;
         int memberCount;
         long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches;
-        int kills, points, levelPoints, rescues, killsSinceBoss, bossCount;
+        int kills, points, levelPoints, rescues, bossCount;
         String rescueUsername;
         final List<Enemy> demons = new ArrayList<Enemy>();
         final List<Shot> shots = new ArrayList<Shot>();
@@ -436,7 +434,7 @@ public final class DemonDefenseGame {
     public static final class Team {
         public final int number, memberCount, kills, points, levelPoints, rescues, rank;
         /** This lane's own target (scaled by team size) and boss countdown; sent to students too. */
-        public final int levelTargetPoints, bossKillTarget, killsUntilBoss, nextBossHealth, bossCount;
+        public final int levelTargetPoints, pointsUntilBoss, nextBossHealth, bossCount;
         public final boolean bossActive;
         public final long eliminatedAt, rescueAt, survivedMs;
         public final String rescueUsername;
@@ -444,11 +442,11 @@ public final class DemonDefenseGame {
         public final double nearestDemonProgress, nearestDemonSpeed;
         public final List<Demon> demons = new ArrayList<Demon>();
         public final List<Shot> shots;
-        Team(TeamState state, LaneRules rules, long at, long startedAt, int rank, boolean includeArena) {
+        Team(TeamState state, LaneRules rules, long at, long startedAt, int rank, boolean includeArena, boolean includeDemons) {
             number = state.number; memberCount = state.memberCount; kills = state.kills; rescues = state.rescues;
             points = state.points; levelPoints = state.levelPoints;
-            levelTargetPoints = rules.levelTargetPoints; bossKillTarget = rules.bossKillTarget;
-            killsUntilBoss = rules.killsUntilBoss; nextBossHealth = rules.nextBossHealth; bossCount = state.bossCount;
+            levelTargetPoints = rules.levelTargetPoints; pointsUntilBoss = rules.pointsUntilBoss;
+            nextBossHealth = rules.nextBossHealth; bossCount = state.bossCount;
             boolean anyBoss = false;
             for (Enemy enemy : state.demons) { anyBoss |= enemy.boss; }
             bossActive = anyBoss;
@@ -464,7 +462,7 @@ public final class DemonDefenseGame {
                 if (progress > nearestProgress || (progress == nearestProgress && speed > nearestSpeed)) {
                     nearestProgress = progress; nearestSpeed = speed;
                 }
-                if (includeArena) { demons.add(new Demon(enemy, at)); }
+                if (includeDemons) { demons.add(new Demon(enemy, at)); }
             }
             nearestDemonProgress = nearestProgress;
             nearestDemonSpeed = nearestSpeed;

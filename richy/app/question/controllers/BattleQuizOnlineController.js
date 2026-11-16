@@ -1346,7 +1346,7 @@
         // Level progress: each lane has its own target scaled by team size (falls back to the room target).
         function demonLevelTarget(team) {
             var state = vm.demonArena || (vm.room && vm.room.demonDefense) || {};
-            return Math.max(1, Number(team && team.levelTargetPoints) || Number(state.levelTargetPoints) || 20);
+            return Math.max(1, Number(team && team.levelTargetPoints) || Number(state.levelTargetPoints) || 50);
         }
         vm.getDemonLevelTarget = demonLevelTarget;
         vm.getDemonLevelPercent = function (team) {
@@ -2402,8 +2402,50 @@
             vm.demonClock = serverNow() - Number((vm.room || {}).demonTimeOffsetMillis || 0);
             syncBattleViewMusic();
         }
+        // ===== Quỷ mờ trên màn hình học sinh: chỉ đội mình, lấy từ kênh /arena/lane/{đội} =====
+        vm.demonLane = null;
+        function syncDemonLaneSubscription(me) {
+            var wanted = vm.room && isDemonDefenseMode() && vm.room.status === 'PLAYING' && !isHost() && me && !me.spectator
+                ? Number(me.teamNumber) || 0 : 0;
+            if (!wanted) {
+                if (angular.isFunction(battleService.unsubscribeDemonLane)) { battleService.unsubscribeDemonLane(); }
+                vm.demonLane = null;
+                return;
+            }
+            if (vm.demonLane && vm.demonLane.teamNumber !== wanted) { vm.demonLane = null; }
+            // Returns false until the socket is connected; the 250 ms countdown retries.
+            if (angular.isFunction(battleService.subscribeDemonLane)) {
+                battleService.subscribeDemonLane(vm.room.code, wanted, applyDemonLane);
+            }
+        }
+        function applyDemonLane(lane, teamNumber) {
+            var me = getMe();
+            if (!lane || !me || Number(me.teamNumber) !== teamNumber) { return; }
+            if (vm.demonLane && vm.demonLane.teamNumber === teamNumber && (lane.startedAt < vm.demonLane.startedAt ||
+                    (lane.startedAt === vm.demonLane.startedAt && lane.snapshotAt < vm.demonLane.snapshotAt))) { return; }
+            var team = (lane.teams || []).filter(function (candidate) { return candidate.number === teamNumber; })[0];
+            vm.demonLane = {teamNumber: teamNumber, startedAt: lane.startedAt, snapshotAt: lane.snapshotAt,
+                demons: team && !team.eliminatedAt ? team.demons || [] : [], eliminated: !!(team && team.eliminatedAt)};
+        }
+        // Spawn at 6% of the screen height, danger line (75% of the path) and lose line (100%) below.
+        var DEMON_SCREEN_TOP = 6, DEMON_SCREEN_SPAN = 80;
+        vm.demonScreenDangerTop = DEMON_SCREEN_TOP + DEMON_SCREEN_SPAN * 0.75;
+        vm.demonScreenLoseTop = DEMON_SCREEN_TOP + DEMON_SCREEN_SPAN;
+        vm.getStudentDemonTop = function (demon) {
+            var lane = vm.demonLane, frozenGame = !vm.room || vm.room.status !== 'PLAYING' ||
+                (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING');
+            var elapsed = lane && !frozenGame ? Math.max(0, Math.min(1200, vm.demonClock - lane.snapshotAt)) : 0;
+            var progress = Math.min(1, (Number(demon.progress) || 0) + elapsed * (Number(demon.speed) || 0));
+            return DEMON_SCREEN_TOP + progress * DEMON_SCREEN_SPAN;
+        };
+        vm.getStudentDemonLeft = function (demon) {
+            // Spread demons across the width so they do not stack on one column.
+            return demon.boss ? 50 : 14 + ((Number(demon.id) * 37) % 73);
+        };
+
         function updateDemonDefenseView() {
             vm.demonWarning = '';
+            syncDemonLaneSubscription(getMe());
             if (!isDemonDefenseMode() || !vm.room || vm.room.status !== 'PLAYING') { return; }
             var state = vm.room.demonDefense, me = getMe();
             vm.demonClock = serverNow() - Number((vm.room || {}).demonTimeOffsetMillis || 0);

@@ -22,7 +22,7 @@
     </div>
     <div class="demon-enemy-legend">
         NGU {{1 + (vm.demonArena.demonHealthBonus || 0)}} máu • RẤT NGU {{2 + (vm.demonArena.demonHealthBonus || 0)}} máu • SIÊU NGU {{3 + (vm.demonArena.demonHealthBonus || 0)}} máu
-        (điểm = máu; mỗi level quỷ +1 máu, không nhanh hơn) • 👑 NGU SIÊU BÁ KHÍ: mỗi 50 quỷ diệt, lần sau +2 máu • Đội ít/nhiều người được chia tỉ lệ cho công bằng
+        (điểm = máu; mỗi level quỷ con +1 máu) • Mỗi 50 điểm lên 1 level và đội đó gặp 👑 NGU SIÊU BÁ KHÍ (10 máu, lần sau +2) • Đội ít/nhiều người được chia tỉ lệ cho công bằng
     </div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
@@ -40,7 +40,7 @@
                 <small>Còn {{vm.getDemonPointsToLevel(team)}} điểm<span ng-if="team.memberCount"> (mục tiêu {{vm.getDemonLevelTarget(team)}} cho {{team.memberCount}} người)</span></small>
                 <div class="demon-boss-countdown" ng-class="{'is-active': team.bossActive}">
                     <span ng-if="team.bossActive">👑 BÁ KHÍ ĐANG TẤN CÔNG!</span>
-                    <span ng-if="!team.bossActive">👑 Bá khí sau <b>{{team.killsUntilBoss || 50}}</b> quỷ</span>
+                    <span ng-if="!team.bossActive">👑 Bá khí khi lên level (còn <b>{{vm.getDemonPointsToLevel(team)}}</b> điểm)</span>
                     <span>• lần tới ♥ {{team.nextBossHealth || 10}}</span>
                 </div>
             </div>

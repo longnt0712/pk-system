@@ -146,7 +146,8 @@ public class BattleOnlineTeamManagementTest {
     }
     @Test public void levelTransitionCheckpointsEveryPlayersCurrentGunAndWrongAnswerKeepsThatFloor() throws Exception {
         long now=System.currentTimeMillis();set(room,"status","PLAYING");set(settings,"mode","DEMON_DEFENSE");
-        DemonDefenseGame game=demonGame(now);Object team=seedDemon(game,1,1,now);set(team,"levelPoints",19);
+        // Team 1 has 2 of the average 1.5 members, so its level target is round(50 * 2 / 1.5) = 67.
+        DemonDefenseGame game=demonGame(now);Object team=seedDemon(game,1,1,now);set(team,"levelPoints",66);
         set(alice,"streak",19);set(bob,"streak",30);
         Object question=state("QuestionState");set(question,"id",7L);set(question,"question","hello");set(question,"correctKey","A");
         set(alice,"currentQuestion",question);set(alice,"currentQuestionSequence",1L);

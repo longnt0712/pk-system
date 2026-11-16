@@ -6568,12 +6568,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void broadcastDemonArena(RoomState room) {
         DemonDefenseGame.Snapshot arena;
+        Map<Integer, DemonDefenseGame.Snapshot> lanes = new LinkedHashMap<Integer, DemonDefenseGame.Snapshot>();
         synchronized (room) {
             if (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) { return; }
-            arena = room.demonDefense.snapshot(demonGameTime(room, System.currentTimeMillis()), true);
+            long at = demonGameTime(room, System.currentTimeMillis());
+            arena = room.demonDefense.snapshot(at, true);
+            // Students draw their own lane's demons faintly behind the question: one small feed per team,
+            // with demon positions only for that lane and no shot animations.
+            for (DemonDefenseGame.Team team : arena.teams) {
+                lanes.put(team.number, room.demonDefense.snapshot(at, false, team.number));
+            }
         }
-        // Only the host UI subscribes to this animation feed; students receive small summaries.
+        // Only the host UI subscribes to this full animation feed.
         messagingTemplate.convertAndSend("/topic/battle-online/room/" + room.code + "/arena", arena);
+        for (Map.Entry<Integer, DemonDefenseGame.Snapshot> lane : lanes.entrySet()) {
+            messagingTemplate.convertAndSend("/topic/battle-online/room/" + room.code + "/arena/lane/" + lane.getKey(), lane.getValue());
+        }
     }
 
     private void scheduleMatchFinish(

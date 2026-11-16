@@ -1082,6 +1082,20 @@
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
                 src="vm.eggHostTemplate"></ng-include>
+    <!-- Diệt Quỷ Ngu (học sinh): quỷ của đội mình trôi rất mờ trên cả màn hình, kèm vạch nguy hiểm và vạch thua.
+         Đặt ngoài khung câu hỏi để skill đảo ngược màn hình không lật lớp này; không nhận chuột. -->
+    <div class="demon-student-sky" aria-hidden="true"
+         ng-if="vm.room.status === 'PLAYING' && vm.isDemonDefenseMode() && !vm.isHost() && !vm.isSpectator() && vm.getMyDemonTeam()"
+         ng-class="{'is-danger': vm.getMyDemonTeam().danger, 'is-eliminated': vm.getMyDemonTeam().eliminatedAt}">
+        <div class="demon-sky-line is-danger" ng-style="{'top': vm.demonScreenDangerTop + '%'}"><b>VẠCH NGUY HIỂM</b></div>
+        <div class="demon-sky-line is-lose" ng-style="{'top': vm.demonScreenLoseTop + '%'}"><b>VẠCH THUA</b></div>
+        <span class="demon-sky-enemy" ng-repeat="demon in vm.demonLane.demons track by demon.id"
+              ng-class="{'is-boss': demon.boss, 'is-tough': demon.tough}"
+              ng-style="{'top': vm.getStudentDemonTop(demon) + '%', 'left': vm.getStudentDemonLeft(demon) + '%'}">
+            <img ng-src="{{vm.getDemonSprite(demon)}}" alt="" draggable="false">
+        </span>
+    </div>
+
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-question-layout': vm.isClassicMode() && (!vm.isSpectator() || vm.isClassicHostPreview())}">
@@ -1100,7 +1114,7 @@
                 <small class="demon-level-summary">
                     Lên level {{(vm.room.demonDefense.level || 1) + 1}}: {{vm.getDemonLevelPercent(vm.getMyDemonTeam())}}%
                     <span ng-if="vm.room.demonDefense.demonHealthBonus">• Quỷ +{{vm.room.demonDefense.demonHealthBonus}} máu</span>
-                    <span ng-if="vm.getMyDemonTeam().killsUntilBoss">• 👑 Bá khí sau {{vm.getMyDemonTeam().killsUntilBoss}} quỷ</span>
+                    <span ng-if="vm.getMyDemonTeam()">• 👑 Bá khí khi lên level (còn {{vm.getDemonPointsToLevel(vm.getMyDemonTeam())}} điểm)</span>
                     • Giữ tối thiểu {{vm.me().demonMinimumBullets || 1}} tia
                 </small>
                 <button type="button" ng-if="vm.isGameSkillEnabled('UNFREEZE') && vm.me().unfreezeCharges"
@@ -1457,32 +1471,6 @@
 
             <section class="battle-online-classic-review" ng-if="vm.isClassicMode() && vm.room.classicAnswerRevealed" role="status">
                 <small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong>
-            </section>
-
-            <section class="demon-student-track" ng-if="vm.getMyDemonTeam()"
-                     ng-class="{'is-danger': vm.getMyDemonTeam().danger, 'is-eliminated': vm.getMyDemonTeam().eliminatedAt}"
-                     aria-label="Trạng thái phòng thủ của đội bạn">
-                <header>
-                    <strong>PHÒNG THỦ • ĐỘI {{vm.getMyDemonTeam().number}}</strong>
-                    <span>{{vm.getDemonTrackStatus(vm.getMyDemonTeam())}}</span>
-                </header>
-                <div class="demon-student-track-body" ng-if="vm.getDemonTeamProgress(vm.getMyDemonTeam()) !== null">
-                    <div class="demon-student-track-rail" role="meter"
-                         aria-label="Vị trí quỷ đang tiến đến đội bạn" aria-valuemin="0" aria-valuemax="100"
-                         ng-attr-aria-valuenow="{{vm.getDemonTrackPercent(vm.getMyDemonTeam()) | number:0}}"
-                         ng-attr-aria-valuetext="{{vm.getDemonTrackStatus(vm.getMyDemonTeam())}}">
-                        <div class="demon-student-track-fill" ng-style="{'width': vm.getDemonTrackPercent(vm.getMyDemonTeam()) + '%'}"></div>
-                        <div class="demon-student-track-threshold" aria-hidden="true"><b>NGƯỠNG NGUY HIỂM</b></div>
-                        <img class="demon-student-track-enemy" src="assets/images/battle-demons/dumb-demon.svg"
-                             ng-style="{'left': vm.getDemonTrackPercent(vm.getMyDemonTeam()) + '%'}" alt="" aria-hidden="true" draggable="false">
-                        <span class="demon-student-track-player" aria-hidden="true">
-                            <span ng-if="vm.getMyDemonTeam().memberCount > 1">👥</span>
-                            <img ng-if="vm.getMyDemonTeam().memberCount <= 1" ng-src="{{vm.getPlayerPetImage(vm.me())}}" alt="" draggable="false">
-                        </span>
-                    </div>
-                    <div class="demon-student-track-labels" aria-hidden="true"><span>QUỶ NGU →</span><strong>ĐỘI {{vm.getMyDemonTeam().number}}</strong></div>
-                </div>
-                <p ng-if="vm.getDemonTeamProgress(vm.getMyDemonTeam()) === null">Đang đồng bộ vị trí quỷ...</p>
             </section>
 
             <div class="battle-online-gift-slot"
@@ -2856,6 +2844,26 @@
     .demon-student-track.is-danger > header > span, .demon-student-track.is-eliminated > header > span { color: #a52716; background: #ffe1d7; }
     .demon-student-track.is-danger .demon-student-track-fill, .demon-student-track.is-eliminated .demon-student-track-fill { background: rgba(216, 83, 55, .3); }
     .demon-student-track > p { margin: 12px 0 0; color: var(--bo-muted); font-size: 12px; }
+    /* ===== Lớp quỷ mờ toàn màn hình của học sinh (thay thanh quỷ cũ) ===== */
+    .demon-student-sky { position: fixed; inset: 0; z-index: 1040; pointer-events: none; overflow: hidden; }
+    .demon-sky-enemy { position: absolute; transform: translate(-50%, -50%); opacity: .16; transition: top .25s linear; }
+    .demon-sky-enemy img { display: block; width: 64px; height: 64px; }
+    .demon-sky-enemy.is-tough img { width: 76px; height: 72px; }
+    .demon-sky-enemy.is-boss img { width: 120px; height: 112px; }
+    .demon-sky-line { position: absolute; left: 0; right: 0; height: 0; }
+    .demon-sky-line b { position: absolute; right: 12px; top: -18px; padding: 1px 7px; border-radius: 5px; font-size: 11px; font-weight: 900; letter-spacing: .6px; }
+    .demon-sky-line.is-danger { border-top: 2px dashed rgba(230, 120, 70, .55); }
+    .demon-sky-line.is-danger b { color: #b4532a; background: rgba(255, 237, 224, .85); }
+    .demon-sky-line.is-lose { border-top: 3px solid rgba(214, 48, 39, .6); }
+    .demon-sky-line.is-lose b { color: #fff; background: rgba(200, 38, 30, .78); }
+    .demon-student-sky.is-danger .demon-sky-line.is-danger { border-top-color: rgba(230, 90, 50, .85); }
+    .demon-student-sky.is-eliminated .demon-sky-enemy { display: none; }
+    @media (max-width: 600px) {
+        .demon-sky-enemy img { width: 48px; height: 48px; }
+        .demon-sky-enemy.is-tough img { width: 56px; height: 54px; }
+        .demon-sky-enemy.is-boss img { width: 86px; height: 80px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .demon-sky-enemy { transition: none; } }
     .demon-host-board { max-width: 1440px; margin: 20px auto; padding: 24px; color: #f0f6ff; background: #101e31; border: 1px solid #28415c; border-radius: 24px; box-shadow: 0 14px 40px rgba(12,25,45,.14); }
     .demon-board-header { display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .demon-board-header small { color: #95b5ce; font-weight: 700; font-size: 11px; letter-spacing: 1px; }

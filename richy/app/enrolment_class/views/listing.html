@@ -430,6 +430,8 @@
     .class-schedule-topic-count { display:block; margin-top:4px; padding:3px 6px; overflow:hidden; border-radius:5px; font-size:11px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
     .class-schedule-topic-count.class-count { background:#e8f2ff; color:#2671c5; }
     .class-schedule-topic-count.homework-count { background:#fff1dc; color:#b56b09; }
+    .class-schedule-makeup-badge { display:inline-flex; align-items:center; gap:4px; max-width:100%; margin-top:4px; padding:3px 7px; overflow:hidden;
+        border:1px solid #f59e0b; border-radius:6px; background:#fff7e6; color:#b45309; font-size:11px; font-weight:800; white-space:nowrap; text-overflow:ellipsis; }
     .class-schedule-empty-hint { color:#a3adbc; font-size:11px; }
     .class-schedule-loading { display:flex; min-height:390px; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#69768b; font-size:14px; text-align:center; }
     .class-schedule-loading .fa { color:#725fe9; font-size:38px; }
@@ -770,6 +772,7 @@
         .class-schedule-grid { gap:3px; }
         .class-schedule-day { min-height:70px; padding:5px; }
         .class-schedule-topic-count { padding:2px 3px; font-size:9px; }
+        .class-schedule-makeup-badge { padding:2px 3px; font-size:9px; }
         .class-day-plan-grid { grid-template-columns:1fr; }
     }
     .class-task-editor-modal-window .modal-dialog { width:70vw; max-width:70vw; margin:4vh auto; }
@@ -1105,6 +1108,7 @@
                             <span class="class-schedule-move-badge is-target" data-ng-if="cell.isMovedTarget"><i class="fa fa-calendar-check-o"></i> BUỔI ĐƯỢC DỜI</span>
                             <span class="class-schedule-move-detail" data-ng-if="cell.isMovedTarget">Từ {{cell.entry.movedFromDate | date:'dd/MM/yyyy'}} · {{cell.entry.sessionStartTime}}–{{cell.entry.sessionEndTime}}</span>
                             <span class="class-schedule-move-badge is-extra" data-ng-if="cell.isExtraDate"><i class="fa fa-calendar-plus-o"></i> NGÀY THÊM RIÊNG</span>
+                            <span class="class-schedule-makeup-badge" data-ng-if="cell.makeupMinutes"><i class="fa fa-clock-o"></i> Học bù {{cell.makeupMinutes}} phút</span>
                             <span class="class-schedule-topic-count class-count" data-ng-if="cell.classCount">
                                 Class: {{cell.classCount}} topic
                             </span>

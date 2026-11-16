@@ -866,7 +866,9 @@
 					entry: entry,
 					classCount: entry ? (entry.classTopicIds || []).length || entry.classTopicCount || 0 : 0,
 					homeworkCount: entry ? (entry.homeworkTopicIds || []).length || entry.homeworkTopicCount || 0 : 0,
-					taskCount: entry ? (entry.tasks || []).length || entry.taskCount || 0 : 0
+					taskCount: entry ? (entry.tasks || []).length || entry.taskCount || 0 : 0,
+					// Học bù chung chỉ hiện ở buổi thực sự diễn ra (không nghỉ, không bị dời đi).
+					makeupMinutes: entry && !entry.dayOff && !entry.movedToDate ? Number(entry.makeupMinutes) || 0 : 0
 				});
 			}
 			while (cells.length % 7) { cells.push({isBlank: true}); }
@@ -1350,6 +1352,24 @@
             return value;
         }
 
+        // Khung "HỌC BÙ CHUNG" to, rõ cho ảnh xuất; null khi buổi này không có học bù.
+        function makeupImageBanner() {
+            var minutes = vm.scheduleDay ? Number(vm.scheduleDay.makeupMinutes) : 0;
+            if (!(minutes > 0)) { return null; }
+            var banner = document.createElement('div');
+            banner.style.cssText = 'display:flex;align-items:center;gap:12px;margin:0 0 16px;padding:12px 18px;'
+                + 'border:2px solid #f59e0b;border-radius:14px;background:linear-gradient(110deg,#fff7e6,#ffedd5);'
+                + 'color:#9a3412;font-family:Arial,sans-serif;box-shadow:0 6px 14px rgba(234,88,12,.14);';
+            var icon = document.createElement('span');
+            icon.textContent = '⏰';
+            icon.style.cssText = 'font-size:28px;line-height:1;';
+            var label = document.createElement('span');
+            label.textContent = 'HỌC BÙ CHUNG: ' + minutes + ' PHÚT';
+            label.style.cssText = 'font-size:24px;font-weight:900;letter-spacing:.5px;';
+            banner.appendChild(icon); banner.appendChild(label);
+            return banner;
+        }
+
         function prepareHomeworkImageElement(sourceTable) {
             var root = document.createElement('div');
             // Export layout is independent of the interactive table's intrinsic
@@ -1366,11 +1386,11 @@
             var subtitle = document.createElement('div');
             subtitle.textContent = (vm.scheduleClass && vm.scheduleClass.name ? vm.scheduleClass.name + ' · ' : '')
                 + 'Buổi học ' + vm.previousHomeworkLabel() + ' · '
-                + vm.filteredHomeworkRows().length + ' học sinh · ' + vm.previousHomeworkTasks.length + ' tasks'
-                + (vm.scheduleDay && Number(vm.scheduleDay.makeupMinutes) > 0
-                    ? ' · Học bù chung ' + Number(vm.scheduleDay.makeupMinutes) + ' phút' : '');
+                + vm.filteredHomeworkRows().length + ' học sinh · ' + vm.previousHomeworkTasks.length + ' tasks';
             subtitle.style.cssText = 'margin-bottom:16px;color:#64748b;font:13px Arial,sans-serif;';
             root.appendChild(subtitle);
+            var makeup = makeupImageBanner();
+            if (makeup) { makeup.style.display = 'inline-flex'; root.appendChild(makeup); }
 
             var table = sourceTable.cloneNode(true);
             var columns = document.createElement('colgroup');
@@ -1564,6 +1584,8 @@
             subtitle.style.cssText = 'font-size:14px;font-weight:700;opacity:.92;';
             header.appendChild(kicker); header.appendChild(title); header.appendChild(subtitle);
             root.appendChild(header);
+            var makeup = makeupImageBanner();
+            if (makeup) { makeup.style.margin = '18px 0 0'; root.appendChild(makeup); }
 
             var topics = vm.selectedScheduleTopics('homeworkTopicIds');
             if (topics.length) {
