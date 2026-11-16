@@ -11,7 +11,7 @@ import com.globits.richy.dto.EnrolmentClassCalendarDayDto;
 @Repository
 public interface EnrolmentClassScheduleDayRepository extends JpaRepository<EnrolmentClassScheduleDay, Long> {
     @Query("select new com.globits.richy.dto.EnrolmentClassCalendarDayDto(d.id, d.scheduleDate, "
-            + "d.sessionStartTime, d.sessionEndTime, d.dayOff, d.movedFromDate, d.movedToDate, "
+            + "d.sessionStartTime, d.sessionEndTime, d.dayOff, d.movedFromDate, d.movedToDate, d.makeupMinutes, "
             + "(select count(topic.id) from EnrolmentClassScheduleDay classDay join classDay.classTopics topic where classDay.id = d.id), "
             + "(select count(topic.id) from EnrolmentClassScheduleDay homeworkDay join homeworkDay.homeworkTopics topic where homeworkDay.id = d.id), "
             + "(select count(task.id) from EnrolmentClassScheduleTask task where task.scheduleDay.id = d.id)) from EnrolmentClassScheduleDay d "

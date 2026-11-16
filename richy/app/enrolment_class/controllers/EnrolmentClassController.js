@@ -1358,8 +1358,8 @@
             if (!(minutes > 0)) { return null; }
             var banner = document.createElement('div');
             banner.style.cssText = 'display:flex;align-items:center;gap:12px;margin:0 0 16px;padding:12px 18px;'
-                + 'border:2px solid #f59e0b;border-radius:14px;background:linear-gradient(110deg,#fff7e6,#ffedd5);'
-                + 'color:#9a3412;font-family:Arial,sans-serif;box-shadow:0 6px 14px rgba(234,88,12,.14);';
+                + 'border:2px solid #f59e0b;border-radius:14px;background:#fff1dc;'
+                + 'color:#9a3412;font-family:Arial,sans-serif;';
             var icon = document.createElement('span');
             icon.textContent = '⏰';
             icon.style.cssText = 'font-size:28px;line-height:1;';
@@ -1389,8 +1389,9 @@
                 + vm.filteredHomeworkRows().length + ' học sinh · ' + vm.previousHomeworkTasks.length + ' tasks';
             subtitle.style.cssText = 'margin-bottom:16px;color:#64748b;font:13px Arial,sans-serif;';
             root.appendChild(subtitle);
+            // Keep display:flex — html2canvas 1.4.1 drops the text of inline-flex boxes.
             var makeup = makeupImageBanner();
-            if (makeup) { makeup.style.display = 'inline-flex'; root.appendChild(makeup); }
+            if (makeup) { root.appendChild(makeup); }
 
             var table = sourceTable.cloneNode(true);
             var columns = document.createElement('colgroup');
