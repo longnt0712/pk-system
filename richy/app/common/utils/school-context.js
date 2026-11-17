@@ -38,8 +38,8 @@
                 classes: function (id) { return $http.get(base + '/' + id + '/classes').then(function (response) { return response.data; }); },
                 save: function (school) { return $http.post(base + '/save', school); },
                 roles: function () { return $http.get(base + '/roles'); },
-                assignments: function (id) { return $http.get(base + '/' + id + '/roles'); },
-                setRoles: function (id, assignment) { return $http.put(base + '/' + id + '/roles', assignment); }
+                allowedRoles: function (id) { return $http.get(base + '/' + id + '/allowed-roles'); },
+                setAllowedRoles: function (id, roleIds) { return $http.put(base + '/' + id + '/allowed-roles', roleIds); }
             };
         }
     ]).run(['$rootScope', 'SchoolContext', 'AuthSession', function ($rootScope, schools, auth) {

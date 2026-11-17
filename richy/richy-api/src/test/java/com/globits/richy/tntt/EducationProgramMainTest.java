@@ -33,9 +33,11 @@ public class EducationProgramMainTest {
             s.execute("CREATE SCHEMA dbo");
             s.execute("CREATE TABLE dbo.tbl_user(id BIGINT PRIMARY KEY,username VARCHAR(100),active BIT)");
             s.execute("CREATE TABLE dbo.tbl_role(id BIGINT PRIMARY KEY,role_name VARCHAR(150))");
-            s.execute("CREATE TABLE dbo.tbl_school_user_role(school_id BIGINT,user_id BIGINT,role_id BIGINT)");
-            s.execute("INSERT INTO dbo.tbl_user VALUES(1,'main-test',1)");
-            s.execute("INSERT INTO dbo.tbl_role VALUES(1,'ROLE_EDUCATION_MANAGEMENT'),(2,'ROLE_STUDENT_MANAGEMENT')");
+            s.execute("CREATE TABLE dbo.tbl_user_role(user_id BIGINT,role_id BIGINT,PRIMARY KEY(user_id,role_id))");
+            s.execute("CREATE TABLE dbo.tbl_school_role(school_id BIGINT,role_id BIGINT,PRIMARY KEY(school_id,role_id))");
+            s.execute("INSERT INTO dbo.tbl_user VALUES(1,'main-test',1),(2,'second-manager',1),(3,'inactive-manager',0),(4,'unassigned',1)");
+            s.execute("INSERT INTO dbo.tbl_role VALUES(1,'ROLE_EDUCATION_MANAGEMENT'),(2,'ROLE_STUDENT_MANAGEMENT'),(3,'ROLE_USER')");
+            s.execute("INSERT INTO dbo.tbl_user_role VALUES(1,1),(1,2),(2,2),(3,2),(4,3)");
         }
         Configuration cfg=new Configuration().addAnnotatedClass(EducationProgram.class).addAnnotatedClass(School.class)
             .setProperty("hibernate.default_schema","dbo").setProperty("hibernate.dialect","org.hibernate.dialect.H2Dialect")
@@ -43,7 +45,12 @@ public class EducationProgramMainTest {
         cfg.getProperties().put("hibernate.connection.datasource",ds);factory=cfg.buildSessionFactory();
     }
     @AfterClass public static void shutdown(){if(factory!=null)factory.close();}
-    private static void actor(){User user=new User();user.setUsername("main-test");SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user,null,Collections.emptyList()));}
+    private static void actor(){actor("main-test");}
+    private static void actor(String username) {
+        User user = new User();
+        user.setUsername(username);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList()));
+    }
     private static EducationProgramServiceImpl bound(EntityManager manager){
         EducationProgramRepository repo=mock(EducationProgramRepository.class);
         when(repo.save(any(EducationProgram.class))).thenAnswer(call->{EducationProgram p=(EducationProgram)call.getArguments()[0];if(p.getId()==null){manager.persist(p);return p;}return manager.contains(p)?p:manager.merge(p);});
@@ -101,21 +108,52 @@ public class EducationProgramMainTest {
         filter.setSchoolId(schoolId);
         assertEquals(0,service.getPageObject(filter,1,10).getTotalElements());
     }
-    @Test public void domainAndAccountRolesResolveIndependentlyForEachSchool() {
+    @Test public void schoolsUseTheRolesAlreadyAssignedToEachAccount() {
         Long second = school("two");
-        em.createNativeQuery("insert into dbo.tbl_school_user_role values(:school,1,1)").setParameter("school",schoolId).executeUpdate();
-        em.createNativeQuery("insert into dbo.tbl_school_user_role values(:school,1,2)").setParameter("school",second).executeUpdate();
         SchoolAccess access = new SchoolAccess();
         ReflectionTestUtils.setField(access,"em",em);
         SchoolService schoolService = new SchoolService();
         ReflectionTestUtils.setField(schoolService,"em",em);
         assertEquals(schoolId, schoolService.current("www.ONE.example.").id);
         assertNull(schoolService.current("other.example"));
-        assertEquals(Collections.singleton(schoolId),access.schoolsFor(SchoolAccess.EDUCATION));
-        access.require(second,SchoolAccess.STUDENTS);
+        assertTrue(access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS).isEmpty());
+        schoolService.setAllowedRoles(schoolId, Collections.singletonList(1L));
+        schoolService.setAllowedRoles(second, Arrays.asList(2L, 2L));
+        assertEquals(Collections.singletonList(2L), schoolService.allowedRoleIds(second));
+        assertEquals(Collections.singleton(schoolId), access.schoolsFor(SchoolAccess.EDUCATION));
+        access.require(second, SchoolAccess.STUDENTS);
+
+        actor("second-manager");
+        access.require(second, SchoolAccess.EDUCATION, SchoolAccess.STUDENTS);
+        assertEquals(Collections.singleton(second), access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS));
         try {
-            access.require(second,SchoolAccess.EDUCATION);
+            access.require(second, SchoolAccess.EDUCATION);
             fail("Student management must not grant education management in the second School");
         } catch (org.springframework.security.access.AccessDeniedException expected) { }
+
+        actor("unassigned");
+        assertTrue(access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS).isEmpty());
+        actor("inactive-manager");
+        assertTrue(access.schoolsFor(SchoolAccess.STUDENTS).isEmpty());
+
+        actor("second-manager");
+        School inactiveSchool = em.find(School.class, second);
+        inactiveSchool.setActive(false);
+        em.flush();
+        assertTrue(access.schoolsFor(SchoolAccess.STUDENTS).isEmpty());
+        inactiveSchool.setActive(true);
+        em.flush();
+        try {
+            schoolService.setAllowedRoles(second, Arrays.asList(2L, 3L));
+            fail("Only roles used for School access can be enabled");
+        } catch (IllegalArgumentException expected) { }
+        assertEquals(Collections.singleton(second), access.schoolsFor(SchoolAccess.STUDENTS));
+
+        schoolService.setAllowedRoles(second, Collections.emptyList());
+        assertTrue(access.schoolsFor(SchoolAccess.STUDENTS).isEmpty());
+        schoolService.setAllowedRoles(second, Collections.singletonList(2L));
+        em.createNativeQuery("delete from dbo.tbl_user_role where user_id=2 and role_id=2").executeUpdate();
+        assertTrue(access.schoolsFor(SchoolAccess.STUDENTS).isEmpty());
+        assertEquals(Collections.singletonList(2L), schoolService.allowedRoleIds(second));
     }
 }

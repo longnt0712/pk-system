@@ -29,9 +29,10 @@ public class SchoolAccess {
         Authentication actor = SecurityContextHolder.getContext().getAuthentication();
         Set<Long> ids = new LinkedHashSet<>();
         if (actor == null || !actor.isAuthenticated()) { return ids; }
-        String sql = "select distinct a.school_id from dbo.tbl_school_user_role a"
-            + " join dbo.tbl_user u on u.id=a.user_id join dbo.tbl_role r on r.id=a.role_id"
-            + " join dbo.tbl_school s on s.id=a.school_id where u.username=:username and u.active=1"
+        String sql = "select distinct sr.school_id from dbo.tbl_user u"
+            + " join dbo.tbl_user_role ur on ur.user_id=u.id join dbo.tbl_role r on r.id=ur.role_id"
+            + " join dbo.tbl_school_role sr on sr.role_id=ur.role_id"
+            + " join dbo.tbl_school s on s.id=sr.school_id where u.username=:username and u.active=1"
             + " and s.active=1 and r.role_name in (:roles)";
         for (Object id : em.createNativeQuery(sql).setParameter("username", actor.getName())
                 .unwrap(org.hibernate.query.NativeQuery.class).setParameterList("roles", Arrays.asList(roles)).list()) {
