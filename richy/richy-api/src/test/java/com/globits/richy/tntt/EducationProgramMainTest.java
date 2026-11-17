@@ -9,7 +9,9 @@ import com.globits.richy.repository.EducationProgramRepository;
 import com.globits.richy.service.impl.EducationProgramServiceImpl;
 import com.globits.richy.service.impl.SchoolAccess;
 import com.globits.richy.service.impl.SchoolService;
+import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
+import com.globits.security.dto.RoleDto;
 import java.util.*;
 import java.util.concurrent.*;
 import javax.persistence.*;
@@ -32,17 +34,23 @@ public class EducationProgramMainTest {
         try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()){
             s.execute("CREATE SCHEMA dbo");
             s.execute("CREATE TABLE dbo.tbl_user(id BIGINT PRIMARY KEY,username VARCHAR(100),active BIT)");
-            s.execute("CREATE TABLE dbo.tbl_role(id BIGINT PRIMARY KEY,role_name VARCHAR(150))");
             s.execute("CREATE TABLE dbo.tbl_user_role(user_id BIGINT,role_id BIGINT,PRIMARY KEY(user_id,role_id))");
             s.execute("CREATE TABLE dbo.tbl_school_role(school_id BIGINT,role_id BIGINT,PRIMARY KEY(school_id,role_id))");
             s.execute("INSERT INTO dbo.tbl_user VALUES(1,'main-test',1),(2,'second-manager',1),(3,'inactive-manager',0),(4,'unassigned',1)");
-            s.execute("INSERT INTO dbo.tbl_role VALUES(1,'ROLE_EDUCATION_MANAGEMENT'),(2,'ROLE_STUDENT_MANAGEMENT'),(3,'ROLE_USER')");
             s.execute("INSERT INTO dbo.tbl_user_role VALUES(1,1),(1,2),(2,2),(3,2),(4,3)");
         }
         Configuration cfg=new Configuration().addAnnotatedClass(EducationProgram.class).addAnnotatedClass(School.class)
+            .addAnnotatedClass(Role.class)
             .setProperty("hibernate.default_schema","dbo").setProperty("hibernate.dialect","org.hibernate.dialect.H2Dialect")
             .setProperty("hibernate.hbm2ddl.auto","create-drop").setProperty("hibernate.show_sql","false");
         cfg.getProperties().put("hibernate.connection.datasource",ds);factory=cfg.buildSessionFactory();
+        try(java.sql.Connection c=ds.getConnection();java.sql.Statement s=c.createStatement()) {
+            s.execute("INSERT INTO dbo.tbl_role(id,role_name,role_description,create_date,created_by) VALUES"
+                + "(1,'ROLE_EDUCATION_MANAGEMENT',null,CURRENT_TIMESTAMP,'test'),"
+                + "(2,'ROLE_STUDENT_MANAGEMENT',null,CURRENT_TIMESTAMP,'test'),"
+                + "(3,'ROLE_USER','Registered user',CURRENT_TIMESTAMP,'test'),"
+                + "(4,'ROLE_CUSTOM',null,CURRENT_TIMESTAMP,'test')");
+        }
     }
     @AfterClass public static void shutdown(){if(factory!=null)factory.close();}
     private static void actor(){actor("main-test");}
@@ -114,12 +122,16 @@ public class EducationProgramMainTest {
         ReflectionTestUtils.setField(access,"em",em);
         SchoolService schoolService = new SchoolService();
         ReflectionTestUtils.setField(schoolService,"em",em);
+        List<RoleDto> roles = schoolService.roles();
+        assertEquals(4, roles.size());
+        assertEquals("ROLE_CUSTOM", roles.get(0).getName());
+        assertEquals("Registered user", roles.get(3).getDescription());
         assertEquals(schoolId, schoolService.current("www.ONE.example.").id);
         assertNull(schoolService.current("other.example"));
         assertTrue(access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS).isEmpty());
         schoolService.setAllowedRoles(schoolId, Collections.singletonList(1L));
-        schoolService.setAllowedRoles(second, Arrays.asList(2L, 2L));
-        assertEquals(Collections.singletonList(2L), schoolService.allowedRoleIds(second));
+        schoolService.setAllowedRoles(second, Arrays.asList(2L, 2L, 3L, 4L));
+        assertEquals(Arrays.asList(2L, 3L, 4L), schoolService.allowedRoleIds(second));
         assertEquals(Collections.singleton(schoolId), access.schoolsFor(SchoolAccess.EDUCATION));
         access.require(second, SchoolAccess.STUDENTS);
 
@@ -132,6 +144,7 @@ public class EducationProgramMainTest {
         } catch (org.springframework.security.access.AccessDeniedException expected) { }
 
         actor("unassigned");
+        access.require(second, "ROLE_USER");
         assertTrue(access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS).isEmpty());
         actor("inactive-manager");
         assertTrue(access.schoolsFor(SchoolAccess.STUDENTS).isEmpty());
@@ -144,8 +157,8 @@ public class EducationProgramMainTest {
         inactiveSchool.setActive(true);
         em.flush();
         try {
-            schoolService.setAllowedRoles(second, Arrays.asList(2L, 3L));
-            fail("Only roles used for School access can be enabled");
+            schoolService.setAllowedRoles(second, Arrays.asList(2L, 999L));
+            fail("Only existing roles can be enabled");
         } catch (IllegalArgumentException expected) { }
         assertEquals(Collections.singleton(second), access.schoolsFor(SchoolAccess.STUDENTS));
 

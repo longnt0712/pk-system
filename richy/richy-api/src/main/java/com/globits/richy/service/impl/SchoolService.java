@@ -2,6 +2,8 @@ package com.globits.richy.service.impl;
 
 import com.globits.richy.domain.School;
 import com.globits.richy.dto.SchoolDto;
+import com.globits.security.domain.Role;
+import com.globits.security.dto.RoleDto;
 import java.util.*;
 import javax.persistence.*;
 import org.springframework.stereotype.Service;
@@ -64,17 +66,11 @@ public class SchoolService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String,Object>> roles() {
-        List<Map<String,Object>> rows = new ArrayList<>();
-        List<?> roles = em.createNativeQuery("select id,role_name from dbo.tbl_role where role_name in (:education,:students) order by role_name")
-            .setParameter("education", SchoolAccess.EDUCATION).setParameter("students", SchoolAccess.STUDENTS).getResultList();
-        for (Object value : roles) {
-            Object[] row = (Object[]) value;
-            Map<String,Object> item = new LinkedHashMap<>();
-            item.put("id", ((Number) row[0]).longValue());
-            item.put("name", row[1]);
-            rows.add(item);
-        }
+    public List<RoleDto> roles() {
+        List<RoleDto> rows = new ArrayList<>();
+        List<Role> roles = em.createQuery("select r from Role r order by r.name, r.id", Role.class)
+            .getResultList();
+        for (Role role : roles) { rows.add(new RoleDto(role)); }
         return rows;
     }
 
@@ -93,9 +89,9 @@ public class SchoolService {
             throw new IllegalArgumentException("Chọn School và gửi danh sách role.");
         }
         Set<Long> valid = new HashSet<>();
-        for (Map<String,Object> role : roles()) { valid.add((Long) role.get("id")); }
+        for (RoleDto role : roles()) { valid.add(role.getId()); }
         if (!valid.containsAll(roleIds)) {
-            throw new IllegalArgumentException("Có role không áp dụng cho quyền theo School.");
+            throw new IllegalArgumentException("Có role không còn trong hệ thống. Vui lòng tải lại danh sách role.");
         }
         Set<Long> selected = new TreeSet<>(roleIds);
         em.createNativeQuery("delete from dbo.tbl_school_role where school_id=:school")

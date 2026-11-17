@@ -2,6 +2,7 @@ package com.globits.richy.rest;
 
 import com.globits.richy.dto.SchoolDto;
 import com.globits.richy.service.impl.SchoolService;
+import com.globits.security.dto.RoleDto;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -32,7 +33,7 @@ public class RestSchoolController {
     }
     @Secured("ROLE_ADMIN")
     @RequestMapping(value = "/roles", method = RequestMethod.GET)
-    public List<Map<String,Object>> roles() { return service.roles(); }
+    public List<RoleDto> roles() { return service.roles(); }
     @Secured("ROLE_ADMIN")
     @RequestMapping(value = "/{id}/allowed-roles", method = RequestMethod.GET)
     public List<Long> allowedRoleIds(@PathVariable Long id) { return service.allowedRoleIds(id); }
