@@ -115,7 +115,8 @@ public class BattleOnlineTeamRandomizationTest {
         addPlayer("eliminated",3,false,true);
         long now=System.currentTimeMillis();Map<Integer,Integer> members=new LinkedHashMap<Integer,Integer>();members.put(1,2);members.put(2,2);members.put(3,1);
         DemonDefenseGame game=demonGame(members,now);Map<Integer,Object> lanes=(Map<Integer,Object>)get(game,"teams");
-        set(lanes.get(3),"eliminatedAt",now);set(game,"level",3);set(lanes.get(1),"points",45);set(lanes.get(1),"levelPoints",5);
+        // Levels are per team: put every lane on level 3.
+        set(lanes.get(3),"eliminatedAt",now);for(Object lane:lanes.values())set(lane,"level",3);set(lanes.get(1),"points",45);set(lanes.get(1),"levelPoints",5);
         Map<String,Integer> roster=new LinkedHashMap<String,Integer>(),streaks=new LinkedHashMap<String,Integer>();
         for(Map.Entry<String,Object> entry:players.entrySet())if(!(Boolean)get(entry.getValue(),"spectator")){
             roster.put(entry.getKey(),(Integer)get(entry.getValue(),"teamNumber"));streaks.put(entry.getKey(),0);

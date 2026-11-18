@@ -6457,17 +6457,31 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (host != null) { host.spectator = true; host.teamNumber = 0; host.ready = true; }
     }
 
+    /** A disconnected student still counts this long (brief Wi-Fi drops must not change the demon rhythm). */
+    private static final long DEMON_OFFLINE_GRACE_MS = 15000L;
+
     private void syncDemonPlayersLocked(RoomState room, long now) {
         if (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) { return; }
         Map<String, Integer> teams = new LinkedHashMap<String, Integer>();
         Map<String, Integer> streaks = new LinkedHashMap<String, Integer>();
+        Set<String> active = new LinkedHashSet<String>();
         for (PlayerState player : room.players.values()) {
             if (!player.spectator && player.teamNumber > 0) {
                 teams.put(player.username, player.teamNumber);
                 streaks.put(player.username, player.streak);
+                if (player.connected) {
+                    room.demonOfflineSince.remove(player.username);
+                    active.add(player.username);
+                } else {
+                    Long since = room.demonOfflineSince.get(player.username);
+                    if (since == null) { since = now; room.demonOfflineSince.put(player.username, since); }
+                    if (now - since < DEMON_OFFLINE_GRACE_MS) { active.add(player.username); }
+                }
             }
         }
-        room.demonDefense.syncPlayers(teams, streaks, demonGameTime(room, now));
+        room.demonOfflineSince.keySet().retainAll(teams.keySet());
+        // Spawns and lane targets follow active players; only an empty roster eliminates a team.
+        room.demonDefense.syncPlayers(teams, active, streaks, demonGameTime(room, now));
         if (PLAYING.equals(room.status) && room.demonDefense.isFinished()) { finishMatchLocked(room); }
     }
 
@@ -6546,6 +6560,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     synchronized (room) {
                         if (!PLAYING.equals(room.status) || room.demonDefense != game || rooms.get(room.code) != room) { return; }
                         long now = System.currentTimeMillis();
+                        // Re-check who is present every tick so the offline grace period expires on time.
+                        syncDemonPlayersLocked(room, now);
                         advanceDemonDefenseLocked(room, now);
                         String after = demonWarningKey(game.snapshot(demonGameTime(room, now), false));
                         broadcastSummary = !PLAYING.equals(room.status) || !after.equals(room.lastDemonWarningKey) ||
@@ -9534,6 +9550,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String lumLuckyAppearance = "PUMPKIN";
         long lastDemonSummaryAt;
         String lastDemonWarningKey = "";
+        /** Diệt Quỷ Ngu: when each disconnected player went offline (game keeps counting them for a grace period). */
+        final Map<String, Long> demonOfflineSince = new LinkedHashMap<String, Long>();
 
         /*
          * ESCAPE_DUMB_DEMON: âm gần ĐỘI 1, dương gần ĐỘI 2.

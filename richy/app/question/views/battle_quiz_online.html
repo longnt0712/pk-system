@@ -1121,10 +1121,10 @@
               }">
 
             <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
-                <span>LEVEL {{vm.room.demonDefense.level || 1}} • ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} tia / câu đúng</span>
+                <span>LEVEL {{vm.getMyDemonTeam().level || vm.room.demonDefense.level || 1}} • ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} tia / câu đúng</span>
                 <small class="demon-level-summary">
-                    Lên level {{(vm.room.demonDefense.level || 1) + 1}}: {{vm.getDemonLevelPercent(vm.getMyDemonTeam())}}%
-                    <span ng-if="vm.room.demonDefense.demonHealthBonus">• Quỷ +{{vm.room.demonDefense.demonHealthBonus}} máu</span>
+                    Lên level {{(vm.getMyDemonTeam().level || vm.room.demonDefense.level || 1) + 1}}: {{vm.getDemonLevelPercent(vm.getMyDemonTeam())}}%
+                    <span ng-if="vm.getMyDemonTeam().demonHealthBonus">• Quỷ +{{vm.getMyDemonTeam().demonHealthBonus}} máu</span>
                     <span ng-if="vm.getMyDemonTeam()">• 👑 Bá khí khi lên level (còn {{vm.getDemonPointsToLevel(vm.getMyDemonTeam())}} điểm)</span>
                     • Giữ tối thiểu {{vm.me().demonMinimumBullets || 1}} tia
                 </small>
@@ -2792,6 +2792,8 @@
     @keyframes demon-boss-pulse { 50% { background:#a82a1f; } }
     .demon-level-badge { display:inline-flex; flex-direction:column; align-items:flex-start; line-height:1.1; }
     .demon-level-badge small { font-size:11px; color:#ffb48a; font-weight:700; }
+    .demon-team-level { margin-left:6px; padding:2px 7px; border-radius:6px; background:#2d4a63; color:#ffe08a; font-style:normal; font-size:12px; font-weight:900; }
+    .demon-team-level small { color:#ffb48a; font-size:11px; font-weight:700; }
     .demon-enemy-health.is-number { font-size:11px; letter-spacing:0; padding:2px 5px; border-radius:4px; background:#3a1414; white-space:nowrap; }
     /* Học sinh: khi Ngu Siêu Bá Khí vào đường của đội mình -> viền đỏ nhấp nháy quanh màn hình (máy rung trong controller). */
     .demon-boss-alert-frame { position:fixed; inset:0; z-index:2147483000; pointer-events:none;

@@ -21,8 +21,15 @@ public class DemonDefenseGameTest {
     }
     private DemonDefenseGame atLevel(int level, int members) throws Exception {
         DemonDefenseGame game = game(members);
-        Field field = DemonDefenseGame.class.getDeclaredField("level"); field.setAccessible(true); field.setInt(game, level);
+        setAllLevels(game, level);
         return game;
+    }
+    /** Levels are per team now: put every lane on the same level. */
+    private static void setAllLevels(DemonDefenseGame game, int level) throws Exception {
+        Field teams = DemonDefenseGame.class.getDeclaredField("teams"); teams.setAccessible(true);
+        for (Object state : ((Map<?, ?>) teams.get(game)).values()) {
+            Field field = state.getClass().getDeclaredField("level"); field.setAccessible(true); field.setInt(state, level);
+        }
     }
     private int enemyPoints(DemonDefenseGame.Team team) {
         int points = 0; for (DemonDefenseGame.Demon demon : team.demons) { points += demon.maxHealth; } return points;
@@ -312,7 +319,9 @@ public class DemonDefenseGameTest {
         assertEquals(2, game.snapshot(START + 3000L, false).level);
         assertEquals(5, team(game, 1, 3000L, true).demons.stream().filter(demon -> demon.boss).findFirst().get().health);
         assertTrue(team(game, 2, 3000L, true).demons.stream().noneMatch(demon -> demon.boss));
-        assertEquals(105, team(game, 2, 3000L, false).pointsUntilBoss); // level 2: 70 x 1.5
+        // Levels are per team: the large team is still on level 1 and needs 50 x 1.5.
+        assertEquals(1, team(game, 2, 3000L, false).level); assertEquals(2, team(game, 1, 3000L, false).level);
+        assertEquals(75, team(game, 2, 3000L, false).pointsUntilBoss);
     }
 
     @Test public void firstBossAwardsTenPointsOnlyOnTheTenthHit() throws Exception {
@@ -341,17 +350,31 @@ public class DemonDefenseGameTest {
         ((java.util.List<Object>) demons.get(state)).clear();
     }
     // 24 members: a demon every 357 ms, so by +20s each lane holds 44 one-health demons and none has arrived yet.
-    @Test public void oneTeamAdvancesGlobalLevelAndCheckpointsEveryPlayersLatestGun() throws Exception {
+    @Test public void aTeamLevelsUpAloneAndCheckpointsOnlyItsOwnPlayers() throws Exception {
         long at = START + 20000L;
-        DemonDefenseGame game = game(24); assertEquals(3,game.shoot(2,"other",30,at).points);
-        game.updatePlayerStreak("other",0); game.updatePlayerStreak("bob",30); game.updatePlayerStreak("carol",0);
+        DemonDefenseGame game = game(24);
+        // Full 24-player rosters; dave is alice's teammate, bob plays for lane 2.
+        Map<String, Integer> roster = new LinkedHashMap<String, Integer>(), streaks = new LinkedHashMap<String, Integer>();
+        String[] laneOne = {"alice", "dave", "warmup"}, laneTwo = {"other", "bob", "carol"};
+        for (int i = 0; i < 24; i++) {
+            roster.put(i < 3 ? laneOne[i] : "a" + i, 1); roster.put(i < 3 ? laneTwo[i] : "b" + i, 2);
+        }
+        streaks.put("dave", 30); streaks.put("bob", 30);
+        game.syncPlayers(roster, streaks, START);
+        assertEquals(3,game.shoot(2,"other",30,at).points);
+        game.updatePlayerStreak("other",0);
         setLane(game,1,"levelPoints",8); // 8 + 40 + 2 reaches exactly 50
         assertEquals(40,game.shoot(1,"warmup",400,at).points); assertEquals(1,game.snapshot(at,false).level);
         assertEquals(2,game.shoot(1,"alice",20,at).points);
         assertEquals(2,game.snapshot(at,false).level); assertEquals(70,game.snapshot(at,false).levelTargetPoints);
-        assertEquals(42,team(game,1,20000,false).points); assertEquals(0,team(game,1,20000,false).levelPoints);
-        assertEquals(3,team(game,2,20000,false).points); assertEquals(0,team(game,2,20000,false).levelPoints);
-        assertEquals(2,game.minimumBulletsForPlayer("alice")); assertEquals(3,game.minimumBulletsForPlayer("bob"));
+        DemonDefenseGame.Team one = team(game,1,20000,false), two = team(game,2,20000,false);
+        assertEquals(2,one.level); assertEquals(1,one.demonHealthBonus); assertEquals(70,one.levelTargetPoints);
+        assertEquals(42,one.points); assertEquals(0,one.levelPoints);
+        // Lane 2 keeps its own level, progress and target.
+        assertEquals(1,two.level); assertEquals(0,two.demonHealthBonus); assertEquals(50,two.levelTargetPoints);
+        assertEquals(3,two.points); assertEquals(3,two.levelPoints);
+        assertEquals(2,game.minimumBulletsForPlayer("alice")); assertEquals(3,game.minimumBulletsForPlayer("dave"));
+        assertEquals(1,game.minimumBulletsForPlayer("bob")); // other lane: no checkpoint
         assertEquals(1,game.minimumBulletsForPlayer("other")); assertEquals(1,game.minimumBulletsForPlayer("carol"));
         game.updatePlayerStreak("alice",0); assertEquals(2,game.bulletsForPlayer("alice",0));
         assertEquals(2,game.shoot(1,"alice",0,at).bullets);
@@ -363,7 +386,8 @@ public class DemonDefenseGameTest {
         assertEquals(1,game.shoot(1,"alice",40,later).kills);
         assertEquals(3,game.snapshot(later,false).level); game.updatePlayerStreak("alice",0);
         assertEquals(4,game.minimumBulletsForPlayer("alice")); assertEquals(4,game.bulletsForPlayer("alice",0));
-        assertEquals(3,game.minimumBulletsForPlayer("bob"));
+        assertEquals(3,game.minimumBulletsForPlayer("dave")); assertEquals(1,game.minimumBulletsForPlayer("bob"));
+        assertEquals(1,team(game,2,400L + 20000L,false).level);
     }
     @Test public void carryDoublesShotsButItsTemporaryBonusNeverBecomesTheCheckpointFloor() throws Exception {
         long at = START + 20000L;
@@ -436,6 +460,37 @@ public class DemonDefenseGameTest {
         assertTrue(team(game,1,20000,false).shots.isEmpty()); assertTrue(team(game,1,20000,false).demons.isEmpty());
         assertEquals(team(game,1,26000,true).points,team(game,1,20000,false).points);
     }
+    @Test public void inactivePlayersStopBringingDemonsButOnlyAnEmptyRosterEliminatesATeam() {
+        DemonDefenseGame game = game(2);
+        Map<String, Integer> roster = values("alice", "1", "ann", "1", "bob", "2", "ben", "2");
+        game.syncPlayers(roster, new java.util.HashSet<String>(java.util.Arrays.asList("alice", "ann", "bob", "ben")), values(), START);
+        assertEquals(2, team(game, 1, 0L, false).memberCount);
+        // ann drops out (offline past the grace period): lane 1 now spawns for 1 member.
+        game.syncPlayers(roster, new java.util.HashSet<String>(java.util.Arrays.asList("alice", "bob", "ben")), values(), START + 4000L);
+        assertEquals(1, team(game, 1, 4000L, false).memberCount);
+        game.advance(START + 4000L + 8571L); assertEquals(1, team(game, 1, 4000L + 8571L, true).demons.size());
+        game.advance(START + 4000L + 8572L); assertEquals(2, team(game, 1, 4000L + 8572L, true).demons.size());
+        // Everyone in lane 1 briefly offline: spawns pause but the team is not eliminated.
+        game.syncPlayers(roster, new java.util.HashSet<String>(java.util.Arrays.asList("bob", "ben")), values(), START + 13000L);
+        assertEquals(0, team(game, 1, 13000L, false).memberCount);
+        assertFalse(game.isEliminated(1)); assertFalse(game.isFinished());
+        // Removed from the roster entirely: eliminated as before.
+        game.syncPlayers(values("bob", "2", "ben", "2"), new java.util.HashSet<String>(java.util.Arrays.asList("bob", "ben")), values(), START + 14000L);
+        assertTrue(game.isEliminated(1));
+    }
+    @Test public void timeLimitUsesTheAverageTeamSizeOverTheMatch() throws Exception {
+        DemonDefenseGame game = game(2);
+        Map<String, Integer> roster = values("alice", "1", "ann", "1", "bob", "2", "ben", "2");
+        game.syncPlayers(roster, roster.keySet(), values(), START);
+        // ann is gone for the second half: lane 1 averages 1.5 members, lane 2 stays at 2.
+        game.syncPlayers(roster, new java.util.HashSet<String>(java.util.Arrays.asList("alice", "bob", "ben")), values(), START + 10000L);
+        setLane(game, 1, "points", 3); setLane(game, 2, "points", 4);
+        game.stop(START + 20000L);
+        assertEquals(1.5D, team(game, 1, 20000L, false).averageMembers, 0D);
+        assertEquals(2D, team(game, 2, 20000L, false).averageMembers, 0D);
+        // 3 / 1.5 == 4 / 2: a tie (counting only the final 1 member would have handed lane 1 the win).
+        assertEquals(1, team(game, 1, 20000L, false).rank); assertEquals(1, team(game, 2, 20000L, false).rank);
+    }
     @Test public void aStudentLaneFeedCarriesOnlyThatLanesDemonsAndNoShots() {
         DemonDefenseGame game = game(2); game.advance(START + 9000L); game.shoot(1, "alice", 1, START + 9000L);
         DemonDefenseGame.Snapshot lane = game.snapshot(START + 9000L, false, 1);
@@ -473,7 +528,7 @@ public class DemonDefenseGameTest {
     @Test public void timeLimitRanksSurvivingTeamsByPointsPerMember() throws Exception {
         Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>(); members.put(1,1); members.put(2,2);
         DemonDefenseGame game = new DemonDefenseGame(START,members);
-        Field field = DemonDefenseGame.class.getDeclaredField("level"); field.setAccessible(true); field.setInt(game,2);
+        setAllLevels(game, 2);
         // Level 2: first demon is kind 2 with +1 health = 3 points, killed by 3 bullets (streak 30).
         assertEquals(3,game.shoot(1,"alice",30,START + 3000L).points); assertEquals(3,game.shoot(2,"bob",30,START + 3000L).points);
         game.stop(START + 3000L); assertEquals(1,team(game,1,3000,true).rank); assertEquals(2,team(game,2,3000,true).rank);

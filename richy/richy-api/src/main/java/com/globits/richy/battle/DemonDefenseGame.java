@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 /** Server-authoritative simulation. Call under the containing room's lock. */
@@ -35,7 +36,7 @@ public final class DemonDefenseGame {
     private final long startedAt;
     private long stoppedAt;
     private long nextShotId;
-    private int level = 1;
+    // Each team has its own level (see TeamState.level): one lane levelling up never toughens another lane.
     private final Map<Integer, TeamState> teams = new LinkedHashMap<Integer, TeamState>();
     private final Map<String, PlayerProgress> players = new LinkedHashMap<String, PlayerProgress>();
 
@@ -51,7 +52,7 @@ public final class DemonDefenseGame {
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
     public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
     public static int wrongAnswerStreak(int streak) { return Math.max(0, streak - WRONG_ANSWER_STREAK_DEDUCTION); }
-    /** 50, 70, 90, 110… points to leave level 1, 2, 3, 4…; reaching it levels up the room and brings a boss. */
+    /** 50, 70, 90, 110… points to leave level 1, 2, 3, 4…; reaching it levels up that team and brings it a boss. */
     public static int pointsRequiredForLevel(int value) {
         return (int) Math.min(Integer.MAX_VALUE, POINTS_PER_LEVEL + (Math.max(1, value) - 1L) * POINTS_PER_LEVEL_INCREMENT);
     }
@@ -151,30 +152,45 @@ public final class DemonDefenseGame {
 
     /** Roster changes affect future spawns, never existing enemies, points, or eliminated teams. */
     public void syncPlayers(Map<String, Integer> playerTeams, Map<String, Integer> streaks, long now) {
+        syncPlayers(playerTeams, playerTeams.keySet(), streaks, now);
+    }
+
+    /**
+     * @param active players who count as present (connected, or offline only briefly). Demons spawn and lane
+     *               targets scale by the active count, so a disconnected student no longer brings extra demons;
+     *               a team is only eliminated when nobody is left on its roster at all.
+     */
+    public void syncPlayers(Map<String, Integer> playerTeams, Set<String> active, Map<String, Integer> streaks, long now) {
         advance(now);
         if (stoppedAt > 0L) { return; }
-        Map<Integer, Integer> counts = new LinkedHashMap<Integer, Integer>();
+        Map<Integer, Integer> rosterCounts = new LinkedHashMap<Integer, Integer>();
+        Map<Integer, Integer> activeCounts = new LinkedHashMap<Integer, Integer>();
         for (Map.Entry<String, Integer> entry : playerTeams.entrySet()) {
             Integer number = entry.getValue();
             if (number == null || number < 1) { continue; }
-            Integer count = counts.get(number); counts.put(number, count == null ? 1 : count + 1);
+            Integer count = rosterCounts.get(number); rosterCounts.put(number, count == null ? 1 : count + 1);
+            if (active.contains(entry.getKey())) {
+                Integer present = activeCounts.get(number); activeCounts.put(number, present == null ? 1 : present + 1);
+            }
             updatePlayerStreak(entry.getKey(), streaks.containsKey(entry.getKey()) ? streaks.get(entry.getKey()) : 0);
             players.get(entry.getKey()).teamNumber = number;
         }
         players.keySet().retainAll(playerTeams.keySet());
         for (TeamState team : teams.values()) {
-            int count = counts.containsKey(team.number) ? counts.get(team.number) : 0;
-            if (count != team.memberCount) {
-                team.memberCount = count;
-                if (count == 0 && team.eliminatedAt == 0L) { team.eliminatedAt = now; }
-                if (team.eliminatedAt == 0L && count > 0) {
+            int roster = rosterCounts.containsKey(team.number) ? rosterCounts.get(team.number) : 0;
+            int present = activeCounts.containsKey(team.number) ? activeCounts.get(team.number) : 0;
+            if (roster == 0 && team.eliminatedAt == 0L) { team.eliminatedAt = now; }
+            if (present != team.memberCount) {
+                team.setMemberCount(present, now);
+                if (team.eliminatedAt == 0L && present > 0) {
                     team.nextSpawnAt = now + spawnInterval(team, now);
                 }
             }
         }
-        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+        for (Map.Entry<Integer, Integer> entry : rosterCounts.entrySet()) {
             if (!teams.containsKey(entry.getKey())) {
-                teams.put(entry.getKey(), new TeamState(entry.getKey(), entry.getValue(), now));
+                Integer present = activeCounts.get(entry.getKey());
+                teams.put(entry.getKey(), new TeamState(entry.getKey(), present == null ? 0 : present, now));
             }
         }
         if (livingTeams() <= 1 && teams.size() >= 2) { stoppedAt = now; }
@@ -243,7 +259,7 @@ public final class DemonDefenseGame {
         return team.memberCount / (members / (double) living);
     }
     private static int scaled(int value, double scale) { return Math.max(1, (int) Math.round(value * scale)); }
-    private int levelTargetForTeam(TeamState team) { return scaled(pointsRequiredForLevel(level), teamScale(team)); }
+    private int levelTargetForTeam(TeamState team) { return scaled(pointsRequiredForLevel(team.level), teamScale(team)); }
     private int nextBossHealth(TeamState team) {
         return scaled(BOSS_INITIAL_POINTS + team.bossCount * BOSS_POINTS_INCREMENT, teamScale(team));
     }
@@ -251,11 +267,11 @@ public final class DemonDefenseGame {
     /** One demon per batch: higher levels unlock tougher kinds and add health instead of more/faster demons. */
     private void spawnBatch(TeamState team, long at) {
         long batch = ++team.spawnBatches;
-        int kind = 1 + (int) (batch % Math.min(3, level));
+        int kind = 1 + (int) (batch % Math.min(3, team.level));
         long id = ++team.nextDemonId;
         boolean fast = kind == 1 && id % 7L == 0L;
         long travelMs = fast ? DEMON_TRAVEL_MS * 2L / 3L : DEMON_TRAVEL_MS;
-        team.demons.add(new Enemy(id, at, at + travelMs, fast, kind, kind + healthBonusForLevel(level), false));
+        team.demons.add(new Enemy(id, at, at + travelMs, fast, kind, kind + healthBonusForLevel(team.level), false));
     }
 
     private void spawnBoss(TeamState team, long now) {
@@ -332,18 +348,16 @@ public final class DemonDefenseGame {
         team.levelPoints += points;
         while (team.levelPoints >= levelTargetForTeam(team)) {
             int overflow = team.levelPoints - levelTargetForTeam(team);
-            // The team that completes the level meets the next boss (sized before the level-up).
+            // Only this team levels up: it meets the next boss (sized before the level-up) and its demons toughen.
             spawnBoss(team, now);
-            level++;
-            for (TeamState other : teams.values()) {
-                other.levelPoints = 0;
-                if (other.eliminatedAt == 0L) {
-                    other.nextSpawnAt = now + spawnInterval(other, now);
-                }
-            }
+            team.level++;
             team.levelPoints = overflow;
+            team.nextSpawnAt = now + spawnInterval(team, now);
+            // Checkpoint this team's players at their current shot count.
             for (PlayerProgress player : players.values()) {
-                player.bulletFloor = Math.max(player.bulletFloor, bulletsForStreak(player.streak));
+                if (player.teamNumber == team.number) {
+                    player.bulletFloor = Math.max(player.bulletFloor, bulletsForStreak(player.streak));
+                }
             }
         }
         if (rescued) {
@@ -372,22 +386,24 @@ public final class DemonDefenseGame {
         final long at = stoppedAt > 0L ? stoppedAt : now;
         List<TeamState> ranked = new ArrayList<TeamState>(teams.values());
         Collections.sort(ranked, new Comparator<TeamState>() {
-            public int compare(TeamState a, TeamState b) { return compareResults(a, b); }
+            public int compare(TeamState a, TeamState b) { return compareResults(a, b, at); }
         });
         List<Team> result = new ArrayList<Team>();
-        int rank = 0;
+        int rank = 0, topLevel = 1;
         TeamState previous = null;
         for (int index = 0; index < ranked.size(); index++) {
             TeamState team = ranked.get(index);
-            if (previous == null || compareResults(previous, team) != 0) { rank = index + 1; }
-            result.add(new Team(team, new LaneRules(team), at, startedAt, rank, includeArena,
+            if (previous == null || compareResults(previous, team, at) != 0) { rank = index + 1; }
+            result.add(new Team(team, new LaneRules(team, at), at, startedAt, rank, includeArena,
                     includeArena || (viewerLane > 0 && team.number == viewerLane)));
+            topLevel = Math.max(topLevel, team.level);
             previous = team;
         }
         long offset = Math.max(0L, at - startedAt), phaseMs = offset % WAVE_MS;
         String phase = phaseMs >= 27000L ? "REST" : phaseMs >= 23000L ? "HORDE" :
                 phaseMs >= 20000L ? "WARNING" : "NORMAL";
-        return new Snapshot(startedAt, at, (int) (offset / WAVE_MS) + 1, level, pointsRequiredForLevel(level), phase,
+        // Room-level numbers describe the highest team level; each Team carries its own level too.
+        return new Snapshot(startedAt, at, (int) (offset / WAVE_MS) + 1, topLevel, pointsRequiredForLevel(topLevel), phase,
                 "WARNING".equals(phase) ? (int) ((23000L - phaseMs + 999L) / 1000L) : 0,
                 result, stoppedAt > 0L);
     }
@@ -395,32 +411,51 @@ public final class DemonDefenseGame {
     /** Per-lane numbers that depend on the whole roster, computed once per snapshot. */
     private final class LaneRules {
         final int levelTargetPoints, pointsUntilBoss, nextBossHealth;
-        LaneRules(TeamState team) {
+        final double averageMembers;
+        LaneRules(TeamState team, long at) {
             levelTargetPoints = levelTargetForTeam(team);
             pointsUntilBoss = Math.max(1, levelTargetPoints - team.levelPoints);
             nextBossHealth = nextBossHealth(team);
+            averageMembers = team.averageMembers(at);
         }
     }
 
-    private static int compareResults(TeamState a, TeamState b) {
+    private static int compareResults(TeamState a, TeamState b, long at) {
         if ((a.eliminatedAt == 0L) != (b.eliminatedAt == 0L)) { return a.eliminatedAt == 0L ? -1 : 1; }
         if (a.eliminatedAt > 0L || b.eliminatedAt > 0L) {
             return Long.compare(b.eliminatedAt, a.eliminatedAt);
         }
-        // At the time limit, compare earned points per member, including stronger demons' full value.
-        return Long.compare((long) b.points * Math.max(1, a.memberCount), (long) a.points * Math.max(1, b.memberCount));
+        // At the time limit, compare points per member, using each team's average size over the match so a
+        // late join, a move or a disconnect near the end cannot swing the result.
+        return Double.compare(b.points * a.averageMembers(at), a.points * b.averageMembers(at));
     }
 
     private static final class TeamState {
         final int number;
-        int memberCount;
+        int memberCount, level = 1;
         long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches, holyAt;
         int kills, points, levelPoints, rescues, bossCount;
         String rescueUsername, holyUsername;
+        // Member-milliseconds since the team joined, for the time-averaged team size.
+        final long joinedAt;
+        long memberSince, memberMillis;
         final List<Enemy> demons = new ArrayList<Enemy>();
         final List<Shot> shots = new ArrayList<Shot>();
         TeamState(int number, int memberCount, long at) {
             this.number = number; this.memberCount = memberCount; this.nextSpawnAt = at + 3000L;
+            this.joinedAt = at; this.memberSince = at;
+        }
+        void setMemberCount(int count, long now) {
+            memberMillis += (long) memberCount * Math.max(0L, now - memberSince);
+            memberSince = Math.max(memberSince, now);
+            memberCount = count;
+        }
+        /** Average active members from joining until {@code at}; at least 1 so scores stay comparable. */
+        double averageMembers(long at) {
+            long elapsed = at - joinedAt;
+            if (elapsed <= 0L) { return Math.max(1, memberCount); }
+            double total = memberMillis + (double) memberCount * Math.max(0L, at - memberSince);
+            return Math.max(1D, total / elapsed);
         }
     }
     private static final class PlayerProgress {
@@ -463,8 +498,10 @@ public final class DemonDefenseGame {
     }
     public static final class Team {
         public final int number, memberCount, kills, points, levelPoints, rescues, rank;
-        /** This lane's own target (scaled by team size) and boss countdown; sent to students too. */
-        public final int levelTargetPoints, pointsUntilBoss, nextBossHealth, bossCount;
+        /** This lane's own level, target (scaled by team size) and boss countdown; sent to students too. */
+        public final int level, demonHealthBonus, levelTargetPoints, pointsUntilBoss, nextBossHealth, bossCount;
+        /** Time-averaged active members, used for points per member at the time limit. */
+        public final double averageMembers;
         public final boolean bossActive;
         public final long eliminatedAt, rescueAt, survivedMs;
         /** Last Angel Scepter strike in this lane (game time) and who used it; drives the effect on every screen. */
@@ -477,8 +514,10 @@ public final class DemonDefenseGame {
         Team(TeamState state, LaneRules rules, long at, long startedAt, int rank, boolean includeArena, boolean includeDemons) {
             number = state.number; memberCount = state.memberCount; kills = state.kills; rescues = state.rescues;
             points = state.points; levelPoints = state.levelPoints;
+            level = state.level; demonHealthBonus = healthBonusForLevel(state.level);
             levelTargetPoints = rules.levelTargetPoints; pointsUntilBoss = rules.pointsUntilBoss;
             nextBossHealth = rules.nextBossHealth; bossCount = state.bossCount;
+            averageMembers = Math.round(rules.averageMembers * 100D) / 100D;
             boolean anyBoss = false;
             for (Enemy enemy : state.demons) { anyBoss |= enemy.boss; }
             bossActive = anyBoss;

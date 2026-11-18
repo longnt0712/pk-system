@@ -2,9 +2,9 @@
     <header class="demon-board-header">
         <div><small>BATTLE ONLINE • SINH TỒN THEO ĐỘI</small><h2>👹 DIỆT QUỶ NGU</h2></div>
         <div class="demon-board-meta">
-            <span class="demon-level-badge" ng-attr-title="Quỷ ở level này có thêm {{vm.demonArena.demonHealthBonus || 0}} máu">
+            <span class="demon-level-badge" title="Mỗi đội có level riêng; đây là level cao nhất trong phòng">
                 LEVEL <b>{{vm.demonArena.level || 1}}</b>
-                <small ng-if="vm.demonArena.demonHealthBonus">💪 Quỷ +{{vm.demonArena.demonHealthBonus}} máu</small>
+                <small>cao nhất · mỗi đội level riêng</small>
             </span>
             <span ng-if="vm.room.status === 'PLAYING'">⏱ {{vm.formatTime(vm.countdown)}}</span>
             <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
@@ -21,16 +21,17 @@
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, tháp pha lê của bạn bắn tia sáng! • Streak 20: 2 tia • 30: 3 tia… • Lên level chốt số tia tối thiểu</span>
     </div>
     <div class="demon-enemy-legend">
-        NGU {{1 + (vm.demonArena.demonHealthBonus || 0)}} máu • RẤT NGU {{2 + (vm.demonArena.demonHealthBonus || 0)}} máu • SIÊU NGU {{3 + (vm.demonArena.demonHealthBonus || 0)}} máu
-        (điểm = máu; mỗi level quỷ con +1 máu) • Lên level: 50 điểm, rồi mỗi level cần thêm 20 (70, 90…); đội đủ điểm gặp 👑 NGU SIÊU BÁ KHÍ (10 máu, lần sau +2) • Đội ít/nhiều người được chia tỉ lệ cho công bằng
+        NGU 1 • RẤT NGU 2 • SIÊU NGU 3 máu, cộng thêm (level của đội − 1) máu; điểm = máu
+        • Mỗi đội lên level riêng: 50 điểm, rồi mỗi level cần thêm 20 (70, 90…); đội đủ điểm gặp 👑 NGU SIÊU BÁ KHÍ (10 máu, lần sau +2)
+        • Đội ít/nhiều người được chia tỉ lệ; người mất kết nối quá 15 giây không bị tính
     </div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
                  ng-class="{'is-danger': team.danger, 'is-eliminated': team.eliminatedAt, 'is-winner': vm.demonArena.finished && team.rank === 1}">
-            <header><strong>ĐỘI {{team.number}}</strong><span>{{team.memberCount}} tháp • {{team.points || 0}} điểm • 👹 {{team.kills}} diệt</span></header>
+            <header><strong>ĐỘI {{team.number}} <em class="demon-team-level">LV {{team.level || 1}}<small ng-if="team.demonHealthBonus"> · Quỷ +{{team.demonHealthBonus}} máu</small></em></strong><span>{{team.memberCount}} tháp • {{team.points || 0}} điểm • 👹 {{team.kills}} diệt</span></header>
             <div class="demon-level-progress">
                 <div class="demon-level-progress-row">
-                    <span>⬆ Lên LEVEL {{(vm.demonArena.level || 1) + 1}}</span>
+                    <span>⬆ Lên LEVEL {{(team.level || vm.demonArena.level || 1) + 1}}</span>
                     <b>{{vm.getDemonLevelPercent(team)}}%</b>
                 </div>
                 <div class="demon-level-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
