@@ -1431,10 +1431,13 @@
                         });
                         load().then(function () {
                             if (destroyed) { return; }
-                            if (currentRun && vm.current.some(function (run) { return run.id === currentRun; })) {
-                                vm.open(currentRun);
+                            var requestedRun = currentRun || previousRun;
+                            if (requestedRun && vm.current.some(function (run) { return run.id === requestedRun; })) {
+                                vm.open(requestedRun);
                             } else if (previousRun && vm.previous.some(function (run) { return run.id === previousRun; })) {
                                 vm.attach({previousRun: previousRun});
+                            } else if (requestedRun && !vm.error) {
+                                vm.error = 'Lượt dạy này không còn mở được cho buổi học đã chọn.';
                             }
                         });
                     }]

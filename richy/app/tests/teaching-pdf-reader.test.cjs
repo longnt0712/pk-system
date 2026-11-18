@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const {isDeepStrictEqual} = require('node:util');
 
-function fixture(saved = {}, completed = false, catalog = {}, collaboration) {
+function fixture(saved = {}, completed = false, catalog = {}, collaboration, previousRun) {
     const input = {value: '1', matches: () => true};
     const events = {}, documentEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
     const ctrl = {};
@@ -141,7 +141,7 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration) {
     const service = factory({open(options) { config = options; return {result: Promise.resolve()}; }}, http,
         {when: Promise.resolve.bind(Promise), all: Promise.all.bind(Promise), reject: Promise.reject.bind(Promise)},
         {api: {baseUrl: '', apiV1Url: '/api/'}});
-    service.open(1, '2026-11-04');
+    service.open(1, '2026-11-04', previousRun);
     config.controller.at(-1).call(ctrl, {$on() {}, $evalAsync(fn) { fn(); }}, timer, {});
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
@@ -157,6 +157,31 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration) {
             documentEvents.selectionchange();
         }};
 }
+
+test('opening a previous PDF in a new tab attaches it once and resumes the saved run', async () => {
+    const saved = {page: 7, marks: [{page: 7, note: 'Previous lesson'}]};
+    const run = {id: 'run', pdfId: 'doc', name: 'Lesson.pdf'};
+    const h = fixture(saved, false, {previous: [run]}, undefined, run.id);
+    const posts = [];
+    h.http.post = async (url, body) => {
+        posts.push([url, body.previousRun]);
+        return {data: {id: run.id}};
+    };
+    await h.tick();
+    assert.deepEqual(posts, [['/api/class_teaching_pdf/1/2026-11-04/attach', 'run']]);
+    assert.equal(h.ctrl.state.page, 7);
+    assert.equal(h.ctrl.state.marks[0].note, 'Previous lesson');
+
+    const reopened = fixture(saved, true, {current: [run], previous: [run]}, undefined, run.id);
+    reopened.http.post = () => assert.fail('Reopening the link must not attach the run again');
+    await reopened.tick();
+    assert.equal(reopened.ctrl.state.page, 7);
+    assert.equal(reopened.ctrl.run.completed, true);
+
+    const unavailable = fixture(saved, false, {}, undefined, run.id);
+    await unavailable.tick();
+    assert.match(unavailable.ctrl.error, /không còn mở được/);
+});
 
 test('two teachers merge concurrent edits to separate PDF annotations and keep their own zoom and page', async () => {
     const server = {revision: 0, state: {page: 1, marks: [{page: 1, note: 'A'}, {page: 2, note: 'B'}]}};

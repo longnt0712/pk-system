@@ -1135,8 +1135,8 @@
             });
         };
 
-        function refreshTeachingPdf(classId, date) {
-            vm.teachingPdfPrevious = []; vm.teachingPdfCurrent = [];
+        function refreshTeachingPdf(classId, date, keepCurrent) {
+            if (!keepCurrent) { vm.teachingPdfPrevious = []; vm.teachingPdfCurrent = []; }
             if (!teachingPdf || vm.schoolId !== 1 || vm.scheduleDay.dayOff || vm.scheduleDay.movedToDate) { return; }
             var day = vm.scheduleDay;
             teachingPdf.list(classId, date).then(function (catalog) {
@@ -1147,6 +1147,44 @@
                 });
             }, angular.noop);
         }
+
+        vm.continueTeachingPdfUrl = function (run) {
+            return $state.href('application.englishClassPdf', {
+                classId: vm.scheduleClass.id, date: vm.scheduleDay.scheduleDate, runId: run.id
+            });
+        };
+
+        var refreshPdfOnFocus;
+        vm.continueTeachingPdf = function (event) {
+            var day = vm.scheduleDay;
+            if (!day || vm.teachingPdfOpen || vm.teachingPdfCompleting || vm.scheduleDaySaving || vm.scheduleSessionLoading
+                || vm.scheduleSessionError || day.dayOff || day.movedToDate) {
+                event.preventDefault(); return;
+            }
+            if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
+                event.preventDefault();
+                toastr.warning('Hãy chờ kế hoạch tự lưu rồi mở PDF.');
+                return;
+            }
+            stopPdfFocusRefresh();
+            var classId = vm.scheduleClass.id;
+            refreshPdfOnFocus = function () {
+                stopPdfFocusRefresh();
+                $scope.$evalAsync(function () {
+                    if (vm.scheduleDay === day && vm.scheduleClass && vm.scheduleClass.id === classId) {
+                        refreshTeachingPdf(classId, day.scheduleDate, true);
+                    }
+                });
+            };
+            window.addEventListener('focus', refreshPdfOnFocus);
+        };
+
+        function stopPdfFocusRefresh() {
+            if (!refreshPdfOnFocus) { return; }
+            window.removeEventListener('focus', refreshPdfOnFocus);
+            refreshPdfOnFocus = null;
+        }
+        $scope.$on('$destroy', stopPdfFocusRefresh);
 
         vm.openTeachingPdf = function (previousRun, currentRun) {
             var day = vm.scheduleDay;

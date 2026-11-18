@@ -13,6 +13,16 @@
 
 	Hrm.EnrolmentClass.config(['$stateProvider', function ($stateProvider) {
 		var version = window.APP_VERSION || new Date().getTime();
+        var pdfFiles = ['enrolment_class/teaching_pdf.css?v=' + version,
+            'enrolment_class/business/TeachingPdf.js?v=' + version];
+
+        function loadFiles($ocLazyLoad, files) {
+            return $ocLazyLoad.load({
+                name: 'Hrm.EnrolmentClass',
+                insertBefore: '#ng_load_plugins_before',
+                files: files
+            });
+        }
 
         function classPage(url, schoolId, title) {
             return {
@@ -22,25 +32,40 @@
                 controller: 'EnrolmentClassController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
-                        return $ocLazyLoad.load({
-                            name: 'Hrm.EnrolmentClass',
-                            insertBefore: '#ng_load_plugins_before',
-                            files: [
-                                'assets/css/class-assignment-picker.css?v=' + version,
-                                'enrolment_class/teaching_pdf.css?v=' + version,
-                                'enrolment_class/business/TeachingPdf.js?v=' + version,
-								'enrolment_class/business/ClassAssignmentPicker.js?v=' + version,
-								'enrolment_class/controllers/EnrolmentClassController.js?v=' + version,
-								'enrolment_class/business/EnrolmentClassService.js?v=' + version
-                            ]
-                        });
+                        return loadFiles($ocLazyLoad, pdfFiles.concat([
+                            'assets/css/class-assignment-picker.css?v=' + version,
+                            'enrolment_class/business/ClassAssignmentPicker.js?v=' + version,
+                            'enrolment_class/controllers/EnrolmentClassController.js?v=' + version,
+                            'enrolment_class/business/EnrolmentClassService.js?v=' + version
+                        ]));
                     }]
                 }
             };
         }
         $stateProvider
             .state('application.class', classPage('/enrolment_classes', 2, 'Lớp nhà thờ'))
-            .state('application.englishClass', classPage('/english_classes', 1, 'Lớp tiếng Anh'));
+            .state('application.englishClass', classPage('/english_classes', 1, 'Lớp tiếng Anh'))
+            .state('application.englishClassPdf', {
+                url: '/english_classes/pdf?classId&date&runId',
+                data: {pageTitle: 'Tài liệu PDF'},
+                template: '<section class="container-fluid"><h1>Tài liệu PDF</h1>' +
+                    '<p ng-if="pdfLaunchError" role="alert">{{pdfLaunchError}}</p>' +
+                    '<a ui-sref="application.englishClass({scheduleClassId: pdfClassId})">Về lịch lớp</a></section>',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return loadFiles($ocLazyLoad, pdfFiles);
+                    }]
+                },
+                controller: ['$scope', '$stateParams', 'TeachingPdf', function ($scope, params, teachingPdf) {
+                    var classId = Number(params.classId);
+                    if (!Number.isSafeInteger(classId) || classId < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(params.date) || !params.runId) {
+                        $scope.pdfLaunchError = 'Link tài liệu PDF không hợp lệ.';
+                        return;
+                    }
+                    $scope.pdfClassId = classId;
+                    teachingPdf.open(classId, params.date, params.runId).catch(angular.noop);
+                }]
+            });
     }]);
 
 })();
