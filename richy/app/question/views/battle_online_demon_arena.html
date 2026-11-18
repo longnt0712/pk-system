@@ -22,7 +22,7 @@
     </div>
     <div class="demon-enemy-legend">
         NGU {{1 + (vm.demonArena.demonHealthBonus || 0)}} máu • RẤT NGU {{2 + (vm.demonArena.demonHealthBonus || 0)}} máu • SIÊU NGU {{3 + (vm.demonArena.demonHealthBonus || 0)}} máu
-        (điểm = máu; mỗi level quỷ con +1 máu) • Mỗi 50 điểm lên 1 level và đội đó gặp 👑 NGU SIÊU BÁ KHÍ (10 máu, lần sau +2) • Đội ít/nhiều người được chia tỉ lệ cho công bằng
+        (điểm = máu; mỗi level quỷ con +1 máu) • Lên level: 50 điểm, rồi mỗi level cần thêm 20 (70, 90…); đội đủ điểm gặp 👑 NGU SIÊU BÁ KHÍ (10 máu, lần sau +2) • Đội ít/nhiều người được chia tỉ lệ cho công bằng
     </div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"

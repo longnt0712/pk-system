@@ -114,8 +114,10 @@ public class DemonDefenseGameTest {
         assertTrue(team(game, 1, 15000L, false).shots.isEmpty());
     }
 
-    @Test public void everyLevelNeedsFiftyPointsForAnAverageSizedTeam() {
-        for (int level = 1; level <= 12; level++) { assertEquals(50,DemonDefenseGame.pointsRequiredForLevel(level)); }
+    @Test public void levelOneNeedsFiftyPointsAndEachLaterLevelTwentyMore() {
+        int[] targets = {50, 70, 90, 110, 130};
+        for (int level = 1; level <= targets.length; level++) { assertEquals(targets[level - 1],DemonDefenseGame.pointsRequiredForLevel(level)); }
+        assertEquals(50 + 11 * 20,DemonDefenseGame.pointsRequiredForLevel(12));
         assertEquals(50,game(1).snapshot(START,false).levelTargetPoints); assertEquals(50,game(4).snapshot(START,false).levelTargetPoints);
         assertEquals(50,team(game(4),1,0L,false).levelTargetPoints);
     }
@@ -235,7 +237,7 @@ public class DemonDefenseGameTest {
         DemonDefenseGame.Demon boss = lane.demons.stream().filter(demon -> demon.boss).findFirst().get();
         assertEquals(10, boss.health); assertEquals(10, boss.points);
         assertEquals(1, lane.bossCount); assertTrue(lane.bossActive);
-        assertEquals(50, lane.pointsUntilBoss); assertEquals(12, lane.nextBossHealth);
+        assertEquals(70, lane.pointsUntilBoss); assertEquals(12, lane.nextBossHealth); // level 2 needs 50 + 20
         assertTrue(team(game, 2, 3000L, true).demons.stream().noneMatch(demon -> demon.boss));
         assertEquals(0, team(game, 2, 3000L, false).bossCount);
         for (int hit = 0; hit < 10; hit++) { game.shoot(1, "alice", 1, START + 3000L); }
@@ -243,14 +245,15 @@ public class DemonDefenseGameTest {
         assertEquals(10, team(game, 1, 3000L, false).levelPoints); // the boss's 10 points count toward the next level
 
         // Level 2: next lane-1 demon at 3000 + 8572 is a kind-1 demon with 1 + 1 = 2 health.
-        setLane(game, 1, "levelPoints", 49);
+        setLane(game, 1, "levelPoints", 69);
         game.advance(START + 11572L);
         assertEquals(1, game.shoot(1, "alice", 20, START + 11572L).kills);
         assertEquals(3, game.snapshot(START + 11572L, false).level);
         lane = team(game, 1, 11572L, true);
         assertEquals(12, lane.demons.stream().filter(demon -> demon.boss).findFirst().get().health);
         assertEquals(2, lane.bossCount); assertEquals(14, lane.nextBossHealth);
-        assertEquals(1, lane.levelPoints); // 51 - 50 carries over
+        assertEquals(1, lane.levelPoints); // 71 - 70 carries over
+        assertEquals(90, lane.levelTargetPoints); // level 3 needs 70 + 20
     }
 
     @Test public void unequalTeamsScaleLevelTargetAndBossHealthBySize() throws Exception {
@@ -266,7 +269,7 @@ public class DemonDefenseGameTest {
         assertEquals(2, game.snapshot(START + 3000L, false).level);
         assertEquals(5, team(game, 1, 3000L, true).demons.stream().filter(demon -> demon.boss).findFirst().get().health);
         assertTrue(team(game, 2, 3000L, true).demons.stream().noneMatch(demon -> demon.boss));
-        assertEquals(75, team(game, 2, 3000L, false).pointsUntilBoss);
+        assertEquals(105, team(game, 2, 3000L, false).pointsUntilBoss); // level 2: 70 x 1.5
     }
 
     @Test public void firstBossAwardsTenPointsOnlyOnTheTenthHit() throws Exception {
@@ -302,7 +305,7 @@ public class DemonDefenseGameTest {
         setLane(game,1,"levelPoints",8); // 8 + 40 + 2 reaches exactly 50
         assertEquals(40,game.shoot(1,"warmup",400,at).points); assertEquals(1,game.snapshot(at,false).level);
         assertEquals(2,game.shoot(1,"alice",20,at).points);
-        assertEquals(2,game.snapshot(at,false).level); assertEquals(50,game.snapshot(at,false).levelTargetPoints);
+        assertEquals(2,game.snapshot(at,false).level); assertEquals(70,game.snapshot(at,false).levelTargetPoints);
         assertEquals(42,team(game,1,20000,false).points); assertEquals(0,team(game,1,20000,false).levelPoints);
         assertEquals(3,team(game,2,20000,false).points); assertEquals(0,team(game,2,20000,false).levelPoints);
         assertEquals(2,game.minimumBulletsForPlayer("alice")); assertEquals(3,game.minimumBulletsForPlayer("bob"));
@@ -312,7 +315,7 @@ public class DemonDefenseGameTest {
         assertEquals(4,game.bulletsForPlayer("alice",40)); assertEquals(2,game.bulletsForPlayer("alice",0));
         // One point short of the next level; clear the lane (incl. the 10-health boss) so the next
         // level-2 demon (2-3 health, spawned 357 ms later) is killed by a 4-bullet shot.
-        setLane(game,1,"levelPoints",49); clearLane(game,1);
+        setLane(game,1,"levelPoints",69); clearLane(game,1);
         long later = at + 400L; game.advance(later);
         assertEquals(1,game.shoot(1,"alice",40,later).kills);
         assertEquals(3,game.snapshot(later,false).level); game.updatePlayerStreak("alice",0);

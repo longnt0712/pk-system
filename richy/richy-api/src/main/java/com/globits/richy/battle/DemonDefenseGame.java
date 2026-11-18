@@ -19,8 +19,9 @@ public final class DemonDefenseGame {
     public static final int BAG_CHOICES = 3;
     private static final long TEMPORARY_GUN_MS = 20000L;
     private static final int LIGHTNING_DAMAGE = 5;
-    /** Every 50 points (team of average size) the room levels up and the scoring team meets a boss. */
+    /** Level 1 needs 50 points (team of average size); each later level needs 20 more than the previous one. */
     public static final int POINTS_PER_LEVEL = 50;
+    public static final int POINTS_PER_LEVEL_INCREMENT = 20;
     private static final int BOSS_INITIAL_POINTS = 10;
     private static final int BOSS_POINTS_INCREMENT = 2;
     /** Demons no longer speed up with level; they get tougher instead. */
@@ -47,8 +48,10 @@ public final class DemonDefenseGame {
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
     public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
     public static int wrongAnswerStreak(int streak) { return Math.max(0, streak - WRONG_ANSWER_STREAK_DEDUCTION); }
-    /** Flat 50 points per level; demons gaining health each level is what raises difficulty. */
-    public static int pointsRequiredForLevel(int value) { return POINTS_PER_LEVEL; }
+    /** 50, 70, 90, 110… points to leave level 1, 2, 3, 4…; reaching it levels up the room and brings a boss. */
+    public static int pointsRequiredForLevel(int value) {
+        return (int) Math.min(Integer.MAX_VALUE, POINTS_PER_LEVEL + (Math.max(1, value) - 1L) * POINTS_PER_LEVEL_INCREMENT);
+    }
     public int minimumBulletsForPlayer(String username) {
         PlayerProgress player = players.get(username);
         return player == null ? 1 : player.bulletFloor;
