@@ -8,7 +8,7 @@ const app = join(__dirname, '..');
 const read = (file) => readFileSync(join(app, file), 'utf8');
 const library = read('question/controllers/IELTSTestLibraryController.js');
 
-function catalog(path, roles, service = {}) {
+function catalog(path, roles, service = {}, uiRouter = {}) {
     let Controller;
     let config;
     const angular = {
@@ -21,25 +21,51 @@ function catalog(path, roles, service = {}) {
         {addEventListener() {}, localStorage: {length: 0}}, {get: () => JSON.stringify({roles})},
         {}, {getLearningDrafts: () => Promise.resolve([]), getPageForTests: () => Promise.resolve({}), ...service},
         {start() {}, stop() {}}, {bindUrl() {}, applyFilter() {}},
-        {open(options) { config = options; return {result: Promise.resolve()}; }});
+        {open(options) { config = options; return {result: Promise.resolve()}; }}, uiRouter);
     return { page, config: () => config };
 }
 
 const flushPromises = () => new Promise(setImmediate);
 
-test('the Reading student can choose a linked lesson but cannot open the editing modal', async () => {
+test('clicking a linked lesson navigates to Daily Vocab before closing the modal', async () => {
     const testRow = {id: 80, title: 'Reading Test 01'};
+    let route;
+    let completeNavigation;
+    let closed = false;
     const learner = catalog('/ielts_reading_tests', [{name: 'ROLE_VIEWER'}], {
         getReadingVocabularyLessons: () => Promise.resolve([{id: 42, name: 'Passage 1'}])
-    });
+    }, {go(state, params) {
+        route = [state, {...params}];
+        return new Promise((resolve) => { completeNavigation = resolve; });
+    }});
     learner.page.openReadingVocabulary(testRow, true);
     assert.equal(learner.config(), undefined);
     learner.page.openReadingVocabulary(testRow, false);
-    const picker = new (learner.config().controller.at(-1))({});
+    const picker = new (learner.config().controller.at(-1))({close() { closed = true; }});
     await flushPromises();
-    assert.equal(picker.selected[0].name, 'Passage 1');
-    assert.equal(picker.lessonUrl(picker.selected[0]), 'daily-vocab/0?practiceTestId=80&practiceTopicId=42');
+    const [lesson] = picker.selected;
+    assert.equal(lesson.name, 'Passage 1');
+    const opening = picker.openLesson(lesson);
+    assert.deepEqual(route, ['application.daily_vocab', {listFlashCard: 0, practiceTestId: 80, practiceTopicId: 42}]);
+    assert.equal(picker.navigating, true);
+    assert.equal(closed, false);
+    completeNavigation();
+    await opening;
+    assert.equal(closed, true);
+    assert.ok(read('question/views/reading_vocabulary_lessons.html').includes('ng-click="vocab.openLesson(lesson)"'));
     assert.equal(catalog('/ielts_listening_tests', []).page.hasReadingVocabulary, false);
+});
+
+test('a failed Daily Vocab transition leaves the modal open for retry', async () => {
+    const learner = catalog('/ielts_reading_tests', [{name: 'ROLE_VIEWER'}], {
+        getReadingVocabularyLessons: () => Promise.resolve([{id: 42, name: 'Passage 1'}])
+    }, {go: () => Promise.reject(new Error('failed route'))});
+    learner.page.openReadingVocabulary({id: 80}, false);
+    const picker = new (learner.config().controller.at(-1))({close() { assert.fail('keep the picker open'); }});
+    await flushPromises();
+    await picker.openLesson(picker.selected[0]);
+    assert.ok(picker.navigationError);
+    assert.equal(picker.navigating, false);
 });
 
 test('the admin keeps selections across folders and saves them together', async () => {

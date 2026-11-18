@@ -5,11 +5,11 @@
 
     IELTSTestLibraryController.$inject = [
         '$rootScope', '$scope', '$location', '$window', '$cookies',
-        'settings', 'QuestionService', 'blockUI', 'ComprehensiveFolders', '$uibModal'
+        'settings', 'QuestionService', 'blockUI', 'ComprehensiveFolders', '$uibModal', '$state'
     ];
 
     function IELTSTestLibraryController($rootScope, $scope, $location, $window, $cookies,
-                                        settings, service, blockUI, folders, $uibModal) {
+                                        settings, service, blockUI, folders, $uibModal, $state) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -188,9 +188,21 @@
                     picker.close = function () {
                         if (!picker.saving) { $uibModalInstance.dismiss('close'); }
                     };
-                    picker.lessonUrl = function (lesson) {
-                        return 'daily-vocab/0?practiceTestId=' + encodeURIComponent(test.id)
-                            + '&practiceTopicId=' + encodeURIComponent(lesson.id);
+                    picker.openLesson = function (lesson) {
+                        if (picker.navigating) { return; }
+                        picker.navigating = true;
+                        picker.navigationError = '';
+                        return $state.go('application.daily_vocab', {
+                            listFlashCard: 0,
+                            practiceTestId: test.id,
+                            practiceTopicId: lesson.id
+                        }).then(function () {
+                            $uibModalInstance.close();
+                        }, function () {
+                            picker.navigationError = 'Không mở được Daily Vocab. Hãy bấm lại vào bài để thử lại.';
+                        }).finally(function () {
+                            picker.navigating = false;
+                        });
                     };
                     picker.reload = function () {
                         picker.loading = true;

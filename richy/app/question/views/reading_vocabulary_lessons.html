@@ -8,12 +8,14 @@
     <p ng-if="vocab.loadError" role="alert">{{vocab.loadError}} <button type="button" class="btn btn-link" ng-click="vocab.reload()">Thử lại</button></p>
     <div ng-if="!vocab.editing && !vocab.loading && !vocab.loadError">
         <div class="list-group" ng-if="vocab.selected.length">
-            <a class="list-group-item" ng-repeat="lesson in vocab.selected track by lesson.id"
-               ng-href="{{vocab.lessonUrl(lesson)}}" ng-click="vocab.close()">
+            <button type="button" class="list-group-item reading-vocab-picker__lesson" ng-repeat="lesson in vocab.selected track by lesson.id"
+                    ng-click="vocab.openLesson(lesson)" ng-disabled="vocab.navigating">
                 <i class="fa fa-book-open" aria-hidden="true"></i> <strong>{{lesson.name}}</strong>
-                <div class="text-muted">{{lesson.topicCategory.name}}</div>
-            </a>
+                <span class="text-muted">{{lesson.topicCategory.name}}</span>
+            </button>
         </div>
+        <p ng-if="vocab.navigating" role="status">Đang mở Daily Vocab…</p>
+        <p class="text-danger" ng-if="vocab.navigationError" role="alert">{{vocab.navigationError}}</p>
         <p class="text-muted" ng-if="!vocab.selected.length">Đề này chưa có bài từ vựng dành cho bạn.</p>
     </div>
     <div ng-if="vocab.editing && !vocab.loading && !vocab.loadError">

@@ -258,6 +258,8 @@
 .ielts-test-library-page .test-explorer-file-actions > .library-action--vocab { justify-content: center; width: 100%; min-height: 42px; border-radius: 999px; border-color: var(--library-divider); color: var(--library-accent); background: var(--library-tint); }
 .ielts-test-library-page .test-explorer-file-actions > .library-action--link-vocab { border-color: transparent; color: var(--library-muted); background: transparent; box-shadow: none; min-height: 34px; }
 .reading-vocab-picker .list-group { margin: 8px 0; }
+.reading-vocab-picker__lesson { width: 100%; text-align: left; }
+.reading-vocab-picker__lesson > .text-muted { display: block; }
 .reading-vocab-picker__options, .reading-vocab-picker__selected { max-height: 240px; overflow: auto; }
 .reading-vocab-picker__options label { cursor: pointer; }
 .reading-vocab-picker__options input { margin-right: 6px; }
