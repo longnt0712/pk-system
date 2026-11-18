@@ -32,7 +32,7 @@
             </div>
         </article>
     </section>
-    <div class="modal-body teaching-pdf-library" ng-if="!pdf.run">
+    <div class="modal-body teaching-pdf-library" ng-if="!pdf.run" tabindex="0" role="region" aria-label="Danh sách tài liệu PDF">
         <p ng-if="pdf.busy" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải…</p>
         <section ng-if="pdf.current.length">
             <h3>Tài liệu buổi này</h3>

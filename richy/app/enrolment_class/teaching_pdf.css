@@ -47,7 +47,12 @@
 .teaching-pdf-conflicts article { padding: 7px 0; border-top: 1px solid #ead6a7; }
 .teaching-pdf-conflicts dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 8px; margin: 4px 0 6px; }
 .teaching-pdf-conflicts dd { max-height: 70px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-.teaching-pdf-library { overflow: auto; }
+.teaching-pdf-dialog > .teaching-pdf-library {
+    /* The shared ui-select modal styles otherwise force overflow to be visible. */
+    min-height: 0;
+    overflow: auto !important;
+    overscroll-behavior: contain;
+}
 .teaching-pdf-library section { padding: 14px; margin-bottom: 12px; border: 1px solid #dfe4f1; border-radius: 12px; }
 .teaching-pdf-dialog h3 { font-size: 16px; margin: 0 0 10px; }
 .teaching-pdf-library select { flex: 1 1 240px; width: auto; min-width: 0; }
