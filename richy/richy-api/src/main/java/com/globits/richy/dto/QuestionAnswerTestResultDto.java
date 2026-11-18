@@ -22,6 +22,18 @@ public class QuestionAnswerTestResultDto implements Serializable{
 	private Boolean isCorrectTestResultDetail = false;
 	
 	private String correctAnswerForMultipleAnswer = "";
+    private String answerReviewStatus;
+
+    public String getAnswerReviewStatus() { return answerReviewStatus; }
+
+    public QuestionAnswerTestResultDto reviewStatusOnly() {
+        QuestionAnswerTestResultDto status = new QuestionAnswerTestResultDto();
+        status.ordinalNumber = ordinalNumber;
+        status.isCorrectTestResultDetail = isCorrectTestResultDetail;
+        status.answerReviewStatus = Boolean.TRUE.equals(isCorrectTestResultDetail) ? "CORRECT"
+                : normalize(clientAnswer).isEmpty() ? "UNANSWERED" : "INCORRECT";
+        return status;
+    }
 	private Integer listeningTotalGaps;
 	private Integer listeningCorrectGaps;
 	public Integer getListeningTotalGaps() { return listeningTotalGaps; }

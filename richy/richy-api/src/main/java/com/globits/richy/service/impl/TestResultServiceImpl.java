@@ -57,6 +57,7 @@ import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.LearningDraftRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
 import com.globits.richy.repository.EnrolmentClassRepository;
+import com.globits.richy.service.EnrolmentClassService;
 import com.globits.richy.service.TestResultService;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
@@ -93,6 +94,8 @@ public class TestResultServiceImpl implements TestResultService {
 	EnrolmentClassScheduleTaskRepository scheduleTaskRepository;
 	@Autowired
 	EnrolmentClassRepository enrolmentClassRepository;
+    @Autowired
+    EnrolmentClassService enrolmentClassService;
 
 	private String resultGroupClause(String group) {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
@@ -441,7 +444,15 @@ public class TestResultServiceImpl implements TestResultService {
         }
 		TestResultDto dto = new TestResultDto(domain, true);
 		populateResultStudentClass(dto, domain);
-		dto.setCanEditWritingFeedback(canEditWritingFeedback(getCurrentUser(), domain));
+		dto.setCanEditWritingFeedback(canEditWritingFeedback(reader, domain));
+        if ((IeltsNumberedAnswers.supports(domain.getTestType()) || Integer.valueOf(6).equals(domain.getTestType()))
+                && domain.getAssignmentTaskId() != null
+                && domain.getUser() != null && reader.getId().equals(domain.getUser().getId())
+                && !hasRole(reader, "ROLE_ADMIN")
+                && enrolmentClassService.isAssignedAnswerReviewLocked(
+                        scheduleTaskRepository.findOne(domain.getAssignmentTaskId()), LocalDateTime.now())) {
+            dto.restrictAnswerReview();
+        }
 		return dto;
 	}
 

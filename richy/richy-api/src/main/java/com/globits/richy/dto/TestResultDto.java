@@ -224,6 +224,22 @@ public class TestResultDto implements Serializable{
 	}
 	
 	private List<QuestionAnswerTestResultDto> questionAnswerTestResult;
+    private boolean answerReviewLocked;
+
+    public boolean isAnswerReviewLocked() { return answerReviewLocked; }
+
+    public void restrictAnswerReview() {
+        answerReviewLocked = true;
+        testTakerPerformance = null;
+        ieltsLearningState = null;
+        if (questionAnswerTestResult != null) {
+            List<QuestionAnswerTestResultDto> statuses = new ArrayList<QuestionAnswerTestResultDto>();
+            for (QuestionAnswerTestResultDto answer : questionAnswerTestResult) {
+                statuses.add(answer.reviewStatusOnly());
+            }
+            questionAnswerTestResult = statuses;
+        }
+    }
 	
 	private UserDto user;
 	

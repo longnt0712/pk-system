@@ -1,6 +1,13 @@
 package com.globits.richy.result;
 
+import com.globits.richy.domain.EnrolmentClassScheduleTask;
+import com.globits.richy.domain.Question;
+import com.globits.richy.domain.QuestionAnswer;
+import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
+import com.globits.richy.dto.QuestionAnswerTestResultDto;
+import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
+import com.globits.richy.service.EnrolmentClassService;
 import com.globits.richy.dto.TestResultDto;
 import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.service.impl.TestResultServiceImpl;
@@ -39,6 +46,52 @@ public class TestResultVisibilityTimingTest {
     @Test public void staffCanStillUseStudentFilter(){reader=user(7,"ROLE_STAFF");TestResultDto search=new TestResultDto();search.setUser(new UserDto(other));service.getPageObject(search,1,15);verify(query).setParameter("userId",8L);}
     @Test public void directForeignResultIsDeniedBeforeDtoDetails(){TestResult row=new TestResult();row.setId(91L);row.setUser(other);when(results.findOne(91L)).thenReturn(row);try{service.getObjectById(91L);fail("foreign result");}catch(AccessDeniedException expected){assertNotNull(expected.getMessage());}}
     private TestResult row(Integer elapsed,String remaining,String state){TestResult row=new TestResult();row.setId(91L);row.setCreateDate(LocalDateTime.now());row.setTestType(7);row.setIeltsSessionMode("SERIOUS");row.setActiveDurationSeconds(elapsed);row.setTestTime(remaining);row.setIeltsLearningState(state);return row;}
+    @Test public void activeAssignedResultReturnsOnlyQuestionStatusUntilDeadline() {
+        EnrolmentClassScheduleTask task = new EnrolmentClassScheduleTask();
+        EnrolmentClassScheduleTaskRepository tasks = mock(EnrolmentClassScheduleTaskRepository.class);
+        EnrolmentClassService assignments = mock(EnrolmentClassService.class);
+        when(tasks.findOne(15L)).thenReturn(task);
+        when(assignments.isAssignedAnswerReviewLocked(eq(task), any(LocalDateTime.class))).thenReturn(true, false);
+        ReflectionTestUtils.setField(service, "scheduleTaskRepository", tasks);
+        ReflectionTestUtils.setField(service, "enrolmentClassService", assignments);
+
+        Question group = new Question();
+        group.setType(1);
+        Question question = new Question();
+        question.setParent(group);
+        QuestionAnswer answer = new QuestionAnswer();
+        answer.setQuestion(question);
+        answer.setCorrect(false);
+        QuestionAnswerTestResult wrong = new QuestionAnswerTestResult();
+        wrong.setQuestionAnswer(answer);
+        wrong.setClientAnswer("student response");
+        wrong.setOrdinalNumber(1);
+        QuestionAnswerTestResult blank = new QuestionAnswerTestResult();
+        blank.setOrdinalNumber(2);
+
+        TestResult assigned = row(30, null, "{}");
+        assigned.setTestType(4);
+        assigned.setUser(reader);
+        assigned.setAssignmentTaskId(15L);
+        assigned.setQuestionAnswerTestResult(new LinkedHashSet<>(Arrays.asList(wrong, blank)));
+        when(results.findOne(91L)).thenReturn(assigned);
+
+        TestResultDto restricted = service.getObjectById(91L);
+        assertTrue(restricted.isAnswerReviewLocked());
+        assertNull(restricted.getIeltsLearningState());
+        List<QuestionAnswerTestResultDto> statuses = restricted.getQuestionAnswerTestResult();
+        assertEquals("INCORRECT", statuses.get(0).getAnswerReviewStatus());
+        assertEquals("UNANSWERED", statuses.get(1).getAnswerReviewStatus());
+        assertNull(statuses.get(0).getQuestionAnswer());
+        assertNull(statuses.get(0).getClientAnswer());
+
+        TestResultDto open = service.getObjectById(91L);
+        assertFalse(open.isAnswerReviewLocked());
+        assertNotNull(open.getIeltsLearningState());
+        assertNotNull(open.getQuestionAnswerTestResult().get(0).getQuestionAnswer());
+        assertEquals("student response", open.getQuestionAnswerTestResult().get(0).getClientAnswer());
+    }
+
     @Test public void legacyCountdownIsConvertedOnlyWhenElapsedEvidenceExists(){
         assertEquals("20:06 / 60:00",new TestResultDto(row(1206,"39:54",null)).getTestTimeDisplay());
         assertEquals("— / Chưa rõ",new TestResultDto(row(null,"59:58",null)).getTestTimeDisplay());

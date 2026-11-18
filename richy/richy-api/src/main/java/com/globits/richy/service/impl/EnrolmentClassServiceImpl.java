@@ -1056,12 +1056,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             return;
         }
         EffectiveClassSchedule timeline = effectiveSchedule(day.getEnrolmentClass().getId());
-        // Resolve only this task; other students' progress is never exposed by this endpoint.
-        EnrolmentClassScheduleDayDto dayDto = new EnrolmentClassScheduleDayDto();
-        dayDto.setScheduleDate(day.getScheduleDate()); dayDto.setMovedToDate(day.getMovedToDate());
-        EnrolmentClassScheduleTaskDto selected = new EnrolmentClassScheduleTaskDto(task);
-        dayDto.setTasks(Collections.singletonList(selected));
-        enrichScheduleDeadline(dayDto, timeline);
+        EnrolmentClassScheduleTaskDto selected = resolveAssignmentTiming(task, timeline);
         dto.setDueDate(selected.getResolvedDueDate()); dto.setDueTime(selected.getResolvedDueTime());
         dto.setAssignedDate(day.getScheduleDate());
         if (!"HOMEWORK".equals(task.getSection()) || day.getMovedToDate() != null) {
@@ -1083,6 +1078,45 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         } else {
             dto.setCanStartNewAttempt(Boolean.TRUE);
             dto.setNewAttemptUnavailableReason(null);
+        }
+    }
+
+    private EnrolmentClassScheduleTaskDto resolveAssignmentTiming(EnrolmentClassScheduleTask task, EffectiveClassSchedule timeline) {
+        EnrolmentClassScheduleDay day = task.getScheduleDay();
+        EnrolmentClassScheduleDayDto dayDto = new EnrolmentClassScheduleDayDto();
+        dayDto.setScheduleDate(day.getScheduleDate());
+        dayDto.setMovedToDate(day.getMovedToDate());
+        EnrolmentClassScheduleTaskDto selected = new EnrolmentClassScheduleTaskDto(task);
+        dayDto.setTasks(Collections.singletonList(selected));
+        enrichScheduleDeadline(dayDto, timeline);
+        return selected;
+    }
+
+    @Override
+    public boolean isAssignedAnswerReviewLocked(EnrolmentClassScheduleTask task, LocalDateTime now) {
+        // Deleting the assignment removes its restriction. Missing timing on an
+        // existing assignment does not grant access to the answer key.
+        if (task == null) { return false; }
+        EnrolmentClassScheduleDay day = task.getScheduleDay();
+        if (day == null || day.getEnrolmentClass() == null || !isValidDate(day.getScheduleDate())) { return true; }
+        EffectiveClassSchedule timeline = effectiveSchedule(day.getEnrolmentClass().getId());
+        EnrolmentClassScheduleTaskDto selected = resolveAssignmentTiming(task, timeline);
+        String dueDate = selected.getResolvedDueDate();
+        String dueTime = selected.getResolvedDueTime();
+        if (dueDate == null || dueDate.isEmpty()) {
+            dueDate = task.getDueDate();
+            dueTime = task.getDueTime();
+        }
+        if ((dueDate == null || dueDate.isEmpty()) && "CLASS".equals(task.getSection())) {
+            String sessionDate = day.getMovedToDate() == null ? day.getScheduleDate() : day.getMovedToDate();
+            EffectiveClassSchedule.Slot session = timeline.on(sessionDate);
+            if (session != null) { dueDate = session.date; dueTime = session.endTime; }
+        }
+        if (!isValidDate(dueDate)) { return true; }
+        try {
+            return now.isBefore(HomeworkTopicCompletion.deadlineEnd(dueDate, dueTime));
+        } catch (java.time.DateTimeException invalidLegacyTime) {
+            return true;
         }
     }
 
