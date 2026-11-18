@@ -15,6 +15,7 @@
         <h1>Những việc nhỏ, một hành trình lớn</h1>
         <p>Cùng sống chiến dịch và thực hành hoa thiêng mỗi ngày.</p>
         <button ng-if="vm.canManage()" class="btn campaign-primary" ng-click="vm.create()" ng-disabled="vm.editor || vm.loading"><i class="fa fa-plus" aria-hidden="true"></i> Tạo chiến dịch</button>
+        <button ng-if="vm.canCreateAdvent()" type="button" class="btn campaign-primary" ng-click="vm.createAdvent()" ng-disabled="vm.editor || vm.loading">Dùng mẫu Mùa Vọng – Giáng Sinh</button>
     </section>
     <section ng-if="vm.studentMode && vm.needsScan && !vm.loading && !vm.error" class="campaign-scan-card campaign-no-print" campaign-qr-scanner>
         <span class="campaign-eyebrow">PHIẾU HOA THIÊNG CÁ NHÂN</span><h1>Quét thẻ học sinh của em</h1>
@@ -137,7 +138,43 @@
             <div class="campaign-actions campaign-no-print" ng-if="!vm.isExpired(vm.campaign)"><button class="btn btn-default" ng-if="vm.canShare(vm.campaign)" ng-click="vm.copyLink(vm.campaign)">Copy link</button><button class="btn btn-default" ng-if="vm.canShare(vm.campaign)" ng-click="vm.showQr(vm.campaign)">QR chiến dịch</button><button ng-if="vm.canManage()" class="btn btn-default" ng-click="vm.edit(vm.campaign)" ng-disabled="vm.editLoading">Sửa chiến dịch</button><button class="btn btn-default" ng-if="vm.canManage()" ng-click="vm.askDelete(vm.campaign)">Xóa chiến dịch</button></div>
         </section>
         <section class="campaign-content campaign-no-print" ng-if="vm.campaign.description"><h2>Nội dung chiến dịch</h2><p class="campaign-preline">{{vm.campaign.description}}</p></section>
-        <section class="campaign-flower" ng-class="{'campaign-with-background': vm.imageUrl(vm.imageOptions().mobileImageUrl)}">
+        <section ng-if="vm.adventWeek" class="campaign-advent" aria-label="Phiếu Hoa Thiêng Mùa Vọng và Giáng Sinh">
+            <div class="campaign-advent-tools campaign-no-print">
+                <nav class="campaign-advent-weeks" aria-label="Chọn tuần Hoa Thiêng">
+                    <button type="button" class="btn btn-default" ng-repeat="week in vm.adventWeekNumbers track by week"
+                        ng-click="vm.setWeek(week - 1)" ng-disabled="vm.sheetLoading" ng-attr-aria-pressed="{{vm.weekIndex + 1 === week}}">Tuần {{week}}</button>
+                </nav>
+                <div class="campaign-advent-actions">
+                    <a ng-if="!vm.studentMode && vm.campaign.shareCode" class="btn btn-default"
+                        ui-sref="campaign_student_shared({campaignCode: vm.campaign.shareCode})">Quét thẻ để tích Hoa Thiêng</a>
+                    <a ng-if="vm.canPrint()" class="btn campaign-primary" ng-href="{{vm.adventWeek.pdf}}" target="_blank" rel="noopener noreferrer">
+                        <i class="fa fa-print" aria-hidden="true"></i> Mở PDF in màu
+                    </a>
+                </div>
+            </div>
+            <p ng-if="vm.studentMode" class="campaign-sheet-identity campaign-no-print">
+                <strong>{{vm.student.saintName}} {{vm.student.fullName}}</strong> · {{vm.student.classes.join(', ') || 'Chưa xếp lớp'}}
+            </p>
+            <p ng-if="vm.studentMode && !vm.canEditAnyFlowerDay()" class="campaign-muted campaign-no-print">Em tích những việc đã làm trong ngày hôm nay.</p>
+            <p ng-if="vm.checkError" class="campaign-alert campaign-no-print" role="alert">{{vm.checkError}}</p>
+            <p ng-if="vm.saveNotice" class="campaign-muted campaign-no-print" role="status">{{vm.saveNotice}}</p>
+            <div class="campaign-advent-paper">
+                <img class="campaign-advent-art" ng-src="{{vm.adventWeek.image}}" width="1654" height="1166"
+                    alt="Phiếu tuần {{vm.weekIndex + 1}}. {{vm.adventWeek.title}}. Viết một lời cầu nguyện với Chúa Hài Đồng." draggable="false">
+                <div class="campaign-advent-marks" ng-if="vm.studentMode" role="group" aria-label="Các việc Hoa Thiêng">
+                    <div class="campaign-advent-row" ng-repeat="item in vm.adventItems track by item.itemKey">
+                        <label class="campaign-advent-cell" ng-repeat="day in vm.weekDays track by day.date">
+                            <input type="checkbox" ng-model="vm.checks[item.itemKey + ':' + day.date]"
+                                ng-change="vm.toggleFlower(item, day)"
+                                ng-disabled="vm.sheetLoading || vm.isDayLocked(day) || vm.pendingChecks[vm.campaign.id + ':' + item.itemKey + ':' + day.date]"
+                                ng-attr-aria-label="{{item.name}} ngày {{vm.formatDate(day.date)}}">
+                            <span class="campaign-advent-tick" aria-hidden="true">✓</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section ng-if="!vm.adventWeek" class="campaign-flower" ng-class="{'campaign-with-background': vm.imageUrl(vm.imageOptions().mobileImageUrl)}">
             <img ng-if="vm.imageUrl(vm.imageOptions().mobileImageUrl)" ng-src="{{vm.imageUrl(vm.imageOptions().mobileImageUrl)}}" class="campaign-flower-background" ng-style="vm.backgroundStyle(vm.imageOptions())" alt="" aria-hidden="true">
             <div class="campaign-flower-content">
             <div class="campaign-flower-heading"><div><span class="campaign-eyebrow">THỰC HÀNH MỖI NGÀY</span><h2>Hoa thiêng</h2></div><button class="btn campaign-primary campaign-no-print" ng-if="vm.canPrint() && !vm.isExpired(vm.campaign)" ng-click="vm.print()"><i class="fa fa-print" aria-hidden="true"></i> In phiếu tuần này</button></div>

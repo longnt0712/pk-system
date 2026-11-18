@@ -14,6 +14,8 @@
         }
         var requestNumber = 0;
         var studentRequest = 0;
+        var advent = $window.AdventCampaign2026;
+        vm.adventWeekNumbers = advent ? advent.weeks.map(function (_, index) { return index + 1; }) : [];
         var prayerIntentions = [
             {intention: 'ông bà, cha mẹ', prayer: 'Xin Chúa ban cho ông bà, cha mẹ sức khỏe và bình an.', image: 'assets/images/flower-prayers-2026/01-grandparents-parents.jpg'},
             {intention: 'những người đang đau ốm', prayer: 'Xin Chúa nâng đỡ và ban cho họ sức mạnh, niềm hy vọng và bình an.', image: 'assets/images/flower-prayers-2026/02-sick.jpg'},
@@ -190,6 +192,9 @@
         vm.canManage = function () {
             return !vm.studentMode && settings.permissionsLoaded === true && (settings.isAdmin === true || settings.isEducationManagerment === true);
         };
+        vm.canCreateAdvent = function () {
+            return !!advent && vm.canManage() && !vm.campaigns.some(advent.matches);
+        };
         var imageFields = ['desktopLeftImageUrl', 'desktopRightImageUrl', 'mobileImageUrl'];
         vm.imageOptions = function () { return vm.editor || vm.campaign || {}; };
         vm.backgroundOpacity = function (campaign) {
@@ -319,23 +324,26 @@
                 prepareCampaign(0);
             }, function (error) { vm.error = errorMessage(error); }).finally(function () { vm.loading = false; });
         }
+        function lastPracticeDate(campaign) {
+            return advent && advent.matches(campaign) ? advent.lastPracticeDate : campaign.endDate;
+        }
         function prepareCampaign(week) {
-                var start = date(vm.campaign.startDate), end = date(vm.campaign.endDate);
-                // Calculate by calendar days, independent of daylight-saving changes.
-                var firstDay = new Date(start.getTime()), lastDay = new Date(end.getTime());
-                firstDay.setUTCHours(0, 0, 0, 0); firstDay.setUTCFullYear(start.getFullYear(), start.getMonth(), start.getDate());
-                lastDay.setUTCHours(0, 0, 0, 0); lastDay.setUTCFullYear(end.getFullYear(), end.getMonth(), end.getDate());
-                vm.weekCount = Math.ceil((Math.round((lastDay - firstDay) / 86400000) + 1) / 7);
-                renderWeek(week);
+            var start = Date.parse(vm.campaign.startDate + 'T00:00:00Z');
+            var end = Date.parse(lastPracticeDate(vm.campaign) + 'T00:00:00Z');
+            vm.weekCount = Math.ceil(((end - start) / 86400000 + 1) / 7);
+            vm.adventItems = advent && advent.matches(vm.campaign) ? advent.sheetItems(vm.campaign) : null;
+            renderWeek(week);
         }
         function renderWeek(index) {
             if (!vm.campaign || index < 0 || index >= vm.weekCount) { return; }
             vm.weekIndex = index;
+            vm.adventWeek = vm.adventItems ? advent.weeks[index] : null;
             var day = date(vm.campaign.startDate);
+            var end = lastPracticeDate(vm.campaign);
             day.setDate(day.getDate() + index * 7);
             vm.weekDays = [];
             var names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-            for (var i = 0; i < 7 && iso(day) <= vm.campaign.endDate; i++) {
+            for (var i = 0; i < 7 && iso(day) <= end; i++) {
                 vm.weekDays.push({date: iso(day), label: names[day.getDay()]});
                 day.setDate(day.getDate() + 1);
             }
@@ -420,7 +428,9 @@
             var campaign = targetId === id ? vm.targetCampaign : vm.campaigns.filter(function (value) { return value.id === id; })[0];
             var week = 0;
             if (campaign) {
-                var day = studentToday() < campaign.endDate ? studentToday() : campaign.endDate;
+                var today = studentToday();
+                var lastDay = lastPracticeDate(campaign);
+                var day = today < lastDay ? today : lastDay;
                 week = Math.max(0, Math.floor((Date.parse(day + 'T00:00:00Z') - Date.parse(campaign.startDate + 'T00:00:00Z')) / (7 * 86400000)));
             }
             return loadStudentSheet(id, week);
@@ -444,7 +454,7 @@
             return settings.permissionsLoaded === true && settings.isAdmin === true && !!auth && auth.hasCredentials();
         };
         vm.isDayLocked = function (day) {
-            if (!day || !vm.campaign || !day.date || day.date < vm.campaign.startDate || day.date > vm.campaign.endDate) { return true; }
+            if (!day || !vm.campaign || !day.date || day.date < vm.campaign.startDate || day.date > lastPracticeDate(vm.campaign)) { return true; }
             return !vm.canEditAnyFlowerDay() && day.date !== studentToday();
         };
         vm.toggleFlower = function (item, day) {
@@ -481,6 +491,14 @@
             initializeCrops();
             vm.editorImageBaseline = imageSnapshot(vm.editor);
             vm.editError = ''; vm.deleteTarget = null;
+        };
+        vm.createAdvent = function () {
+            if (!vm.canCreateAdvent() || vm.editor || vm.loading) { return; }
+            vm.create();
+            var draft = advent.draft();
+            draft.startDate = date(draft.startDate);
+            draft.endDate = date(draft.endDate);
+            angular.extend(vm.editor, draft);
         };
         vm.edit = function (campaign) {
             if (!vm.canManage() || vm.editLoading) { return; }

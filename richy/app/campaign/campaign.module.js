@@ -17,6 +17,7 @@
                             'campaign/campaign.css?v=' + version,
                             'campaign/business/CampaignService.js?v=' + version,
                             'campaign/controllers/CampaignQrScanner.js?v=' + version,
+                            'campaign/advent2026/AdventCampaign2026.js?v=' + version,
                             'campaign/rosary2026/RosaryCampaign2026.js?v=' + version,
                             'campaign/rosary2026/FlowerGarden2026.js?v=' + version,
                             'campaign/rosary2026/GardenImageExport.js?v=' + version,

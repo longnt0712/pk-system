@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
+const adventWindow = {};
+nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname, '../campaign/advent2026/AdventCampaign2026.js'), 'utf8'), {window: adventWindow});
 function setup({campaignsEnabled = true, manager = false, admin = false, credentials = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1'], prayerRandom = Math.random} = {}) {
     let Controller;
     const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
@@ -35,7 +37,7 @@ function setup({campaignsEnabled = true, manager = false, admin = false, credent
     Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
     const state = {current: {name: studentMode ? 'campaign_student' : 'campaigns'}, go: async (...args) => calls.push(['go', ...args])};
     const ClockDate = clock ? class extends Date { static now() { return clock.now; } } : Date;
-    const sandbox = nodeVm.createContext({Date: ClockDate, Math: Object.assign(Object.create(Math), {random: prayerRandom}), angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone}});
+    const sandbox = nodeVm.createContext({Date: ClockDate, Math: Object.assign(Object.create(Math), {random: prayerRandom}), angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone, extend: Object.assign}});
     nodeVm.runInContext(source, sandbox);
     const vm = new Controller({$root: {}, $watch: (...args) => watches.push(args), $evalAsync: fn => {digests++;if(fn)fn();}, $on: (event, fn) => {events[event]=fn;if(event==='$destroy')destroyed = fn;}}, state, {id, studentMode, campaignId, campaignCode}, {URL, location: {hash: '#' + token}, print() {calls.push(['print']);}, confirm:()=>true, ...windowExtras, ...(clock ? {setTimeout(fn, delay) {dayCallback=fn; dayDelay=delay; return 1;}, clearTimeout() {dayCallback=null;}} : {})}, settings, service, {success() {}, error() {}}, {hash(value) {if(windowExtras.history){windowExtras.history.replaceState(null,'','/hoa-thieng'+(campaignCode?'/c/'+campaignCode:campaignId?'/'+campaignId:'')+(value?'#'+value:''));}return this;}, replace() {return this;}}, {hasCredentials: () => credentials});
     return {vm, settings, calls, apiCalls, service, watches, events, getDayDelay: () => dayDelay, midnight: () => dayCallback(), getDigests: () => digests, destroy: () => destroyed(), hasDayTimer: () => !!dayCallback};
@@ -153,6 +155,34 @@ test('invalid image links are hidden and never sent to the API', async () => {
     assert.equal(h.vm.imageUrl(null), ''); assert.equal(h.vm.imageUrl('javascript:alert(1)'), '');
     assert.equal(h.vm.imageUrl(' https://example.org/banner.jpg '), 'https://example.org/banner.jpg');
 });
+test('the Advent preset saves the closing date and the QR sheet stays within its five printed weeks', async () => {
+    const advent = adventWindow.AdventCampaign2026;
+    const manager = setup({manager: true, windowExtras: adventWindow});
+    await tick();
+    manager.vm.createAdvent();
+    await manager.vm.save({$invalid: false});
+    const saved = manager.calls.find(call => call[0] === 'save')[1];
+    assert.equal(saved.startDate, '2026-11-29');
+    assert.equal(saved.endDate, '2027-01-03');
+    assert.deepEqual(saved.flowerItems.map(item => item.name), ['Cầu nguyện', 'Tham dự Thánh lễ', 'Hy sinh', 'Làm tông đồ']);
+
+    const campaign = {...saved, id: 25, flowerItems: saved.flowerItems.map((item, index) => ({...item, itemKey: 'item-' + index})).reverse()};
+    const serverTime = Date.UTC(2027, 0, 3, 5);
+    const student = setup({campaign, studentMode: true, serverTime, clock: {now: serverTime}, windowExtras: adventWindow});
+    await tick();
+    assert.equal(student.vm.weekCount, 5);
+    assert.equal(student.vm.weekIndex, 4);
+    assert.equal(student.vm.weekDays[0].date, '2026-12-27');
+    assert.equal(student.vm.weekDays.at(-1).date, '2027-01-02');
+    assert.equal(student.vm.adventItems[0].itemKey, 'item-0', 'artwork rows keep their practice when reordered by a manager');
+    assert.match(student.vm.adventWeek.pdf, /tuan-5[.]pdf$/);
+    assert.equal(student.vm.isDayLocked({date: saved.endDate}), true);
+    await student.vm.setWeek(5);
+    assert.deepEqual(student.calls.filter(call => call[0] === 'sheet').map(call => call[3]), [4]);
+    const assets = advent.weeks.flatMap(week => [week.image, week.pdf]);
+    assert.ok(assets.every(asset => fs.existsSync(path.join(__dirname, '..', asset))));
+});
+
 test('weekly sheets include only actual campaign dates across years and leap days', async () => {
     const h = setup({id: 5, campaign: {id: 5, startDate: '2027-12-28', endDate: '2028-01-05', flowerItems: []}});
     await tick(); assert.equal(h.vm.weekCount, 2);
