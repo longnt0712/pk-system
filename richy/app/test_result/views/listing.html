@@ -662,7 +662,18 @@
 
                 </section>
             </div>
-            <table class="table" data-ng-if="vm.testResult.testType !== 7 && vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
+            <p class="text-muted" data-ng-if="vm.isAnswerReviewLocked()">Đáp án sẽ hiển thị sau khi hết hạn giao bài.</p>
+            <table class="table" data-ng-if="vm.isAnswerReviewLocked()">
+                <thead><tr><th scope="col">Câu</th><th scope="col">Kết quả</th></tr></thead>
+                <tbody>
+                <tr data-ng-repeat="item in vm.testResult.questionAnswerTestResult">
+                    <td>{{item.ordinalNumber}}</td>
+                    <td>{{item.answerReviewStatus === 'CORRECT' || item.isCorrectTestResultDetail ? 'Đúng' :
+                        item.answerReviewStatus === 'INCORRECT' || item.clientAnswer ? 'Sai' : 'Chưa trả lời'}}</td>
+                </tr>
+                </tbody>
+            </table>
+            <table class="table" data-ng-if="!vm.isAnswerReviewLocked() && vm.testResult.testType !== 7 && vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
                 <thead>
                 <tr>
                     <th scope="col">{{vm.testResult.testType === 7 ? 'Writing Task' : 'Index'}}</th>
@@ -682,7 +693,7 @@
                 </tbody>
             </table>
             <div class="col-md-12 ielts-result-passage"
-                 data-ng-if="vm.testResult.testType !== 7"
+                 data-ng-if="!vm.isAnswerReviewLocked() && vm.testResult.testType !== 7"
                  ielts-result-annotations="vm.ieltsLearningState"
                  ielts-result-note="vm.openResultAnnotationNote(note, anchor)"
                  compile="vm.testResult.testTakerPerformance">

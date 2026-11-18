@@ -21,6 +21,10 @@
         self.getPage = getPage;
         self.saveObject = saveObject;
         self.getOne = getOne;
+        self.getAssignedTask = function (taskId) {
+            return utils.resolve(baseUrl + 'enrolment_class/schedule/assignment/' + encodeURIComponent(taskId),
+                'GET', angular.noop, angular.noop);
+        };
         self.saveWritingFeedback = saveWritingFeedback;
         self.deleteObject = deleteObject;
         self.deleteObjects = deleteObjects;

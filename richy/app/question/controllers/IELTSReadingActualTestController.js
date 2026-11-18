@@ -3561,13 +3561,23 @@
 
         };
 
-        vm.getOneTestResult = function (id) {
+        function refreshSubmittedAnswerReview(id) {
             service.getOneTestResult(id).then(function (data) {
-                vm.testResultAfterSubmitting = data;
-            }, function failure() {
-                toastr.error('An error occurred while creating the account.', 'Notification');
+                if (data && String((vm.testResultAfterSubmitting || {}).id) === String(id)) {
+                    vm.testResultAfterSubmitting = data;
+                    if (window.AssignedAnswerReview) {
+                        return window.AssignedAnswerReview.loadDeadline(data, vm.assignmentTaskId || data.assignmentTaskId, service.getAssignedTask);
+                    }
+                }
+            }, function () {
+                if (String((vm.testResultAfterSubmitting || {}).id) === String(id)) {
+                    vm.testResultAfterSubmitting.answerReviewLocked = true;
+                }
+                toastr.error('Không tải lại được chi tiết bài làm.');
+            }).finally(function () {
+                vm.refreshingAnswerReview = false;
             });
-        };
+        }
 
         function displaySubmittedTestResult(result) {
             if (!result || $scope.$$destroyed) { return; }
@@ -4088,12 +4098,23 @@
         };
 
         vm.isShowDetail = false;
+        vm.isSubmittedAnswerReviewLocked = function () {
+            var result = vm.testResultAfterSubmitting || {};
+            if (vm.refreshingAnswerReview && (vm.assignmentTaskId || result.assignmentTaskId)) { return true; }
+            if (result.answerReviewLocked !== undefined) { return result.answerReviewLocked === true; }
+            return !!(vm.assignmentTaskId || result.assignmentTaskId) && !vm.isWritingRoute
+                && !(vm.currentUser.roles || []).some(function (role) {
+                    return role && (role.name || role.authority) === 'ROLE_ADMIN';
+                }) && result.answerReviewDeadlinePassed !== true;
+        };
         vm.showDetailTestAfterSubmit = function () {
-          if(vm.isShowDetail) {
-              vm.isShowDetail = false;
-          } else{
-              vm.isShowDetail = true;
-          }
+            vm.isShowDetail = !vm.isShowDetail;
+            var result = vm.testResultAfterSubmitting || {};
+            if (vm.isShowDetail && !vm.isWritingRoute && result.id && (vm.assignmentTaskId || result.assignmentTaskId)
+                    && !vm.refreshingAnswerReview) {
+                vm.refreshingAnswerReview = true;
+                refreshSubmittedAnswerReview(result.id);
+            }
         };
 
         //--------------------- Reading Actual test -------------------------//

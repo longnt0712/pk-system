@@ -1340,7 +1340,18 @@
 
                 <div class="col-md-8 right-result" >
 
-                    <table class="table" ng-if="vm.isShowDetail">
+                    <p class="text-muted" ng-if="vm.isShowDetail && vm.isSubmittedAnswerReviewLocked()">Đáp án sẽ hiển thị sau khi hết hạn giao bài.</p>
+                    <table class="table" ng-if="vm.isShowDetail && vm.isSubmittedAnswerReviewLocked()">
+                        <thead><tr><th scope="col">Câu</th><th scope="col">Kết quả</th></tr></thead>
+                        <tbody>
+                        <tr ng-repeat="item in vm.testResultAfterSubmitting.questionAnswerTestResult">
+                            <td>{{item.ordinalNumber}}</td>
+                            <td>{{item.answerReviewStatus === 'CORRECT' || item.isCorrectTestResultDetail ? 'Đúng' :
+                                item.answerReviewStatus === 'INCORRECT' || item.clientAnswer ? 'Sai' : 'Chưa trả lời'}}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <table class="table" ng-if="vm.isShowDetail && !vm.isSubmittedAnswerReviewLocked()">
                         <thead>
                         <tr>
                             <th scope="col">Index</th>
@@ -1385,7 +1396,7 @@
 
                         </tbody>
                     </table>
-                    <div class="col-md-12" compile="vm.testResult.testTakerPerformance">
+                    <div class="col-md-12" ng-if="!vm.isSubmittedAnswerReviewLocked()" compile="vm.testResult.testTakerPerformance">
 
                     </div>
                 </div>
