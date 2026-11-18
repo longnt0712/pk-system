@@ -126,11 +126,14 @@
          */
         vm.countdown = 0;
 
-        vm.topicCategories = [];
-        vm.topics = [];
-        vm.loadingTopicCategories = false;
+        vm.vocabPickerOpen = false;
+        vm.vocabSearch = '';
+        vm.vocabRows = [];
         vm.loadingTopics = false;
         vm.topicLoadError = '';
+        var vocabCategoryRequest, vocabOwnerId;
+        var vocabRoots = [], vocabExpanded = Object.create(null);
+        var vocabRowBatchSize = 120;
         vm.finishedRoomRemainingLabel = '';
         var topicLoadRequestId = 0;
         vm.topicOwners = [];
@@ -334,7 +337,6 @@
             answer({key: 'EXERCISE', exerciseAnswers: submittedAnswers, autoSubmitted: automatic === true});
         };
 
-        vm.searchTopicDto = {};
         vm.hostVideoApi = {};
         vm.hostVideoSeconds = 0;
         vm.hostVideoDuration = 0;
@@ -712,7 +714,6 @@
                 vm.videoSyncError = 'Video đã hết trước mốc câu hỏi. Kiểm tra mốc thời gian trong đề.';
             }
         };
-        vm.searchTopicCategory = {};
 
         var GUESS_VOICE_VOLUME_KEY = 'battle-online-guess-voice-volume';
 
@@ -1078,11 +1079,6 @@
             ? vm.topicOwners[0]
             : null;
 
-        vm.searchTopicDto.userId =
-            vm.selectedTopicOwner
-                ? vm.selectedTopicOwner.id
-                : vm.currentUser.id;
-
         var pollingTimer = null;
         var realtimeGeneration = 0;
         var countdownTimer = null;
@@ -1416,10 +1412,21 @@
         vm.joinRoom = joinRoom;
         vm.leaveRoom = leaveRoom;
 
-        vm.getTopics = getTopics;
         vm.chooseTopicOwner = chooseTopicOwner;
-        vm.topicChoicesToCreate = topicChoicesToCreate;
-        vm.vocabPickerTemplate = 'question/views/battle_online_vocab_picker.html?v=20261028_1';
+        vm.toggleVocabPicker = toggleVocabPicker;
+        vm.closeVocabPickerOnEscape = function (event) {
+            if (event.key !== 'Escape') { return; }
+            event.stopPropagation();
+            vm.vocabPickerOpen = false;
+            event.currentTarget.parentNode.querySelector('.battle-online-vocab-trigger').focus();
+        };
+        vm.loadVocabTree = loadVocabTree;
+        vm.toggleVocabFolder = toggleVocabFolder;
+        vm.updateVocabRows = updateVocabRows;
+        vm.isVocabTopicSelected = isVocabTopicSelected;
+        vm.toggleVocabTopic = toggleVocabTopic;
+        vm.showMoreVocabRows = function () { vm.vocabRowLimit += vocabRowBatchSize; };
+        vm.vocabPickerTemplate = 'question/views/battle_online_vocab_picker.html?v=20261118-tree-1';
         vm.formatTopicNames = formatTopicNames;
         vm.openLobbyTopicEditor = openLobbyTopicEditor;
         vm.closeLobbyTopicEditor = closeLobbyTopicEditor;
@@ -2544,176 +2551,172 @@
         }
 
 
-        function findGrade6Category(
-            categories
-        ) {
-            var found = null;
-
-            angular.forEach(
-                categories || [],
-                function (category) {
-                    if (found) {
-                        return;
-                    }
-
-                    var name =
-                        normalizeText(
-                            category &&
-                            category.name
-                        );
-
-                    var code =
-                        normalizeText(
-                            category &&
-                            category.code
-                        );
-
-                    var compact =
-                        name.replace(
-                            /\s+/g,
-                            ''
-                        );
-
-                    if (
-                        name === 'grade 6' ||
-                        compact === 'grade6' ||
-                        name === 'lớp 6' ||
-                        name === 'lop 6' ||
-                        code === 'grade6' ||
-                        code === 'grade 6'
-                    ) {
-                        found = category;
-                    }
-                }
-            );
-
-            return found;
+        function toggleVocabPicker(event) {
+            vm.vocabPickerOpen = !vm.vocabPickerOpen;
+            if (!vm.vocabPickerOpen) { return; }
+            loadVocabTree();
+            if (event && event.currentTarget) {
+                var trigger = event.currentTarget;
+                $timeout(function () {
+                    var input = trigger.parentNode.querySelector('.battle-online-vocab-search');
+                    if (vm.vocabPickerOpen && input) { input.focus(); }
+                });
+            }
         }
-
 
         function getPageTopicCategory() {
-            vm.loadingTopicCategories = true;
-            questionService
-                .getPageTopicCategory(
-                    vm.searchTopicCategory,
-                    1,
-                    100
-                )
-                .then(
-                    function (data) {
-                        if (destroyed) { return; }
-                        vm.topicCategories =
-                            data &&
-                            data.content
-                                ? data.content
-                                : [];
-
-                        if (
-                            vm.topicCategories
-                                .length > 0
-                        ) {
-                            vm.searchTopicDto
-                                .topicCategory =
-                                findGrade6Category(
-                                    vm.topicCategories
-                                ) ||
-                                vm.topicCategories[0];
-
-                            getTopics();
-                        }
-                    },
-                    function () {
-                        if (!destroyed) {
-                            toastr.error('Không tải được danh sách category. Vui lòng tải lại trang.');
-                        }
-                    }
-                ).finally(function () {
-                    vm.loadingTopicCategories = false;
-                });
-        }
-
-
-        function getTopics() {
-            var requestId = ++topicLoadRequestId;
-            vm.topics = [];
-            vm.topicLoadError = '';
-
-            if (
-                !vm.searchTopicDto
-                    .topicCategory
-            ) {
-                vm.topics = [];
-                vm.loadingTopics = false;
-                return;
+            if (!vocabCategoryRequest) {
+                var categories = [];
+                function read(page) {
+                    return questionService.getPageTopicCategory({}, page, 100).then(function (data) {
+                        categories = categories.concat((data && data.content) || []);
+                        return data && page < data.totalPages ? read(page + 1) : categories;
+                    });
+                }
+                vocabCategoryRequest = read(1);
+                vocabCategoryRequest.catch(function () { vocabCategoryRequest = null; });
             }
-
-            var category = angular.copy(vm.searchTopicDto.topicCategory);
-            var owner = angular.copy(vm.selectedTopicOwner || {});
-            vm.loadingTopics = true;
-            questionService
-                .getTopicsForGames(
-                    angular.copy(vm.searchTopicDto),
-                    1,
-                    10000000
-                )
-                .then(
-                    function (data) {
-                        if (destroyed || requestId !== topicLoadRequestId) {
-                            return;
-                        }
-                        vm.topics = ((data && data.content) || []).filter(function (topic) {
-                            return topic && topic.id != null;
-                        }).map(function (topic) {
-                            return {
-                                id: topic.id,
-                                name: topic.name || '',
-                                ownerId: owner.id,
-                                ownerName: owner.name || 'TỪ CỦA TÔI',
-                                categoryId: category.id,
-                                categoryName: category.name || '',
-                                displayName: (owner.name ? owner.name + ' — ' : '') +
-                                    (category.name ? category.name + ' — ' : '') +
-                                    (topic.name || 'Bài từ vựng')
-                            };
-                        });
-                    },
-                    function () {
-                        if (!destroyed && requestId === topicLoadRequestId) {
-                            vm.topicLoadError = 'Không tải được bài từ vựng. Bấm để thử lại.';
-                        }
-                    }
-                ).finally(function () {
-                    if (requestId === topicLoadRequestId) {
-                        vm.loadingTopics = false;
-                    }
-                });
+            return vocabCategoryRequest;
         }
 
+        function loadVocabTree() {
+            var owner = vm.selectedTopicOwner || {id: vm.currentUser.id};
+            if (vm.loadingTopics || vocabOwnerId === owner.id) { return; }
+            var request = ++topicLoadRequestId;
+            vm.loadingTopics = true;
+            vm.topicLoadError = '';
+            return getPageTopicCategory().then(function (categories) {
+                if (destroyed || request !== topicLoadRequestId) { return; }
+                return questionService.getAllTopics({userId: owner.id}).then(function (topics) {
+                    if (destroyed || request !== topicLoadRequestId) { return; }
+                    vocabRoots = buildVocabTree(categories, topics || [], owner);
+                    vocabOwnerId = owner.id;
+                    updateVocabRows();
+                });
+            }).catch(function () {
+                if (!destroyed && request === topicLoadRequestId) {
+                    vm.topicLoadError = 'Không tải được thư mục hoặc bài từ vựng. Bấm để thử lại.';
+                }
+            }).finally(function () {
+                if (request === topicLoadRequestId) { vm.loadingTopics = false; }
+            });
+        }
+
+        function resetVocabTree() {
+            topicLoadRequestId++;
+            vocabOwnerId = null;
+            vocabRoots = [];
+            vocabExpanded = Object.create(null);
+            vm.loadingTopics = false;
+            vm.vocabSearch = '';
+            vm.topicLoadError = '';
+            updateVocabRows();
+        }
 
         function chooseTopicOwner() {
-            vm.searchTopicDto.userId =
-                vm.selectedTopicOwner
-                    ? vm.selectedTopicOwner.id
-                    : vm.currentUser.id;
-
+            resetVocabTree();
             vm.selectedTopicsToCreate = [];
-            vm.topics = [];
-
-            getTopics();
+            if (vm.vocabPickerOpen) { loadVocabTree(); }
         }
 
+        function foldVocabName(value) {
+            return String(value || '').toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim();
+        }
 
-        function topicChoicesToCreate() {
-            var choices = [], seen = Object.create(null);
-            // Selected objects stay in the source so ui-select can resolve chips across categories.
-            angular.forEach((vm.selectedTopicsToCreate || []).concat(vm.topics || []), function (topic) {
-                if (!topic || topic.id == null || seen[String(topic.id)]) { return; }
-                seen[String(topic.id)] = true;
-                choices.push(topic);
+        function buildVocabTree(categories, topics, owner) {
+            var byId = Object.create(null), seenTopics = Object.create(null), roots = [];
+            function createFolder(id, name, parentId) {
+                return {id: id, name: name, parentId: parentId, folders: [], topics: []};
+            }
+            categories.forEach(function (category) {
+                if (category && category.id != null) {
+                    byId[category.id] = createFolder(category.id, category.name, category.parentId);
+                }
             });
-            return choices;
+            topics.forEach(function (topic) {
+                if (!topic || topic.id == null || seenTopics[topic.id]) { return; }
+                seenTopics[topic.id] = true;
+                var key = topic.categoryId == null ? 'uncategorized' : topic.categoryId;
+                var folder = byId[key];
+                if (!folder) {
+                    folder = byId[key] = createFolder(key, topic.categoryName || 'Chưa phân nhóm', null);
+                }
+                var name = topic.name || 'Bài từ vựng';
+                folder.topics.push({
+                    id: topic.id, name: name,
+                    ownerId: owner.id, categoryId: topic.categoryId, categoryName: folder.name,
+                    displayName: (owner.name ? owner.name + ' — ' : '') + folder.name + ' — ' + name
+                });
+            });
+
+            function findParent(folder) {
+                var ancestor = byId[folder.parentId], seen = Object.create(null);
+                seen[folder.id] = true;
+                while (ancestor) {
+                    if (seen[ancestor.id]) { return null; }
+                    seen[ancestor.id] = true;
+                    ancestor = byId[ancestor.parentId];
+                }
+                return byId[folder.parentId];
+            }
+            Object.keys(byId).forEach(function (key) {
+                var folder = byId[key], parent = findParent(folder);
+                (parent ? parent.folders : roots).push(folder);
+            });
+
+            function byName(left, right) {
+                return String(left.name).localeCompare(String(right.name), 'vi', {numeric: true});
+            }
+            function hasContent(folder) {
+                folder.folders = folder.folders.filter(hasContent).sort(byName);
+                folder.topics.sort(byName);
+                return folder.topics.length || folder.folders.length;
+            }
+            return roots.filter(hasContent).sort(byName);
         }
 
+        function updateVocabRows() {
+            var query = foldVocabName(vm.vocabSearch);
+            var rows = [];
+            function visit(folder, depth, matchingAncestor) {
+                var row = {key: 'folder:' + folder.id, folder: folder, name: folder.name, depth: depth};
+                var start = rows.length;
+                rows.push(row);
+                var matchingBranch = matchingAncestor || (query && foldVocabName(folder.name).indexOf(query) >= 0);
+                if (query || vocabExpanded[folder.id]) {
+                    folder.folders.forEach(function (child) { visit(child, depth + 1, matchingBranch); });
+                    folder.topics.forEach(function (topic) {
+                        if (!query || matchingBranch || foldVocabName(topic.name).indexOf(query) >= 0) {
+                            rows.push({key: 'topic:' + topic.id, topic: topic, name: topic.name, depth: depth + 1});
+                        }
+                    });
+                }
+                row.expanded = rows.length > start + 1;
+                if (query && !row.expanded) { rows.pop(); }
+            }
+            vocabRoots.forEach(function (folder) { visit(folder, 0, false); });
+            vm.vocabRows = rows;
+            vm.vocabRowLimit = vocabRowBatchSize;
+        }
+
+        function toggleVocabFolder(folder) {
+            vocabExpanded[folder.id] = !vocabExpanded[folder.id];
+            updateVocabRows();
+        }
+
+        function isVocabTopicSelected(topic) {
+            return vm.selectedTopicsToCreate.some(function (item) { return String(item.id) === String(topic.id); });
+        }
+
+        function toggleVocabTopic(topic) {
+            if (vm.creatingRoom || vm.savingLobbyTopics) { return; }
+            if (isVocabTopicSelected(topic)) {
+                vm.selectedTopicsToCreate = vm.selectedTopicsToCreate.filter(function (item) { return String(item.id) !== String(topic.id); });
+            } else {
+                vm.selectedTopicsToCreate.push(topic);
+            }
+        }
 
         function formatTopicNames(topicNames) {
             var names = topicNames || [];
@@ -2748,8 +2751,11 @@
             var topicIds = settings.topicIds || [];
             var topicNames = settings.topicNames || [];
 
+            if (String((vm.selectedTopicOwner || {}).id) !== String((owner || {}).id)) { resetVocabTree(); }
             vm.selectedTopicOwner = owner;
-            vm.searchTopicDto.userId = owner ? owner.id : vm.currentUser.id;
+            vm.vocabPickerOpen = false;
+            vm.vocabSearch = '';
+            updateVocabRows();
             vm.selectedTopicsToCreate = [];
 
             angular.forEach(topicIds, function (topicId, index) {
@@ -2766,7 +2772,7 @@
             });
 
             vm.lobbyTopicEditorOpen = true;
-            if (vm.questionSource === 'COMPREHENSIVE') { vm.openExercisePicker(); } else { getTopics(); }
+            if (vm.questionSource === 'COMPREHENSIVE') { vm.openExercisePicker(); }
         }
 
 

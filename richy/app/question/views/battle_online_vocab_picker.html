@@ -1,30 +1,58 @@
 <div class="battle-online-vocab-heading">
     <label>BÀI TỪ VỰNG</label>
-    <span>{{vm.selectedTopicsToCreate.length || 0}} bài đã chọn</span>
+    <span aria-live="polite">{{vm.selectedTopicsToCreate.length || 0}} bài đã chọn</span>
 </div>
 
-<div class="battle-online-topic-loading" ng-if="vm.loadingTopics || vm.loadingTopicCategories"
-     role="status" aria-live="polite">
-    <span class="battle-online-topic-spinner" aria-hidden="true"></span>
-    {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
+<div class="battle-online-vocab-picker">
+    <button type="button" class="battle-online-vocab-trigger" ng-click="vm.toggleVocabPicker($event)"
+            ng-attr-aria-expanded="{{vm.vocabPickerOpen}}" aria-controls="battle-vocab-tree-panel"
+            ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+        <i class="fa fa-folder-open" aria-hidden="true"></i>
+        Tìm và chọn bài từ vựng
+        <i class="fa" ng-class="vm.vocabPickerOpen ? 'fa-chevron-up' : 'fa-chevron-down'" aria-hidden="true"></i>
+    </button>
+    <div id="battle-vocab-tree-panel" class="battle-online-vocab-panel" ng-if="vm.vocabPickerOpen"
+         ng-keydown="vm.closeVocabPickerOnEscape($event)">
+        <input class="form-control battle-online-vocab-search" type="search" ng-model="vm.vocabSearch"
+               ng-model-options="{debounce: 120}" ng-change="vm.updateVocabRows()"
+               placeholder="Tìm thư mục hoặc tên bài…" aria-label="Tìm thư mục hoặc tên bài"
+               ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+        <p class="battle-online-topic-loading" ng-if="vm.loadingTopics" role="status">
+            <span class="battle-online-topic-spinner" aria-hidden="true"></span> Đang tải thư mục và bài từ vựng…
+        </p>
+        <button type="button" class="battle-online-topic-load-error" ng-if="vm.topicLoadError && !vm.loadingTopics"
+                ng-click="vm.loadVocabTree()">{{vm.topicLoadError}}</button>
+        <p class="battle-online-vocab-empty" ng-if="!vm.loadingTopics && !vm.topicLoadError && !vm.vocabRows.length">
+            {{vm.vocabSearch ? 'Không tìm thấy thư mục hoặc bài phù hợp.' : 'Nguồn này chưa có bài từ vựng.'}}
+        </p>
+        <ul class="battle-online-vocab-tree" ng-if="!vm.loadingTopics && !vm.topicLoadError && vm.vocabRows.length"
+            aria-label="Cây thư mục bài từ vựng">
+            <li ng-repeat="row in vm.vocabRows | limitTo:vm.vocabRowLimit track by row.key"
+                ng-attr-style="--vocab-depth: {{row.depth}};">
+                <button ng-if="row.folder" type="button" class="battle-online-vocab-node is-folder"
+                        ng-click="vm.toggleVocabFolder(row.folder)" ng-attr-aria-expanded="{{row.expanded}}"
+                        ng-disabled="vm.vocabSearch.trim() || vm.creatingRoom || vm.savingLobbyTopics">
+                    <i class="fa" ng-class="row.expanded ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
+                    <i class="fa" ng-class="row.expanded ? 'fa-folder-open' : 'fa-folder'" aria-hidden="true"></i>
+                    <span>{{row.name}}</span>
+                </button>
+                <label ng-if="row.topic" class="battle-online-vocab-node is-topic"
+                       ng-class="{'is-selected': vm.isVocabTopicSelected(row.topic)}">
+                    <input type="checkbox" ng-checked="vm.isVocabTopicSelected(row.topic)"
+                           ng-click="vm.toggleVocabTopic(row.topic)" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+                    <span>{{row.name}}</span>
+                </label>
+            </li>
+            <li ng-if="vm.vocabRows.length > vm.vocabRowLimit">
+                <button type="button" class="btn btn-link" ng-click="vm.showMoreVocabRows()">Hiện thêm</button>
+            </li>
+        </ul>
+    </div>
+    <div class="battle-online-selected-topics" ng-if="vm.selectedTopicsToCreate.length">
+        <div class="battle-online-selected-topic" ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
+            <span><strong>{{topic.name}}</strong><small>{{topic.categoryName}}</small></span>
+            <button type="button" ng-click="vm.toggleVocabTopic(topic)" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics"
+                    ng-attr-aria-label="Bỏ chọn {{topic.name}}">×</button>
+        </div>
+    </div>
 </div>
-<button type="button" class="battle-online-topic-load-error"
-        ng-if="vm.topicLoadError && !vm.loadingTopics" ng-click="vm.getTopics()">
-    {{vm.topicLoadError}}
-</button>
-
-<ui-select multiple theme="bootstrap" title="Bài từ vựng"
-           class="battle-online-vocab-select battle-online-lobby-ui-select"
-           ng-model="vm.selectedTopicsToCreate" close-on-select="false" append-to-body="true"
-           ng-keyup="$event.which === 27 && $select.close()"
-           ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.creatingRoom || vm.savingLobbyTopics">
-    <ui-select-match placeholder="Tìm và chọn một hoặc nhiều bài..." title="{{$item.displayName || $item.name}}">
-        {{$item.name}}
-    </ui-select-match>
-    <ui-select-choices class="battle-online-lobby-dropdown"
-                       repeat="topic in vm.topicChoicesToCreate() | propsFilter:{name:$select.search} track by topic.id">
-        <div ng-bind-html="topic.name | highlight:$select.search"></div>
-        <small>{{topic.categoryName || 'Không phân loại'}}</small>
-    </ui-select-choices>
-    <ui-select-no-choice>Không còn bài phù hợp. Thử tên hoặc category khác.</ui-select-no-choice>
-</ui-select>

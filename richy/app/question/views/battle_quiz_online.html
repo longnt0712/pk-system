@@ -101,26 +101,6 @@
                     </ui-select-choices>
                 </ui-select>
 
-                <label>GRADE / CATEGORY</label>
-
-                <ui-select
-                    ng-model="vm.searchTopicDto.topicCategory"
-                    ng-change="vm.getTopics()"
-                    ng-disabled="vm.loadingTopicCategories"
-                    theme="bootstrap">
-
-                    <ui-select-match placeholder="Chọn Grade / Category">
-                        {{$select.selected.name}}
-                    </ui-select-match>
-
-                    <ui-select-choices
-                        repeat="category in vm.topicCategories | filter:$select.search">
-
-                        <div ng-bind-html="category.name | highlight:$select.search"></div>
-                    </ui-select-choices>
-                </ui-select>
-
-
                 <div ng-include="vm.vocabPickerTemplate"></div>
 
             </div>
@@ -398,22 +378,6 @@
                     <ui-select-choices class="battle-online-lobby-dropdown"
                                        repeat="owner in vm.topicOwners | filter:$select.search">
                         <div ng-bind-html="owner.name | highlight:$select.search"></div>
-                    </ui-select-choices>
-                </ui-select>
-
-                <label>GRADE / CATEGORY</label>
-                <ui-select ng-model="vm.searchTopicDto.topicCategory"
-                           class="battle-online-lobby-ui-select"
-                           append-to-body="true"
-                           ng-change="vm.getTopics()"
-                           ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
-                           theme="bootstrap">
-                    <ui-select-match placeholder="Chọn Grade / Category">
-                        {{$select.selected.name}}
-                    </ui-select-match>
-                    <ui-select-choices class="battle-online-lobby-dropdown"
-                                       repeat="category in vm.topicCategories | filter:$select.search">
-                        <div ng-bind-html="category.name | highlight:$select.search"></div>
                     </ui-select-choices>
                 </ui-select>
 
@@ -3609,73 +3573,37 @@
         white-space: nowrap;
     }
 
-    .battle-online-vocab-select.ui-select-multiple.ui-select-bootstrap {
-        width: 100%;
-        min-height: 48px;
-        height: auto !important;
-        padding: 8px 12px;
-        border: 1px solid #dce4f2;
-        border-radius: 10px;
-        background: #fff;
-        text-align: left;
+    .battle-online-vocab-trigger {
+        display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
+        width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid #dce4f2;
+        border-radius: 10px; color: #34456d; background: #fff; text-align: left; font-weight: 700;
     }
-
-    .battle-online-vocab-select > div:first-child {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
+    .battle-online-vocab-trigger:hover, .battle-online-vocab-trigger[aria-expanded="true"] {
+        border-color: #8573dc; color: #5c43bb;
     }
-
-    .battle-online-vocab-select input.ui-select-search {
-        order: -1;
-        width: 100% !important;
-        min-height: 30px;
-        padding: 2px 0;
-        margin: 0;
-        font-size: 14px;
+    .battle-online-vocab-panel {
+        padding: 8px; margin-top: 6px; border: 1px solid #e0e4f4; border-radius: 10px;
+        background: #fff; text-align: left;
     }
-
-    .battle-online-vocab-select .ui-select-match-item {
-        max-width: 100%;
-        height: auto !important;
-        padding: 5px 8px;
-        margin: 5px 5px 0 0;
-        border: 1px solid #d8d0fb;
-        border-radius: 6px;
-        color: #53408e;
-        background: #f0ebff;
-        font-size: 13px;
-        white-space: normal;
-        overflow-wrap: anywhere;
-        text-align: left;
+    .battle-online-vocab-search { margin-bottom: 6px; }
+    .battle-online-vocab-tree {
+        list-style: none; margin: 0; padding: 0; max-height: min(37vh, 330px);
+        overflow: auto; overscroll-behavior: contain;
     }
-
-    .battle-online-vocab-select .ui-select-match-close {
-        margin-left: 8px;
-        opacity: .65;
+    .battle-online-vocab-node {
+        display: flex !important; gap: 8px; align-items: center;
+        width: 100%; min-height: 33px; padding: 5px 8px 5px calc(8px + min(var(--vocab-depth), 9) * 15px);
+        margin: 0 !important; border: 0; border-radius: 6px; color: #304269 !important; background: transparent;
+        text-align: left; font-size: 13px !important; letter-spacing: normal !important;
     }
-
-    .battle-online-vocab-select .ui-select-choices-row,
-    .battle-online-vocab-select .ui-select-choices-row > span,
-    .battle-online-vocab-select .ui-select-choices-row-inner {
-        padding: 9px 12px;
-        font-size: 14px;
-        white-space: normal;
-        overflow-wrap: anywhere;
-    }
-
-    .battle-online-vocab-select .ui-select-choices-row small {
-        display: block;
-        margin-top: 2px;
-        font-size: 12px;
-    }
-
-    .battle-online-vocab-select .ui-select-no-choice {
-        padding: 12px;
-        color: #64748b;
-        font-size: 13px;
-        white-space: normal;
-    }
+    .battle-online-vocab-node.is-topic { font-weight: 500 !important; }
+    .battle-online-vocab-node span { overflow-wrap: anywhere; }
+    .battle-online-vocab-node i { color: #6a54ba; }
+    .battle-online-vocab-node input { flex: 0 0 auto; margin: 0; accent-color: #6a54ba; }
+    .battle-online-vocab-node:not(:disabled):hover, .battle-online-vocab-node.is-selected { background: #f0ebfc; }
+    .battle-online-vocab-trigger:focus-visible, .battle-online-vocab-node:focus-visible,
+    .battle-online-vocab-node:focus-within { outline: 2px solid #8069e2; outline-offset: -2px; }
+    .battle-online-vocab-empty { margin: 8px 4px; color: #64748b; font-size: 13px; }
 
     .battle-online-selected-topics {
         max-height: 180px;
