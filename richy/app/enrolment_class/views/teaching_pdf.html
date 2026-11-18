@@ -1,17 +1,20 @@
 <div class="teaching-pdf-dialog study-notebook-dialog" ng-class="{'is-fullscreen': pdf.fullscreen}" teaching-pdf-surface>
     <header class="study-notebook-heading">
         <div class="study-notebook-heading__copy">
-            <h2 id="teaching-pdf-title" ng-bind="pdf.run.name || 'Quản lý tài liệu PDF'"></h2>
+            <h2 id="teaching-pdf-title" ng-bind="pdf.run.name || (pdf.onPage ? 'Tài liệu PDF' : 'Quản lý tài liệu PDF')"></h2>
         </div>
         <div class="study-notebook-heading__actions">
-            <span ng-if="pdf.run" class="study-notebook-status" role="status"
+            <span ng-if="pdf.run || (pdf.onPage && pdf.busy)" class="study-notebook-status" role="status"
                   ng-class="{'is-saved': pdf.run.completed || pdf.saveStatus === 'Đã đồng bộ', 'is-error': pdf.saveStatus === 'Chưa lưu'}">
                 {{pdf.run.completed ? 'Đã hoàn thành' : (pdf.busy ? 'Đang xử lý…' : (pdf.saveStatus || 'Tự động lưu'))}}
             </span>
             <button type="button" class="study-notebook-action" ng-if="pdf.run && pdf.saveStatus === 'Chưa lưu'" ng-click="pdf.save()" ng-disabled="pdf.busy">
                 <i class="fa fa-floppy-o" aria-hidden="true"></i> Lưu lại
             </button>
-            <button type="button" class="study-notebook-close" ng-click="pdf.close()" ng-disabled="pdf.busy" aria-label="Đóng PDF">×</button>
+            <button ng-if="pdf.onPage" type="button" class="study-notebook-action" ng-click="pdf.close()" ng-disabled="pdf.busy">
+                <i class="fa fa-arrow-left" aria-hidden="true"></i> Về lịch lớp
+            </button>
+            <button ng-if="!pdf.onPage" type="button" class="study-notebook-close" ng-click="pdf.close()" ng-disabled="pdf.busy" aria-label="Đóng PDF">×</button>
         </div>
     </header>
     <div class="alert alert-danger teaching-pdf-error" role="alert" ng-if="pdf.error" ng-bind="pdf.error"></div>
@@ -32,7 +35,7 @@
             </div>
         </article>
     </section>
-    <div class="modal-body teaching-pdf-library" ng-if="!pdf.run" tabindex="0" role="region" aria-label="Danh sách tài liệu PDF">
+    <div class="modal-body teaching-pdf-library" ng-if="!pdf.run && pdf.showLibrary" tabindex="0" role="region" aria-label="Danh sách tài liệu PDF">
         <p ng-if="pdf.busy" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải…</p>
         <section ng-if="pdf.current.length">
             <h3>Tài liệu buổi này</h3>
@@ -253,7 +256,7 @@
                         <div class="teaching-pdf-free-text" ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true"
                              ng-if="mark.text !== undefined"
                              ng-class="{'is-right': mark.x > .76, 'is-bottom': mark.y > .9, 'has-width': pdf.textWidth(mark), 'is-editing': pdf.editingText === mark, 'is-dragging': pdf.textDrag.mark === mark && pdf.textDrag.position}"
-                             ng-attr-style="--pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}}; color: {{pdf.textFontColor(mark)}}; width: {{pdf.textWidth(mark)}};">
+                             ng-attr-style="--pdf-text-zoom: {{pdf.state.zoom}}; --pdf-text-left: {{pdf.textPosition(mark).x * 100}}%; top: {{pdf.textPosition(mark).y * 100}}%; font-size: {{pdf.textFontSize(mark)}}; color: {{pdf.textFontColor(mark)}}; width: {{pdf.textWidth(mark)}};">
                             <textarea ng-if="pdf.editingText === mark" teaching-pdf-note-input ng-model="mark.text"
                                       ng-change="pdf.markChanged()" ng-blur="pdf.finishText(mark)"
                                       maxlength="4000" rows="1" aria-label="Chữ trên PDF" placeholder="Nhập chữ…"></textarea>

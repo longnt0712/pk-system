@@ -1,7 +1,11 @@
 .teaching-pdf-window .modal-dialog { width: min(1440px, 96vw); margin: 2vh auto; }
 .teaching-pdf-window .teaching-pdf-dialog { width: 100%; max-height: 96vh; max-height: 96dvh; }
+.teaching-pdf-route .teaching-pdf-dialog {
+    width: 100%; max-height: 90vh; max-height: 90dvh; box-shadow: none;
+}
+.teaching-pdf-route .teaching-pdf-dialog.is-fullscreen { z-index: 1100; }
 .teaching-pdf-window.is-pdf-fullscreen .modal-dialog { width: 100%; max-width: none; height: 100%; margin: 0; transform: none; }
-.teaching-pdf-window .teaching-pdf-dialog.is-fullscreen {
+.teaching-pdf-dialog.is-fullscreen {
     position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; border: 0; border-radius: 0;
 }
 .teaching-pdf-dialog.is-fullscreen .teaching-pdf-reader { flex: 1 1 auto; }
@@ -169,6 +173,7 @@
 .teaching-pdf-scroll.is-adding-text .teaching-pdf-page, .teaching-pdf-scroll.is-adding-text .textLayer span { cursor: crosshair; }
 .teaching-pdf-free-text {
     --pdf-text-available: calc(100% - var(--pdf-text-left));
+    --pdf-text-max-width: calc(320px * var(--pdf-text-zoom, 1));
     position: absolute; left: var(--pdf-text-left); z-index: 2; width: max-content; max-width: var(--pdf-text-available);
     display: flex; align-items: center;
     transform: translate(var(--pdf-text-shift-x, 0), var(--pdf-text-shift-y, 0));
@@ -178,10 +183,10 @@
     --pdf-text-available: var(--pdf-text-left);
 }
 .teaching-pdf-free-text.is-bottom { --pdf-text-shift-y: -100%; }
-.teaching-pdf-free-text:not(.has-width) { max-width: min(var(--pdf-text-available), 30%, 320px); }
+.teaching-pdf-free-text:not(.has-width) { max-width: min(var(--pdf-text-available), 30%, var(--pdf-text-max-width)); }
 .teaching-pdf-free-text.is-dragging { z-index: 4; transform: none; }
 .teaching-pdf-free-text.is-editing { z-index: 4; }
-.teaching-pdf-free-text.is-editing:not(.has-width) { width: min(30%, 320px); }
+.teaching-pdf-free-text.is-editing:not(.has-width) { width: min(30%, var(--pdf-text-max-width)); }
 .teaching-pdf-text-value, .teaching-pdf-free-text textarea {
     box-sizing: border-box; display: block; flex: 1 1 auto; min-width: 0; max-width: 100%;
     padding: 3px 5px; border: 1px solid #8ba6e5; border-radius: 4px;

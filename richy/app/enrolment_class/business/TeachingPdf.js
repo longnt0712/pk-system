@@ -2,8 +2,8 @@
     'use strict';
 
     angular.module('Hrm.EnrolmentClass').factory('TeachingPdf', [
-        '$uibModal', '$http', '$q', 'settings',
-        function (modal, http, $q, settings) {
+        '$uibModal', '$http', '$q', 'settings', '$controller',
+        function (modal, http, $q, settings, $controller) {
             var pdfAssets = new URL('assets/vendor/pdfjs/', document.baseURI);
             var version = encodeURIComponent(window.APP_VERSION || 'dev');
             var engine;
@@ -43,16 +43,32 @@
                     });
                 },
                 open: function (classId, date, previousRun, currentRun) {
+                    return modal.open({
+                        templateUrl: 'enrolment_class/views/teaching_pdf.html?v=' + version,
+                        controllerAs: 'pdf',
+                        windowClass: 'teaching-pdf-window',
+                        size: 'lg',
+                        backdrop: 'static',
+                        keyboard: false,
+                        ariaLabelledBy: 'teaching-pdf-title',
+                        controller: ['$scope', '$uibModalInstance', function (scope, instance) {
+                            return $controller(readerController(classId, date, previousRun, currentRun), {
+                                $scope: scope, closePdf: function (changed) { instance.close(changed); }
+                            });
+                        }]
+                    }).result;
+                },
+                mountPage: function (scope, classId, date, runId, closePdf) {
+                    return $controller(readerController(classId, date, runId, null, true), {
+                        $scope: scope, closePdf: closePdf
+                    });
+                }
+            };
+
+            function readerController(classId, date, previousRun, currentRun, onPage) {
                 var base = sessionUrl(classId, date);
-                return modal.open({
-                    templateUrl: 'enrolment_class/views/teaching_pdf.html?v=' + version,
-                    controllerAs: 'pdf',
-                    windowClass: 'teaching-pdf-window',
-                    size: 'lg',
-                    backdrop: 'static',
-                    keyboard: false,
-                    ariaLabelledBy: 'teaching-pdf-title',
-                    controller: ['$scope', '$timeout', '$uibModalInstance', function (scope, timer, instance) {
+                return [
+                    '$scope', '$timeout', 'closePdf', function (scope, timer, closePdf) {
                         var vm = this, root, pdf, api, loadingTask, saveTimer, saveRequest;
                         var editId = 0, savedEditId = 0, destroyed = false, inkGesture;
                         var sharedState, conflicts, syncTimer, viewTimer, viewKey, composingText;
@@ -62,6 +78,8 @@
                         var libraryDrag, libraryDropTarget;
                         var lastTextTap;
                         var defaultNewTextSize = 22;
+                        vm.onPage = !!onPage;
+                        vm.showLibrary = !onPage;
                         vm.pages = [];
                         vm.textSizes = [12, 14, 16, 18, 22, 26, 32];
                         vm.inkSizes = {pen: '2', eraser: '4'};
@@ -832,7 +850,9 @@
                                 }
                                 release(); exitFullscreen(); vm.run = null; vm.selectedMark = null; vm.inkTool = null; vm.notesOpen = false; vm.addingText = false; vm.editingText = null;
                                 editId = savedEditId = 0; vm.saveStatus = '';
-                                if (close) { instance.close(vm.changedDay); } else { return load(); }
+                                if (close) { return closePdf(vm.changedDay); }
+                                vm.showLibrary = true;
+                                return load();
                             }).catch(angular.noop).finally(function () { vm.busy = false; });
                         }
                         vm.back = function () { leave(false); };
@@ -1076,7 +1096,9 @@
                         vm.markChanged = changed;
 
                         function validTextSize(size, fallback) { return vm.textSizes.indexOf(size) >= 0 ? size : fallback; }
-                        vm.textFontSize = function (mark) { return validTextSize(mark.fontSize, 14) + 'px'; };
+                        vm.textFontSize = function (mark) {
+                            return validTextSize(mark.fontSize, 14) * vm.state.zoom + 'px';
+                        };
                         function resizedTextWidth(mark, sheet, width, delta) {
                             var pageWidth = sheet.getBoundingClientRect().width;
                             var fromRight = mark.x > .76;
@@ -1400,10 +1422,22 @@
                             document.addEventListener('selectionchange', queueSelection);
                             document.addEventListener('fullscreenchange', fullscreenChanged);
                             document.addEventListener('webkitfullscreenchange', fullscreenChanged);
+                            startReader();
                         };
+                        function hasUnsavedEdits() {
+                            return editId !== savedEditId || saveRequest || conflicts && conflicts.size;
+                        }
+                        if (onPage) {
+                            scope.$on('$stateChangeStart', function (event) {
+                                if (hasUnsavedEdits()) {
+                                    event.preventDefault();
+                                    vm.error = 'Hãy lưu hoặc đối chiếu các thay đổi đang chờ trước khi rời trang PDF.';
+                                }
+                            });
+                        }
                         function preventUnsavedExit(event) {
                             writeView();
-                            if (editId !== savedEditId || saveRequest || conflicts && conflicts.size) {
+                            if (hasUnsavedEdits()) {
                                 event.preventDefault(); event.returnValue = true;
                             }
                         }
@@ -1429,20 +1463,22 @@
                                 compositionEvents.forEach(function (name) { root.removeEventListener(name, onComposition); });
                             }
                         });
-                        load().then(function () {
-                            if (destroyed) { return; }
-                            var requestedRun = currentRun || previousRun;
-                            if (requestedRun && vm.current.some(function (run) { return run.id === requestedRun; })) {
-                                vm.open(requestedRun);
-                            } else if (previousRun && vm.previous.some(function (run) { return run.id === previousRun; })) {
-                                vm.attach({previousRun: previousRun});
-                            } else if (requestedRun && !vm.error) {
-                                vm.error = 'Lượt dạy này không còn mở được cho buổi học đã chọn.';
-                            }
-                        });
-                    }]
-                }).result;
-            }};
+                        function startReader() {
+                            load().then(function () {
+                                if (destroyed) { return; }
+                                var requestedRun = currentRun || previousRun;
+                                if (requestedRun && vm.current.some(function (run) { return run.id === requestedRun; })) {
+                                    vm.open(requestedRun);
+                                } else if (previousRun && vm.previous.some(function (run) { return run.id === previousRun; })) {
+                                    vm.attach({previousRun: previousRun});
+                                } else if (requestedRun && !vm.error) {
+                                    vm.error = 'Lượt dạy này không còn mở được cho buổi học đã chọn.';
+                                }
+                            });
+                        }
+                    }
+                ];
+            }
         }
     ]).directive('teachingPdfSurface', function () {
         return {link: function (scope, element) { scope.pdf.bindSurface(element[0]); }};

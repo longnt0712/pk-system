@@ -48,22 +48,25 @@
             .state('application.englishClassPdf', {
                 url: '/english_classes/pdf?classId&date&runId',
                 data: {pageTitle: 'Tài liệu PDF'},
-                template: '<section class="container-fluid"><h1>Tài liệu PDF</h1>' +
-                    '<p ng-if="pdfLaunchError" role="alert">{{pdfLaunchError}}</p>' +
-                    '<a ui-sref="application.englishClass({scheduleClassId: pdfClassId})">Về lịch lớp</a></section>',
+                template: '<section class="teaching-pdf-route">' +
+                    '<div ng-if="pdf" ng-include="pdfReaderTemplate"></div>' +
+                    '<div ng-if="pdfLaunchError" class="alert alert-danger" role="alert">{{pdfLaunchError}} ' +
+                    '<a ui-sref="application.englishClass">Về lịch lớp</a></div></section>',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                         return loadFiles($ocLazyLoad, pdfFiles);
                     }]
                 },
-                controller: ['$scope', '$stateParams', 'TeachingPdf', function ($scope, params, teachingPdf) {
+                controller: ['$scope', '$stateParams', '$state', 'TeachingPdf', function ($scope, params, $state, teachingPdf) {
                     var classId = Number(params.classId);
                     if (!Number.isSafeInteger(classId) || classId < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(params.date) || !params.runId) {
                         $scope.pdfLaunchError = 'Link tài liệu PDF không hợp lệ.';
                         return;
                     }
-                    $scope.pdfClassId = classId;
-                    teachingPdf.open(classId, params.date, params.runId).catch(angular.noop);
+                    $scope.pdfReaderTemplate = 'enrolment_class/views/teaching_pdf.html?v=' + version;
+                    $scope.pdf = teachingPdf.mountPage($scope, classId, params.date, params.runId, function () {
+                        return $state.go('application.englishClass', {scheduleClassId: classId});
+                    });
                 }]
             });
     }]);

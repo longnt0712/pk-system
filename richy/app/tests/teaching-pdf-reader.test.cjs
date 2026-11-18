@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const {isDeepStrictEqual} = require('node:util');
 
-function fixture(saved = {}, completed = false, catalog = {}, collaboration, previousRun) {
+function fixture(saved = {}, completed = false, catalog = {}, collaboration, previousRun, pageMode = false) {
     const input = {value: '1', matches: () => true};
     const events = {}, documentEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
     const ctrl = {};
@@ -138,14 +138,27 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
             return {data: {revision: data.revision + 1, completed: data.completed}};
         }
     };
+    const scopeEvents = {};
+    const scope = {$on(name, handler) { scopeEvents[name] = handler; }, $evalAsync(fn) { fn(); }};
+    const closes = [];
     const service = factory({open(options) { config = options; return {result: Promise.resolve()}; }}, http,
         {when: Promise.resolve.bind(Promise), all: Promise.all.bind(Promise), reject: Promise.reject.bind(Promise)},
-        {api: {baseUrl: '', apiV1Url: '/api/'}});
-    service.open(1, '2026-11-04', previousRun);
-    config.controller.at(-1).call(ctrl, {$on() {}, $evalAsync(fn) { fn(); }}, timer, {});
+        {api: {baseUrl: '', apiV1Url: '/api/'}}, (definition, locals) => {
+            definition.at(-1).call(ctrl, locals.$scope, timer, locals.closePdf);
+            return ctrl;
+        });
+    const onClose = changed => { closes.push(changed); };
+    if (pageMode) {
+        service.mountPage(scope, 1, '2026-11-04', previousRun, onClose);
+        assert.equal(config, undefined);
+    } else {
+        service.open(1, '2026-11-04', previousRun);
+        config.controller.at(-1).call(ctrl, scope, {close: onClose});
+    }
+    assert.equal(reads.length, 0, "Wait for the reader surface before loading");
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
-    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers, window,
+    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers, window, scopeEvents, closes,
         async sync() { const callback = polls.values().next().value; assert.ok(polls.delete(callback)); callback(); await tick(); },
         select(number, top = 150) {
             const page = sheet(number);
@@ -170,6 +183,24 @@ test('both plan PDF links keep native new-tab navigation with the click guard ou
     }
     assert.match(links[0], /teaching-pdf-session-open/);
     assert.match(links[1], /btn-primary/);
+});
+
+test('the inline PDF page resumes the run and saves before returning to the class', async () => {
+    const run = {id: 'run', pdfId: 'doc', name: 'Lesson.pdf'};
+    const h = fixture({page: 7, marks: [{page: 7, note: 'Previous lesson'}]}, false, {current: [run]}, undefined, run.id, true);
+    await h.tick();
+    assert.equal(h.ctrl.onPage, true);
+    assert.equal(h.ctrl.showLibrary, false);
+    assert.equal(h.ctrl.state.page, 7);
+    h.ctrl.state.marks[0].note = 'Updated';
+    h.ctrl.markChanged();
+    let blocked = false;
+    h.scopeEvents['$stateChangeStart']({preventDefault() { blocked = true; }});
+    assert.equal(blocked, true);
+    h.ctrl.close();
+    await h.tick();
+    assert.equal(h.writes.at(-1).state.marks[0].note, 'Updated');
+    assert.equal(h.closes.length, 1);
 });
 
 test('opening a previous PDF in a new tab attaches it once and resumes the saved run', async () => {
@@ -329,6 +360,20 @@ test('selection tools share one saved mark and free text is anchored to the clic
     assert.equal(h.ctrl.state.marks[2].page, 7);
     assert.equal(h.ctrl.state.marks[0].note, 'Older note');
     assert.equal(h.writes.at(-1).state.marks[2].text, 'Added on page 7');
+});
+
+test('added text keeps its size relative to the page as the PDF zoom changes', async () => {
+    const h = fixture({marks: [{page: 1, x: .2, y: .4, text: 'Scale with the PDF', fontSize: 22}]});
+    await h.tick(); await h.ctrl.open('run'); await h.tick();
+    const mark = h.ctrl.state.marks[0];
+    const widthAt100 = parseFloat(h.ctrl.pages[0].style.width);
+    for (const factor of [.5, 1, 1.7, 3]) {
+        h.ctrl.setZoom(factor);
+        await h.tick();
+        const pageScale = parseFloat(h.ctrl.pages[0].style.width) / widthAt100;
+        assert.ok(Math.abs(parseFloat(h.ctrl.textFontSize(mark)) - 22 * pageScale) < .001);
+        assert.equal(mark.fontSize, 22);
+    }
 });
 
 test('new PDF text shares the pen color and keeps its style after reopening', async () => {
