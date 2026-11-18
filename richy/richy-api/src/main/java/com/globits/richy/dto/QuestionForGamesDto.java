@@ -100,6 +100,13 @@ public class QuestionForGamesDto implements Serializable  {
 	public QuestionForGamesDto() {
 		super();
 	}
+    public QuestionForGamesDto(Long id, String question, String pronounce, String motherTongue, String level) {
+        this.id = id;
+        this.question = question;
+        this.pronounce = pronounce;
+        this.motherTongue = motherTongue;
+        this.level = level;
+    }
 	public QuestionForGamesDto(Question domain) {
 		if (domain.getQuestionTopics() != null) {
 			for (QuestionTopic link : domain.getQuestionTopics()) {

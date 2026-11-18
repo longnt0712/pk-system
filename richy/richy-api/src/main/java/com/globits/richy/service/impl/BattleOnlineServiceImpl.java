@@ -27,7 +27,6 @@ import javax.persistence.EntityManager;
 import javax.persistence.Query;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.annotation.Secured;
@@ -67,13 +66,10 @@ import com.globits.richy.battle.GiftDropGame;
 import com.globits.richy.battle.GiftLightningGame;
 import com.globits.richy.dto.BattleOnlineGiftClaimDto;
 import com.globits.richy.dto.BattleOnlineGiftClaimResultDto;
-import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.battle.BattleExercisePreload;
+import com.globits.richy.battle.BattleVocabularyPreload;
 import com.globits.richy.battle.BattleExerciseQuestions;
 import com.globits.richy.dto.QuestionForGamesDto;
-import com.globits.richy.dto.QuestionTopicDto;
-import com.globits.richy.dto.QuestionTypeDto;
-import com.globits.richy.dto.TopicDto;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.repository.TestResultRepository;
@@ -81,7 +77,6 @@ import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
 import com.globits.richy.service.BattleMusicConfigService;
-import com.globits.richy.service.QuestionService;
 import com.globits.security.domain.User;
 import com.globits.security.domain.Role;
 import com.globits.security.repository.UserRepository;
@@ -273,7 +268,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private final Random random = new SecureRandom();
 
     @Autowired
-    private QuestionService questionService;
+    private BattleVocabularyPreload vocabularyPreload;
 
     @Autowired
     private BattleExercisePreload exercisePreload;
@@ -331,6 +326,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (!room.adminTerminated) {
                 room.adminTerminated = true;
                 room.preloadGeneration++;
+                room.vocabularyQuestionIds = null;
                 room.loadingQuestions = false;
                 cancelPreloadTimer(room.code);
                 cancelLobbyExpirationTimer(room.code);
@@ -1521,7 +1517,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.settings.topicNames = requestedTopicNames;
                 room.ownerUserId = resolvedOwnerUserId;
 
-                if (topicsChanged) {
+                if (topicsChanged || room.preloadError) {
                     resetTopicPreloadLocked(room);
                     schedulePreload(room.code, 0L);
                 }
@@ -6907,6 +6903,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.nextPreloadPage = 1;
         room.totalLessonWords = 0;
         room.exerciseQuestionPlan = null;
+        room.vocabularyQuestionIds = null;
         room.loadingQuestions = false;
         room.allQuestionsLoaded = false;
         room.preloadError = false;
@@ -6937,6 +6934,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int pageIndex;
         Long ownerUserId;
         List<Long> topicIds;
+        List<Long> vocabularyIds;
         BattleExercisePreload.Plan exercisePlan;
 
         synchronized (room) {
@@ -6959,6 +6957,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.preloadErrorMessage = null;
 
             exercisePlan = room.exerciseQuestionPlan;
+            vocabularyIds = room.vocabularyQuestionIds;
             pageIndex = room.nextPreloadPage;
             ownerUserId = room.ownerUserId;
             topicIds =
@@ -6967,7 +6966,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
         }
 
-        Page<QuestionForGamesDto> page = null;
+        List<QuestionForGamesDto> vocabularyCards = null;
+        int endOfBatch = 0;
         List<BattleExerciseQuestions.Turn> exerciseTurns = null;
         Exception loadException = null;
 
@@ -6975,8 +6975,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (exercisePlan != null) {
                 exerciseTurns = exercisePreload.loadBatch(exercisePlan, (pageIndex - 1) * PRELOAD_BATCH_SIZE, PRELOAD_BATCH_SIZE);
             } else {
-                QuestionDto searchDto = buildQuestionSearchDto(ownerUserId, topicIds);
-                page = questionService.getPageObjectForGames(searchDto, pageIndex, PRELOAD_BATCH_SIZE);
+                if (vocabularyIds == null) { vocabularyIds = vocabularyPreload.plan(ownerUserId, topicIds); }
+                int offset = (pageIndex - 1) * PRELOAD_BATCH_SIZE;
+                endOfBatch = Math.min(offset + PRELOAD_BATCH_SIZE, vocabularyIds.size());
+                vocabularyCards = vocabularyPreload.loadBatch(ownerUserId, vocabularyIds.subList(offset, endOfBatch));
             }
         } catch (Exception exception) {
             loadException = exception;
@@ -6992,6 +6994,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             room.loadingQuestions = false;
+            if (exercisePlan == null && vocabularyIds != null) { room.vocabularyQuestionIds = vocabularyIds; }
 
             if (loadException != null) {
                 room.preloadRetryCount += 1;
@@ -7001,11 +7004,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     nextDelay = 700L * room.preloadRetryCount;
                 } else {
                     room.preloadError = true;
-                    if (exercisePlan != null) {
-                        room.preloadErrorMessage = invalidExercise ? loadException.getMessage()
-                                : "Chưa tải được câu hỏi. Bấm Lưu mode để tải lại.";
-                        if (!invalidExercise) { LOG.warn("Could not load Battle exercises for room {}", code, loadException); }
-                    }
+                    room.preloadErrorMessage = invalidExercise ? loadException.getMessage()
+                            : "Chưa tải được câu hỏi. Bấm Lưu mode để tải lại.";
+                    if (!invalidExercise) { LOG.warn("Could not preload Battle questions for room {}", code, loadException); }
                 }
             } else if (exercisePlan != null) {
                 room.preloadRetryCount = 0;
@@ -7017,56 +7018,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             } else {
                 room.preloadRetryCount = 0;
 
-                List<QuestionForGamesDto> content =
-                        page != null &&
-                        page.getContent() != null
-                                ? page.getContent()
-                                : new ArrayList<QuestionForGamesDto>();
-
-                if (page != null) {
-                    long total =
-                            page.getTotalElements();
-
-                    room.totalLessonWords =
-                            total > Integer.MAX_VALUE
-                                    ? Integer.MAX_VALUE
-                                    : (int) total;
-                }
-
-                List<Long> newIds =
-                        appendRawQuestionsLocked(
-                            room,
-                            content
-                        );
-
-                List<Long> preparedNewIds =
-                        prepareQuestionBatchLocked(
-                            room,
-                            newIds
-                        );
-
-                appendNewWordsToCountdownPlayersLocked(
-                        room,
-                        preparedNewIds
-                );
-
+                room.totalLessonWords = vocabularyIds.size();
+                List<Long> newIds = appendRawQuestionsLocked(room, vocabularyCards);
+                List<Long> preparedNewIds = prepareQuestionBatchLocked(room, newIds);
+                appendNewWordsToCountdownPlayersLocked(room, preparedNewIds);
                 room.nextPreloadPage += 1;
 
-                if (
-                    content.isEmpty() ||
-                    content.size() <
-                        PRELOAD_BATCH_SIZE ||
-                    (
-                        room.totalLessonWords > 0 &&
-                        room.rawQuestions.size() >=
-                            room.totalLessonWords
-                    )
-                ) {
-                    room.allQuestionsLoaded = true;
-
-                    prepareMissingQuestionsLocked(
-                            room
-                    );
+                room.allQuestionsLoaded = endOfBatch == vocabularyIds.size();
+                if (room.allQuestionsLoaded) {
+                    room.vocabularyQuestionIds = null;
+                    room.totalLessonWords = room.rawQuestions.size();
+                    prepareMissingQuestionsLocked(room);
                 } else {
                     scheduleNext = true;
                 }
@@ -7078,54 +7040,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         broadcastGeneric(room);
-    }
-
-
-    private QuestionDto buildQuestionSearchDto(
-            Long ownerUserId,
-            List<Long> topicIds) {
-
-        QuestionDto searchDto =
-                new QuestionDto();
-
-        searchDto.setUpper(100);
-        searchDto.setLower(0);
-        searchDto.setStatus(3);
-        searchDto.setUserId(ownerUserId);
-
-        QuestionTypeDto type =
-                new QuestionTypeDto();
-
-        type.setId(6L);
-
-        searchDto.setQuestionType(type);
-
-        List<QuestionTopicDto> wrappers =
-                new ArrayList<QuestionTopicDto>();
-
-        for (Long topicId : topicIds) {
-            if (topicId == null) {
-                continue;
-            }
-
-            TopicDto topic =
-                    new TopicDto();
-
-            topic.setId(topicId);
-
-            QuestionTopicDto wrapper =
-                    new QuestionTopicDto();
-
-            wrapper.setTopic(topic);
-
-            wrappers.add(wrapper);
-        }
-
-        searchDto.setQuestionTopics(
-                wrappers
-        );
-
-        return searchDto;
     }
 
 
@@ -7175,10 +7089,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Long> preparedIds =
                 new ArrayList<Long>();
 
-        if (ids == null) {
-            return preparedIds;
-        }
-
+        if (ids.isEmpty()) { return preparedIds; }
+        List<QuestionForGamesDto> source = new ArrayList<>(room.rawQuestions.values());
         for (Long id : ids) {
             QuestionForGamesDto parent =
                     room.rawQuestions.get(id);
@@ -7186,7 +7098,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             QuestionState question =
                     buildQuestion(
                         parent,
-                        room.rawQuestions
+                        source
                     );
 
             if (question == null) {
@@ -7207,7 +7119,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void prepareMissingQuestionsLocked(
             RoomState room) {
-
+        if (room.rawQuestions.size() == room.preparedQuestions.size()) { return; }
+        List<QuestionForGamesDto> source = new ArrayList<>(room.rawQuestions.values());
         for (
             Map.Entry<Long, QuestionForGamesDto> entry :
                 room.rawQuestions.entrySet()
@@ -7222,7 +7135,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             QuestionState question =
                     buildQuestion(
                         entry.getValue(),
-                        room.rawQuestions
+                        source
                     );
 
             if (question != null) {
@@ -7320,23 +7233,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private QuestionState buildQuestion(
             QuestionForGamesDto parent,
-            Map<Long, QuestionForGamesDto> sourceMap) {
+            List<QuestionForGamesDto> source) {
 
         if (
             parent == null ||
             parent.getId() == null ||
             isBlank(parent.getQuestion()) ||
             isBlank(parent.getMotherTongue()) ||
-            sourceMap == null ||
-            sourceMap.size() < 4
+            source.size() < 4
         ) {
             return null;
         }
-
-        List<QuestionForGamesDto> source =
-                new ArrayList<QuestionForGamesDto>(
-                    sourceMap.values()
-                );
 
         String correctText =
                 clean(parent.getMotherTongue());
@@ -9487,6 +9394,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<Long>();
 
         int nextPreloadPage = 1;
+        List<Long> vocabularyQuestionIds;
         int totalLessonWords = 0;
 
         boolean loadingQuestions = false;

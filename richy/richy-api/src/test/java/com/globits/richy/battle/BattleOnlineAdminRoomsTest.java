@@ -185,10 +185,14 @@ public class BattleOnlineAdminRoomsTest {
     @Test public void inFlightPreloadCannotRepopulateOrScheduleWorkAfterTermination() throws Exception {
         Object room=room("LOAD1","LOBBY","CLASSIC");
         CountDownLatch fetching=new CountDownLatch(1),release=new CountDownLatch(1);
-        com.globits.richy.service.QuestionService questions=mock(com.globits.richy.service.QuestionService.class);
-        when(questions.getPageObjectForGames(any(QuestionDto.class),anyInt(),anyInt())).thenAnswer(call->{
-            fetching.countDown();assertTrue(release.await(2,TimeUnit.SECONDS));return new org.springframework.data.domain.PageImpl<QuestionForGamesDto>(Collections.emptyList());
-        });set(service,"questionService",questions);
+        BattleVocabularyPreload questions = mock(BattleVocabularyPreload.class);
+        when(questions.plan(any(), anyList())).thenReturn(Collections.singletonList(11L));
+        when(questions.loadBatch(any(), anyList())).thenAnswer(call -> {
+            fetching.countDown();
+            assertTrue(release.await(2, TimeUnit.SECONDS));
+            return Collections.singletonList(new QuestionForGamesDto(11L, "word", null, "nghĩa", "B2"));
+        });
+        set(service, "vocabularyPreload", questions);
         Thread worker=new Thread(()->ReflectionTestUtils.invokeMethod(service,"loadNextPreloadBatch",room,0L));
         try {
             worker.start();assertTrue(fetching.await(1,TimeUnit.SECONDS));service.terminateRoomAsAdmin("LOAD1");
@@ -197,6 +201,48 @@ public class BattleOnlineAdminRoomsTest {
         assertTrue(((Map<?,?>)get(room,"preparedQuestions")).isEmpty());assertTrue(((Map<?,?>)get(room,"rawQuestions")).isEmpty());
         assertFalse(((Map<?,?>)get(service,"preloadTimers")).containsKey("LOAD1"));
         verify(messaging,times(1)).convertAndSend(eq("/topic/battle-online/room/LOAD1"),any(BattleOnlineRoomDto.class));
+    }
+
+    @Test public void vocabularyPreloadPlansOnceAndRequestsElevenBatchesFor527Cards() throws Exception {
+        Object room = room("VOCAB", "LOBBY", "CLASSIC");
+        List<Long> topics = Arrays.asList(9L, 10L);
+        set(get(room, "settings"), "topicIds", topics);
+        set(room, "ownerUserId", 26L);
+        ScheduledExecutorService scheduler = mock(ScheduledExecutorService.class);
+        Queue<Runnable> waiting = new ArrayDeque<>();
+        when(scheduler.schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS))).thenAnswer(call -> {
+            waiting.add((Runnable) call.getArguments()[0]);
+            return mock(ScheduledFuture.class);
+        });
+        ((ScheduledExecutorService) get(service, "scheduler")).shutdownNow();
+        set(service, "scheduler", scheduler);
+
+        List<Long> ids = new ArrayList<>();
+        for (long id = 1; id <= 527; id++) { ids.add(id); }
+        BattleVocabularyPreload vocabulary = mock(BattleVocabularyPreload.class);
+        when(vocabulary.plan(26L, topics)).thenReturn(ids);
+        List<Integer> batchSizes = new ArrayList<>();
+        when(vocabulary.loadBatch(eq(26L), anyList())).thenAnswer(call -> {
+            @SuppressWarnings("unchecked")
+            List<Long> batch = (List<Long>) call.getArguments()[1];
+            batchSizes.add(batch.size());
+            List<QuestionForGamesDto> cards = new ArrayList<>();
+            for (Long id : batch) {
+                cards.add(new QuestionForGamesDto(id, "word " + id, null, "meaning " + id, "B2"));
+            }
+            return cards;
+        });
+        set(service, "vocabularyPreload", vocabulary);
+        ReflectionTestUtils.invokeMethod(service, "schedulePreload", "VOCAB", 0L);
+        for (int step = 1; step <= 11; step++) {
+            waiting.remove().run();
+            assertEquals(Math.min(step * 50, 527), ((Map<?, ?>) get(room, "preparedQuestions")).size());
+        }
+        verify(vocabulary, times(1)).plan(26L, topics);
+        assertEquals(Arrays.asList(50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 27), batchSizes);
+        assertTrue(waiting.isEmpty());
+        assertTrue((Boolean) get(room, "allQuestionsLoaded"));
+        assertNull(get(room, "vocabularyQuestionIds"));
     }
 
     @Test public void restRoutesRequireAdministratorAndReturnOnlyRoomSummaries() throws Exception {
