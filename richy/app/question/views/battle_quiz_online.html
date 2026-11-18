@@ -1096,6 +1096,17 @@
         </span>
     </div>
 
+    <!-- Quyền trượng thiên sứ: cả đội thấy màn hình loé vàng, cây quyền trượng giáng xuống rồi mờ dần. -->
+    <div class="demon-holy-overlay" role="status"
+         ng-if="vm.room.status === 'PLAYING' && vm.isDemonDefenseMode() && !vm.isHost() && vm.isDemonHolyActive(vm.getMyDemonTeam())">
+        <span class="demon-holy-overlay-rays" aria-hidden="true"></span>
+        <div class="demon-holy-overlay-card">
+            <img src="assets/images/battle-demons/angel-scepter.svg" alt="" draggable="false">
+            <strong>👼 QUYỀN TRƯỢNG THIÊN SỨ!</strong>
+            <small>{{vm.getDemonPlayerName(vm.getMyDemonTeam().holyUsername)}} giáng 50 máu quỷ</small>
+        </div>
+    </div>
+
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-question-layout': vm.isClassicMode() && (!vm.isSpectator() || vm.isClassicHostPreview())}">
@@ -3026,6 +3037,48 @@
     .demon-lightning-glow { stroke: #55d5ff; stroke-width: 2.4; opacity: .75; }
     .demon-lightning-bolt { stroke: #e9fbff; stroke-width: .85; }
     .demon-shot-layer .is-lightning circle { fill: #b7f6ff; }
+    /* ===== Quyền trượng thiên sứ ===== */
+    .demon-shot-layer .is-holy line { stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .demon-holy-pillar { stroke: #ffd54a; stroke-width: 26px; opacity: .45; }
+    .demon-holy-core { stroke: #fffbe6; stroke-width: 6px; }
+    .demon-shot-layer .is-holy circle { fill: #fff3b0; filter: drop-shadow(0 0 3px #ffd54a); }
+    .demon-holy-strike { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 6px; text-align: center; animation: demon-holy-fade 2.6s ease-out both; }
+    .demon-holy-light { position: absolute; top: 0; bottom: 0; left: 50%; width: 46%; transform: translateX(-50%);
+        background: linear-gradient(180deg, rgba(255,246,194,.95), rgba(255,213,74,.35) 70%, rgba(255,213,74,0));
+        filter: blur(6px); animation: demon-holy-beam 2.6s ease-out both; }
+    .demon-holy-ring { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+        border: 4px solid #ffe27a; box-shadow: 0 0 24px #ffd54a; animation: demon-holy-ring 1.4s ease-out 2 both; }
+    .demon-holy-strike img { position: relative; width: 96px; height: 125px; filter: drop-shadow(0 0 14px #ffe27a);
+        animation: demon-holy-descend 2.6s cubic-bezier(.2,1.2,.4,1) both; }
+    .demon-holy-strike strong { position: relative; padding: 4px 10px; border-radius: 8px; background: rgba(90,58,4,.85);
+        color: #ffe27a; font-size: 16px; font-weight: 900; letter-spacing: .5px; text-shadow: 0 0 8px #ffb300; }
+    .demon-holy-strike small { position: relative; color: #fff8dc; font-size: 12px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+    .demon-holy-overlay { position: fixed; inset: 0; z-index: 1045; pointer-events: none; display: flex; align-items: center;
+        justify-content: center; animation: demon-holy-fade 2.6s ease-out both; }
+    .demon-holy-overlay::before { content: ''; position: absolute; inset: 0;
+        background: radial-gradient(circle at 50% 45%, rgba(255,246,194,.85), rgba(255,213,74,.35) 45%, rgba(255,213,74,0) 75%);
+        animation: demon-holy-flash 2.6s ease-out both; }
+    .demon-holy-overlay-rays { position: absolute; left: 50%; top: 45%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax;
+        background: repeating-conic-gradient(rgba(255,226,122,.28) 0 6deg, rgba(255,226,122,0) 6deg 18deg);
+        animation: demon-holy-spin 2.6s linear both; }
+    .demon-holy-overlay-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+    .demon-holy-overlay-card img { width: 150px; height: 195px; filter: drop-shadow(0 0 22px #ffe27a);
+        animation: demon-holy-descend 2.6s cubic-bezier(.2,1.2,.4,1) both; }
+    .demon-holy-overlay-card strong { padding: 8px 16px; border-radius: 12px; background: rgba(90,58,4,.88); color: #ffe27a;
+        font-size: 24px; font-weight: 900; letter-spacing: .6px; text-shadow: 0 0 10px #ffb300; }
+    .demon-holy-overlay-card small { padding: 3px 10px; border-radius: 8px; background: rgba(255,255,255,.85); color: #7a4a00; font-size: 14px; font-weight: 800; }
+    @keyframes demon-holy-fade { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes demon-holy-flash { 0% { opacity: 0; } 10% { opacity: 1; } 40% { opacity: .55; } 100% { opacity: 0; } }
+    @keyframes demon-holy-beam { 0% { transform: translateX(-50%) scaleY(0); transform-origin: top; } 25% { transform: translateX(-50%) scaleY(1); } 100% { transform: translateX(-50%) scaleY(1); opacity: .2; } }
+    @keyframes demon-holy-descend { 0% { transform: translateY(-60vh) scale(.6) rotate(-12deg); opacity: 0; } 30% { transform: translateY(0) scale(1.12) rotate(4deg); opacity: 1; }
+        45% { transform: translateY(0) scale(1) rotate(0); } 100% { transform: translateY(-6px) scale(1); } }
+    @keyframes demon-holy-ring { 0% { transform: scale(.2); opacity: 1; } 100% { transform: scale(5); opacity: 0; } }
+    @keyframes demon-holy-spin { from { transform: rotate(0); } to { transform: rotate(40deg); } }
+    @media (prefers-reduced-motion: reduce) {
+        .demon-holy-strike, .demon-holy-strike *, .demon-holy-overlay, .demon-holy-overlay *, .demon-holy-overlay::before { animation-duration: .01s !important; }
+        .demon-holy-overlay, .demon-holy-strike { animation: none; }
+    }
     .demon-shot-layer g { animation: demon-shot-flash .7s ease-out both; }
     @keyframes demon-shot-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
     .demon-gun-row { position: absolute; top: 83%; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-start; z-index: 4; background: #122338; }

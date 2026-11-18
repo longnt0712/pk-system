@@ -58,9 +58,12 @@
                 </span>
                 <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                     <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)"
-                       ng-class="[shot.lightning ? 'is-lightning' : 'is-beam', 'tier-' + vm.getDemonShotTier(team, shot.username)]">
-                        <path ng-if="shot.lightning" class="demon-lightning-glow" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
-                        <path ng-if="shot.lightning" class="demon-lightning-bolt" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
+                       ng-class="[shot.holy ? 'is-holy' : shot.lightning ? 'is-lightning' : 'is-beam', 'tier-' + vm.getDemonShotTier(team, shot.username)]">
+                        <path ng-if="shot.lightning && !shot.holy" class="demon-lightning-glow" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
+                        <path ng-if="shot.lightning && !shot.holy" class="demon-lightning-bolt" ng-attr-d="{{vm.getDemonLightningPath(team, shot)}}" />
+                        <!-- Quyền trượng thiên sứ: cột sáng vàng giáng thẳng từ trời xuống con quỷ bị trúng -->
+                        <line ng-if="shot.holy" class="demon-holy-pillar" x1="50" y1="0" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
+                        <line ng-if="shot.holy" class="demon-holy-core" x1="50" y1="0" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
                         <line ng-if="!shot.lightning" class="demon-beam-glow" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="86" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
                         <line ng-if="!shot.lightning" class="demon-beam-core" ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="86" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
                         <circle cx="50" ng-attr-cy="{{7 + shot.progress * 73}}" r="2.6" ng-if="shot.hit" />
@@ -109,6 +112,13 @@
                     </div>
                 </div>
                 <div class="demon-team-alert" ng-if="team.danger && !vm.demonArena.finished">🚨 SẮP BỊ CHẠM!</div>
+                <div class="demon-holy-strike" role="status" ng-if="vm.isDemonHolyActive(team) && !vm.demonArena.finished">
+                    <span class="demon-holy-light" aria-hidden="true"></span>
+                    <span class="demon-holy-ring" aria-hidden="true"></span>
+                    <img src="assets/images/battle-demons/angel-scepter.svg" alt="" draggable="false">
+                    <strong>👼 QUYỀN TRƯỢNG THIÊN SỨ!</strong>
+                    <small>{{vm.getDemonPlayerName(team.holyUsername)}} giáng 50 máu quỷ</small>
+                </div>
                 <div class="demon-rescue-callout" role="status" ng-if="team.rescueAt && vm.demonClock - team.rescueAt < 2200 && !vm.demonArena.finished">
                     ✨ CỨU ĐỘI!<strong>{{vm.getDemonPlayerName(team.rescueUsername)}}</strong>
                 </div>

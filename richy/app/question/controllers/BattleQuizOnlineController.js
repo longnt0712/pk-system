@@ -1289,7 +1289,18 @@
                 return reward.hits ? 'Sét đánh trúng ' + reward.hits + ' máu quỷ · +' + reward.points + ' điểm'
                     : 'Sét đã bắn, hiện chưa có quỷ trong làn';
             }
+            if (reward.prize === 'ANGEL_SCEPTER') {
+                return '👼 QUYỀN TRƯỢNG THIÊN SỨ! Giáng ' + reward.hits + ' máu quỷ · +' + reward.points + ' điểm';
+            }
             return 'Túi này trống';
+        };
+        // Angel Scepter effect: holyAt is the lane's last strike in game time (same clock as demonClock).
+        var DEMON_HOLY_EFFECT_MS = 2600;
+        vm.isDemonHolyActive = function (team) {
+            var at = team && Number(team.holyAt);
+            if (!at) { return false; }
+            var age = vm.demonClock - at;
+            return age >= -500 && age < DEMON_HOLY_EFFECT_MS;
         };
         vm.showNextDemonBag = function () {
             clearDemonBagReceipt();

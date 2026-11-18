@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" role="img" aria-label="Quyền trượng thiên sứ">
+  <defs>
+    <linearGradient id="as-gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b8790f"/>
+      <stop offset=".45" stop-color="#ffe27a"/>
+      <stop offset="1" stop-color="#c98a14"/>
+    </linearGradient>
+    <linearGradient id="as-gem" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8fbff"/>
+      <stop offset=".55" stop-color="#7fd7ff"/>
+      <stop offset="1" stop-color="#3b8fe0"/>
+    </linearGradient>
+    <linearGradient id="as-wing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fff3cf"/>
+    </linearGradient>
+    <radialGradient id="as-glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff6c2" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#ffd54a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="78" r="70" fill="url(#as-glow)"/>
+  <!-- halo -->
+  <ellipse cx="100" cy="22" rx="30" ry="9" fill="none" stroke="#ffd54a" stroke-width="6"/>
+  <ellipse cx="100" cy="22" rx="30" ry="9" fill="none" stroke="#fff8d6" stroke-width="2"/>
+  <!-- wings -->
+  <g fill="url(#as-wing)" stroke="#d9a520" stroke-width="3" stroke-linejoin="round">
+    <path d="M86 78 C60 50 30 46 10 58 C26 62 34 70 38 78 C24 78 16 86 12 96 C30 90 46 92 58 98 C48 102 42 110 40 120 C58 110 74 104 86 96 Z"/>
+    <path d="M114 78 C140 50 170 46 190 58 C174 62 166 70 162 78 C176 78 184 86 188 96 C170 90 154 92 142 98 C152 102 158 110 160 120 C142 110 126 104 114 96 Z"/>
+  </g>
+  <!-- staff -->
+  <rect x="92" y="96" width="16" height="150" rx="8" fill="url(#as-gold)" stroke="#8a5a08" stroke-width="2"/>
+  <rect x="86" y="140" width="28" height="9" rx="4.5" fill="url(#as-gold)" stroke="#8a5a08" stroke-width="2"/>
+  <rect x="86" y="196" width="28" height="9" rx="4.5" fill="url(#as-gold)" stroke="#8a5a08" stroke-width="2"/>
+  <circle cx="100" cy="248" r="9" fill="url(#as-gold)" stroke="#8a5a08" stroke-width="2"/>
+  <!-- crystal head -->
+  <path d="M100 40 L124 76 L100 112 L76 76 Z" fill="url(#as-gem)" stroke="#2a6fb8" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 40 L100 112 M76 76 L124 76" stroke="#ffffff" stroke-opacity=".7" stroke-width="2"/>
+  <path d="M90 58 L96 50" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <!-- sparkles -->
+  <g fill="#fff6c9">
+    <path d="M40 30 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z"/>
+    <path d="M162 26 l2.4 5.6 5.6 2.4 -5.6 2.4 -2.4 5.6 -2.4 -5.6 -5.6 -2.4 5.6 -2.4z"/>
+    <path d="M150 136 l2 4.6 4.6 2 -4.6 2 -2 4.6 -2 -4.6 -4.6 -2 4.6 -2z"/>
+  </g>
+</svg>

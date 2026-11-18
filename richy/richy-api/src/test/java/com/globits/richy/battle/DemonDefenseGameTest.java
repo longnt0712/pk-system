@@ -73,6 +73,49 @@ public class DemonDefenseGameTest {
         assertEquals(0, DemonDefenseGame.wrongAnswerStreak(14));
     }
 
+    /** Opens one bag for alice (lane 1) at the given elapsed time with the given prize roll. */
+    private DemonDefenseGame.BagReward openAt(DemonDefenseGame game, long elapsed, int prizeRoll) {
+        game.rollBag("alice", roll(0));
+        return game.openBag("alice", game.bagForPlayer("alice").id, 1, START + elapsed, roll(prizeRoll));
+    }
+    private DemonDefenseGame dangerGame(int members) {
+        DemonDefenseGame game = game(members);
+        Map<String, Integer> roster = new LinkedHashMap<String, Integer>();
+        for (int i = 0; i < members; i++) { roster.put(i == 0 ? "alice" : "a" + i, 1); roster.put("b" + i, 2); }
+        game.syncPlayers(roster, values(), START);
+        game.advance(START + 23000L); // the 3 s demon is at 77% of the path: past the danger line
+        assertTrue(team(game, 1, 23000L, false).danger);
+        return game;
+    }
+
+    @Test public void angelScepterOnlyAppearsInDangerForThirtyPercentAndStrikesFiftyHealth() {
+        // Not in danger: the usual table, roll 0 is a permanent gun.
+        DemonDefenseGame calm = game(1);
+        calm.syncPlayers(values("alice", "1", "bob", "2"), values("alice", "0", "bob", "0"), START);
+        assertEquals(DemonDefenseGame.BagPrize.PERMANENT_GUN, openAt(calm, 4000L, 0).prize);
+
+        // In danger: rolls 0-29 are the Angel Scepter.
+        for (int prizeRoll : new int[] {0, 29}) {
+            DemonDefenseGame game = dangerGame(4);
+            int healthBefore = 0;
+            for (DemonDefenseGame.Demon demon : team(game, 1, 23000L, true).demons) { healthBefore += demon.health; }
+            DemonDefenseGame.BagReward reward = openAt(game, 23000L, prizeRoll);
+            assertEquals(DemonDefenseGame.BagPrize.ANGEL_SCEPTER, reward.prize);
+            assertEquals(Math.min(50, healthBefore), reward.hits);
+            assertEquals(reward.hits, reward.points); // every demon in the lane has full health, so all hits are kills
+            DemonDefenseGame.Team lane = team(game, 1, 23000L, true);
+            assertEquals(START + 23000L, lane.holyAt); assertEquals("alice", lane.holyUsername);
+            assertFalse(lane.shots.isEmpty());
+            for (DemonDefenseGame.Shot shot : lane.shots) { assertTrue(shot.holy); assertTrue(shot.lightning); }
+            assertFalse(lane.danger); // the strike cleared the demon past the line
+            assertEquals(0L, team(game, 2, 23000L, false).holyAt);
+            assertEquals(0, game.bagForPlayer("alice").count);
+        }
+        // The other 70% keeps the usual proportions: 30 -> gun, 99 -> empty.
+        assertEquals(DemonDefenseGame.BagPrize.PERMANENT_GUN, openAt(dangerGame(4), 23000L, 30).prize);
+        assertEquals(DemonDefenseGame.BagPrize.EMPTY, openAt(dangerGame(4), 23000L, 99).prize);
+    }
+
     @Test public void gunRewardsStackAndEachTemporaryGunExpiresAtTwentySeconds() {
         DemonDefenseGame game = game(1);
         game.syncPlayers(values("alice", "1", "bob", "2"), values("alice", "0", "bob", "0"), START);

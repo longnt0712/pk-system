@@ -19,6 +19,9 @@ public final class DemonDefenseGame {
     public static final int BAG_CHOICES = 3;
     private static final long TEMPORARY_GUN_MS = 20000L;
     private static final int LIGHTNING_DAMAGE = 5;
+    /** While a demon is past the danger line, 30% of bags hold the Angel Scepter: 50 damage to the nearest demons. */
+    public static final int ANGEL_SCEPTER_DANGER_PERCENT = 30;
+    public static final int ANGEL_SCEPTER_DAMAGE = 50;
     /** Level 1 needs 50 points (team of average size); each later level needs 20 more than the previous one. */
     public static final int POINTS_PER_LEVEL = 50;
     public static final int POINTS_PER_LEVEL_INCREMENT = 20;
@@ -105,6 +108,20 @@ public final class DemonDefenseGame {
         int roll = random.nextInt(100);
         BagPrize prize;
         ShotResult strike = null;
+        TeamState team = teams.get(player.teamNumber);
+        boolean danger = team != null && inDanger(team, now);
+        if (danger) {
+            if (roll < ANGEL_SCEPTER_DANGER_PERCENT) {
+                player.lastBagReward = new BagReward(bagId, choice, BagPrize.ANGEL_SCEPTER,
+                        fire(team, username, ANGEL_SCEPTER_DAMAGE, now, true, true));
+                team.holyAt = now; team.holyUsername = username;
+                player.bagId = --player.bagCount > 0 ? UUID.randomUUID().toString() : null;
+                player.bagVersion++;
+                return player.lastBagReward;
+            }
+            // The other 70% keeps the usual prize proportions.
+            roll = (roll - ANGEL_SCEPTER_DANGER_PERCENT) * 100 / (100 - ANGEL_SCEPTER_DANGER_PERCENT);
+        }
         if (roll < 20) {
             prize = BagPrize.PERMANENT_GUN;
             player.permanentGuns++;
@@ -268,7 +285,17 @@ public final class DemonDefenseGame {
         return fire(team, username, bulletsForPlayer(username, streak, now, carry), now, false);
     }
 
+    private static boolean inDanger(TeamState team, long now) {
+        for (Enemy enemy : team.demons) { if (enemy.progress(now) >= DANGER_PROGRESS) { return true; } }
+        return false;
+    }
+
     private ShotResult fire(TeamState team, String username, int bullets, long now, boolean lightning) {
+        return fire(team, username, bullets, now, lightning, false);
+    }
+
+    /** lightning: each strike deals as much of the remaining damage as the target has health. holy: Angel Scepter look. */
+    private ShotResult fire(TeamState team, String username, int bullets, long now, boolean lightning, boolean holy) {
         int hits = 0, kills = 0, points = 0;
         boolean rescued = false;
         int remaining = bullets;
@@ -282,7 +309,7 @@ public final class DemonDefenseGame {
             }
             double progress = nearest == null ? 0D : nearest.progress(now);
             if (nearest != null || remaining == bullets || !lightning) {
-                team.shots.add(new Shot(++nextShotId, username, progress, now, nearest != null, lightning));
+                team.shots.add(new Shot(++nextShotId, username, progress, now, nearest != null, lightning, holy));
             }
             if (nearest == null) {
                 if (lightning) { break; }
@@ -387,9 +414,9 @@ public final class DemonDefenseGame {
     private static final class TeamState {
         final int number;
         int memberCount;
-        long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches;
+        long nextSpawnAt, nextDemonId, eliminatedAt, rescueAt, spawnBatches, holyAt;
         int kills, points, levelPoints, rescues, bossCount;
-        String rescueUsername;
+        String rescueUsername, holyUsername;
         final List<Enemy> demons = new ArrayList<Enemy>();
         final List<Shot> shots = new ArrayList<Shot>();
         TeamState(int number, int memberCount, long at) {
@@ -440,7 +467,9 @@ public final class DemonDefenseGame {
         public final int levelTargetPoints, pointsUntilBoss, nextBossHealth, bossCount;
         public final boolean bossActive;
         public final long eliminatedAt, rescueAt, survivedMs;
-        public final String rescueUsername;
+        /** Last Angel Scepter strike in this lane (game time) and who used it; drives the effect on every screen. */
+        public final long holyAt;
+        public final String rescueUsername, holyUsername;
         public final boolean danger;
         public final double nearestDemonProgress, nearestDemonSpeed;
         public final List<Demon> demons = new ArrayList<Demon>();
@@ -454,6 +483,7 @@ public final class DemonDefenseGame {
             for (Enemy enemy : state.demons) { anyBoss |= enemy.boss; }
             bossActive = anyBoss;
             eliminatedAt = state.eliminatedAt; rescueAt = state.rescueAt; rescueUsername = state.rescueUsername;
+            holyAt = state.holyAt; holyUsername = state.holyUsername;
             this.rank = rank;
             survivedMs = Math.max(0L, (eliminatedAt > 0L ? eliminatedAt : at) - startedAt);
             boolean inDanger = false;
@@ -488,14 +518,14 @@ public final class DemonDefenseGame {
         public final long id, at;
         public final String username;
         public final double progress;
-        public final boolean hit, lightning;
-        Shot(long id, String username, double progress, long at, boolean hit, boolean lightning) {
+        public final boolean hit, lightning, holy;
+        Shot(long id, String username, double progress, long at, boolean hit, boolean lightning, boolean holy) {
             this.id = id; this.username = username; this.progress = progress; this.at = at; this.hit = hit;
-            this.lightning = lightning;
+            this.lightning = lightning; this.holy = holy;
         }
     }
 
-    public enum BagPrize { PERMANENT_GUN, TEMPORARY_GUN, LIGHTNING, EMPTY }
+    public enum BagPrize { PERMANENT_GUN, TEMPORARY_GUN, LIGHTNING, EMPTY, ANGEL_SCEPTER }
 
     public static final class BagReward {
         public final String bagId;
