@@ -29,15 +29,17 @@
             {intention: 'các cha xứ', prayer: 'Xin Chúa ban cho các cha xứ sức khỏe, bình an và lòng nhiệt thành, để các ngài luôn yêu thương, chăm sóc và hướng dẫn chúng con đến gần Chúa hơn.', image: 'assets/images/flower-prayers-2026/10-parish-priests.jpg'},
             {intention: 'Đức Giáo Hoàng', prayer: 'Xin Chúa gìn giữ Đức Giáo Hoàng, ban cho ngài sức khỏe và ơn khôn ngoan, để ngài dẫn dắt Hội Thánh trong hiệp nhất và yêu thương.', image: 'assets/images/flower-prayers-2026/11-pope.jpg'}
         ];
-        var lastPrayerIndex = -1;
+        var lastPrayer;
         vm.flowerPrayer = null;
         vm.closeFlowerPrayer = function () { vm.flowerPrayer = null; vm.flowerPrayerTrigger = null; };
-        function showFlowerPrayer(returnFocus) {
+        function showFlowerPrayer(returnFocus, item) {
             // One reminder for overlapping successful saves; never interrupt another campaign view.
             if (vm.flowerPrayer || vm.sheetLoading || vm.rosaryGuideOpen || vm.gardenOpen || !vm.student) { return; }
-            var choices = prayerIntentions.filter(function (value, index) { return index !== lastPrayerIndex; });
-            var selected = choices[Math.floor(Math.random() * choices.length)];
-            lastPrayerIndex = prayerIntentions.indexOf(selected); vm.flowerPrayerTrigger = returnFocus; vm.flowerPrayer = selected;
+            var prayers = advent && advent.matches(vm.campaign) ? advent.prayersFor(item.name) : prayerIntentions;
+            var choices = prayers.filter(function (prayer) { return prayer !== lastPrayer; });
+            lastPrayer = choices[Math.floor(Math.random() * choices.length)];
+            vm.flowerPrayerTrigger = returnFocus;
+            vm.flowerPrayer = lastPrayer;
         }
         var serverClockOffset = 0, dayTimer;
         var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '', rosaryStudentContext = '';
@@ -473,7 +475,7 @@
                 checks[key] = response.data.completed === true;
                 if (current()) {
                     vm.savedChecks[key] = checks[key]; vm.saveNotice = 'Đã lưu hoa thiêng.';
-                    if (completed && checks[key] && !previouslySaved) { showFlowerPrayer(returnFocus); }
+                    if (completed && checks[key] && !previouslySaved) { showFlowerPrayer(returnFocus, item); }
                 }
             }, function (error) {
                 checks[key] = previouslySaved;

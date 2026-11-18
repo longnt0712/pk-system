@@ -341,6 +341,38 @@ test('each of the eleven confirmed prayer intentions uses its matching deployed 
     }
     assert.equal(seen.size,11);
 });
+test('confirmed Advent checks open the illustrated prayer for the practice that was checked', async () => {
+    const advent = adventWindow.AdventCampaign2026;
+    const campaign = {...advent.draft(), id: 25};
+    campaign.flowerItems = campaign.flowerItems.map((item, index) => ({...item, itemKey: 'practice-' + index}));
+    const expectedImages = [
+        ['tinh-thuc', 'cau-cho-viec-truyen-giao', 'loi-nguyen-belem'],
+        ['lang-nghe-loi-chua', 'ta-on-trong-thanh-le', 'cung-nhau-den-nha-chua'],
+        ['biet-nhuong-nhin', 'vang-loi-va-giup-do', 'tha-thu-va-lam-hoa'],
+        ['chia-se-yeu-thuong', 'song-that-tha', 'toa-sang-tin-mung']
+    ];
+    const day = {date: '2026-11-29'};
+    const serverTime = Date.parse(day.date + 'T05:00:00Z');
+    const prayers = new Set();
+    for (const [practice, item] of campaign.flowerItems.entries()) {
+        const images = expectedImages[practice];
+        assert.equal(advent.prayersFor(item.name).length, images.length);
+        for (const [index, slug] of images.entries()) {
+            const h = setup({campaign, studentMode: true, serverTime, clock: {now: serverTime}, windowExtras: adventWindow, prayerRandom: () => index / images.length});
+            await tick();
+            assert.equal(h.vm.flowerPrayer, null);
+            h.vm.checks[item.itemKey + ':' + day.date] = true;
+            await h.vm.toggleFlower(item, day);
+            const prayer = h.vm.flowerPrayer;
+            assert.equal(prayer.image, 'assets/images/advent-2026/prayers/' + slug + '.webp');
+            assert.ok(fs.statSync(path.join(__dirname, '..', prayer.image)).size > 0);
+            assert.ok(prayer.title && prayer.imageAlt);
+            assert.match(prayer.prayer, /^Lạy Chúa/);
+            prayers.add(prayer.prayer);
+        }
+    }
+    assert.equal(prayers.size, 12);
+});
 test('overlapping saves keep a single prayer and preserve all confirmed checkboxes',async()=>{
     const campaign={...studentCampaign,flowerItems:[{itemKey:'a',name:'Cầu nguyện'},{itemKey:'b',name:'Thánh lễ'}]},h=setup({studentMode:true,campaign});await tick();const replies=[];
     h.service.checkFlower=()=>new Promise(resolve=>replies.push(resolve));const writes=campaign.flowerItems.map(item=>{h.vm.checks[item.itemKey+':2026-10-01']=true;return h.vm.toggleFlower(item,{date:'2026-10-01'});});
