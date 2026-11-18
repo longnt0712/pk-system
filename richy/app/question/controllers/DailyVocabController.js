@@ -109,6 +109,9 @@
             applied: false
         };
         vm.assignmentSelectionLocked = !!vm.assignmentLaunch.taskId;
+        var practiceLaunch = !vm.assignmentLaunch.topicId && !vm.assignmentSelectionLocked
+            && /^[0-9]+$/.test($stateParams.practiceTestId || '') && /^[0-9]+$/.test($stateParams.practiceTopicId || '');
+        var practiceLesson = null;
 
         // =====================================================
         // USER
@@ -696,7 +699,9 @@
             return true;
         }
 
+        var topicRequestGeneration = 0;
         vm.getTopics = function () {
+            var generation = ++topicRequestGeneration;
             if (!vm.searchTopicDto.topicCategory) {
                 vm.topics = [];
                 return;
@@ -710,13 +715,24 @@
                 10000000
             ).then(
                 function (data) {
+                    if (generation !== topicRequestGeneration) { return; }
                     vm.topics =
                         data && data.content
                             ? data.content
                             : [];
-                    if (!applyResumeTopics()) { applyAssignedTopic(); }
+                    if (practiceLesson) {
+                        var linked = findById(vm.topics, practiceLesson.id);
+                        practiceLesson = null;
+                        if (linked) {
+                            vm.selectedTopicToSearch = [linked];
+                            vm.searchTopicChange();
+                        } else {
+                            toastr.warning('Bài từ vựng của đề hiện không có trong thư mục.');
+                        }
+                    } else if (!applyResumeTopics()) { applyAssignedTopic(); }
                 },
                 function () {
+                    if (generation !== topicRequestGeneration) { return; }
                     vm.topics = [];
                     toastr.error(
                         'Không tải được danh sách bài.',
@@ -752,6 +768,7 @@
                      * Mặc định Grade 6 giống yêu cầu hiện tại.
                      */
                     vm.searchTopicDto.topicCategory =
+                        findById(vm.topicCategories, practiceLesson && practiceLesson.topicCategory.id) ||
                         findById(vm.topicCategories, activeDailyResumeDraft && activeDailyResumeDraft.categoryId) ||
                         findById(vm.topicCategories, vm.assignmentLaunch.categoryId) ||
                         findGrade6Category(vm.topicCategories) || vm.topicCategories[0];
@@ -4178,6 +4195,27 @@
             if (vm.assignmentLaunch.invalid || vm.dailyVocabPendingResult) { return; }
             if (vm.assignmentSelectionLocked && !activeDailyResumeDraft) {
                 activeDailyResumeDraft = readActiveDailyDraft();
+            }
+            if (practiceLaunch) {
+                service.getReadingVocabularyLessons($stateParams.practiceTestId).then(function (lessons) {
+                    practiceLesson = findById(lessons, $stateParams.practiceTopicId);
+                    if (!practiceLesson) {
+                        toastr.warning('Bài từ vựng của đề hiện không khả dụng.');
+                        vm.getPageTopicCategory();
+                        return;
+                    }
+                    vm.selectedUser = findById(vm.users, practiceLesson.sourceUserId);
+                    if (!vm.selectedUser) {
+                        vm.selectedUser = {id: practiceLesson.sourceUserId, name: practiceLesson.sourceUserName};
+                        vm.users.push(vm.selectedUser);
+                    }
+                    vm.searchDto.userId = vm.searchTopicDto.userId = vm.selectedUser.id;
+                    vm.getPageTopicCategory();
+                }, function () {
+                    toastr.error('Không tải được bài từ vựng của đề.');
+                    vm.getPageTopicCategory();
+                });
+                return;
             }
             if (!activeDailyResumeDraft) { chooseActiveDailyResume(); }
             var assignedTopic = vm.assignmentLaunch.topicWithoutSharedCategory;

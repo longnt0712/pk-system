@@ -1,0 +1,65 @@
+<div class="modal-header">
+    <button type="button" class="close" ng-click="vocab.close()" ng-disabled="vocab.saving" aria-label="Đóng">&times;</button>
+    <h3 class="modal-title" id="reading-vocab-modal-title">{{vocab.editing ? 'Gắn bài từ vựng' : 'Học từ vựng'}}</h3>
+    <p class="text-muted">{{vocab.title}}</p>
+</div>
+<div class="modal-body reading-vocab-picker">
+    <p ng-if="vocab.loading" role="status">Đang tải bài từ vựng…</p>
+    <p ng-if="vocab.loadError" role="alert">{{vocab.loadError}} <button type="button" class="btn btn-link" ng-click="vocab.reload()">Thử lại</button></p>
+    <div ng-if="!vocab.editing && !vocab.loading && !vocab.loadError">
+        <div class="list-group" ng-if="vocab.selected.length">
+            <a class="list-group-item" ng-repeat="lesson in vocab.selected track by lesson.id"
+               ng-href="{{vocab.lessonUrl(lesson)}}" ng-click="vocab.close()">
+                <i class="fa fa-book-open" aria-hidden="true"></i> <strong>{{lesson.name}}</strong>
+                <div class="text-muted">{{lesson.topicCategory.name}}</div>
+            </a>
+        </div>
+        <p class="text-muted" ng-if="!vocab.selected.length">Đề này chưa có bài từ vựng dành cho bạn.</p>
+    </div>
+    <div ng-if="vocab.editing && !vocab.loading && !vocab.loadError">
+        <p ng-if="vocab.loadingCategories" role="status">Đang tải thư mục…</p>
+        <p ng-if="vocab.categoryError" role="alert">{{vocab.categoryError}}</p>
+        <div class="form-group">
+            <label id="reading-vocab-folder-label">Thư mục từ vựng</label>
+            <ui-select ng-model="vocab.category" on-select="vocab.categoryChanged()" ng-disabled="vocab.loadingCategories || vocab.saving"
+                       aria-labelledby="reading-vocab-folder-label">
+                <ui-select-match placeholder="Tìm thư mục…">{{$select.selected.path}}</ui-select-match>
+                <ui-select-choices repeat="folder in vocab.categories | filter:{path:$select.search}">{{folder.path}}</ui-select-choices>
+            </ui-select>
+        </div>
+        <div ng-if="vocab.category" class="form-group">
+            <label for="reading-vocab-search">Bài trong thư mục</label>
+            <input id="reading-vocab-search" class="form-control" type="search" ng-model="vocab.search"
+                   ng-model-options="{debounce: 260}" ng-change="vocab.loadOptions(1)" ng-disabled="vocab.saving" placeholder="Tìm theo tên bài…">
+            <p ng-if="vocab.loadingOptions" role="status">Đang tìm bài từ vựng…</p>
+            <p ng-if="vocab.optionsError" role="alert">{{vocab.optionsError}} <button type="button" class="btn btn-link" ng-click="vocab.loadOptions(1)">Thử lại</button></p>
+            <p ng-if="!vocab.loadingOptions && !vocab.optionsError && !vocab.options.length" class="text-muted">Không tìm thấy bài từ vựng trong thư mục.</p>
+            <div ng-if="!vocab.loadingOptions" class="reading-vocab-picker__options list-group">
+                <label ng-repeat="lesson in vocab.options track by lesson.id" class="list-group-item">
+                    <input type="checkbox" ng-checked="vocab.isSelected(lesson)" ng-click="vocab.toggle(lesson)" ng-disabled="vocab.saving">
+                    {{lesson.name}} <small class="text-muted">{{lesson.sourceUserName}}</small>
+                </label>
+            </div>
+            <div class="reading-vocab-picker__pages" ng-if="!vocab.loadingOptions && !vocab.optionsError && vocab.totalPages > 1">
+                <button type="button" class="btn btn-default btn-sm" ng-disabled="vocab.page <= 1" ng-click="vocab.loadOptions(vocab.page - 1)">Trang trước</button>
+                <span>{{vocab.page}} / {{vocab.totalPages}}</span>
+                <button type="button" class="btn btn-default btn-sm" ng-disabled="vocab.page >= vocab.totalPages" ng-click="vocab.loadOptions(vocab.page + 1)">Trang sau</button>
+            </div>
+        </div>
+        <strong>Đã chọn {{vocab.selected.length}} bài</strong>
+        <ul class="list-unstyled reading-vocab-picker__selected" ng-if="vocab.selected.length">
+            <li ng-repeat="lesson in vocab.selected track by lesson.id">
+                <button type="button" class="btn btn-link btn-sm" ng-disabled="vocab.saving" ng-click="vocab.toggle(lesson)" ng-attr-aria-label="Bỏ {{lesson.name}}">
+                    <i class="fa fa-times" aria-hidden="true"></i> {{lesson.name}}
+                </button>
+                <small class="text-muted">{{lesson.topicCategory.name}}</small>
+            </li>
+        </ul>
+    </div>
+    <p class="text-danger" ng-if="vocab.saveError" role="alert">{{vocab.saveError}}</p>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" ng-click="vocab.close()" ng-disabled="vocab.saving">Đóng</button>
+    <button type="button" class="btn btn-primary" ng-if="vocab.editing" ng-click="vocab.save()"
+            ng-disabled="vocab.loading || vocab.loadError || vocab.saving">{{vocab.saving ? 'Đang lưu…' : 'Lưu'}}</button>
+</div>
