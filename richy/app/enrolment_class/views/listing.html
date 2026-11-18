@@ -1356,22 +1356,26 @@
                         <button type="button" class="btn btn-default" data-ng-click="vm.openTeachingPdf()"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"><i class="fa fa-file-pdf-o"></i> Quản lý tài liệu PDF</button>
                         <div class="teaching-pdf-session-actions" data-ng-repeat="run in vm.teachingPdfCurrent track by run.id">
-                            <button type="button" class="teaching-pdf-session-open" data-ng-click="vm.openTeachingPdf(null, run.id)"
-                                    data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
-                                    ng-attr-aria-label="{{run.completed ? 'Xem lại' : 'Mở PDF'}} {{run.name}}" title="{{run.name}}">
-                                <span class="teaching-pdf-session-icon"><i class="fa fa-file-pdf-o" aria-hidden="true"></i></span>
-                                <span class="teaching-pdf-session-label"><strong ng-bind="run.name"></strong><small>{{run.completed ? 'Đã hoàn thành · Xem lại' : 'Mở PDF'}}</small></span>
-                            </button>
+                            <span ng-click="vm.prepareTeachingPdfTab($event)">
+                                <a class="teaching-pdf-session-open" ng-href="{{vm.teachingPdfUrl(run)}}" target="_blank" rel="noopener"
+                                   ng-attr-aria-disabled="{{!!(vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting)}}"
+                                   ng-attr-aria-label="{{run.completed ? 'Xem lại' : 'Mở PDF'}} {{run.name}}" title="Mở {{run.name}} trong tab mới">
+                                    <span class="teaching-pdf-session-icon"><i class="fa fa-file-pdf" aria-hidden="true"></i></span>
+                                    <span class="teaching-pdf-session-label"><strong ng-bind="run.name"></strong><small>{{run.completed ? 'Đã hoàn thành · Xem lại' : 'Mở PDF'}}</small></span>
+                                </a>
+                            </span>
                             <button type="button" class="teaching-pdf-session-complete" data-ng-if="!run.completed"
                                     data-ng-click="vm.confirmCompleteTeachingPdf(run)"
                                     data-ng-disabled="vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting"
                                     ng-attr-aria-label="Hoàn thành {{run.name}}"><i class="fa fa-check" aria-hidden="true"></i> Hoàn thành</button>
                         </div>
-                        <a class="btn btn-primary" data-ng-repeat="run in vm.teachingPdfPrevious track by run.id"
-                           ng-href="{{vm.continueTeachingPdfUrl(run)}}" ng-click="vm.continueTeachingPdf($event)"
-                           target="_blank" rel="noopener" ng-class="{disabled: vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting}"
-                           ng-attr-aria-disabled="{{!!(vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting)}}"
-                           title="Mở {{run.name}} trong tab mới"><i class="fa fa-play" aria-hidden="true"></i> Tiếp tục buổi trước · {{run.name}}</a>
+                        <!-- The plan click guard belongs on the wrapper so the PDF link keeps native new-tab navigation. -->
+                        <span data-ng-repeat="run in vm.teachingPdfPrevious track by run.id" ng-click="vm.prepareTeachingPdfTab($event)">
+                            <a class="btn btn-primary" ng-href="{{vm.teachingPdfUrl(run)}}" target="_blank" rel="noopener"
+                               ng-class="{disabled: vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting}"
+                               ng-attr-aria-disabled="{{!!(vm.scheduleDaySaving || vm.teachingPdfOpen || vm.teachingPdfCompleting)}}"
+                               title="Mở {{run.name}} trong tab mới"><i class="fa fa-play" aria-hidden="true"></i> Tiếp tục buổi trước · {{run.name}}</a>
+                        </span>
                     </div>
                     <div data-ng-repeat="taskSection in ['CLASS']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>

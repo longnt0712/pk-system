@@ -158,6 +158,20 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
         }};
 }
 
+test('both plan PDF links keep native new-tab navigation with the click guard outside the links', () => {
+    const directory = path.join(__dirname, '..', 'enrolment_class');
+    const listing = fs.readFileSync(path.join(directory, 'views/listing.html'), 'utf8');
+    const links = Array.from(listing.matchAll(/<span\b[^>]*\bng-click="vm\.prepareTeachingPdfTab\(\$event\)"[^>]*>\s*<a\b([^>]+)>/g), match => match[1]);
+    assert.equal(links.length, 2);
+    for (const link of links) {
+        assert.match(link, /ng-href="{{vm\.teachingPdfUrl\(run\)}}"/);
+        assert.match(link, /target="_blank" rel="noopener"/);
+        assert.doesNotMatch(link, /ng-click=/, 'the app-wide link directive cancels clicks on anchors with ng-click');
+    }
+    assert.match(links[0], /teaching-pdf-session-open/);
+    assert.match(links[1], /btn-primary/);
+});
+
 test('opening a previous PDF in a new tab attaches it once and resumes the saved run', async () => {
     const saved = {page: 7, marks: [{page: 7, note: 'Previous lesson'}]};
     const run = {id: 'run', pdfId: 'doc', name: 'Lesson.pdf'};

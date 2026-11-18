@@ -16,13 +16,16 @@
     box-shadow: 0 3px 10px #2d3e7312;
 }
 .teaching-pdf-session-actions button { border: 0; min-width: 0; }
-.teaching-pdf-session-actions button:focus-visible { outline: 2px solid #554ad1; outline-offset: -3px; }
+.teaching-pdf-session-actions > span { min-width: 0; }
+.teaching-pdf-session-open:focus-visible, .teaching-pdf-session-actions button:focus-visible { outline: 2px solid #554ad1; outline-offset: -3px; }
 .teaching-pdf-session-actions button:disabled { opacity: .55; cursor: default; }
 .teaching-pdf-session-open {
     display: flex; align-items: center; gap: 8px; padding: 7px 11px 7px 7px;
     color: #25334f; background: transparent; text-align: left;
 }
-.teaching-pdf-session-open:not(:disabled):hover { background: #f4f6fe; }
+.teaching-pdf-session-open:hover { text-decoration: none; }
+.teaching-pdf-session-open[aria-disabled="true"] { opacity: .55; cursor: default; }
+.teaching-pdf-session-open:not([aria-disabled="true"]):hover { background: #f4f6fe; }
 .teaching-pdf-session-icon {
     display: grid; place-items: center; flex: 0 0 33px; height: 33px; border-radius: 8px;
     background: #fff0f1; color: #b13c55; font-size: 16px;

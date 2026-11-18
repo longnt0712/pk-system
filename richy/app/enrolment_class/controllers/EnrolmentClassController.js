@@ -1148,14 +1148,14 @@
             }, angular.noop);
         }
 
-        vm.continueTeachingPdfUrl = function (run) {
+        vm.teachingPdfUrl = function (run) {
             return $state.href('application.englishClassPdf', {
                 classId: vm.scheduleClass.id, date: vm.scheduleDay.scheduleDate, runId: run.id
             });
         };
 
         var refreshPdfOnFocus;
-        vm.continueTeachingPdf = function (event) {
+        vm.prepareTeachingPdfTab = function (event) {
             var day = vm.scheduleDay;
             if (!day || vm.teachingPdfOpen || vm.teachingPdfCompleting || vm.scheduleDaySaving || vm.scheduleSessionLoading
                 || vm.scheduleSessionError || day.dayOff || day.movedToDate) {
@@ -1186,7 +1186,7 @@
         }
         $scope.$on('$destroy', stopPdfFocusRefresh);
 
-        vm.openTeachingPdf = function (previousRun, currentRun) {
+        vm.openTeachingPdf = function () {
             var day = vm.scheduleDay;
             if (!day || vm.teachingPdfOpen || vm.teachingPdfCompleting || vm.scheduleDaySaving || vm.scheduleSessionLoading
                 || vm.scheduleSessionError || day.dayOff || day.movedToDate) { return; }
@@ -1195,7 +1195,7 @@
             }
             var classId = vm.scheduleClass.id;
             vm.teachingPdfOpen = true;
-            teachingPdf.open(classId, day.scheduleDate, previousRun, currentRun).then(function (changed) {
+            teachingPdf.open(classId, day.scheduleDate).then(function (changed) {
                 if (changed && vm.scheduleDay === day) { vm.loadScheduleSession(); }
             }, angular.noop).finally(function () { vm.teachingPdfOpen = false; });
         };
