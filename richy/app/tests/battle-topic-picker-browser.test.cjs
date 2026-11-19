@@ -17,7 +17,7 @@ let browser;
 before(async()=>{browser=await playwright.chromium.launch({headless:true,executablePath});});
 after(async()=>{if(browser)await browser.close();});
 
-async function open(width=1280,lobbyMode=false){
+async function open(width=1280,lobbyMode=false,holdCategories=false){
  const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce'}),errors=[];
  page.setDefaultTimeout(5000);page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
@@ -28,7 +28,8 @@ async function open(width=1280,lobbyMode=false){
  await page.setContent('<!doctype html><html><head><base href="http://battle-topic.test/"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+styles+
   'body{font-family:Arial,sans-serif;background:#f1f3ff;margin:0}.qa-home{max-width:720px;margin:20px auto;padding:12px}</style></head><body><main id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm"><div class="qa-home" ng-if="!vm.room">'+create+'</div>'+lobby+'</main></body></html>');
  for(const script of ['angular.min.js','angular-sanitize.min.js','select.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',script)});
- await page.evaluate(({partial,pickerUrl,lobbyMode})=>{
+ await page.evaluate(({partial,pickerUrl,lobbyMode,holdCategories})=>{
+  window.qaHoldCategories=holdCategories;
   window.APP_VERSION='qa';window.qaRequests=[];window.qaNotices=[];
   window.qaCategories=[{id:6,name:'Grade 6'},{id:7,name:'Grade 7'},{id:8,name:'Empty category'},{id:16,name:'Từ vựng gia đình',parentId:6}];
   window.qaTopics={1:[{id:11,name:'Tom Family',categoryId:16},{id:12,name:'House words',categoryId:16},{id:21,name:'Du lịch châu Âu',categoryId:7},{id:22,name:'Grammar review',categoryId:7}],2:[{id:91,name:'Church vocabulary',categoryId:7}]};
@@ -39,7 +40,11 @@ async function open(width=1280,lobbyMode=false){
    .value('toastr',{success(){},warning(...args){window.qaNotices.push(args);},error(...args){window.qaNotices.push(args);}})
    .filter('propsFilter',()=>function(items,props){const query=String(props.name||'').toLowerCase();return (items||[]).filter(item=>String(item.name||'').toLowerCase().includes(query));})
    .factory('QuestionService',function($q){return {
-    getPageTopicCategory(dto,page){window.qaRequests.push({action:'categories',page});return $q.when({content:window.qaCategories.slice(page===1?0:3,page===1?3:4),totalPages:2});},
+    getPageTopicCategory(dto,page){
+     window.qaRequests.push({action:'categories',page});
+     if(window.qaHoldCategories&&page===1){window.qaCategoryDeferred=$q.defer();return window.qaCategoryDeferred.promise;}
+     return $q.when({content:window.qaCategories.slice(page===1?0:3,page===1?3:4),totalPages:2});
+    },
     getAllTopics(dto){
      window.qaRequests.push({action:'topics',userId:dto.userId});
      if(window.qaHoldOwnerId===dto.userId){window.qaTopicDeferred=$q.defer();return window.qaTopicDeferred.promise;}
@@ -54,7 +59,7 @@ async function open(width=1280,lobbyMode=false){
    };})
    .run(function($templateCache){$templateCache.put(pickerUrl,partial);});
   window.qaLobbyMode=lobbyMode;
- },{partial:read('question/views/battle_online_vocab_picker.html'),pickerUrl,lobbyMode});
+ },{partial:read('question/views/battle_online_vocab_picker.html'),pickerUrl,lobbyMode,holdCategories});
  await page.addScriptTag({content:controllerSource.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.topicQaHooks={applyRoom};')});
  await page.evaluate(()=>{
   angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);window.topicQaScope=angular.element(document.getElementById('qa')).scope();
@@ -79,6 +84,27 @@ async function openTree(page) {
  await panel(page).waitFor();
  await page.waitForFunction(()=>!window.topicQaScope.vm.loadingTopics);
 }
+
+test('topics load while folders are still pending, and reopening reuses the loaded tree',async()=>{
+ const {page,errors}=await open(390,false,true);
+ try{
+  await picker(page).locator('.battle-online-vocab-trigger').click();
+  await page.waitForFunction(()=>window.qaRequests.some(request=>request.action==='topics'));
+  assert.equal(await page.evaluate(()=>window.topicQaScope.vm.loadingTopics),true);
+  await page.evaluate(()=>window.topicQaScope.$apply(()=>{
+   window.qaHoldCategories=false;
+   window.qaCategoryDeferred.resolve({content:window.qaCategories.slice(0,3),totalPages:2});
+  }));
+  await folder(page,'Grade 6').waitFor();
+  const calls=await page.evaluate(()=>window.qaRequests.length);
+  await picker(page).locator('.battle-online-vocab-trigger').click();
+  await openTree(page);
+  assert.equal(await page.evaluate(()=>window.qaRequests.length),calls);
+  await input(page).fill('du lich');
+  await picker(page).getByRole('checkbox',{name:'Du lịch châu Âu',exact:true}).waitFor();
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
 
 test('creation opens a navigable folder tree, finds accentless lesson and folder names, and submits all selected topics',async()=>{
  for(const width of [1280,390]){

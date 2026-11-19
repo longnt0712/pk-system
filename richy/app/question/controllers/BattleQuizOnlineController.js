@@ -2585,9 +2585,9 @@
             var request = ++topicLoadRequestId;
             vm.loadingTopics = true;
             vm.topicLoadError = '';
-            return getPageTopicCategory().then(function (categories) {
-                if (destroyed || request !== topicLoadRequestId) { return; }
-                return questionService.getAllTopics({userId: owner.id}).then(function (topics) {
+            var categoriesRequest = getPageTopicCategory();
+            return questionService.getAllTopics({userId: owner.id}).then(function (topics) {
+                return categoriesRequest.then(function (categories) {
                     if (destroyed || request !== topicLoadRequestId) { return; }
                     vocabRoots = buildVocabTree(categories, topics || [], owner);
                     vocabOwnerId = owner.id;

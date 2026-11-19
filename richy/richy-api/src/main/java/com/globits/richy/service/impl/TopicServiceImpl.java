@@ -116,9 +116,10 @@ public class TopicServiceImpl implements TopicService {
 	public List<TopicForListAllDto> getAllTopics(TopicDto searchDto) {
 		User user = VocabularyPolicy.authenticatedUser(SecurityContextHolder.getContext().getAuthentication());
 		Map<String, Object> parameters = new LinkedHashMap<>();
-		StringBuilder from = new StringBuilder(" from Topic s left join s.topicCategory category where ");
+		StringBuilder from = new StringBuilder(" from Topic s left join s.topicCategory category left join s.user owner where ");
 		appendPlayableTopics(from, parameters, user, searchDto.getUserId());
-		TypedQuery<TopicForListAllDto> query = manager.createQuery("select new com.globits.richy.dto.TopicForListAllDto(s)"
+		TypedQuery<TopicForListAllDto> query = manager.createQuery(
+				"select new com.globits.richy.dto.TopicForListAllDto(s.id, s.name, category.id, category.name, owner.id, owner.username)"
 				+ from + " order by s.createDate desc, s.id desc", TopicForListAllDto.class);
 		parameters.forEach(query::setParameter);
 		return query.getResultList();

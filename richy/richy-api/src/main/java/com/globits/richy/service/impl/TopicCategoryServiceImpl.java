@@ -53,9 +53,9 @@ public class TopicCategoryServiceImpl implements TopicCategoryService {
 		if (allowed != null) {
 			sharedFolders = allowed.isEmpty() ? "1=0" : sharedFolders + " and s.id in (:allowed)";
 		}
-		String from = " from TopicCategory s where " + (ownOnly ? privateFolders : privateFolders + " or (" + sharedFolders + ")");
+		String from = " from TopicCategory s left join s.parent parent where " + (ownOnly ? privateFolders : privateFolders + " or (" + sharedFolders + ")");
 		TypedQuery<TopicCategoryDto> page = manager.createQuery(
-				"select new com.globits.richy.dto.TopicCategoryDto(s)" + from + " order by s.id", TopicCategoryDto.class);
+				"select new com.globits.richy.dto.TopicCategoryDto(s.id, s.name, parent.id, s.ownerId)" + from + " order by s.id", TopicCategoryDto.class);
 		TypedQuery<Long> count = manager.createQuery("select count(s.id)" + from, Long.class);
 		if (user != null) {
 			page.setParameter("userId", user.getId());
