@@ -23,6 +23,7 @@ public class CampaignFlowerDto {
         public String itemKey;
         public Boolean completed;
         public String paintColor;
+        public String prayerText;
     }
     public static class Sheet {
         public long serverTime;
@@ -40,4 +41,6 @@ public class CampaignFlowerDto {
     public static class PaintRequest { public String color; }
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public static class CheckRequest { public Boolean completed; }
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public static class PrayerRequest { public String text; }
 }

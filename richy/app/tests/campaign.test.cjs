@@ -6,6 +6,7 @@ const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
 const adventWindow = {};
 nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname, '../campaign/advent2026/AdventCampaign2026.js'), 'utf8'), {window: adventWindow});
+nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname, '../campaign/rosary2026/FlowerGarden2026.js'), 'utf8'), {window: adventWindow});
 function setup({campaignsEnabled = true, manager = false, admin = false, credentials = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1'], prayerRandom = Math.random} = {}) {
     let Controller;
     const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
@@ -372,6 +373,34 @@ test('confirmed Advent checks open the illustrated prayer for the practice that 
         }
     }
     assert.equal(prayers.size, 12);
+});
+test('weekly prayer stays available after failed saves and changing weeks saves it before loading another sheet', async () => {
+    const campaign = {...adventWindow.AdventCampaign2026.draft(), id: 25};
+    campaign.flowerItems = campaign.flowerItems.map((item, index) => ({...item, itemKey: 'practice-' + index}));
+    const serverTime = Date.parse('2026-12-02T05:00:00Z');
+    const h = setup({campaign, studentMode: true, serverTime, clock: {now: serverTime}, windowExtras: adventWindow});
+    await tick();
+    assert.equal(h.vm.canEditWeeklyPrayer(), true);
+    h.vm.weeklyPrayer.text = 'Lạy Chúa Hài Đồng, xin giúp con biết chia sẻ.';
+    const draft = h.vm.weeklyPrayer.text;
+    h.service.saveWeeklyPrayer = async () => { throw {status: 500}; };
+    await h.vm.setWeek(1);
+    assert.equal(h.vm.weekIndex, 0);
+    assert.equal(h.vm.weeklyPrayer.text, draft);
+    assert.ok(h.vm.weeklyPrayer.error);
+    let finish;
+    const writes = [];
+    h.service.saveWeeklyPrayer = (...args) => { writes.push(args); return new Promise(resolve => {finish = resolve;}); };
+    const first = h.vm.saveWeeklyPrayer();
+    const switching = h.vm.setWeek(1);
+    assert.equal(writes.length, 1);
+    assert.equal(h.vm.weekIndex, 0);
+    finish({data: {prayerText: draft, date: '2026-12-02'}});
+    await first; await switching;
+    assert.equal(h.vm.weekIndex, 1);
+    assert.equal(h.vm.canEditWeeklyPrayer(), false);
+    assert.deepEqual(writes[0], ['a'.repeat(43), 25, 0, draft]);
+    assert.equal(h.vm.weeklyPrayer.text, '');
 });
 test('overlapping saves keep a single prayer and preserve all confirmed checkboxes',async()=>{
     const campaign={...studentCampaign,flowerItems:[{itemKey:'a',name:'Cầu nguyện'},{itemKey:'b',name:'Thánh lễ'}]},h=setup({studentMode:true,campaign});await tick();const replies=[];

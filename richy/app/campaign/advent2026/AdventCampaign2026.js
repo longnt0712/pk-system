@@ -5,6 +5,8 @@
     var endDate = '2027-01-03';
     var lastPracticeDate = '2027-01-02';
     var assetPath = 'assets/images/advent-2026/tuan-';
+    var prayerKey = 'advent-weekly-prayer';
+    var massBonusKey = 'advent-mass-bonus';
     var practices = [
         {
             name: 'Cầu nguyện',
@@ -100,6 +102,45 @@
         }, []);
     }
 
+    function prayerText(value) {
+        return String(value || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+    }
+
+    function prayerLines(value, measure) {
+        var lines = [], current = '';
+        prayerText(value).split(' ').forEach(function (word) {
+            if (current && measure(current + ' ' + word) > 776) { lines.push(current); current = ''; }
+            Array.from(word).forEach(function (letter, index) {
+                var separator = index === 0 && current ? ' ' : '';
+                if (current && measure(current + separator + letter) > 776) { lines.push(current); current = ''; separator = ''; }
+                current += separator + letter;
+            });
+        });
+        if (current) { lines.push(current); }
+        return lines;
+    }
+
+    function fitPrayer(value, measure) {
+        var text = String(value || '').normalize('NFC').replace(/\s+/g, ' ').replace(/^ +/, '').split(' ').slice(0, 25).join(' ').slice(0, 120);
+        while (text && prayerLines(text, measure).length > 3) { text = text.slice(0, -1).trim(); }
+        return text;
+    }
+
+    function petalItems(campaign) {
+        return (campaign.flowerItems || []).concat([
+            {itemKey: massBonusKey, name: 'Lượt thêm khi tham dự Thánh lễ'},
+            {itemKey: prayerKey, name: 'Viết lời nguyện trong tuần'}
+        ]);
+    }
+
+    function credit(campaign, entry) {
+        if (entry.completed !== true) { return 0; }
+        if (entry.itemKey === prayerKey) { return prayerText(entry.prayerText) ? 1 : 0; }
+        var item = (campaign.flowerItems || []).find(function (practice) { return practice.itemKey === entry.itemKey; });
+        if (!item) { return 0; }
+        return /^(tham du )?thanh le$/.test(nameKey(item.name)) ? 2 : 1;
+    }
+
     function sheetItems(campaign) {
         var items = campaign.flowerItems || [];
         if (items.length !== practices.length) { return null; }
@@ -129,6 +170,12 @@
         weeks: weeks,
         sheetItems: sheetItems,
         prayersFor: prayersFor,
+        prayerKey: prayerKey,
+        prayerText: prayerText,
+        prayerLines: prayerLines,
+        fitPrayer: fitPrayer,
+        petalItems: petalItems,
+        credit: credit,
         draft: draft
     };
 }(window));

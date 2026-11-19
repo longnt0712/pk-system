@@ -95,6 +95,88 @@ public class CampaignFlowerTest {
     private String addPractice() {
         String next = UUID.randomUUID().toString(); SpiritualFlowerItem item = new SpiritualFlowerItem(); item.setItemKey(next); item.setName("Tham dự Thánh lễ"); campaign.getFlowerItems().add(item); return next;
     }
+    private void advent() {
+        campaign.setName("Hoa Thiêng Mùa Vọng – Giáng Sinh 2026");
+        campaign.setStartDate("2026-11-29"); campaign.setEndDate("2027-01-03");
+        ReflectionTestUtils.setField(service, "clock", Clock.fixed(Instant.parse("2026-12-02T05:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")));
+    }
+    @Test public void weeklyPrayerPersistsOnceAndEditingCannotCreateAnotherCredit() {
+        advent();
+        CampaignFlowerDto.Entry prayer = service.savePrayer(tokenA, 5L, 0, "  Lạy Chúa Hài Đồng,   xin cho gia đình con bình an.  ");
+        assertEquals("Lạy Chúa Hài Đồng, xin cho gia đình con bình an.", prayer.prayerText);
+        assertEquals("2026-12-02", prayer.date); assertTrue(prayer.completed);
+        assertEquals(prayer.prayerText, service.sheet(tokenA, 5L, 0).entries.get(0).prayerText);
+        service.paint(tokenA, 5L, prayer.date, key, "#EF5350");
+        ReflectionTestUtils.setField(service, "clock", Clock.fixed(Instant.parse("2026-12-03T05:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh")));
+        CampaignFlowerDto.Entry edited = service.savePrayer(tokenA, 5L, 0, "Lạy Chúa, xin giúp con biết yêu thương.");
+        assertEquals(prayer.date, edited.date);
+        try { service.paint(tokenA, 5L, prayer.date, "advent-mass-bonus", "#EF5350"); fail("Editing earned another prayer credit"); }
+        catch (CampaignService.InvalidCampaignException expected) { }
+        assertTrue(service.sheet(tokenB, 5L, 0).entries.isEmpty());
+        service.savePrayer(tokenA, 5L, 0, "  ");
+        assertEquals(0, service.garden(tokenA, 5L).entries.stream().filter(entry -> entry.paintColor != null).count());
+        assertEquals(1, saved.values().stream().filter(entry -> entry.getPrayerText() != null).count());
+    }
+    @Test public void adventMassEarnsTwoCreditsAndPrayerProvidesTheSixthPetal() {
+        advent(); String mass = addPractice();
+        String date = "2026-12-02";
+        service.check(tokenA, 5L, date, key, true); service.check(tokenA, 5L, date, mass, true);
+        for (String name : Arrays.asList("Hy sinh", "Làm tông đồ")) {
+            SpiritualFlowerItem item = new SpiritualFlowerItem(); item.setItemKey(UUID.randomUUID().toString()); item.setName(name);
+            campaign.getFlowerItems().add(item); service.check(tokenA, 5L, date, item.getItemKey(), true);
+        }
+        for (SpiritualFlowerItem item : campaign.getFlowerItems()) { service.paint(tokenA, 5L, date, item.getItemKey(), "#EF5350"); }
+        service.paint(tokenA, 5L, date, "advent-mass-bonus", "#81D4FA");
+        try { service.paint(tokenA, 5L, date, "advent-weekly-prayer", "#EF5350"); fail("No written prayer credit"); }
+        catch (CampaignService.InvalidCampaignException expected) { }
+        service.savePrayer(tokenA, 5L, 0, "Lạy Chúa Hài Đồng, xin giúp con làm việc tốt.");
+        assertEquals(6, service.paint(tokenA, 5L, date, "advent-weekly-prayer", "#FFE082").entries.stream().filter(entry -> entry.paintColor != null).count());
+        service.check(tokenA, 5L, date, mass, false);
+        assertEquals(4, service.garden(tokenA, 5L).entries.stream().filter(entry -> entry.paintColor != null).count());
+        service.savePrayer(tokenA, 5L, 0, "");
+        assertEquals(3, service.garden(tokenA, 5L).entries.stream().filter(entry -> entry.paintColor != null).count());
+        for (String reserved : Arrays.asList("advent-weekly-prayer", "advent-mass-bonus")) {
+            try { service.check(tokenA, 5L, date, reserved, true); fail("Reserved credit was checked directly"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        identity("ROLE_ADMIN");
+        try { service.checkAsAdmin(tokenA, 5L, "2027-01-03", key, true); fail("Closing day was checked"); }
+        catch (CampaignService.InvalidCampaignException expected) { }
+    }
+    @Test public void coloringThePrayerPetalBeforeWritingCannotDuplicateWeeklyPrayerCredit() {
+        advent(); String mass = addPractice();
+        identity("ROLE_ADMIN");
+        service.checkAsAdmin(tokenA, 5L, "2026-11-30", mass, true);
+        service.paint(tokenA, 5L, "2026-11-30", "advent-weekly-prayer", "#EF5350");
+        service.check(tokenA, 5L, "2026-12-02", mass, true);
+        service.paint(tokenA, 5L, "2026-12-02", "advent-weekly-prayer", "#EF5350");
+        assertEquals("2026-12-02", service.savePrayer(tokenA, 5L, 0, "Lạy Chúa, xin giúp con.").date);
+        assertEquals("2026-12-02", service.savePrayer(tokenA, 5L, 0, "Lạy Chúa, xin giúp con yêu thương.").date);
+        assertEquals(1, service.sheet(tokenA, 5L, 0).entries.stream().filter(entry -> entry.prayerText != null).count());
+    }
+    @Test public void prayerHttpValidatesLimitsWeekAndQrOwnership() throws Exception {
+        advent();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(context.getBean(RestPublicCampaignFlowerController.class)).build();
+        String route = "/public/campaign-flower/" + tokenA + "/campaigns/5/prayers/";
+        for (String text : Arrays.asList(String.join(" ", Collections.nCopies(26, "a")), String.join("", Collections.nCopies(121, "a")))) {
+            mvc.perform(put(route + "0").contentType("application/json").content(new ObjectMapper().writeValueAsString(Collections.singletonMap("text", text))))
+                    .andExpect(status().isBadRequest());
+        }
+        for (int week : Arrays.asList(-1, 1, 5)) {
+            mvc.perform(put(route + week).contentType("application/json").content("{\"text\":\"Lạy Chúa\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+        assertTrue(saved.isEmpty());
+        mvc.perform(put(route + "0").contentType("application/json;charset=UTF-8")
+                .content("{\"text\":\"Lạy Chúa Hài Đồng, xin cho con biết sẻ chia.\",\"studentId\":9,\"completed\":true,\"credits\":100}"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store, max-age=0"));
+        assertEquals(7L, saved.values().iterator().next().getStudentId().longValue());
+        assertTrue(service.sheet(tokenB, 5L, 0).entries.isEmpty());
+        assertEquals("Lạy Chúa Hài Đồng, xin cho con biết sẻ chia.", service.sheet(tokenA, 5L, 0).entries.get(0).prayerText);
+        denied(() -> service.savePrayerAsAdmin(tokenA, 5L, 1, "Lạy Chúa"));
+        identity("ROLE_ADMIN"); assertTrue(service.savePrayerAsAdmin(tokenA, 5L, 1, "Lạy Chúa").completed);
+        assertEquals(1, service.sheet(tokenA, 5L, 1).entries.size());
+    }
     @Test public void coloringSpendsOnlyEarnedDailyCreditsAndAllowsChoosingAnyPetal() {
         String other = addPractice();
         try { service.paint(tokenA, 5L, today, other, "#F48FB1"); fail("No credit"); } catch (CampaignService.InvalidCampaignException expected) { }

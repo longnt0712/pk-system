@@ -42,10 +42,12 @@
         return result.length ? result : [''];
     }
     function create(campaign, garden) {
+        var advent = root.FlowerGarden2026.isAdvent(campaign);
         var markup = root.FlowerGarden2026.svgMarkup(campaign, garden.colors || []);
         var svgUrl = root.URL.createObjectURL(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="940" height="1672" viewBox="0 0 940 1672">', markup, '</svg>'], {type: 'image/svg+xml'}));
         var flowers = loadImage(svgUrl).then(function (img) { root.URL.revokeObjectURL(svgUrl); return img; }, function (error) { root.URL.revokeObjectURL(svgUrl); throw error; });
-        return Promise.all([asset('assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png'), asset('assets/images/logo-xu-doan.png'), flowers]).then(function (images) {
+        var background = advent ? 'assets/images/advent-2026/prayers/toa-sang-tin-mung.webp' : 'assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png';
+        return Promise.all([asset(background), asset('assets/images/logo-xu-doan.png'), flowers]).then(function (images) {
             var canvas = root.document.createElement('canvas'), ctx = canvas.getContext('2d');
             var width = 350, pad = 18, artWidth = width - pad * 2, artHeight = artWidth * 1672 / 940;
             ctx.font = '700 19px Arial';
@@ -63,7 +65,15 @@
             y += 5; ctx.font = '13px Arial'; ctx.fillStyle = '#718074';
             classes.forEach(function (line) { ctx.fillText(line, pad, y); y += 18.2; });
             ctx.save(); rounded(ctx, pad, artTop, artWidth, artHeight, 12); ctx.clip();
-            ctx.drawImage(images[0], pad, artTop, artWidth, artHeight); ctx.drawImage(images[2], pad, artTop, artWidth, artHeight);
+            if (advent) {
+                ctx.fillStyle = '#f7f0fa'; ctx.fillRect(pad, artTop, artWidth, artHeight);
+                ctx.textAlign = 'center'; ctx.fillStyle = '#4C356A'; ctx.font = '700 25px Arial';
+                ctx.fillText('Mái ấm Bêlem', width / 2, artTop + 26);
+                ctx.font = '15px Arial'; ctx.fillText('Tỏa sáng Tin Mừng', width / 2, artTop + 58);
+                ctx.drawImage(images[0], pad + artWidth * .18, artTop + artWidth * .25, artWidth * .64, artWidth * .48);
+                ctx.textAlign = 'start';
+            } else { ctx.drawImage(images[0], pad, artTop, artWidth, artHeight); }
+            ctx.drawImage(images[2], pad, artTop, artWidth, artHeight);
             var logoSize = artWidth * .11, logoX = pad + artWidth * .87, logoY = artTop + artWidth * .02;
             ctx.save(); ctx.beginPath(); ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2); ctx.clip(); ctx.globalAlpha = .88;
             ctx.drawImage(images[1], logoX, logoY, logoSize, logoSize); ctx.restore(); ctx.restore();

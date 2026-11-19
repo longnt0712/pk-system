@@ -13,6 +13,10 @@ public class CampaignFlowerEntry extends BaseObject {
     @Column(name = "item_key", length = 36, nullable = false) private String itemKey;
     @Column(name = "completed", nullable = false) private boolean completed;
     @Column(name = "paint_color", length = 7) private String paintColor;
+    @org.hibernate.annotations.Nationalized
+    @Column(name = "prayer_text", length = 120) private String prayerText;
+    public String getPrayerText() { return prayerText; }
+    public void setPrayerText(String prayerText) { this.prayerText = prayerText; }
     public String getPaintColor() { return paintColor; }
     public void setPaintColor(String paintColor) { this.paintColor = paintColor; }
     public Long getCampaignId() { return campaignId; }

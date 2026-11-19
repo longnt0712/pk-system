@@ -35,4 +35,11 @@ public class RestCampaignFlowerAccessController {
     public Map<String, String> invalid(CampaignService.InvalidCampaignException error) {
         return Collections.singletonMap("message", error.getMessage());
     }
+    @Secured({"ROLE_ADMIN"})
+    @RequestMapping(value = "/{token}/campaigns/{id}/prayers/{week}", method = RequestMethod.PUT)
+    public ResponseEntity<CampaignFlowerDto.Entry> savePrayerAsAdmin(@PathVariable("token") String token, @PathVariable("id") Long id,
+            @PathVariable("week") int week, @RequestBody CampaignFlowerDto.PrayerRequest request) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store, max-age=0")
+                .body(service.savePrayerAsAdmin(token, id, week, request.text));
+    }
 }

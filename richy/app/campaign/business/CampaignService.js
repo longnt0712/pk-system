@@ -35,6 +35,14 @@
         this.checkFlowerAsAdmin = function (token, id, date, key, completed) {
             return $http.put(settings.api.baseUrl + 'api/campaign-flower/' + encodeURIComponent(token) + '/campaigns/' + id + '/entries/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {completed: completed});
         };
+        this.saveWeeklyPrayer = function (token, id, week, text) {
+            return $http.put(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/prayers/' + week,
+                {text: text}, {skipSessionAuth: true});
+        };
+        this.saveWeeklyPrayerAsAdmin = function (token, id, week, text) {
+            return $http.put(settings.api.baseUrl + 'api/campaign-flower/' + encodeURIComponent(token) + '/campaigns/' + id + '/prayers/' + week,
+                {text: text});
+        };
         this.studentGarden = function (token, id) {
             return $http.get(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden', {skipSessionAuth: true});
         };
