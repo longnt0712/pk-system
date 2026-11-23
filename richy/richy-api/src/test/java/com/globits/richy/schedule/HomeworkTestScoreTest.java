@@ -118,7 +118,8 @@ public class HomeworkTestScoreTest {
         org.h2.jdbcx.JdbcDataSource ds = new org.h2.jdbcx.JdbcDataSource(); ds.setURL("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MSSQLServer;DB_CLOSE_DELAY=-1");
         try (java.sql.Connection c = ds.getConnection(); java.sql.Statement s = c.createStatement()) { s.execute("CREATE SCHEMA dbo"); }
         Configuration cfg = new Configuration().setProperty("hibernate.default_schema", "dbo").setProperty("hibernate.dialect", "org.hibernate.dialect.H2Dialect")
-                .setProperty("hibernate.hbm2ddl.auto", "create-drop").setProperty("hibernate.show_sql", "false");
+                .setProperty("hibernate.hbm2ddl.auto", "create-drop").setProperty("hibernate.show_sql", "false")
+                .setProperty("hibernate.generate_statistics", "true");
         cfg.getProperties().put("hibernate.connection.datasource", ds);
         MultiTopicVocabularyPersistenceTest.register(cfg, Topic.class, "com.globits.richy.domain");
         MultiTopicVocabularyPersistenceTest.register(cfg, com.globits.core.domain.Organization.class, "com.globits.core.domain");
@@ -132,15 +133,16 @@ public class HomeworkTestScoreTest {
                     row.setTestType(i == 3 ? 7 : 4); row.setResultStatus(i == 0 ? "SUCCESS" : "FAILED"); em.persist(row); em.flush();
                     row.setCreateDate(i == 4 ? start.minusMillis(1) : i == 5 ? end : start); em.flush();
                 }
-                String query = TestResultRepository.class.getMethod("findHomeworkTestScores", List.class, List.class, LocalDateTime.class, LocalDateTime.class)
+                String query = TestResultRepository.class.getMethod("findHomeworkTestScoreRows", List.class, List.class, LocalDateTime.class, LocalDateTime.class)
                         .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
-                List<TestResult> found = em.createQuery(query, TestResult.class).setParameter("students", Collections.singletonList(student.getId()))
+                List<Object[]> rows = em.createQuery(query, Object[].class).setParameter("students", Collections.singletonList(student.getId()))
                         .setParameter("tasks", Collections.singletonList(10L)).setParameter("fromDate", start).setParameter("toDate", end).getResultList();
+                List<TestResult> found = HomeworkTestScore.readRows(rows, Collections.emptyList());
                 assertEquals(2, found.size()); assertEquals("SUCCESS", found.get(0).getResultStatus()); assertEquals("FAILED", found.get(1).getResultStatus());
-                assertTrue(em.createQuery(query, TestResult.class).setParameter("students", Collections.singletonList(-1L))
+                assertTrue(em.createQuery(query, Object[].class).setParameter("students", Collections.singletonList(-1L))
                         .setParameter("tasks", Collections.singletonList(10L)).setParameter("fromDate", start).setParameter("toDate", end).getResultList().isEmpty());
 
-                TestResult repeated = found.get(1);
+                TestResult repeated = em.find(TestResult.class, found.get(1).getId());
                 for (int i = 0; i < 2; i++) {
                     QuestionAnswerTestResult response = new QuestionAnswerTestResult();
                     response.setTestResult(repeated); response.setOrdinalNumber(17); em.persist(response);
@@ -151,6 +153,49 @@ public class HomeworkTestScoreTest {
                 List<TestResult> repeatedAttempts = em.createQuery(repeatedQuery, TestResult.class)
                         .setParameter("studentId", student.getId()).setParameter("fromDate", start).getResultList();
                 assertEquals(Collections.singletonList(repeated), repeatedAttempts);
+
+                Question source = new Question(); source.setQuestion("Test with large content"); em.persist(source);
+                Question part = new Question(); part.setParent(source); part.setOrdinalNumber(1); em.persist(part);
+                Question pack = new Question(); pack.setParent(part); pack.setType(2); em.persist(pack);
+                Question question = new Question(); question.setParent(pack); question.setOrdinalNumber(1); em.persist(question);
+                Set<QuestionAnswer> alternatives = new LinkedHashSet<>();
+                for (String text : Arrays.asList("blue card", "blue-card")) {
+                    Answer answer = new Answer(); answer.setAnswer(text); em.persist(answer);
+                    QuestionAnswer alternative = new QuestionAnswer(); alternative.setQuestion(question);
+                    alternative.setAnswer(answer); alternative.setCorrect(true); em.persist(alternative);
+                    alternatives.add(alternative);
+                }
+                question.setQuestionAnswers(alternatives);
+                TestResult scored = new TestResult(); scored.setUser(student); scored.setTestType(4);
+                scored.setAssignmentTaskId(10L); scored.setSourceQuestionId(source.getId()); scored.setCompletedPart(1);
+                scored.setResultStatus("SUCCESS"); em.persist(scored); em.flush();
+                scored.setCreateDate(start.plusHours(1));
+                Set<QuestionAnswerTestResult> answers = new LinkedHashSet<>();
+                for (int i = 0; i < 2; i++) {
+                    QuestionAnswerTestResult response = new QuestionAnswerTestResult(); response.setTestResult(scored);
+                    response.setQuestionAnswer(alternatives.iterator().next()); response.setClientAnswer("blue-card");
+                    response.setOrdinalNumber(1); em.persist(response); answers.add(response);
+                }
+                scored.setQuestionAnswerTestResult(answers); em.flush();
+                EnrolmentClassScheduleTaskDto expected = task(); expected.setIeltsTestId(source.getId());
+                HomeworkTestScore.apply(expected, Collections.singletonList(scored), start, end);
+                assertEquals(100D, expected.getStudentProgress().get(0).getResultPercent(), 0.000001);
+
+                String acceptedQuery = TestResultRepository.class.getMethod("findHomeworkCorrectAnswerRows", List.class, List.class,
+                        LocalDateTime.class, LocalDateTime.class).getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+                Long studentId = student.getId(), sourceId = source.getId();
+                em.clear(); factory.getStatistics().clear();
+                List<Object[]> projected = em.createQuery(query, Object[].class).setParameter("students", Collections.singletonList(studentId))
+                        .setParameter("tasks", Collections.singletonList(10L)).setParameter("fromDate", start).setParameter("toDate", end).getResultList();
+                List<Object[]> accepted = em.createQuery(acceptedQuery, Object[].class).setParameter("students", Collections.singletonList(studentId))
+                        .setParameter("tasks", Collections.singletonList(10L)).setParameter("fromDate", start).setParameter("toDate", end).getResultList();
+                EnrolmentClassScheduleTaskDto actual = task(); actual.setIeltsTestId(sourceId);
+                HomeworkTestScore.apply(actual, HomeworkTestScore.readRows(projected, accepted), start, end);
+                assertEquals(expected.getStudentProgress().get(0).getResultPercent(), actual.getStudentProgress().get(0).getResultPercent());
+                assertEquals("The review uses two scalar queries for all selected students and tasks", 2L,
+                        factory.getStatistics().getPrepareStatementCount());
+                assertEquals("No account, Question, Topic or TestResult entity graph is loaded", 0L,
+                        factory.getStatistics().getEntityLoadCount());
             } finally { em.getTransaction().rollback(); em.close(); }
         }
     }

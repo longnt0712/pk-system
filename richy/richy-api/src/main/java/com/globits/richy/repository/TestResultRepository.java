@@ -116,14 +116,27 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 
     // Include failed submissions so the teacher's review can show their actual score.
-    @Query("select r from TestResult r left join fetch r.user "
-            + "left join fetch r.questionAnswerTestResult response left join fetch response.questionAnswer answer "
-            + "left join fetch answer.question question left join fetch question.parent pack "
-            + "left join fetch pack.parent part left join fetch part.parent "
+    @Query("select r.id,r.user.id,r.assignmentTaskId,r.sourceQuestionId,r.testType,r.resultStatus,r.createDate,"
+            + "r.completedPart,r.completedPartsValue,r.assignmentSectionKey,"
+            + "response.id,response.ordinalNumber,response.clientAnswer,answer.id,answer.isCorrect,selected.answer,"
+            + "question.id,question.ordinalNumber,pack.id,pack.type,pack.motherTongue,"
+            + "part.id,part.ordinalNumber,root.id,root.ordinalNumber,root.parent.id,pack.ordinalNumber "
+            + "from TestResult r left join r.questionAnswerTestResult response left join response.questionAnswer answer "
+            + "left join answer.answer selected left join answer.question question left join question.parent pack "
+            + "left join pack.parent part left join part.parent root "
             + "where r.user.id in :students and r.assignmentTaskId in :tasks and r.testType in (2, 4, 6) "
             + "and r.resultStatus in ('SUCCESS', 'FAILED') "
-            + "and r.createDate >= :fromDate and r.createDate < :toDate order by r.createDate asc, r.id asc")
-    List<TestResult> findHomeworkTestScores(@Param("students") List<Long> students, @Param("tasks") List<Long> tasks,
+            + "and r.createDate >= :fromDate and r.createDate < :toDate order by r.createDate asc,r.id asc,response.id asc")
+    List<Object[]> findHomeworkTestScoreRows(@Param("students") List<Long> students, @Param("tasks") List<Long> tasks,
+            @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
+    @Query("select question.id,choice.id,accepted.answer from TestResult r "
+            + "join r.questionAnswerTestResult response join response.questionAnswer selected join selected.question question "
+            + "join question.questionAnswers choice join choice.answer accepted "
+            + "where r.user.id in :students and r.assignmentTaskId in :tasks and r.testType in (2, 4, 6) "
+            + "and r.resultStatus in ('SUCCESS', 'FAILED') and choice.isCorrect=true "
+            + "and r.createDate >= :fromDate and r.createDate < :toDate")
+    List<Object[]> findHomeworkCorrectAnswerRows(@Param("students") List<Long> students, @Param("tasks") List<Long> tasks,
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 	
 }

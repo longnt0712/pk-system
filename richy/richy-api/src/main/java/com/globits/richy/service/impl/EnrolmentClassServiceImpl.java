@@ -1138,6 +1138,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	}
 
     @Override
+    @Transactional(readOnly = true)
     public EnrolmentClassScheduleDayDto getPreviousScheduleDay(Long classId, String beforeDate) {
         if (!isValidDate(beforeDate)) {
             throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày kế hoạch không hợp lệ.");
@@ -1219,7 +1220,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             if (HomeworkTestScore.enabled(task)) { scoredTaskIds.add(task.getId()); }
         }
         List<TestResult> scoredResults = scoredTaskIds.isEmpty() ? new ArrayList<TestResult>()
-                : testResultRepository.findHomeworkTestScores(studentIds, scoredTaskIds, start, maximumEnd);
+                : HomeworkTestScore.readRows(
+                    testResultRepository.findHomeworkTestScoreRows(studentIds, scoredTaskIds, start, maximumEnd),
+                    testResultRepository.findHomeworkCorrectAnswerRows(studentIds, scoredTaskIds, start, maximumEnd));
         for (Map.Entry<EnrolmentClassScheduleTaskDto, LocalDateTime> entry : ends.entrySet()) {
             HomeworkTopicCompletion.applyDirectListening(entry.getKey(), directListeningCompletions, start, entry.getValue());
             HomeworkTopicCompletion.apply(entry.getKey(), completions, start, entry.getValue());
@@ -1287,6 +1290,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date) {
         EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);
         if (selected == null || !canEditClass(getCurrentUser(), selected)) {

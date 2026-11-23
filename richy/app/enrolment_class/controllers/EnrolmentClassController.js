@@ -64,10 +64,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ClassAssignmentPicker', 'TeachingPdf'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ClassAssignmentPicker', 'TeachingPdf', '$q'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, assignmentPicker, teachingPdf) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, assignmentPicker, teachingPdf, $q) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -167,6 +167,7 @@
         var homeworkReviewRequest = 0;
         var homeworkCellSaveRequest = 0;
         var homeworkCellDrafts = {};
+        var homeworkCellSaveQueue = [], homeworkCellSaveActive = false;
         vm.homeworkCellSaving = false;
         vm.previousHomeworkDay = null;
         vm.previousHomeworkTasks = [];
@@ -1054,6 +1055,8 @@
 		vm.openScheduleDay = function (cell) {
 			if (!cell || cell.isBlank || vm.scheduleLoading || vm.scheduleMoving || vm.scheduleDayDeleting) { return; }
             homeworkCellSaveRequest++; homeworkCellDrafts = {}; vm.homeworkCellSaving = false;
+            homeworkCellSaveQueue.forEach(function (job) { job.completion.resolve(false); });
+            homeworkCellSaveQueue = []; homeworkCellSaveActive = false;
 			scheduleAttendanceRequest++;
 			vm.scheduleAttendanceByStudent = {};
 			vm.scheduleAttendanceLoading = false;
@@ -1741,7 +1744,7 @@
 
         vm.bulkSetHomeworkTaskStatus = function (task) {
             var status = task && task.bulkStatus;
-            if (!task || !task.id || !status || vm.homeworkCellSaving || !vm.previousHomeworkDay) { return; }
+            if (!task || !task.id || !status || task.bulkSaving || vm.scheduleDaySaving || !vm.previousHomeworkDay) { return; }
             var allowed = ['TODO', 'DONE', 'NEEDS_REVIEW'];
             angular.forEach(vm.homeworkProgressLevels, function (percent) { allowed.push('PROGRESS_' + percent); });
             if (allowed.indexOf(status) < 0) { task.bulkStatus = ''; return; }
@@ -1754,72 +1757,33 @@
 
             var rows = (vm.homeworkReviewRows || []).slice(0);
             if (!rows.length) { task.bulkStatus = ''; toastr.warning('Lớp chưa có học sinh để cập nhật.'); return; }
-            var classId = vm.scheduleClass.id, dayId = vm.previousHomeworkDay.id;
-            var previousDate = vm.previousHomeworkDay.scheduleDate, currentDate = vm.scheduleDay.scheduleDate;
-            var reviewRequest = homeworkReviewRequest, completed = 0;
-            vm.homeworkCellSaving = true;
+            if (rows.some(function (row) { return row.cells[taskIndex] && row.cells[taskIndex].saving; })) {
+                task.bulkStatus = ''; toastr.warning('Task này đang lưu. Bạn có thể sửa các task khác.'); return;
+            }
+            var classId = vm.scheduleClass.id, currentDate = vm.scheduleDay.scheduleDate;
+            var reviewRequest = homeworkReviewRequest;
             task.bulkSaving = true;
             task.bulkError = '';
-
-            function isCurrent() {
-                return reviewRequest === homeworkReviewRequest && vm.scheduleClass && vm.scheduleClass.id === classId
-                    && vm.scheduleDay && vm.scheduleDay.scheduleDate === currentDate;
-            }
-            function finish(error) {
-                if (!isCurrent()) { return; }
-                vm.homeworkCellSaving = false;
-                task.bulkSaving = false;
-                task.bulkStatus = '';
-                vm.previousHomeworkTasks = (vm.previousHomeworkDay.tasks || []).filter(function (savedTask) {
-                    return savedTask.section === 'HOMEWORK';
-                });
-                var displayTask = task;
+            var saves = rows.map(function (row) {
+                var cell = row.cells[taskIndex];
+                if (!cell) { return $q.when(false); }
+                cell.editStatus = status;
+                vm.markHomeworkCellDirty(cell);
+                return cell.dirty ? vm.saveHomeworkCell(row, cell, true) : $q.when(true);
+            });
+            return $q.all(saves).then(function (results) {
+                if (reviewRequest !== homeworkReviewRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
+                    || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== currentDate) { return; }
+                var completed = results.filter(function (saved) { return saved; }).length;
                 angular.forEach(vm.previousHomeworkTasks, function (savedTask) {
-                    if (String(savedTask.id) === String(task.id)) { displayTask = savedTask; }
+                    if (String(savedTask.id) === String(task.id)) {
+                        savedTask.bulkSaving = false; savedTask.bulkStatus = '';
+                        savedTask.bulkError = completed === rows.length ? ''
+                            : 'Đã lưu ' + completed + '/' + rows.length + ' học sinh. Hãy thử lại các ô báo lỗi.';
+                    }
                 });
-                displayTask.bulkSaving = false;
-                displayTask.bulkStatus = '';
-                vm.buildHomeworkReviewRows();
-                if (error) {
-                    displayTask.bulkError = error && error.data && error.data.message ? error.data.message
-                        : 'Đã lưu ' + completed + '/' + rows.length + ' học sinh. Hãy thử lại phần còn lại.';
-                    toastr.error(displayTask.bulkError);
-                } else {
-                    toastr.success('Đã đánh dấu ' + rows.length + ' học sinh cho task “' + (task.title || '') + '”.');
-                }
-            }
-            function saveNext(index) {
-                if (!isCurrent()) { return; }
-                if (index >= rows.length) { finish(); return; }
-                var row = rows[index], cell = row.cells[taskIndex];
-                if (!cell) { saveNext(index + 1); return; }
-                var payload = {
-                    studentUserId: row.id,
-                    status: status,
-                    notes: cell.editNotes || '',
-                    dayVersion: vm.previousHomeworkDay.version
-                };
-                service.updateTaskProgress(classId, dayId, task.id, payload).then(function (saved) {
-                    if (!isCurrent()) { return; }
-                    if (!saved || saved.id !== dayId || saved.scheduleDate !== previousDate || saved.version == null
-                        || saved.version <= payload.dayVersion || !angular.isArray(saved.tasks)) {
-                        finish({data: {message: 'Backend chưa xác nhận cập nhật hàng loạt. Đã lưu '
-                            + completed + '/' + rows.length + ' học sinh.'}});
-                        return;
-                    }
-                    completed++;
-                    delete homeworkCellDrafts[cell.key];
-                    vm.previousHomeworkDay = saved;
-                    for (var entryIndex = 0; entryIndex < vm.scheduleEntries.length; entryIndex++) {
-                        if (vm.scheduleEntries[entryIndex].scheduleDate === previousDate) {
-                            vm.scheduleEntries[entryIndex] = saved;
-                            break;
-                        }
-                    }
-                    saveNext(index + 1);
-                }, finish);
-            }
-            saveNext(0);
+                if (completed === rows.length) { toastr.success('Đã đánh dấu ' + completed + ' học sinh cho task “' + (task.title || '') + '”.'); }
+            });
         };
         vm.markHomeworkCellDirty = function (cell) {
             cell.dirty = cell.editStatus !== cell.status || (cell.editNotes || '') !== cell.notes;
@@ -1827,42 +1791,86 @@
             if (cell.dirty) { homeworkCellDrafts[cell.key] = cell; }
             else { delete homeworkCellDrafts[cell.key]; }
         };
-        vm.saveHomeworkCell = function (row, cell) {
-            if (!cell.dirty || vm.homeworkCellSaving || !vm.previousHomeworkDay || vm.scheduleDaySaving) { return; }
-            if ((cell.editNotes || '').length > 1000) { cell.error = 'Nhận xét tối đa 1000 ký tự.'; return; }
-            var request = ++homeworkCellSaveRequest, reviewRequest = homeworkReviewRequest;
-            var classId = vm.scheduleClass.id, dayId = vm.previousHomeworkDay.id;
-            var previousDate = vm.previousHomeworkDay.scheduleDate, currentDate = vm.scheduleDay.scheduleDate;
-            var status = cell.automatic && cell.editStatus === cell.status ? cell.manualStatus || 'TODO' : cell.editStatus;
-            var payload = {studentUserId: row.id, status: status, notes: cell.editNotes || '', dayVersion: vm.previousHomeworkDay.version};
-            if (!dayId || !cell.taskId || payload.dayVersion == null) { cell.error = 'Ngày/task chưa được lưu hoặc backend chưa hỗ trợ. Hãy tải lại bảng.'; return; }
-            vm.homeworkCellSaving = true; cell.saving = true; cell.error = '';
-            function isCurrent() {
-                return request === homeworkCellSaveRequest && reviewRequest === homeworkReviewRequest
-                    && vm.scheduleClass && vm.scheduleClass.id === classId && vm.scheduleDay && vm.scheduleDay.scheduleDate === currentDate;
+        vm.saveHomeworkCell = function (row, cell, silent) {
+            if (!cell.dirty || cell.saving || !vm.previousHomeworkDay || vm.scheduleDaySaving) { return $q.when(false); }
+            if ((cell.editNotes || '').length > 1000) { cell.error = 'Nhận xét tối đa 1000 ký tự.'; return $q.when(false); }
+            if (!vm.previousHomeworkDay.id || !cell.taskId || vm.previousHomeworkDay.version == null) {
+                cell.error = 'Ngày/task chưa được lưu hoặc backend chưa hỗ trợ. Hãy tải lại bảng.'; return $q.when(false);
             }
-            return service.updateTaskProgress(classId, dayId, cell.taskId, payload).then(function (saved) {
+            var completion = $q.defer();
+            cell.saving = true; cell.queued = true; cell.error = '';
+            homeworkCellDrafts[cell.key] = cell;
+            homeworkCellSaveQueue.push({row: row, cell: cell, silent: silent, completion: completion,
+                request: homeworkCellSaveRequest, reviewRequest: homeworkReviewRequest,
+                classId: vm.scheduleClass.id, dayId: vm.previousHomeworkDay.id,
+                previousDate: vm.previousHomeworkDay.scheduleDate, currentDate: vm.scheduleDay.scheduleDate});
+            vm.homeworkCellSaving = true;
+            saveNextHomeworkCell();
+            return completion.promise;
+        };
+
+        function saveNextHomeworkCell() {
+            if (homeworkCellSaveActive) { return; }
+            var job = homeworkCellSaveQueue.shift();
+            if (!job) { vm.homeworkCellSaving = false; return; }
+            var cell = job.cell;
+            function isCurrent() {
+                return job.request === homeworkCellSaveRequest && job.reviewRequest === homeworkReviewRequest
+                    && vm.scheduleClass && vm.scheduleClass.id === job.classId
+                    && vm.scheduleDay && vm.scheduleDay.scheduleDate === job.currentDate;
+            }
+            if (!isCurrent()) {
+                cell.saving = false; cell.queued = false;
+                job.completion.resolve(false); saveNextHomeworkCell(); return;
+            }
+            homeworkCellSaveActive = true; cell.queued = false;
+            var status = cell.automatic && cell.editStatus === cell.status ? cell.manualStatus || 'TODO' : cell.editStatus;
+            var payload = {studentUserId: job.row.id, status: status, notes: cell.editNotes || '', dayVersion: vm.previousHomeworkDay.version};
+            function fail(error, stopQueue) {
                 if (!isCurrent()) { return; }
-                vm.homeworkCellSaving = false; cell.saving = false;
-                if (!saved || saved.id !== dayId || saved.scheduleDate !== previousDate || saved.version == null
-                    || saved.version <= payload.dayVersion || !angular.isArray(saved.tasks)) {
-                    cell.error = 'Backend chưa xác nhận lưu tiến độ. Hãy tải lại bảng để kiểm tra.'; return;
+                cell.error = error && error.data && error.data.message ? error.data.message
+                    : 'Không xác nhận được lưu. Thử lưu lại; nếu kế hoạch đã thay đổi, hãy tải lại bảng.';
+                if (stopQueue) {
+                    homeworkCellSaveQueue.splice(0).forEach(function (pending) {
+                        pending.cell.saving = false; pending.cell.queued = false;
+                        pending.cell.error = cell.error; pending.completion.resolve(false);
+                    });
                 }
+            }
+            service.updateTaskProgress(job.classId, job.dayId, cell.taskId, payload).then(function (saved) {
+                if (!isCurrent()) { return false; }
+                if (!saved || saved.id !== job.dayId || saved.scheduleDate !== job.previousDate || saved.version == null
+                    || saved.version <= payload.dayVersion || !angular.isArray(saved.tasks)) {
+                    fail({data: {message: 'Backend chưa xác nhận lưu tiến độ. Hãy tải lại bảng để kiểm tra.'}}, true);
+                    return false;
+                }
+                var currentTasks = {};
+                vm.previousHomeworkTasks.forEach(function (task) { currentTasks[task.id] = task; });
+                saved.tasks.forEach(function (task) {
+                    var current = currentTasks[task.id];
+                    if (current) { task.bulkSaving = current.bulkSaving; task.bulkStatus = current.bulkStatus; task.bulkError = current.bulkError; }
+                });
                 delete homeworkCellDrafts[cell.key];
                 vm.previousHomeworkDay = saved;
                 vm.previousHomeworkTasks = saved.tasks.filter(function (task) { return task.section === 'HOMEWORK'; });
                 for (var i = 0; i < vm.scheduleEntries.length; i++) {
-                    if (vm.scheduleEntries[i].scheduleDate === previousDate) { vm.scheduleEntries[i] = saved; break; }
+                    if (vm.scheduleEntries[i].scheduleDate === job.previousDate) { vm.scheduleEntries[i] = saved; break; }
                 }
                 vm.buildHomeworkReviewRows();
-                toastr.success('Đã lưu tiến độ và nhận xét của học sinh.');
+                if (!job.silent) { toastr.success('Đã lưu tiến độ và nhận xét của học sinh.'); }
+                return true;
             }, function (error) {
-                if (!isCurrent()) { return; }
-                vm.homeworkCellSaving = false; cell.saving = false;
-                cell.error = error && error.data && error.data.message ? error.data.message
-                    : 'Không xác nhận được lưu. Thử lưu lại; nếu kế hoạch đã thay đổi, hãy tải lại bảng.';
+                fail(error, error && error.status === 409);
+                return false;
+            }).catch(function (error) {
+                fail(error, true);
+                return false;
+            }).then(function (saved) {
+                cell.saving = false; cell.queued = false;
+                job.completion.resolve(saved);
+                if (job.request === homeworkCellSaveRequest) { homeworkCellSaveActive = false; saveNextHomeworkCell(); }
             });
-        };
+        }
 
         function scheduleAttendanceCell(studentId, record) {
             var key = String(studentId);

@@ -1,6 +1,8 @@
 package com.globits.richy.service.impl;
 
 import com.globits.richy.domain.Question;
+import com.globits.richy.domain.Answer;
+import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.dto.ComprehensiveAssignmentSectionDto;
@@ -8,10 +10,12 @@ import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
 import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.question.IeltsNumberedAnswers;
+import com.globits.security.domain.User;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,6 +24,74 @@ import org.joda.time.LocalDateTime;
 /** Teacher review only: retain failed scores without changing successful-attempt evidence. */
 public final class HomeworkTestScore {
     private HomeworkTestScore() { }
+
+    /** Detached scoring inputs avoid loading question content, Topic graphs and account profiles. */
+    public static List<TestResult> readRows(List<Object[]> rows, List<Object[]> acceptedAnswers) {
+        Map<Long, TestResult> results = new LinkedHashMap<>();
+        Map<Long, Question> questions = new LinkedHashMap<>();
+        Map<Long, Set<Long>> configuredAnswers = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long resultId = (Long) row[0];
+            TestResult result = results.get(resultId);
+            if (result == null) {
+                result = new TestResult();
+                result.setId(resultId);
+                User student = new User(); student.setId((Long) row[1]); result.setUser(student);
+                result.setAssignmentTaskId((Long) row[2]); result.setSourceQuestionId((Long) row[3]);
+                result.setTestType((Integer) row[4]); result.setResultStatus((String) row[5]);
+                result.setCreateDate((LocalDateTime) row[6]);
+                result.setCompletedParts(TestResult.parseCompletedParts((String) row[8], (Integer) row[7]));
+                result.setAssignmentSectionKey((String) row[9]);
+                result.setQuestionAnswerTestResult(new LinkedHashSet<QuestionAnswerTestResult>());
+                results.put(resultId, result);
+            }
+            if (row[10] == null) { continue; }
+            QuestionAnswerTestResult response = new QuestionAnswerTestResult();
+            response.setId((Long) row[10]); response.setOrdinalNumber((Integer) row[11]);
+            response.setClientAnswer((String) row[12]); response.setTestResult(result);
+            if (row[13] != null) {
+                QuestionAnswer selected = new QuestionAnswer(); selected.setId((Long) row[13]);
+                selected.setCorrect(Boolean.TRUE.equals(row[14]));
+                Answer answer = new Answer(); answer.setAnswer((String) row[15]); selected.setAnswer(answer);
+                Question question = scoreQuestion(questions, (Long) row[16], (Integer) row[17]);
+                selected.setQuestion(question);
+                Question pack = scoreQuestion(questions, (Long) row[18], (Integer) row[26]);
+                if (pack != null) {
+                    pack.setType((Integer) row[19]); pack.setMotherTongue((String) row[20]);
+                    Question part = scoreQuestion(questions, (Long) row[21], (Integer) row[22]);
+                    Question root = scoreQuestion(questions, (Long) row[23], (Integer) row[24]);
+                    pack.setParent(part);
+                    if (part != null) { part.setParent(root); }
+                    if (root != null) { root.setParent(scoreQuestion(questions, (Long) row[25], null)); }
+                }
+                if (question != null) { question.setParent(pack); }
+                response.setQuestionAnswer(selected);
+            }
+            result.getQuestionAnswerTestResult().add(response);
+        }
+        for (Object[] row : acceptedAnswers) {
+            Question question = questions.get((Long) row[0]);
+            if (question == null || !configuredAnswers.computeIfAbsent(question.getId(), id -> new HashSet<>()).add((Long) row[1])) {
+                continue;
+            }
+            QuestionAnswer choice = new QuestionAnswer(); choice.setId((Long) row[1]);
+            choice.setQuestion(question); choice.setCorrect(true);
+            Answer answer = new Answer(); answer.setAnswer((String) row[2]); choice.setAnswer(answer);
+            question.getQuestionAnswers().add(choice);
+        }
+        return new ArrayList<>(results.values());
+    }
+
+    private static Question scoreQuestion(Map<Long, Question> questions, Long id, Integer ordinal) {
+        if (id == null) { return null; }
+        Question question = questions.computeIfAbsent(id, key -> {
+            Question value = new Question(); value.setId(key);
+            value.setQuestionAnswers(new LinkedHashSet<QuestionAnswer>());
+            return value;
+        });
+        if (ordinal != null) { question.setOrdinalNumber(ordinal); }
+        return question;
+    }
 
     public static boolean enabled(EnrolmentClassScheduleTaskDto task) {
         return task.getId() != null && HomeworkTopicCompletion.ieltsEnabled(task)
