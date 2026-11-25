@@ -828,6 +828,52 @@
                 ? 'assets/images/battle-lightning.svg' : 'assets/images/battle-pumpkin.svg');
         };
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
+        var rottenEggThrowCost = 3;
+        var rottenEggSkill = 'ROTTEN_EGG_THROW';
+        vm.rottenEggThrow = {target: null};
+        vm.rottenEggThrowCost = rottenEggThrowCost;
+        function isRottenEggPlay() {
+            return vm.isLumNgayMode() && vm.room.status === 'PLAYING' && !vm.room.giftOpening && !vm.room.videoSynchronized;
+        }
+        vm.showRottenEggThrow = function () {
+            var player = getMe();
+            return isRottenEggPlay() && vm.room.settings.skillsEnabled !== false && player && !player.spectator &&
+                typeof player.rottenEggCount === 'number';
+        };
+        vm.isRottenEggTarget = function (player) {
+            return !!(player && player.username !== vm.currentUser.username && player.connected && !player.spectator &&
+                !(player.skillImmunityEndsAt > serverNow()));
+        };
+        vm.canThrowRottenEgg = function () {
+            return vm.showRottenEggThrow() && !vm.sessionLoginRequired && !vm.throwingRottenEgg && !vm.giftModalOpen &&
+                !isMeFrozen() && !isWrongAnswerPenaltyActive() && getMe().rottenEggCount >= rottenEggThrowCost &&
+                (vm.room.players || []).some(function (player) {
+                    return player.username === vm.rottenEggThrow.target && vm.isRottenEggTarget(player);
+                });
+        };
+        vm.throwRottenEgg = function () {
+            if (!vm.canThrowRottenEgg()) { return; }
+            var code = vm.room.code, gameId = vm.room.giftDrop && vm.room.giftDrop.gameId;
+            function isCurrentGame() {
+                return !destroyed && isRottenEggPlay() && vm.room.code === code &&
+                    vm.room.giftDrop && vm.room.giftDrop.gameId === gameId;
+            }
+            vm.throwingRottenEgg = true;
+            return battleService.useSkill(code, vm.rottenEggThrow.target, rottenEggSkill).then(function (room) {
+                if (!isCurrentGame()) { return; }
+                applyRoom(room, false);
+                vm.rottenEggThrow.target = null;
+            }, function (error) {
+                if (!isCurrentGame()) { return; }
+                showRequestError(error);
+                refreshPrivateRoomState();
+            }).finally(function () { vm.throwingRottenEgg = false; });
+        };
+        vm.activeRottenEggSplats = function () {
+            if (!isRottenEggPlay()) { return []; }
+            var player = getMe();
+            return player && !player.spectator && player.rottenEggSplatEndsAt > serverNow() ? [player.rottenEggSplatEndsAt] : [];
+        };
         vm.isGiftLightningActive = function () {
             var effect = vm.room && vm.room.giftLightning;
             return !!(vm.isLumNgayMode() && vm.room.status === 'PLAYING' && effect && effect.endsAt > serverNow() && effect.startsAt <= serverNow());
@@ -3412,7 +3458,10 @@
                 if (incoming.giftCreditVersion == null || incoming.giftCreditVersion < previousRoom.giftCreditVersion) {
                     incoming.giftCredits = previousRoom.giftCredits; incoming.giftCreditVersion = previousRoom.giftCreditVersion;
                 }
-            } else { vm.closeGiftModal(true); }
+            } else {
+                vm.closeGiftModal(true);
+                vm.rottenEggThrow.target = null;
+            }
 
             if (
                 previousRoom &&
@@ -6754,6 +6803,7 @@
 
 
         function getSkillLabel(type) {
+            if (type === rottenEggSkill) { return 'NÉM TRỨNG THỐI'; }
             if (type === 'FREEZE') {
                 return 'ĐÓNG BĂNG 3 GIÂY';
             }
@@ -6792,6 +6842,7 @@
 
 
         function getSkillIcon(type) {
+            if (type === rottenEggSkill) { return '🥚'; }
             if (type === 'UNFREEZE') { return '🧊'; }
             if (type === 'FREEZE') {
                 return '❄️';
@@ -6915,6 +6966,7 @@
                 newestId = Math.max(newestId, eventId);
 
                 if (
+                    event.type !== rottenEggSkill &&
                     event.targetUsername === vm.currentUser.username &&
                     event.actorUsername !== vm.currentUser.username &&
                     (
@@ -6999,6 +7051,8 @@
                 event.targetUsername,
                 'người chơi khác'
             );
+
+            if (event.type === rottenEggSkill) { return actor + ' vừa ném trứng thối vào ' + target + '.'; }
 
             if (event.type === 'FREEZE') {
                 return actor + ' vừa đóng băng ' + target + ' trong 3 giây.';

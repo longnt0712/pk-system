@@ -6,6 +6,8 @@ import java.util.*;
 public class GiftDropGame {
     public static final int ROTTEN_EGG_LEVEL = -1;
     public static final double ROTTEN_EGG_POINTS = 0.5D;
+    public static final int ROTTEN_EGG_THROW_COST = 3;
+    public static final long ROTTEN_EGG_SPLAT_MILLIS = 6000L;
     public static final int SKILL_EGG_LEVEL = -2;
     public static final int PERRY_HAT_LEVEL = -3;
     public static final int LIGHTNING_LEVEL = -4;
@@ -109,6 +111,8 @@ public class GiftDropGame {
     }
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
     private final Map<String, Long> perryHatProtection = new HashMap<String, Long>();
+    private final Map<String, Integer> rottenEggCounts = new HashMap<>();
+    private final Map<String, Long> rottenEggSplatEnds = new HashMap<>();
     private static final class DragonBallBoost {
         final int stars;
         final long endsAt;
@@ -475,7 +479,25 @@ public class GiftDropGame {
         Long endsAt = perryHatProtection.get(username);
         return endsAt == null ? 0L : endsAt;
     }
+    public int rottenEggCount(String username) {
+        return rottenEggCounts.getOrDefault(username, 0);
+    }
+
+    public long rottenEggSplatEndsAt(String username) {
+        return rottenEggSplatEnds.getOrDefault(username, 0L);
+    }
+
+    public boolean throwRottenEgg(String username, String targetUsername, long now) {
+        int count = rottenEggCount(username);
+        if (count < ROTTEN_EGG_THROW_COST) { return false; }
+        rottenEggCounts.put(username, count - ROTTEN_EGG_THROW_COST);
+        rottenEggSplatEnds.put(targetUsername, now + ROTTEN_EGG_SPLAT_MILLIS);
+        version++;
+        return true;
+    }
+
     public void recordClaim(Gift gift, String username, String displayName, double awardedPoints, long now) {
+        if (gift.rewardLevel == ROTTEN_EGG_LEVEL) { rottenEggCounts.merge(username, 1, Integer::sum); }
         if (gift.rewardLevel == PERRY_HAT_LEVEL) { perryHatProtection.put(username, now + PERRY_HAT_PROTECTION_MILLIS); }
         for (PetRewardCatalog.Reward reward : rewards) {
             if (reward.level == gift.rewardLevel && reward.dragonBallStars > 0) {

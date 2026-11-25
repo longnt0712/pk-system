@@ -3,13 +3,21 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),nodeVm=require('node:vm');
 const plain=v=>JSON.parse(JSON.stringify(v));
 function setup(username='alice') {
- let Controller,hooks,resolveClaim,rejectClaim,resolveAnswer,cleanup; const calls=[],answerCalls=[],finishCalls=[],extendCalls=[],events={},bodyClasses=new Set();
- const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(name,fn){events[name]=fn;},off(){}};}};
+ let Controller,hooks,resolveClaim,rejectClaim,resolveAnswer,cleanup; const calls=[],throwCalls=[],answerCalls=[],finishCalls=[],extendCalls=[],events={},bodyClasses=new Set();
+ const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,isFunction:value=>typeof value==='function',noop(){},element(){return {on(name,fn){events[name]=fn;},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto});'),{angular,expose(v){hooks=v;}});
  const timer=()=>1; timer.cancel=()=>{};
  const window={Promise,APP_VERSION:'qa',location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(name){bodyClasses.add(name);},remove(name){bodyClasses.delete(name);}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
  const service={claimGift(...args){calls.push(args);return new Promise((resolve,reject)=>{resolveClaim=resolve;rejectClaim=reject;});},
+  useSkill(...args) {
+   throwCalls.push(args);
+   const next = plain(vm.room);
+   next.giftDrop.version++;
+   next.players.find(player => player.username === username).rottenEggCount -= 3;
+   next.players.find(player => player.username === args[1]).rottenEggSplatEndsAt = Date.now() + 6000;
+   return Promise.resolve(next);
+  },
   finishGiftOpening(...args){finishCalls.push(args);const done=plain(vm.room);done.status='FINISHED';done.giftOpening=false;return Promise.resolve(done);},
   extendGiftOpening(...args){extendCalls.push(args);const next=plain(vm.room);next.giftOpeningEndsAt+=60000;next.matchEndsAt=next.giftOpeningEndsAt;return Promise.resolve(next);},
   answer(...args){answerCalls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},getRoom(){return Promise.resolve(plain(vm.room));},disconnectRealtime(){}};
@@ -20,7 +28,7 @@ function setup(username='alice') {
    currentQuestion:null,giftDrop:{gameId,version,poolVersion:version,capacity:credits+3,gifts:[{id:'gift1'},{id:'gift2'},{id:'gift3'}]},giftCredits:credits,giftCreditVersion:version};
  }
  hooks.applyRoom(room(),false);
- return {vm,hooks,calls,answerCalls,finishCalls,extendCalls,events,bodyClasses,room,resolve(result){resolveClaim(result);},reject(error){rejectClaim(error);},resolveAnswer(result){resolveAnswer(result);},destroy(){cleanup();}};
+ return {vm,hooks,calls,throwCalls,answerCalls,finishCalls,extendCalls,events,bodyClasses,room,resolve(result){resolveClaim(result);},reject(error){rejectClaim(error);},resolveAnswer(result){resolveAnswer(result);},destroy(){cleanup();}};
 }
 test('Lụm ngay can be selected and its score settings are clamped',()=>{
  const h=setup('host'); h.vm.hostSettings.mode='LUM_NGAY';h.vm.hostSettings.giftSpawnSeconds=0;h.vm.hostSettings.giftBasePoints=25000;
@@ -42,6 +50,44 @@ test('Perry protection uses the server clock, survives public and old private up
  h.hooks.applyRoom(h.room(3,1,'new-match'),false);assert.equal(h.vm.giftPerryProtectionSeconds(),0);
  const host=setup('host');host.hooks.applyRoom(snapshot,false);assert.equal(host.vm.giftPerryProtectionSeconds(),0,'spectator never inherits player protection');
 });
+test('rotten egg action spends the available charge and only the selected player sees the timed splat', async () => {
+    const shooter = setup('alice');
+    const victim = setup('bob');
+    const other = setup('host');
+    const before = shooter.room(0, 5);
+    before.giftOpening = false;
+    before.settings.skillsEnabled = true;
+    before.players.find(player => player.username === 'alice').rottenEggCount = 2;
+    before.players.push({username:'bob', connected:true, spectator:false, rottenEggCount:0});
+    shooter.hooks.applyRoom(plain(before), false);
+    shooter.vm.rottenEggThrow.target = 'bob';
+    assert.equal(shooter.vm.canThrowRottenEgg(), false);
+
+    const ready = plain(before);
+    ready.players.find(player => player.username === 'alice').rottenEggCount = 4;
+    ready.giftDrop.version++;
+    shooter.hooks.applyRoom(plain(ready), false);
+    assert.equal(shooter.vm.canThrowRottenEgg(), true);
+    const request = shooter.vm.throwRottenEgg();
+    assert.equal(shooter.vm.throwRottenEgg(), undefined, 'a pending throw prevents a double click');
+    await request;
+    assert.deepEqual(shooter.throwCalls, [['GIFTS1', 'bob', 'ROTTEN_EGG_THROW']]);
+    assert.equal(shooter.vm.me().rottenEggCount, 1);
+    assert.equal(shooter.vm.activeRottenEggSplats().length, 0);
+
+    const incoming = plain(shooter.vm.room);
+    victim.hooks.applyRoom(plain(incoming), true);
+    other.hooks.applyRoom(plain(incoming), true);
+    assert.equal(victim.vm.activeRottenEggSplats()[0], incoming.players.find(player => player.username === 'bob').rottenEggSplatEndsAt);
+    assert.equal(other.vm.activeRottenEggSplats().length, 0);
+    victim.hooks.applyRoom(plain(ready), false);
+    assert.equal(victim.vm.activeRottenEggSplats().length, 1, 'an older snapshot cannot erase the effect');
+    const later = plain(incoming);
+    later.serverTime += 7000;
+    victim.hooks.applyRoom(later, false);
+    assert.equal(victim.vm.activeRottenEggSplats().length, 0);
+});
+
 test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{
  const h=setup(),seen=new Set();
  const names=['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];

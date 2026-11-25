@@ -60,6 +60,8 @@ public class BattleOnlinePlayerDto implements Serializable {
     private long frozenUntil;
     private long skillImmunityEndsAt;
     private int collectedDragonBallCount;
+    private Integer rottenEggCount;
+    private long rottenEggSplatEndsAt;
 
     /*
      * ESCAPE_DUMB_DEMON skill INVERT.
@@ -72,6 +74,11 @@ public class BattleOnlinePlayerDto implements Serializable {
      * Trong thời gian này, điểm vừa nhận của mỗi câu đúng được nhân 1.2.
      */
     private long burningUntil;
+
+    public Integer getRottenEggCount() { return rottenEggCount; }
+    public void setRottenEggCount(Integer count) { rottenEggCount = count; }
+    public long getRottenEggSplatEndsAt() { return rottenEggSplatEndsAt; }
+    public void setRottenEggSplatEndsAt(long endsAt) { rottenEggSplatEndsAt = endsAt; }
 
     public int getCollectedDragonBallCount() { return collectedDragonBallCount; }
     public void setCollectedDragonBallCount(int value) { collectedDragonBallCount = value; }

@@ -254,6 +254,62 @@ public class BattleOnlineGiftDropTest {
         rejected("alice",id); assertEquals(4D,(Double)get(alice,"score"),0D); assertEquals(1,get(alice,"giftCredits"));
     }
 
+    @Test public void throwingRottenEggsCostsThreeAndOnlyMarksTheChosenPlayer() throws Exception {
+        set(room, "giftOpening", false);
+        set(get(room, "settings"), "skillsEnabled", true);
+        pool = new GiftDropGame(10, new Random() { public int nextInt(int bound) { return 0; } });
+        set(room, "giftDrop", pool);
+        set(alice, "giftCredits", 4);
+        BattleOnlineUseSkillDto skill = new BattleOnlineUseSkillDto();
+        skill.setSkillType("ROTTEN_EGG_THROW");
+        skill.setTargetUsername("bob");
+        for (int count = 1; count <= 4; count++) {
+            String id = pool.snapshot("alice").gifts.get(0).id;
+            BattleOnlineGiftClaimResultDto claimed = service.claimGift("GIFTS1", "alice", request(id));
+            assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL, claimed.getRewardLevel());
+            assertEquals(Integer.valueOf(count), giftPlayer(claimed.getRoom(), "alice").getRottenEggCount());
+            if (count < 3) { rejectedThrow(skill); }
+        }
+
+        skill.setTargetUsername("alice");
+        rejectedThrow(skill);
+        skill.setTargetUsername("host");
+        rejectedThrow(skill);
+        skill.setTargetUsername("bob");
+        set(bob, "connected", false);
+        rejectedThrow(skill);
+        set(bob, "connected", true);
+        assertEquals(4, pool.rottenEggCount("alice"));
+
+        Object question = state("QuestionState");
+        set(bob, "currentQuestion", question);
+        set(bob, "score", 7D);
+        BattleOnlineRoomDto sent = service.useSkill("GIFTS1", "alice", skill);
+        assertEquals(Integer.valueOf(1), giftPlayer(sent, "alice").getRottenEggCount());
+        assertEquals(0L, giftPlayer(sent, "alice").getRottenEggSplatEndsAt());
+        long impactEnd = giftPlayer(sent, "bob").getRottenEggSplatEndsAt();
+        assertEquals(sent.getRecentEvents().get(0).getCreatedAt() + GiftDropGame.ROTTEN_EGG_SPLAT_MILLIS, impactEnd);
+        assertEquals(impactEnd, giftPlayer(service.getRoom("GIFTS1", "bob"), "bob").getRottenEggSplatEndsAt());
+        assertSame(question, get(bob, "currentQuestion"));
+        assertEquals(7D, (Double) get(bob, "score"), 0D);
+        assertEquals(0L, get(bob, "frozenUntil"));
+        rejectedThrow(skill);
+        assertEquals(1, pool.rottenEggCount("alice"));
+    }
+
+    private BattleOnlinePlayerDto giftPlayer(BattleOnlineRoomDto snapshot, String username) {
+        return snapshot.getPlayers().stream().filter(player -> username.equals(player.getUsername())).findFirst().get();
+    }
+
+    private void rejectedThrow(BattleOnlineUseSkillDto skill) {
+        try {
+            service.useSkill("GIFTS1", "alice", skill);
+            fail("Rotten egg throw must be rejected");
+        } catch (BattleOnlineException expected) {
+            // Failed attempts must not spend eggs.
+        }
+    }
+
     @Test public void perryHatScoresExactlyOnePointEvenForTheDoubleCarrierAndKeepsPrivateRewardsHidden() throws Exception {
         final int hatTicket = firstHatTicket();
         pool = new GiftDropGame(10000,new Random() { @Override public int nextInt(int bound) { return hatTicket; } });

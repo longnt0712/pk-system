@@ -1071,6 +1071,20 @@
         </div>
     </div>
 
+    <div class="battle-rotten-splat" ng-repeat="effectEnd in vm.activeRottenEggSplats() track by effectEnd" aria-hidden="true">
+        <div class="battle-rotten-splat-art">
+            <span class="battle-rotten-stain"></span>
+            <span class="battle-rotten-shell is-left"></span>
+            <span class="battle-rotten-shell is-right"></span>
+            <span class="battle-rotten-fume is-first"></span>
+            <span class="battle-rotten-fume is-second"></span>
+            <span class="battle-rotten-fume is-third"></span>
+            <span class="battle-rotten-fly is-first"></span>
+            <span class="battle-rotten-fly is-second"></span>
+            <span class="battle-rotten-fly is-third"></span>
+        </div>
+    </div>
+
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode(), 'is-classic-question-layout': vm.isClassicMode() && (!vm.isSpectator() || vm.isClassicHostPreview())}">
@@ -1447,6 +1461,19 @@
             <section class="battle-online-classic-review" ng-if="vm.isClassicMode() && vm.room.classicAnswerRevealed" role="status">
                 <small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong>
             </section>
+
+            <form class="battle-rotten-throw" ng-if="vm.showRottenEggThrow()" ng-submit="vm.throwRottenEgg()">
+                <span class="battle-rotten-count">
+                    <img ng-src="{{vm.getGiftRewardImage(-1)}}" alt="" draggable="false">
+                    Trứng thối <b>{{vm.me().rottenEggCount}}/{{vm.rottenEggThrowCost}}</b>
+                </span>
+                <select ng-if="vm.me().rottenEggCount >= vm.rottenEggThrowCost"
+                        ng-model="vm.rottenEggThrow.target" aria-label="Chọn người bị ném trứng"
+                        ng-options="player.username as vm.getPlayerDisplayName(player) for player in vm.room.players | filter:vm.isRottenEggTarget">
+                    <option value="">Chọn người chơi</option>
+                </select>
+                <button type="submit" ng-disabled="!vm.canThrowRottenEgg()">{{vm.throwingRottenEgg ? 'Đang ném…' : 'Ném trứng thối'}}</button>
+            </form>
 
             <div class="battle-online-gift-slot"
                  ng-if="vm.isLumNgayMode() && !vm.room.giftOpening && !vm.room.videoSynchronized && vm.room.giftCredits > 0">
@@ -2860,6 +2887,69 @@
     .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
     .battle-online-gift-open,.battle-online-gift-continue { border:0; border-radius:14px; padding:12px 20px; color:#fff; background:linear-gradient(135deg,#8654ef,#5864ee); font-weight:900; }
     .battle-online-gift-open { margin-left:10px; }
+    .battle-rotten-throw { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:12px 0 6px; }
+    .battle-rotten-count { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:750; }
+    .battle-rotten-count img { width:27px; height:27px; object-fit:contain; }
+    .battle-rotten-throw select, .battle-rotten-throw button { min-height:36px; max-width:100%; border:1px solid #a7b372; border-radius:10px; padding:5px 10px; font:inherit; font-size:12px; }
+    .battle-rotten-throw select { min-width:0; background:#f8fbe9; color:#283416; }
+    .battle-rotten-throw button { color:#fff; background:#50691f; font-weight:750; }
+    .battle-rotten-throw button:disabled { opacity:.55; }
+    .battle-rotten-splat, .battle-rotten-splat * { pointer-events:none; }
+    .battle-rotten-splat { position:fixed; inset:0; z-index:1280; display:grid; place-items:center; overflow:hidden; }
+    .battle-rotten-splat-art {
+        position:relative; width:min(89vw, 780px); height:min(63vh, 500px);
+        animation:battle-rotten-impact .24s cubic-bezier(.2,.75,.3,1.25) both;
+    }
+    .battle-rotten-stain {
+        position:absolute; inset:5% 0; opacity:.69; transform:rotate(-9deg);
+        background:radial-gradient(ellipse at 45% 44%, #c4b62b 0 15%, #8b981c 31%, #687719 55%, #455c16 83%);
+        clip-path:polygon(2% 33%, 16% 35%, 23% 31%, 10% 9%, 34% 25%, 39% 18%, 41% 0%, 48% 20%, 57% 24%, 73% 6%, 69% 31%, 85% 25%, 95% 31%, 78% 43%, 100% 52%, 79% 56%, 86% 66%, 94% 89%, 72% 72%, 65% 76%, 63% 99%, 56% 79%, 46% 77%, 39% 91%, 34% 72%, 24% 77%, 11% 96%, 16% 72%, 7% 66%, 22% 55%, 0% 48%, 14% 42%);
+    }
+    .battle-rotten-splat-art::before {
+        content:""; position:absolute; inset:0; opacity:.7;
+        background:radial-gradient(ellipse 18px 10px at 8% 26%, #7a8c22 75%, transparent 80%),
+            radial-gradient(ellipse 13px 19px at 85% 17%, #a9ab3b 75%, transparent 80%),
+            radial-gradient(ellipse 15px 11px at 91% 65%, #62701b 75%, transparent 80%),
+            radial-gradient(ellipse 10px 16px at 22% 84%, #7a8c22 75%, transparent 80%),
+            radial-gradient(ellipse 7px 6px at 3% 60%, #667e17 75%, transparent 80%);
+    }
+    .battle-rotten-shell {
+        position:absolute; width:19%; height:22%; opacity:.82;
+        background:radial-gradient(ellipse at 60% 20%, #ddd8aa 6%, #a19b72 62%, #716951 100%);
+        border-radius:20% 30% 70% 65%;
+        clip-path:polygon(0 24%, 15% 10%, 28% 31%, 47% 3%, 62% 33%, 78% 14%, 100% 29%, 91% 68%, 69% 99%, 29% 100%, 9% 71%);
+    }
+    .battle-rotten-shell.is-left { top:55%; left:25%; transform:rotate(30deg); }
+    .battle-rotten-shell.is-right { top:36%; right:22%; transform:rotate(-146deg) scale(.85); }
+    .battle-rotten-fume {
+        position:absolute; top:16%; width:8%; height:27%; opacity:.64; border-left:8px solid #b8d376;
+        border-radius:50%; filter:blur(1.5px);
+        animation:battle-rotten-stink 2s infinite ease-out;
+    }
+    .battle-rotten-fume.is-first { left:38%; }
+    .battle-rotten-fume.is-second { left:48%; animation-delay:-.65s; }
+    .battle-rotten-fume.is-third { left:58%; animation-delay:-1.3s; }
+    .battle-rotten-fly {
+        position:absolute; width:22px; height:26px; opacity:.9;
+        background:radial-gradient(ellipse at 50% 64%, #181a10 0 26%, transparent 28%),
+            radial-gradient(ellipse at 25% 43%, #f4f8df 0 22%, transparent 24%),
+            radial-gradient(ellipse at 75% 43%, #f4f8df 0 22%, transparent 24%);
+        animation:battle-rotten-buzz 1.05s infinite linear; filter:drop-shadow(1px 1px 2px #20230c99);
+    }
+    .battle-rotten-fly.is-first { top:27%; left:30%; }
+    .battle-rotten-fly.is-second { top:33%; right:25%; animation-delay:-.38s; }
+    .battle-rotten-fly.is-third { top:66%; left:48%; animation-delay:-.7s; }
+    @keyframes battle-rotten-impact { from { transform:scale(.46); opacity:.2; } to { transform:scale(1); opacity:1; } }
+    @keyframes battle-rotten-stink { from { transform:translateY(38%) rotate(-15deg) scale(.8); opacity:.68; } to { transform:translateY(-55%) rotate(21deg) scale(1.15); opacity:.16; } }
+    @keyframes battle-rotten-buzz {
+        0%, 100% { transform:translate(-4px, 0) rotate(-28deg); }
+        27% { transform:translate(32px, -19px) rotate(38deg); }
+        55% { transform:translate(19px, 16px) rotate(150deg); }
+        80% { transform:translate(-21px, 14px) rotate(220deg); }
+    }
+    @media (prefers-reduced-motion:reduce) {
+        .battle-rotten-splat-art, .battle-rotten-fume, .battle-rotten-fly { animation:none; }
+    }
     body.battle-gift-modal-open { overflow:hidden; }
     .battle-online-gift-modal-backdrop { position:fixed; inset:0; z-index:1250; display:flex; align-items:center; justify-content:center; background:rgba(19,12,47,.8); backdrop-filter:blur(6px); }
     .battle-online-gift-modal { width:96vw; height:94vh; height:94dvh; display:flex; flex-direction:column; padding:clamp(18px,3vw,42px); border:2px solid #c7b5ff; border-radius:26px; background:radial-gradient(ellipse at top,#fff4df,#faf6ff 48%,#edf8ff); box-shadow:0 24px 100px #09032380; overflow:hidden; color:#3c315e; }

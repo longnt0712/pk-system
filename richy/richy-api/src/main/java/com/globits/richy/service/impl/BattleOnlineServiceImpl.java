@@ -147,6 +147,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String SKILL_INVERT = "INVERT";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
     private static final String SKILL_UNFREEZE = "UNFREEZE";
+    private static final String SKILL_ROTTEN_EGG_THROW = "ROTTEN_EGG_THROW";
     private static final String SKILL_STEAL_SCORE = "STEAL_SCORE";
     private static final String SKILL_FIRE_UP = "FIRE_UP";
     private static final String SKILL_MONEY_BEG = "MONEY_BEG";
@@ -2980,11 +2981,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             boolean rescueRequest = MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                     skillDto != null && SKILL_UNFREEZE.equals(skillDto.getSkillType());
+            boolean rottenEggRequest = skillDto != null && SKILL_ROTTEN_EGG_THROW.equals(skillDto.getSkillType());
             String requestedSkill = rescueRequest ? SKILL_UNFREEZE : actor.pendingSkillType;
-            if (requestedSkill != null && !isSkillEnabledLocked(room, requestedSkill)) {
+            if (!rottenEggRequest && requestedSkill != null && !isSkillEnabledLocked(room, requestedSkill)) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Skill này đã bị host tắt.");
             }
-            if (rescueRequest) {
+            if (rottenEggRequest) {
+                useRottenEggLocked(room, actor, clean(skillDto.getTargetUsername()));
+                dto = snapshotLocked(room, username);
+            } else if (rescueRequest) {
                 useUnfreezeLocked(room, actor, clean(skillDto.getTargetUsername()));
                 dto = snapshotLocked(room, username);
             } else {
@@ -5802,6 +5807,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     actorName + (MODE_DEMON_DEFENSE.equals(room.settings.mode)
                             ? " vừa trừ " + (int) amount + " streak của " : " vừa phá streak của ") + targetName + "."
             );
+        } else if (SKILL_ROTTEN_EGG_THROW.equals(skillType)) {
+            event.setMessage(actorName + " vừa ném trứng thối vào " + targetName + ".");
         } else if (SKILL_UNFREEZE.equals(skillType)) {
             event.setMessage(actorName + " vừa giải băng cho " + targetName + ".");
         } else if (SKILL_STEAL_SCORE.equals(skillType)) {
@@ -6500,6 +6507,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 (room.demonDefense == null || room.demonDefense.isEliminated(player.teamNumber))) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Đội bạn đã bị loại. Hãy theo dõi trận đấu trên màn hình host.");
         }
+    }
+
+    private void useRottenEggLocked(RoomState room, PlayerState actor, String targetUsername) {
+        if (!MODE_LUM_NGAY.equals(room.settings.mode) || room.giftDrop == null || room.videoSynchronized) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ ném trứng thối khi đang chơi LỤM NGAY.");
+        }
+        long now = System.currentTimeMillis();
+        PlayerState target = room.players.get(targetUsername);
+        if (target == null || target == actor || target.spectator || !target.connected) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Hãy chọn một người chơi khác đang online.");
+        }
+        if (room.giftDrop.skillImmunityEndsAt(target.username) > now) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Người chơi này đang được bảo vệ bởi Ngọc Rồng.");
+        }
+        if (!room.giftDrop.throwRottenEgg(actor.username, target.username, now)) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn cần đủ 3 trứng thối để ném.");
+        }
+        addSkillEventLocked(room, SKILL_ROTTEN_EGG_THROW, actor, target, 0D, now);
     }
 
     private void useUnfreezeLocked(RoomState room, PlayerState actor, String targetUsername) {
@@ -7808,6 +7833,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.setCollectedDragonBallCount(room.giftDrop != null ? room.giftDrop.collectedDragonBallCount(state.username) : 0);
             player.setSkillImmunityEndsAt(room.giftDrop != null ? room.giftDrop.skillImmunityEndsAt(state.username) : 0L);
+            if (room.giftDrop != null && !state.spectator) {
+                player.setRottenEggCount(room.giftDrop.rottenEggCount(state.username));
+                player.setRottenEggSplatEndsAt(room.giftDrop.rottenEggSplatEndsAt(state.username));
+            }
             player.setFrozenUntil(
                     state.frozenUntil
             );
