@@ -38,6 +38,29 @@ Các thao tác chuyển release, restart theo lịch và xử lý HTTP lỗi dù
 - Ghi âm và upload vẫn ở `/var/lib/pk-system/speaking-recordings`, `/var/lib/pk-system/files`; không nằm trong checkout hoặc vùng dọn release.
 - Giữ ba release tự động mới nhất và bảo vệ release đang dùng/bản trước; giữ snapshot migration gốc. Giữ tối đa 20 log build còn nguyên.
 
+
+## Nút Reset server trong SYSTEM
+
+Tính năng này mặc định tắt. Nút chỉ hiện cho tài khoản có ROLE_ADMIN được ghi trong `pk.system.restart.operator`. Nút gửi một yêu cầu cho systemd khởi động lại riêng dịch vụ `pk-system`. Yêu cầu cũ quá hai phút sẽ bị bỏ qua và hai lần thử khởi động lại từ web cách nhau tối thiểu năm phút.
+
+Sau khi duyệt và triển khai mã ứng dụng, quản trị viên Ubuntu cài riêng hai unit từ bản mã đã duyệt. Chạy lệnh bên dưới từ thư mục gốc của checkout trên VPS. Bước này không chạy trình cài auto deploy và không khởi động lại Java.
+
+```sh
+app_user="$(systemctl show -p User --value pk-system.service)"
+test -n "$app_user" && test "$app_user" != root || exit 1
+app_group="$(id -gn "$app_user")"
+printf 'd /run/pk-system-web-restart 0700 %s %s -\n' "$app_user" "$app_group" |
+  sudo tee /etc/tmpfiles.d/pk-system-web-restart.conf >/dev/null
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/pk-system-web-restart.conf
+sudo install -o root -g root -m 0644 deployment/linux/pk_deploy.py /usr/local/lib/pk-deploy/pk_deploy.py
+sudo install -o root -g root -m 0644 deployment/linux/pk-system-web-restart.path deployment/linux/pk-system-web-restart.service /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/pk-system-web-restart.path /etc/systemd/system/pk-system-web-restart.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now pk-system-web-restart.path
+```
+
+Thêm `pk.system.restart.operator=<tên-đăng-nhập-quản-trị>` vào `/etc/pk-system/application-production.properties` trước lần khởi động dịch vụ tiếp theo. Nút sẽ hiện sau khi Java đọc cấu hình và tài khoản quản trị mở lại trang. Thông báo trên web xác nhận gửi yêu cầu. Xem kết quả thực tế bằng `journalctl -u pk-system-web-restart.service -n 40 --no-pager`.
+
 ## Khi bản mới lỗi
 
 - Build hoặc xác minh JAR thất bại: không chuyển bản đang phục vụ.

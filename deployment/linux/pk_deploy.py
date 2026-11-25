@@ -15,6 +15,7 @@ import re
 import shutil
 import socket
 import ssl
+import stat
 import subprocess
 import sys
 import time
@@ -23,6 +24,8 @@ import uuid
 import zipfile
 
 from render_frontend import render
+
+WEB_RESTART_REQUEST = pathlib.Path('/run/pk-system-web-restart/request')
 
 DOMAINS = ('ieltsroom.com', 'tnttphungkhoang.com')
 DEFAULT = {
@@ -536,18 +539,51 @@ class Deployer:
                 atomic_json(self.c['state'], state)
                 raise
 
+    def restart_backend(self, label):
+        log(label + '_START')
+        self.stop_backend()
+        self.start_backend()
+        self.check_live()
+        health = read_json(self.c['health_state'])
+        health.update({'failures': 0, 'last_successful_restart': time.time()})
+        atomic_json(self.c['health_state'], health)
+        log(label + '_OK')
+
     def scheduled_restart(self):
         with lock(self.c['maintenance_lock'], timeout=600):
             if not tcp_open(11433):
                 raise RuntimeError('SQL tunnel unavailable; scheduled restart skipped')
-            log('SCHEDULED_RESTART_START')
-            self.stop_backend()
-            self.start_backend()
-            self.check_live()
+            self.restart_backend('SCHEDULED_RESTART')
+
+    def web_restart(self, request=WEB_RESTART_REQUEST):
+        # Only consume the marker. Never read its contents or follow a symlink.
+        try:
+            queued = request.lstat()
+            request.unlink()
+        except FileNotFoundError:
+            return
+        if not stat.S_ISREG(queued.st_mode):
+            log('WEB_RESTART_SKIPPED invalid marker')
+            return
+
+        with lock(self.c['maintenance_lock'], timeout=60):
+            now = time.time()
             health = read_json(self.c['health_state'])
-            health.update({'failures': 0, 'last_successful_restart': time.time()})
+            if now - queued.st_mtime > 120:
+                log('WEB_RESTART_SKIPPED expired request')
+                return
+            if now - health.get('last_web_restart_attempt', 0) < 300:
+                log('WEB_RESTART_SKIPPED cooldown')
+                return
+            if subprocess.run(['systemctl', 'is-active', '--quiet', 'pk-system']).returncode != 0:
+                log('WEB_RESTART_SKIPPED service is not running')
+                return
+            if not tcp_open(11433):
+                log('WEB_RESTART_SKIPPED SQL tunnel unavailable')
+                return
+            health['last_web_restart_attempt'] = now
             atomic_json(self.c['health_state'], health)
-            log('SCHEDULED_RESTART_OK')
+            self.restart_backend('WEB_RESTART')
 
     def healthcheck(self):
         try:
@@ -581,7 +617,7 @@ class Deployer:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['poll', 'restart', 'healthcheck', 'bootstrap'])
+    parser.add_argument('mode', choices=['poll', 'restart', 'web-restart', 'healthcheck', 'bootstrap'])
     parser.add_argument('--config', default='/etc/pk-deploy/settings.json')
     parser.add_argument('--retry', action='store_true')
     parser.add_argument('--verify-build', action='store_true')
@@ -593,6 +629,8 @@ def main():
         deployer.poll(bootstrap=args.mode == 'bootstrap', retry=args.retry, verify_build=args.verify_build)
     elif args.mode == 'restart':
         deployer.scheduled_restart()
+    elif args.mode == 'web-restart':
+        deployer.web_restart()
     else:
         deployer.healthcheck()
 

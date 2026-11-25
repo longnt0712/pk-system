@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for an IELTSRoom web restart request
+
+[Path]
+PathExists=/run/pk-system-web-restart/request
+Unit=pk-system-web-restart.service
+
+[Install]
+WantedBy=multi-user.target

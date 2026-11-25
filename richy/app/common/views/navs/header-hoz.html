@@ -306,6 +306,11 @@
                                 <i class="fa fa-gear"></i> Thiết lập hệ thống
                             </a>
                         </li>
+                        <li ng-if="settings.isAdmin === true" ng-controller="ServerRestartMenuController as restartMenu" ng-show="restartMenu.available">
+                            <a href="" role="button" ng-click="restartMenu.restart($event)" ng-attr-aria-disabled="{{restartMenu.sending}}">
+                                <i class="fa fa-power-off" aria-hidden="true"></i> Reset server
+                            </a>
+                        </li>
                         <li><a href="schools"><i class="fa fa-university"></i> Quản lý School</a></li>
                         <li>
                             <a href="ielts_material/admin">

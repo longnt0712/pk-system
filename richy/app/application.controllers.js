@@ -327,6 +327,30 @@
      initialization can be disabled and Layout.init() should be called on page load complete as explained above.
      ***/
 
+
+    Hrm.controller('ServerRestartMenuController', ['$http', '$window', 'settings', 'toastr',
+        function ($http, $window, settings, toastr) {
+            var vm = this;
+            var endpoint = settings.api.baseUrl + settings.api.apiV1Url + 'system/server-restart';
+            vm.available = false;
+            vm.sending = false;
+            $http.get(endpoint, {cache: false}).then(function (response) {
+                vm.available = response.data && response.data.available === true;
+            }, angular.noop);
+            vm.restart = function (event) {
+                event.preventDefault();
+                if (!vm.available || vm.sending || !$window.confirm(
+                    'Khởi động lại dịch vụ IELTSRoom? Người đang học hoặc chơi có thể bị ngắt kết nối.'
+                )) { return; }
+                vm.sending = true;
+                $http.post(endpoint, {confirmed: true}).then(function (response) {
+                    toastr.info(response.data && response.data.message || 'Đã gửi yêu cầu khởi động lại dịch vụ.');
+                }, function (error) {
+                    toastr.error(error.data && error.data.message || 'Chưa gửi được yêu cầu khởi động lại.');
+                }).finally(function () { vm.sending = false; });
+            };
+        }]);
+
     /* Setup Layout Part - Header */
     Hrm.controller('HeaderController', ['$scope', '$state', '$element', '$window', function ($scope, $state, $element, $window) {
         // Bootstrap 3 anchors desktop menus to their button, but does not keep

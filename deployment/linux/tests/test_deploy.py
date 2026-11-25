@@ -257,5 +257,41 @@ class DeploymentTests(unittest.TestCase):
         self.assertNotEqual((old / 'index.html').stat().st_ino, (candidate / 'webroot/index.html').stat().st_ino)
 
 
+
+class WebRestartTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(prefix='pk-web-restart-test-')
+        self.addCleanup(directory.cleanup)
+        self.root = pathlib.Path(directory.name)
+        self.worker = FakeDeployer(self.root)
+        self.worker.c['jar'] = str(self.root / 'old.jar')
+
+    def test_web_restart_consumes_the_marker_and_prevents_repeated_restarts(self):
+        marker = self.root / 'web-request'
+        marker.touch()
+        with mock.patch.object(deploy, 'tcp_open', return_value=True), mock.patch.object(
+                deploy.subprocess, 'run', return_value=mock.Mock(returncode=0)):
+            self.worker.web_restart(marker)
+            self.assertFalse(marker.exists())
+            self.assertEqual(['stop', 'start-old.jar', 'check'], self.worker.events)
+            marker.touch()
+            self.worker.web_restart(marker)
+            self.assertFalse(marker.exists())
+            self.assertEqual(['stop', 'start-old.jar', 'check'], self.worker.events)
+
+    def test_web_restart_ignores_expired_requests_or_missing_sql(self):
+        marker = self.root / 'web-request'
+        marker.touch()
+        os.utime(marker, (1, 1))
+        with mock.patch.object(deploy, 'tcp_open', return_value=False), mock.patch.object(
+                deploy.subprocess, 'run', return_value=mock.Mock(returncode=0)) as systemctl:
+            self.worker.web_restart(marker)
+            systemctl.assert_not_called()
+            marker.touch()
+            self.worker.web_restart(marker)
+        self.assertEqual([], self.worker.events)
+        self.assertFalse(marker.exists())
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
