@@ -490,6 +490,16 @@
     .class-homework-review-table td:first-child,
     .class-homework-review-table th:nth-child(3),
     .class-homework-review-table td:nth-child(3) { width:1%; }
+    .class-homework-review-table th.class-homework-review-number,
+    .class-homework-review-table td.class-homework-review-number { width:42px; min-width:42px; max-width:42px; box-sizing:border-box; }
+    .class-homework-review-table .class-homework-review-number,
+    .class-homework-review-table .class-homework-review-name { position:sticky; left:0; z-index:2; }
+    .class-homework-review-table .class-homework-review-number + .class-homework-review-name { left:42px; }
+    .class-homework-review-table td.class-homework-review-number,
+    .class-homework-review-table td.class-homework-review-name { background:#fff; }
+    .class-homework-review-table .class-homework-review-name { box-shadow:2px 0 0 #e1e7f1; }
+    .class-homework-review-table th.class-homework-review-number,
+    .class-homework-review-table th.class-homework-review-name { z-index:3; }
     .class-homework-review-name > strong,
     .class-homework-review-name > .class-homework-review-note { white-space:nowrap; overflow-wrap:normal; word-break:normal; }
     .class-homework-review-table .class-homework-review-cell { width:auto; min-width:0; max-width:none; }
@@ -593,6 +603,9 @@
     .global-dark-mode .class-homework-review-table { border-color:#343c50; }
     .global-dark-mode .class-homework-review-table th { background:#292f3f; color:#e5eafa; }
     .global-dark-mode .class-homework-review-table td { border-color:#343c50; color:#d9e1f0; }
+    .global-dark-mode .class-homework-review-table td.class-homework-review-number,
+    .global-dark-mode .class-homework-review-table td.class-homework-review-name { background:#202634; }
+    .global-dark-mode .class-homework-review-table .class-homework-review-name { box-shadow:2px 0 0 #343c50; }
     .global-dark-mode .class-homework-column-picker > summary,
     .global-dark-mode .class-homework-column-menu { background:#252d3d; border-color:#46526b; color:#dce5f5; }
     .global-dark-mode .class-homework-column-menu > strong,
@@ -1471,7 +1484,7 @@
                         </div>
                         <div class="class-homework-review-table" data-ng-if="vm.scheduleStudents.length" tabindex="0" aria-label="Bảng tiến độ Homework, cuộn để xem thêm">
                             <table>
-                                <thead><tr><th scope="col" data-ng-if="vm.isHomeworkColumnVisible('number')">#</th><th scope="col" class="class-homework-review-name">Học sinh</th><th scope="col" data-ng-if="vm.isHomeworkColumnVisible('overall')">Tình trạng chung</th>
+                                <thead><tr><th scope="col" class="class-homework-review-number" data-ng-if="vm.isHomeworkColumnVisible('number')">#</th><th scope="col" class="class-homework-review-name">Học sinh</th><th scope="col" data-ng-if="vm.isHomeworkColumnVisible('overall')">Tình trạng chung</th>
                                     <th scope="col" class="class-attendance-cell" data-ng-if="vm.isHomeworkColumnVisible('attendance')">Điểm danh<small class="class-homework-review-note">{{vm.scheduleDayLabel()}}</small></th>
                                     <th scope="col" class="class-homework-review-cell" data-ng-repeat="task in vm.previousHomeworkTasks track by task.id" data-ng-if="vm.isHomeworkTaskColumnVisible(task)">
                                         <span class="class-homework-task-title" data-ng-attr-title="{{task.title}}">{{task.title}}</span>
@@ -1495,7 +1508,7 @@
                                 </tr></thead>
                                 <tbody>
                                     <tr data-ng-repeat="row in vm.filteredHomeworkRows() track by row.id">
-                                        <td data-ng-if="vm.isHomeworkColumnVisible('number')">{{$index + 1}}</td>
+                                        <td class="class-homework-review-number" data-ng-if="vm.isHomeworkColumnVisible('number')">{{$index + 1}}</td>
                                         <td class="class-homework-review-name"><strong>{{row.name}}</strong><small class="class-homework-review-note">{{row.username}}</small></td>
                                         <td data-ng-if="vm.isHomeworkColumnVisible('overall')"><span class="class-homework-status" data-ng-class="{'is-done': row.status === 'DONE', 'is-review': row.status === 'NEEDS_REVIEW', 'is-todo': row.status === 'INCOMPLETE'}">{{row.label}}</span><small class="class-homework-review-note" data-ng-if="row.total">{{row.done}}/{{row.total}} Tasks đã làm</small></td>
                                         <td class="class-attendance-cell" data-ng-if="vm.isHomeworkColumnVisible('attendance')">
