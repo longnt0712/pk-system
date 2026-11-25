@@ -303,7 +303,7 @@
         };
         vm.exerciseInputDisabled = function () {
             if (vm.sessionLoginRequired) { return true; }
-            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.demonBagModalOpen ||
+            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.rottenEggModalOpen || vm.demonBagModalOpen ||
                 !!vm.hostVideoReplay ||
                 (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                 vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive() || vm.isDemonPlayerEliminated() ||
@@ -830,7 +830,9 @@
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
         var rottenEggThrowCost = 3;
         var rottenEggSkill = 'ROTTEN_EGG_THROW';
-        vm.rottenEggThrow = {target: null};
+        vm.rottenEggModalOpen = false;
+        vm.rottenEggTargets = [];
+        var rottenEggReturnFocus = null;
         vm.rottenEggThrowCost = rottenEggThrowCost;
         function isRottenEggPlay() {
             return vm.isLumNgayMode() && vm.room.status === 'PLAYING' && !vm.room.giftOpening && !vm.room.videoSynchronized;
@@ -840,29 +842,53 @@
             return isRottenEggPlay() && vm.room.settings.skillsEnabled !== false && player && !player.spectator &&
                 typeof player.rottenEggCount === 'number';
         };
-        vm.isRottenEggTarget = function (player) {
+        function canOfferRottenEgg() {
+            return !destroyed && !vm.sessionLoginRequired && vm.showRottenEggThrow() &&
+                vm.room.matchEndsAt > serverNow() && !vm.room.pendingSkillType && !vm.isDragonBallCelebrationActive() &&
+                !isMeFrozen() && !isWrongAnswerPenaltyActive() && getMe().rottenEggCount >= rottenEggThrowCost;
+        }
+        function isRottenEggTarget(player) {
             return !!(player && player.username !== vm.currentUser.username && player.connected && !player.spectator &&
                 !(player.skillImmunityEndsAt > serverNow()));
-        };
-        vm.canThrowRottenEgg = function () {
-            return vm.showRottenEggThrow() && !vm.sessionLoginRequired && !vm.throwingRottenEgg && !vm.giftModalOpen &&
-                !isMeFrozen() && !isWrongAnswerPenaltyActive() && getMe().rottenEggCount >= rottenEggThrowCost &&
-                (vm.room.players || []).some(function (player) {
-                    return player.username === vm.rottenEggThrow.target && vm.isRottenEggTarget(player);
-                });
-        };
-        vm.throwRottenEgg = function () {
-            if (!vm.canThrowRottenEgg()) { return; }
+        }
+        function closeRottenEggModal() {
+            if (!vm.rottenEggModalOpen) { return; }
+            vm.rottenEggModalOpen = false;
+            var previous = rottenEggReturnFocus;
+            rottenEggReturnFocus = null;
+            if (previous && !destroyed) {
+                $timeout(function () {
+                    if (!destroyed && !vm.rottenEggModalOpen && !vm.giftModalOpen && !vm.skillTargetModalOpen && previous.isConnected) {
+                        previous.focus({preventScroll: true});
+                    }
+                }, 0);
+            }
+        }
+        function syncRottenEggModal(returnFocus) {
+            vm.rottenEggTargets = !vm.giftModalOpen && !vm.claimingGift && canOfferRottenEgg()
+                ? (vm.room.players || []).filter(isRottenEggTarget) : [];
+            if (!vm.rottenEggTargets.length) { closeRottenEggModal(); return; }
+            if (vm.rottenEggModalOpen) { return; }
+            rottenEggReturnFocus = returnFocus || $window.document.activeElement;
+            vm.rottenEggModalOpen = true;
+            $timeout(function () {
+                var dialog = $window.document.getElementById('battle-target-skill-modal');
+                if (!destroyed && vm.rottenEggModalOpen && dialog) { dialog.focus({preventScroll: true}); }
+            }, 0);
+        }
+        vm.throwRottenEgg = function (player) {
+            if (!vm.rottenEggModalOpen || vm.throwingRottenEgg || !canOfferRottenEgg() || !player ||
+                    !(vm.room.players || []).some(function (target) {
+                        return target.username === player.username && isRottenEggTarget(target);
+                    })) { return; }
             var code = vm.room.code, gameId = vm.room.giftDrop && vm.room.giftDrop.gameId;
             function isCurrentGame() {
                 return !destroyed && isRottenEggPlay() && vm.room.code === code &&
                     vm.room.giftDrop && vm.room.giftDrop.gameId === gameId;
             }
             vm.throwingRottenEgg = true;
-            return battleService.useSkill(code, vm.rottenEggThrow.target, rottenEggSkill).then(function (room) {
-                if (!isCurrentGame()) { return; }
-                applyRoom(room, false);
-                vm.rottenEggThrow.target = null;
+            return battleService.useSkill(code, player.username, rottenEggSkill).then(function (room) {
+                if (isCurrentGame()) { applyRoom(room, false); }
             }, function (error) {
                 if (!isCurrentGame()) { return; }
                 showRequestError(error);
@@ -1027,7 +1053,7 @@
         vm.openGiftModal = function () {
             var finalOpening = vm.room && vm.room.giftOpening === true;
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
-                    vm.giftModalOpen || (vm.room.videoSynchronized && !finalOpening) ||
+                    vm.giftModalOpen || vm.rottenEggModalOpen || (vm.room.videoSynchronized && !finalOpening) ||
                     (!finalOpening && !(vm.room.giftCredits > 0)) || vm.room.pendingSkillType) { return; }
             giftModalReturnFocus = $window.document.activeElement;
             vm.lastGiftReward = null;
@@ -1062,6 +1088,7 @@
         vm.claimGift = function (gift) {
             if (!gift || !vm.giftModalOpen || vm.lastGiftReward || vm.giftClaimDisabled()) { return; }
             var code = vm.room.code, gameId = vm.room.giftDrop && vm.room.giftDrop.gameId;
+            var skillReturnFocus;
             vm.claimingGift = true;
             return battleService.claimGift(code, gift.id).then(function (result) {
                 if (!vm.room || vm.room.code !== code ||
@@ -1069,13 +1096,21 @@
                 applyRoom(result.room, false);
                 if (!result.room || result.room.status !== 'PLAYING' ||
                         (result.room.videoSynchronized && result.room.giftOpening !== true)) { return; }
+                if (result.rewardLevel === -1 && canOfferRottenEgg() && (vm.room.players || []).some(isRottenEggTarget)) {
+                    skillReturnFocus = giftModalReturnFocus;
+                    vm.closeGiftModal(true);
+                    return;
+                }
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 if (result.rewardImage) { vm.lastGiftReward.rewardImage = result.rewardImage; }
                 if (result.rewardLabel) { vm.lastGiftReward.rewardLabel = result.rewardLabel; }
                 focusGiftModal('.battle-online-gift-continue');
             }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
-            .finally(function () { vm.claimingGift = false; });
+            .finally(function () {
+                vm.claimingGift = false;
+                syncRottenEggModal(skillReturnFocus);
+            });
         };
         vm.finishingGiftOpening = false;
         vm.finishGiftOpening = function () {
@@ -3460,7 +3495,7 @@
                 }
             } else {
                 vm.closeGiftModal(true);
-                vm.rottenEggThrow.target = null;
+                closeRottenEggModal();
             }
 
             if (
@@ -5181,6 +5216,7 @@
                 vm.hostVideoReplay ||
                 vm.claimingGift ||
                 vm.giftModalOpen ||
+                vm.rottenEggModalOpen ||
                 vm.demonBagModalOpen ||
                 vm.room.pendingSkillType ||
                 vm.room.passwordSelectionRequired ||
@@ -7479,6 +7515,7 @@
             if (vm.sessionLoginRequired) { return; }
             syncDragonBallCollection();
             syncDragonBallCelebration();
+            syncRottenEggModal();
             expirePasswordGuessView();
             if (lightningMusicActive !== hasGiftLightningMusic()) { syncBattleViewMusic(); }
             updateDemonDefenseView();
@@ -8659,6 +8696,20 @@
                     } else {
                         event.preventDefault();
                         if (giftModal && giftModal.focus) { giftModal.focus(); }
+                    }
+                }
+                return;
+            }
+            if (vm.rottenEggModalOpen) {
+                if (event.key === 'Tab' || event.keyCode === 9) {
+                    var targetModal = $window.document.getElementById('battle-target-skill-modal');
+                    var targets = targetModal && targetModal.querySelectorAll('button:not([disabled])');
+                    var activeTarget = $window.document.activeElement;
+                    if (!targets || !targets.length) { event.preventDefault(); }
+                    else if (!targetModal.contains(activeTarget) || activeTarget === targetModal ||
+                            activeTarget === (event.shiftKey ? targets[0] : targets[targets.length - 1])) {
+                        event.preventDefault();
+                        (event.shiftKey ? targets[targets.length - 1] : targets[0]).focus();
                     }
                 }
                 return;

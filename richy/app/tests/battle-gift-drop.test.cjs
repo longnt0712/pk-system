@@ -50,29 +50,40 @@ test('Perry protection uses the server clock, survives public and old private up
  h.hooks.applyRoom(h.room(3,1,'new-match'),false);assert.equal(h.vm.giftPerryProtectionSeconds(),0);
  const host=setup('host');host.hooks.applyRoom(snapshot,false);assert.equal(host.vm.giftPerryProtectionSeconds(),0,'spectator never inherits player protection');
 });
-test('rotten egg action spends the available charge and only the selected player sees the timed splat', async () => {
+test('the third rotten egg opens one target picker immediately and only the selected player sees the splash', async () => {
     const shooter = setup('alice');
     const victim = setup('bob');
     const other = setup('host');
-    const before = shooter.room(0, 5);
+    const before = shooter.room(1, 5);
     before.giftOpening = false;
     before.settings.skillsEnabled = true;
     before.players.find(player => player.username === 'alice').rottenEggCount = 2;
     before.players.push({username:'bob', connected:true, spectator:false, rottenEggCount:0});
     shooter.hooks.applyRoom(plain(before), false);
-    shooter.vm.rottenEggThrow.target = 'bob';
-    assert.equal(shooter.vm.canThrowRottenEgg(), false);
-
+    assert.equal(shooter.vm.rottenEggModalOpen, false);
+    shooter.vm.openGiftModal();
+    const claim = shooter.vm.claimGift({id:'gift1'});
     const ready = plain(before);
-    ready.players.find(player => player.username === 'alice').rottenEggCount = 4;
+    ready.players.find(player => player.username === 'alice').rottenEggCount = 3;
     ready.giftDrop.version++;
-    shooter.hooks.applyRoom(plain(ready), false);
-    assert.equal(shooter.vm.canThrowRottenEgg(), true);
-    const request = shooter.vm.throwRottenEgg();
-    assert.equal(shooter.vm.throwRottenEgg(), undefined, 'a pending throw prevents a double click');
+    ready.giftCredits = 0;
+    ready.giftCreditVersion++;
+    shooter.hooks.applyRoom(plain(ready), true);
+    assert.equal(shooter.vm.rottenEggModalOpen, false, 'the active gift dialog never stacks with targeting');
+    shooter.resolve({room:plain(ready), rewardLevel:-1, points:.5});
+    await claim;
+    assert.equal(shooter.vm.giftModalOpen, false);
+    assert.equal(shooter.vm.rottenEggModalOpen, true);
+    assert.deepEqual(Array.from(shooter.vm.rottenEggTargets, target => target.username), ['bob']);
+    assert.equal(shooter.throwCalls.length, 0, 'collecting three never picks a target automatically');
+    assert.equal(shooter.vm.throwRottenEgg({username:'alice'}), undefined);
+    const target = shooter.vm.rottenEggTargets[0];
+    const request = shooter.vm.throwRottenEgg(target);
+    assert.equal(shooter.vm.throwRottenEgg(target), undefined, 'a pending throw prevents a double click');
     await request;
     assert.deepEqual(shooter.throwCalls, [['GIFTS1', 'bob', 'ROTTEN_EGG_THROW']]);
-    assert.equal(shooter.vm.me().rottenEggCount, 1);
+    assert.equal(shooter.vm.me().rottenEggCount, 0);
+    assert.equal(shooter.vm.rottenEggModalOpen, false);
     assert.equal(shooter.vm.activeRottenEggSplats().length, 0);
 
     const incoming = plain(shooter.vm.room);
@@ -86,6 +97,24 @@ test('rotten egg action spends the available charge and only the selected player
     later.serverTime += 7000;
     victim.hooks.applyRoom(later, false);
     assert.equal(victim.vm.activeRottenEggSplats().length, 0);
+});
+
+test('rotten eggs stay available when no eligible target is online', () => {
+    const h = setup();
+    const playing = h.room(0, 5);
+    playing.giftOpening = false;
+    playing.settings.skillsEnabled = true;
+    playing.players.find(player => player.username === 'alice').rottenEggCount = 3;
+    h.hooks.applyRoom(plain(playing), false);
+    assert.equal(h.vm.rottenEggModalOpen, false);
+    assert.equal(h.vm.me().rottenEggCount, 3);
+    playing.players.push({username:'bob', connected:true, spectator:false});
+    h.hooks.applyRoom(plain(playing), true);
+    assert.equal(h.vm.rottenEggModalOpen, true);
+    playing.players.at(-1).connected = false;
+    h.hooks.applyRoom(plain(playing), true);
+    assert.equal(h.vm.rottenEggModalOpen, false);
+    assert.equal(h.vm.me().rottenEggCount, 3);
 });
 
 test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{

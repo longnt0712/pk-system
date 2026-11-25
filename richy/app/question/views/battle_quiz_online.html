@@ -1437,7 +1437,7 @@
                         class="battle-online-answer-btn answer-{{$index}}"
                         ng-class="{'is-selected': vm.isClassicHostPreview() && vm.classicPreviewAnswerKey === option.key}"
                         ng-attr-aria-pressed="{{vm.isClassicHostPreview() ? vm.classicPreviewAnswerKey === option.key : undefined}}"
-                        ng-disabled="!vm.isClassicHostPreview() && (vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername || vm.isDemonPlayerEliminated())"
+                        ng-disabled="!vm.isClassicHostPreview() && (vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.rottenEggModalOpen || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername || vm.isDemonPlayerEliminated())"
                         ng-click="vm.isClassicHostPreview() ? vm.selectClassicPreview(option) : vm.answer(option)">
 
                     <span class="battle-online-answer-key">
@@ -1462,18 +1462,10 @@
                 <small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong>
             </section>
 
-            <form class="battle-rotten-throw" ng-if="vm.showRottenEggThrow()" ng-submit="vm.throwRottenEgg()">
-                <span class="battle-rotten-count">
-                    <img ng-src="{{vm.getGiftRewardImage(-1)}}" alt="" draggable="false">
-                    Trứng thối <b>{{vm.me().rottenEggCount}}/{{vm.rottenEggThrowCost}}</b>
-                </span>
-                <select ng-if="vm.me().rottenEggCount >= vm.rottenEggThrowCost"
-                        ng-model="vm.rottenEggThrow.target" aria-label="Chọn người bị ném trứng"
-                        ng-options="player.username as vm.getPlayerDisplayName(player) for player in vm.room.players | filter:vm.isRottenEggTarget">
-                    <option value="">Chọn người chơi</option>
-                </select>
-                <button type="submit" ng-disabled="!vm.canThrowRottenEgg()">{{vm.throwingRottenEgg ? 'Đang ném…' : 'Ném trứng thối'}}</button>
-            </form>
+            <div class="battle-rotten-count" ng-if="vm.showRottenEggThrow()">
+                <img ng-src="{{vm.getGiftRewardImage(-1)}}" alt="" draggable="false">
+                Trứng thối <b>{{vm.me().rottenEggCount}}/{{vm.rottenEggThrowCost}}</b>
+            </div>
 
             <div class="battle-online-gift-slot"
                  ng-if="vm.isLumNgayMode() && !vm.room.giftOpening && !vm.room.videoSynchronized && vm.room.giftCredits > 0">
@@ -2266,24 +2258,26 @@
     </div>
 
     <div class="battle-online-skill-modal-backdrop"
-         ng-if="vm.skillTargetModalOpen && !vm.giftModalOpen && vm.room && vm.room.settings.skillsEnabled !== false && vm.room.pendingSkillType">
+         ng-if="vm.rottenEggModalOpen || (vm.skillTargetModalOpen && !vm.giftModalOpen && vm.room && vm.room.settings.skillsEnabled !== false && vm.room.pendingSkillType)">
 
-        <section class="battle-online-skill-modal"
-                 role="dialog"
-                 aria-modal="true"
-                 aria-label="Chọn người chơi để sử dụng skill">
+        <section id="battle-target-skill-modal" class="battle-online-skill-modal"
+                 role="dialog" aria-modal="true" aria-labelledby="battle-target-skill-title" tabindex="-1">
 
             <div class="battle-online-skill-modal-header">
-                <span>{{vm.getSkillIcon(vm.room.pendingSkillType)}}</span>
+                <span>{{vm.rottenEggModalOpen ? '🥚' : vm.getSkillIcon(vm.room.pendingSkillType)}}</span>
 
                 <div>
                     <small>BẠN VỪA NHẬN SKILL</small>
-                    <h2>{{vm.getSkillLabel(vm.room.pendingSkillType)}}</h2>
+                    <h2 id="battle-target-skill-title">{{vm.rottenEggModalOpen ? 'NÉM TRỨNG THỐI' : vm.getSkillLabel(vm.room.pendingSkillType)}}</h2>
                 </div>
             </div>
 
             <div class="battle-online-skill-modal-body">
-                <div class="battle-online-skill-modal-guide">
+                <div class="battle-online-skill-modal-guide" ng-if="vm.rottenEggModalOpen">
+                    <strong>Chọn một người chơi để ném</strong>
+                    <p>Mỗi lượt ném dùng {{vm.rottenEggThrowCost}} trứng thối.</p>
+                </div>
+                <div class="battle-online-skill-modal-guide" ng-if="!vm.rottenEggModalOpen">
                     <strong>
                         🎯 {{vm.room.pendingSkillType === 'MONEY_BEG'
                             ? 'Chọn người để xin tí tiền'
@@ -2298,14 +2292,14 @@
                 </div>
 
                 <div class="battle-online-skill-target-list"
-                     ng-if="vm.availableSkillTargets.length">
+                     ng-if="vm.rottenEggModalOpen || vm.availableSkillTargets.length">
 
                     <button type="button"
                             class="battle-online-skill-target-card"
-                            ng-repeat="player in vm.availableSkillTargets track by player.username"
+                            ng-repeat="player in (vm.rottenEggModalOpen ? vm.rottenEggTargets : vm.availableSkillTargets) track by player.username"
                             ng-class="vm.getPlayerClass(player)"
-                            ng-disabled="vm.usingSkill || !player.connected"
-                            ng-click="vm.useSkill(player)">
+                            ng-disabled="(vm.rottenEggModalOpen ? vm.throwingRottenEgg : vm.usingSkill) || !player.connected"
+                            ng-click="vm.rottenEggModalOpen ? vm.throwRottenEgg(player) : vm.useSkill(player)">
 
                         <span class="battle-online-skill-target-rank">
                             #{{player.rank}}
@@ -2321,13 +2315,13 @@
                         </span>
 
                         <span class="battle-online-skill-target-shoot">
-                            {{vm.room.pendingSkillType === 'MONEY_BEG' ? 'CHỌN' : 'BẮN'}}
+                            {{vm.rottenEggModalOpen ? 'NÉM' : (vm.room.pendingSkillType === 'MONEY_BEG' ? 'CHỌN' : 'BẮN')}}
                         </span>
                     </button>
                 </div>
 
                 <div class="battle-online-skill-target-loading"
-                     ng-if="!vm.availableSkillTargets.length">
+                     ng-if="!vm.rottenEggModalOpen && !vm.availableSkillTargets.length">
                     ⏳ Đang lấy danh sách mục tiêu...
                 </div>
 
@@ -2887,13 +2881,8 @@
     .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
     .battle-online-gift-open,.battle-online-gift-continue { border:0; border-radius:14px; padding:12px 20px; color:#fff; background:linear-gradient(135deg,#8654ef,#5864ee); font-weight:900; }
     .battle-online-gift-open { margin-left:10px; }
-    .battle-rotten-throw { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:12px 0 6px; }
-    .battle-rotten-count { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:750; }
+    .battle-rotten-count { display:inline-flex; align-items:center; gap:5px; margin:12px 0 6px; font-size:13px; font-weight:750; }
     .battle-rotten-count img { width:27px; height:27px; object-fit:contain; }
-    .battle-rotten-throw select, .battle-rotten-throw button { min-height:36px; max-width:100%; border:1px solid #a7b372; border-radius:10px; padding:5px 10px; font:inherit; font-size:12px; }
-    .battle-rotten-throw select { min-width:0; background:#f8fbe9; color:#283416; }
-    .battle-rotten-throw button { color:#fff; background:#50691f; font-weight:750; }
-    .battle-rotten-throw button:disabled { opacity:.55; }
     .battle-rotten-splat, .battle-rotten-splat * { pointer-events:none; }
     .battle-rotten-splat { position:fixed; inset:0; z-index:1280; display:grid; place-items:center; overflow:hidden; }
     .battle-rotten-splat-art {
