@@ -71,7 +71,8 @@
                     '$scope', '$timeout', 'closePdf', function (scope, timer, closePdf) {
                         var vm = this, root, pdf, api, loadingTask, saveTimer, saveRequest;
                         var editId = 0, savedEditId = 0, destroyed = false, inkGesture;
-                        var sharedState, conflicts, syncTimer, viewTimer, viewKey, composingText;
+                        var sharedState, conflicts, syncTimer, composingText;
+                        var viewTimer, viewKey, viewDirty = false, lastScroll;
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -86,12 +87,12 @@
                         vm.state = {page: 1, zoom: 1, x: 0, y: 0, marks: [], newTextSize: defaultNewTextSize};
                         vm.library = []; vm.folders = []; vm.current = []; vm.previous = [];
                         var foldersById = Object.create(null);
-                        var viewKey = 'teaching-pdf-view-mode';
+                        var libraryViewKey = 'teaching-pdf-view-mode';
                         vm.libraryView = 'list';
-                        try { if (window.localStorage.getItem(viewKey) === 'grid') { vm.libraryView = 'grid'; } } catch (ignore) {}
+                        try { if (window.localStorage.getItem(libraryViewKey) === 'grid') { vm.libraryView = 'grid'; } } catch (ignore) {}
                         vm.toggleLibraryView = function () {
                             vm.libraryView = vm.libraryView === 'list' ? 'grid' : 'list';
-                            try { window.localStorage.setItem(viewKey, vm.libraryView); } catch (ignore) {}
+                            try { window.localStorage.setItem(libraryViewKey, vm.libraryView); } catch (ignore) {}
                         };
 
                         function fail(error, fallback) {
@@ -429,16 +430,24 @@
                         }
                         function writeView() {
                             if (viewTimer) { timer.cancel(viewTimer); viewTimer = null; }
-                            if (!viewKey) { return; }
+                            if (!viewKey || !viewDirty) { return; }
                             var state = vm.state;
                             try {
                                 window.localStorage.setItem(viewKey, JSON.stringify({
                                     page: state.page, zoom: state.zoom, x: state.x, y: state.y, newTextSize: state.newTextSize
                                 }));
+                                viewDirty = false;
                             } catch (ignore) {}
+                        }
+                        function flushView() {
+                            if (!viewKey) { return; }
+                            // A tab can close before the next scroll animation frame runs.
+                            if (captureScrollPosition()) { viewDirty = true; }
+                            writeView();
                         }
                         vm.viewChanged = function () {
                             if (!sharedState) { changed(); return; }
+                            viewDirty = true;
                             if (viewTimer) { timer.cancel(viewTimer); }
                             viewTimer = timer(writeView, 250);
                         };
@@ -474,6 +483,28 @@
                             if (!sheet) { return; }
                             container.scrollTop = sheet.offsetTop + vm.state.y * sheet.clientHeight;
                             container.scrollLeft = vm.state.x * sheet.clientWidth;
+                            rememberScroll(container);
+                        }
+                        function rememberScroll(container) {
+                            lastScroll = {top: container.scrollTop, left: container.scrollLeft};
+                        }
+                        function isRecordedScroll(container) {
+                            return lastScroll && lastScroll.top === container.scrollTop && lastScroll.left === container.scrollLeft;
+                        }
+                        function captureScrollPosition() {
+                            if (!pdf || layoutPending || !lastScroll) { return false; }
+                            var container = viewport();
+                            if (!container || !container.clientWidth || !container.clientHeight || isRecordedScroll(container)) { return false; }
+                            var page = pageAt(container, container.scrollTop + 2);
+                            var sheet = sheetFor(page);
+                            if (!sheet || !sheet.clientWidth || !sheet.clientHeight) { return false; }
+                            rememberScroll(container);
+                            var x = container.scrollLeft / sheet.clientWidth;
+                            var y = Math.max(0, container.scrollTop - sheet.offsetTop) / sheet.clientHeight;
+                            if (vm.state.page === page && vm.state.x === x && vm.state.y === y) { return false; }
+                            vm.state.page = page; vm.pageInput = page;
+                            vm.state.x = x; vm.state.y = y;
+                            return true;
                         }
                         function pageAt(container, y) {
                             var sheets = container.children;
@@ -550,10 +581,12 @@
                                 if (item.width !== original.width || item.height !== original.height) {
                                     var anchor = sheetFor(vm.state.page);
                                     var anchorTop = anchor && anchor.offsetTop;
+                                    var scrollWasRecorded = isRecordedScroll(container);
                                     item.width = original.width; item.height = original.height;
                                     sizeSheet(item, container);
                                     sheet.style.width = item.style.width; sheet.style.height = item.style.height;
                                     if (anchor) { container.scrollTop += anchor.offsetTop - anchorTop; }
+                                    if (scrollWasRecorded) { rememberScroll(container); }
                                 }
                                 sheet.style.setProperty('--total-scale-factor', String(scale * view.userUnit));
                                 canvas.width = Math.max(1, Math.floor(view.width * pixelRatio));
@@ -591,6 +624,7 @@
                             vm.zoomInput = zoom;
                             syncZoomInput();
                             if (vm.state.zoom === zoom) { return; }
+                            captureScrollPosition();
                             vm.state.zoom = zoom;
                             refitPages();
                             vm.viewChanged();
@@ -825,8 +859,9 @@
                         function release() {
                             vm.highlighting = false;
                             if (syncTimer) { window.clearTimeout(syncTimer); syncTimer = null; }
-                            writeView();
-                            sharedState = null; conflicts = null; vm.syncConflicts = []; viewKey = null; composingText = null;
+                            flushView();
+                            sharedState = null; conflicts = null; vm.syncConflicts = []; composingText = null;
+                            viewKey = null; viewDirty = false; lastScroll = null;
                             endTextDrag();
                             finishInk(false);
                             lastTextTap = null;
@@ -1326,18 +1361,13 @@
                                 scrollFrame = null;
                                 scope.$evalAsync(function () {
                                     if (!pdf || layoutPending || destroyed) { return; }
-                                    var page = pageAt(container, container.scrollTop + 2);
-                                    var sheet = sheetFor(page);
-                                    if (!sheet) { return; }
-                                    var x = container.scrollLeft / sheet.clientWidth;
-                                    var y = Math.max(0, container.scrollTop - sheet.offsetTop) / sheet.clientHeight;
-                                    if (vm.state.page !== page) {
-                                        vm.selectedMark = null;
-                                        if (vm.editingText) { vm.finishText(vm.editingText); }
-                                    }
-                                    if (vm.state.page !== page || vm.state.x !== x || vm.state.y !== y) {
-                                        vm.state.page = page; vm.pageInput = page;
-                                        vm.state.x = x; vm.state.y = y; closeContext(); vm.viewChanged();
+                                    var previousPage = vm.state.page;
+                                    if (captureScrollPosition()) {
+                                        if (previousPage !== vm.state.page) {
+                                            vm.selectedMark = null;
+                                            if (vm.editingText) { vm.finishText(vm.editingText); }
+                                        }
+                                        closeContext(); vm.viewChanged();
                                     }
                                     updateBatch();
                                 });
@@ -1432,20 +1462,29 @@
                                 if (hasUnsavedEdits()) {
                                     event.preventDefault();
                                     vm.error = 'Hãy lưu hoặc đối chiếu các thay đổi đang chờ trước khi rời trang PDF.';
+                                } else {
+                                    flushView();
                                 }
                             });
                         }
+                        function saveViewWhenHidden() {
+                            if (document.hidden) { flushView(); }
+                        }
                         function preventUnsavedExit(event) {
-                            writeView();
+                            flushView();
                             if (hasUnsavedEdits()) {
                                 event.preventDefault(); event.returnValue = true;
                             }
                         }
                         window.addEventListener('beforeunload', preventUnsavedExit);
+                        window.addEventListener('pagehide', flushView);
+                        document.addEventListener('visibilitychange', saveViewWhenHidden);
                         scope.$on('$destroy', function () {
                             destroyed = true; release(); exitFullscreen();
                             if (saveTimer) { timer.cancel(saveTimer); }
                             window.removeEventListener('beforeunload', preventUnsavedExit);
+                            window.removeEventListener('pagehide', flushView);
+                            document.removeEventListener('visibilitychange', saveViewWhenHidden);
                             if (root) {
                                 shortcutTarget.removeEventListener('keydown', onShortcut);
                                 endLibraryDrag();

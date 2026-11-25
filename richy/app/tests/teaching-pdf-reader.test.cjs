@@ -7,7 +7,7 @@ const {isDeepStrictEqual} = require('node:util');
 
 function fixture(saved = {}, completed = false, catalog = {}, collaboration, previousRun, pageMode = false) {
     const input = {value: '1', matches: () => true};
-    const events = {}, documentEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
+    const events = {}, documentEvents = {}, windowEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
     const ctrl = {};
     const sheets = new Map();
     const container = {
@@ -45,7 +45,7 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
         return null;
     }
     const polls = new Set();
-    const window = {getSelection: () => selection, addEventListener() {}, requestAnimationFrame: setImmediate, cancelAnimationFrame: clearImmediate,
+    const window = {getSelection: () => selection, addEventListener(name, handler) { windowEvents[name] = handler; }, requestAnimationFrame: setImmediate, cancelAnimationFrame: clearImmediate,
         setTimeout(fn) { polls.add(fn); return fn; }, clearTimeout(fn) { polls.delete(fn); }, localStorage: collaboration?.storage};
     let selection = {isCollapsed: true};
     function timer(fn) {
@@ -158,7 +158,7 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
     assert.equal(reads.length, 0, "Wait for the reader surface before loading");
     ctrl.bindSurface(root);
     const tick = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
-    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers, window, scopeEvents, closes,
+    return {ctrl, input, container, events, document, documentEvents, renders, reads, writes, sheet, tick, service, http, directives, textLayers, window, windowEvents, scopeEvents, closes,
         async sync() { const callback = polls.values().next().value; assert.ok(polls.delete(callback)); callback(); await tick(); },
         select(number, top = 150) {
             const page = sheet(number);
@@ -263,6 +263,44 @@ test('two teachers merge concurrent edits to separate PDF annotations and keep t
     const reopened = fixture({}, false, {}, {server, editorId: 7, storage});
     await reopened.tick(); await reopened.ctrl.open('run');
     assert.equal(reopened.ctrl.state.zoom, 1.5);
+});
+
+test('reopening a PDF keeps the final scroll position even when an older tab closes', async () => {
+    const server = {revision: 0, state: {page: 1, marks: []}};
+    const keys = new Map();
+    const storage = {setItem: (key, value) => keys.set(key, value), getItem: key => keys.get(key)};
+    const editor = {server, editorId: 7, storage};
+    const run = {id: 'run', pdfId: 'doc'};
+    const catalog = {current: [run]};
+    const reader = () => fixture({}, false, catalog, editor, run.id, true);
+    const olderTab = reader();
+    await olderTab.tick();
+    olderTab.ctrl.go(3);
+    await olderTab.tick();
+
+    const lastTab = reader();
+    await lastTab.tick();
+    assert.equal(lastTab.ctrl.state.page, 3);
+    lastTab.ctrl.setZoom(1.4);
+    await lastTab.tick();
+    const position = lastTab.sheet(12).offsetTop + 180;
+    lastTab.container.scrollTop = position;
+    lastTab.container.scrollLeft = 70;
+    // Close before the scroll handler's animation frame can run.
+    lastTab.events.scroll({target: lastTab.container});
+    lastTab.windowEvents.beforeunload({preventDefault: () => assert.fail('Scrolling is not an unsaved annotation')});
+
+    const key = 'teaching-pdf-view:7:1:run';
+    assert.equal(JSON.parse(keys.get(key)).page, 12);
+    olderTab.windowEvents.beforeunload({preventDefault() {}});
+    const reopened = reader();
+    await reopened.tick();
+    assert.equal(reopened.ctrl.state.page, 12);
+    assert.equal(reopened.ctrl.pageInput, 12);
+    assert.equal(reopened.ctrl.state.zoom, 1.4);
+    assert.equal(reopened.container.scrollTop, position);
+    assert.equal(reopened.container.scrollLeft, 70);
+    assert.equal(server.revision, 0);
 });
 
 test('a conflict keeps the local draft while independent edits save, and a teacher can resolve it explicitly', async () => {
