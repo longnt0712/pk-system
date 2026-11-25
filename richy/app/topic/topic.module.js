@@ -18,7 +18,7 @@
             .state('application.topic', {
                 url: '/topics?category&lesson',
                 reloadOnSearch: false,
-                templateUrl: 'topic/views/vocabulary.html',
+                templateUrl: 'topic/views/vocabulary.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Bài từ vựng'},
                 controller: 'VocabularyController as vm',
                 resolve: {

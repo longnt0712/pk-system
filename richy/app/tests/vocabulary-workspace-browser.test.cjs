@@ -153,6 +153,7 @@ async function fixture(browser, {role = 'ADMIN', width = 1600, full = false, ini
             .config(['$locationProvider', function (provider) { provider.html5Mode({enabled: true, requireBase: false}); }])
             .value('settings', {isAdmin: role === 'ADMIN', api: {baseUrl: '/', apiV1Url: 'api/'}})
             .value('$cookies', {get: () => JSON.stringify({id: 7, username: 'learner', roles: [{name: 'ROLE_' + role}]})})
+            .value('AuthSession', {})
             .value('toastr', {success() {}, info() {}, warning() {}, error() {}})
             .factory('Utilities', ['$http', function ($http) { return {
                 resolveAlt: (url, method, params, data) => $http({url, method, data}).then(response => response.data),
@@ -171,6 +172,46 @@ async function selectCategory(page, name = 'Đời sống hằng ngày') {
     await sidebar.getByRole('button', {name, exact: true}).click();
 }
 
+test('library search is available on entry and finds words across lessons without loading all cards', async () => {
+    const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
+    try {
+        for (const width of [1366, 390]) {
+            const {page, state} = await fixture(browser, {role: 'VIEWER', width});
+            const searches = () => state.requests.filter(request => request.url.includes('/question/vocabulary/get_page/'));
+            const input = page.getByRole('searchbox', {name: 'Tìm từ hoặc nghĩa'});
+            await input.waitFor();
+            assert.ok(await input.evaluate(node => node.getBoundingClientRect().bottom < innerHeight));
+            assert.equal(searches().length, 0, 'idle search must not fetch all words');
+
+            await input.fill('wanderlust');
+            await page.getByRole('heading', {name: 'wanderlust', exact: true}).waitFor();
+            assert.equal(searches().at(-1).data.topicId, null);
+            assert.equal(searches().at(-1).data.withoutTopics, false);
+            assert.equal(searches().at(-1).data.findExactWord, true);
+            await page.getByRole('button', {name: 'Sửa từ wanderlust'}).click();
+            await page.locator('.modal-dialog').getByText('A world to discover', {exact: true}).waitFor();
+            await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+            await page.locator('.modal-dialog').waitFor({state: 'hidden'});
+
+            await page.locator('.vw-exact-switch').click();
+            await input.fill('ham tìm hiểu');
+            await page.getByRole('heading', {name: 'curiosity', exact: true}).waitFor();
+            assert.equal(searches().at(-1).data.findExactWord, false);
+            const requested = searches().length;
+            await input.clear();
+            await page.getByRole('heading', {name: 'Chọn nhóm bài từ vựng'}).waitFor();
+            assert.equal(await page.locator('.vw-word-card').count(), 0);
+            assert.equal(searches().length, requested);
+            await selectCategory(page);
+            await page.getByRole('button', {name: /Little things, every day/}).click();
+            await page.getByRole('heading', {name: 'serendipity', exact: true}).waitFor();
+            assert.equal(searches().at(-1).data.topicId, 101);
+            assert.deepEqual(state.errors, []);
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
 test('categories open before lessons and the tree shows ancestors, direct lessons and uncategorized lessons separately', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
@@ -180,6 +221,7 @@ test('categories open before lessons and the tree shows ancestors, direct lesson
             assert.equal(await page.locator('.vw-lesson,.vw-word-card').count(), 0);
             assert.ok(!state.requests.some(request => /\/api\/(topic\/get_page|question\/vocabulary\/get_page)/.test(request.url)));
             assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).count(), 0);
+            if (!await sidebar.isVisible()) await page.locator('.vw-mobile-picker').click();
             await sidebar.getByRole('button', {name: 'Mở rộng IELTS & học thuật', exact: true}).click();
             assert.equal(await sidebar.getByRole('button', {name: 'Reading', exact: true}).isVisible(), true);
             assert.equal(await sidebar.getByRole('button', {name: 'Sửa nhóm Reading', exact: true}).isVisible(), true);

@@ -49,9 +49,6 @@
             </nav>
             <div class="vw-library-note"><span class="vw-note-orb"><i class="fa fa-leaf" aria-hidden="true"></i></span><p>Một bài, nhiều từ mới.<br><strong>Tiến bộ từng ngày.</strong></p></div>
         </aside>
-        <section class="vw-content" ng-if="vm.view === 'browse'" aria-labelledby="vw-browse-heading">
-            <div class="vw-empty vw-browse-empty"><span class="vw-empty-icon mint"><i class="fa fa-folder-open" aria-hidden="true"></i></span><h2 id="vw-browse-heading">Chọn nhóm bài từ vựng</h2><p>Mở nhóm cha để xem các nhóm con. Chọn tên một nhóm để xem các bài trong nhóm đó.</p></div>
-        </section>
         <section class="vw-content vw-category-content" ng-if="vm.view === 'category'" aria-labelledby="vw-category-title">
             <div ng-include="'vocabulary_breadcrumbs.html'"></div>
             <div class="vw-content-head">
@@ -82,9 +79,10 @@
                 <div class="vw-lesson-end" aria-hidden="true" ng-show="vm.hasMoreLessons && !vm.lessonsLoading && !vm.lessonError"></div>
             </div>
         </section>
-        <section class="vw-content" ng-if="vm.view === 'lesson' || vm.view === 'unassigned'" aria-labelledby="vocabulary-heading">
+        <section class="vw-content" ng-if="vm.view !== 'category'" ng-attr-aria-labelledby="{{vm.view === 'browse' ? 'vw-browse-heading' : 'vocabulary-heading'}}">
+            <div class="vw-content-head" ng-if="vm.view === 'browse'"><div class="vw-context"><h2 id="vw-browse-heading">Tìm từ vựng</h2><p>Tra từ trong thư viện của bạn.</p></div></div>
             <div ng-if="vm.activeLesson" ng-include="'vocabulary_breadcrumbs.html'"></div>
-            <div class="vw-content-head">
+            <div class="vw-content-head" ng-if="vm.view !== 'browse'">
                 <div class="vw-context"><span class="vw-eyebrow">{{vm.activeLesson ? (vm.activeLesson.topicCategory.name || 'BÀI TỪ VỰNG') : 'THẺ TỪ VỰNG CỦA BẠN'}}</span><h2 id="vocabulary-heading">{{vm.title()}}</h2><p><span class="vw-live-dot"></span>{{vm.total | number:0}} thẻ{{vm.query ? ' phù hợp' : ''}} <span class="vw-separator">·</span> {{vm.activeLesson ? 'Thêm từ mới trực tiếp vào bài này' : 'Chọn một bài để học và quản lý từ cùng nhau'}}</p></div>
                 <div class="vw-lesson-actions" ng-if="vm.activeLesson">
                     <button type="button" class="vw-icon-btn vw-edit-lesson" ng-click="vm.editLesson()" ng-disabled="vm.lessonOpening" aria-label="Sửa bài từ vựng" title="Sửa tên và nhóm bài"><i class="fa fa-pencil" aria-hidden="true"></i></button>
@@ -92,43 +90,49 @@
                 </div>
             </div>
             <div class="vw-toolbar">
-                <div class="vw-search-options">
-                    <label class="vw-search vw-card-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm từ hoặc nghĩa" ng-attr-placeholder="{{vm.findExactWord ? 'Nhập đúng từ hoặc cụm từ...' : 'Tìm từ hoặc nghĩa tiếng Việt...'}}" ng-model="vm.query" ng-model-options="{debounce:300}" ng-change="vm.loadCards(true)"></label>
-                    <label class="vw-exact-switch"><input type="checkbox" role="switch" aria-label="Tìm đúng từ" ng-model="vm.findExactWord" ng-change="vm.loadCards(true)"><span class="vw-switch-track" aria-hidden="true"></span><span>Tìm đúng từ</span></label>
-                </div>
-                <div class="vw-actions"><button class="vw-btn vw-quiet" ng-click="vm.exportCards()" ng-disabled="vm.exporting"><i class="fa" ng-class="vm.exporting ? 'fa-spinner fa-spin' : 'fa-arrow-down'" aria-hidden="true"></i> {{vm.exporting ? 'Đang xuất...' : 'Export'}}</button><button class="vw-btn vw-quiet" ng-if="vm.isAdmin" question-excel-import import-template-url="question/views/excel_import_modal.html?layout=2" topics="vm.importTopics" initial-topic="vm.activeLesson" user-id="vm.user.id" on-topic-created="vm.importTopicCreated(topic)" on-imported="vm.imported()"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Import</button><button class="vw-btn vw-primary" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ</button></div>
+                <div class="vw-search-options" ng-if="vm.view === 'browse'" ng-include="'vocabulary_card_search.html'"></div>
+                <div class="vw-search-options" ng-if="vm.view !== 'browse'" ng-include="'vocabulary_card_search.html'"></div>
+                <div class="vw-actions" ng-if="vm.view !== 'browse'"><button class="vw-btn vw-quiet" ng-click="vm.exportCards()" ng-disabled="vm.exporting"><i class="fa" ng-class="vm.exporting ? 'fa-spinner fa-spin' : 'fa-arrow-down'" aria-hidden="true"></i> {{vm.exporting ? 'Đang xuất...' : 'Export'}}</button><button class="vw-btn vw-quiet" ng-if="vm.isAdmin" question-excel-import import-template-url="question/views/excel_import_modal.html?layout=2" topics="vm.importTopics" initial-topic="vm.activeLesson" user-id="vm.user.id" on-topic-created="vm.importTopicCreated(topic)" on-imported="vm.imported()"><i class="fa fa-file-excel-o" aria-hidden="true"></i> Import</button><button class="vw-btn vw-primary" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ</button></div>
             </div>
-            <div class="vw-list-bar"><div class="vw-segment-label"><i class="fa fa-clone" aria-hidden="true"></i><strong>Flashcard</strong><span class="vw-count">{{vm.total | number:0}}</span></div><select class="vw-type-filter" aria-label="Loại flashcard" ng-model="vm.status" ng-options="type.id as type.name for type in vm.typeFilters" ng-change="vm.loadCards(true)"></select></div>
-            <div ng-if="vm.canDelete && vm.cards.length && !vm.cardLoadError" ng-include="'vocabulary_bulk_controls.html'"></div>
-            <div class="vw-loading" ng-if="vm.cardsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải từ vựng...</div>
-            <div class="vw-empty" ng-if="!vm.cardsLoading && vm.cardLoadError" role="alert"><span class="vw-empty-icon peach"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></span><h3>Chưa tải được từ vựng</h3><p>{{vm.cardLoadError}}</p><button class="vw-btn" ng-click="vm.loadCards()">Thử lại</button></div>
-            <div class="vw-empty" ng-if="!vm.cardsLoading && !vm.cardLoadError && !vm.cards.length"><span class="vw-empty-icon lavender"><i class="fa" ng-class="vm.query ? 'fa-search' : 'fa-clone'" aria-hidden="true"></i></span><h3>{{vm.query ? 'Chưa tìm thấy từ phù hợp' : 'Sẵn sàng cho từ đầu tiên?'}}</h3><p>{{vm.query ? 'Thử một từ khóa khác hoặc đổi bộ lọc.' : (vm.activeLesson ? 'Từ mới sẽ được lưu ngay vào bài từ vựng này.' : 'Tạo một bài từ vựng hoặc thêm từ để bắt đầu thư viện của bạn.')}}</p><button class="vw-btn vw-primary" ng-if="!vm.query" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ đầu tiên</button></div>
-            <div class="vw-card-list" ng-if="!vm.cardsLoading && !vm.cardLoadError && vm.cards.length">
-                <article class="vw-word-card" ng-repeat="card in vm.cards track by card.id" ng-class="{'is-selected':vm.selected[card.id]}">
-                    <input class="vw-row-check" type="checkbox" ng-if="vm.canDelete" ng-model="vm.selected[card.id]" ng-change="vm.toggleSelection(card.id)" aria-label="Chọn từ {{card.question}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
-                    <span class="vw-word-monogram" ng-class="['lavender','mint','peach','blue'][$index % 4]">{{card.question.charAt(0).toUpperCase()}}</span>
-                    <div class="vw-word-copy"><div class="vw-word-title"><h3>{{card.question}}</h3><button class="vw-sound" ng-click="vm.say(card)" aria-label="Nghe phát âm {{card.question}}"><i class="fa fa-volume-up" aria-hidden="true"></i></button><span class="vw-level" ng-if="card.level">{{card.level}}</span><span class="vw-listening-tag" ng-if="card.status === 5"><i class="fa fa-headphones" aria-hidden="true"></i> Listening</span></div><p>{{card.pronounce || 'Chưa có phiên âm'}}</p></div>
-                    <div class="vw-meaning"><span>NGHĨA TIẾNG VIỆT</span><p>{{card.motherTongue || 'Chưa có nghĩa tiếng Việt'}}</p></div>
-                    <div class="vw-row-actions"><button class="vw-icon-btn" ng-click="vm.openCard(card)" aria-label="Sửa từ {{card.question}}" title="Sửa từ"><i class="fa fa-pencil" aria-hidden="true"></i></button><button class="vw-icon-btn vw-danger" ng-if="vm.canDelete && card.status === 5 && vm.status === 5" ng-click="vm.confirmDelete(card)" aria-label="Xóa từ {{card.question}}"><i class="fa fa-trash" aria-hidden="true"></i></button></div>
-                </article>
-            </div>
-            <footer class="vw-pagination" ng-if="vm.total && !vm.cardLoadError">
-                <span>{{(vm.page-1)*vm.pageSize+1}}–{{vm.page*vm.pageSize > vm.total ? vm.total : vm.page*vm.pageSize}} / {{vm.total | number:0}} thẻ</span>
-                <form class="vw-page-size" name="vocabularyPageSize" ng-submit="vm.applyPageSize()">
-                    <label for="vw-cards-per-page">Thẻ mỗi trang</label>
-                    <input id="vw-cards-per-page" type="number" ng-model="vm.pageSizeInput" min="1" ng-attr-max="{{vm.pageSizeLimit}}" step="1" required>
-                    <button type="submit" class="vw-btn vw-quiet" ng-disabled="vocabularyPageSize.$invalid || vm.pageSizeInput === vm.pageSize || vm.bulkSaving">Áp dụng</button>
-                </form>
-                <div>
-                    <button type="button" class="vw-icon-btn" ng-click="vm.changePage(-1)" ng-disabled="vm.page <= 1 || vm.cardsLoading" aria-label="Trang từ trước"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
-                    <span>{{vm.page}} / {{vm.pageCount()}}</span>
-                    <button type="button" class="vw-icon-btn" ng-click="vm.changePage(1)" ng-disabled="vm.page >= vm.pageCount() || vm.cardsLoading" aria-label="Trang từ sau"><i class="fa fa-angle-right" aria-hidden="true"></i></button>
+            <div class="vw-empty vw-browse-empty" ng-if="vm.view === 'browse' && !vm.query"><span class="vw-empty-icon mint"><i class="fa fa-folder-open" aria-hidden="true"></i></span><h2>Chọn nhóm bài từ vựng</h2><p>Mở nhóm cha để xem các nhóm con. Chọn tên một nhóm để xem các bài trong nhóm đó.</p></div>
+            <div ng-if="vm.view !== 'browse' || vm.query">
+                <div class="vw-list-bar"><div class="vw-segment-label"><i class="fa fa-clone" aria-hidden="true"></i><strong>Flashcard</strong><span class="vw-count">{{vm.total | number:0}}</span></div><select class="vw-type-filter" aria-label="Loại flashcard" ng-model="vm.status" ng-options="type.id as type.name for type in vm.typeFilters" ng-change="vm.loadCards(true)"></select></div>
+                <div ng-if="vm.view !== 'browse' && vm.canDelete && vm.cards.length && !vm.cardLoadError" ng-include="'vocabulary_bulk_controls.html'"></div>
+                <div class="vw-loading" ng-if="vm.cardsLoading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải từ vựng...</div>
+                <div class="vw-empty" ng-if="!vm.cardsLoading && vm.cardLoadError" role="alert"><span class="vw-empty-icon peach"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></span><h3>Chưa tải được từ vựng</h3><p>{{vm.cardLoadError}}</p><button class="vw-btn" ng-click="vm.loadCards()">Thử lại</button></div>
+                <div class="vw-empty" ng-if="!vm.cardsLoading && !vm.cardLoadError && !vm.cards.length"><span class="vw-empty-icon lavender"><i class="fa" ng-class="vm.query ? 'fa-search' : 'fa-clone'" aria-hidden="true"></i></span><h3>{{vm.query ? 'Chưa tìm thấy từ phù hợp' : 'Sẵn sàng cho từ đầu tiên?'}}</h3><p>{{vm.query ? 'Thử một từ khóa khác hoặc đổi bộ lọc.' : (vm.activeLesson ? 'Từ mới sẽ được lưu ngay vào bài từ vựng này.' : 'Tạo một bài từ vựng hoặc thêm từ để bắt đầu thư viện của bạn.')}}</p><button class="vw-btn vw-primary" ng-if="!vm.query" ng-click="vm.openCard()" ng-disabled="vm.usage.wordLimitReached"><i class="fa fa-plus" aria-hidden="true"></i> Thêm từ đầu tiên</button></div>
+                <div class="vw-card-list" ng-if="!vm.cardsLoading && !vm.cardLoadError && vm.cards.length">
+                    <article class="vw-word-card" ng-repeat="card in vm.cards track by card.id" ng-class="{'is-selected':vm.selected[card.id]}">
+                        <input class="vw-row-check" type="checkbox" ng-if="vm.view !== 'browse' && vm.canDelete" ng-model="vm.selected[card.id]" ng-change="vm.toggleSelection(card.id)" aria-label="Chọn từ {{card.question}}" ng-disabled="vm.bulkSaving || vm.selectionLoading">
+                        <span class="vw-word-monogram" ng-class="['lavender','mint','peach','blue'][$index % 4]">{{card.question.charAt(0).toUpperCase()}}</span>
+                        <div class="vw-word-copy"><div class="vw-word-title"><h3>{{card.question}}</h3><button class="vw-sound" ng-click="vm.say(card)" aria-label="Nghe phát âm {{card.question}}"><i class="fa fa-volume-up" aria-hidden="true"></i></button><span class="vw-level" ng-if="card.level">{{card.level}}</span><span class="vw-listening-tag" ng-if="card.status === 5"><i class="fa fa-headphones" aria-hidden="true"></i> Listening</span></div><p>{{card.pronounce || 'Chưa có phiên âm'}}</p></div>
+                        <div class="vw-meaning"><span>NGHĨA TIẾNG VIỆT</span><p>{{card.motherTongue || 'Chưa có nghĩa tiếng Việt'}}</p></div>
+                        <div class="vw-row-actions"><button class="vw-icon-btn" ng-click="vm.openCard(card)" aria-label="Sửa từ {{card.question}}" title="Sửa từ"><i class="fa fa-pencil" aria-hidden="true"></i></button><button class="vw-icon-btn vw-danger" ng-if="vm.view !== 'browse' && vm.canDelete && card.status === 5 && vm.status === 5" ng-click="vm.confirmDelete(card)" aria-label="Xóa từ {{card.question}}"><i class="fa fa-trash" aria-hidden="true"></i></button></div>
+                    </article>
                 </div>
-            </footer>
+                <footer class="vw-pagination" ng-if="vm.total && !vm.cardLoadError">
+                    <span>{{(vm.page-1)*vm.pageSize+1}}–{{vm.page*vm.pageSize > vm.total ? vm.total : vm.page*vm.pageSize}} / {{vm.total | number:0}} thẻ</span>
+                    <form class="vw-page-size" name="vocabularyPageSize" ng-submit="vm.applyPageSize()">
+                        <label for="vw-cards-per-page">Thẻ mỗi trang</label>
+                        <input id="vw-cards-per-page" type="number" ng-model="vm.pageSizeInput" min="1" ng-attr-max="{{vm.pageSizeLimit}}" step="1" required>
+                        <button type="submit" class="vw-btn vw-quiet" ng-disabled="vocabularyPageSize.$invalid || vm.pageSizeInput === vm.pageSize || vm.bulkSaving">Áp dụng</button>
+                    </form>
+                    <div>
+                        <button type="button" class="vw-icon-btn" ng-click="vm.changePage(-1)" ng-disabled="vm.page <= 1 || vm.cardsLoading" aria-label="Trang từ trước"><i class="fa fa-angle-left" aria-hidden="true"></i></button>
+                        <span>{{vm.page}} / {{vm.pageCount()}}</span>
+                        <button type="button" class="vw-icon-btn" ng-click="vm.changePage(1)" ng-disabled="vm.page >= vm.pageCount() || vm.cardsLoading" aria-label="Trang từ sau"><i class="fa fa-angle-right" aria-hidden="true"></i></button>
+                    </div>
+                </footer>
+            </div>
         </section>
     </div>
     <p class="vw-footnote"><i class="fa fa-heart-o" aria-hidden="true"></i> Từ vựng được lưu vào thư viện cá nhân của bạn.</p>
 </main>
+
+<script type="text/ng-template" id="vocabulary_card_search.html">
+    <label class="vw-search vw-card-search"><i class="fa fa-search" aria-hidden="true"></i><input type="search" aria-label="Tìm từ hoặc nghĩa" ng-attr-placeholder="{{vm.findExactWord ? 'Nhập đúng từ hoặc cụm từ...' : 'Tìm từ hoặc nghĩa tiếng Việt...'}}" ng-model="vm.query" ng-model-options="{debounce:300}" ng-change="vm.loadCards(true)"></label>
+    <label class="vw-exact-switch"><input type="checkbox" role="switch" aria-label="Tìm đúng từ" ng-model="vm.findExactWord" ng-change="vm.loadCards(true)"><span class="vw-switch-track" aria-hidden="true"></span><span>Tìm đúng từ</span></label>
+</script>
 
 <script type="text/ng-template" id="vocabulary_breadcrumbs.html">
     <nav class="vw-breadcrumb" aria-label="Đường dẫn nhóm bài">

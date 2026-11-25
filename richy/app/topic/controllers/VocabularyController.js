@@ -72,7 +72,7 @@
         var categoriesById = new Map(), childrenByCategory = new Map(), expandedCategories = new Set();
         var uncategorized = {id: 'uncategorized', name: 'Bài chưa phân nhóm'};
         var unassignedWords = {id: 'unassigned', name: 'Chưa vào bài'};
-        vm.view = 'browse'; vm.lessonPickerOpen = true;
+        vm.view = 'browse'; vm.lessonPickerOpen = false;
         vm.isUncategorized = function () { return vm.view === 'category' && vm.lessonCategory === uncategorized; };
         vm.lessonQuery = ''; vm.categoryQuery = ''; vm.categoryRows = [];
         vm.levels = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -175,8 +175,16 @@
         function lessonSourceId() {
             return vm.isUncategorized() ? null : vm.lessonCategory.id;
         }
+        function clearCardResults() {
+            cardRequest++;
+            if (cardCancellation) { cardCancellation.resolve(); cardCancellation = null; }
+            if (cardDeadline) { $timeout.cancel(cardDeadline); cardDeadline = null; }
+            clearSelection();
+            vm.cards = []; vm.total = 0; vm.cardsLoading = false; vm.cardLoadError = '';
+        }
         vm.loadCards = function (reset) {
-            if (!vm.activeLesson && vm.view !== 'unassigned') { return; }
+            if (vm.view === 'category') { return; }
+            if (vm.view === 'browse' && !(vm.query || '').trim()) { clearCardResults(); return; }
             if (reset) { vm.page = 1; clearSelection(); }
             var request = ++cardRequest; vm.cardsLoading = true; vm.cardLoadError = '';
             if (cardCancellation) { cardCancellation.resolve(); }
@@ -217,11 +225,8 @@
             vm.importTopics = lesson ? [lesson] : vm.lessons;
             $location.search('lesson', lesson ? String(lesson.id) : vm.view === 'unassigned' ? 'unassigned' : null).replace();
             if (lesson || vm.view === 'unassigned') { return vm.loadCards(true); }
-            cardRequest++;
-            if (cardCancellation) { cardCancellation.resolve(); cardCancellation = null; }
-            if (cardDeadline) { $timeout.cancel(cardDeadline); cardDeadline = null; }
-            clearSelection();
-            vm.cards = []; vm.total = 0; vm.cardsLoading = false; vm.cardLoadError = '';
+            if (vm.view === 'browse') { vm.status = 0; }
+            clearCardResults();
         };
         vm.title = function () { return vm.activeLesson ? vm.activeLesson.name : 'Từ chưa vào bài'; };
         function lessonFolder(category) {
@@ -248,7 +253,6 @@
         vm.selectCategory = function (category) {
             vm.selectLesson(null, category ? 'category' : 'browse');
             setLessonCategory(category);
-            if (!category) { vm.lessonPickerOpen = true; }
         };
         vm.selectUncategorized = function () { vm.selectCategory(uncategorized); };
         vm.openUnassigned = function () {

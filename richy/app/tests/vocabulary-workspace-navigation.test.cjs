@@ -12,7 +12,7 @@ test('vocabulary has one navigation entry and the old flashcard URL opens the sa
     const context = vm.createContext({Hrm: {}, angular: {module: () => module}, window: {APP_VERSION: 'test'}});
     for (const file of ['topic/topic.module.js', 'question/question.module.js']) vm.runInContext(fs.readFileSync(path.join(app, file), 'utf8'), context);
     const primary = states['application.topic'];
-    assert.equal(primary.templateUrl, 'topic/views/vocabulary.html');
+    assert.equal(primary.templateUrl, 'topic/views/vocabulary.html?v=test');
     assert.equal(primary.controller, 'VocabularyController as vm');
     assert.equal(primary.reloadOnSearch, false);
     const destinations = [], enter = states['application.question'].onEnter.at(-1);
