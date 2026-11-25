@@ -898,7 +898,8 @@
         vm.activeRottenEggSplats = function () {
             if (!isRottenEggPlay()) { return []; }
             var player = getMe();
-            return player && !player.spectator && player.rottenEggSplatEndsAt > serverNow() ? [player.rottenEggSplatEndsAt] : [];
+            var splat = player && !player.spectator && player.rottenEggSplat;
+            return splat && splat.correctAnswersRemaining > 0 ? [splat] : [];
         };
         vm.isGiftLightningActive = function () {
             var effect = vm.room && vm.room.giftLightning;

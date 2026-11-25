@@ -1,5 +1,6 @@
 package com.globits.richy.dto;
 
+import com.globits.richy.battle.GiftDropGame.RottenEggSplat;
 import java.io.Serializable;
 
 public class BattleOnlinePlayerDto implements Serializable {
@@ -61,7 +62,7 @@ public class BattleOnlinePlayerDto implements Serializable {
     private long skillImmunityEndsAt;
     private int collectedDragonBallCount;
     private Integer rottenEggCount;
-    private long rottenEggSplatEndsAt;
+    private RottenEggSplat rottenEggSplat;
 
     /*
      * ESCAPE_DUMB_DEMON skill INVERT.
@@ -77,8 +78,8 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public Integer getRottenEggCount() { return rottenEggCount; }
     public void setRottenEggCount(Integer count) { rottenEggCount = count; }
-    public long getRottenEggSplatEndsAt() { return rottenEggSplatEndsAt; }
-    public void setRottenEggSplatEndsAt(long endsAt) { rottenEggSplatEndsAt = endsAt; }
+    public RottenEggSplat getRottenEggSplat() { return rottenEggSplat; }
+    public void setRottenEggSplat(RottenEggSplat splat) { rottenEggSplat = splat; }
 
     public int getCollectedDragonBallCount() { return collectedDragonBallCount; }
     public void setCollectedDragonBallCount(int value) { collectedDragonBallCount = value; }

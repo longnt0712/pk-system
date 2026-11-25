@@ -56,9 +56,15 @@ public class BattleOnlineGiftDropTest {
         try { service.claimGift("GIFTS1",username,request(id)); fail("Claim must be rejected"); } catch(BattleOnlineException expected) {}
     }
     private BattleOnlineAnswerDto answerRequest() throws Exception {
-        Object q=state("QuestionState"); set(q,"id",7L); set(q,"question","hello"); set(q,"correctKey","A"); set(q,"correctText","xin chào");
-        set(alice,"currentQuestion",q); set(alice,"currentQuestionSequence",1L);
-        BattleOnlineAnswerDto d=new BattleOnlineAnswerDto(); d.setQuestionId(7L); d.setQuestionSequence(1L); d.setAnswerKey("A"); return d;
+        return answerRequest(alice, 1L, "A");
+    }
+    private BattleOnlineAnswerDto answerRequest(Object player, long sequence, String answerKey) throws Exception {
+        Object q = state("QuestionState");
+        set(q, "id", 7L); set(q, "question", "hello"); set(q, "correctKey", "A"); set(q, "correctText", "xin chào");
+        set(player, "currentQuestion", q); set(player, "currentQuestionSequence", sequence);
+        BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
+        answer.setQuestionId(7L); answer.setQuestionSequence(sequence); answer.setAnswerKey(answerKey);
+        return answer;
     }
 
     @Test public void answersEarnCreditsAndUpdateStreakButNeverChangeScoreOrGrantQuestionSkills() throws Exception {
@@ -286,15 +292,42 @@ public class BattleOnlineGiftDropTest {
         set(bob, "score", 7D);
         BattleOnlineRoomDto sent = service.useSkill("GIFTS1", "alice", skill);
         assertEquals(Integer.valueOf(1), giftPlayer(sent, "alice").getRottenEggCount());
-        assertEquals(0L, giftPlayer(sent, "alice").getRottenEggSplatEndsAt());
-        long impactEnd = giftPlayer(sent, "bob").getRottenEggSplatEndsAt();
-        assertEquals(sent.getRecentEvents().get(0).getCreatedAt() + GiftDropGame.ROTTEN_EGG_SPLAT_MILLIS, impactEnd);
-        assertEquals(impactEnd, giftPlayer(service.getRoom("GIFTS1", "bob"), "bob").getRottenEggSplatEndsAt());
+        assertNull(giftPlayer(sent, "alice").getRottenEggSplat());
+        GiftDropGame.RottenEggSplat splat = giftPlayer(sent, "bob").getRottenEggSplat();
+        assertEquals(3, splat.correctAnswersRemaining);
+        assertEquals(splat.id, giftPlayer(service.getRoom("GIFTS1", "bob"), "bob").getRottenEggSplat().id);
         assertSame(question, get(bob, "currentQuestion"));
         assertEquals(7D, (Double) get(bob, "score"), 0D);
         assertEquals(0L, get(bob, "frozenUntil"));
         rejectedThrow(skill);
         assertEquals(1, pool.rottenEggCount("alice"));
+
+        assertTrue(service.answer("GIFTS1", "alice", answerRequest()).isCorrect());
+        assertEquals(3, pool.rottenEggSplat("bob").correctAnswersRemaining);
+
+        BattleOnlineAnswerDto first = answerRequest(bob, 1L, "A");
+        BattleOnlineAnswerResultDto firstResult = service.answer("GIFTS1", "bob", first);
+        assertTrue(firstResult.isCorrect());
+        GiftDropGame.RottenEggSplat afterFirst = giftPlayer(firstResult.getRoom(), "bob").getRottenEggSplat();
+        assertEquals(splat.id, afterFirst.id);
+        assertEquals(2, afterFirst.correctAnswersRemaining);
+        BattleOnlineAnswerDto wrong = answerRequest(bob, 2L, "B");
+        try {
+            service.answer("GIFTS1", "bob", first);
+            fail("A stale answer must not count again");
+        } catch (BattleOnlineException expected) {
+            assertEquals(2, pool.rottenEggSplat("bob").correctAnswersRemaining);
+        }
+        assertFalse(service.answer("GIFTS1", "bob", wrong).isCorrect());
+        assertEquals(2, pool.rottenEggSplat("bob").correctAnswersRemaining);
+        set(bob, "wrongAnswerPenaltyUntil", 0L);
+        assertTrue(service.answer("GIFTS1", "bob", answerRequest(bob, 3L, "A")).isCorrect());
+        assertEquals(1, pool.rottenEggSplat("bob").correctAnswersRemaining);
+        BattleOnlineAnswerResultDto last = service.answer("GIFTS1", "bob", answerRequest(bob, 4L, "A"));
+        assertTrue(last.isCorrect());
+        assertNull(giftPlayer(last.getRoom(), "bob").getRottenEggSplat());
+        assertNull(giftPlayer(service.getRoom("GIFTS1", "bob"), "bob").getRottenEggSplat());
+        assertEquals(3, splat.correctAnswersRemaining); // Earlier snapshots remain immutable.
     }
 
     private BattleOnlinePlayerDto giftPlayer(BattleOnlineRoomDto snapshot, String username) {

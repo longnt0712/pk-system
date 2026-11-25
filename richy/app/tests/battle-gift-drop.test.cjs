@@ -15,7 +15,7 @@ function setup(username='alice') {
    const next = plain(vm.room);
    next.giftDrop.version++;
    next.players.find(player => player.username === username).rottenEggCount -= 3;
-   next.players.find(player => player.username === args[1]).rottenEggSplatEndsAt = Date.now() + 6000;
+   next.players.find(player => player.username === args[1]).rottenEggSplat = {id:'hit-1',correctAnswersRemaining:3};
    return Promise.resolve(next);
   },
   finishGiftOpening(...args){finishCalls.push(args);const done=plain(vm.room);done.status='FINISHED';done.giftOpening=false;return Promise.resolve(done);},
@@ -89,14 +89,23 @@ test('the third rotten egg opens one target picker immediately and only the sele
     const incoming = plain(shooter.vm.room);
     victim.hooks.applyRoom(plain(incoming), true);
     other.hooks.applyRoom(plain(incoming), true);
-    assert.equal(victim.vm.activeRottenEggSplats()[0], incoming.players.find(player => player.username === 'bob').rottenEggSplatEndsAt);
+    assert.equal(victim.vm.activeRottenEggSplats()[0].correctAnswersRemaining, 3);
     assert.equal(other.vm.activeRottenEggSplats().length, 0);
     victim.hooks.applyRoom(plain(ready), false);
     assert.equal(victim.vm.activeRottenEggSplats().length, 1, 'an older snapshot cannot erase the effect');
     const later = plain(incoming);
-    later.serverTime += 7000;
+    later.serverTime += 70000;
+    victim.hooks.applyRoom(plain(later), false);
+    assert.equal(victim.vm.activeRottenEggSplats()[0].correctAnswersRemaining, 3, "time alone cannot clear the splat");
+    later.giftDrop.version++;
+    const affected = later.players.find(player => player.username === 'bob');
+    affected.rottenEggSplat.correctAnswersRemaining = 1;
+    victim.hooks.applyRoom(plain(later), true);
+    assert.equal(victim.vm.activeRottenEggSplats()[0].correctAnswersRemaining, 1);
+    later.giftDrop.version++; affected.rottenEggSplat = null;
     victim.hooks.applyRoom(later, false);
-    assert.equal(victim.vm.activeRottenEggSplats().length, 0);
+    victim.hooks.applyRoom(plain(incoming), true);
+    assert.equal(victim.vm.activeRottenEggSplats().length, 0, "an older snapshot cannot bring the splat back");
 });
 
 test('rotten eggs stay available when no eligible target is online', () => {

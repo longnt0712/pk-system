@@ -1071,7 +1071,7 @@
         </div>
     </div>
 
-    <div class="battle-rotten-splat" ng-repeat="effectEnd in vm.activeRottenEggSplats() track by effectEnd" aria-hidden="true">
+    <div class="battle-rotten-splat" ng-repeat="splat in vm.activeRottenEggSplats() track by splat.id" aria-hidden="true">
         <div class="battle-rotten-splat-art">
             <span class="battle-rotten-stain"></span>
             <span class="battle-rotten-shell is-left"></span>
@@ -1083,6 +1083,7 @@
             <span class="battle-rotten-fly is-second"></span>
             <span class="battle-rotten-fly is-third"></span>
         </div>
+        <span class="battle-rotten-splat-progress">Còn {{splat.correctAnswersRemaining}} câu đúng để hết trứng</span>
     </div>
 
     <div class="battle-online-game-layout"
@@ -2885,6 +2886,11 @@
     .battle-rotten-count img { width:27px; height:27px; object-fit:contain; }
     .battle-rotten-splat, .battle-rotten-splat * { pointer-events:none; }
     .battle-rotten-splat { position:fixed; inset:0; z-index:1280; display:grid; place-items:center; overflow:hidden; }
+    .battle-rotten-splat-progress {
+        position:absolute; bottom:max(16px, env(safe-area-inset-bottom)); max-width:90%;
+        padding:7px 12px; border-radius:18px; background:#293912e6; color:#f1f7d9;
+        font-size:13px; font-weight:750; text-align:center;
+    }
     .battle-rotten-splat-art {
         position:relative; width:min(89vw, 780px); height:min(63vh, 500px);
         animation:battle-rotten-impact .24s cubic-bezier(.2,.75,.3,1.25) both;

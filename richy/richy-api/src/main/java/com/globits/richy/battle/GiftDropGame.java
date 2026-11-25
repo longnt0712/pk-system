@@ -7,7 +7,7 @@ public class GiftDropGame {
     public static final int ROTTEN_EGG_LEVEL = -1;
     public static final double ROTTEN_EGG_POINTS = 0.5D;
     public static final int ROTTEN_EGG_THROW_COST = 3;
-    public static final long ROTTEN_EGG_SPLAT_MILLIS = 6000L;
+    public static final int ROTTEN_EGG_SPLAT_CORRECT_ANSWERS = 3;
     public static final int SKILL_EGG_LEVEL = -2;
     public static final int PERRY_HAT_LEVEL = -3;
     public static final int LIGHTNING_LEVEL = -4;
@@ -112,7 +112,18 @@ public class GiftDropGame {
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
     private final Map<String, Long> perryHatProtection = new HashMap<String, Long>();
     private final Map<String, Integer> rottenEggCounts = new HashMap<>();
-    private final Map<String, Long> rottenEggSplatEnds = new HashMap<>();
+    private final Map<String, RottenEggSplat> rottenEggSplats = new HashMap<>();
+
+    public static final class RottenEggSplat implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
+        public final String id;
+        public final int correctAnswersRemaining;
+
+        RottenEggSplat(String id, int correctAnswersRemaining) {
+            this.id = id;
+            this.correctAnswersRemaining = correctAnswersRemaining;
+        }
+    }
     private static final class DragonBallBoost {
         final int stars;
         final long endsAt;
@@ -483,16 +494,15 @@ public class GiftDropGame {
         return rottenEggCounts.getOrDefault(username, 0);
     }
 
-    public long rottenEggSplatEndsAt(String username) {
-        return rottenEggSplatEnds.getOrDefault(username, 0L);
+    public RottenEggSplat rottenEggSplat(String username) {
+        return rottenEggSplats.get(username);
     }
 
-    public boolean throwRottenEgg(String username, String targetUsername, long now) {
+    public boolean throwRottenEgg(String username, String targetUsername) {
         int count = rottenEggCount(username);
         if (count < ROTTEN_EGG_THROW_COST) { return false; }
         rottenEggCounts.put(username, count - ROTTEN_EGG_THROW_COST);
-        rottenEggSplatEnds.put(targetUsername, now + ROTTEN_EGG_SPLAT_MILLIS);
-        version++;
+        rottenEggSplats.put(targetUsername, new RottenEggSplat(gameId + ":" + (++version), ROTTEN_EGG_SPLAT_CORRECT_ANSWERS));
         return true;
     }
 
@@ -542,7 +552,15 @@ public class GiftDropGame {
             dragonBallCollections.put(entry.getKey(), new DragonBallCollection(entry.getValue()));
         }
     }
-    public void creditChanged() { version++; }
+    public void recordCorrectAnswer(String username) {
+        RottenEggSplat splat = rottenEggSplats.get(username);
+        if (splat != null) {
+            int remaining = splat.correctAnswersRemaining - 1;
+            if (remaining == 0) { rottenEggSplats.remove(username); }
+            else { rottenEggSplats.put(username, new RottenEggSplat(splat.id, remaining)); }
+        }
+        version++;
+    }
     public Snapshot snapshot() { return new Snapshot(this, null); }
     public Snapshot snapshot(String username) { return new Snapshot(this, username); }
 }

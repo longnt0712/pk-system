@@ -2745,7 +2745,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (correct && MODE_LUM_NGAY.equals(room.settings.mode)) {
                 player.giftCredits++;
                 player.giftCreditVersion++;
-                if (room.giftDrop != null) { room.giftDrop.creditChanged(); }
+                if (room.giftDrop != null) { room.giftDrop.recordCorrectAnswer(player.username); }
             }
 
             boolean fireBoostApplied =
@@ -6521,7 +6521,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (room.giftDrop.skillImmunityEndsAt(target.username) > now) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Người chơi này đang được bảo vệ bởi Ngọc Rồng.");
         }
-        if (!room.giftDrop.throwRottenEgg(actor.username, target.username, now)) {
+        if (!room.giftDrop.throwRottenEgg(actor.username, target.username)) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn cần đủ 3 trứng thối để ném.");
         }
         addSkillEventLocked(room, SKILL_ROTTEN_EGG_THROW, actor, target, 0D, now);
@@ -7835,7 +7835,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.setSkillImmunityEndsAt(room.giftDrop != null ? room.giftDrop.skillImmunityEndsAt(state.username) : 0L);
             if (room.giftDrop != null && !state.spectator) {
                 player.setRottenEggCount(room.giftDrop.rottenEggCount(state.username));
-                player.setRottenEggSplatEndsAt(room.giftDrop.rottenEggSplatEndsAt(state.username));
+                player.setRottenEggSplat(room.giftDrop.rottenEggSplat(state.username));
             }
             player.setFrozenUntil(
                     state.frozenUntil
