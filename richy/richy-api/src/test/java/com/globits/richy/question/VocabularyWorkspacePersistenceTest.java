@@ -45,7 +45,8 @@ public class VocabularyWorkspacePersistenceTest {
     @BeforeClass public static void database() throws Exception {
         JdbcDataSource source = new JdbcDataSource(); source.setURL("jdbc:h2:mem:vocabulary_workspace;MODE=MSSQLServer;DB_CLOSE_DELAY=-1");
         Configuration config = new Configuration().setProperty("hibernate.dialect", "org.hibernate.dialect.H2Dialect")
-            .setProperty("hibernate.hbm2ddl.auto", "create-drop").setProperty("hibernate.show_sql", "false");
+            .setProperty("hibernate.hbm2ddl.auto", "create-drop").setProperty("hibernate.show_sql", "false")
+            .setProperty("hibernate.generate_statistics", "true");
         config.getProperties().put("hibernate.connection.datasource", source);
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
@@ -105,6 +106,60 @@ public class VocabularyWorkspacePersistenceTest {
         if (lesson != null) { QuestionTopic link = new QuestionTopic(); link.setQuestion(card); link.setTopic(lesson); manager.persist(link); }
         return card;
     }
+    @Test public void treeCatalogReadsOnlyMetadataAndKeepsSharedAndPrivateVisibility() {
+        User owner = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User other = manager.find(Topic.class, foreignLessonId).getUser();
+        TopicCategory root = new TopicCategory(); root.setName("Root"); manager.persist(root);
+        TopicCategory shared = new TopicCategory(); shared.setName("Shared branch"); shared.setParent(root); manager.persist(shared);
+        TopicCategory personal = new TopicCategory(); personal.setName("My folder"); personal.setOwnerId(owner.getId()); manager.persist(personal);
+        TopicCategory foreign = new TopicCategory(); foreign.setName("Someone else"); foreign.setOwnerId(other.getId()); manager.persist(foreign);
+        TopicCategory hiddenForClass = new TopicCategory(); hiddenForClass.setName("Hidden for class"); manager.persist(hiddenForClass);
+        for (int index = 0; index < 150; index++) {
+            Topic lesson = topic(owner); lesson.setName("Lesson " + index); lesson.setTopicCategory(shared);
+            lesson.setContentHtml(String.join("", Collections.nCopies(100, "<p>Full lesson content</p>")));
+        }
+        Topic mine = topic(owner); mine.setTopicCategory(personal); mine.setName("My private lesson");
+        Topic hidden = topic(owner); hidden.setIsShow(false); hidden.setTopicCategory(shared);
+        Topic inaccessible = topic(owner); inaccessible.setTopicCategory(foreign);
+        Topic restricted = topic(owner); restricted.setTopicCategory(hiddenForClass);
+        manager.flush(); manager.clear();
+
+        TopicCategoryVisibilityService visibility = (TopicCategoryVisibilityService)
+                ReflectionTestUtils.getField(lessons, "topicCategoryVisibilityService");
+        when(visibility.getAllowedCategoryIdsForCurrentStudent()).thenReturn(Collections.singleton(shared.getId()));
+        TopicDto request = new TopicDto(); request.setUserId(owner.getId());
+        org.hibernate.stat.Statistics statistics = factory.getStatistics();
+        statistics.clear();
+        List<com.globits.richy.dto.TopicForListAllDto> catalog = lessons.getAllTopics(request);
+        assertEquals(151, catalog.size());
+        for (com.globits.richy.dto.TopicForListAllDto entry : catalog) {
+            assertEquals(owner.getId(), entry.getUserId());
+            assertEquals(owner.getUsername(), entry.getUsername());
+            assertTrue(entry.getCategoryId().equals(shared.getId()) || entry.getCategoryId().equals(personal.getId()));
+        }
+        assertEquals("The complete topic catalog should use one metadata query", 1L, statistics.getPrepareStatementCount());
+        assertEquals("No Topic, content, category or User entity should be loaded", 0L, statistics.getEntityLoadCount());
+
+        com.globits.richy.service.impl.TopicCategoryServiceImpl groups = new com.globits.richy.service.impl.TopicCategoryServiceImpl();
+        ReflectionTestUtils.setField(groups, "manager", manager);
+        ReflectionTestUtils.setField(groups, "topicCategoryVisibilityService", visibility);
+        statistics.clear();
+        org.springframework.data.domain.Page<TopicCategoryDto> folders = groups.getPageObject(new TopicCategoryDto(), 1, 500);
+        assertEquals(2, folders.getTotalElements());
+        for (TopicCategoryDto folder : folders.getContent()) {
+            assertFalse(folder.isParentSpecified());
+            if (folder.getId().equals(shared.getId())) {
+                assertEquals(root.getId(), folder.getParentId());
+                assertFalse(folder.isPersonal());
+            } else {
+                assertEquals(personal.getId(), folder.getId());
+                assertTrue(folder.isPersonal());
+            }
+        }
+        assertEquals("Folder metadata and count each use one query", 2L, statistics.getPrepareStatementCount());
+        assertEquals(0L, statistics.getEntityLoadCount());
+    }
+
     @Test public void lessonAllListeningMeaningAndUnassignedQueriesReturnTheCorrectPersonalCards() {
         QuestionDto search = new QuestionDto(); search.setStatus(0);
         assertEquals(3, cards.getVocabularyPage(search, 1, 8).getTotalElements());

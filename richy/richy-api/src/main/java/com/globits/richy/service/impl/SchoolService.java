@@ -2,6 +2,8 @@ package com.globits.richy.service.impl;
 
 import com.globits.richy.domain.School;
 import com.globits.richy.dto.SchoolDto;
+import com.globits.security.domain.Role;
+import com.globits.security.dto.RoleDto;
 import java.util.*;
 import javax.persistence.*;
 import org.springframework.stereotype.Service;
@@ -28,9 +30,10 @@ public class SchoolService {
     @Transactional(readOnly = true)
     public List<SchoolDto> list() {
         List<SchoolDto> rows = new ArrayList<>();
-        Set<Long> allowed = access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS);
+        boolean admin = access.isAdmin();
+        Set<Long> allowed = admin ? Collections.emptySet() : access.schoolsFor(SchoolAccess.EDUCATION, SchoolAccess.STUDENTS);
         for (School school : em.createQuery("select s from School s order by s.id", School.class).getResultList()) {
-            if (access.isAdmin() || allowed.contains(school.getId())) { rows.add(new SchoolDto(school)); }
+            if (admin || allowed.contains(school.getId())) { rows.add(new SchoolDto(school)); }
         }
         return rows;
     }
@@ -63,48 +66,40 @@ public class SchoolService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String,Object>> roles() {
-        List<Map<String,Object>> rows = new ArrayList<>();
-        for (Object[] row : em.createQuery("select r.id,r.name from Role r order by r.name", Object[].class).getResultList()) {
-            Map<String,Object> item = new LinkedHashMap<>();
-            item.put("id", row[0]); item.put("name", row[1]); rows.add(item);
-        }
+    public List<RoleDto> roles() {
+        List<RoleDto> rows = new ArrayList<>();
+        List<Role> roles = em.createQuery("select r from Role r order by r.name, r.id", Role.class)
+            .getResultList();
+        for (Role role : roles) { rows.add(new RoleDto(role)); }
         return rows;
     }
 
     @Transactional(readOnly = true)
-    public Map<String,List<Long>> assignments(Long schoolId) {
-        Map<String,List<Long>> result = new LinkedHashMap<>();
-        String sql = "select u.username,a.role_id from dbo.tbl_school_user_role a join dbo.tbl_user u on u.id=a.user_id"
-            + " where a.school_id=:school order by u.username,a.role_id";
-        for (Object value : em.createNativeQuery(sql).setParameter("school", schoolId).getResultList()) {
-            Object[] row = (Object[]) value;
-            result.computeIfAbsent((String) row[0], key -> new ArrayList<>()).add(((Number) row[1]).longValue());
+    public List<Long> allowedRoleIds(Long schoolId) {
+        List<Long> result = new ArrayList<>();
+        for (Object id : em.createNativeQuery("select role_id from dbo.tbl_school_role where school_id=:school order by role_id")
+                .setParameter("school", schoolId).getResultList()) {
+            result.add(((Number) id).longValue());
         }
         return result;
     }
 
-    public Map<String,List<Long>> setRoles(Long schoolId, String username, List<Long> roles) {
-        if (em.find(School.class, schoolId, LockModeType.PESSIMISTIC_WRITE) == null
-                || username == null || username.trim().isEmpty() || roles == null) {
-            throw new IllegalArgumentException("Chọn School, tài khoản và quyền.");
+    public List<Long> setAllowedRoles(Long schoolId, List<Long> roleIds) {
+        if (roleIds == null || em.find(School.class, schoolId, LockModeType.PESSIMISTIC_WRITE) == null) {
+            throw new IllegalArgumentException("Chọn School và gửi danh sách role.");
         }
-        List<Long> users = em.createQuery("select u.id from User u where u.username=:username", Long.class)
-            .setParameter("username", username.trim()).getResultList();
-        if (users.size() != 1) { throw new IllegalArgumentException("Không tìm thấy tài khoản."); }
-        Set<Long> selected = new LinkedHashSet<>(roles);
+        Set<Long> valid = new HashSet<>();
+        for (RoleDto role : roles()) { valid.add(role.getId()); }
+        if (!valid.containsAll(roleIds)) {
+            throw new IllegalArgumentException("Có role không còn trong hệ thống. Vui lòng tải lại danh sách role.");
+        }
+        Set<Long> selected = new TreeSet<>(roleIds);
+        em.createNativeQuery("delete from dbo.tbl_school_role where school_id=:school")
+            .setParameter("school", schoolId).executeUpdate();
         for (Long roleId : selected) {
-            if (roleId == null || em.find(com.globits.security.domain.Role.class, roleId) == null) {
-                throw new IllegalArgumentException("Role không hợp lệ.");
-            }
+            em.createNativeQuery("insert into dbo.tbl_school_role(school_id,role_id) values(:school,:role)")
+                .setParameter("school", schoolId).setParameter("role", roleId).executeUpdate();
         }
-        Long userId = users.get(0);
-        em.createNativeQuery("delete from dbo.tbl_school_user_role where school_id=:school and user_id=:account")
-            .setParameter("school", schoolId).setParameter("account", userId).executeUpdate();
-        for (Long roleId : selected) {
-            em.createNativeQuery("insert into dbo.tbl_school_user_role(school_id,user_id,role_id) values(:school,:account,:role)")
-                .setParameter("school", schoolId).setParameter("account", userId).setParameter("role", roleId).executeUpdate();
-        }
-        return assignments(schoolId);
+        return new ArrayList<>(selected);
     }
 }

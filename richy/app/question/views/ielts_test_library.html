@@ -87,6 +87,8 @@
                         <a class="library-action--study" ng-if="vm.isWritingMode && item.hasWritingTask1" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 1)}}">{{vm.getLearningProgress(item.id, 1) ? (vm.getLearningProgress(item.id, 1).completed ? 'Xem lại Task 1' : 'Tiếp tục Task 1') : 'Bắt đầu Task 1'}}</a>
                         <a class="library-action--study" ng-if="vm.isWritingMode && item.hasWritingTask2" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 2)}}">{{vm.getLearningProgress(item.id, 2) ? (vm.getLearningProgress(item.id, 2).completed ? 'Xem lại Task 2' : 'Tiếp tục Task 2') : 'Bắt đầu Task 2'}}</a>
                         <a class="library-action--test" ng-if="!vm.isDailyListeningMode" target="_blank" rel="noopener" ng-href="{{vm.seriousTestCatalogUrl(item)}}"><i class="fa fa-clock-o" aria-hidden="true"></i>{{vm.isWritingMode ? 'Làm bài Writing' : 'Làm test'}}</a>
+                        <button type="button" class="library-action--vocab" ng-if="vm.hasReadingVocabulary" ng-click="vm.openReadingVocabulary(item, false)"><i class="fa fa-book-open" aria-hidden="true"></i> Học từ vựng</button>
+                        <button type="button" class="library-action--vocab library-action--link-vocab" ng-if="vm.hasReadingVocabulary && vm.canLinkReadingVocabulary" ng-click="vm.openReadingVocabulary(item, true)"><i class="fa fa-link" aria-hidden="true"></i> Gắn bài từ vựng</button>
                         <a ng-if="vm.isComprehensiveMode" ng-href="battle-quiz-online?exerciseId={{item.id}}" title="Chơi Battle"><i class="fa fa-gamepad" aria-hidden="true"></i><span>Chơi Battle</span></a>
                     </div>
                     </div>

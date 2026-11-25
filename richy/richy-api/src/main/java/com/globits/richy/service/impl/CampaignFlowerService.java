@@ -31,7 +31,8 @@ public class CampaignFlowerService {
     @Autowired private CampaignFlowerAccessRepository accessRepository;
     @Autowired private CampaignFlowerEntryRepository entries;
     @PersistenceContext private EntityManager entityManager;
-    private static LocalDate today() { return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")); }
+    private Clock clock = Clock.system(ZoneId.of("Asia/Ho_Chi_Minh"));
+    private LocalDate today() { return LocalDate.now(clock); }
 
     @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGEMENT", "ROLE_STUDENT_MANAGEMENT"})
     public CampaignFlowerDto.Access issue(String studentCode) {
@@ -81,7 +82,7 @@ public class CampaignFlowerService {
     @Transactional(readOnly = true)
     public CampaignFlowerDto.Sheet sheet(String token, Long campaignId, int week) {
         User student = access(token, false).getStudent(); Campaign campaign = campaign(campaignId);
-        LocalDate start = LocalDate.parse(campaign.getStartDate()), end = LocalDate.parse(campaign.getEndDate());
+        LocalDate start = LocalDate.parse(campaign.getStartDate()), end = LocalDate.parse(AdventFlowerRules.lastPracticeDate(campaign));
         long count = (ChronoUnit.DAYS.between(start, end) + 7) / 7;
         if (week < 0 || week >= count) { throw new CampaignService.InvalidCampaignException("Tuần hoa thiêng không hợp lệ."); }
         LocalDate first = start.plusDays(week * 7L), last = first.plusDays(6);
@@ -116,7 +117,7 @@ public class CampaignFlowerService {
             if (date == null || !date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) { throw new IllegalArgumentException(); }
             day = LocalDate.parse(date);
         } catch (RuntimeException error) { throw new CampaignService.InvalidCampaignException("Ngày hoa thiêng không hợp lệ."); }
-        if (completed == null || day.isBefore(LocalDate.parse(campaign.getStartDate())) || day.isAfter(LocalDate.parse(campaign.getEndDate()))) {
+        if (completed == null || day.isBefore(LocalDate.parse(campaign.getStartDate())) || day.isAfter(LocalDate.parse(AdventFlowerRules.lastPracticeDate(campaign)))) {
             throw new CampaignService.InvalidCampaignException("Ngày hoặc trạng thái hoa thiêng không hợp lệ trong chiến dịch.");
         }
         if (!allowOtherDays && !day.equals(today())) {
@@ -139,6 +140,56 @@ public class CampaignFlowerService {
         return entryDto(entry);
     }
 
+    public CampaignFlowerDto.Entry savePrayer(String token, Long campaignId, int week, String text) {
+        return savePrayerEntry(token, campaignId, week, text, false, null);
+    }
+
+    @Secured({"ROLE_ADMIN"})
+    public CampaignFlowerDto.Entry savePrayerAsAdmin(String token, Long campaignId, int week, String text) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+            throw new AccessDeniedException("Hãy đăng nhập bằng tài khoản Admin để cập nhật tuần khác.");
+        }
+        return savePrayerEntry(token, campaignId, week, text, true, authentication.getName());
+    }
+
+    private CampaignFlowerDto.Entry savePrayerEntry(String token, Long campaignId, int week, String text, boolean allowOtherWeeks, String actor) {
+        User student = access(token, true).getStudent();
+        Campaign campaign = campaign(campaignId);
+        if (!AdventFlowerRules.matches(campaign) || week < 0 || week >= 5) {
+            throw new CampaignService.InvalidCampaignException("Tuần viết lời nguyện không hợp lệ.");
+        }
+        LocalDate first = LocalDate.parse(campaign.getStartDate()).plusWeeks(week), last = first.plusDays(6);
+        LocalDate today = today();
+        if (!allowOtherWeeks && (today.isBefore(first) || today.isAfter(last))) {
+            throw new CampaignService.InvalidCampaignException("Em chỉ viết hoặc sửa lời nguyện trong tuần hiện tại.");
+        }
+        String value = AdventFlowerRules.prayerText(text);
+        CampaignFlowerEntry prayer = entries.findByCampaignIdAndStudentIdAndDateBetween(campaignId, student.getId(), first.toString(), last.toString())
+                .stream().filter(entry -> AdventFlowerRules.PRAYER_KEY.equals(entry.getItemKey()) && entry.getPrayerText() != null).findFirst().orElse(null);
+        if (prayer == null && value.isEmpty()) {
+            CampaignFlowerDto.Entry empty = new CampaignFlowerDto.Entry(); empty.itemKey = AdventFlowerRules.PRAYER_KEY;
+            empty.date = first.toString(); empty.completed = false; empty.prayerText = ""; return empty;
+        }
+        String earnedDay = today.isBefore(first) || today.isAfter(last) ? first.toString() : today.toString();
+        if (prayer == null) {
+            // This paintable petal may already have a color without a written prayer.
+            prayer = entries.findByCampaignIdAndStudentIdAndDateAndItemKey(campaignId, student.getId(), earnedDay, AdventFlowerRules.PRAYER_KEY);
+        }
+        if (prayer == null) {
+            prayer = new CampaignFlowerEntry(); prayer.setCampaignId(campaignId); prayer.setStudentId(student.getId());
+            // Keep the original earned day when the week's prayer is edited later.
+            prayer.setDate(earnedDay);
+            prayer.setItemKey(AdventFlowerRules.PRAYER_KEY);
+            prayer.setCreatedBy(actor == null ? student.getUsername() : actor); prayer.setCreateDate(LocalDateTime.now());
+        }
+        prayer.setPrayerText(value); prayer.setCompleted(!value.isEmpty());
+        prayer.setModifiedBy(actor == null ? student.getUsername() : actor); prayer.setModifyDate(LocalDateTime.now());
+        entries.saveAndFlush(prayer);
+        reconcilePaint(campaign, dayEntries(campaign, student, prayer.getDate()));
+        return entryDto(prayer);
+    }
+
     private static final Set<String> PALETTE = new HashSet<>(Arrays.asList(
             "#F48FB1", "#EF5350", "#FFB74D", "#FFE082", "#B39DDB", "#81D4FA", "#80CBC4"));
 
@@ -153,16 +204,16 @@ public class CampaignFlowerService {
         LocalDate day;
         try { day = LocalDate.parse(date); }
         catch (RuntimeException error) { throw new CampaignService.InvalidCampaignException("Ngày tô hoa không hợp lệ."); }
-        if (!day.toString().equals(date) || day.isAfter(today()) || date.compareTo(campaign.getStartDate()) < 0 || date.compareTo(campaign.getEndDate()) > 0) {
+        if (!day.toString().equals(date) || day.isAfter(today()) || date.compareTo(campaign.getStartDate()) < 0 || date.compareTo(AdventFlowerRules.lastPracticeDate(campaign)) > 0) {
             throw new CampaignService.InvalidCampaignException("Em chỉ tô hoa cho ngày đã đến trong chiến dịch.");
         }
-        if (!itemKeys(campaign).contains(itemKey)) { throw new CampaignService.InvalidCampaignException("Cánh hoa đã thay đổi. Vui lòng mở lại vườn hoa."); }
+        if (!paintKeys(campaign).contains(itemKey)) { throw new CampaignService.InvalidCampaignException("Cánh hoa đã thay đổi. Vui lòng mở lại vườn hoa."); }
         String selected = color == null ? "" : color.toUpperCase(Locale.ROOT);
         if (!PALETTE.contains(selected)) { throw new CampaignService.InvalidCampaignException("Hãy chọn một màu trong bảng màu."); }
         List<CampaignFlowerEntry> values = dayEntries(campaign, student, date);
         reconcilePaint(campaign, values);
-        Set<String> keys = itemKeys(campaign);
-        long earned = values.stream().filter(e -> keys.contains(e.getItemKey()) && e.isCompleted()).count();
+        Set<String> keys = paintKeys(campaign);
+        long earned = values.stream().mapToInt(e -> earnedCredits(campaign, e)).sum();
         long used = values.stream().filter(e -> keys.contains(e.getItemKey()) && e.getPaintColor() != null).count();
         CampaignFlowerEntry target = entries.findByCampaignIdAndStudentIdAndDateAndItemKey(campaignId, student.getId(), date, itemKey);
         if ((target == null || target.getPaintColor() == null) && used >= earned) {
@@ -193,10 +244,10 @@ public class CampaignFlowerService {
         LocalDate day;
         try { day = LocalDate.parse(date); }
         catch (RuntimeException error) { throw new CampaignService.InvalidCampaignException("Ngày xóa màu hoa không hợp lệ."); }
-        if (!day.toString().equals(date) || day.isAfter(today()) || date.compareTo(campaign.getStartDate()) < 0 || date.compareTo(campaign.getEndDate()) > 0) {
+        if (!day.toString().equals(date) || day.isAfter(today()) || date.compareTo(campaign.getStartDate()) < 0 || date.compareTo(AdventFlowerRules.lastPracticeDate(campaign)) > 0) {
             throw new CampaignService.InvalidCampaignException("Em chỉ xóa màu bông hoa của ngày đã đến trong chiến dịch.");
         }
-        if (!itemKeys(campaign).contains(itemKey)) { throw new CampaignService.InvalidCampaignException("Cánh hoa đã thay đổi. Vui lòng mở lại vườn hoa."); }
+        if (!paintKeys(campaign).contains(itemKey)) { throw new CampaignService.InvalidCampaignException("Cánh hoa đã thay đổi. Vui lòng mở lại vườn hoa."); }
         CampaignFlowerEntry value = entries.findByCampaignIdAndStudentIdAndDateAndItemKey(campaignId, student.getId(), date, itemKey);
         if (value != null && value.getPaintColor() != null) {
             value.setPaintColor(null); value.setModifiedBy(student.getUsername()); value.setModifyDate(LocalDateTime.now()); entries.saveAndFlush(value);
@@ -208,6 +259,27 @@ public class CampaignFlowerService {
         Set<String> keys = new HashSet<>();
         for (int i = 0; i < campaign.getFlowerItems().size(); i++) { keys.add(CampaignDto.itemKey(campaign, campaign.getFlowerItems().get(i), i)); }
         return keys;
+    }
+    private Set<String> paintKeys(Campaign campaign) {
+        Set<String> keys = itemKeys(campaign);
+        if (AdventFlowerRules.matches(campaign)) {
+            keys.add(AdventFlowerRules.PRAYER_KEY); keys.add(AdventFlowerRules.MASS_BONUS_KEY);
+        }
+        return keys;
+    }
+    private int earnedCredits(Campaign campaign, CampaignFlowerEntry entry) {
+        if (!entry.isCompleted()) { return 0; }
+        boolean advent = AdventFlowerRules.matches(campaign);
+        if (advent && AdventFlowerRules.PRAYER_KEY.equals(entry.getItemKey())) {
+            return entry.getPrayerText() == null || entry.getPrayerText().trim().isEmpty() ? 0 : 1;
+        }
+        for (int i = 0; i < campaign.getFlowerItems().size(); i++) {
+            SpiritualFlowerItem item = campaign.getFlowerItems().get(i);
+            if (CampaignDto.itemKey(campaign, item, i).equals(entry.getItemKey())) {
+                return advent && AdventFlowerRules.isMass(item.getName()) ? 2 : 1;
+            }
+        }
+        return 0;
     }
     private List<CampaignFlowerEntry> allEntries(Campaign campaign, User student) {
         return entries.findByCampaignIdAndStudentIdAndDateBetween(campaign.getId(), student.getId(), campaign.getStartDate(), campaign.getEndDate());
@@ -222,8 +294,8 @@ public class CampaignFlowerService {
         return result;
     }
     private void reconcilePaint(Campaign campaign, List<CampaignFlowerEntry> values) {
-        Set<String> keys = itemKeys(campaign);
-        long remaining = values.stream().filter(e -> keys.contains(e.getItemKey()) && e.isCompleted()).count();
+        Set<String> keys = paintKeys(campaign);
+        long remaining = values.stream().mapToInt(e -> earnedCredits(campaign, e)).sum();
         for (CampaignFlowerEntry value : paintOrder(values)) {
             if (value.getPaintColor() == null) { continue; }
             if (!keys.contains(value.getItemKey()) || !PALETTE.contains(value.getPaintColor()) || remaining-- <= 0) {
@@ -233,10 +305,10 @@ public class CampaignFlowerService {
     }
     private CampaignFlowerDto.Garden gardenDto(Campaign campaign, User student) {
         CampaignFlowerDto.Garden dto = new CampaignFlowerDto.Garden(); dto.serverTime = System.currentTimeMillis(); dto.campaign = new CampaignDto(campaign, true);
-        Set<String> keys = itemKeys(campaign); List<CampaignFlowerEntry> values = paintOrder(allEntries(campaign, student));
+        Set<String> keys = paintKeys(campaign); List<CampaignFlowerEntry> values = paintOrder(allEntries(campaign, student));
         Map<String, Integer> credit = new HashMap<>();
         for (CampaignFlowerEntry value : values) {
-            if (keys.contains(value.getItemKey()) && value.isCompleted()) { credit.put(value.getDate(), credit.getOrDefault(value.getDate(), 0) + 1); }
+            credit.put(value.getDate(), credit.getOrDefault(value.getDate(), 0) + earnedCredits(campaign, value));
         }
         // Ignore retired items and cap display after an administrator removes a practice.
         for (CampaignFlowerEntry value : values) {
@@ -282,7 +354,8 @@ public class CampaignFlowerService {
     private static String clean(String value) { return value == null ? "" : value.trim(); }
     private static CampaignFlowerDto.Entry entryDto(CampaignFlowerEntry value) {
         CampaignFlowerDto.Entry dto = new CampaignFlowerDto.Entry();
-        dto.date = value.getDate(); dto.itemKey = value.getItemKey(); dto.completed = value.isCompleted(); dto.paintColor = value.getPaintColor(); return dto;
+        dto.date = value.getDate(); dto.itemKey = value.getItemKey(); dto.completed = value.isCompleted(); dto.paintColor = value.getPaintColor();
+        dto.prayerText = value.getPrayerText(); return dto;
     }
     @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Mã QR học sinh không hợp lệ hoặc tài khoản đã ngừng hoạt động.")
     public static class InvalidStudentQrException extends RuntimeException { }

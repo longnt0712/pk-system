@@ -51,6 +51,22 @@
         self.confirmExcelImport = confirmExcelImport;
         
         self.saveObject = saveObject;
+        self.getReadingVocabularyLessons = function (testId) {
+            return $http.get(baseUrl + 'question/' + testId + '/vocabulary_lessons')
+                .then(function (response) { return response.data; });
+        };
+
+        self.saveReadingVocabularyLessons = function (testId, topicIds) {
+            return $http.put(baseUrl + 'question/' + testId + '/vocabulary_lessons', topicIds)
+                .then(function (response) { return response.data; });
+        };
+
+        self.getReadingVocabularyOptions = function (categoryId, search, page) {
+            return $http.get(baseUrl + 'question/vocabulary_lesson_options', {
+                params: {categoryId: categoryId, search: search, page: page}
+            }).then(function (response) { return response.data; });
+        };
+
         self.getVocabularyUsage = function () {
             return $http.get(baseUrl + 'question/vocabulary_usage').then(function (response) { return response.data; });
         };

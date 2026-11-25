@@ -5,11 +5,11 @@
 
     IELTSTestLibraryController.$inject = [
         '$rootScope', '$scope', '$location', '$window', '$cookies',
-        'settings', 'QuestionService', 'blockUI', 'ComprehensiveFolders'
+        'settings', 'QuestionService', 'blockUI', 'ComprehensiveFolders', '$uibModal', '$state'
     ];
 
     function IELTSTestLibraryController($rootScope, $scope, $location, $window, $cookies,
-                                        settings, service, blockUI, folders) {
+                                        settings, service, blockUI, folders, $uibModal, $state) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -35,6 +35,10 @@
         vm.folderTestMode = vm.isDailyListeningMode ? 'DAILY_LISTENING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : (vm.isWritingMode ? 'WRITING' : (vm.isListeningMode ? 'LISTENING' : 'READING')));
         vm.testModeName = vm.isDailyListeningMode ? 'Daily Listening' : (vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading')));
         vm.testModeIcon = vm.isDailyListeningMode ? 'fa-headphones' : (vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book')));
+        vm.hasReadingVocabulary = vm.folderTestMode === 'READING';
+        vm.canLinkReadingVocabulary = (vm.currentUser.roles || []).some(function (role) {
+            return (role && (role.name || role)) === 'ROLE_ADMIN';
+        });
         vm.ieltsReadingTests = [];
         vm.learningProgressByTestId = {};
         vm.learningProgressByTestTask = {};
@@ -164,6 +168,128 @@
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             return route + item.id + '?sessionMode=SERIOUS&startFresh=1' + (writingTask ? '&assignmentPart=' + writingTask : '');
+        };
+
+        vm.openReadingVocabulary = function (test, editing) {
+            if (!vm.hasReadingVocabulary || (editing && !vm.canLinkReadingVocabulary)) { return; }
+            $uibModal.open({
+                templateUrl: 'question/views/reading_vocabulary_lessons.html?v=' + window.APP_VERSION,
+                ariaLabelledBy: 'reading-vocab-modal-title',
+                size: editing ? 'lg' : 'md',
+                controllerAs: 'vocab',
+                controller: ['$uibModalInstance', function ($uibModalInstance) {
+                    var picker = this;
+                    var optionRequest = 0;
+                    picker.editing = editing;
+                    picker.title = test.title;
+                    picker.selected = [];
+                    picker.options = [];
+                    picker.categories = [];
+                    picker.close = function () {
+                        if (!picker.saving) { $uibModalInstance.dismiss('close'); }
+                    };
+                    picker.openLesson = function (lesson) {
+                        if (picker.navigating) { return; }
+                        picker.navigating = true;
+                        picker.navigationError = '';
+                        return $state.go('application.daily_vocab', {
+                            listFlashCard: 0,
+                            practiceTestId: test.id,
+                            practiceTopicId: lesson.id
+                        }).then(function () {
+                            $uibModalInstance.close();
+                        }, function () {
+                            picker.navigationError = 'Không mở được Daily Vocab. Hãy bấm lại vào bài để thử lại.';
+                        }).finally(function () {
+                            picker.navigating = false;
+                        });
+                    };
+                    picker.reload = function () {
+                        picker.loading = true;
+                        picker.loadError = '';
+                        service.getReadingVocabularyLessons(test.id).then(function (lessons) {
+                            picker.selected = lessons || [];
+                        }, function () {
+                            picker.loadError = 'Không tải được bài từ vựng của đề này.';
+                        }).finally(function () { picker.loading = false; });
+                    };
+
+                    picker.categoryChanged = function () {
+                        picker.search = '';
+                        picker.loadOptions(1);
+                    };
+                    picker.loadOptions = function (page) {
+                        if (!picker.category) { return; }
+                        var generation = ++optionRequest;
+                        picker.loadingOptions = true;
+                        picker.optionsError = '';
+                        service.getReadingVocabularyOptions(picker.category.id, picker.search || '', page).then(function (data) {
+                            if (generation !== optionRequest) { return; }
+                            picker.options = data.content || [];
+                            picker.page = page;
+                            picker.totalPages = data.totalPages;
+                        }, function () {
+                            if (generation !== optionRequest) { return; }
+                            picker.options = [];
+                            picker.optionsError = 'Không tải được danh sách bài trong thư mục này.';
+                        }).finally(function () {
+                            if (generation === optionRequest) { picker.loadingOptions = false; }
+                        });
+                    };
+                    picker.isSelected = function (topic) {
+                        return picker.selected.some(function (item) { return item.id === topic.id; });
+                    };
+                    picker.toggle = function (topic) {
+                        if (picker.isSelected(topic)) {
+                            picker.selected = picker.selected.filter(function (item) { return item.id !== topic.id; });
+                        } else {
+                            picker.selected.push(topic);
+                        }
+                    };
+                    picker.save = function () {
+                        if (picker.loading || picker.loadError || picker.saving) { return; }
+                        picker.saving = true;
+                        picker.saveError = '';
+                        service.saveReadingVocabularyLessons(test.id, picker.selected.map(function (topic) {
+                            return topic.id;
+                        })).then(function () {
+                            $uibModalInstance.close();
+                        }, function (error) {
+                            picker.saveError = error.data && error.data.message || 'Không lưu được bài từ vựng.';
+                        }).finally(function () { picker.saving = false; });
+                    };
+
+                    function loadCategories(page, categories) {
+                        return service.getPageTopicCategory({}, page, 100).then(function (data) {
+                            categories = categories.concat(data.content || []);
+                            if (page < data.totalPages) { return loadCategories(page + 1, categories); }
+                            var byId = {};
+                            categories = categories.filter(function (category) { return !category.personal; });
+                            categories.forEach(function (category) { byId[category.id] = category; });
+                            categories.forEach(function (category) {
+                                var names = [category.name];
+                                var parent = byId[category.parentId];
+                                for (var depth = 0; parent && depth < 50; depth++) {
+                                    names.unshift(parent.name);
+                                    parent = byId[parent.parentId];
+                                }
+                                category.path = names.join(' / ');
+                            });
+                            picker.categories = categories.sort(function (left, right) {
+                                return left.path.localeCompare(right.path, 'vi', {numeric: true});
+                            });
+                        });
+                    }
+
+                    picker.reload();
+                    if (editing) {
+                        picker.loadingCategories = true;
+                        loadCategories(1, []).catch(function () {
+                            picker.categoryError = 'Không tải được thư mục từ vựng.';
+                        }).finally(function () { picker.loadingCategories = false; });
+                    }
+                }]
+            }).result.catch(angular.noop);
         };
 
         vm.loadTests = function () {

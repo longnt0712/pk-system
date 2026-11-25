@@ -7,7 +7,7 @@
             controller: 'SchoolController as vm',
             data: {pageTitle: 'Quản lý School'}
         });
-    }]).controller('SchoolController', ['settings', 'SchoolContext', function (settings, schools) {
+    }]).controller('SchoolController', ['$q', 'settings', 'SchoolContext', function ($q, settings, schools) {
         var vm = this;
         vm.settings = settings;
         vm.rows = [];
@@ -21,7 +21,7 @@
         vm.edit = function (row) {
             vm.error = '';
             vm.editing = angular.copy(row || {active: true, showAttendance: true});
-            vm.members = null;
+            vm.roleSchool = null;
         };
         vm.save = function () {
             if (vm.busy) { return; }
@@ -31,28 +31,31 @@
                 return list();
             }));
         };
-        vm.openMembers = function (row) {
+        vm.openRoles = function (row) {
+            if (vm.busy) { return; }
             vm.editing = null;
-            vm.members = row;
-            vm.assignment = {username: '', roles: []};
-            vm.assignments = {};
-            return run(schools.assignments(row.id).then(function (response) { vm.assignments = response.data; }));
-        };
-        vm.selectUser = function (username) {
-            vm.assignment = {username: username, roles: angular.copy(vm.assignments[username] || [])};
+            vm.roleSchool = row;
+            vm.rolesLoaded = false;
+            vm.rolesSaved = false;
+            vm.roleSelection = {};
+            return run($q.all([schools.roles(), schools.allowedRoles(row.id)]).then(function (responses) {
+                vm.roles = responses[0].data;
+                responses[1].data.forEach(function (id) { vm.roleSelection[id] = true; });
+                vm.rolesLoaded = true;
+            }));
         };
         vm.saveRoles = function () {
-            if (vm.busy) { return; }
-            return run(schools.setRoles(vm.members.id, vm.assignment).then(function (response) {
-                vm.assignments = response.data;
-                vm.assignment = {username: '', roles: []};
+            if (vm.busy || !vm.roleSchool || !vm.rolesLoaded) { return; }
+            vm.rolesSaved = false;
+            var roleIds = vm.roles.filter(function (role) { return vm.roleSelection[role.id]; })
+                .map(function (role) { return role.id; });
+            return run(schools.setAllowedRoles(vm.roleSchool.id, roleIds).then(function () {
+                vm.rolesSaved = true;
                 schools.refresh().catch(angular.noop);
             }));
         };
         if (settings.isAdmin) {
-            run(list().then(function () {
-                return schools.roles().then(function (response) { vm.roles = response.data; });
-            }));
+            run(list());
         }
     }]);
 })();

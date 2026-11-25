@@ -2,6 +2,7 @@ package com.globits.richy.rest;
 
 import com.globits.richy.dto.SchoolDto;
 import com.globits.richy.service.impl.SchoolService;
+import com.globits.security.dto.RoleDto;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -32,18 +33,14 @@ public class RestSchoolController {
     }
     @Secured("ROLE_ADMIN")
     @RequestMapping(value = "/roles", method = RequestMethod.GET)
-    public List<Map<String,Object>> roles() { return service.roles(); }
+    public List<RoleDto> roles() { return service.roles(); }
     @Secured("ROLE_ADMIN")
-    @RequestMapping(value = "/{id}/roles", method = RequestMethod.GET)
-    public Map<String,List<Long>> assignments(@PathVariable Long id) { return service.assignments(id); }
-    public static class RoleRequest {
-        public String username;
-        public List<Long> roles;
-    }
+    @RequestMapping(value = "/{id}/allowed-roles", method = RequestMethod.GET)
+    public List<Long> allowedRoleIds(@PathVariable Long id) { return service.allowedRoleIds(id); }
     @Secured("ROLE_ADMIN")
-    @RequestMapping(value = "/{id}/roles", method = RequestMethod.PUT)
-    public Map<String,List<Long>> setRoles(@PathVariable Long id, @RequestBody RoleRequest request) {
-        return service.setRoles(id, request.username, request.roles);
+    @RequestMapping(value = "/{id}/allowed-roles", method = RequestMethod.PUT)
+    public List<Long> setAllowedRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
+        return service.setAllowedRoles(id, roleIds);
     }
     @Secured("ROLE_ADMIN")
     @RequestMapping(value = "/save", method = RequestMethod.POST)

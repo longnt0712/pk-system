@@ -239,3 +239,85 @@ html.campaign-garden-open, body.campaign-garden-open { overflow:hidden!important
 .campaign-garden-confirm { padding:26px 20px; }
 @media(min-width:601px) { .campaign-garden-art { width:min(100%,max(300px,calc((100dvh - 275px) * .5622))); margin:0 auto; } }
 @media(max-width:600px) { .campaign-garden-overlay { padding:8px 4px; }.campaign-garden-card { padding:12px 8px; border-radius:16px; }.campaign-garden-picker { align-items:flex-end; padding:8px; }.campaign-garden-picker-card { padding:16px; }.campaign-garden-header h1 { font-size:16px; }.campaign-garden-help { padding:0 4px; } }
+.campaign-advent { margin:24px 0; }
+.campaign-advent-tools, .campaign-advent-weeks, .campaign-advent-actions {
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+}
+.campaign-advent-tools { justify-content:space-between; margin-bottom:12px; }
+.campaign-advent-weeks .btn[aria-pressed="true"] { background:#5f4fa2; border-color:#5f4fa2; color:#fff; }
+.campaign-advent-paper { position:relative; container-type:inline-size; }
+.campaign-advent-prayer {
+    position:absolute;
+    left:21.6%;
+    top:73.1%;
+    width:47%;
+    height:18%;
+    box-sizing:border-box;
+    padding:0;
+    margin:0;
+    border:0;
+    border-radius:0;
+    outline:0;
+    resize:none;
+    overflow:hidden;
+    background:transparent;
+    color:#302586;
+    font:1.8cqw / 4.2cqw Arial,sans-serif;
+    letter-spacing:normal;
+    overflow-wrap:anywhere;
+}
+.campaign-advent-prayer:focus-visible { outline:2px solid #7563b1; outline-offset:6px; border-radius:4px; }
+.campaign-advent-prayer::placeholder { color:#62558d; opacity:.65; }
+.campaign-advent-prayer-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 0; }
+.campaign-advent-prayer-actions p { flex:1 1 300px; margin:0; }
+.campaign-advent-garden { background:linear-gradient(#f3eaf8 0%,#fffaf0 44%,#e1ecd6 100%); }
+.campaign-advent-garden-cover { position:absolute; inset:2% 7% auto; color:#4c356a; text-align:center; }
+.campaign-advent-garden-cover h2 { font-size:clamp(24px,3vw,34px); margin:4% 0 6px; }
+.campaign-advent-garden-cover p { font-size:clamp(14px,2vw,20px); margin-bottom:8px; }
+.campaign-advent-garden-cover img { display:block; width:70%; height:auto; margin:0 auto; border-radius:16px; }
+.campaign-advent-garden .campaign-garden-flower { width:12%; }
+.campaign-advent-flower-date { display:block; color:#4c356a; font-size:clamp(9px,1.3vw,13px); font-weight:700; }
+.campaign-advent-art { display:block; width:100%; height:auto; }
+/* The interactive hit areas are centered on the original printed circles. */
+.campaign-advent-marks {
+    position:absolute;
+    inset:37.25% 17.25% 36.25% 41.69%;
+    display:grid;
+    grid-template-rows:repeat(4, 1fr);
+}
+.campaign-advent-row { display:grid; grid-template-columns:repeat(7, 1fr); }
+.campaign-advent-cell { position:relative; display:grid; place-items:center; margin:0; }
+.campaign-advent-cell input {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    opacity:0;
+    cursor:pointer;
+}
+.campaign-advent-cell input:disabled { cursor:default; }
+.campaign-advent-tick {
+    display:grid;
+    place-items:center;
+    height:76%;
+    aspect-ratio:1;
+    border-radius:50%;
+    color:transparent;
+    pointer-events:none;
+    font-size:clamp(12px, 2.35vmin, 30px);
+    font-weight:800;
+    line-height:1;
+}
+.campaign-advent-cell input:checked + .campaign-advent-tick { color:#302586; }
+.campaign-advent-cell input:focus-visible + .campaign-advent-tick { outline:2px solid #312e81; outline-offset:2px; }
+@media print {
+    @page advent-flower { size:A5 landscape; margin:0; }
+    .campaign-detail:has(.campaign-advent) { margin:0; }
+    .campaign-detail:has(.campaign-advent) > .campaign-detail-header { display:none; }
+    .campaign-advent { margin:0; }
+    .campaign-advent-paper { page:advent-flower; break-inside:avoid; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+}

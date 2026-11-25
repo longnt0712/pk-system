@@ -14,6 +14,8 @@
         }
         var requestNumber = 0;
         var studentRequest = 0;
+        var advent = $window.AdventCampaign2026;
+        vm.adventWeekNumbers = advent ? advent.weeks.map(function (_, index) { return index + 1; }) : [];
         var prayerIntentions = [
             {intention: 'ông bà, cha mẹ', prayer: 'Xin Chúa ban cho ông bà, cha mẹ sức khỏe và bình an.', image: 'assets/images/flower-prayers-2026/01-grandparents-parents.jpg'},
             {intention: 'những người đang đau ốm', prayer: 'Xin Chúa nâng đỡ và ban cho họ sức mạnh, niềm hy vọng và bình an.', image: 'assets/images/flower-prayers-2026/02-sick.jpg'},
@@ -27,15 +29,17 @@
             {intention: 'các cha xứ', prayer: 'Xin Chúa ban cho các cha xứ sức khỏe, bình an và lòng nhiệt thành, để các ngài luôn yêu thương, chăm sóc và hướng dẫn chúng con đến gần Chúa hơn.', image: 'assets/images/flower-prayers-2026/10-parish-priests.jpg'},
             {intention: 'Đức Giáo Hoàng', prayer: 'Xin Chúa gìn giữ Đức Giáo Hoàng, ban cho ngài sức khỏe và ơn khôn ngoan, để ngài dẫn dắt Hội Thánh trong hiệp nhất và yêu thương.', image: 'assets/images/flower-prayers-2026/11-pope.jpg'}
         ];
-        var lastPrayerIndex = -1;
+        var lastPrayer;
         vm.flowerPrayer = null;
         vm.closeFlowerPrayer = function () { vm.flowerPrayer = null; vm.flowerPrayerTrigger = null; };
-        function showFlowerPrayer(returnFocus) {
+        function showFlowerPrayer(returnFocus, item) {
             // One reminder for overlapping successful saves; never interrupt another campaign view.
             if (vm.flowerPrayer || vm.sheetLoading || vm.rosaryGuideOpen || vm.gardenOpen || !vm.student) { return; }
-            var choices = prayerIntentions.filter(function (value, index) { return index !== lastPrayerIndex; });
-            var selected = choices[Math.floor(Math.random() * choices.length)];
-            lastPrayerIndex = prayerIntentions.indexOf(selected); vm.flowerPrayerTrigger = returnFocus; vm.flowerPrayer = selected;
+            var prayers = advent && advent.matches(vm.campaign) ? advent.prayersFor(item.name) : prayerIntentions;
+            var choices = prayers.filter(function (prayer) { return prayer !== lastPrayer; });
+            lastPrayer = choices[Math.floor(Math.random() * choices.length)];
+            vm.flowerPrayerTrigger = returnFocus;
+            vm.flowerPrayer = lastPrayer;
         }
         var serverClockOffset = 0, dayTimer;
         var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '', rosaryStudentContext = '';
@@ -92,7 +96,8 @@
         var gardenExportRequest = 0;
         vm.gardenEraseMode = false;
         vm.gardenEnabled = function () { return !!(vm.studentMode && vm.student && gardenConfig && gardenConfig.enabled(vm.campaign)); };
-        vm.fieldEnabled = function (campaign) { return !!(gardenConfig && gardenConfig.enabled(campaign) && /^[a-f0-9]{32}$/.test(campaign.shareCode || '')); };
+        vm.fieldEnabled = function (campaign) { return !!(gardenConfig && gardenConfig.fieldEnabled(campaign) && /^[a-f0-9]{32}$/.test(campaign.shareCode || '')); };
+        vm.isAdventGarden = function () { return !!(advent && advent.matches(vm.campaign)); };
         vm.openField = function (campaign) {
             if (!vm.fieldEnabled(campaign) || vm.gardenBusy || vm.sheetLoading || vm.scanBusy || Object.keys(vm.pendingChecks || {}).length) { return; }
             if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
@@ -111,6 +116,7 @@
             vm.checks = {}; vm.savedChecks = {};
             gardenEntries.forEach(function (entry) { vm.checks[entry.itemKey + ':' + entry.date] = vm.savedChecks[entry.itemKey + ':' + entry.date] = entry.completed === true; });
             prepareCampaign(vm.weekIndex); renderGarden();
+            receiveWeeklyPrayer(gardenEntries);
         }
         vm.loadGarden = function () {
             if (!vm.gardenEnabled() || vm.gardenBusy) { return; }
@@ -123,10 +129,12 @@
         };
         vm.openGarden = function () {
             if (!vm.gardenEnabled() || Object.keys(vm.pendingChecks || {}).length) { return; }
-            vm.rosaryGuideOpen = false; vm.rosaryParticipationOpen = false; vm.rosaryInstructionsOpen = false;
-            if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
-            vm.gardenOpen = true; vm.gardenDay = null; vm.gardenResetConfirm = false; vm.gardenEraseMode = false;
-            return vm.loadGarden();
+            return finishPrayerBefore(function () {
+                vm.rosaryGuideOpen = false; vm.rosaryParticipationOpen = false; vm.rosaryInstructionsOpen = false;
+                if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
+                vm.gardenOpen = true; vm.gardenDay = null; vm.gardenResetConfirm = false; vm.gardenEraseMode = false;
+                return vm.loadGarden();
+            });
         };
         vm.closeGarden = function () { if (!vm.gardenBusy) { vm.gardenOpen = false; vm.gardenDay = null; vm.gardenResetConfirm = false; } };
         vm.selectGardenDay = function (flower) { if (!vm.gardenBusy && !vm.gardenLoading) { vm.gardenDay = flower; vm.gardenEraseMode = false; vm.gardenNotice = ''; } };
@@ -175,7 +183,7 @@
             // Read a fresh snapshot, including checks/colors saved from another device.
             return service.studentGarden(token, id).then(function (response) {
                 if (!current()) { return; }
-                var snapshot = response.data, garden = gardenConfig.build(snapshot.campaign, snapshot.entries || [], '2026-10-31');
+                var snapshot = response.data, garden = gardenConfig.build(snapshot.campaign, snapshot.entries || [], studentToday());
                 var card = {saintName: student.saintName, fullName: student.fullName, classes: student.classes, completedCount: garden.earned, colors: snapshot.entries || []};
                 return exporter.create(snapshot.campaign, card).then(function (blob) { if (current()) { exporter.download(blob, exporter.fileName(card)); } });
             }).catch(function (error) { if (current()) { vm.gardenExportError = error.message || errorMessage(error); } })
@@ -187,8 +195,56 @@
         vm.query = '';
         vm.campaigns = [];
         vm.weekIndex = 0;
+        vm.weeklyPrayer = {text: '', savedText: ''};
+        function receiveWeeklyPrayer(entries) {
+            var first = vm.weekDays && vm.weekDays[0], last = vm.weekDays && vm.weekDays[vm.weekDays.length - 1];
+            var entry = first && (entries || []).find(function (value) {
+                return advent && value.itemKey === advent.prayerKey && value.prayerText != null && value.date >= first.date && value.date <= last.date;
+            });
+            var text = entry && entry.prayerText || '';
+            vm.weeklyPrayer = {text: text, savedText: text, date: entry && entry.date};
+        }
+        vm.hasUnsavedPrayer = function () {
+            return !!(vm.studentMode && vm.adventWeek && vm.weeklyPrayer && advent.prayerText(vm.weeklyPrayer.text) !== vm.weeklyPrayer.savedText);
+        };
+        vm.canEditWeeklyPrayer = function () {
+            if (!vm.studentMode || !vm.adventWeek || vm.sheetLoading || !vm.weekDays.length) { return false; }
+            var today = studentToday();
+            return vm.canEditAnyFlowerDay() || (today >= vm.weekDays[0].date && today <= vm.weekDays[vm.weekDays.length - 1].date);
+        };
+        vm.prayerWordCount = function () {
+            var text = advent && advent.prayerText(vm.weeklyPrayer.text);
+            return text ? text.split(' ').length : 0;
+        };
+        vm.saveWeeklyPrayer = function () {
+            var prayer = vm.weeklyPrayer;
+            if (prayer.saving) { return prayer.request; }
+            if (!vm.hasUnsavedPrayer()) { return; }
+            if (!vm.canEditWeeklyPrayer()) { prayer.error = 'Tuần này đã khóa. Em có thể sao chép lời nguyện trước khi rời trang.'; return; }
+            var token = studentToken, id = vm.campaign.id, week = vm.weekIndex, request = studentRequest;
+            var text = advent.prayerText(prayer.text);
+            prayer.saving = true; prayer.error = ''; prayer.notice = '';
+            var save = vm.canEditAnyFlowerDay() ? service.saveWeeklyPrayerAsAdmin : service.saveWeeklyPrayer;
+            prayer.request = save(token, id, week, text).then(function (response) {
+                if (request !== studentRequest || token !== studentToken || vm.weeklyPrayer !== prayer) { return; }
+                prayer.savedText = response.data.prayerText || ''; prayer.date = response.data.date;
+                prayer.text = prayer.savedText;
+                prayer.notice = prayer.savedText ? 'Đã lưu lời nguyện · Tính 1 lượt tô cho ngày ' + vm.formatDate(prayer.date) : 'Đã xóa lời nguyện.';
+            }, function (error) {
+                if (request === studentRequest && vm.weeklyPrayer === prayer) { prayer.error = errorMessage(error); }
+            }).finally(function () { prayer.saving = false; prayer.request = null; });
+            return prayer.request;
+        };
+        function finishPrayerBefore(next) {
+            var saving = vm.saveWeeklyPrayer();
+            if (saving) { return saving.then(function () { if (!vm.hasUnsavedPrayer()) { return next(); } }); }
+            if (!vm.hasUnsavedPrayer()) { return next(); }
+        }
         vm.canManage = function () {
             return !vm.studentMode && settings.permissionsLoaded === true && (settings.isAdmin === true || settings.isEducationManagerment === true);
+        };
+        vm.canCreateAdvent = function () {
+            return !!advent && vm.canManage() && !vm.campaigns.some(advent.matches);
         };
         var imageFields = ['desktopLeftImageUrl', 'desktopRightImageUrl', 'mobileImageUrl'];
         vm.imageOptions = function () { return vm.editor || vm.campaign || {}; };
@@ -226,10 +282,11 @@
             return JSON.stringify(imageFields.map(function (field) { return [String(campaign[field] || '').trim(), vm.imageCrop(campaign, field)]; }).concat(vm.backgroundOpacity(campaign)));
         }
         vm.hasUnsavedImages = function () { return !!vm.editor && imageSnapshot(vm.editor) !== vm.editorImageBaseline; };
-        function beforeUnload(event) { if (vm.hasUnsavedImages()) { event.preventDefault(); event.returnValue = ''; } }
+        function beforeUnload(event) { if (vm.hasUnsavedImages() || vm.hasUnsavedPrayer()) { event.preventDefault(); event.returnValue = ''; } }
         if ($window.addEventListener) { $window.addEventListener('beforeunload', beforeUnload); }
         if ($scope.$on) { $scope.$on('$stateChangeStart', function (event) {
             if (vm.hasUnsavedImages() && !$window.confirm('Bạn chưa lưu link ảnh, độ mờ hoặc vùng cắt ảnh. Rời trang và bỏ các thay đổi này?')) { event.preventDefault(); }
+            if (vm.hasUnsavedPrayer() && !$window.confirm('Lời nguyện chưa lưu. Em muốn rời trang và bỏ phần vừa viết?')) { event.preventDefault(); }
         }); }
 
         function validImageUrl(value) {
@@ -319,23 +376,26 @@
                 prepareCampaign(0);
             }, function (error) { vm.error = errorMessage(error); }).finally(function () { vm.loading = false; });
         }
+        function lastPracticeDate(campaign) {
+            return advent && advent.matches(campaign) ? advent.lastPracticeDate : campaign.endDate;
+        }
         function prepareCampaign(week) {
-                var start = date(vm.campaign.startDate), end = date(vm.campaign.endDate);
-                // Calculate by calendar days, independent of daylight-saving changes.
-                var firstDay = new Date(start.getTime()), lastDay = new Date(end.getTime());
-                firstDay.setUTCHours(0, 0, 0, 0); firstDay.setUTCFullYear(start.getFullYear(), start.getMonth(), start.getDate());
-                lastDay.setUTCHours(0, 0, 0, 0); lastDay.setUTCFullYear(end.getFullYear(), end.getMonth(), end.getDate());
-                vm.weekCount = Math.ceil((Math.round((lastDay - firstDay) / 86400000) + 1) / 7);
-                renderWeek(week);
+            var start = Date.parse(vm.campaign.startDate + 'T00:00:00Z');
+            var end = Date.parse(lastPracticeDate(vm.campaign) + 'T00:00:00Z');
+            vm.weekCount = Math.ceil(((end - start) / 86400000 + 1) / 7);
+            vm.adventItems = advent && advent.matches(vm.campaign) ? advent.sheetItems(vm.campaign) : null;
+            renderWeek(week);
         }
         function renderWeek(index) {
             if (!vm.campaign || index < 0 || index >= vm.weekCount) { return; }
             vm.weekIndex = index;
+            vm.adventWeek = vm.adventItems ? advent.weeks[index] : null;
             var day = date(vm.campaign.startDate);
+            var end = lastPracticeDate(vm.campaign);
             day.setDate(day.getDate() + index * 7);
             vm.weekDays = [];
             var names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-            for (var i = 0; i < 7 && iso(day) <= vm.campaign.endDate; i++) {
+            for (var i = 0; i < 7 && iso(day) <= end; i++) {
                 vm.weekDays.push({date: iso(day), label: names[day.getDay()]});
                 day.setDate(day.getDate() + 1);
             }
@@ -352,12 +412,14 @@
                 vm.checks = {}; vm.savedChecks = {};
                 (response.data.entries || []).forEach(function (entry) { vm.checks[entry.itemKey + ':' + entry.date] = vm.savedChecks[entry.itemKey + ':' + entry.date] = entry.completed === true; });
                 prepareCampaign(week);
+                receiveWeeklyPrayer(response.data.entries);
                 updateRosaryGuide();
             }, function (error) { if (request === studentRequest) { vm.error = errorMessage(error); } })
                 .finally(function () { if (request === studentRequest) { vm.sheetLoading = false; } });
         }
         vm.useScannedQr = function (decoded) {
             if (!vm.studentMode || vm.scanBusy || (hasTarget && (!vm.targetCampaign || vm.loading))) { return; }
+            if (vm.hasUnsavedPrayer() && !$window.confirm('Lời nguyện chưa lưu. Em muốn chuyển thẻ và bỏ phần vừa viết?')) { return; }
             var value = String(decoded || '').trim(), token = '';
             if (/^https?:\/\//i.test(value)) {
                 try {
@@ -416,11 +478,14 @@
         }
         vm.selectCampaign = function (id) {
             if (!vm.studentMode) { return; }
+            if (vm.hasUnsavedPrayer()) { return finishPrayerBefore(function () { return vm.selectCampaign(id); }); }
             if (vm.campaign && vm.campaign.id !== id) { ++gardenExportRequest; vm.gardenExportBusy = false; vm.gardenExportError = ''; }
             var campaign = targetId === id ? vm.targetCampaign : vm.campaigns.filter(function (value) { return value.id === id; })[0];
             var week = 0;
             if (campaign) {
-                var day = studentToday() < campaign.endDate ? studentToday() : campaign.endDate;
+                var today = studentToday();
+                var lastDay = lastPracticeDate(campaign);
+                var day = today < lastDay ? today : lastDay;
                 week = Math.max(0, Math.floor((Date.parse(day + 'T00:00:00Z') - Date.parse(campaign.startDate + 'T00:00:00Z')) / (7 * 86400000)));
             }
             return loadStudentSheet(id, week);
@@ -431,7 +496,7 @@
         };
         vm.setWeek = function (index) {
             if (!vm.campaign || index < 0 || index >= vm.weekCount) { return; }
-            return vm.studentMode ? loadStudentSheet(vm.campaign.id, index) : renderWeek(index);
+            return finishPrayerBefore(function () { return vm.studentMode ? loadStudentSheet(vm.campaign.id, index) : renderWeek(index); });
         };
         function studentToday() { return new Date(Date.now() + serverClockOffset + 7 * 3600000).toISOString().slice(0, 10); }
         function scheduleNewDay() {
@@ -444,7 +509,7 @@
             return settings.permissionsLoaded === true && settings.isAdmin === true && !!auth && auth.hasCredentials();
         };
         vm.isDayLocked = function (day) {
-            if (!day || !vm.campaign || !day.date || day.date < vm.campaign.startDate || day.date > vm.campaign.endDate) { return true; }
+            if (!day || !vm.campaign || !day.date || day.date < vm.campaign.startDate || day.date > lastPracticeDate(vm.campaign)) { return true; }
             return !vm.canEditAnyFlowerDay() && day.date !== studentToday();
         };
         vm.toggleFlower = function (item, day) {
@@ -463,7 +528,7 @@
                 checks[key] = response.data.completed === true;
                 if (current()) {
                     vm.savedChecks[key] = checks[key]; vm.saveNotice = 'Đã lưu hoa thiêng.';
-                    if (completed && checks[key] && !previouslySaved) { showFlowerPrayer(returnFocus); }
+                    if (completed && checks[key] && !previouslySaved) { showFlowerPrayer(returnFocus, item); }
                 }
             }, function (error) {
                 checks[key] = previouslySaved;
@@ -481,6 +546,14 @@
             initializeCrops();
             vm.editorImageBaseline = imageSnapshot(vm.editor);
             vm.editError = ''; vm.deleteTarget = null;
+        };
+        vm.createAdvent = function () {
+            if (!vm.canCreateAdvent() || vm.editor || vm.loading) { return; }
+            vm.create();
+            var draft = advent.draft();
+            draft.startDate = date(draft.startDate);
+            draft.endDate = date(draft.endDate);
+            angular.extend(vm.editor, draft);
         };
         vm.edit = function (campaign) {
             if (!vm.canManage() || vm.editLoading) { return; }
@@ -571,6 +644,22 @@
         else if ($stateParams.id || $stateParams.campaignCode) { loadDetail(); } else { vm.load(1); }
         if ($scope.$on) { $scope.$on('$destroy', function () { vm.closeFlowerPrayer(); ++studentRequest; ++gardenRequest; ++gardenExportRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
     }
+    angular.module('Hrm.Campaign').directive('campaignAdventPrayer', ['$window', function ($window) {
+        return {restrict: 'A', require: 'ngModel', link: function (scope, element, attrs, model) {
+            var advent = $window.AdventCampaign2026;
+            var context = $window.document.createElement('canvas').getContext('2d');
+            context.font = '30px Arial';
+            function measure(text) { return context.measureText(text).width; }
+            model.$parsers.unshift(function (value) {
+                var fitted = advent.fitPrayer(value, measure);
+                if (fitted !== value) {
+                    model.$setViewValue(fitted); model.$render();
+                    scope.vm.weeklyPrayer.limitNotice = 'Lời nguyện tối đa 25 từ, 120 ký tự và ba dòng trên phiếu.';
+                } else { scope.vm.weeklyPrayer.limitNotice = ''; }
+                return fitted;
+            });
+        }};
+    }]);
     angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
             var editor = element[0], page = editor.closest('.campaign-page');

@@ -72,29 +72,6 @@
                 </ui-select>
 
 
-                <!-- GRADE / CATEGORY -->
-                <label>GRADE / CATEGORY</label>
-
-                <ui-select ng-model="vm.searchTopicDto.topicCategory"
-                        class="battle-online-lobby-ui-select"
-                        ng-change="vm.getTopics()"
-                        ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
-                        theme="bootstrap">
-
-                    <ui-select-match placeholder="Chọn Grade / Category">
-                        {{$select.selected.name}}
-                    </ui-select-match>
-
-                    <ui-select-choices
-                            repeat="category in vm.topicCategories | filter:$select.search">
-
-                        <div ng-bind-html="category.name | highlight:$select.search"></div>
-
-                    </ui-select-choices>
-
-                </ui-select>
-
-
                 <div ng-include="vm.vocabPickerTemplate"></div>
 
                 <!-- ACTION -->

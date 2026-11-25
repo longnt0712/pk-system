@@ -35,6 +35,11 @@ public class RestPublicCampaignFlowerController {
     public ResponseEntity<CampaignFlowerDto.Garden> garden(@PathVariable("token") String token, @PathVariable("id") Long id) {
         return response(service.garden(token, id));
     }
+    @RequestMapping(value = "/{token}/campaigns/{id}/prayers/{week}", method = RequestMethod.PUT)
+    public ResponseEntity<CampaignFlowerDto.Entry> savePrayer(@PathVariable("token") String token, @PathVariable("id") Long id,
+            @PathVariable("week") int week, @RequestBody CampaignFlowerDto.PrayerRequest request) {
+        return response(service.savePrayer(token, id, week, request.text));
+    }
     @RequestMapping(value = "/{token}/campaigns/{id}/garden/{date}/{itemKey}", method = RequestMethod.PUT)
     public ResponseEntity<CampaignFlowerDto.Garden> paint(@PathVariable("token") String token, @PathVariable("id") Long id,
             @PathVariable("date") String date, @PathVariable("itemKey") String itemKey, @RequestBody CampaignFlowerDto.PaintRequest request) {

@@ -43,6 +43,12 @@ public class TopicCategoryDto implements Serializable{
 	public TopicCategoryDto() {
 		
 	}
+    public TopicCategoryDto(Long id, String name, Long parentId, Long ownerId) {
+        this.id = id;
+        this.name = name;
+        this.parentId = parentId;
+        this.personal = ownerId != null;
+    }
 	public TopicCategoryDto(TopicCategory domain) {
 		this.id = domain.getId();
 		this.name = domain.getName();

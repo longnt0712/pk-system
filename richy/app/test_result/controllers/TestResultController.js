@@ -514,9 +514,22 @@
                 item.questionAnswer.question.parent ? item.questionAnswer.question.parent.type : null;
         }
 
+        function requiresAssignedAnswerReview(result) {
+            if (!result.assignmentTaskId || [2, 4, 6].indexOf(Number(result.testType)) < 0 || currentUserIsAdmin()) { return false; }
+            var viewerId = getCurrentUser().id;
+            var ownerId = (result.user || {}).id;
+            return !vm.canReviewOtherResults() || !viewerId || !ownerId || String(viewerId) === String(ownerId);
+        }
+
+        vm.isAnswerReviewLocked = function () {
+            var result = vm.testResult || {};
+            if (result.answerReviewLocked !== undefined) { return result.answerReviewLocked === true; }
+            return requiresAssignedAnswerReview(result) && result.answerReviewDeadlinePassed !== true;
+        };
+
         function addMissingResultRows(testResult) {
             var sourceRows = testResult && testResult.questionAnswerTestResult;
-            if (!sourceRows || sourceRows.length < 2) {
+            if (!sourceRows || sourceRows.length < 2 || testResult.answerReviewLocked === true) {
                 return testResult;
             }
 
@@ -1359,7 +1372,11 @@
          */
         $scope.editObject = function (id) {
             service.getOne(id).then(function (data) {
+                if (!data) { return; }
                 vm.testResult = addMissingResultRows(data);
+                if (requiresAssignedAnswerReview(vm.testResult) && window.AssignedAnswerReview) {
+                    window.AssignedAnswerReview.loadDeadline(vm.testResult, vm.testResult.assignmentTaskId, service.getAssignedTask);
+                }
                 vm.loadIeltsLearningState(vm.testResult);
                 console.log(data);
                 vm.testResult.isNew = false;

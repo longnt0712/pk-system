@@ -45,6 +45,7 @@ public interface EnrolmentClassService {
 	public List<EnrolmentClassCalendarDayDto> getCalendarDays(Long classId, String fromDate, String toDate);
 	public List<StudentAssignedTaskDto> getMyAssignedTasks();
 	public StudentAssignedTaskDto getAssignedTask(Long taskId);
+    boolean isAssignedAnswerReviewLocked(com.globits.richy.domain.EnrolmentClassScheduleTask task, org.joda.time.LocalDateTime now);
     public List<com.globits.richy.dto.ComprehensiveAssignmentSectionDto> previewComprehensiveSections(com.globits.richy.dto.EnrolmentClassScheduleTaskDto request);
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
     public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version);

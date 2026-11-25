@@ -32,6 +32,8 @@ import com.globits.richy.dto.QuizDto;
 import com.globits.richy.dto.VocabularyBulkActionDto;
 import com.globits.richy.service.QuestionExcelImportService;
 import com.globits.richy.service.QuestionService;
+import com.globits.richy.service.impl.ReadingVocabularyService;
+import com.globits.richy.dto.ReadingVocabularyLessonDto;
 
 @RestController
 @RequestMapping("/api/question")
@@ -42,6 +44,32 @@ public class RestQuestionController {
 
     @Autowired
     QuestionExcelImportService questionExcelImportService;
+
+    @Autowired
+    ReadingVocabularyService readingVocabularyService;
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/{testId}/vocabulary_lessons", method = RequestMethod.GET)
+    public List<ReadingVocabularyLessonDto> getReadingVocabularyLessons(@PathVariable Long testId) {
+        return readingVocabularyService.getLessons(testId);
+    }
+
+    @Secured({"ROLE_ADMIN"})
+    @RequestMapping(value = "/{testId}/vocabulary_lessons", method = RequestMethod.PUT)
+    public ResponseEntity<?> saveReadingVocabularyLessons(@PathVariable Long testId, @RequestBody List<Long> topicIds) {
+        try {
+            return ResponseEntity.ok(readingVocabularyService.saveLessons(testId, topicIds));
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", error.getMessage()));
+        }
+    }
+
+    @Secured({"ROLE_ADMIN"})
+    @RequestMapping(value = "/vocabulary_lesson_options", method = RequestMethod.GET)
+    public Page<ReadingVocabularyLessonDto> getReadingVocabularyOptions(@RequestParam Long categoryId,
+            @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "1") int page) {
+        return readingVocabularyService.getOptions(categoryId, search, page);
+    }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(value = "/vocabulary_usage", method = RequestMethod.GET)

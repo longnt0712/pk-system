@@ -13,12 +13,15 @@
     .school-table-tag.is-enabled { background: #def5eb; border-color: #bde8d6; color: #146347; }
     .school-table-actions .btn + .btn { margin-left: 5px; }
     .school-admin-page .well { margin-top: 20px; }
+    .school-role-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 8px 16px; margin: 16px 0; }
+    .school-role-option { display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer; overflow-wrap: anywhere; }
+    .school-role-option small { display: block; font-weight: 400; }
 </style>
 <section class="school-admin-page portlet light bordered" ng-if="vm.settings.isAdmin">
     <div class="school-admin-hero">
         <div>
             <h2>Quản lý School</h2>
-            <p>Gán quyền cho từng tài khoản theo School để dùng trong Chương trình đào tạo và Student Mark.</p>
+            <p>Chọn các vai trò được phép cho từng School.</p>
         </div>
         <button type="button" class="btn btn-primary" ng-disabled="vm.busy" ng-click="vm.edit()"><i class="fa fa-plus" aria-hidden="true"></i> Thêm School</button>
     </div>
@@ -31,7 +34,7 @@
                 <td><span class='school-table-tag' ng-class='row.active ? &quot;is-enabled&quot; : &quot;&quot;'>{{row.active ? 'Đang hoạt động' : 'Đã tắt'}}</span></td>
                 <td><span class='school-table-tag' ng-class='{&quot;is-enabled&quot;: row.showAttendance && row.domain !== &quot;ieltsroom.com&quot;}'>{{row.domain === 'ieltsroom.com' || !row.showAttendance ? 'Ẩn' : 'Hiện'}}</span></td>
                 <td class="school-table-actions"><button type="button" class="btn btn-default btn-sm" ng-disabled="vm.busy" ng-click="vm.edit(row)">Sửa</button>
-                    <button type="button" class="btn btn-default btn-sm" ng-disabled="vm.busy" ng-click="vm.openMembers(row)">Tài khoản và quyền</button></td>
+                    <button type="button" class="btn btn-default btn-sm" ng-disabled="vm.busy" ng-click="vm.openRoles(row)">Role được phép</button></td>
             </tr></tbody>
         </table>
     </div>
@@ -46,18 +49,20 @@
         <button class="btn btn-primary" type="submit" ng-disabled="vm.busy">Lưu School</button>
         <button class="btn btn-default" type="button" ng-disabled="vm.busy" ng-click="vm.editing = null">Đóng</button>
     </form>
-    <form ng-if="vm.members" ng-submit="vm.saveRoles()" class="well">
-        <h3>Tài khoản và quyền · {{vm.members.name}}</h3>
-        <ul><li ng-repeat="(username, roleIds) in vm.assignments">
-            <button type="button" class="btn btn-link" ng-disabled="vm.busy" ng-click="vm.selectUser(username)">{{username}}</button>
-            <span ng-repeat="role in vm.roles track by role.id" ng-if="roleIds.indexOf(role.id) >= 0" class="label label-default margin-right-5">{{role.name}}</span>
-        </li></ul>
-        <label for="school-username">Tên đăng nhập</label>
-        <input id="school-username" class="form-control" ng-model="vm.assignment.username" maxlength="100" required>
-        <label for="school-roles">Role trong School</label>
-        <select id="school-roles" class="form-control" multiple size="8" ng-model="vm.assignment.roles" ng-options="role.id as role.name for role in vm.roles"></select>
-        <p class="help-block">Lưu khi không chọn role nào sẽ gỡ tài khoản khỏi School này.</p>
-        <button class="btn btn-primary" type="submit" ng-disabled="vm.busy">Lưu quyền</button>
+    <form ng-if="vm.roleSchool" ng-submit="vm.saveRoles()" class="well">
+        <h3>Role được phép · {{vm.roleSchool.name}}</h3>
+        <p>Tài khoản dùng các vai trò đã gán trong Người dùng. Mỗi tác vụ có quy tắc phân quyền riêng.</p>
+        <fieldset class="school-role-list" ng-if="vm.rolesLoaded" ng-disabled="vm.busy" aria-label="Danh sách vai trò">
+            <label class="school-role-option" ng-repeat="role in vm.roles track by role.id">
+                <input type="checkbox" ng-model="vm.roleSelection[role.id]" ng-change="vm.rolesSaved = false">
+                <span>{{role.name}}<small ng-if="role.description">{{role.description}}</small></span>
+            </label>
+            <span ng-if="!vm.roles.length">Hệ thống chưa có vai trò nào.</span>
+        </fieldset>
+        <p ng-if="vm.busy && !vm.rolesLoaded" role="status">Đang tải role…</p>
+        <p class="text-success" ng-if="vm.rolesSaved" role="status">Đã lưu quyền cho {{vm.roleSchool.name}}.</p>
+        <button class="btn btn-primary" type="submit" ng-disabled="vm.busy || !vm.rolesLoaded">Lưu quyền</button>
+        <button class="btn btn-default" type="button" ng-disabled="vm.busy" ng-click="vm.roleSchool = null">Đóng</button>
     </form>
 </section>
 <p class="alert alert-warning" ng-if="!vm.settings.isAdmin">Quản trị viên hệ thống mới có quyền cấu hình School.</p>

@@ -1,5 +1,6 @@
 package com.globits.richy.domain;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.Date;
 
@@ -7,7 +8,10 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
+import javax.persistence.ForeignKey;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -17,6 +21,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.globits.core.domain.BaseObject;
 import com.globits.security.domain.User;
 
@@ -112,6 +117,17 @@ public class Question extends BaseObject{
 	
 	@OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval=true)
 	private Set<QuestionTopic> questionTopics;
+
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "tbl_reading_vocab_lesson",
+			joinColumns = @JoinColumn(name = "test_id"),
+			inverseJoinColumns = @JoinColumn(name = "topic_id"),
+			foreignKey = @ForeignKey(name = "FK_reading_vocab_test"),
+			inverseForeignKey = @ForeignKey(name = "FK_reading_vocab_topic"))
+	private Set<Topic> readingVocabularyLessons = new HashSet<>();
+
+	@JsonIgnore
+	public Set<Topic> getReadingVocabularyLessons() { return readingVocabularyLessons; }
 	
 	@ManyToOne(fetch=FetchType.EAGER)
 	@JoinColumn(name="parent_id")

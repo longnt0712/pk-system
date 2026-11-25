@@ -49,7 +49,7 @@ test('network failure preserves earlier cards and retries the same cursor withou
 test('disabled domains never register listeners or request garden data',async()=>{const h=setup({enabled:false});await tick();assert.equal(h.calls.length,0);assert.equal(h.redirects[0][0],'login');assert.equal(Object.keys(h.events).length,0);});
 test('destroy prevents delayed data from populating the abandoned screen',async()=>{let finish;const h=setup({field:()=>new Promise(r=>finish=r)});await tick();h.events.$destroy();finish({data:{gardens:[{id:99}],hasMore:false}});await tick();assert.equal(h.vm.gardens.length,0);});
 test('only the precise shared field path is exempt from login',()=>{
-    const app=fs.readFileSync(path.join(__dirname,'../application.js'),'utf8');const start=app.indexOf('function isPublicCampaignPage()');const fn=app.slice(start,app.indexOf("$rootScope.$on('$stateChangeStart'",start));
+    const app=fs.readFileSync(path.join(__dirname,'../application.js'),'utf8');const start=app.indexOf('function isPublicFairPage()');const fn=app.slice(start,app.indexOf("$rootScope.$on('$stateChangeStart'",start));
     for(const [pathname,allowed]of [['/campaigns/c/'+campaign.shareCode+'/canh-dong-hoa',true],['/campaigns/c/'+campaign.shareCode+'/canh-dong-hoa/',true],['/campaigns/c/'+campaign.shareCode+'/canh-dong-hoa/edit',false],['/campaigns/5/canh-dong-hoa',false],['/campaigns/c/short/canh-dong-hoa',false]]){const c=nodeVm.createContext({settings:{campaignsEnabled:true},window:{location:{pathname}}});nodeVm.runInContext(fn,c);assert.equal(c.isPublicCampaignPage(),allowed);c.settings.campaignsEnabled=false;assert.equal(c.isPublicCampaignPage(),false);}
 });
 test('field service keeps public reads separate from authenticated Management requests',()=>{

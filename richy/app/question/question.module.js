@@ -563,7 +563,7 @@
 
 
             .state('application.daily_vocab', {
-                url: '/daily-vocab/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId',
+                url: '/daily-vocab/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId&practiceTestId&practiceTopicId',
                 templateUrl: 'question/views/daily_vocab.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'DAILY VOCAB'},
                 controller: 'DailyVocabController as vm',
