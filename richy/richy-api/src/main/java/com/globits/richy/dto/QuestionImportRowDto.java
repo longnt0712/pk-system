@@ -32,6 +32,24 @@ public class QuestionImportRowDto implements Serializable {
     private Long existingQuestionId;
     
     private Long selectedExistingQuestionId;
+    private boolean canCreateNew;
+    private boolean createNew;
+
+    public boolean isCanCreateNew() {
+        return canCreateNew;
+    }
+
+    public void setCanCreateNew(boolean canCreateNew) {
+        this.canCreateNew = canCreateNew;
+    }
+
+    public boolean isCreateNew() {
+        return createNew;
+    }
+
+    public void setCreateNew(boolean createNew) {
+        this.createNew = createNew;
+    }
 
     private List<QuestionImportCandidateDto> candidates =
             new ArrayList<QuestionImportCandidateDto>();

@@ -55,7 +55,7 @@
                         $state.go('application.topic', {lesson: $stateParams.lesson || null}, {location: 'replace'});
                     }
                 }],
-                templateUrl: 'question/views/listing.html',
+                templateUrl: 'question/views/listing.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Flash Card'},
                 controller: 'QuestionController as vm',
                 resolve: {

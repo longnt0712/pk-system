@@ -188,6 +188,7 @@
             onConflictCandidateChanged;
         importVm.getSelectedCount = getSelectedCount;
         importVm.isImportable = isImportable;
+        importVm.toggleCreateNew = toggleCreateNew;
         importVm.getStatusText = getStatusText;
         importVm.getStatusClass = getStatusClass;
         importVm.cancel = cancel;
@@ -255,11 +256,32 @@
                 && !importVm.loadingCategories && !importVm.categoryLoadError);
         }
 
+        function toggleCreateNew(row) {
+            if (!row || !row.canCreateNew || importVm.loadingConfirm) { return; }
+            row.createNew = !row.createNew;
+            if (row.createNew && row.status === 'CONFLICT') {
+                row.selectedExistingQuestionId = null;
+                row.message = 'Hãy chọn một flashcard để gán topic';
+            }
+            row.selected = isImportable(row);
+            onRowSelectionChanged();
+            refreshSummary();
+        }
+
+        function refreshSummary() {
+            var preview = importVm.preview;
+            preview.summary = buildSummary(preview, preview.rows);
+        }
+
         function onConflictCandidateChanged(row) {
             if (!row) {
                 return;
             }
 
+            if (row.createNew) {
+                row.createNew = false;
+                refreshSummary();
+            }
             if (row.selectedExistingQuestionId) {
                 row.importable = true;
 
@@ -437,15 +459,9 @@
                         motherTongue: row.firstLanguage,
                         level: row.level,
                         status: row.status,
-
-                        existingQuestionId:
-                        row.existingQuestionId ||
-                        row.questionId ||
-                        null,
-
-                        selectedExistingQuestionId:
-                        row.selectedExistingQuestionId ||
-                        null
+                        createNew: row.createNew === true,
+                        existingQuestionId: row.createNew ? null : (row.existingQuestionId || row.questionId || null),
+                        selectedExistingQuestionId: row.createNew ? null : (row.selectedExistingQuestionId || null)
                     });
                 }
             });
@@ -665,7 +681,7 @@
             };
 
             angular.forEach(rows, function (row) {
-                switch (row.status) {
+                switch (effectiveStatus(row)) {
                     case 'NEW':
                     case 'CREATE_NEW':
                         summary.newCount++;
@@ -697,30 +713,6 @@
             summary.total = angular.isDefined(data.totalRows)
                 ? data.totalRows
                 : summary.total;
-
-            summary.newCount = angular.isDefined(data.newCount)
-                ? data.newCount
-                : summary.newCount;
-
-            summary.addTopicCount = angular.isDefined(data.addTopicCount)
-                ? data.addTopicCount
-                : summary.addTopicCount;
-
-            summary.alreadyInTopicCount = angular.isDefined(data.alreadyInTopicCount)
-                ? data.alreadyInTopicCount
-                : summary.alreadyInTopicCount;
-
-            summary.duplicateInFileCount = angular.isDefined(data.duplicateInFileCount)
-                ? data.duplicateInFileCount
-                : summary.duplicateInFileCount;
-
-            summary.invalidCount = angular.isDefined(data.invalidCount)
-                ? data.invalidCount
-                : summary.invalidCount;
-
-            summary.conflictCount = angular.isDefined(data.conflictCount)
-                ? data.conflictCount
-                : summary.conflictCount;
 
             return summary;
         }
@@ -773,6 +765,8 @@
                 return false;
             }
 
+            if (row.createNew && row.canCreateNew) { return true; }
+
             if (row.status === 'CONFLICT') {
                 return !!row.selectedExistingQuestionId;
             }
@@ -792,8 +786,12 @@
                 status === 'ALREADY_IN_TOPIC';
         }
 
+        function effectiveStatus(row) {
+            return row ? (row.createNew ? 'CREATE_NEW' : row.status) : '';
+        }
+
         function getStatusText(row) {
-            var status = row && row.status ? row.status : '';
+            var status = effectiveStatus(row);
 
             switch (status) {
                 case 'NEW':
@@ -822,7 +820,7 @@
         }
 
         function getStatusClass(row) {
-            var status = row && row.status ? row.status : '';
+            var status = effectiveStatus(row);
 
             if (status === 'NEW' || status === 'CREATE_NEW') {
                 return 'label label-success';

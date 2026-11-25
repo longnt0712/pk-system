@@ -76,6 +76,7 @@ async function fixture(browser, {width = 1440, existing = false, failSave = fals
         angular.module('Hrm.Topic', []);
         angular.module('Hrm.Question', ['ui.bootstrap', 'ui.select', 'ngSanitize', 'Hrm.Common', 'Hrm.Topic'])
             .value('settings', {api: {baseUrl: '/', apiV1Url: 'api/'}})
+            .value('AuthSession', {})
             .value('toastr', Object.fromEntries(['error', 'warning', 'success'].map(type =>
                 [type, message => window.messages.push({type, message})])))
             .controller('Fixture', function () {
@@ -229,7 +230,7 @@ test('topic dropdown filters while typing, supports keyboard selection and prese
     } finally {await browser.close();}
 });
 
-test('conflicts from the end of a large Excel preview appear first and stay put while choosing cards', async () => {
+test('import preview keeps conflicts in place and sends the choice to reuse or create a separate card', async () => {
     const browser = await playwright.chromium.launch({executablePath: chrome, headless: true});
     try {
         const previewRows = Array.from({length: 278}, (_, index) => ({rowNumber: index + 2, word: 'Word ' + (index + 2), status: 'NEW'}));
@@ -237,8 +238,9 @@ test('conflicts from the end of a large Excel preview appear first and stay put 
             {id: 48126, word: 'hang out', motherTongue: 'đi chơi', level: 'B2'},
             {id: 48127, word: 'hang out', motherTongue: 'tụ tập', level: 'B1'}
         ]};
-        previewRows[248] = {rowNumber: 250, word: 'look up to', status: 'CONFLICT', candidates: [
-            {id: 50100, word: 'look up to', motherTongue: 'ngưỡng mộ', level: 'B2'}
+        previewRows[248] = {rowNumber: 250, word: 'get out', firstLanguage: 'lan truyền; bị tiết lộ', status: 'CONFLICT', canCreateNew: true, candidates: [
+            {id: 50100, word: 'get out', motherTongue: 'đi ra', level: 'A2'},
+            {id: 50101, word: 'get out', motherTongue: 'lấy ra; rút ra', level: 'A1'}
         ]};
         const {page, state} = await fixture(browser, {existing: true, previewRows});
         await chooseSearchable(page, '#excel-import-topic', 'Existing', 'Existing topic');
@@ -253,15 +255,27 @@ test('conflicts from the end of a large Excel preview appear first and stay put 
         await rows.nth(0).locator('select').selectOption('48126');
         assert.equal(await rows.nth(0).locator('input[type=checkbox]').isChecked(), true);
         assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
-        await rows.nth(1).locator('select').selectOption('50100');
-        assert.equal(await rows.nth(1).locator('input[type=checkbox]').isChecked(), true);
+        const conflict = rows.nth(1);
+        await conflict.getByRole('button', {name: 'Tạo thẻ mới', exact: true}).click();
+        assert.equal(await conflict.getByRole('button', {name: 'Đã chọn tạo mới'}).getAttribute('aria-pressed'), 'true');
+        assert.equal(await conflict.locator('input[type=checkbox]').isChecked(), true);
+        assert.equal(state.confirms.length, 0, 'choosing an action waits for confirmation');
+        await conflict.locator('select').selectOption('50100');
+        assert.equal(await conflict.getByRole('button', {name: 'Tạo thẻ mới', exact: true}).getAttribute('aria-pressed'), 'false');
+        await conflict.getByRole('button', {name: 'Tạo thẻ mới', exact: true}).click();
+        assert.equal(await conflict.locator('select').inputValue(), '');
         assert.deepEqual(await firstRowNumbers(), [196, 250, 2, 3]);
         await page.getByRole('button', {name: /Confirm import/}).click();
         await page.locator('.modal-dialog').waitFor({state: 'hidden'});
         assert.equal(state.confirms[0].rows.length, 278);
         assert.deepEqual(state.confirms[0].rows.slice(0, 3).map(row => row.rowNumber), [2, 3, 4]);
         assert.equal(state.confirms[0].rows.find(row => row.rowNumber === 196).selectedExistingQuestionId, 48126);
-        assert.equal(state.confirms[0].rows.find(row => row.rowNumber === 250).selectedExistingQuestionId, 50100);
+        const newCard = state.confirms[0].rows.find(row => row.rowNumber === 250);
+        assert.equal(newCard.createNew, true);
+        assert.equal(newCard.motherTongue, 'lan truyền; bị tiết lộ');
+        assert.equal(newCard.status, 'CONFLICT');
+        assert.equal(newCard.selectedExistingQuestionId, null);
+        assert.equal(newCard.existingQuestionId, null);
         assert.deepEqual(state.errors, []);
     } finally {await browser.close();}
 });

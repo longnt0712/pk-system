@@ -116,7 +116,7 @@ public class QuestionExcelImportServiceImpl
                 continue;
             }
 
-            String normalizedWord = normalizeWord(row.getWord());
+            String normalizedWord = normalizeText(row.getWord());
 
             if (wordsSeenInFile.contains(normalizedWord)) {
                 setRowStatus(
@@ -145,6 +145,8 @@ public class QuestionExcelImportServiceImpl
 
                 continue;
             }
+
+            row.setCanCreateNew(!hasSameMeaning(row, existingQuestions));
 
             if (existingQuestions.size() > 1) {
 
@@ -252,7 +254,7 @@ public class QuestionExcelImportServiceImpl
         User currentPrincipal = getCurrentUser(authentication);
 
         User currentUser =
-                userRepository.findOne(currentPrincipal.getId());
+                userRepository.findForVocabularyUpdate(currentPrincipal.getId());
 
         if (currentUser == null) {
             throw new IllegalArgumentException(
@@ -293,7 +295,7 @@ public class QuestionExcelImportServiceImpl
                 continue;
             }
 
-            String normalizedWord = normalizeWord(row.getWord());
+            String normalizedWord = normalizeText(row.getWord());
 
             if (!uniqueRows.containsKey(normalizedWord)) {
                 uniqueRows.put(normalizedWord, row);
@@ -314,7 +316,8 @@ public class QuestionExcelImportServiceImpl
             List<QuestionImportExistingDto> existing =
                     existingMap.get(entry.getKey());
 
-            if (existing == null || existing.isEmpty()) {
+            if (existing == null || existing.isEmpty()
+                    || (entry.getValue().isCreateNew() && !hasSameMeaning(entry.getValue(), existing))) {
                 numberToCreate++;
             }
         }
@@ -357,8 +360,13 @@ public class QuestionExcelImportServiceImpl
             List<QuestionImportExistingDto> existingQuestions =
                     existingMap.get(normalizedWord);
 
-            if (existingQuestions != null
-                    && existingQuestions.size() > 1) {
+            if (row.isCreateNew() && existingQuestions != null && hasSameMeaning(row, existingQuestions)) {
+                result.setSkippedCount(result.getSkippedCount() + 1);
+                continue;
+            }
+
+            boolean useExisting = !row.isCreateNew() && existingQuestions != null;
+            if (useExisting && existingQuestions.size() > 1) {
 
                 Long selectedQuestionId =
                         row.getSelectedExistingQuestionId();
@@ -445,7 +453,7 @@ public class QuestionExcelImportServiceImpl
                  * Word của Question được chọn phải giống word import.
                  */
                 if (!normalizedWord.equals(
-                        normalizeWord(
+                        normalizeText(
                                 selectedQuestion.getQuestion()
                         ))) {
 
@@ -508,8 +516,7 @@ public class QuestionExcelImportServiceImpl
                 continue;
             }
 
-            if (existingQuestions != null
-                    && existingQuestions.size() == 1) {
+            if (useExisting && existingQuestions.size() == 1) {
 
                 QuestionImportExistingDto existingDto =
                         existingQuestions.get(0);
@@ -603,21 +610,6 @@ public class QuestionExcelImportServiceImpl
                     username,
                     now
             );
-
-            QuestionImportExistingDto newExisting =
-                    new QuestionImportExistingDto(
-                            question.getId(),
-                            question.getQuestion(),
-                            question.getPronounce(),
-                            question.getMotherTongue(),
-                            question.getLevel()
-                    );
-
-            List<QuestionImportExistingDto> newList =
-                    new ArrayList<QuestionImportExistingDto>();
-
-            newList.add(newExisting);
-            existingMap.put(normalizedWord, newList);
 
             result.setCreatedCount(
                     result.getCreatedCount() + 1
@@ -893,7 +885,7 @@ public class QuestionExcelImportServiceImpl
                 : existingList) {
 
             String normalizedWord =
-                    normalizeWord(existing.getQuestion());
+                    normalizeText(existing.getQuestion());
 
             if (isBlank(normalizedWord)) {
                 continue;
@@ -1228,13 +1220,17 @@ public class QuestionExcelImportServiceImpl
         return row.getFirstLanguage();
     }
 
-    private String normalizeWord(String word) {
+    private boolean hasSameMeaning(QuestionImportRowDto row, List<QuestionImportExistingDto> existing) {
+        String importedMeaning = normalizeText(getImportedMotherTongue(row));
+        return existing.stream().anyMatch(card -> importedMeaning.equals(normalizeText(card.getMotherTongue())));
+    }
 
-        if (word == null) {
+    private String normalizeText(String text) {
+        if (text == null) {
             return "";
         }
 
-        return word
+        return text
                 .trim()
                 .replaceAll("\\s+", " ")
                 .toLowerCase(Locale.ENGLISH);
