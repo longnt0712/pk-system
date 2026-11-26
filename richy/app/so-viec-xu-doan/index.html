@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="theme-color" content="#234d3d">
+    <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+    <div class="page">
+        <header class="site-header">
+            <a class="brand" href="./index.html" aria-label="Sổ việc Xứ đoàn">
+                <span class="brand-mark" aria-hidden="true">✣</span>
+                <span><strong>Sổ việc Xứ đoàn</strong><small>TNTT Phùng Khoang</small></span>
+            </a>
+            <div class="account" id="account" hidden>
+                <span class="account-name" id="account-name"></span>
+                <span class="role-pill" id="account-role"></span>
+                <button class="button button-subtle" id="sign-out" type="button">Đăng xuất</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="welcome" id="welcome">
+                <div class="welcome-copy">
+                    <p class="eyebrow">Nội bộ xứ đoàn</p>
+                    <h1>Cùng theo dõi<br> công việc xứ đoàn.</h1>
+                    <p class="welcome-description">Dành cho Ban điều hành và các trưởng ban, ngành.</p>
+                </div>
+                <div class="login-card">
+                    <span class="card-emblem" aria-hidden="true">✣</span>
+                    <h2>Đăng nhập</h2>
+                    <p>Dùng tài khoản Google đã được cấp quyền để tiếp tục.</p>
+                    <button class="button google-button" id="sign-in" type="button" disabled>
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="">
+                        <span>Đăng nhập bằng Google</span>
+                    </button>
+                    <p class="status" id="login-status" role="status" aria-live="polite">Đang mở sổ việc…</p>
+                    <p class="notice" id="login-error" role="alert" hidden></p>
+                    <div class="setup" id="setup" hidden>
+                        <strong>Thiết lập Firebase</strong>
+                        <p>Điền cấu hình trong <code>firebase-config.js</code>, dán Security Rules và tạo thành viên quản trị đầu tiên.</p>
+                        <a href="HUONG-DAN.md" target="_blank" rel="noopener">Mở hướng dẫn từng bước ↗</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="access-card" id="access-denied" hidden aria-labelledby="denied-heading">
+                <span class="card-emblem" aria-hidden="true">✣</span>
+                <h1 id="denied-heading">Tài khoản đang chờ cấp quyền</h1>
+                <p>Bạn chưa được cấp quyền, vui lòng liên hệ Trưởng xứ đoàn.</p>
+                <p class="muted" id="denied-email"></p>
+                <button class="button button-primary" id="change-account" type="button">Đổi tài khoản Google</button>
+            </section>
+
+            <section class="workspace" id="workspace" hidden aria-labelledby="workspace-heading">
+                <header class="workspace-heading">
+                    <div><h1 id="workspace-heading">Thành viên</h1><p id="workspace-description">Danh sách những người được mở và cập nhật sổ việc.</p></div>
+                    <button class="button button-primary" id="add-member" type="button" hidden>+ Thêm thành viên</button>
+                </header>
+                <p class="notice" id="workspace-error" role="alert" hidden></p>
+                <p class="status" id="workspace-status" role="status" aria-live="polite"></p>
+                <div class="members-panel">
+                    <div class="panel-heading"><span id="member-count" class="muted"></span></div>
+                    <div id="members" class="members" aria-live="polite"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <dialog id="member-dialog" aria-labelledby="member-dialog-heading">
+        <form id="member-form">
+            <header class="dialog-heading"><h2 id="member-dialog-heading">Thêm thành viên</h2><button class="close-button" type="button" id="close-member-dialog" aria-label="Đóng">×</button></header>
+            <p class="muted">Email Google sẽ được liên kết với người này trong danh sách nhân sự.</p>
+            <label>Họ tên<input name="hoTen" autocomplete="name" maxlength="120" required></label>
+            <label>Tên gọi khi giao việc<input name="tenGoi" maxlength="50" placeholder="Ví dụ Tùng Long" required></label>
+            <label>Email Google<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+            <label class="checkbox"><input name="laQuanTri" type="checkbox"><span>Cấp quyền quản trị<small>Được quản lý thành viên, xóa việc và sửa danh mục.</small></span></label>
+            <p class="notice" id="member-error" role="alert" hidden></p>
+            <footer class="dialog-actions"><button class="button button-subtle" type="button" id="cancel-member">Hủy</button><button class="button button-primary" type="submit" id="save-member">Thêm thành viên</button></footer>
+        </form>
+    </dialog>
+    <noscript><p class="notice">Bạn cần bật JavaScript để đăng nhập và sử dụng sổ việc.</p></noscript>
+</body>
+</html>
