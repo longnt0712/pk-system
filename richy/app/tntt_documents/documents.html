@@ -1,6 +1,10 @@
 <main class="td-page">
  <header class="td-heading"><div><span class="td-eyebrow">TNTT PHÙNG KHOANG</span><h1>{{vm.tab==='notices'?'Thông báo':'Tài liệu chung'}}</h1><p>Biên bản, nội dung sinh hoạt và những điều cần cùng nhau ghi nhớ.</p></div><i class="fa" ng-class="vm.tab==='notices'?'fa-bell-o':'fa-folder-open-o'" aria-hidden="true"></i></header>
- <nav class="td-tabs" aria-label="Tài liệu và thông báo"><button class="tn-button" ng-class="{'tn-primary':vm.tab==='files'}" ng-click="vm.switchTab('files')"><i class="fa fa-folder-open"></i> Tài liệu</button><button class="tn-button" ng-class="{'tn-primary':vm.tab==='notices'}" ng-click="vm.switchTab('notices')"><i class="fa fa-bell"></i> Thông báo</button></nav>
+ <nav class="td-tabs" aria-label="Tài liệu và thông báo">
+  <button class="tn-button" ng-class="{'tn-primary':vm.tab==='files'}" ng-click="vm.switchTab('files')"><i class="fa fa-folder-open"></i> Tài liệu</button>
+  <button class="tn-button" ng-class="{'tn-primary':vm.tab==='notices'}" ng-click="vm.switchTab('notices')"><i class="fa fa-bell"></i> Thông báo</button>
+  <a class="tn-button td-work-register" ng-if="settings.campaignsEnabled && currentUser.id" href="/so-viec-xu-doan/index.html" target="_blank" rel="noopener"><i class="fa fa-tasks" aria-hidden="true"></i> Sổ việc Xứ đoàn</a>
+ </nav>
  <p class="td-error" ng-if="vm.error" role="alert">{{vm.error}}</p><p class="td-success" ng-if="vm.success" role="status">{{vm.success}}</p>
  <p ng-if="vm.loading" role="status">Đang tải…</p>
  <section class="td-empty" ng-if="vm.caps && !vm.caps.enabled"><i class="fa fa-folder-open-o"></i><h2>Mục Tài liệu chưa được bật trên máy chủ</h2><p ng-if="!vm.caps.canEdit">Vui lòng liên hệ quản trị viên để kích hoạt mục Tài liệu.</p><p ng-if="vm.caps.canEdit">Sau khi chạy các file SQL cập nhật, đặt <code>tntt.documents.enabled=true</code> trong cấu hình backend rồi khởi động lại dịch vụ. Thay đổi cấu hình này không cần build lại.</p></section>

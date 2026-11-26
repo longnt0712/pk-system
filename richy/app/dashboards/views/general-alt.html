@@ -802,6 +802,17 @@
             </a>
         </div>
 
+        <div class="learning-tile-wrap" ng-if="vm.isTnttDomain && vm.myUser.id">
+            <a href="/so-viec-xu-doan/index.html" target="_blank" rel="noopener" class="learning-tile learning-tile-work-register">
+                <span class="learning-tile-icon"><i class="fa fa-tasks" aria-hidden="true"></i></span>
+                <span class="learning-tile-title">SỔ VIỆC XỨ ĐOÀN</span>
+                <span class="learning-tile-desc">Công việc của các ban, ngành</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
     </section>
 
 
@@ -1485,6 +1496,8 @@
     }
 
     .learning-tile-flower { background:linear-gradient(135deg,#247b5d,#389884); }
+
+    .learning-tile-work-register { background:linear-gradient(135deg,#36578b,#4c4482); }
 
     .learning-tile-shop {
         background:

@@ -56,6 +56,15 @@
 .td-document-grid .td-switch{max-width:100%}
 .td-document-grid .td-switch>span{flex:0 0 29px}
 .td-restore{margin-top:12px}
+.td-tabs { flex-wrap: wrap; }
+.td-tabs .td-work-register {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+.td-tabs .td-work-register:hover { text-decoration: underline; }
+.td-tabs .td-work-register:focus-visible { outline: 2px solid #9262ad; outline-offset: 3px; }
 .td-explorer button:focus-visible{outline:2px solid #8e79d6;outline-offset:3px}
 .td-explorer.is-list .td-folder-grid,.td-explorer.is-list .td-document-grid{grid-template-columns:1fr;gap:8px}
 .td-explorer.is-list .td-folder-entry{display:flex;align-items:center;gap:10px;border-bottom:1px solid #edf0f5;padding-bottom:6px}
