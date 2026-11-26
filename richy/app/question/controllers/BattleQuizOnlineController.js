@@ -848,8 +848,10 @@
                 !isMeFrozen() && !isWrongAnswerPenaltyActive() && getMe().rottenEggCount >= rottenEggThrowCost;
         }
         function isRottenEggTarget(player) {
+            var me = getMe();
             return !!(player && player.username !== vm.currentUser.username && player.connected && !player.spectator &&
-                !(player.skillImmunityEndsAt > serverNow()));
+                !(player.skillImmunityEndsAt > serverNow()) &&
+                !(vm.room.settings.teamCount >= 2 && me && me.teamNumber >= 1 && player.teamNumber === me.teamNumber));
         }
         function closeRottenEggModal() {
             if (!vm.rottenEggModalOpen) { return; }
@@ -865,8 +867,11 @@
             }
         }
         function syncRottenEggModal(returnFocus) {
-            vm.rottenEggTargets = !vm.giftModalOpen && !vm.claimingGift && canOfferRottenEgg()
+            var players = !vm.giftModalOpen && !vm.claimingGift && canOfferRottenEgg()
                 ? (vm.room.players || []).filter(isRottenEggTarget) : [];
+            vm.rottenEggTargets = ((vm.room && vm.room.rottenEggTargetUsernames) || []).map(function (username) {
+                return players.filter(function (player) { return player.username === username; })[0];
+            }).filter(function (player) { return !!player; });
             if (!vm.rottenEggTargets.length) { closeRottenEggModal(); return; }
             if (vm.rottenEggModalOpen) { return; }
             rottenEggReturnFocus = returnFocus || $window.document.activeElement;
@@ -878,6 +883,7 @@
         }
         vm.throwRottenEgg = function (player) {
             if (!vm.rottenEggModalOpen || vm.throwingRottenEgg || !canOfferRottenEgg() || !player ||
+                    (vm.room.rottenEggTargetUsernames || []).indexOf(player.username) < 0 ||
                     !(vm.room.players || []).some(function (target) {
                         return target.username === player.username && isRottenEggTarget(target);
                     })) { return; }
@@ -3486,6 +3492,10 @@
                     incoming.giftDrop.claims = previousRoom.giftDrop.claims;
                     incoming.giftDrop.version = previousRoom.giftDrop.version;
                     incoming.players = previousRoom.players;
+                    incoming.rottenEggTargetUsernames = previousRoom.rottenEggTargetUsernames;
+                }
+                if (fromGenericSocket === true) {
+                    incoming.rottenEggTargetUsernames = (previousRoom.rottenEggTargetUsernames || []).slice(0);
                 }
                 if ((incoming.giftDrop.gifts == null || incoming.giftDrop.poolVersion < previousRoom.giftDrop.poolVersion) && !isSpectator()) {
                     incoming.giftDrop.gifts = previousRoom.giftDrop.gifts;
@@ -4082,6 +4092,10 @@
             }
             if (vm.hostVideoAnswersOpen && previousStatus !== incoming.status) { focusHostVideoAnswers(); }
             updateCountdown();
+            if (fromGenericSocket === true && !vm.giftModalOpen && !vm.claimingGift && canOfferRottenEgg() && vm.rottenEggTargets.length <
+                    Math.min(4, (vm.room.players || []).filter(isRottenEggTarget).length)) {
+                refreshPrivateRoomState();
+            }
             if (vm.hostVideoQuestionListOpen && (!isHost() || incoming.status !== 'PLAYING' ||
                     !currentVideo() || currentVideo().videoSourceId !== hostVideoListSource)) { vm.closeHostVideoQuestionList(); }
             syncHostVideoQuestionModal();

@@ -334,6 +334,61 @@ public class BattleOnlineGiftDropTest {
         return snapshot.getPlayers().stream().filter(player -> username.equals(player.getUsername())).findFirst().get();
     }
 
+    private void collectRottenEggs(int count) {
+        set(room, "giftOpening", false);
+        set(get(room, "settings"), "skillsEnabled", true);
+        pool = new GiftDropGame(10, new Random() { public int nextInt(int bound) { return 0; } });
+        set(room, "giftDrop", pool); set(alice, "giftCredits", count);
+        for (int i = 0; i < count; i++) {
+            service.claimGift("GIFTS1", "alice", request(pool.snapshot("alice").gifts.get(0).id));
+        }
+    }
+
+    @Test @SuppressWarnings("unchecked") public void rottenEggsUseFourStablePrivateTargetsAndRejectOtherPlayers() throws Exception {
+        Map<String,Object> players = (Map<String,Object>) get(room, "players");
+        for (int i = 0; i < 8; i++) { players.put("opponent" + i, player("opponent" + i)); }
+        collectRottenEggs(3);
+        BattleOnlineRoomDto snapshot = service.getRoom("GIFTS1", "alice");
+        List<String> targets = snapshot.getRottenEggTargetUsernames();
+        assertEquals(4, targets.size()); assertEquals(4, new HashSet<>(targets).size());
+        assertFalse(targets.contains("alice")); assertFalse(targets.contains("host"));
+        assertEquals(targets, service.getRoom("GIFTS1", "alice").getRottenEggTargetUsernames());
+        BattleOnlineRoomDto publicRoom = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, (String) null);
+        assertTrue(publicRoom.getRottenEggTargetUsernames().isEmpty());
+        assertTrue(service.getRoom("GIFTS1", "bob").getRottenEggTargetUsernames().isEmpty());
+
+        String unlisted = players.keySet().stream().filter(name -> !name.equals("alice") && !name.equals("host")
+                && !targets.contains(name)).findFirst().get();
+        BattleOnlineUseSkillDto skill = new BattleOnlineUseSkillDto(); skill.setSkillType("ROTTEN_EGG_THROW");
+        skill.setTargetUsername(unlisted); rejectedThrow(skill);
+        assertEquals(3, pool.rottenEggCount("alice"));
+        assertEquals(targets, service.getRoom("GIFTS1", "alice").getRottenEggTargetUsernames());
+        skill.setTargetUsername(targets.get(0));
+        BattleOnlineRoomDto sent = service.useSkill("GIFTS1", "alice", skill);
+        assertEquals(0, pool.rottenEggCount("alice")); assertTrue(sent.getRottenEggTargetUsernames().isEmpty());
+        assertNotNull(giftPlayer(sent, targets.get(0)).getRottenEggSplat());
+    }
+
+    @Test @SuppressWarnings("unchecked") public void rottenEggTargetsRefillDisconnectedSlotsAndExcludeTeammates() throws Exception {
+        Map<String,Object> players = (Map<String,Object>) get(room, "players");
+        set(get(room, "settings"), "teamCount", 2); set(alice, "teamNumber", 1); set(bob, "teamNumber", 1);
+        for (int i = 0; i < 7; i++) {
+            Object opponent = player("opponent" + i); set(opponent, "teamNumber", 2); players.put("opponent" + i, opponent);
+        }
+        collectRottenEggs(6);
+        List<String> original = service.getRoom("GIFTS1", "alice").getRottenEggTargetUsernames();
+        assertEquals(4, original.size()); assertFalse(original.contains("bob"));
+        set(players.get(original.get(0)), "connected", false);
+        List<String> refilled = service.getRoom("GIFTS1", "alice").getRottenEggTargetUsernames();
+        assertEquals(4, refilled.size()); assertFalse(refilled.contains(original.get(0)));
+        assertTrue(refilled.containsAll(original.subList(1, original.size())));
+        BattleOnlineUseSkillDto skill = new BattleOnlineUseSkillDto(); skill.setSkillType("ROTTEN_EGG_THROW");
+        skill.setTargetUsername("bob"); rejectedThrow(skill); assertEquals(6, pool.rottenEggCount("alice"));
+        skill.setTargetUsername(refilled.get(0));
+        assertEquals(4, service.useSkill("GIFTS1", "alice", skill).getRottenEggTargetUsernames().size());
+        assertEquals(3, pool.rottenEggCount("alice"));
+    }
+
     private void rejectedThrow(BattleOnlineUseSkillDto skill) {
         try {
             service.useSkill("GIFTS1", "alice", skill);

@@ -5502,8 +5502,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private void preparePendingSkillTargetsLocked(
             RoomState room,
             PlayerState actor) {
+        prepareSkillTargetsLocked(room, actor, actor.pendingSkillType, actor.pendingSkillTargetUsernames);
+    }
 
-        actor.pendingSkillTargetUsernames.clear();
+    private void prepareSkillTargetsLocked(RoomState room, PlayerState actor, String skillType, List<String> targets) {
+
+        targets.clear();
 
         List<PlayerState> rankedPlayers =
                 rankedPlayerStatesLocked(room);
@@ -5526,7 +5530,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room,
                     actor,
                     candidate,
-                    actor.pendingSkillType
+                    skillType
             )) {
                 pool.add(candidate);
             }
@@ -5576,7 +5580,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         /* Không để UI biết slot nào là random đều / random trọng số. */
         Collections.shuffle(selected, random);
 
-        actor.pendingSkillTargetUsernames.addAll(selected);
+        targets.addAll(selected);
     }
 
 
@@ -5592,6 +5596,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             actor.pendingSkillTargetUsernames.clear();
             return;
         }
+        ensureSkillTargetsLocked(room, actor, actor.pendingSkillType, actor.pendingSkillTargetUsernames);
+    }
+
+    private void ensureRottenEggTargetsLocked(RoomState room, PlayerState actor) {
+        if (!PLAYING.equals(room.status) || !MODE_LUM_NGAY.equals(room.settings.mode) || room.giftOpening
+                || room.videoSynchronized || !room.settings.skillsEnabled || room.giftDrop == null || actor.spectator
+                || room.giftDrop.rottenEggCount(actor.username) < GiftDropGame.ROTTEN_EGG_THROW_COST) {
+            actor.rottenEggTargetUsernames.clear();
+            return;
+        }
+        ensureSkillTargetsLocked(room, actor, SKILL_ROTTEN_EGG_THROW, actor.rottenEggTargetUsernames);
+    }
+
+    private void ensureSkillTargetsLocked(RoomState room, PlayerState actor, String skillType, List<String> targets) {
 
         List<PlayerState> rankedPlayers =
                 rankedPlayerStatesLocked(room);
@@ -5614,7 +5632,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room,
                     actor,
                     candidate,
-                    actor.pendingSkillType
+                    skillType
             )) {
                 eligibleByUsername.put(
                         candidate.username,
@@ -5631,7 +5649,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<String> validExisting =
                 new ArrayList<String>();
 
-        for (String targetUsername : actor.pendingSkillTargetUsernames) {
+        for (String targetUsername : targets) {
             if (
                 eligibleByUsername.containsKey(targetUsername) &&
                 !validExisting.contains(targetUsername)
@@ -5640,14 +5658,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
 
-        actor.pendingSkillTargetUsernames.clear();
-        actor.pendingSkillTargetUsernames.addAll(validExisting);
+        targets.clear();
+        targets.addAll(validExisting);
 
         if (
-            actor.pendingSkillTargetUsernames.isEmpty() &&
+            targets.isEmpty() &&
             targetCount > 0
         ) {
-            preparePendingSkillTargetsLocked(room, actor);
+            prepareSkillTargetsLocked(room, actor, skillType, targets);
             return;
         }
 
@@ -5656,7 +5674,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         for (PlayerState candidate : eligibleByUsername.values()) {
             if (
-                !actor.pendingSkillTargetUsernames.contains(
+                !targets.contains(
                     candidate.username
                 )
             ) {
@@ -5665,7 +5683,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         while (
-            actor.pendingSkillTargetUsernames.size() < targetCount &&
+            targets.size() < targetCount &&
             !refillPool.isEmpty()
         ) {
             PlayerState picked =
@@ -5678,7 +5696,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 break;
             }
 
-            actor.pendingSkillTargetUsernames.add(
+            targets.add(
                     picked.username
             );
         }
@@ -6515,15 +6533,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
         long now = System.currentTimeMillis();
         PlayerState target = room.players.get(targetUsername);
-        if (target == null || target == actor || target.spectator || !target.connected) {
-            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Hãy chọn một người chơi khác đang online.");
-        }
-        if (room.giftDrop.skillImmunityEndsAt(target.username) > now) {
+        if (target != null && room.giftDrop.skillImmunityEndsAt(target.username) > now) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Người chơi này đang được bảo vệ bởi Ngọc Rồng.");
+        }
+        if (!isSkillTargetEligibleLocked(room, actor, target, SKILL_ROTTEN_EGG_THROW)) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Hãy chọn một đối thủ đang online và có thể nhận skill.");
+        }
+        ensureRottenEggTargetsLocked(room, actor);
+        if (room.giftDrop.rottenEggCount(actor.username) < GiftDropGame.ROTTEN_EGG_THROW_COST) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn cần đủ 3 trứng thối để ném.");
+        }
+        if (!actor.rottenEggTargetUsernames.contains(targetUsername)) {
+            throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Hãy chọn một trong 4 mục tiêu được random trong modal.");
         }
         if (!room.giftDrop.throwRottenEgg(actor.username, target.username)) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn cần đủ 3 trứng thối để ném.");
         }
+        actor.rottenEggTargetUsernames.clear();
         addSkillEventLocked(room, SKILL_ROTTEN_EGG_THROW, actor, target, 0D, now);
     }
 
@@ -7664,6 +7690,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 viewer.pendingSkillTargetUsernames
                             )
                     );
+                    ensureRottenEggTargetsLocked(room, viewer);
+                    dto.setRottenEggTargetUsernames(new ArrayList<String>(viewer.rottenEggTargetUsernames));
 
                     if (viewer.wrongAnswerPenaltyUntil > 0L) {
                         dto.setWrongAnswerPenaltyUntil(
@@ -8292,6 +8320,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.wrongAnswerSelectedAnswer = null;
 
         player.pendingWordIds.clear();
+        player.rottenEggTargetUsernames.clear();
         player.uniqueWordIds.clear();
         player.scoreMultiplierPlan.clear();
         player.countdownReviewQuestions.clear();
@@ -9594,6 +9623,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         List<String> pendingSkillTargetUsernames =
                 new ArrayList<String>();
+        List<String> rottenEggTargetUsernames = new ArrayList<String>();
 
         String currentPassword;
         boolean passwordResetSkillIssued = false;

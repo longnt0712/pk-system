@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),nodeVm=require('node:vm');
 const plain=v=>JSON.parse(JSON.stringify(v));
 function setup(username='alice') {
- let Controller,hooks,resolveClaim,rejectClaim,resolveAnswer,cleanup; const calls=[],throwCalls=[],answerCalls=[],finishCalls=[],extendCalls=[],events={},bodyClasses=new Set();
+ let Controller,hooks,resolveClaim,rejectClaim,resolveAnswer,cleanup,privateRoom; const calls=[],throwCalls=[],answerCalls=[],finishCalls=[],extendCalls=[],events={},bodyClasses=new Set();
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,isFunction:value=>typeof value==='function',noop(){},element(){return {on(name,fn){events[name]=fn;},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto});'),{angular,expose(v){hooks=v;}});
@@ -20,15 +20,15 @@ function setup(username='alice') {
   },
   finishGiftOpening(...args){finishCalls.push(args);const done=plain(vm.room);done.status='FINISHED';done.giftOpening=false;return Promise.resolve(done);},
   extendGiftOpening(...args){extendCalls.push(args);const next=plain(vm.room);next.giftOpeningEndsAt+=60000;next.matchEndsAt=next.giftOpeningEndsAt;return Promise.resolve(next);},
-  answer(...args){answerCalls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},getRoom(){return Promise.resolve(plain(vm.room));},disconnectRealtime(){}};
+  answer(...args){answerCalls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},getRoom(){return Promise.resolve(plain(privateRoom||vm.room));},disconnectRealtime(){}};
  const vm=new Controller({},{$on(name,fn){if(name==='$destroy')cleanup=fn;},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(){},error(){}},{},{},service);
  function room(credits=1,version=1,gameId='match1') {
   const now=Date.now(); return {code:'GIFTS1',hostUsername:'host',status:'PLAYING',serverTime:now,matchEndsAt:now+180000,videoSynchronized:false,giftOpening:true,giftOpeningEndsAt:now+180000,questionEndsAt:0,
    settings:{mode:'LUM_NGAY',teamCount:0,skillsEnabled:false,giftSpawnSeconds:3,giftBasePoints:10},players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false}],recentEvents:[],
-   currentQuestion:null,giftDrop:{gameId,version,poolVersion:version,capacity:credits+3,gifts:[{id:'gift1'},{id:'gift2'},{id:'gift3'}]},giftCredits:credits,giftCreditVersion:version};
+   currentQuestion:null,rottenEggTargetUsernames:[],giftDrop:{gameId,version,poolVersion:version,capacity:credits+3,gifts:[{id:'gift1'},{id:'gift2'},{id:'gift3'}]},giftCredits:credits,giftCreditVersion:version};
  }
  hooks.applyRoom(room(),false);
- return {vm,hooks,calls,throwCalls,answerCalls,finishCalls,extendCalls,events,bodyClasses,room,resolve(result){resolveClaim(result);},reject(error){rejectClaim(error);},resolveAnswer(result){resolveAnswer(result);},destroy(){cleanup();}};
+ return {vm,hooks,calls,throwCalls,answerCalls,finishCalls,extendCalls,events,bodyClasses,room,setPrivateRoom(room){privateRoom=room;},resolve(result){resolveClaim(result);},reject(error){rejectClaim(error);},resolveAnswer(result){resolveAnswer(result);},destroy(){cleanup();}};
 }
 test('Lụm ngay can be selected and its score settings are clamped',()=>{
  const h=setup('host'); h.vm.hostSettings.mode='LUM_NGAY';h.vm.hostSettings.giftSpawnSeconds=0;h.vm.hostSettings.giftBasePoints=25000;
@@ -65,6 +65,7 @@ test('the third rotten egg opens one target picker immediately and only the sele
     const claim = shooter.vm.claimGift({id:'gift1'});
     const ready = plain(before);
     ready.players.find(player => player.username === 'alice').rottenEggCount = 3;
+    ready.rottenEggTargetUsernames = ['bob'];
     ready.giftDrop.version++;
     ready.giftCredits = 0;
     ready.giftCreditVersion++;
@@ -108,7 +109,7 @@ test('the third rotten egg opens one target picker immediately and only the sele
     assert.equal(victim.vm.activeRottenEggSplats().length, 0, "an older snapshot cannot bring the splat back");
 });
 
-test('rotten eggs stay available when no eligible target is online', () => {
+test('rotten eggs stay available when no eligible target is online', async () => {
     const h = setup();
     const playing = h.room(0, 5);
     playing.giftOpening = false;
@@ -117,13 +118,35 @@ test('rotten eggs stay available when no eligible target is online', () => {
     h.hooks.applyRoom(plain(playing), false);
     assert.equal(h.vm.rottenEggModalOpen, false);
     assert.equal(h.vm.me().rottenEggCount, 3);
+    await new Promise(setImmediate);
     playing.players.push({username:'bob', connected:true, spectator:false});
+    const privateRoom = plain(playing); privateRoom.rottenEggTargetUsernames = ['bob']; h.setPrivateRoom(privateRoom);
     h.hooks.applyRoom(plain(playing), true);
+    await new Promise(setImmediate);
     assert.equal(h.vm.rottenEggModalOpen, true);
     playing.players.at(-1).connected = false;
     h.hooks.applyRoom(plain(playing), true);
     assert.equal(h.vm.rottenEggModalOpen, false);
     assert.equal(h.vm.me().rottenEggCount, 3);
+});
+
+test('the egg modal displays only the server shortlist and keeps it through public updates', async () => {
+    const h=setup(), ready=h.room(0,5);
+    ready.giftOpening=false; ready.settings.skillsEnabled=true;
+    ready.players.find(player=>player.username==='alice').rottenEggCount=3;
+    for(let i=0;i<8;i++) ready.players.push({username:'opponent'+i,connected:true,spectator:false});
+    ready.rottenEggTargetUsernames=['opponent6','opponent2','opponent4','opponent0'];
+    h.hooks.applyRoom(plain(ready),false);
+    assert.equal(h.vm.rottenEggModalOpen,true);
+    assert.deepEqual(Array.from(h.vm.rottenEggTargets,p=>p.username),ready.rottenEggTargetUsernames);
+    assert.equal(h.vm.throwRottenEgg({username:'opponent1'}),undefined);
+    assert.equal(h.throwCalls.length,0);
+    const publicRoom=plain(ready); publicRoom.rottenEggTargetUsernames=[];
+    h.hooks.applyRoom(publicRoom,true);
+    assert.deepEqual(Array.from(h.vm.rottenEggTargets,p=>p.username),ready.rottenEggTargetUsernames);
+    await h.vm.throwRottenEgg(h.vm.rottenEggTargets[0]);
+    assert.deepEqual(h.throwCalls,[['GIFTS1','opponent6','ROTTEN_EGG_THROW']]);
+    assert.equal(h.vm.rottenEggModalOpen,false);
 });
 
 test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{

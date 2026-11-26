@@ -149,6 +149,7 @@ public class BattleOnlineRoomDto implements Serializable {
      */
     private List<String> pendingSkillTargetUsernames =
             new ArrayList<String>();
+    private List<String> rottenEggTargetUsernames = new ArrayList<String>();
 
     /*
      * XIN_TIEN: toàn bộ trường dưới đây là state riêng của viewer.
@@ -397,6 +398,9 @@ public class BattleOnlineRoomDto implements Serializable {
             List<String> pendingSkillTargetUsernames) {
         this.pendingSkillTargetUsernames = pendingSkillTargetUsernames;
     }
+
+    public List<String> getRottenEggTargetUsernames() { return rottenEggTargetUsernames; }
+    public void setRottenEggTargetUsernames(List<String> value) { rottenEggTargetUsernames = value; }
 
     public boolean isPasswordSelectionRequired() {
         return passwordSelectionRequired;
