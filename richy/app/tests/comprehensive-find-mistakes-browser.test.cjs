@@ -70,7 +70,16 @@ test('author marks real and distractor phrases, then students select and correct
             const save = page.getByRole('button', {name: 'Lưu và chọn tiếp'});
             const otherGroup = page.getByRole('button', {name: 'Another group', exact: true});
             for (const [phrase, replacement] of [['run into', 'ran into'], ['Yesterday', 'Today'], ['go', 'went'], ['two loafs of bread', 'two loaves of bread']]) {
-                await page.getByRole('button', {name: phrase, exact: true}).click();
+                const word = page.getByRole('button', {name: phrase, exact: true});
+                await word.click();
+                const popup = page.getByRole('dialog', {name: `Sửa ${phrase}`, exact: true});
+                await popup.waitFor({state: 'visible'});
+                const wordBox = await word.boundingBox(), popupBox = await popup.boundingBox();
+                const tip = await popup.evaluate(node => parseFloat(getComputedStyle(node, '::before').left));
+                assert.ok(popupBox.y > wordBox.y + wordBox.height, 'popup opens below the selected phrase');
+                assert.ok(popupBox.x >= 0 && popupBox.x + popupBox.width <= width, 'popup stays inside the screen');
+                assert.ok(Math.abs(popupBox.x + tip - (wordBox.x + wordBox.width / 2)) <= 2, 'tip points to the phrase center');
+                assert.equal(await correction.evaluate(input => input === document.activeElement), true);
                 assert.equal(await correction.count(), 1);
                 assert.equal(await page.getByRole('button', {name: 'to school', exact: true}).isDisabled(), true);
                 assert.equal(await otherGroup.isDisabled(), true);
@@ -105,7 +114,8 @@ test('author marks real and distractor phrases, then students select and correct
             await page.getByRole('button', {name: 'go', exact: true}).click();
             assert.equal(await correction.inputValue(), 'goes');
             await correction.fill('went');
-            await page.getByRole('button', {name: 'Hủy', exact: true}).click();
+            await correction.press('Escape');
+            assert.equal(await correction.count(), 0);
             await page.getByRole('button', {name: 'go', exact: true}).click();
             assert.equal(await correction.inputValue(), 'goes');
             assert.deepEqual(errors, []);

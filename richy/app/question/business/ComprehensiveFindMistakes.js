@@ -109,8 +109,8 @@
     }).component('findMistakesExercise', {
         bindings: {pack: '<', locked: '<', editorState: '<', showAnchors: '<', onChange: '&'},
         templateUrl: 'question/views/find_mistakes_exercise.html?v=' + window.APP_VERSION,
-        controller: ['$element', '$timeout', 'ComprehensiveFindMistakes', function ($element, $timeout, mistakes) {
-            var exercise = this;
+        controller: ['$element', '$timeout', '$window', 'ComprehensiveFindMistakes', function ($element, $timeout, $window, mistakes) {
+            var exercise = this, popupObserver;
             exercise.$onInit = function () {
                 exercise.passage = mistakes.parse(exercise.pack.motherTongue);
                 exercise.editorState = exercise.editorState || {};
@@ -136,16 +136,46 @@
                 }
                 if (index < 0) { return; }
                 var saved = mistakes.decode(exercise.pack.subQuestions[index].questionAnswers[0].clientAnswer);
-                exercise.active = {candidate: candidate, index: index, text: saved ? saved.text : '', saved: !!saved};
+                var edit = {candidate: candidate, index: index, text: saved ? saved.text : '', saved: !!saved};
+                exercise.active = edit;
                 exercise.editorState.pack = exercise.pack;
-                exercise.pack._findMistakesEdit = exercise.active;
+                exercise.pack._findMistakesEdit = edit;
                 $timeout(function () {
-                    var input = $element[0].querySelector('.find-mistakes-correction textarea');
-                    if (input) { input.focus(); }
+                    if (exercise.active !== edit) { return; }
+                    var popup = $element[0].querySelector('.find-mistakes-correction');
+                    var anchor = $element[0].querySelector('[data-candidate="' + candidate.id + '"]');
+                    var passage = anchor.closest('.find-mistakes-passage');
+
+                    function positionPopup() {
+                        var container = popup.offsetParent;
+                        if (!container) { return; }
+                        var bounds = container.getBoundingClientRect(), word = anchor.getBoundingClientRect();
+                        var width = popup.offsetWidth, center = word.left + word.width / 2 - bounds.left;
+                        var left = Math.max(0, Math.min(center - width / 2, container.clientWidth - width));
+                        var tip = Math.max(9, Math.min(center - left, width - 9));
+                        popup.style.left = left + 'px';
+                        popup.style.top = (word.bottom - bounds.top + 10) + 'px';
+                        popup.style.setProperty('--correction-tip', tip + 'px');
+                    }
+
+                    positionPopup();
+                    popup.classList.add('is-positioned');
+                    if ($window.ResizeObserver) {
+                        popupObserver = new $window.ResizeObserver(positionPopup);
+                        popupObserver.observe(passage);
+                        popupObserver.observe(anchor);
+                    }
+                    popup.scrollIntoView({block: 'nearest', inline: 'nearest'});
+                    popup.querySelector('textarea').focus({preventScroll: true});
                 }, 0);
             };
-            exercise.close = function () {
+            function stopPositioning() {
+                if (popupObserver) { popupObserver.disconnect(); popupObserver = null; }
+            }
+            exercise.close = function (event) {
+                if (event) { event.preventDefault(); event.stopPropagation(); }
                 var candidate = exercise.active.candidate;
+                stopPositioning();
                 exercise.active = null;
                 delete exercise.editorState.pack;
                 delete exercise.pack._findMistakesEdit;
@@ -163,6 +193,8 @@
                 exercise.onChange();
             };
             exercise.$onDestroy = function () {
+                stopPositioning();
+                exercise.active = null;
                 if (exercise.editorState.pack === exercise.pack) { delete exercise.editorState.pack; }
                 delete exercise.pack._findMistakesEdit;
             };
