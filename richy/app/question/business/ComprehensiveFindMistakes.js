@@ -123,6 +123,11 @@
                     return saved && saved.id === candidate.id;
                 });
             };
+            exercise.wordText = function (candidate) {
+                var index = exercise.savedAt(candidate);
+                if (index < 0) { return candidate.text; }
+                return mistakes.decode(exercise.pack.subQuestions[index].questionAnswers[0].clientAnswer).text;
+            };
             exercise.count = function () {
                 return exercise.pack.subQuestions.filter(function (question) {
                     return !!mistakes.decode(question.questionAnswers[0].clientAnswer);

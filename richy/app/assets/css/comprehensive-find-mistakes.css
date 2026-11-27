@@ -25,6 +25,7 @@
 
 .find-mistakes-word {
     display: inline;
+    max-width: 100%;
     padding: 3px 5px;
     border: 1px solid #a4afc4;
     border-radius: 5px;
@@ -39,7 +40,12 @@
 .find-mistakes-word:disabled { cursor: default; }
 .find-mistakes-word:hover:not(:disabled),
 .find-mistakes-word.is-active { background: #dcf4f8; border-color: #00758a; }
-.find-mistakes-word.is-saved { background: #e6ebff; border-color: #5a6fb9; }
+.find-mistakes-word.is-saved {
+    background: #d9efff;
+    border-color: #3b7aaf;
+    color: #153c60;
+    font-weight: 700;
+}
 
 .find-mistakes-correction {
     --correction-surface: #fff;

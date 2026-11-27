@@ -87,12 +87,17 @@ test('author marks real and distractor phrases, then students select and correct
                 await save.click();
                 assert.equal(await correction.count(), 0);
                 assert.equal(await otherGroup.isDisabled(), false);
+                assert.equal(await word.count(), 0);
+                const corrected = page.getByRole('button', {name: replacement, exact: true});
+                assert.equal(await corrected.isVisible(), true);
+                assert.equal(await corrected.evaluate(node => getComputedStyle(node).fontWeight), '700');
             }
             assert.match(await page.locator('.find-mistakes-progress').first().textContent(), /4 \/ 4/);
             assert.equal(await page.getByRole('button', {name: 'buy', exact: true}).isDisabled(), true);
-            await page.getByRole('button', {name: 'Yesterday', exact: true}).click();
+            await page.getByRole('button', {name: 'Today', exact: true}).click();
             assert.equal(await correction.inputValue(), 'Today');
             await page.getByRole('button', {name: 'Bỏ chọn vị trí này'}).click();
+            assert.equal(await page.getByRole('button', {name: 'Yesterday', exact: true}).isVisible(), true);
             await page.getByRole('button', {name: 'buy', exact: true}).click();
             await correction.fill('bought');
             await save.click();
@@ -111,12 +116,13 @@ test('author marks real and distractor phrases, then students select and correct
             });
             assert.match(await page.locator('.find-mistakes-progress').textContent(), /1 \/ 1/);
             assert.equal(await page.getByRole('button', {name: 'She', exact: true}).isDisabled(), true);
-            await page.getByRole('button', {name: 'go', exact: true}).click();
+            const restored = page.getByRole('button', {name: 'goes', exact: true});
+            await restored.click();
             assert.equal(await correction.inputValue(), 'goes');
             await correction.fill('went');
             await correction.press('Escape');
             assert.equal(await correction.count(), 0);
-            await page.getByRole('button', {name: 'go', exact: true}).click();
+            await restored.click();
             assert.equal(await correction.inputValue(), 'goes');
             assert.deepEqual(errors, []);
             await page.close();

@@ -10,7 +10,7 @@
             aria-haspopup="dialog" aria-expanded="{{$ctrl.active.candidate === part}}"
             aria-pressed="{{$ctrl.savedAt(part) >= 0 || $ctrl.active.candidate === part}}"
             ng-disabled="$ctrl.locked || $ctrl.editorState.pack || ($ctrl.savedAt(part) < 0 && $ctrl.count() >= $ctrl.pack.subQuestions.length)"
-            ng-click="$ctrl.select(part)" ng-bind="part.text"></button></span></div>
+            ng-click="$ctrl.select(part)" ng-bind="$ctrl.wordText(part)"></button></span></div>
     <p class="text-muted" ng-if="!$ctrl.active && $ctrl.count() >= $ctrl.pack.subQuestions.length">Bấm vào vị trí đã lưu để sửa lại hoặc bỏ chọn.</p>
     <p class="text-muted" ng-if="$ctrl.editorState.pack && !$ctrl.active">Lưu hoặc hủy ô đang sửa để chọn vị trí tiếp theo.</p>
     <ng-form class="find-mistakes-correction" role="dialog" aria-label="Sửa {{$ctrl.active.candidate.text}}"

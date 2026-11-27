@@ -62,6 +62,7 @@ test('Battle Find Mistakes keeps one editing field, survives a snapshot, and cle
    assert.equal(await correction.inputValue(),'two loaves of bread');
    await page.getByRole('button',{name:'Lưu và chọn tiếp'}).click();
    assert.deepEqual(await answers(page),{'401':['3|two loaves of bread'],'402':[]});
+   assert.equal(await page.getByRole('button',{name:'two loaves of bread',exact:true}).isVisible(),true);
    await buy.click();
    await correction.fill('bought');
    await setLocked(page,true);
