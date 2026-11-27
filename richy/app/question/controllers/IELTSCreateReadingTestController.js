@@ -3497,8 +3497,9 @@
             }
             var numericType = /^\d+$/.test(String(value).trim()) ? Number(value) : NaN;
             var normalizedType = normalizedExcelText(value);
-            if (numericType === 19 || normalizedType === 'tim va sua loi (find mistakes)') {
-                throw new Error('Dùng nút Tìm và sửa lỗi trong trang tạo đề tổng hợp để đánh dấu vị trí và nhập cách sửa.');
+            if (numericType === 19 || normalizedType === 'tim va sua loi find mistakes' || normalizedType === 'tim va sua loi' || normalizedType === 'find mistakes') {
+                if (!vm.isComprehensiveMode) { throw new Error('Import dạng Tìm và sửa lỗi (mã 19) tại trang Tạo bài tập tổng hợp.'); }
+                return 19;
             }
             if (numericType === 18 || normalizedType === 'daily listening') {
                 throw new Error('Daily Listening được tạo ở mục Tạo Daily Listening: nhập audio và transcript để hệ thống tự tạo ô trống.');
@@ -3556,6 +3557,48 @@
                     throw new Error('NOI_DUNG thiếu cột "' + aliases[0] + '". Dùng dòng tiêu đề từ file mẫu; không gộp ô hoặc thêm tiêu đề phía trên.');
                 }
             });
+        }
+
+        function importedFindMistakeRow(group, row, rowNumber, questionNumber) {
+            var passage = String(excelRowValue(row, ['Nội dung câu hỏi', 'Question'])).trim();
+            var label = 'Dòng ' + rowNumber + ', nhóm ' + group.ordinalNumber;
+            if (!group.questions.length) {
+                var parsed = mistakes.parse(passage);
+                if (parsed.invalid || parsed.candidates.length < 2 || passage.length > 10000) {
+                    throw new Error(label + ': nhập đoạn văn tối đa 10.000 ký tự ở dòng đầu, có ít nhất hai vị trí hợp lệ dạng [[từ hoặc cụm từ]].');
+                }
+                group.transcript = passage;
+                group.findMistakeCandidateCount = parsed.candidates.length;
+            } else if (passage && passage !== group.transcript) {
+                throw new Error(label + ': Nội dung câu hỏi khác dòng đầu nhóm. Dùng Nhóm mới cho đoạn văn khác.');
+            }
+            var candidate = excelPositiveInteger(excelRowValue(row, ['Đáp án đúng', 'Correct answer', 'Correct']),
+                'Đáp án đúng (vị trí [[...]] từ trái sang phải)', rowNumber);
+            if (candidate > group.findMistakeCandidateCount) {
+                throw new Error(label + ': vị trí lỗi ' + candidate + ' vượt quá số vùng [[...]] đã đánh dấu.');
+            }
+            if (group.questions.some(function (question) { return question.findMistakeCandidate === candidate; })) {
+                throw new Error(label + ': vị trí lỗi ' + candidate + ' đã có đáp án trong nhóm.');
+            }
+            var correction = String(excelRowValue(row, ['Đáp án 1', 'Answer 1'])).trim();
+            if (!correction || correction.length > 200) {
+                throw new Error(label + ': nhập cách sửa từ 1 đến 200 ký tự vào Đáp án 1.');
+            }
+            for (var option = 2; option <= 12; option++) {
+                if (String(excelRowValue(row, ['Đáp án ' + option, 'Answer ' + option])).trim()) {
+                    throw new Error(label + ': mã 19 dùng Đáp án 1 cho cách sửa và Đáp án đúng cho vị trí lỗi.');
+                }
+            }
+            if (group.questions.length + 1 >= group.findMistakeCandidateCount) {
+                throw new Error(label + ': thêm ít nhất một vùng [[...]] đúng để học sinh có lựa chọn.');
+            }
+            return {
+                number: questionNumber,
+                sourceRow: rowNumber,
+                findMistakeCandidate: candidate,
+                text: 'Tìm và sửa lỗi trong đoạn văn',
+                answers: [{text: mistakes.encode(candidate, correction), correct: true}]
+            };
         }
 
         function validateImportedExcelParts(parts) {
@@ -3945,6 +3988,7 @@
                     'Option list'
                 ]);
                 if (String(matchingOptionsCell).trim()) {
+                    if (group.type === 19) { throw new Error('Dòng ' + (rowIndex + 2) + ': để trống Danh sách dùng chung cho mã 19.'); }
                     group.matchingOptions = parseExcelMatchingOptions(matchingOptionsCell, rowIndex + 2);
                 }
 
@@ -3976,6 +4020,11 @@
                 if (!questionNumber || questionNumber < questionRange.start || questionNumber > questionRange.end) {
                     throw new Error('Dòng ' + (rowIndex + 2) + ': Part ' + currentPartNumber +
                         ' chỉ được dùng câu ' + questionRange.start + '–' + questionRange.end + '.');
+                }
+                if (group.type === 19) {
+                    group.instructionHtml = group.instructionHtml || 'Tìm và sửa lỗi trong đoạn văn.';
+                    group.questions.push(importedFindMistakeRow(group, row, rowIndex + 2, questionNumber));
+                    return;
                 }
                 var answers = [];
                 if ((Number(group.type) === 4 || Number(group.type) === 10 || Number(group.type) === 14 || Number(group.type) === 15) && group.matchingOptions.length) {
@@ -4160,6 +4209,7 @@
             var sentenceImportGuide = vm.isComprehensiveMode
                 ? ' Dùng }{SPACE}{ cho đáp án ngắn và }{SENTENCE}{ cho yêu cầu viết hoặc viết lại cả câu. Có thể dùng cả hai trong cùng nhóm theo thứ tự số câu. Với ô viết cả câu, chép nguyên câu đáp án vào Đáp án 1.'
                 : '';
+            var findMistakesImportGuide = 'Dùng một Nhóm cho mỗi đoạn và một dòng cho mỗi lỗi. Ở dòng đầu nhóm, nhập đoạn văn vào Nội dung câu hỏi và đặt [[...]] quanh từng từ hoặc cụm từ có thể chọn, gồm ít nhất một vị trí đúng. Để trống Nội dung câu hỏi ở các dòng sau. Mỗi dòng nhập cách sửa vào Đáp án 1 và số thứ tự vùng sai từ trái sang phải vào Đáp án đúng. Các cột Đáp án 2–12 và Danh sách dùng chung để trống.';
             var guideRows = [
                 ['HƯỚNG DẪN IMPORT ' + (vm.isComprehensiveMode ? 'BÀI TẬP ' : 'IELTS ') + modeUpper, 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
                 ['Mục tiêu', vm.isComprehensiveMode
@@ -4203,10 +4253,11 @@
             if (vm.isComprehensiveMode) {
                 guideRows.splice(3, 0,
                     ['VIẾT CẢ CÂU (mã 11)', sentenceImportGuide.trim() + ' Điền A tại Đáp án đúng. Xem câu 4 trong NOI_DUNG.'],
+                    ['TÌM VÀ SỬA LỖI (mã 19)', findMistakesImportGuide + ' Xem nhóm 1 có một lỗi và nhóm 2 có bốn lỗi ở VI_DU_FIND_MISTAKES.'],
                     ['VIDEO - dùng chung mẫu này', 'Import bằng nút Import Excel hiện có. Điền Video URL trong THONG_TIN để hệ thống tự chuyển sang bài video: video bên trái, câu hỏi bên phải. Mỗi bài dùng một video. Link và câu hỏi ví dụ chỉ minh họa định dạng; thay bằng dữ liệu thật trước khi xuất bản.'],
                     ['VIDEO - link hỗ trợ', 'YouTube: link watch, youtu.be, Shorts hoặc live. TikTok: dùng link đầy đủ https://www.tiktok.com/@ten/video/123...; mở link rút gọn để lấy link đầy đủ. Có thể dùng link trực tiếp MP4/WebM/OGG. Video cần xem và nhúng được.'],
                     ['VIDEO - Mốc video', 'Cột Mốc video trong NOI_DUNG dùng văn bản phút:giây, ví dụ 01:30 = 1 phút 30 giây, 00:00 = đầu video; trên một giờ dùng 1:02:03. Không nhập 01:75 hoặc giờ Excel. Mốc phải nằm trong thời lượng video. Bài văn bản để trống cột này.'],
-                    ['VIDEO - từng câu / nhóm câu', 'Mã 1: mỗi dòng câu hỏi có mốc riêng. Các loại dùng chung nội dung như mã 5, 11, 13: nhập mốc ở dòng đầu nhóm; các dòng sau để trống để kế thừa hoặc lặp đúng mốc đó. Không dùng các mốc khác nhau trong cùng nhóm.'],
+                    ['VIDEO - từng câu / nhóm câu', 'Mã 1: mỗi dòng câu hỏi có mốc riêng. Các loại dùng chung nội dung như mã 5, 11, 13, 19: nhập mốc ở dòng đầu nhóm; các dòng sau để trống để kế thừa hoặc lặp đúng mốc đó. Không dùng các mốc khác nhau trong cùng nhóm.'],
                     ['VIDEO - ví dụ và kiểm tra', 'Ví dụ: câu 1 tại 01:30, câu 2 tại 02:30, nhóm điền từ câu 3–4 tại 03:30. Sửa mốc và câu hỏi theo video thật. Sau import, kiểm tra link, thời lượng, đáp án, Folder và Xem trước rồi xuất bản. Đến mốc, video dừng để học sinh trả lời rồi tiếp tục.']
                 );
             }
@@ -4250,6 +4301,7 @@
                     ['2B. Bài video: nhập Mốc video dưới dạng chuỗi văn bản phút:giây (01:30), hoặc giờ:phút:giây (1:02:03), giữ định dạng Text. Mã 1 cần mốc cho từng dòng. Các loại dùng chung nội dung như mã 5, 11, 13 dùng một mốc cho cả nhóm; dòng đầu nhập mốc, dòng sau để trống hoặc lặp đúng mốc. Không dùng mốc vượt thời lượng video.'],
                     ['2C. Chỉ đặt câu hỏi và đáp án từ nội dung video/đề thật. Nếu chưa có nội dung video, đáp án hoặc mốc thời gian, báo phần thiếu để người dùng bổ sung; không suy đoán từ tên hay link video.']
                 );
+                promptRows.splice(-2, 0, ['12. Khi đề có dạng Tìm và sửa lỗi, dùng mã 19 và tham chiếu VI_DU_FIND_MISTAKES. ' + findMistakesImportGuide + ' Đánh số các vùng [[...]] theo đúng vị trí, kể cả khi hai vùng có cùng chữ. Với bài VIDEO, nhập một Mốc video ở dòng đầu của nhóm.']);
             }
             var promptSheet = XLSX.utils.aoa_to_sheet(promptRows);
             promptSheet['!cols'] = [{wch: 150}];
@@ -4358,6 +4410,9 @@
                 }
                 typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);
             });
+            if (vm.isComprehensiveMode) {
+                typeRows.push([19, 'Tìm và sửa lỗi (Find Mistakes)', 'Một dòng cho mỗi lỗi. Xem VI_DU_FIND_MISTAKES và HUONG_DAN.']);
+            }
             var typeSheet = XLSX.utils.aoa_to_sheet(typeRows);
             typeSheet['!cols'] = [{wch: 10}, {wch: 42}, {wch: 75}];
             XLSX.utils.book_append_sheet(workbook, typeSheet, 'LOAI_CAU_HOI');
@@ -4474,6 +4529,26 @@
                 {wch: 38}, {wch: 38}, {wch: 42}, {wch: 34}, {wch: 42}, {wch: 18}
             ];
             XLSX.utils.book_append_sheet(workbook, multipleAnswersExampleSheet, 'VI_DU_MULTIPLE_ANSWERS');
+
+            if (vm.isComprehensiveMode) {
+                var findMistakesExamples = [
+                    [1, 1, 'Yesterday, [[she]] [[go]] to [[school]].', 'went', 2],
+                    [2, 2, 'Last Sunday, [[my brother]] [[go]] to the market. He [[buy]] [[some apples]] and [[two loafs of bread]]. On the way home, he [[run into]] [[an old friend]].', 'went', 2],
+                    [2, 3, '', 'bought', 3],
+                    [2, 4, '', 'two loaves of bread', 5],
+                    [2, 5, '', 'ran into', 6]
+                ];
+                var positionColumn = contentHeader.indexOf('Đáp án đúng');
+                var findMistakesRows = findMistakesExamples.map(function (example) {
+                    var row = [1, '', example[0], 19, '', example[1], example[2], example[3]];
+                    row[positionColumn] = example[4];
+                    return row;
+                });
+                var findMistakesSheet = XLSX.utils.aoa_to_sheet([contentHeader].concat(findMistakesRows));
+                findMistakesSheet['!cols'] = contentSheet['!cols'].map(function (column) { return angular.copy(column); });
+                findMistakesSheet['!cols'][6] = {wch: 130};
+                XLSX.utils.book_append_sheet(workbook, findMistakesSheet, 'VI_DU_FIND_MISTAKES');
+            }
 
             var templateFileName = vm.isComprehensiveMode
                 ? 'mau_import_bai_tap_tong_hop.xlsx'

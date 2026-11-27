@@ -6,6 +6,7 @@ const vmModule = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../question/controllers/IELTSCreateReadingTestController.js'), 'utf8');
 const videoSource = fs.readFileSync(path.join(__dirname, '../question/business/ComprehensiveVideo.js'), 'utf8');
+const mistakesSource = fs.readFileSync(path.join(__dirname, '../question/business/ComprehensiveFindMistakes.js'), 'utf8');
 
 function section(startMarker, endMarker) {
     const start = source.indexOf(startMarker), end = source.indexOf(endMarker, start);
@@ -61,18 +62,20 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
         },
         module() { return {
             factory(name, definition) { definitions[name] = definition; return this; },
+            component() { return this; },
             directive() { return this; }
         }; },
         noop() {}
     };
     vmModule.runInNewContext(videoSource, {angular});
+    vmModule.runInNewContext(mistakesSource, {angular, window: {APP_VERSION: 'test'}});
     const video = definitions.ComprehensiveVideo.at(-1)({URL}, {});
     const XLSX = sheetJsBoundary();
     const state = {
         isComprehensiveMode: mode === 'comprehensive', isFlexibleMode: mode === 'comprehensive' || mode === 'writing',
         isWritingMode: mode === 'writing', isListeningMode: mode === 'listening', folderTestMode: mode.toUpperCase(),
         testModeName: mode === 'comprehensive' ? 'Tổng hợp' : mode === 'listening' ? 'Listening' : mode === 'writing' ? 'Writing' : 'Reading',
-        currentUser: {id: 7}, types: [], questionPackageTypes: [{id: 1, name: 'Multiple Choices'}, {id: 11, name: 'Filling Gaps New'}],
+        currentUser: {id: 7},
         isVideoBuilder() { return this.isComprehensiveMode && (videoMode || this.comprehensiveContentMode === 'VIDEO'); },
         ieltsReadingTest: {subQuestions: [{videoUrl: link}]},
         comprehensiveContentMode: 'TEXT', savedBuilderVideoLink: 'old link', builderVideoSeconds: 99, videoDuration: 999,
@@ -83,7 +86,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
     };
     const loading = {count: 0, start() { this.count++; }, stop() { this.count--; }};
     const context = {
-        angular, XLSX, video, vm: state, $window: {XLSX}, editorService: {flush() {}},
+        angular, XLSX, video, mistakes: definitions.ComprehensiveFindMistakes(), vm: state, $window: {XLSX}, editorService: {flush() {}},
         toastr: Object.fromEntries(['error', 'warning', 'success'].map(type => [type, (message, title) => messages.push({type, message, title})])),
         $scope: {$applyAsync(callback) { callback(); }},
         $timeout(callback) { return Promise.resolve().then(callback); }, blockUI: loading,
@@ -97,6 +100,7 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
         FileReader: class {readAsArrayBuffer(file) { this.onload({target: {result: file.workbook}}); }}
     };
     vmModule.createContext(context);
+    vmModule.runInContext(section('        vm.types = [', '        vm.passageTypes ='), context);
     vmModule.runInContext(['flushBuilderEditors', 'ensureComprehensiveBuilder', 'ensureDailyListeningPackage', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
         'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage', 'prepareTestFolderForSave'].map(productionFunction).join('\n') + '\n' +
         productionFunction('prepareSharedChoicePackagesForSave') + '\n' +
@@ -146,6 +150,58 @@ test('the existing Tổng hợp download always includes video fields, full inst
     assert.match(questions[0].question, /\}\{SPACE\}\{[\s\S]+\}\{SENTENCE\}\{/);
     assert.equal(questions[0].questionAnswers[0].answer.answer, 'Harbour');
     assert.equal(questions[1].questionAnswers[0].answer.answer, 'The number of participants increased from 1,200 to 1,500.');
+});
+
+test('the Find Mistakes examples round-trip from the template into one- and four-error packages', async () => {
+    const qa = harness(), {book} = qa.download();
+    const examples = book.Sheets.VI_DU_FIND_MISTAKES;
+    assert.deepEqual(examples.rows[0], book.Sheets.NOI_DUNG.rows[0]);
+    assert.ok(book.Sheets.LOAI_CAU_HOI.rows.some(row => row[0] === 19));
+    assert.ok(book.Sheets.LOAI_CAU_HOI.rows.some(row => row[0] === 14));
+    for (const name of ['HUONG_DAN', 'PROMPT_CHATGPT']) {
+        assert.match(JSON.stringify(book.Sheets[name].rows), /VI_DU_FIND_MISTAKES/);
+    }
+    book.Sheets.NOI_DUNG = examples;
+    qa.import(book);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(qa.saves.length, 1);
+    const part = qa.saves[0].test.subQuestions[0];
+    assert.equal(part.type, 6);
+    const [single, multiple] = part.subQuestions;
+    assert.deepEqual([single.type, multiple.type], [19, 19]);
+    assert.equal(single.motherTongue, 'Yesterday, [[she]] [[go]] to [[school]].');
+    assert.match(multiple.motherTongue, /\[\[two loafs of bread\]\]/);
+    const answers = group => group.subQuestions.map(question => question.questionAnswers[0].answer.answer);
+    assert.deepEqual(answers(single), ['2|went']);
+    assert.deepEqual(answers(multiple), ['2|went', '3|bought', '5|two loaves of bread', '6|ran into']);
+    assert.ok(multiple.subQuestions.every(question => question.questionAnswers[0].correct));
+
+    info(book, 'Video URL', 'https://youtu.be/M7lc1UVf-VE');
+    cue(book, 1, '00:30');
+    cue(book, 2, '01:30');
+    assert.deepEqual(Array.from(qa.parse(book).subQuestions[0].subQuestions, pack => pack.videoTimeSeconds), [30, 90]);
+});
+
+test('the import rejects missing corrections, invalid or repeated positions, and groups without distractors', () => {
+    const qa = harness();
+    function change(row, column, value) {
+        const {book} = qa.download();
+        book.Sheets.NOI_DUNG = book.Sheets.VI_DU_FIND_MISTAKES;
+        const rows = book.Sheets.NOI_DUNG.rows;
+        rows[row][rows[0].indexOf(column)] = value;
+        return book;
+    }
+    assert.throws(() => qa.parse(change(1, 'Đáp án đúng', 4)), /vượt quá số vùng/);
+    assert.throws(() => qa.parse(change(3, 'Đáp án đúng', 2)), /đã có đáp án/);
+    assert.throws(() => qa.parse(change(3, 'Đáp án 1', '')), /nhập cách sửa/);
+    assert.throws(() => qa.parse(change(1, 'Nội dung câu hỏi', 'Yesterday, [[she]] [[go] to school.')), /hai vị trí hợp lệ/);
+    assert.throws(() => qa.parse(change(3, 'Nội dung câu hỏi', 'A different passage.')), /khác dòng đầu nhóm/);
+    const noDistractor = change(1, 'Nội dung câu hỏi', 'Yesterday she [[go]] to [[store]].');
+    const rows = noDistractor.Sheets.NOI_DUNG.rows;
+    rows[2] = rows[1].slice();
+    rows[2][rows[0].indexOf('Số câu')] = 2;
+    rows[2][rows[0].indexOf('Đáp án đúng')] = 1;
+    assert.throws(() => qa.parse(noDistractor), /thêm ít nhất một vùng/);
 });
 
 test('a teacher fills video fields in the default template and uses the existing Import Excel action', async () => {
