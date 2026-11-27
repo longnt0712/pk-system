@@ -7,8 +7,8 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#731519">
     <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
-    <link rel="stylesheet" href="styles.css?v=5">
-    <script type="module" src="app.js?v=5"></script>
+    <link rel="stylesheet" href="styles.css?v=6">
+    <script type="module" src="app.js?v=6"></script>
 </head>
 <body>
     <div class="page">
@@ -58,7 +58,7 @@
                             <input name="keyword" type="search" placeholder="Tên việc, người phụ trách hoặc ghi chú" autocomplete="off">
                         </label>
                         <div class="task-filter-fields">
-                            <div><label for="task-filter-status">Trạng thái</label><select id="task-filter-status" name="status"><option value="">Tất cả trạng thái</option><option>Chưa làm</option><option>Đang làm</option><option>Xong</option></select></div>
+                            <div><label for="task-filter-status">Trạng thái</label><select id="task-filter-status" name="status"><option value="">Tất cả trạng thái</option><option>Chưa làm</option><option>Đang làm</option><option>Xong</option><option>Cha đã duyệt</option></select></div>
                             <div><label for="task-filter-assignee">Người phụ trách</label><select id="task-filter-assignee" name="assignee"><option value="">Tất cả người phụ trách</option></select></div>
                             <div><label for="task-filter-department">Ban phụ trách</label><select id="task-filter-department" name="department"><option value="">Tất cả ban</option></select></div>
                             <div><label for="task-filter-campaign">Đợt</label><select id="task-filter-campaign" name="campaign"><option value="">Tất cả đợt</option></select></div>
@@ -114,7 +114,7 @@
                 <label class="task-field-wide">Tên công việc<input name="tieuDe" maxlength="300" required></label>
                 <label>Ngày<input name="ngay" type="date" max="9999-12-31"></label>
                 <label>Giờ<input name="gio" type="time"></label>
-                <div><label for="task-editor-status">Trạng thái</label><select id="task-editor-status" name="trangThai"><option>Chưa làm</option><option>Đang làm</option><option>Xong</option></select></div>
+                <div><label for="task-editor-status">Trạng thái</label><select id="task-editor-status" name="trangThai"><option>Chưa làm</option><option>Đang làm</option><option>Xong</option><option>Cha đã duyệt</option></select></div>
                 <label>Ban phụ trách<input name="ban" maxlength="120"></label>
                 <label class="task-field-wide">Người phụ trách<input name="nguoiPhuTrach" placeholder="Ví dụ Mai Lan, Phương Anh"></label>
                 <label class="task-field-wide">Đợt<input name="dot" maxlength="150"></label>

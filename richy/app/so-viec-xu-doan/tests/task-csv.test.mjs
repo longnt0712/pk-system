@@ -16,10 +16,11 @@ test('Đọc qua phần đầu bảng và giữ đủ các ô CSV bằng tiếng
 
 test('Giữ đúng việc chưa có ngày và dùng lại ID khi thay trạng thái hoặc ghi chú', async () => {
     const first = await parseTaskCsv(header + '\nChuẩn bị,,Chưa làm,Sinh hoạt,[chưa có tên],Mùa Vọng,');
-    const later = await parseTaskCsv(header + '\nChuẩn bị,,Xong,Sinh hoạt,An,Mùa Vọng,Đã xong');
+    const later = await parseTaskCsv(header + '\nChuẩn bị,,Cha đã duyệt,Sinh hoạt,An,Mùa Vọng,Đã xong');
     assert.equal(first.tasks[0].id, later.tasks[0].id);
     assert.equal(first.tasks[0].task.ngay, '');
     assert.deepEqual(first.tasks[0].task.nguoiPhuTrach, []);
+    assert.equal(later.tasks[0].task.trangThai, 'Cha đã duyệt');
 });
 
 test('Bỏ qua dòng trùng và báo số dòng nếu thông tin về cùng một việc mâu thuẫn', async () => {

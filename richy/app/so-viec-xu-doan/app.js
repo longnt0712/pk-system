@@ -1,6 +1,6 @@
 import {firebaseConfig, useEmulators} from './firebase-config.js';
 import {normalizeEmail, initials, errorMessage} from './member-data.js';
-import {createTaskWorkspace} from './task-workspace.js?v=5';
+import {createTaskWorkspace} from './task-workspace.js?v=6';
 
 const byId = id => document.getElementById(id);
 const form = byId('member-form');

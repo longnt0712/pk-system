@@ -1,7 +1,9 @@
-import {parseTaskCsv, formatTaskDate, taskFromFields} from './task-csv.js?v=5';
+import {parseTaskCsv, formatTaskDate, taskFromFields} from './task-csv.js?v=6';
 import {errorMessage, normalizeEmail} from './member-data.js';
 
-const statusStyles = {'Chưa làm': 'status-todo', 'Đang làm': 'status-active', 'Xong': 'status-done'};
+const statusStyles = {
+    'Chưa làm': 'status-todo', 'Đang làm': 'status-active', 'Xong': 'status-done', 'Cha đã duyệt': 'status-approved'
+};
 const taskAssignees = task => Array.isArray(task.nguoiPhuTrach)
     ? task.nguoiPhuTrach.filter(name => typeof name === 'string' && name.trim()) : [];
 const filterKey = value => String(value ?? '').trim().normalize('NFC').replace(/\s+/g, ' ').toLocaleLowerCase('vi');

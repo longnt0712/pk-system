@@ -1,5 +1,5 @@
 const columns = ['Việc', 'Ngày', 'Trạng thái', 'Ban phụ trách', 'Người phụ trách', 'Đợt', 'Ghi chú'];
-const statuses = ['Chưa làm', 'Đang làm', 'Xong'];
+const statuses = ['Chưa làm', 'Đang làm', 'Xong', 'Cha đã duyệt'];
 const utf8 = new TextEncoder();
 
 function key(value) {
@@ -93,7 +93,7 @@ export function taskFromFields(fields) {
     if (ngay && !validIsoDate(ngay)) { throw new Error('Ngày công việc không hợp lệ.'); }
     const status = fields.trangThai.trim();
     const trangThai = status ? statuses.find(option => key(option) === key(status)) : statuses[0];
-    if (!trangThai) { throw new Error('Trạng thái phải là Chưa làm, Đang làm hoặc Xong.'); }
+    if (!trangThai) { throw new Error(`Trạng thái hợp lệ gồm ${statuses.join(', ')}.`); }
     const nguoiPhuTrach = fields.nguoiPhuTrach.split(',').map(name => name.trim()).filter(name => name && key(name) !== '[chưa có tên]');
     if (tieuDe.length > 300 || ban.length > 120 || dot.length > 150 || ghiChu.length > 10000 || nguoiPhuTrach.length > 30) {
         throw new Error('Một cột vượt giới hạn độ dài hoặc có hơn 30 người phụ trách.');

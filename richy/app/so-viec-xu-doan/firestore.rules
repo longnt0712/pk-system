@@ -65,7 +65,7 @@ service cloud.firestore {
         && data.ngay is string
         && (data.ngay == '' || data.ngay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
         && time is string && (time == '' || time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
-        && data.trangThai in ['Chưa làm', 'Đang làm', 'Xong']
+        && data.trangThai in ['Chưa làm', 'Đang làm', 'Xong', 'Cha đã duyệt']
         && shortText(data.ban, 120)
         && data.nguoiPhuTrach is list && data.nguoiPhuTrach.size() <= 30
         && shortText(data.dot, 150) && shortText(data.ghiChu, 10000)

@@ -147,10 +147,10 @@ test('Việc đã công khai đồng bộ khi thành viên sửa hoặc quản t
     await assertFails(updateDoc(original, {trangThai: 'Xong', ...audit}));
     await assertFails(updateDoc(publicView, {trangThai: 'Xong'}));
     const edit = writeBatch(member);
-    edit.update(original, {trangThai: 'Xong', ...audit});
-    edit.update(publicView, {trangThai: 'Xong'});
+    edit.update(original, {trangThai: 'Cha đã duyệt', ...audit});
+    edit.update(publicView, {trangThai: 'Cha đã duyệt'});
     await assertSucceeds(edit.commit());
-    assert.equal((await getDoc(publicView)).data().trangThai, 'Xong');
+    assert.equal((await getDoc(publicView)).data().trangThai, 'Cha đã duyệt');
     const deleteOriginal = doc(admin, 'tasks', 'example');
     const deletePublic = doc(admin, 'publicTasks', 'example');
     await assertFails(deleteDoc(deleteOriginal));
