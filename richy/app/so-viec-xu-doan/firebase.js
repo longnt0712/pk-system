@@ -49,6 +49,19 @@ export function connectFirebase(config, useEmulators) {
         });
     }
 
+    function deleteTask(task) {
+        const originalRef = doc(tasks, task.id);
+        const publicRef = doc(publicTasks, task.id);
+        return runTransaction(database, async transaction => {
+            const original = (await transaction.get(originalRef)).data();
+            if (original && JSON.stringify(publicTask(original)) !== JSON.stringify(publicTask(task))) {
+                throw new Error('Công việc vừa được cập nhật. Hãy xem bản mới nhất trước khi xóa.');
+            }
+            transaction.delete(originalRef);
+            transaction.delete(publicRef);
+        });
+    }
+
     async function publishTaskRows(rows, email, canContinue) {
         let added = 0;
         const membership = doc(database, 'members', email);
@@ -108,6 +121,7 @@ export function connectFirebase(config, useEmulators) {
             }, fail);
         },
         saveTask,
+        deleteTask,
         importTasks: publishTaskRows,
         async publishExistingTasks(publishedIds, email, canContinue) {
             const records = await getDocsFromServer(tasks);

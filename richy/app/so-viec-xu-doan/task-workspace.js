@@ -138,6 +138,13 @@ export function createTaskWorkspace({byId, element, showMessage}) {
                 edit.setAttribute('aria-label', 'Sửa ' + task.tieuDe);
                 edit.addEventListener('click', () => openTaskEditor(task));
                 footer.append(edit);
+                if (profile.laQuanTri === true) {
+                    const remove = element('button', 'button button-subtle delete-button', 'Xóa');
+                    remove.type = 'button';
+                    remove.setAttribute('aria-label', 'Xóa công việc ' + task.tieuDe);
+                    remove.addEventListener('click', () => removeTask(task, remove));
+                    footer.append(remove);
+                }
                 card.append(footer);
             }
             return card;
@@ -220,6 +227,28 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         editingTask = null;
         taskForm.reset();
         taskDialog.close();
+    }
+
+    async function removeTask(task, button) {
+        if (profile?.laQuanTri !== true || saving ||
+            !confirm('Xóa công việc “' + task.tieuDe + '”? Công việc sẽ bị xóa vĩnh viễn.')) { return; }
+        const activeSession = session;
+        saving = true;
+        button.disabled = true;
+        showMessage('tasks-error', '');
+        showMessage('tasks-status', 'Đang xóa công việc…');
+        try {
+            await firebase.deleteTask(task);
+            if (activeSession === session) { showMessage('tasks-status', 'Đã xóa công việc.'); }
+        } catch (error) {
+            if (activeSession === session) {
+                showMessage('tasks-status', '');
+                showMessage('tasks-error', errorMessage(error));
+            }
+        } finally {
+            saving = false;
+            button.disabled = false;
+        }
     }
 
     byId('add-task').addEventListener('click', () => openTaskEditor());

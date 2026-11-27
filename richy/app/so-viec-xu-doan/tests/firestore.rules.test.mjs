@@ -155,10 +155,18 @@ test('Việc đã công khai đồng bộ khi thành viên sửa hoặc quản t
     const deletePublic = doc(admin, 'publicTasks', 'example');
     await assertFails(deleteDoc(deleteOriginal));
     await assertFails(deleteDoc(deletePublic));
-    const remove = writeBatch(admin);
-    remove.delete(deleteOriginal);
-    remove.delete(deletePublic);
-    await assertSucceeds(remove.commit());
+    const memberRemove = writeBatch(member);
+    memberRemove.delete(original);
+    memberRemove.delete(publicView);
+    await assertFails(memberRemove.commit());
+    await assertSucceeds(runTransaction(admin, async transaction => {
+        assert.equal((await transaction.get(deleteOriginal)).data().trangThai, 'Cha đã duyệt');
+        transaction.delete(deleteOriginal);
+        transaction.delete(deletePublic);
+    }));
+    assert.equal((await getDoc(deleteOriginal)).exists(), false);
+    const guest = env.unauthenticatedContext().firestore();
+    assert.equal((await getDoc(doc(guest, 'publicTasks', 'example'))).exists(), false);
 });
 
 test('Thành viên lưu việc mới kèm giờ và ghi chú cho khách xem trong cùng giao dịch', async () => {

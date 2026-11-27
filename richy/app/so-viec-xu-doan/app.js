@@ -1,6 +1,6 @@
 import {firebaseConfig, useEmulators} from './firebase-config.js';
 import {normalizeEmail, initials, errorMessage} from './member-data.js';
-import {createTaskWorkspace} from './task-workspace.js?v=6';
+import {createTaskWorkspace} from './task-workspace.js?v=7';
 
 const byId = id => document.getElementById(id);
 const form = byId('member-form');
@@ -246,7 +246,7 @@ async function start() {
         return;
     }
     try {
-        const {connectFirebase} = await import('./firebase.js?v=5');
+        const {connectFirebase} = await import('./firebase.js?v=6');
         firebase = connectFirebase(firebaseConfig, useEmulators);
         taskWorkspace.connect(firebase);
         firebase.watchAuth(handleAuth);
