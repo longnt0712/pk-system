@@ -11,6 +11,8 @@ public class BattleOnlineAnswerResultDto implements Serializable {
     private double score;
     private int streak;
     private int scoreMultiplier = 1;
+    private Integer findMistakesCorrect;
+    private Integer findMistakesTotal;
 
     private String message;
 
@@ -62,6 +64,11 @@ public class BattleOnlineAnswerResultDto implements Serializable {
     public void setScoreMultiplier(int scoreMultiplier) {
         this.scoreMultiplier = scoreMultiplier < 1 ? 1 : scoreMultiplier;
     }
+
+    public Integer getFindMistakesCorrect() { return findMistakesCorrect; }
+    public void setFindMistakesCorrect(Integer value) { findMistakesCorrect = value; }
+    public Integer getFindMistakesTotal() { return findMistakesTotal; }
+    public void setFindMistakesTotal(Integer value) { findMistakesTotal = value; }
 
     public String getMessage() {
         return message;

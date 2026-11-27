@@ -17,24 +17,61 @@ async function open(browser,exercise,{width=1100,touch=false}={}){
  const page=await browser.newPage({viewport:{width,height:1000},hasTouch:touch,isMobile:touch});page.setDefaultTimeout(7000);
  const errors=[];page.on('pageerror',error=>errors.push(String(error)));
  const battleView=fs.readFileSync(path.join(app,'question/views/battle_quiz_online.html'),'utf8');
- const css=fs.readFileSync(path.join(app,'assets/css/external/bootstrap.min.css'),'utf8')+'\n'+Array.from(battleView.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g),m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(app,'assets/css/question-drag-drop.css'),'utf8')+'\n'+fs.readFileSync(path.join(app,'assets/css/battle-exercise-form.css'),'utf8');
+ const css=fs.readFileSync(path.join(app,'assets/css/external/bootstrap.min.css'),'utf8')+'\n'+Array.from(battleView.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g),m=>m[1]).join('\n')+'\n'+['question-drag-drop.css','battle-exercise-form.css','comprehensive-find-mistakes.css'].map(name=>fs.readFileSync(path.join(app,'assets/css',name),'utf8')).join('\n');
  await page.setContent('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><main id="qa" class="battle-online-page" style="padding:12px"><battle-exercise-form exercise="exercise" answers="answers" disabled="locked" on-answer="answered()"></battle-exercise-form></main></body></html>');
  for(const script of ['angular.min.js','angular-sanitize.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external',script)});
- await page.evaluate(({exercise,template})=>{
+ await page.evaluate(({exercise,template,mistakesTemplate})=>{
   window.APP_VERSION='qa';window.callbacks=0;window.exploit=0;
   angular.module('Hrm.Question',['ngSanitize']).run(function($templateCache,$rootScope){
    $templateCache.put('question/views/battle_online_exercise_form.html?v=qa&individualQuestions=20261007_1',template);
+   $templateCache.put('question/views/find_mistakes_exercise.html?v=qa',mistakesTemplate);
    $rootScope.exercise=exercise;$rootScope.answers={};$rootScope.locked=false;$rootScope.answered=()=>window.callbacks++;
    window.qaRoot=$rootScope;
   });
- },{exercise,template:fs.readFileSync(path.join(app,'question/views/battle_online_exercise_form.html'),'utf8')});
- for(const script of ['question/business/QuestionDragDrop.js','question/business/ComprehensiveVideo.js','question/business/ComprehensiveListening.js','question/controllers/BattleExerciseForm.js'])await page.addScriptTag({path:path.join(app,script)});
+ },{exercise,template:fs.readFileSync(path.join(app,'question/views/battle_online_exercise_form.html'),'utf8'),
+  mistakesTemplate:fs.readFileSync(path.join(app,'question/views/find_mistakes_exercise.html'),'utf8')});
+ for(const script of ['question/business/QuestionDragDrop.js','question/business/ComprehensiveVideo.js','question/business/ComprehensiveListening.js','question/business/ComprehensiveFindMistakes.js','question/controllers/BattleExerciseForm.js'])await page.addScriptTag({path:path.join(app,script)});
  await page.evaluate(()=>angular.bootstrap(document.getElementById('qa'),['Hrm.Question']));
  await page.locator('.battle-exercise-form').waitFor();
  return {page,errors};
 }
 async function answers(page){return page.evaluate(()=>JSON.parse(JSON.stringify(qaRoot.answers)));}
 async function setLocked(page,value){await page.evaluate(value=>qaRoot.$apply(()=>qaRoot.locked=value),value);}
+
+test('Battle Find Mistakes keeps one editing field, survives a snapshot, and clears answers on a new round', async () => {
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try {
+  for (const width of [390, 1100]) {
+   const exercise={type:19,answerMode:'FIND_MISTAKES',findMistakesPassage:'[[She]] [[buy]] [[two loafs of bread]].',
+    items:[{id:'401',number:3},{id:'402',number:4}]};
+   const {page,errors}=await open(browser,exercise,{width,touch:width===390});
+   const loafs=page.getByRole('button',{name:'two loafs of bread',exact:true});
+   const buy=page.getByRole('button',{name:'buy',exact:true});
+   const correction=page.locator('.find-mistakes-correction textarea');
+   await loafs.click();
+   assert.equal(await correction.count(),1);
+   assert.equal(await buy.isDisabled(),true);
+   await correction.fill('two loaves of bread');
+   await page.evaluate(()=>qaRoot.$apply(()=>qaRoot.exercise=structuredClone(qaRoot.exercise)));
+   assert.equal(await correction.inputValue(),'two loaves of bread');
+   await page.getByRole('button',{name:'Lưu và chọn tiếp'}).click();
+   assert.deepEqual(await answers(page),{'401':['3|two loaves of bread'],'402':[]});
+   await buy.click();
+   await correction.fill('bought');
+   await setLocked(page,true);
+   assert.equal(await correction.isDisabled(),true);
+   assert.equal(await page.getByRole('button',{name:'Lưu và chọn tiếp'}).isDisabled(),true);
+   await page.evaluate(()=>qaRoot.$apply(()=>{qaRoot.answers={};qaRoot.locked=false;}));
+   assert.equal(await correction.count(),0);
+   assert.equal(await loafs.isDisabled(),false);
+   assert.deepEqual(await answers(page),{'401':[],'402':[]});
+   assert.equal(await page.locator('.battle-exercise-error').count(),0);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   assert.deepEqual(errors,[]);
+   await page.close();
+  }
+ } finally { await browser.close(); }
+});
 function token(page,key){return page.locator('.battle-exercise-bank .battle-exercise-choice-token[data-option-key="'+key+'"]');}
 function slot(page,id){return page.locator('.battle-exercise-slot[data-item-id="'+id+'"]');}
 function placed(page,id){return slot(page,id).locator('.battle-exercise-choice-token');}

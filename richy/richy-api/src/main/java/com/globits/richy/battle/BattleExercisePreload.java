@@ -3,6 +3,7 @@ package com.globits.richy.battle;
 import com.globits.richy.dto.AnswerDto;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.question.ComprehensiveFindMistakes;
 import com.globits.richy.service.BattleOnlineException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,6 +55,7 @@ public class BattleExercisePreload {
         Long previousPart = null;
         Long previousGroup = null;
         Long firstQuestion = null;
+        QuestionRef lastRef = null;
         int partPosition = -1;
         int questionIndex = 0;
         for (Object[] row : rows) {
@@ -78,11 +80,16 @@ public class BattleExercisePreload {
                 firstQuestion = questionId;
                 questionIndex = 0;
             }
+            if (type == ComprehensiveFindMistakes.TYPE && questionIndex > 0) {
+                lastRef.groupedQuestionIds.add(questionId);
+                continue;
+            }
             Integer videoTime = videoUrl == null || videoUrl.trim().isEmpty() ? null
                     : (Integer) row[type == 1 ? 7 : 5];
-            questionsByTest.computeIfAbsent(testId, id -> new ArrayList<>())
-                    .add(new QuestionRef(testId, partId, groupId, questionId, firstQuestion,
-                            type, questionIndex++, partPosition, videoTime));
+            lastRef = new QuestionRef(testId, partId, groupId, questionId, firstQuestion,
+                    type, questionIndex++, partPosition, videoTime);
+            if (type == ComprehensiveFindMistakes.TYPE) { lastRef.groupedQuestionIds.add(questionId); }
+            questionsByTest.computeIfAbsent(testId, id -> new ArrayList<>()).add(lastRef);
         }
 
         List<QuestionRef> questions = new ArrayList<>(rows.size());
@@ -108,6 +115,8 @@ public class BattleExercisePreload {
             nodeIds.add(ref.groupId);
             nodeIds.add(ref.questionId);
             answerQuestionIds.add(ref.questionId);
+            nodeIds.addAll(ref.groupedQuestionIds);
+            answerQuestionIds.addAll(ref.groupedQuestionIds);
             if (ref.usesFirstQuestion()) {
                 nodeIds.add(ref.firstQuestionId);
             }
@@ -136,6 +145,11 @@ public class BattleExercisePreload {
             QuestionDto first = ref.usesFirstQuestion() ? requireNode(nodes, ref.firstQuestionId, ref.groupId) : source;
             if (group.getType() != ref.type) {
                 throw changedTest();
+            }
+            if (!ref.groupedQuestionIds.isEmpty()) {
+                List<QuestionDto> groupedQuestions = new ArrayList<>(ref.groupedQuestionIds.size());
+                for (Long id : ref.groupedQuestionIds) { groupedQuestions.add(requireNode(nodes, id, ref.groupId)); }
+                group.setSubQuestions(groupedQuestions);
             }
             turns.add(BattleExerciseQuestions.fromQuestion(ref.testId, plan.tests.get(ref.testId).title,
                     part, group, source, ref.questionIndex, first, random));
@@ -176,7 +190,7 @@ public class BattleExercisePreload {
     private Map<Long, QuestionDto> readNodes(Set<Long> ids) {
         List<Object[]> rows = manager.createQuery(
                 "select q.id, parent.id, q.question, q.ordinalNumber, q.type, q.title, q.pronounce,"
-                + " q.motherTongue, q.videoUrl, q.videoTimeSeconds"
+                + " q.motherTongue, q.videoUrl, q.videoTimeSeconds, q.videoAnswerSeconds"
                 + " from Question q left join q.parent parent where q.id in :ids", Object[].class)
                 .setParameter("ids", ids)
                 .setHint("javax.persistence.query.timeout", QUERY_TIMEOUT_MS)
@@ -196,6 +210,7 @@ public class BattleExercisePreload {
             node.setMotherTongue((String) row[7]);
             node.setVideoUrl((String) row[8]);
             node.setVideoTimeSeconds((Integer) row[9]);
+            node.setVideoAnswerSeconds((Integer) row[10]);
             node.setQuestionAnswers(new ArrayList<>());
             nodes.put(node.getId(), node);
         }
@@ -280,6 +295,7 @@ public class BattleExercisePreload {
 
     private static final class QuestionRef {
         private final Long testId, partId, groupId, questionId, firstQuestionId;
+        private final List<Long> groupedQuestionIds = new ArrayList<>();
         private final int type, questionIndex, partPosition;
         private final Integer videoTime;
 

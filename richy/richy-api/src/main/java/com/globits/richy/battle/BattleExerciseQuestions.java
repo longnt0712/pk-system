@@ -2,14 +2,17 @@ package com.globits.richy.battle;
 
 import com.globits.richy.dto.*;
 import com.globits.richy.service.BattleOnlineException;
+import com.globits.richy.question.ComprehensiveFindMistakes;
+import com.globits.richy.question.ComprehensiveFindMistakes.Response;
 import com.globits.richy.question.ComprehensiveListeningScore;
 import com.globits.richy.question.ComprehensiveListeningValidation;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.util.HtmlUtils;
 
-/** One child question per game turn, including its passage and original answer bank. */
+/** Projects each authored question or grouped passage into a Battle turn. */
 public final class BattleExerciseQuestions {
+    public static final String FIND_MISTAKES = "FIND_MISTAKES";
     private BattleExerciseQuestions() {}
 
     public static class Turn {
@@ -20,6 +23,10 @@ public final class BattleExerciseQuestions {
         public BattleOnlineExerciseDto content;
         private final Map<String, Set<String>> correct = new LinkedHashMap<String, Set<String>>();
         private final Map<String, List<String>> correctTexts = new LinkedHashMap<String, List<String>>();
+        private List<String> mistakeCandidates;
+        private final Map<Integer, String> mistakeCorrections = new LinkedHashMap<>();
+
+        public boolean isFindMistakes() { return FIND_MISTAKES.equals(content.answerMode); }
 
         public String correctSummary() {
             if (content.minimumWords > 0) { return "Bài viết trên " + content.minimumWords + " từ"; }
@@ -31,6 +38,7 @@ public final class BattleExerciseQuestions {
         }
 
         public boolean grade(Map<String, List<String>> submitted) {
+            if (isFindMistakes()) { return correctFindMistakes(submitted) == content.items.size(); }
             if (submitted == null || submitted.size() != content.items.size()) { return false; }
             int listeningCorrect = 0;
             for (BattleOnlineExerciseDto.Item item : content.items) {
@@ -50,6 +58,42 @@ public final class BattleExerciseQuestions {
             }
             return !"LISTENING".equals(content.answerMode) ||
                     !content.items.isEmpty() && listeningCorrect * 100L >= content.items.size() * 90L;
+        }
+
+        public int correctFindMistakes(Map<String, List<String>> submitted) {
+            int correctCount = 0;
+            for (Response answer : findMistakeResponses(submitted)) {
+                if (matchesCorrection(answer)) { correctCount++; }
+            }
+            return correctCount;
+        }
+
+        public String findMistakesSubmissionSummary(Map<String, List<String>> submitted) {
+            List<String> rows = new ArrayList<>();
+            int correctCount = 0;
+            for (Response response : findMistakeResponses(submitted)) {
+                rows.add(ComprehensiveFindMistakes.describe(mistakeCandidates, response));
+                if (matchesCorrection(response)) { correctCount++; }
+            }
+            return rows.isEmpty() ? "Chưa trả lời" : "Sửa đúng " + correctCount + "/" + content.items.size()
+                    + " lỗi · " + String.join("; ", rows);
+        }
+
+        private boolean matchesCorrection(Response answer) {
+            return answer.getText().equals(mistakeCorrections.get(answer.getCandidate()));
+        }
+
+        private List<Response> findMistakeResponses(Map<String, List<String>> submitted) {
+            List<Response> answers = new ArrayList<>();
+            if (submitted == null || submitted.size() > content.items.size()) { return answers; }
+            Set<Integer> seen = new HashSet<>();
+            for (BattleOnlineExerciseDto.Item item : content.items) {
+                List<String> values = submitted.get(item.id);
+                if (values == null || values.size() != 1 || values.get(0) == null || values.get(0).length() > 220) { continue; }
+                Response response = ComprehensiveFindMistakes.parse(values.get(0), mistakeCandidates.size());
+                if (response != null && seen.add(response.getCandidate())) { answers.add(response); }
+            }
+            return answers;
         }
     }
 
@@ -71,7 +115,8 @@ public final class BattleExerciseQuestions {
                     questions = Collections.singletonList(group);
                 }
                 if (questions.isEmpty()) { throw invalid("Có nhóm chưa có câu hỏi hoặc đáp án."); }
-                for (int q = 0; q < questions.size(); q++) {
+                int groupTurns = group.getType() == ComprehensiveFindMistakes.TYPE ? 1 : questions.size();
+                for (int q = 0; q < groupTurns; q++) {
                     partTurns.add(fromQuestion(test.getId(), test.getTitle(), part, group,
                             questions.get(q), q, questions.get(0), random));
                 }
@@ -96,7 +141,7 @@ public final class BattleExerciseQuestions {
         turn.content.videoUrl = part.getVideoUrl().trim();
         turn.content.videoSourceId = testId + ":" + part.getId();
         turn.content.videoTimeSeconds = group.getType() == 1 ? source.getVideoTimeSeconds() : group.getVideoTimeSeconds();
-        Integer duration = source.getVideoAnswerSeconds();
+        Integer duration = turn.isFindMistakes() ? group.getVideoAnswerSeconds() : source.getVideoAnswerSeconds();
         if (duration == null) { duration = group.getVideoAnswerSeconds(); }
         turn.content.videoAnswerSeconds = duration == null ? 20 : duration;
         if (!com.globits.richy.question.ComprehensiveVideoValidation.isSupportedUrl(turn.content.videoUrl) ||
@@ -113,6 +158,7 @@ public final class BattleExerciseQuestions {
         turn.id = source.getId();
         if (turn.id == null) { throw invalid("Có câu hỏi chưa được lưu."); }
         int type = group.getType();
+        if (type == ComprehensiveFindMistakes.TYPE) { return buildFindMistakes(turn, group, passage); }
         if (type == 18 && isRuntimeListening(firstQuestion)) { return buildListening(turn, group, source, passage, random); }
         String mode;
         switch (type) {
@@ -168,6 +214,41 @@ public final class BattleExerciseQuestions {
         turn.prompt = plain(source.getQuestion());
         if (turn.prompt.isEmpty() || type == 11 || type == 13 || type == 18) {
             turn.prompt = "Câu hỏi " + (item.number == null ? "" : item.number);
+        }
+        return turn;
+    }
+
+    private static Turn buildFindMistakes(Turn turn, QuestionDto group, String passage) {
+        String markedText = group.getMotherTongue();
+        List<QuestionDto> questions = children(group);
+        turn.mistakeCandidates = ComprehensiveFindMistakes.candidates(markedText);
+        if (questions.isEmpty() || turn.mistakeCandidates.size() <= questions.size()) {
+            throw invalid("Nhóm Tìm và sửa lỗi cần đáp án và ít nhất một vị trí đúng để chọn.");
+        }
+
+        BattleOnlineExerciseDto content = new BattleOnlineExerciseDto();
+        turn.content = content;
+        content.type = ComprehensiveFindMistakes.TYPE;
+        content.answerMode = FIND_MISTAKES;
+        content.title = group.getTitle();
+        content.passageHtml = passage;
+        content.instructionsHtml = group.getQuestion();
+        content.findMistakesPassage = markedText;
+        turn.prompt = "Tìm và sửa " + questions.size() + " lỗi";
+
+        for (QuestionDto question : questions) {
+            List<QuestionAnswerDto> answers = question.getQuestionAnswers();
+            QuestionAnswerDto answer = answers == null || answers.size() != 1 ? null : answers.get(0);
+            Response key = answer == null || !answer.isCorrect() || answer.getAnswer() == null ? null
+                    : ComprehensiveFindMistakes.parse(answer.getAnswer().getAnswer(), turn.mistakeCandidates.size());
+            if (question.getId() == null || key == null || turn.mistakeCorrections.putIfAbsent(key.getCandidate(), key.getText()) != null) {
+                throw invalid("Nhóm Tìm và sửa lỗi có đáp án thiếu, trùng hoặc sai vị trí.");
+            }
+            BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
+            item.id = question.getId().toString();
+            item.number = question.getOrdinalNumber();
+            content.items.add(item);
+            turn.correctTexts.put(item.id, Collections.singletonList(ComprehensiveFindMistakes.describe(turn.mistakeCandidates, key)));
         }
         return turn;
     }

@@ -204,6 +204,32 @@ public class BattleExerciseCatalogTest {
         assertEquals(1, loader.loadBatch(loader.plan(ids, owner.getId()), 0, 50).size());
     }
 
+    @Test public void findMistakesKeepsEveryCorrectionTogetherInOneVideoBatchTurn() {
+        Question root = test("Find Mistakes");
+        Question part = child(root, 1, 0, "Watch and correct");
+        part.setVideoUrl("https://www.youtube.com/watch?v=ABCDEFGHIJK");
+        Question group = child(part, 1, 19, "Find and correct the mistakes");
+        group.setMotherTongue("[[They]] [[go]] out and [[buy]] [[new toy]].");
+        group.setVideoTimeSeconds(45);
+        group.setVideoAnswerSeconds(55);
+        addAnswer(child(group, 1, 0, "Position 1"), "2|went");
+        addAnswer(child(group, 2, 0, "Position 2"), "3|bought");
+        Question single = child(part, 2, 11, "A different question");
+        single.setVideoTimeSeconds(65);
+        addAnswer(child(single, 3, 0, "A common gap }{SPACE}{"), "gap");
+        prepare();
+
+        BattleExercisePreload loader = preloader();
+        BattleExercisePreload.Plan plan = loader.plan(Collections.singletonList(root.getId()), owner.getId());
+        assertEquals(2, plan.size());
+        BattleExerciseQuestions.Turn turn = loader.loadBatch(plan, 0, 1).get(0);
+        assertEquals(2, turn.content.items.size());
+        assertEquals(Integer.valueOf(45), turn.content.videoTimeSeconds);
+        assertEquals(55, turn.content.videoAnswerSeconds);
+        assertEquals("TEXT", loader.loadBatch(plan, 1, 1).get(0).content.answerMode);
+        noHydration(8);
+    }
+
     @Test public void onlyPublishedComprehensiveRootsAreVisibleRegardlessOfClientStatusOrOwner() {
         test("Published"); Question legacy = test("Legacy root"); legacy.setType(0); legacy.setUser(other);
         test("Draft").setStatus(6); test("Hidden").setStatus(8); test("Reading").setTestFormat(null);

@@ -15,6 +15,7 @@ public class BattleOnlineExerciseDto implements Serializable {
     public String contentHtml;
     public String audioUrl;
     public List<ListeningToken> listeningTokens = new ArrayList<ListeningToken>();
+    public String findMistakesPassage;
     public int minimumWords;
     public String videoUrl;
     public String videoSourceId;

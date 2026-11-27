@@ -59,6 +59,43 @@ public class BattleExerciseQuestionsTest {
         ReflectionTestUtils.setField(room, "allQuestionsLoaded", true);
     }
 
+    static QuestionDto findMistakesTest() {
+        QuestionDto root = testWithQuestions(19, 4);
+        QuestionDto group = root.getSubQuestions().get(0).getSubQuestions().get(0);
+        group.setMotherTongue("[[My brother]] [[go]] to town. He [[buy]] [[two loafs of bread]] and [[run into]] Ana.");
+        String[] corrections = {"2|went", "3|bought", "4|two loaves of bread", "5|ran into"};
+        for (int index = 0; index < corrections.length; index++) {
+            QuestionDto question = group.getSubQuestions().get(index);
+            QuestionAnswerDto answer = question.getQuestionAnswers().get(0);
+            answer.getAnswer().setAnswer(corrections[index]);
+            question.setQuestionAnswers(Collections.singletonList(answer));
+        }
+        return root;
+    }
+
+    @Test public void findMistakesGroupsOneTurnAndGradesUniquePositionsInAnyOrder() throws Exception {
+        List<BattleExerciseQuestions.Turn> turns = BattleExerciseQuestions.fromTest(findMistakesTest());
+        assertEquals(1, turns.size());
+        BattleExerciseQuestions.Turn turn = turns.get(0);
+        assertEquals(4, turn.content.items.size());
+        assertEquals("FIND_MISTAKES", turn.content.answerMode);
+        String publicContent = new ObjectMapper().writeValueAsString(turn.content);
+        assertTrue(publicContent.contains("two loafs of bread"));
+        assertFalse(publicContent.contains("two loaves of bread"));
+        Map<String, List<String>> answers = new HashMap<>();
+        answers.put("103", Collections.singletonList("4|two  loaves of bread"));
+        answers.put("104", Collections.singletonList("2|went"));
+        answers.put("105", Collections.singletonList("3|Bought"));
+        answers.put("106", Collections.singletonList("2|went"));
+        assertEquals(2, turn.correctFindMistakes(answers));
+        assertFalse(turn.grade(answers));
+        assertTrue(turn.findMistakesSubmissionSummary(answers).contains("go → went"));
+        answers.put("105", Collections.singletonList("3|bought"));
+        answers.put("106", Collections.singletonList("5|ran into"));
+        assertTrue(turn.grade(answers));
+        assertFalse(turn.grade(Collections.singletonMap("999", Collections.singletonList("2|went"))));
+    }
+
     @Test public void preservesOriginalTypesAndBanksWithoutPublishingAnswerKeys() throws Exception {
         for (int type : new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}) {
             BattleExerciseQuestions.Turn turn = BattleExerciseQuestions.fromTest(test(type)).get(0);

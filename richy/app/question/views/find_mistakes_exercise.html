@@ -1,6 +1,8 @@
 <section class="find-mistakes-exercise actual-test-font-global">
-    <span class="find-mistakes-anchor" ng-repeat="question in $ctrl.pack.subQuestions track by question.ordinalNumber"
-          id="question-number-{{question.ordinalNumber}}"></span>
+    <div ng-if="$ctrl.showAnchors !== false">
+        <span class="find-mistakes-anchor" ng-repeat="question in $ctrl.pack.subQuestions track by question.ordinalNumber"
+              id="question-number-{{question.ordinalNumber}}"></span>
+    </div>
     <p class="find-mistakes-progress" aria-live="polite">Đã lưu {{$ctrl.count()}} / {{$ctrl.pack.subQuestions.length}} vị trí cần sửa</p>
     <div class="find-mistakes-passage"><span ng-repeat="part in $ctrl.passage.parts track by $index"><span ng-if="!part.id" ng-bind="part.text"></span><button
             ng-if="part.id" type="button" class="find-mistakes-word" data-candidate="{{part.id}}"
@@ -13,7 +15,7 @@
     <ng-form class="find-mistakes-correction" ng-if="$ctrl.active" ng-keydown="$event.key === 'Escape' && $ctrl.close()">
         <label>
             Sửa «{{$ctrl.active.candidate.text}}»
-            <textarea class="form-control" rows="2" maxlength="200" autocomplete="off" autocorrect="off"
+            <textarea class="form-control" rows="2" maxlength="200" autocomplete="off" autocorrect="off" autocapitalize="off"
                       spellcheck="false" ng-model="$ctrl.active.text" ng-disabled="$ctrl.locked"></textarea>
         </label>
         <div class="find-mistakes-actions">

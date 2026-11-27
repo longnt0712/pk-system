@@ -786,6 +786,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private String exerciseSubmissionSummary(QuestionState question, BattleOnlineAnswerDto dto) {
+        if (question.exercise.isFindMistakes()) { return question.exercise.findMistakesSubmissionSummary(dto.getExerciseAnswers()); }
         if (dto.getExerciseAnswers() == null) { return ""; }
         List<String> answers = new ArrayList<String>();
         for (com.globits.richy.dto.BattleOnlineExerciseDto.Item item : question.exercise.content.items) {
@@ -804,6 +805,32 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     (texts.isEmpty() ? "Chưa trả lời" : String.join(", ", texts)));
         }
         return String.join("; ", answers);
+    }
+
+    private int gradeFindMistakes(QuestionState question, BattleOnlineAnswerDto dto) {
+        return question.exercise != null && question.exercise.isFindMistakes()
+                ? question.exercise.correctFindMistakes(dto.getExerciseAnswers()) : -1;
+    }
+
+    private double addFindMistakesPoints(PlayerState player, int correctCount, boolean standardPointAwarded, double scoreDelta) {
+        if (correctCount <= 0) { return scoreDelta; }
+        int extra = correctCount - (standardPointAwarded ? 1 : 0);
+        player.score = roundScoreToOneDecimal(player.score + extra);
+        return roundScoreToOneDecimal(scoreDelta + extra);
+    }
+
+    private void describeFindMistakesGrade(BattleOnlineAnswerResultDto result, QuestionState question, int correctCount, double scoreDelta) {
+        if (correctCount < 0) { return; }
+        int total = question.exercise.content.items.size();
+        result.setFindMistakesCorrect(correctCount);
+        result.setFindMistakesTotal(total);
+        String summary = "Sửa đúng " + correctCount + "/" + total + " lỗi.";
+        if (correctCount > 0 && correctCount < total) {
+            result.setMessage(summary + " +" + formatScore(scoreDelta) + " điểm.");
+        } else {
+            String message = result.getMessage();
+            result.setMessage(isBlank(message) ? summary : message + " " + summary);
+        }
     }
 
     /** Vocabulary rooms use the host's words or the shared vocabulary account. */
@@ -2248,7 +2275,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            boolean correct = question.exercise != null ? question.exercise.grade(answerDto.getExerciseAnswers())
+            int correctedMistakes = gradeFindMistakes(question, answerDto);
+            boolean correct = correctedMistakes >= 0 ? correctedMistakes == question.exercise.content.items.size()
+                    : question.exercise != null ? question.exercise.grade(answerDto.getExerciseAnswers())
                     : normalizeGuessAnswer(submitted).equals(normalizeGuessAnswer(question.correctText));
             player.connected = true;
             player.answeredClassicIndex = room.classicQuestionIndex;
@@ -2270,6 +2299,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            scoreDelta = addFindMistakesPoints(player, correctedMistakes, correct, scoreDelta);
             scoreDelta = applyDoubleActionScoreLocked(room, player, scoreDelta);
 
             GuessAnswerState answer = new GuessAnswerState();
@@ -2292,6 +2322,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             } else {
                 result.setMessage("CHƯA ĐÚNG. Đáp án sẽ hiện khi hết giờ.");
             }
+            describeFindMistakesGrade(result, question, correctedMistakes, scoreDelta);
 
             expectedIndex = room.classicQuestionIndex;
             advanceSoon = !room.videoSynchronized && allConnectedClassicAnsweredLocked(room);
@@ -2485,7 +2516,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            boolean correct = question.exercise != null
+            int correctedMistakes = gradeFindMistakes(question, answerDto);
+            boolean correct = correctedMistakes >= 0 ? correctedMistakes == question.exercise.content.items.size() : question.exercise != null
                     ? question.exercise.grade(answerDto.getExerciseAnswers())
                     : normalizeAnswerKey(answerDto.getAnswerKey()).equals(question.correctKey);
 
@@ -2542,6 +2574,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            scoreDelta = addFindMistakesPoints(player, correctedMistakes, correct, scoreDelta);
             scoreDelta = applyDoubleActionScoreLocked(room, player, scoreDelta);
 
             fillAnswerResult(
@@ -2575,6 +2608,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 }
             }
 
+            describeFindMistakesGrade(result, question, correctedMistakes, scoreDelta);
             expectedIndex =
                     room.classicQuestionIndex;
 
@@ -2705,9 +2739,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     player.currentQuestionSequence
             );
 
-            boolean correct = question.exercise != null
+            int correctedMistakes = gradeFindMistakes(question, answerDto);
+            boolean correct = correctedMistakes >= 0 ? correctedMistakes == question.exercise.content.items.size() : question.exercise != null
                     ? question.exercise.grade(answerDto.getExerciseAnswers())
                     : normalizeAnswerKey(answerDto.getAnswerKey()).equals(question.correctKey);
+            boolean partiallyCorrect = correctedMistakes > 0 && !correct;
 
             if (room.videoSynchronized) {
                 player.answeredClassicIndex = room.classicQuestionIndex; room.videoRevision++;
@@ -2722,13 +2758,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         question,
                         (question.exercise == null ? findAnswerText(question, answerDto.getAnswerKey()) : exerciseSubmissionSummary(question, answerDto))
                 );
-                applyWrongAnswerPenaltyLocked(
-                        room,
-                        player,
-                        question,
-                        question.exercise == null ? answerDto.getAnswerKey() : exerciseSubmissionSummary(question, answerDto),
-                        now
-                );
+                if (!partiallyCorrect) {
+                    applyWrongAnswerPenaltyLocked(room, player, question,
+                            question.exercise == null ? answerDto.getAnswerKey() : exerciseSubmissionSummary(question, answerDto), now);
+                }
             }
 
             updateCountdownReviewStateLocked(
@@ -2752,12 +2785,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     correct &&
                     now < player.burningUntil;
 
-            applyDumbBallAnswerLocked(
-                    room,
-                    player,
-                    correct,
-                    fireBoostApplied
-            );
+            if (!partiallyCorrect) {
+                applyDumbBallAnswerLocked(room, player, correct, fireBoostApplied);
+            }
 
             boolean demonMode = MODE_DEMON_DEFENSE.equals(room.settings.mode);
             double scoreDelta;
@@ -2765,13 +2795,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 if (correct) {
                     player.streak++;
                     player.correctCount++;
-                } else {
+                } else if (!partiallyCorrect) {
                     player.streak = demonMode ? DemonDefenseGame.wrongAnswerStreak(player.streak) : 0;
                     player.wrongCount++;
                 }
                 scoreDelta = 0D;
             } else {
-                scoreDelta = applyScore(player, correct, true, now);
+                scoreDelta = applyScore(player, correct, !partiallyCorrect, now);
             }
 
             DemonDefenseGame.ShotResult demonShot = null;
@@ -2787,6 +2817,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.demonDefense.rollBag(player.username, random);
             }
 
+            scoreDelta = addFindMistakesPoints(player, correctedMistakes, correct && !demonMode && !MODE_LUM_NGAY.equals(room.settings.mode), scoreDelta);
             int scoreMultiplier = correct && !MODE_DEMON_DEFENSE.equals(room.settings.mode) && !MODE_LUM_NGAY.equals(room.settings.mode)
                     ? scoreMultiplierForCurrentQuestion(room, player)
                     : 1;
@@ -2915,6 +2946,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            describeFindMistakesGrade(result, question, correctedMistakes, scoreDelta);
             completeVideoAnswerLocked(room, result);
             result.setRoom(
                     snapshotLocked(
@@ -4516,7 +4548,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void completeVideoAnswerLocked(RoomState room, BattleOnlineAnswerResultDto result) {
         if (!room.videoSynchronized) { return; }
-        if (!result.isCorrect()) { result.setMessage("SAI RỒI!"); }
+        if (!result.isCorrect() && result.getFindMistakesTotal() == null) { result.setMessage("SAI RỒI!"); }
         if (allConnectedClassicAnsweredLocked(room)) { finishVideoAnswerWindowLocked(room); }
     }
 

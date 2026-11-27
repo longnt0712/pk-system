@@ -107,7 +107,7 @@
             };
         }]
     }).component('findMistakesExercise', {
-        bindings: {pack: '<', locked: '<', editorState: '<', onChange: '&'},
+        bindings: {pack: '<', locked: '<', editorState: '<', showAnchors: '<', onChange: '&'},
         templateUrl: 'question/views/find_mistakes_exercise.html?v=' + window.APP_VERSION,
         controller: ['$element', '$timeout', 'ComprehensiveFindMistakes', function ($element, $timeout, mistakes) {
             var exercise = this;

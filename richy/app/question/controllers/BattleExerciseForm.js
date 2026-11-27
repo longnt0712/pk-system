@@ -2,7 +2,7 @@
     'use strict';
     angular.module('Hrm.Question').directive('battleExerciseForm', ['$sanitize', 'QuestionDragDrop', function ($sanitize, dragDrop) {
         return {
-            restrict: 'E', scope: {exercise: '=', answers: '=', disabled: '=', onAnswer: '&'},
+            restrict: 'E', scope: {exercise: '=', answers: '=', disabled: '=', findMistakesEditor: '=?', onAnswer: '&'},
             templateUrl: 'question/views/battle_online_exercise_form.html?v=' + window.APP_VERSION + '&individualQuestions=20261007_1',
             link: function (scope, element) {
                 var root = element[0], documentNode = root.ownerDocument, version = 0, selection = null, bindings = [];
@@ -21,9 +21,9 @@
                 };
                 scope.isDragExercise = function () { return [4, 13, 14, 15].indexOf(type()) >= 0 && scope.exercise.answerMode === 'MATCH'; };
                 scope.isMatrix = function () { return [9, 10, 12].indexOf(type()) >= 0; };
-                scope.isInline = function () { return [4, 11, 13, 18].indexOf(type()) >= 0; };
+                scope.isInline = function () { return [4, 11, 13, 18, 19].indexOf(type()) >= 0; };
                 scope.isSupported = function () {
-                    var modes = {1: ['SINGLE'], 2: ['TEXT'], 3: ['TEXT'], 4: ['MATCH'], 5: ['MULTIPLE'], 6: ['SINGLE'], 7: ['MULTIPLE'], 8: ['MATCH', 'TEXT'], 9: ['SINGLE'], 10: ['MATCH'], 11: ['TEXT'], 12: ['SINGLE'], 13: ['MATCH'], 14: ['MATCH'], 15: ['MATCH'], 16: ['WRITING'], 17: ['WRITING'], 18: ['TEXT', 'LISTENING']};
+                    var modes = {1: ['SINGLE'], 2: ['TEXT'], 3: ['TEXT'], 4: ['MATCH'], 5: ['MULTIPLE'], 6: ['SINGLE'], 7: ['MULTIPLE'], 8: ['MATCH', 'TEXT'], 9: ['SINGLE'], 10: ['MATCH'], 11: ['TEXT'], 12: ['SINGLE'], 13: ['MATCH'], 14: ['MATCH'], 15: ['MATCH'], 16: ['WRITING'], 17: ['WRITING'], 18: ['TEXT', 'LISTENING'], 19: ['FIND_MISTAKES']};
                     return !!modes[type()] && modes[type()].indexOf((scope.exercise || {}).answerMode) >= 0;
                 };
                 scope.choose = function (item, option, multiple) {
@@ -153,6 +153,20 @@
                     if (slot) { place(itemById(slot.getAttribute('data-item-id')), payload); } else { returnToBank(payload); }
                 }
                 root.addEventListener('click', activate); root.addEventListener('keydown', keydown); root.addEventListener('dragstart', dragstart); root.addEventListener('dragover', dragover); root.addEventListener('drop', drop);
+                function prepareFindMistakesPack() {
+                    scope.findMistakesPack = type() === 19 ? {
+                        motherTongue: scope.exercise.findMistakesPassage,
+                        subQuestions: items().map(function (item) {
+                            return {id: item.id, questionAnswers: [{clientAnswer: value(item)}]};
+                        })
+                    } : null;
+                }
+                scope.saveFindMistakes = function () {
+                    scope.findMistakesPack.subQuestions.forEach(function (question) {
+                        var correction = question.questionAnswers[0].clientAnswer;
+                        scope.answers[question.id] = correction ? [correction] : [];
+                    });
+                };
                 scope.$watch(function () { return JSON.stringify(scope.exercise, function (key, entry) { return key.charAt(0) === '$' ? undefined : entry; }); }, function () {
                     var exercise = scope.exercise;
                     version++; selection = null; scope.interactionStatus = ''; scope.answers = scope.answers || {}; scope.bankOptions = [];
@@ -160,12 +174,14 @@
                         if (!Array.isArray(scope.answers[item.id])) { scope.answers[item.id] = []; }
                         (item.options || []).forEach(function (option) { if (!scope.bankOptions.some(function (existing) { return sameOption(existing, option); })) { scope.bankOptions.push(option); } });
                     });
+                    prepareFindMistakesPack();
                     scope.$evalAsync(refresh);
                 });
                 scope.$watch('answers', function (next, previous) {
                     if (next !== previous) { version++; selection = null; }
                     scope.answers = scope.answers || {};
                     items().forEach(function (item) { if (!Array.isArray(scope.answers[item.id])) { scope.answers[item.id] = []; } });
+                    if (next !== previous) { prepareFindMistakesPack(); }
                     scope.$evalAsync(refresh);
                 });
                 scope.$watch('answers', function () { scope.$evalAsync(refresh); }, true);

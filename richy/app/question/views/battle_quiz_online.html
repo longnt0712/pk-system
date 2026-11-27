@@ -986,7 +986,7 @@
             </header>
             <div class="battle-online-host-question-controls" ng-include="'question/views/battle_online_match_controls.html?matchControls=20261017_2'"></div>
             <div class="battle-online-host-question-body">
-                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers"
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" find-mistakes-editor="vm.findMistakesEditor"
                                       disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
                 <button type="button" class="btn btn-primary" ng-if="!vm.isSpectator() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'"
                         ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
@@ -1041,8 +1041,8 @@
     </div>
     <ng-include ng-if="vm.room.status === 'FINISHED' && vm.hostVideoAnswersOpen" src="'question/views/battle_online_video_answers.html?videoAnswers=20261019_1'"></ng-include>
     <div class="battle-online-video-answer-toast" ng-if="vm.videoAnswerToast" role="status" aria-live="polite" aria-atomic="true"
-         ng-class="vm.videoAnswerToast.correct ? 'is-correct' : 'is-incorrect'">
-        <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
+         ng-class="vm.videoAnswerToast.partial ? 'is-partial' : (vm.videoAnswerToast.correct ? 'is-correct' : 'is-incorrect')">
+        <span aria-hidden="true" ng-if="!vm.videoAnswerToast.partial">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
                 src="vm.eggHostTemplate"></ng-include>
@@ -1409,7 +1409,7 @@
             <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise && !(vm.isHost() && vm.room.videoSynchronized)" ng-show="vm.videoQuestionOpen()">
                 <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
                 <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
-                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="!vm.isClassicHostPreview() && vm.exerciseInputDisabled()" on-answer="!vm.isClassicHostPreview() && vm.submitExercise(false)"></battle-exercise-form>
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" find-mistakes-editor="vm.findMistakesEditor" disabled="!vm.isClassicHostPreview() && vm.exerciseInputDisabled()" on-answer="!vm.isClassicHostPreview() && vm.submitExercise(false)"></battle-exercise-form>
                 <button type="button" class="btn btn-primary" ng-if="!vm.isClassicHostPreview() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
                 <div class="battle-online-guess-host-actions"
                      ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' && vm.room.guessPhase === 'WAITING_HOST'">
@@ -1477,23 +1477,16 @@
             <div class="battle-online-guess-feedback-slot"
                  ng-if="vm.isGuessWordMode() && !vm.room.videoSynchronized">
                 <div class="battle-online-feedback"
-                     ng-class="vm.lastAnswerCorrect === true ? 'is-correct' : 'is-wrong'"
+                     ng-class="vm.lastAnswerPartial ? 'is-partial' : (vm.lastAnswerCorrect === true ? 'is-correct' : 'is-wrong')"
                      ng-if="vm.lastAnswerCorrect !== null">
-                    {{vm.lastAnswerCorrect === true ? '✅' : '❌'}} {{vm.lastAnswerMessage}}
+                    <span ng-if="!vm.lastAnswerPartial">{{vm.lastAnswerCorrect === true ? '✅' : '❌'}}</span> {{vm.lastAnswerMessage}}
                 </div>
             </div>
 
-            <div class="battle-online-feedback is-correct"
-                 ng-if="!vm.room.videoSynchronized && (!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === true">
-
-                ✅ {{vm.lastAnswerMessage}}
-            </div>
-
-
-            <div class="battle-online-feedback is-wrong"
-                 ng-if="!vm.room.videoSynchronized && (!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === false">
-
-                ❌ {{vm.lastAnswerMessage}}
+            <div class="battle-online-feedback"
+                 ng-if="!vm.room.videoSynchronized && !vm.isGuessWordMode() && vm.lastAnswerCorrect !== null"
+                 ng-class="vm.lastAnswerPartial ? 'is-partial' : (vm.lastAnswerCorrect ? 'is-correct' : 'is-wrong')">
+                <span ng-if="!vm.lastAnswerPartial">{{vm.lastAnswerCorrect ? '✅' : '❌'}}</span> {{vm.lastAnswerMessage}}
             </div>
 
 
@@ -3444,6 +3437,8 @@
         font-size: 16px; font-weight: 700; pointer-events: none;
     }
     .battle-online-video-answer-toast.is-correct { color: #146c48; background: #e8fbef; border-color: #a8dfbd; }
+    .battle-online-video-answer-toast.is-partial,
+    .battle-online-feedback.is-partial { color: #77521b; background: #fff5dc; border-color: #e6c791; }
     .battle-online-video-answer-toast.is-incorrect { color: #a32e35; background: #fff0f0; border-color: #efb5b8; }
     @media (max-width: 600px) {
         .battle-online-host-question-header { gap: 10px; padding: 12px; }

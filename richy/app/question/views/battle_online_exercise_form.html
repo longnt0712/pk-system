@@ -9,6 +9,10 @@
         </details>
         <battle-exercise-gaps ng-if="exercise.type === 4 && !exercise.passageHtml" content="exercise.passageHtml" items="exercise.items" answers="answers" disabled="disabled" mode="exercise.answerMode"></battle-exercise-gaps>
         <div class="battle-exercise-instructions" ng-bind-html="exercise.instructionsHtml"></div>
+        <div ng-if="findMistakesPack">
+            <find-mistakes-exercise ng-repeat="pack in [findMistakesPack]" pack="pack" locked="disabled" editor-state="findMistakesEditor" show-anchors="false"
+                                    on-change="saveFindMistakes()"></find-mistakes-exercise>
+        </div>
         <section ng-if="exercise.type === 18" class="battle-listening-exercise">
             <comprehensive-listening-player audio-link="exercise.audioUrl"></comprehensive-listening-player>
             <p ng-if="exercise.answerMode === 'LISTENING'" class="battle-listening-target">Nghe và điền các ô trống. Đạt từ 90% ô đúng để hoàn thành.</p>
@@ -47,6 +51,7 @@
             <label ng-if="exercise.answerMode === 'WRITING'"><span>Bài viết của bạn — {{wordCount(item)}} từ; yêu cầu trên {{exercise.minimumWords}} từ</span><textarea class="form-control" rows="12" ng-model="answers[item.id][0]" ng-disabled="disabled" maxlength="30000"></textarea></label>
         </div>
         <p class="battle-exercise-interaction-status" role="status" aria-live="polite">{{interactionStatus}}</p>
-        <small ng-if="exercise.answerMode !== 'SINGLE'">Mỗi lượt là một câu hỏi. Trả lời câu hiện tại rồi nộp đáp án.</small>
+        <small ng-if="exercise.answerMode === 'FIND_MISTAKES'">Sửa từng vị trí rồi nộp cả lượt. Mỗi vị trí tìm và sửa đúng được tính điểm.</small>
+        <small ng-if="exercise.answerMode !== 'SINGLE' && exercise.answerMode !== 'FIND_MISTAKES'">Mỗi lượt là một câu hỏi. Trả lời câu hiện tại rồi nộp đáp án.</small>
     </div>
 </div>

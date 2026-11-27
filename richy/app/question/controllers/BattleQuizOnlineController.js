@@ -82,6 +82,7 @@
 
         vm.answerLocked = false;
         vm.lastAnswerCorrect = null;
+        vm.lastAnswerPartial = false;
         vm.lastAnswerMessage = '';
         vm.guessAnswerText = '';
         vm.revealingGuessLetter = false;
@@ -145,6 +146,7 @@
         vm.exerciseTests = [];
         vm.selectedExerciseTests = [];
         vm.exerciseAnswers = {};
+        vm.findMistakesEditor = {};
         vm.exerciseSearch = '';
         vm.exercisePage = 1;
         vm.exerciseTotalPages = 1;
@@ -317,7 +319,8 @@
                     (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                     (!automatic && vm.exerciseInputDisabled()) || vm.answerLocked || isSpectator()) { return; }
             var exercise = vm.room.currentQuestion.exercise;
-            if (!automatic && exercise.answerMode !== 'LISTENING' && exercise.items.some(function (item) {
+            var findingMistakes = exercise.answerMode === 'FIND_MISTAKES';
+            if (!automatic && !findingMistakes && exercise.answerMode !== 'LISTENING' && exercise.items.some(function (item) {
                 var values = vm.exerciseAnswers[item.id] || [];
                 return !values.length || values.some(function (value) { return !String(value || '').trim(); });
             })) { toastr.warning('Điền đủ các đáp án trước khi nộp.'); return; }
@@ -327,6 +330,23 @@
                 autoSubmittedGuessQuestionKey = key;
             }
             var submittedAnswers = angular.copy(vm.exerciseAnswers);
+            if (findingMistakes) {
+                var pack = vm.findMistakesEditor.pack;
+                var edit = pack && pack._findMistakesEdit;
+                var correction = edit && String(edit.text || '').trim();
+                var slot = edit && pack.subQuestions[edit.index];
+                submittedAnswers = {};
+                exercise.items.forEach(function (item) {
+                    var saved = (vm.exerciseAnswers[item.id] || [])[0];
+                    var value = correction && slot && String(slot.id) === String(item.id)
+                        ? edit.candidate.id + '|' + correction : saved;
+                    if (value) { submittedAnswers[item.id] = [value]; }
+                });
+                if (!automatic && !Object.keys(submittedAnswers).length) {
+                    toastr.warning('Chọn và sửa ít nhất một vị trí trước khi nộp.');
+                    return;
+                }
+            }
             if (exercise.answerMode === 'LISTENING') {
                 // Blank gaps count as incorrect on the server; 90% is sufficient.
                 angular.forEach(exercise.items, function (item) {
@@ -617,11 +637,16 @@
         function clearVideoAnswerToast() {
             $timeout.cancel(videoAnswerToastTimer); videoAnswerToastTimer = null; vm.videoAnswerToast = null;
         }
-        function showVideoAnswerToast(correct, sequence) {
+        function showVideoAnswerToast(correct, sequence, result) {
             if (isSpectator() || sequence < lastVideoAnswerToastSequence) { return; }
             lastVideoAnswerToastSequence = sequence;
             clearVideoAnswerToast();
+            var total = result && result.findMistakesTotal;
             vm.videoAnswerToast = {correct: correct, label: correct ? 'Correct' : 'Incorrect'};
+            if (total) {
+                vm.videoAnswerToast.partial = result.findMistakesCorrect > 0 && !correct;
+                vm.videoAnswerToast.label = 'Sửa đúng ' + result.findMistakesCorrect + '/' + total + ' lỗi';
+            }
             videoAnswerToastTimer = $timeout(clearVideoAnswerToast, 2200);
         }
         function currentVideo() { return vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise; }
@@ -3988,10 +4013,12 @@
 
             if (questionChanged) {
                 vm.exerciseAnswers = {};
+                vm.findMistakesEditor = {};
                 vm.classicPreviewAnswerKey = '';
                 vm.answerLocked = false;
                 vm.guessSubmitting = false;
                 vm.lastAnswerCorrect = null;
+                vm.lastAnswerPartial = false;
                 vm.lastAnswerMessage = '';
 
                 if (isGuessWordMode()) {
@@ -4070,6 +4097,7 @@
                 resetFinishCelebrationSound();
                 prepareWrongQuestionHistory(incoming);
                 vm.lastAnswerCorrect = null;
+                vm.lastAnswerPartial = false;
                 vm.lastAnswerMessage = '';
                 vm.guessAnswerText = '';
                 vm.guessSubmitting = false;
@@ -5290,7 +5318,7 @@
                         if (videoAnswerRequest && submittedLoginGeneration === battleLoginGeneration && !destroyed && vm.room && vm.room.code === submittedRoomCode &&
                                 submittedVideoMatchGeneration === videoMatchGeneration &&
                                 (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')) {
-                            showVideoAnswerToast(result.correct === true, question.sequence);
+                            showVideoAnswerToast(result.correct === true, question.sequence, result);
                         }
                         if (!isCurrentAnswerRequest()) { return; }
                         if (
@@ -5321,9 +5349,10 @@
                         vm.lastAnswerCorrect =
                             result.correct ===
                             true;
+                        vm.lastAnswerPartial = result.findMistakesCorrect > 0 && result.correct !== true;
 
                         vm.lastAnswerMessage =
-                            (videoAnswerRequest && result.correct !== true ? 'SAI RỒI!' : result.message) ||
+                            (videoAnswerRequest && result.correct !== true && !result.findMistakesTotal ? 'SAI RỒI!' : result.message) ||
                             (
                                 result.correct
                                     ? 'CHÍNH XÁC!'
@@ -5475,6 +5504,7 @@
                     if (!isCurrentGuessRequest()) { return; }
                     vm.answerLocked = true;
                     vm.lastAnswerCorrect = result.correct === true;
+                    vm.lastAnswerPartial = false;
                     vm.lastAnswerMessage =
                         (autoSubmitted ? 'ĐÃ TỰ ĐỘNG NỘP. ' : '') +
                         (

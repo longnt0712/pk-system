@@ -14,7 +14,7 @@ function exerciseForm(scope) {
 }
 function setup(username='alice',loginService) {
  let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[],listCalls=[],reopenCalls=[],folderCalls=[];
- const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(){},off(){}};}};
+ const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,isFunction(value){return typeof value==='function';},noop(){},element(){return {on(){},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler,updateCountdown});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
@@ -373,4 +373,42 @@ test('Listening blanks do not bypass video cue or disabled submission guards',()
  room.currentQuestion.exercise={...room.currentQuestion.exercise,answerMode:'LISTENING',type:18,items:[{id:'103:0'}]};
  h.hooks.applyRoom(room,false);h.vm.exerciseAnswers={};h.vm.submitExercise(false);
  assert.equal(h.calls.length,0);
+});
+
+test('Find Mistakes submits saved and open corrections once even when other positions are blank', async()=>{
+ const h=setup(), room=h.room('CLASSIC');
+ room.currentQuestion.exercise={type:19,answerMode:'FIND_MISTAKES',items:[{id:'103'},{id:'104'},{id:'105'}]};
+ h.hooks.applyRoom(room,false);
+ h.vm.submitExercise(false);
+ assert.equal(h.calls.length,0);
+ assert.match(h.warnings.at(-1),/ít nhất một vị trí/);
+
+ h.vm.exerciseAnswers={'103':['2|went'],'104':[],'105':[]};
+ h.vm.findMistakesEditor.pack={subQuestions:[{id:'103'},{id:'104'},{id:'105'}],
+  _findMistakesEdit:{candidate:{id:4},index:1,text:'two loaves of bread'}};
+ h.vm.submitExercise(false);
+ h.vm.submitExercise(false);
+ assert.equal(h.calls.length,1);
+ assert.deepEqual(plain(h.calls[0][4]),{'103':['2|went'],'104':['4|two loaves of bread']});
+ assert.deepEqual(h.vm.exerciseAnswers['104'],[]);
+ h.resolve({correct:false,findMistakesCorrect:2,findMistakesTotal:3,message:'Sửa đúng 2/3 lỗi. +2 điểm.'});
+ await new Promise(setImmediate);
+ assert.equal(h.vm.lastAnswerPartial,true);
+ assert.match(h.vm.lastAnswerMessage,/2\/3/);
+
+ h.hooks.applyRoom(h.room('CLASSIC',2),true);
+ assert.deepEqual(plain(h.vm.findMistakesEditor),{});
+ assert.equal(h.vm.lastAnswerPartial,false);
+});
+
+test('a video Find Mistakes receipt shows partial credit for the finished turn', async()=>{
+ const h=setup(), room=videoRoom(h,'CLASSIC','ANSWERING');
+ Object.assign(room.currentQuestion.exercise,{type:19,answerMode:'FIND_MISTAKES'});
+ h.hooks.applyRoom(room,false);
+ h.vm.exerciseAnswers={'103':['2|went']};
+ h.vm.submitExercise(false);
+ assert.equal(h.calls.length,1);
+ h.resolve({correct:false,findMistakesCorrect:1,findMistakesTotal:2,message:'Sửa đúng 1/2 lỗi. +1 điểm.'});
+ await new Promise(setImmediate);
+ assert.deepEqual(plain(h.vm.videoAnswerToast),{correct:false,partial:true,label:'Sửa đúng 1/2 lỗi'});
 });

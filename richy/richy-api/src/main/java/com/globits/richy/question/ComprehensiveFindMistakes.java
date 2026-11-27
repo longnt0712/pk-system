@@ -26,14 +26,17 @@ public final class ComprehensiveFindMistakes {
     }
 
     private static List<String> candidates(Question pack) {
+        return candidates(pack.getMotherTongue());
+    }
+
+    public static List<String> candidates(String text) {
         List<String> candidates = new ArrayList<>();
-        String text = pack.getMotherTongue();
         Matcher matcher = CANDIDATE.matcher(text == null ? "" : text);
         while (matcher.find()) { candidates.add(matcher.group(1)); }
         return candidates;
     }
 
-    private static Response parse(String value, int candidateCount) {
+    public static Response parse(String value, int candidateCount) {
         Matcher match = RESPONSE.matcher(value == null ? "" : value);
         if (!match.matches()) { return null; }
         int candidate = Integer.parseInt(match.group(1));
@@ -57,7 +60,10 @@ public final class ComprehensiveFindMistakes {
 
     public static String describe(QuestionAnswer answer, String value) {
         List<String> candidates = candidates(answer.getQuestion().getParent());
-        Response response = parse(value, candidates.size());
+        return describe(candidates, parse(value, candidates.size()));
+    }
+
+    public static String describe(List<String> candidates, Response response) {
         return response == null ? "" : candidates.get(response.candidate - 1) + " → " + response.text;
     }
 
@@ -97,7 +103,7 @@ public final class ComprehensiveFindMistakes {
         }
     }
 
-    private static final class Response {
+    public static final class Response {
         private final int candidate;
         private final String text;
 
@@ -107,5 +113,7 @@ public final class ComprehensiveFindMistakes {
         }
 
         private String encoded() { return candidate + "|" + text; }
+        public int getCandidate() { return candidate; }
+        public String getText() { return text; }
     }
 }

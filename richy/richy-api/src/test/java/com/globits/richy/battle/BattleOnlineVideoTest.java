@@ -82,13 +82,16 @@ public class BattleOnlineVideoTest {
         part.getSubQuestions().add(group); test.getSubQuestions().add(part); return test;
     }
     @SuppressWarnings("unchecked") private void setup(String mode) throws Exception {
+        setup(mode, test());
+    }
+    @SuppressWarnings("unchecked") private void setup(String mode, QuestionDto source) throws Exception {
         service = new BattleOnlineServiceImpl(); set(service,"messagingTemplate",mock(SimpMessagingTemplate.class));
         room = state("RoomState"); set(room,"code","VIDEO1"); set(room,"status","LOBBY"); set(room,"hostUsername","host");
         Object settings = get(room,"settings"); set(settings,"mode",mode); set(settings,"skillsEnabled",false); set(settings,"questionCount",2);
         set(settings,"shuffleExerciseQuestions",true); set(settings,"teamCount",2);
         alice=player("alice",false,1); Object bob=player("bob",false,2), host=player("host",true,1); set(host,"host",true);
         Map<String,Object> players=(Map<String,Object>)get(room,"players"); players.put("host",host); players.put("alice",alice); players.put("bob",bob);
-        BattleExerciseQuestionsTest.prepareRoomWithExercise(service, room, test());
+        BattleExerciseQuestionsTest.prepareRoomWithExercise(service, room, source);
         ((Map<String,Object>)get(service,"rooms")).put("VIDEO1",room);
         service.startMatch("VIDEO1","host");
         // Money mode still has its usual password setup; complete it before testing answer pacing.
@@ -108,6 +111,40 @@ public class BattleOnlineVideoTest {
         d.setExerciseAnswers(values); return d;
     }
     private void rejected(Runnable action) { try { action.run(); fail("Must reject"); } catch(BattleOnlineException expected) {} }
+
+    @Test public void partialFindMistakesEarnsPointsAndDoesNotRevealTheKeyDuringTheVideoWindow() throws Exception {
+        for (String mode : Arrays.asList("CLASSIC", "GUESS_WORD", "COUNTDOWN")) {
+            QuestionDto source = BattleExerciseQuestionsTest.findMistakesTest();
+            QuestionDto part = source.getSubQuestions().get(0);
+            part.setVideoUrl("https://youtu.be/dQw4w9WgXcQ");
+            part.getSubQuestions().get(0).setVideoTimeSeconds(5);
+            setup(mode, source);
+            service.videoEvent("VIDEO1", "host", event("CUE", 1, 5));
+            BattleOnlineRoomDto roomBefore = service.getRoom("VIDEO1", "alice");
+            BattleOnlineQuestionDto question = roomBefore.getCurrentQuestion();
+            BattleOnlineAnswerDto submission = new BattleOnlineAnswerDto();
+            submission.setQuestionId(question.getId());
+            submission.setQuestionSequence(question.getSequence());
+            submission.setVideoQuestionRound(roomBefore.getVideoQuestionRound());
+            submission.setAnswerKey("EXERCISE");
+            Map<String, List<String>> values = new LinkedHashMap<>();
+            values.put("103", Collections.singletonList("4|two loaves of bread"));
+            values.put("104", Collections.singletonList("2|went"));
+            submission.setExerciseAnswers(values);
+
+            BattleOnlineAnswerResultDto result = service.answer("VIDEO1", "alice", submission);
+            assertTrue(mode, result.isAccepted());
+            assertFalse(mode, result.isCorrect());
+            assertEquals(mode, Integer.valueOf(2), result.getFindMistakesCorrect());
+            assertEquals(mode, Integer.valueOf(4), result.getFindMistakesTotal());
+            assertEquals(mode, 2D, result.getScore(), 0.01D);
+            assertTrue(result.getMessage().contains("2/4"));
+            assertNull(service.getRoom("VIDEO1", "bob").getClassicCorrectAnswer());
+            rejected(() -> service.answer("VIDEO1", "alice", submission));
+            service.destroy();
+            service = null;
+        }
+    }
 
     @Test public void allModesPreloadHideAndKeepAnswerWindowOpenWhileAStudentHasNotSubmitted() throws Exception {
         for (String mode : Arrays.asList("CLASSIC","GUESS_WORD","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","LUM_NGAY")) {
