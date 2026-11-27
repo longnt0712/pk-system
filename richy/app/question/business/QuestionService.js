@@ -493,6 +493,11 @@
             return utils.resolve(url, 'GET', angular.noop, angular.noop);
         }
 
+        self.reviewStudyMistakes = function (testId, submissions) {
+            return $http.post(baseUrl + restUrl + '/' + testId + '/study_mistakes', submissions, {timeout: 15000})
+                .then(function (response) { return response.data; });
+        };
+
         function deleteObject(id, successCallback, errorCallback) {
             if (!id) {
                 return $q.when(null);

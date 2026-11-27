@@ -30,6 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.richy.test;
+import com.globits.richy.question.ComprehensiveFindMistakes;
+import com.globits.richy.question.ComprehensiveFindMistakes.StudyReview;
 import com.globits.richy.question.VocabularyPolicy;
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.CategoryQuestion;
@@ -1258,6 +1260,14 @@ public class QuestionServiceImpl implements QuestionService {
 	@Override
 	public QuestionDto getObjectById(Long id) {
 		return new QuestionDto(questionRepository.getOne(id));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<Long, StudyReview> reviewStudyMistakes(Long testId, Map<Long, String> submissions) {
+		if (submissions == null || submissions.isEmpty()) { return Collections.emptyMap(); }
+		List<QuestionAnswer> slots = questionAnswerRepository.findStudyMistakeSlots(testId, new ArrayList<>(submissions.keySet()));
+		return ComprehensiveFindMistakes.review(slots, submissions);
 	}
 
 	@Override

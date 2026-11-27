@@ -12,6 +12,7 @@ const template = fs.readFileSync(
     path.join(__dirname, '../question/views/ielts_reading_actual_test_idp.html'),
     'utf8'
 );
+const findMistakesSource = fs.readFileSync(path.join(__dirname, '../question/business/ComprehensiveFindMistakes.js'), 'utf8');
 
 function forEach(items, callback) {
     Object.keys(items || {}).forEach(key => callback(items[key], Array.isArray(items) ? Number(key) : key));
@@ -31,7 +32,7 @@ function question(id, ordinalNumber, type, answers, prompt) {
     return value;
 }
 
-function studyContext() {
+function studyContext(extraEntries = [], service) {
     const questions = [
         question(1, 1, 1, [
             {text: 'A', correct: true, selected: true},
@@ -55,16 +56,21 @@ function studyContext() {
         passageQuestions: [{subQuestions: questions}],
         passageNumber: 1
     }));
+    const definition = {factory(name, create) { this.mistakes = create(); return this; }, component() { return this; }};
+    nodeVm.runInNewContext(findMistakesSource, {angular: {module: () => definition}, window: {APP_VERSION: 'test'}});
     const context = nodeVm.createContext({
         vm: {
             testSessionMode: 'STUDY',
             isWritingRoute: false,
             isPreviewMode: false,
             isStartTest: true,
+            ieltsReadingActualTest: {id: 99},
             testResult: {questionAnswerTestResult: []}
         },
         angular: {forEach},
-        getReadingQuestionEntries: () => entries
+        getReadingQuestionEntries: () => entries.concat(extraEntries),
+        mistakes: definition.mistakes,
+        service
     });
     const start = controllerSource.indexOf('        function synchronizeReadingResultsBeforeSubmit()');
     const end = controllerSource.indexOf('        function getCurrentReadingQuestionIndex(', start);
@@ -95,6 +101,54 @@ test('Study answer check classifies correct, incorrect and unanswered questions 
     assert.equal(context.vm.studyAnswerCheck.rows[2].prompt, 'Complete the sentence:\nParis is _____ capital.\nDrop _____ here.');
     assert.doesNotMatch(context.vm.studyAnswerCheck.rows[2].prompt, /SPACE|HEADING|<[^>]+>/);
     assert.equal(context.vm.studyAnswerCheck.rows[3].status, 'correct');
+});
+
+test('Study reviews Find Mistakes together with other questions and checks unsaved text without changing the attempt', async () => {
+    const questions = [5, 6, 7].map(ordinalNumber => ({ordinalNumber, questionAnswers: [{id: ordinalNumber + 100}]}));
+    questions[0].questionAnswers[0].clientAnswer = '3|two loaves';
+    const pack = {motherTongue: 'She [[go]] home and [[buy]] [[two loafs]].', subQuestions: questions,
+        _findMistakesEdit: {index: 1, candidate: {id: 1}, text: 'goes'}};
+    const entries = questions.map(question => ({question, questionPackage: pack, packageType: 19}));
+    const context = studyContext(entries, {
+        reviewStudyMistakes(testId, submissions) {
+            assert.equal(testId, 99);
+            assert.deepEqual({...submissions}, {105: '3|two loaves', 106: '1|goes', 107: ''});
+            return Promise.resolve({
+                105: {submitted: 'go → goes', expected: 'go → went', correct: false},
+                106: {submitted: '', expected: 'buy → bought', correct: false},
+                107: {submitted: 'two loafs → two loaves', expected: 'two loafs → two loaves', correct: true}
+            });
+        }
+    });
+    const pending = context.vm.openStudyAnswerCheck();
+    const summary = context.vm.studyAnswerCheck;
+    assert.equal(summary.total, 7);
+    assert.equal(summary.checkingMistakes, true);
+    assert.equal(summary.rows[4].prompt, 'She go home and buy two loafs.');
+    assert.equal(summary.rows[4].studentAnswer, 'two loafs → two loaves');
+    assert.equal(summary.rows[5].studentAnswer, 'go → goes');
+    await pending;
+    assert.equal(summary.checkingMistakes, false);
+    assert.deepEqual([summary.correct, summary.incorrect, summary.unanswered], [3, 2, 2]);
+    assert.deepEqual(Array.from(summary.rows.slice(4), row => row.status), ['incorrect', 'unanswered', 'correct']);
+    assert.equal(summary.rows[4].correctAnswer, 'go → went');
+    assert.equal(questions[1].questionAnswers[0].clientAnswer, undefined);
+    assert.deepEqual(context.vm.testResult.questionAnswerTestResult, []);
+});
+
+test('a failed review keeps Find Mistakes visible without counting them as wrong', async () => {
+    const question = {ordinalNumber: 5, questionAnswers: [{id: 105, clientAnswer: '1|went'}]};
+    const pack = {motherTongue: 'She [[go]] home.', subQuestions: [question]};
+    const context = studyContext([{question, questionPackage: pack, packageType: 19}], {
+        reviewStudyMistakes: () => Promise.reject(new Error('Failed'))
+    });
+    await context.vm.openStudyAnswerCheck();
+    const summary = context.vm.studyAnswerCheck;
+    assert.equal(summary.total, 5);
+    assert.equal(summary.incorrect, 1);
+    assert.equal(summary.mistakeReviewFailed, true);
+    assert.equal(summary.rows[4].status, 'pending');
+    assert.equal(summary.rows[4].studentAnswer, 'go → went');
 });
 
 test('answer check cannot open outside Study mode', () => {

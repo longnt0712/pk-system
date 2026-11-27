@@ -1,6 +1,7 @@
 package com.globits.richy.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 
@@ -12,6 +13,7 @@ import com.globits.richy.dto.QuestionOnlyQuestionDto;
 import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
+import com.globits.richy.question.ComprehensiveFindMistakes.StudyReview;
 
 public interface QuestionService {
 	public Page<QuestionDto> getPageObject(QuestionDto searchDto, int pageIndex, int pageSize);
@@ -22,6 +24,7 @@ public interface QuestionService {
 	public Page<QuestionDto> getPageObjectReverse(QuestionDto searchDto, int pageIndex, int pageSize);
 	public List<QuestionDto> getListObject(QuestionDto searchDto, int pageIndex, int pageSize);
 	public QuestionDto getObjectById(Long id);
+	public Map<Long, StudyReview> reviewStudyMistakes(Long testId, Map<Long, String> submissions);
 	public QuestionDto saveObject(QuestionDto dto);
 	public QuestionDto saveForCurrentUser(QuestionDto dto);
 	public com.globits.richy.dto.VocabularyUsageDto getVocabularyUsage();

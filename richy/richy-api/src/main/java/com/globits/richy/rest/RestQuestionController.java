@@ -30,6 +30,7 @@ import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
 import com.globits.richy.dto.VocabularyBulkActionDto;
+import com.globits.richy.question.ComprehensiveFindMistakes.StudyReview;
 import com.globits.richy.service.QuestionExcelImportService;
 import com.globits.richy.service.QuestionService;
 import com.globits.richy.service.impl.ReadingVocabularyService;
@@ -153,6 +154,12 @@ public class RestQuestionController {
     @RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
     public QuestionDto getOne(@PathVariable Long id) {
         return service.getObjectById(id);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/{id}/study_mistakes", method = RequestMethod.POST)
+    public Map<Long, StudyReview> reviewStudyMistakes(@PathVariable Long id, @RequestBody Map<Long, String> submissions) {
+        return service.reviewStudyMistakes(id, submissions);
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})

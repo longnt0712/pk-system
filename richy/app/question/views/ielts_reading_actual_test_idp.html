@@ -1866,13 +1866,14 @@
             </button>
         </header>
         <div class="idp-study-check-summary" aria-label="Tổng hợp kết quả">
-            <p ng-if="vm.studyAnswerCheck.gradedOnSubmit">Dạng Tìm và sửa lỗi được chấm sau khi nộp bài.</p>
             <div><strong>{{vm.studyAnswerCheck.total}}</strong><span>Tổng câu</span></div>
             <div class="is-correct"><strong>{{vm.studyAnswerCheck.correct}}</strong><span>Đúng</span></div>
             <div class="is-incorrect"><strong>{{vm.studyAnswerCheck.incorrect}}</strong><span>Sai</span></div>
             <div class="is-unanswered"><strong>{{vm.studyAnswerCheck.unanswered}}</strong><span>Chưa trả lời</span></div>
         </div>
         <div class="idp-study-check-list">
+            <p role="status" ng-if="vm.studyAnswerCheck.checkingMistakes">Đang kiểm tra các câu Tìm và sửa lỗi…</p>
+            <p role="status" ng-if="vm.studyAnswerCheck.mistakeReviewFailed">Chưa kiểm tra được một số câu Tìm và sửa lỗi. Đóng hộp này rồi bấm Kiểm tra đáp án để thử lại.</p>
             <article class="idp-study-check-row"
                      ng-repeat="row in vm.studyAnswerCheck.rows track by row.ordinalNumber"
                      ng-class="{'is-correct': row.status === 'correct', 'is-incorrect': row.status === 'incorrect', 'is-unanswered': row.status === 'unanswered'}">
@@ -1887,7 +1888,7 @@
                     <p class="idp-study-check-prompt" ng-if="row.prompt">{{row.prompt}}</p>
                     <dl class="idp-study-check-answers">
                         <div><dt>Bạn chọn</dt><dd>{{row.studentAnswer}}</dd></div>
-                        <div><dt>Đáp án đúng</dt><dd>{{row.correctAnswer}}</dd></div>
+                        <div><dt>Đáp án đúng</dt><dd>{{row.correctAnswer || 'Đang kiểm tra…'}}</dd></div>
                     </dl>
                 </div>
                 <button type="button" class="idp-study-check-jump" ng-click="vm.openStudyAnswerQuestion(row)">

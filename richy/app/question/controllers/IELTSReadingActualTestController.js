@@ -22,7 +22,8 @@
         '$sce',
         '$cookies',
         'ComprehensiveVideo',
-        'ComprehensiveListening'
+        'ComprehensiveListening',
+        'ComprehensiveFindMistakes'
         // 'dndLists'
         // 'ngSanitize',
         
@@ -745,7 +746,7 @@
         };
     });
 
-    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening) {
+    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,mistakes) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -4890,11 +4891,10 @@
                 if (type === 18 && listening.isRuntime(entry.questionPackage) && !questionAnswers[0].clientAnswer) {
                     questionAnswers[0].clientAnswer = listening.serialize(listening.start(entry.questionPackage.motherTongue));
                 }
-                if (type === 19 && entry.questionPackage._findMistakesEdit) {
-                    var edit = entry.questionPackage._findMistakesEdit;
-                    var correction = String(edit.text || '').trim();
-                    if (correction && entry.questionPackage.subQuestions[edit.index] === question && questionAnswers[0]) {
-                        questionAnswers[0].clientAnswer = edit.candidate.id + '|' + correction;
+                if (type === 19 && questionAnswers[0]) {
+                    var correction = pendingFindMistakesAnswer(entry);
+                    if (correction) {
+                        questionAnswers[0].clientAnswer = correction;
                         question.answered = true;
                     }
                 }
@@ -4982,6 +4982,14 @@
                 return Number(left.ordinalNumber) - Number(right.ordinalNumber);
             });
             vm.testResult.questionAnswerTestResult = results;
+        }
+
+        function pendingFindMistakesAnswer(entry) {
+            var pack = entry.questionPackage, question = entry.question, edit = pack._findMistakesEdit;
+            if (edit && pack.subQuestions[edit.index] === question && String(edit.text || '').trim()) {
+                return mistakes.encode(edit.candidate.id, edit.text);
+            }
+            return '';
         }
 
         function decodeStudyTextEntities(value) {
@@ -5178,12 +5186,43 @@
             return !!current.questionAnswer && current.questionAnswer.correct === true;
         }
 
+        function setStudyCheckResult(summary, row, submitted, expected, correct) {
+            row.studentAnswer = submitted || 'Chưa chọn đáp án';
+            row.correctAnswer = expected || 'Chưa có dữ liệu đáp án';
+            row.status = submitted ? (correct ? 'correct' : 'incorrect') : 'unanswered';
+            if (submitted) { summary.answered++; }
+            summary[row.status]++;
+        }
+
         vm.openStudyAnswerCheck = function () {
             if (vm.testSessionMode !== 'STUDY' || vm.isWritingRoute || vm.isPreviewMode || vm.isStartTest !== true) { return; }
             // Review the visible answer models only. Submission synchronization can retain older results.
-            var summary = {rows: [], total: 0, answered: 0, correct: 0, incorrect: 0, unanswered: 0, gradedOnSubmit: 0};
+            var summary = {rows: [], total: 0, answered: 0, correct: 0, incorrect: 0, unanswered: 0};
+            var submissions = {}, mistakeRows = [], passages = new Map();
             angular.forEach(getReadingQuestionEntries(), function (entry) {
-                if (Number(entry.packageType) === 19) { summary.gradedOnSubmit++; return; }
+                var row = {ordinalNumber: entry.question.ordinalNumber, question: entry.question,
+                    packageQuestions: entry.packageQuestions, passageQuestions: entry.passageQuestions};
+                summary.rows.push(row);
+                summary.total++;
+                if (Number(entry.packageType) === 19) {
+                    var pack = entry.questionPackage, passage = passages.get(pack);
+                    if (!passage) {
+                        passage = mistakes.parse(pack.motherTongue);
+                        passages.set(pack, passage);
+                        row.prompt = passage.parts.map(function (part) { return part.text; }).join('');
+                    }
+                    var answer = (entry.question.questionAnswers || [])[0];
+                    var raw = pendingFindMistakesAnswer(entry) || (answer && answer.clientAnswer) || '';
+                    var selected = mistakes.decode(raw);
+                    var candidate = selected && passage.candidates[selected.id - 1];
+                    row.studentAnswer = candidate ? candidate.text + ' → ' + selected.text : 'Chưa chọn đáp án';
+                    row.status = 'pending';
+                    row.answerId = answer && answer.id;
+                    if (row.answerId != null) { submissions[row.answerId] = raw; }
+                    mistakeRows.push(row);
+                    return;
+                }
+                row.prompt = formatStudyQuestionPrompt(entry.question.question, entry);
                 var current = studyCurrentAnswer(entry), correctAnswers = studyCorrectAnswers(entry, current);
                 var submittedAnswer = current.text, correct = isStudyAnswerCorrect(entry, current, correctAnswers);
                 if (Number(entry.packageType) === 18 && typeof listening !== 'undefined' && listening.isRuntime(entry.questionPackage)) {
@@ -5192,18 +5231,29 @@
                     correct = !!session && session.passed;
                     correctAnswers = ['Đúng từ 90% tổng số ô trống'];
                 }
-                var status = submittedAnswer ? (correct ? 'correct' : 'incorrect') : 'unanswered';
-                if (submittedAnswer) { summary.answered++; }
-                summary[status]++;
-                summary.rows.push({ordinalNumber: entry.question && entry.question.ordinalNumber,
-                    prompt: formatStudyQuestionPrompt(entry.question && entry.question.question, entry),
-                    studentAnswer: submittedAnswer || 'Chưa chọn đáp án',
-                    correctAnswer: correctAnswers.length ? correctAnswers.join(' / ') : 'Chưa có dữ liệu đáp án',
-                    status: status, question: entry.question, packageQuestions: entry.packageQuestions, passageQuestions: entry.passageQuestions});
-                summary.total++;
+                setStudyCheckResult(summary, row, submittedAnswer, correctAnswers.join(' / '), correct);
             });
             vm.studyAnswerCheck = summary;
             vm.showStudyAnswerCheck = true;
+            if (!mistakeRows.length) { return; }
+
+            function applyMistakeReviews(reviews) {
+                summary.checkingMistakes = false;
+                mistakeRows.forEach(function (row) {
+                    var review = reviews && reviews[row.answerId];
+                    if (review && review.expected) {
+                        setStudyCheckResult(summary, row, review.submitted, review.expected, review.correct);
+                    } else {
+                        summary.mistakeReviewFailed = true;
+                        row.correctAnswer = 'Chưa tải được đáp án';
+                    }
+                });
+            }
+
+            summary.checkingMistakes = true;
+            return service.reviewStudyMistakes(vm.ieltsReadingActualTest.id, submissions).then(applyMistakeReviews, function () {
+                applyMistakeReviews(null);
+            });
         };
 
 

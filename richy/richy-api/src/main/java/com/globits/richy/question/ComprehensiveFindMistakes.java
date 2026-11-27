@@ -67,6 +67,26 @@ public final class ComprehensiveFindMistakes {
         return response == null ? "" : candidates.get(response.candidate - 1) + " → " + response.text;
     }
 
+    public static Map<Long, StudyReview> review(List<QuestionAnswer> answers, Map<Long, String> submissions) {
+        List<QuestionAnswerTestResult> rows = new ArrayList<>();
+        for (QuestionAnswer answer : answers) {
+            QuestionAnswerTestResult row = new QuestionAnswerTestResult();
+            row.setQuestionAnswer(answer);
+            row.setClientAnswer(submissions.get(answer.getId()));
+            rows.add(row);
+        }
+        alignResponses(rows);
+
+        Map<Long, StudyReview> result = new LinkedHashMap<>();
+        for (QuestionAnswerTestResult row : rows) {
+            QuestionAnswer answer = row.getQuestionAnswer();
+            String value = row.getClientAnswer();
+            result.put(answer.getId(), new StudyReview(describe(answer, value),
+                    describe(answer, answer.getAnswer().getAnswer()), isCorrect(answer, value)));
+        }
+        return result;
+    }
+
     /** Associate the student's choices with the authored slots, independent of click order. */
     public static void alignResponses(Collection<QuestionAnswerTestResult> rows) {
         Map<Question, List<QuestionAnswerTestResult>> groups = new LinkedHashMap<>();
@@ -115,5 +135,21 @@ public final class ComprehensiveFindMistakes {
         private String encoded() { return candidate + "|" + text; }
         public int getCandidate() { return candidate; }
         public String getText() { return text; }
+    }
+
+    public static final class StudyReview {
+        private final String submitted;
+        private final String expected;
+        private final boolean correct;
+
+        private StudyReview(String submitted, String expected, boolean correct) {
+            this.submitted = submitted;
+            this.expected = expected;
+            this.correct = correct;
+        }
+
+        public String getSubmitted() { return submitted; }
+        public String getExpected() { return expected; }
+        public boolean isCorrect() { return correct; }
     }
 }
