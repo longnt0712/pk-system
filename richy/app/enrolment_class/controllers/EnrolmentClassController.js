@@ -2358,6 +2358,12 @@
                     categoryName: Number(task.topicId) === id ? task.categoryName : ''};
             });
         };
+        vm.taskSelectedTopicLabels = function (task) {
+            // ng-repeat can compare these strings even when topic metadata is rebuilt on each digest.
+            return vm.taskSelectedTopics(task).map(function (topic) {
+                return (topic.categoryName || 'Không phân loại') + ' → ' + (topic.name || '');
+            });
+        };
         vm.taskHasTopics = function (task) { return vm.taskTopicIds(task).length > 0; };
         vm.directListeningAssignmentsEnabled = function () {
             return !!((vm.scheduleClass && vm.scheduleClass.directListeningAssignmentsEnabled === true)

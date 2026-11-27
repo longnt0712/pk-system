@@ -1651,7 +1651,7 @@
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
             </div>
-            <p class="class-task-help" data-ng-repeat="topic in vm.taskSelectedTopics(task) track by topic.id">{{topic.categoryName || 'Không phân loại'}} → {{topic.name}}</p>
+            <p class="class-task-help" data-ng-repeat="label in vm.taskSelectedTopicLabels(task) track by $index" data-ng-bind="label"></p>
             <p class="class-task-help" data-ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
             <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span data-ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.taskIeltsPartsLabel(task)}}</span></p>
             <p class="class-task-help" data-ng-if="task.activityType === 'COMPREHENSIVE'"><i class="fa fa-clock-o"></i> {{vm.taskComprehensiveTimingLabel(task)}}</p>

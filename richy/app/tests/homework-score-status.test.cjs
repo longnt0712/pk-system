@@ -6,6 +6,7 @@ const controller = fs.readFileSync(path.join(app, 'enrolment_class/controllers/E
 const listing = fs.readFileSync(path.join(app, 'enrolment_class/views/listing.html'), 'utf8');
 const section = (start, end) => controller.slice(controller.indexOf(start), controller.indexOf(end, controller.indexOf(start)));
 const helpers = section('        vm.homeworkProgressPercent =', '\t\tvm.tasksForSection =');
+const topicHelpers = section('        vm.taskTopicIds =', '        vm.homeworkProgressPercent =');
 const review = section('        vm.buildHomeworkReviewRows =', '        vm.filteredHomeworkRows =');
 const exporter = section('        function homeworkExportValue(', '        function openClassImagePreview(');
 const cases = [
@@ -133,37 +134,53 @@ test('bulk changes in another column share the same save queue',async()=>{
     assert.equal(h.vm.previousHomeworkTasks[1].bulkSaving,false);
     assert.equal(h.vm.homeworkCellSaving,false);
 });
-test('actual Angular dropdowns and image exports show scored labels on phone and desktop',async()=>{
+test('a task with embedded topics keeps Homework colors in the table and export on phone and desktop',async()=>{
     const playwright = require(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
     const executablePath = ['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
     const browser=await playwright.chromium.launch({headless:true,executablePath});
     const markup=listing.match(/<div class="class-homework-review-table"[\s\S]*?<\/table>\s*<\/div>/)[0];
+    const topicMarkup=listing.match(/<p class="class-task-help" data-ng-repeat="[^"]+ in vm\.taskSelectedTopic(?:s|Labels)\(task\)[^"]*"[^>]*>[^<]*<\/p>/)[0];
     const styles=[...listing.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(match=>match[1]).join('\n');
+    const scoreCases=cases.concat([[0, 'NEEDS_REVIEW', 'Cần bổ sung', 'is-review']]);
+    const backgrounds={'is-todo':'rgb(255, 240, 242)', 'is-progress':'rgb(234, 242, 255)',
+        'is-done':'rgb(230, 247, 237)', 'is-review':'rgb(255, 244, 219)'};
     try { for(const width of [390,1920]) {
         const page=await browser.newPage({viewport:{width,height:900}});
         try {
-            await page.setContent('<!doctype html><style>'+styles+'</style><section class="class-schedule-day-modal-window">'+markup+'</section>');
-            await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
-            await page.evaluate(({helpers,exporter,cases})=>{
-                const vm={homeworkProgressLevels:[10,20,30,40,50,60,70,80,90],isHomeworkColumnVisible:()=>false,isHomeworkTaskColumnVisible:()=>true,
+            await page.setContent('<!doctype html><style>'+styles+'</style><section class="class-schedule-day-modal-window">'+topicMarkup+markup+'</section>');
+            await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.js')});
+            await page.evaluate(({helpers,topicHelpers,exporter,scoreCases})=>{
+                const vm={homeworkProgressLevels:[10,20,30,40,50,60,70,80,90],isHomeworkColumnVisible:column=>column!=='number',isHomeworkTaskColumnVisible:()=>true,
                     previousHomeworkTasks:[{id:10,title:'Làm test'}],previousHomeworkLabel:()=>'',scheduleDayLabel:()=>'',
-                    scheduleClass:{name:'Test class'}};
+                    scheduleClass:{name:'Test class'},scheduleTopics:[]};
                 new Function('vm',helpers)(vm);
-                vm.scheduleStudents=cases.map(([percent,status],index)=>({id:index+1,name:'Student '+(index+1),username:'student'+index,
+                new Function('vm','angular',topicHelpers)(vm,angular);
+                vm.scheduleStudents=scoreCases.map(([percent,status],index)=>({id:index+1,name:'Student '+(index+1),username:'student'+index,
+                    status:percent>=85?'DONE':'INCOMPLETE',label:percent>=85?'Đã hoàn thành':'Chưa làm',attendance:{present:index!==1},
                     cells:[{status,editStatus:status,resultPercent:percent,automatic:true}]}));
                 vm.filteredHomeworkRows=()=>vm.scheduleStudents;
-                angular.module('ScoreFixture',[]).run(['$rootScope',root=>{root.vm=vm;}]); angular.bootstrap(document.body,['ScoreFixture']);
+                const task={activityType:'DAILY_VOCAB',topicId:31,topicIds:[31,32],
+                    topics:[{topicId:31,topicName:'Topic từ task',categoryName:'Nhóm từ'}]};
+                angular.module('ScoreFixture',[]).run(['$rootScope',root=>{root.vm=vm;root.task=task;}]);
+                angular.bootstrap(document.body,['ScoreFixture']);
                 window.scoreVm=vm;
                 const build=new Function('vm','angular','document',exporter+';return prepareHomeworkImageElement;')(vm,angular,document);
                 window.scoreExport=build(document.querySelector('table'));document.body.appendChild(scoreExport);
-            },{helpers,exporter,cases});
+            },{helpers,topicHelpers,exporter,scoreCases});
+            assert.deepEqual(await page.locator('.class-task-help').allTextContents(),['Nhóm từ → Topic từ task','Không phân loại → Topic #32']);
             const selects=page.locator('.class-homework-progress-select');
-            assert.equal(await selects.count(),cases.length);
-            for(let i=0;i<cases.length;i++) {
-                assert.equal(await selects.nth(i).evaluate(node=>node.selectedOptions[0].textContent),cases[i][2]);
-                assert.ok((await selects.nth(i).getAttribute('class')).includes(cases[i][3]));
-                assert.ok((await page.locator('.class-homework-image-export tbody tr').nth(i).textContent()).includes(cases[i][2]));
+            assert.equal(await selects.count(),scoreCases.length);
+            for(let i=0;i<scoreCases.length;i++) {
+                const [, , label, color]=scoreCases[i];
+                assert.equal(await selects.nth(i).evaluate(node=>node.selectedOptions[0].textContent),label);
+                assert.equal(await selects.nth(i).evaluate(node=>getComputedStyle(node).backgroundColor),backgrounds[color]);
+                const exportValue=page.locator('.class-homework-image-export tbody tr').nth(i).locator('.class-homework-review-cell > div').first();
+                assert.equal(await exportValue.textContent(),label);
+                assert.equal(await exportValue.evaluate(node=>node.style.backgroundColor),backgrounds[color]);
             }
+            assert.equal(await page.locator('.class-attendance-present').first().evaluate(node=>getComputedStyle(node).color),'rgb(23, 99, 58)');
+            const completed=page.locator('.class-homework-status.is-done').first();
+            assert.equal(await completed.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(223, 246, 233)');
             await page.evaluate(()=>angular.element(document.body).injector().get('$rootScope').$apply(()=>{
                 scoreVm.homeworkCellSaving=true; scoreVm.scheduleStudents[0].cells[0].saving=true;
             }));
