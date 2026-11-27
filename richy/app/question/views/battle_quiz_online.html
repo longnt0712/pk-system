@@ -993,7 +993,7 @@
                 <section class="battle-online-classic-review" ng-if="vm.room.classicAnswerRevealed" role="status"><small>✓ ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.classicCorrectAnswer}}</strong></section>
             </div>
             <footer class="battle-online-video-review-actions">
-                <span>{{!vm.isClassicAuto() ? 'Hết giờ sẽ hiện đáp án. Giáo viên bấm Next câu để tiếp tục video.' : 'Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.'}}</span>
+                <span>{{!vm.isClassicAuto() ? 'Đáp án hiện khi tất cả học sinh đã nộp hoặc hết giờ. Giáo viên bấm Next câu để tiếp tục video.' : 'Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.'}}</span>
                 <button type="button" class="btn btn-default" ng-click="vm.openHostVideoAnswers()">Xem trả lời</button>
                 <button type="button" class="btn btn-primary" ng-if="!vm.isClassicAuto()" ng-disabled="vm.matchControlBusy || !vm.room.classicAnswerRevealed" ng-click="vm.nextClassicQuestion()">Next câu</button>
             </footer>

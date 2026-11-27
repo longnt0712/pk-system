@@ -86,7 +86,7 @@ public class BattleListeningServiceTest {
             BattleOnlineRoomDto snapshot = service.getRoom("LISTEN1", "alice");
             service.answer("LISTEN1", "alice", response(snapshot, 20));
             Object room = ((Map<?, ?>) get(service, "rooms")).get("LISTEN1");
-            set(room, "questionEndsAt", System.currentTimeMillis() - 1);
+            set(room, "questionEndsAt", System.currentTimeMillis() - 2000L);
             ReflectionTestUtils.invokeMethod(service, "advanceClassicQuestion", "LISTEN1", 0);
             BattleOnlineRoomDto review = service.getRoom("LISTEN1", "host");
             assertTrue(review.isClassicAnswerRevealed()); assertTrue(review.getClassicCorrectAnswer().contains("hear"));

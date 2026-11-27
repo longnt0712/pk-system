@@ -99,7 +99,7 @@ public class BattleOnlineMatchControlsTest {
         assertTrue(service.getRoom("CONTROL1","host").getClassicStudentAnswers().stream().noneMatch(BattleOnlineClassicAnswerDto::isAnswered));
         set(room,"classicAutoAdvance",true);assertTrue(service.getRoom("CONTROL1","host").getClassicStudentAnswers().isEmpty());
     }
-    @Test @SuppressWarnings("unchecked") public void manualClassicWaitsUntilTimeExpiresThenRevealsWithoutAdvancingUntilHostNext() throws Exception {
+    @Test @SuppressWarnings("unchecked") public void manualClassicRevealsAfterBothSubmissionsAndWaitsForHostNext() throws Exception {
         setup("CLASSIC", false);
         Object second=state("QuestionState");set(second,"id",8L);set(second,"question","next");set(second,"correctKey","A");set(second,"correctText","next");
         ((List<Object>)get(room,"classicQuestions")).add(second);
@@ -108,22 +108,26 @@ public class BattleOnlineMatchControlsTest {
         BattleOnlineRoomDto manual=service.setClassicAutoAdvance("CONTROL1","host",false);
         assertFalse(manual.isClassicAutoAdvance());assertNull(manual.getClassicCorrectAnswer());
         BattleOnlineAnswerDto a=new BattleOnlineAnswerDto();a.setQuestionId(7L);a.setQuestionSequence(1L);a.setAnswerKey("A");
-        service.answer("CONTROL1","alice",a);service.answer("CONTROL1","bob",a);
-        ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","CONTROL1",0);
+        service.answer("CONTROL1","alice",a);
         assertEquals(1,service.getRoom("CONTROL1","alice").getCurrentQuestionIndex());
         assertFalse(service.getRoom("CONTROL1","alice").isClassicAnswerRevealed());
-        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,(Long)get(room,"questionEndsAt")));
-        long expired=System.currentTimeMillis()-1L;set(room,"questionEndsAt",expired);
-        ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","CONTROL1",0);
+        long originalDeadline = manual.getQuestionEndsAt();
+        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,originalDeadline));
+        BattleOnlineAnswerDto b=new BattleOnlineAnswerDto();b.setQuestionId(7L);b.setQuestionSequence(1L);b.setAnswerKey("B");
+        assertFalse(service.answer("CONTROL1","bob",b).isCorrect());
         BattleOnlineRoomDto review=service.getRoom("CONTROL1","alice");
         assertTrue(review.isClassicAnswerRevealed());assertEquals("hello",review.getClassicCorrectAnswer());assertEquals("PLAYING",review.getStatus());
+        long closedAt = review.getQuestionEndsAt();
+        assertTrue(closedAt < originalDeadline);
+        assertEquals(1,review.getCurrentQuestionIndex());
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","CONTROL1",0);
         rejected(()->service.answer("CONTROL1","alice",a));
-        rejected(()->service.nextClassicQuestion("CONTROL1","alice",1L,expired));
-        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,expired-1));
-        BattleOnlineRoomDto next=service.nextClassicQuestion("CONTROL1","host",1L,expired);
+        rejected(()->service.extendMatchTime("CONTROL1","host"));
+        rejected(()->service.nextClassicQuestion("CONTROL1","alice",1L,closedAt));
+        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,originalDeadline));
+        BattleOnlineRoomDto next=service.nextClassicQuestion("CONTROL1","host",1L,closedAt);
         assertEquals(2,next.getCurrentQuestionIndex());assertFalse(next.isClassicAnswerRevealed());assertNull(next.getClassicCorrectAnswer());
-        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,expired));
+        rejected(()->service.nextClassicQuestion("CONTROL1","host",1L,closedAt));
         long lastExpired=System.currentTimeMillis()-1L;set(room,"questionEndsAt",lastExpired);
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","CONTROL1",1);
         assertEquals("FINISHED",service.nextClassicQuestion("CONTROL1","host",2L,lastExpired).getStatus());
@@ -139,6 +143,60 @@ public class BattleOnlineMatchControlsTest {
         assertEquals(wrong,get(alice,"wrongCount"));
         assertEquals("FINISHED",service.setClassicAutoAdvance("CONTROL1","host",true).getStatus());
         setup("COUNTDOWN",false);rejected(()->service.setClassicAutoAdvance("CONTROL1","host",false));
+    }
+
+    @Test public void classicFindMistakesGradesTheLastTimedSubmissionBeforeRevealingOrAdvancing() throws Exception {
+        for (boolean autoAdvance : new boolean[]{false, true}) {
+            setup("CLASSIC", false);
+            BattleExerciseQuestions.Turn turn = BattleExerciseQuestions.fromTest(BattleExerciseQuestionsTest.findMistakesTest()).get(0);
+            set(question, "exercise", turn);
+            service.setClassicAutoAdvance("CONTROL1", "host", autoAdvance);
+            BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
+            answer.setQuestionId(7L);
+            answer.setQuestionSequence(1L);
+            answer.setExerciseAnswers(Collections.singletonMap(turn.content.items.get(0).id, Collections.singletonList("2|went")));
+            service.answer("CONTROL1", "alice", answer);
+            set(room, "questionEndsAt", System.currentTimeMillis() - 25L);
+            ReflectionTestUtils.invokeMethod(service, "advanceClassicQuestion", "CONTROL1", 0);
+            assertFalse(service.getRoom("CONTROL1", "host").isClassicAnswerRevealed());
+            rejected(() -> service.answer("CONTROL1", "bob", answer));
+
+            answer.setAutoSubmitted(true);
+            BattleOnlineAnswerResultDto result = service.answer("CONTROL1", "bob", answer);
+            assertEquals(Integer.valueOf(1), result.getFindMistakesCorrect());
+            assertFalse(result.isCorrect());
+            if (autoAdvance) {
+                ReflectionTestUtils.invokeMethod(service, "advanceClassicQuestion", "CONTROL1", 0);
+                assertEquals("FINISHED", service.getRoom("CONTROL1", "host").getStatus());
+            } else {
+                BattleOnlineRoomDto review = service.getRoom("CONTROL1", "host");
+                assertTrue(review.isClassicAnswerRevealed());
+                assertTrue(review.getClassicCorrectAnswer().contains("went"));
+                assertEquals(1, review.getCurrentQuestionIndex());
+            }
+        }
+    }
+
+    @Test public void aTimedIndividualExerciseScoresOnceWithoutAssigningANewQuestion() throws Exception {
+        for (String mode : new String[]{"COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "LUM_NGAY"}) {
+            setup(mode, false);
+            set(get(room, "settings"), "questionSource", "COMPREHENSIVE");
+            BattleExerciseQuestions.Turn turn = BattleExerciseQuestions.fromTest(BattleExerciseQuestionsTest.findMistakesTest()).get(0);
+            set(question, "exercise", turn);
+            BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
+            answer.setQuestionId(7L);
+            answer.setQuestionSequence(1L);
+            answer.setExerciseAnswers(Collections.singletonMap(turn.content.items.get(0).id, Collections.singletonList("2|went")));
+            set(room, "matchEndsAt", System.currentTimeMillis() - 25L);
+            rejected(() -> service.answer("CONTROL1", "alice", answer));
+            answer.setAutoSubmitted(true);
+            assertEquals(mode, Integer.valueOf(1), service.answer("CONTROL1", "alice", answer).getFindMistakesCorrect());
+            assertNull(mode, get(alice, "currentQuestion"));
+            assertNull(mode, service.getRoom("CONTROL1", "alice").getCurrentQuestion());
+            rejected(() -> service.answer("CONTROL1", "alice", answer));
+            set(room, "matchEndsAt", System.currentTimeMillis() - 2000L);
+            rejected(() -> service.answer("CONTROL1", "bob", answer));
+        }
     }
     @Test public void playersStayAutomaticallyReadyOnJoinReconnectAndReplayInEveryMode() throws Exception {
         for (String mode : MODES) {

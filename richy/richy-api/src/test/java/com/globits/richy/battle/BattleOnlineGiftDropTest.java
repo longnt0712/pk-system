@@ -79,10 +79,15 @@ public class BattleOnlineGiftDropTest {
     }
 
     private BattleOnlineAnswerResultDto submitFindMistakes(String username, boolean complete) {
+        return submitFindMistakes(username, complete, false);
+    }
+
+    private BattleOnlineAnswerResultDto submitFindMistakes(String username, boolean complete, boolean autoSubmitted) {
         BattleOnlineQuestionDto question = service.getRoom("GIFTS1", username).getCurrentQuestion();
         BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
         answer.setQuestionId(question.getId());
         answer.setQuestionSequence(question.getSequence());
+        answer.setAutoSubmitted(autoSubmitted);
         Map<String, List<String>> values = new LinkedHashMap<>();
         values.put("103", Collections.singletonList("2|went"));
         if (complete) {
@@ -130,13 +135,26 @@ public class BattleOnlineGiftDropTest {
         assertFalse(service.getRoom("GIFTS1", "alice").isGiftOpening());
         try { submitFindMistakes("alice", true); fail("Completed player must wait"); } catch (BattleOnlineException expected) {}
         try { service.finishMatch("GIFTS1", "host"); fail("Timer must remain open"); } catch (BattleOnlineException expected) {}
-        set(room, "matchEndsAt", System.currentTimeMillis() - 1L);
+        set(room, "matchEndsAt", System.currentTimeMillis() - 2000L);
         service.finishMatch("GIFTS1", "host");
         BattleOnlineRoomDto unfinished = service.getRoom("GIFTS1", "bob");
         assertTrue(unfinished.isGiftOpening());
         assertEquals(Integer.valueOf(0), unfinished.getFindMistakesRank());
         assertEquals(0, unfinished.getFindMistakesEggMinimum());
         assertEquals(Integer.valueOf(1), unfinished.getGiftCredits());
+    }
+
+    @Test public void theRaceGradesTheLastTimedCorrectionBeforeOpeningEggs() throws Exception {
+        startFindMistakesRace();
+        assertTrue(submitFindMistakes("alice", true).isCorrect());
+        set(room, "matchEndsAt", System.currentTimeMillis() - 50L);
+        try { service.finishMatch("GIFTS1", "host"); fail("Await the timed submissions"); } catch (BattleOnlineException expected) {}
+        try { submitFindMistakes("bob", true); fail("Manual submissions are closed"); } catch (BattleOnlineException expected) {}
+
+        BattleOnlineAnswerResultDto result = submitFindMistakes("bob", true, true);
+        assertTrue(result.isCorrect());
+        assertEquals(Integer.valueOf(2), result.getRoom().getFindMistakesRank());
+        assertTrue(result.getRoom().isGiftOpening());
     }
 
     @Test public void rankedEggsNeverResolveToLowPointRewardsAndOrdinaryEggsKeepTheirOriginalDraw() {

@@ -25,23 +25,26 @@ public class BattleOnlineVideoTest {
         assertEquals("LIGHTNING",finalEggs.getLumLuckyAppearance());
         verify(config,times(1)).getLumLuckyAppearance();
     }
-    @Test public void manualClassicVideoHoldsTheCueUntilDeadlineAndHostNextWithoutLeakingAnswers() throws Exception {
+    @Test public void manualClassicVideoRevealsAfterAllAnswersEvenWhenPausedAndWaitsForHostNext() throws Exception {
         setup("CLASSIC");service.setClassicAutoAdvance("VIDEO1","host",false);
         BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
         assertNull(opened.getClassicCorrectAnswer());
         assertTrue(opened.getClassicStudentAnswers().isEmpty());
-        service.answer("VIDEO1","alice",answer());service.answer("VIDEO1","bob",answer());
+        service.answer("VIDEO1","alice",answer());
         assertEquals("ANSWERING",service.getRoom("VIDEO1","host").getVideoPhase());
         assertFalse(service.getRoom("VIDEO1","host").isClassicAnswerRevealed());
         assertTrue(service.getRoom("VIDEO1","host").getClassicStudentAnswers().isEmpty());
-        long deadline=System.currentTimeMillis()-1L;set(room,"questionEndsAt",deadline);
-        ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        BattleOnlineTimerControlDto paused=new BattleOnlineTimerControlDto();paused.setPaused(true);
+        assertTrue(service.controlQuestionTimer("VIDEO1","host",paused).isQuestionTimerPaused());
+        service.answer("VIDEO1","bob",answer());
         BattleOnlineRoomDto review=service.getRoom("VIDEO1","host");
+        long deadline=review.getQuestionEndsAt();
+        assertTrue(deadline < opened.getQuestionEndsAt());
+        assertFalse(review.isQuestionTimerPaused());
         assertTrue(review.isClassicAnswerRevealed());assertTrue(review.getClassicCorrectAnswer().contains("yes"));
         assertEquals("ANSWERING",review.getVideoPhase());
         assertEquals(2,review.getClassicStudentAnswers().size());
         assertTrue(review.getClassicStudentAnswers().stream().allMatch(r->r.isAnswered() && r.isCorrect() && r.getAnswer().contains("yes")));
-        BattleOnlineTimerControlDto paused=new BattleOnlineTimerControlDto();paused.setPaused(true);
         rejected(()->service.controlQuestionTimer("VIDEO1","host",paused));
         BattleOnlineRoomDto next=service.nextClassicQuestion("VIDEO1","host",1L,deadline);
         assertEquals("WATCHING",next.getVideoPhase());assertEquals(2,next.getCurrentQuestionIndex());assertNull(next.getClassicCorrectAnswer());
@@ -49,7 +52,7 @@ public class BattleOnlineVideoTest {
         rejected(()->service.nextClassicQuestion("VIDEO1","host",1L,deadline));
         BattleOnlineVideoDto reopen=event("REOPEN",2,5);reopen.targetQuestionSequence=1;reopen.videoSourceId=next.getCurrentQuestion().getExercise().videoSourceId;
         assertTrue(service.videoEvent("VIDEO1","host",reopen).getClassicStudentAnswers().isEmpty());
-        set(room,"questionEndsAt",System.currentTimeMillis()-1L);ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        set(room,"questionEndsAt",System.currentTimeMillis()-2000L);ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
         assertTrue(service.getRoom("VIDEO1","host").getClassicStudentAnswers().stream().noneMatch(BattleOnlineClassicAnswerDto::isAnswered));
     }
     private BattleOnlineServiceImpl service;
@@ -165,10 +168,11 @@ public class BattleOnlineVideoTest {
             rejected(() -> service.answer("VIDEO1","alice",request));
             ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
             assertEquals(1,service.getRoom("VIDEO1","host").getCurrentQuestionIndex());
-            set(room,"questionEndsAt",System.currentTimeMillis()-1);
+            set(room,"questionEndsAt",System.currentTimeMillis()-2000L);
             ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
             BattleOnlineRoomDto next=service.getRoom("VIDEO1","alice");
             assertEquals("WATCHING",next.getVideoPhase()); assertEquals(2,next.getCurrentQuestionIndex());
+            assertEquals(0D, next.getVideoPositionSeconds(), 0D);
             assertFalse(next.getPlayers().stream().filter(p->"alice".equals(p.getUsername())).findFirst().get().isAnsweredCurrentQuestion());
             rejected(() -> service.videoEvent("VIDEO1","host",event("CUE",1,10)));
             long before=System.currentTimeMillis(); BattleOnlineRoomDto second=service.videoEvent("VIDEO1","host",event("CUE",2,10));
@@ -236,6 +240,27 @@ public class BattleOnlineVideoTest {
         assertEquals(2,service.getRoom("VIDEO1","host").getCurrentQuestionIndex());
     }
 
+    @Test public void videoResumesTenSecondsBeforeTheCompletedCue() throws Exception {
+        QuestionDto source = test();
+        List<QuestionDto> questions = source.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions();
+        questions.get(0).setVideoTimeSeconds(35);
+        questions.get(1).setVideoTimeSeconds(41);
+        setup("COUNTDOWN", source);
+
+        BattleOnlineRoomDto opened = service.videoEvent("VIDEO1", "host", event("CUE", 1, 36));
+        assertEquals(35D, opened.getVideoPositionSeconds(), 0D);
+        BattleOnlineAnswerDto submission = answer();
+        service.answer("VIDEO1", "alice", submission);
+        service.answer("VIDEO1", "bob", submission);
+
+        BattleOnlineRoomDto resumed = service.getRoom("VIDEO1", "host");
+        assertEquals("WATCHING", resumed.getVideoPhase());
+        assertEquals(2, resumed.getCurrentQuestionIndex());
+        assertEquals(25D, resumed.getVideoPositionSeconds(), 0D);
+        rejected(() -> service.videoEvent("VIDEO1", "host", event("CUE", 1, 35)));
+        assertEquals("ANSWERING", service.videoEvent("VIDEO1", "host", event("CUE", 2, 41)).getVideoPhase());
+    }
+
     @Test public void leavingTheLastUnansweredStudentResumesVideoForTheRemainingClass() throws Exception {
         setup("COUNTDOWN");
         service.videoEvent("VIDEO1","host",event("CUE",1,5));
@@ -246,12 +271,12 @@ public class BattleOnlineVideoTest {
 
     @Test public void finalQuestionEndsTheMatchWithoutWaitingForTheRemainingVideoOrAMatchTimer() throws Exception {
         setup("COUNTDOWN"); service.videoEvent("VIDEO1","host",event("CUE",1,5));
-        set(room,"questionEndsAt",System.currentTimeMillis()-1); ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        set(room,"questionEndsAt",System.currentTimeMillis()-2000L); ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
         service.videoEvent("VIDEO1","host",event("PROGRESS",2,8));
         assertEquals(8D,service.getRoom("VIDEO1","host").getVideoPositionSeconds(),0D);
         service.videoEvent("VIDEO1","host",event("CUE",2,10));
         BattleOnlineAnswerDto finalAnswer=answer();
-        set(room,"questionEndsAt",System.currentTimeMillis()-1); ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",1);
+        set(room,"questionEndsAt",System.currentTimeMillis()-2000L); ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",1);
         assertEquals("FINISHED",service.getRoom("VIDEO1","host").getStatus());
         assertEquals(0L,service.getRoom("VIDEO1","host").getMatchEndsAt());
         rejected(() -> service.answer("VIDEO1","alice",finalAnswer));
@@ -292,7 +317,7 @@ public class BattleOnlineVideoTest {
         service.videoEvent("VIDEO1","host",event("CUE",1,5));
         long active=ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now);
         assertEquals(active+1000L,(long)ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now+1000L));
-        set(room,"questionEndsAt",System.currentTimeMillis()-1);
+        set(room,"questionEndsAt",System.currentTimeMillis()-2000L);
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
         long second=ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now);
         assertEquals(second,(long)ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now+60000L));

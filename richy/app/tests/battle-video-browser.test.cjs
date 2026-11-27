@@ -7,7 +7,7 @@ function fragment(start,end){const i=view.indexOf(start),j=view.indexOf(end,i);a
 const hostPane=fragment('    <div id="battle-host-video-stage"','    <ng-include ng-if="vm.room && vm.room.status');
 const exercise=fragment('            <section class="battle-online-exercise"','            <div class="battle-online-private-loading"');
 const waiting=fragment('            <div class="battle-online-video-wait"','            <div class="demon-student-tools"');
-const feedback=fragment('            <div class="battle-online-feedback is-wrong"','            <section class="battle-online-guess-review"');
+const feedback=fragment('            <div class="battle-online-guess-feedback-slot"','            <section class="battle-online-guess-review"');
 const css=fs.readFileSync(path.join(app,'assets/css/external/bootstrap.min.css'),'utf8')+'\n'+
  Array.from(view.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g),m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(app,'assets/css/comprehensive-video.css'),'utf8');
 async function open(browser,username,width,extra=null){
@@ -151,7 +151,7 @@ test('Classic hosts see equal desktop columns and can illustrate all choices wit
  } finally {await browser.close();}
 });
 
-test('reloading an expired manual Classic question waits for host Next without repeated requests or timeout errors',async()=>{
+test('an expired question submits typed work once and a blank Classic review keeps waiting for host Next',async()=>{
  const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
  const browser=await playwright.chromium.launch({headless:true,executablePath});
  try {
@@ -178,16 +178,18 @@ test('reloading an expired manual Classic question waits for host Next without r
    assert.equal(await page.evaluate(()=>window.toastErrors.length),1);
    await page.close();
   }
-  const guess=await open(browser,'alice',390,gameLayout),snapshot=room('GUESS_WORD','ANSWERING');snapshot.videoSynchronized=false;
-  Object.assign(snapshot.currentQuestion.exercise,{type:2,answerMode:'TEXT'});await apply(guess,snapshot);
-  await guess.locator('.battle-online-question-card input[type=text]').fill('a cat');
-  snapshot.questionEndsAt=Date.now()-1;snapshot.serverTime=Date.now();await apply(guess,snapshot);
-  assert.equal(await guess.evaluate(()=>window.answerCalls.length),1,'Guess still submits typed answers at its deadline');
-  assert.equal(await guess.evaluate(()=>window.answerCalls[0][5]),true);
-  await guess.evaluate(()=>window.qaScope.$apply(()=>window.answerRequests[0].reject({status:409,data:{message:'Câu hỏi đã hết giờ.'}})));
-  for(let poll=0;poll<12;poll++) {snapshot.serverTime=Date.now();await apply(guess,snapshot);}
-  assert.equal(await guess.evaluate(()=>window.answerCalls.length),1,'Guess auto submission remains limited to one attempt');
-  await guess.close();
+  for (const mode of ['CLASSIC','GUESS_WORD']) {
+   const student=await open(browser,'alice',390,gameLayout),snapshot=room(mode,'ANSWERING');snapshot.videoSynchronized=false;
+   Object.assign(snapshot.currentQuestion.exercise,{type:2,answerMode:'TEXT'});await apply(student,snapshot);
+   await student.locator('.battle-online-question-card input[type=text]').fill('a cat');
+   snapshot.questionEndsAt=Date.now()-1;snapshot.serverTime=Date.now();await apply(student,snapshot);
+   assert.equal(await student.evaluate(()=>window.answerCalls.length),1,mode+' submits typed answers at its deadline');
+   assert.equal(await student.evaluate(()=>window.answerCalls[0][5]),true);
+   await student.evaluate(()=>window.qaScope.$apply(()=>window.answerRequests[0].reject({status:409,data:{message:'Câu hỏi đã hết giờ.'}})));
+   for(let poll=0;poll<12;poll++) {snapshot.serverTime=Date.now();await apply(student,snapshot);}
+   assert.equal(await student.evaluate(()=>window.answerCalls.length),1,mode+' auto submission remains limited to one attempt');
+   await student.close();
+  }
  } finally {await browser.close();}
 });
 
@@ -448,6 +450,47 @@ test('actual Battle templates preload hidden answers in all modes and host video
   const finished=room('DEMON_DEFENSE','ANSWERING',7,2);finished.status='FINISHED';finished.currentQuestion=null;
   await apply(host,finished);assert.equal(await host.locator('.battle-online-host-video').count(),0,'finish removes the video player');
  }finally{await browser.close();}
+});
+
+test('host rewinds once after each answer window and ignores stale progress during the seek', async () => {
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try {
+  const host=await open(browser,'host',1280);
+  function snapshot(phase, revision, sequence, position) {
+   const state=room('COUNTDOWN',phase,revision,sequence);
+   state.currentQuestion.exercise.videoTimeSeconds=35;
+   state.videoPositionSeconds=position;
+   return state;
+  }
+  function progress(seconds) {
+   return host.evaluate(t=>window.qaScope.$apply(()=>window.videoAdapter.onVideoProgress({seconds:t,duration:60})),seconds);
+  }
+  await apply(host,snapshot('ANSWERING',1,1,35));
+  await host.evaluate(()=>{window.videoActions.length=0;});
+  await apply(host,snapshot('WATCHING',2,2,25));
+  assert.deepEqual(await host.evaluate(()=>window.videoActions),[['seek',25],'play']);
+  await apply(host,snapshot('WATCHING',3,2,25));
+  assert.deepEqual(await host.evaluate(()=>window.videoActions),[['seek',25],'play']);
+
+  await progress(36);
+  assert.equal(await host.evaluate(()=>window.videoCalls.length),0,'old playback does not open the next cue');
+  await progress(25);
+  await progress(35);
+  const cue=await host.evaluate(()=>window.videoCalls.findIndex(call=>call.args[2]==='CUE'));
+  assert.ok(cue>=0);
+  assert.deepEqual(await host.evaluate(i=>window.videoCalls[i].args,cue),['VIDEO1',2,'CUE',35]);
+  await host.evaluate(({cue,state})=>window.qaScope.$apply(()=>window.videoCalls[cue].request.resolve(state)),
+   {cue,state:snapshot('ANSWERING',4,2,35)});
+
+  await apply(host,snapshot('CONTINUING',5,2,25));
+  assert.deepEqual(await host.evaluate(()=>window.videoActions.slice(-2)),[['seek',25],'play']);
+  await host.evaluate(()=>window.qaScope.$apply(()=>window.videoAdapter.onVideoEnded()));
+  assert.equal(await host.evaluate(()=>window.videoCalls.some(call=>call.args[2]==='ENDED')),false);
+  await progress(25);
+  await progress(60);
+  assert.equal(await host.evaluate(()=>window.videoCalls.some(call=>call.args[2]==='ENDED')),true);
+ } finally {await browser.close();}
 });
 
 test('host cue list keeps the current cue visible without blank spacers and offers review or a fresh class answer round',async()=>{

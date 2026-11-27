@@ -16,7 +16,7 @@ function setup(username='alice',loginService) {
  let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[],listCalls=[],reopenCalls=[],folderCalls=[];
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,isFunction(value){return typeof value==='function';},noop(){},element(){return {on(){},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
- nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler,updateCountdown});'),{angular,expose(value){hooks=value;}});
+ nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitAnswerAtTimeout,keydownHandler,updateCountdown});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
  const service={getExerciseTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},getExerciseFolders(){return new Promise((resolve,reject)=>folderCalls.push({resolve,reject}));},answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
@@ -260,11 +260,34 @@ test('freeze, elimination, spectator, skill and password states block exercise s
 });
 test('Guess timeout submits partial answers once and a late response cannot rewind the next question',async()=>{
  const h=setup();h.hooks.applyRoom(h.room('GUESS_WORD'),false);h.vm.exerciseAnswers={'103':['typed']};h.vm.countdown=0;
- h.hooks.autoSubmitGuessWordAtTimeout();h.hooks.autoSubmitGuessWordAtTimeout();
+ h.hooks.autoSubmitAnswerAtTimeout();h.hooks.autoSubmitAnswerAtTimeout();
  assert.equal(h.calls.length,1);assert.equal(h.calls[0][5],true);
  const old=h.room('GUESS_WORD');h.hooks.applyRoom(h.room('GUESS_WORD',2),false);h.vm.exerciseAnswers={'103':['new answer']};
  h.resolve({correct:false,room:old});await Promise.resolve();
  assert.equal(h.vm.room.currentQuestion.sequence,2);assert.deepEqual(plain(h.vm.exerciseAnswers),{'103':['new answer']});assert.equal(h.vm.answerLocked,false);
+});
+
+test('time expiry submits the current draft only once for exercises with a submit button in every mode',()=>{
+ for (const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']) {
+  const h=setup();h.hooks.applyRoom(h.room(mode),false);h.vm.exerciseAnswers={'103':['typed']};
+  h.vm.room.questionEndsAt=h.vm.room.matchEndsAt=Date.now()-100;
+  h.hooks.updateCountdown();h.hooks.updateCountdown();
+  assert.equal(h.calls.length,1,mode);
+  assert.deepEqual(plain(h.calls[0].slice(2,6)),['EXERCISE',1,{'103':['typed']},true],mode);
+ }
+});
+
+test('video and Find Mistakes timeout submits the open correction but skips a blank draft or an immediate choice',()=>{
+ const h=setup();const room=videoRoom(h,'CLASSIC','ANSWERING');
+ room.currentQuestion.exercise.answerMode='FIND_MISTAKES';h.hooks.applyRoom(room,false);
+ h.vm.findMistakesEditor={pack:{subQuestions:[{id:'103'}],_findMistakesEdit:{index:0,candidate:{id:2},text:'went'}}};
+ h.vm.room.questionEndsAt=Date.now()-100;h.hooks.updateCountdown();
+ assert.equal(h.calls.length,1);assert.deepEqual(plain(h.calls[0][4]),{'103':['2|went']});
+ for (const mode of ['TEXT','SINGLE']) {
+  const other=setup(),snapshot=other.room();snapshot.currentQuestion.exercise.answerMode=mode;
+  other.hooks.applyRoom(snapshot,false);other.vm.exerciseAnswers={'103':[mode==='TEXT'?' ':'A']};
+  other.vm.room.questionEndsAt=Date.now()-100;other.hooks.updateCountdown();assert.equal(other.calls.length,0,mode);
+ }
 });
 test('canceling the lobby editor restores saved source and exercises',()=>{
  const h=setup('host'),room=h.room();room.status='LOBBY';h.hooks.applyRoom(room,false);

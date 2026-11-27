@@ -320,21 +320,16 @@
         };
         vm.submitExercise = function (automatic) {
             if (vm.sessionLoginRequired) { return; }
-            if (!vm.room || !vm.room.currentQuestion || !vm.room.currentQuestion.exercise ||
-                    (automatic && !isGuessWordMode()) ||
+            if (!vm.room || vm.room.status !== 'PLAYING' || vm.room.giftOpening || !vm.room.currentQuestion || !vm.room.currentQuestion.exercise ||
                     (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
                     (!automatic && vm.exerciseInputDisabled()) || vm.answerLocked || isSpectator()) { return; }
             var exercise = vm.room.currentQuestion.exercise;
+            if (automatic && (exercise.answerMode === 'SINGLE' || vm.room.questionTimerPaused || vm.countdown > 0)) { return; }
             var findingMistakes = exercise.answerMode === 'FIND_MISTAKES';
             if (!automatic && !findingMistakes && exercise.answerMode !== 'LISTENING' && exercise.items.some(function (item) {
                 var values = vm.exerciseAnswers[item.id] || [];
                 return !values.length || values.some(function (value) { return !String(value || '').trim(); });
             })) { toastr.warning('Điền đủ các đáp án trước khi nộp.'); return; }
-            if (automatic && isGuessWordMode()) {
-                var key = String(vm.room.currentQuestion.id) + ':' + String(vm.room.currentQuestion.sequence);
-                if (autoSubmittedGuessQuestionKey === key) { return; }
-                autoSubmittedGuessQuestionKey = key;
-            }
             var submittedAnswers = angular.copy(vm.exerciseAnswers);
             if (findingMistakes) {
                 var pack = vm.findMistakesEditor.pack;
@@ -359,6 +354,13 @@
                     var values = submittedAnswers[item.id];
                     if (!values || !values.length) { submittedAnswers[item.id] = ['']; }
                 });
+            }
+            if (automatic) {
+                var key = String(vm.room.currentQuestion.id) + ':' + String(vm.room.currentQuestion.sequence);
+                if (autoSubmittedQuestionKey === key || !exercise.items.some(function (item) {
+                    return (submittedAnswers[item.id] || []).some(function (value) { return !!String(value || '').trim(); });
+                })) { return; }
+                autoSubmittedQuestionKey = key;
             }
             answer({key: 'EXERCISE', exerciseAnswers: submittedAnswers, autoSubmitted: automatic === true});
         };
@@ -438,6 +440,7 @@
         var videoAnswerToastTimer, videoMatchGeneration = 0, lastVideoAnswerToastSequence = 0;
         var videoTransitionKey = '', videoCheckpointPending = false, videoCheckpointAt = 0;
         var videoRetryTimer, hostVideoStateKey = '', hostVideoSourceId = '';
+        var hostVideoResume = null;
         vm.toggleHostQuestionTimer = function () {
             if (vm.hostQuestionTimerBusy || !canShowHostVideoQuestion()) { return; }
             var code = vm.room.code, pause = vm.room.questionTimerPaused !== true;
@@ -687,7 +690,7 @@
                 else if (videoTransitionKey === key) { videoTransitionKey = ''; }
             });
         }
-        function syncHostVideo(force) {
+        function syncHostVideo(force, previousRoom) {
             if (vm.sessionLoginRequired) { return; }
             var content = currentVideo();
             if (!isHost() || vm.hostVideoReplay || !vm.hostVideoApi.ready || !content || !content.videoUrl || hostVideoSourceId !== content.videoSourceId) { return; }
@@ -695,10 +698,20 @@
             if (!force && key === hostVideoStateKey) { return; }
             hostVideoStateKey = key;
             if (vm.room.videoPhase === 'ANSWERING') {
+                hostVideoResume = null;
                 vm.hostVideoApi.pause();
                 vm.hostVideoApi.seek(content.videoTimeSeconds);
             } else {
-                if (force) { vm.hostVideoApi.seek(vm.room.videoPositionSeconds || 0); }
+                var previousVideo = previousRoom && previousRoom.currentQuestion && previousRoom.currentQuestion.exercise;
+                var resuming = previousRoom && previousRoom.code === vm.room.code && previousRoom.videoPhase === 'ANSWERING' &&
+                    previousVideo && previousVideo.videoSourceId === content.videoSourceId;
+                if (force || resuming) {
+                    vm.hostVideoSeconds = vm.room.videoPositionSeconds || 0;
+                    // An embedded player can still report the old position while the seek is pending.
+                    var rewindSeconds = resuming ? previousVideo.videoTimeSeconds - vm.hostVideoSeconds : 0;
+                    hostVideoResume = rewindSeconds > 0 ? {cue: previousVideo.videoTimeSeconds, until: Date.now() + rewindSeconds * 1000} : null;
+                    vm.hostVideoApi.seek(vm.hostVideoSeconds);
+                }
                 vm.hostVideoApi.play();
             }
         }
@@ -717,6 +730,10 @@
         vm.hostVideoProgress = function (seconds, duration, sourceId) {
             if (vm.sessionLoginRequired) { return; }
             if (sourceId != null && sourceId !== (currentVideo() || {}).videoSourceId) { return; }
+            if (!vm.hostVideoReplay && hostVideoResume) {
+                if (seconds >= hostVideoResume.cue && Date.now() < hostVideoResume.until) { return; }
+                hostVideoResume = null;
+            }
             vm.hostVideoSeconds = seconds; vm.hostVideoDuration = duration;
             if (vm.hostVideoReplay && !vm.hostVideoReplayConfirmOpen) {
                 vm.hostVideoQuestionList.forEach(function (question) {
@@ -738,7 +755,7 @@
         };
         vm.hostVideoEnded = function (sourceId) {
             if (vm.sessionLoginRequired) { return; }
-            if (vm.hostVideoReplay) { return; }
+            if (vm.hostVideoReplay || (hostVideoResume && Date.now() < hostVideoResume.until)) { return; }
             if (sourceId != null && sourceId !== (currentVideo() || {}).videoSourceId) { return; }
             if (vm.room && vm.room.videoPhase === 'CONTINUING') { sendVideoEvent('ENDED', vm.hostVideoSeconds); }
             else if (vm.room && vm.room.videoPhase === 'WATCHING') {
@@ -1234,7 +1251,7 @@
         var guessTickAudio = null;
         var lastGuessTickSecond = null;
         var lastSpokenGuessRevealKey = '';
-        var autoSubmittedGuessQuestionKey = '';
+        var autoSubmittedQuestionKey = '';
         var finishCelebrationAudioUnlocked = false;
         var finishCelebrationAudioUnlocking = false;
         var finishCelebrationPlaybackPending = false;
@@ -4042,11 +4059,11 @@
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerPartial = false;
                 vm.lastAnswerMessage = '';
+                autoSubmittedQuestionKey = '';
 
                 if (isGuessWordMode()) {
                     vm.guessAnswerText = '';
                     lastGuessTickSecond = null;
-                    autoSubmittedGuessQuestionKey = '';
                 }
 
                 if (!isWrongAnswerPenaltyActive() && !isGuessWordMode()) {
@@ -4057,7 +4074,7 @@
             if (incoming.videoSynchronized && incoming.status === 'PLAYING') {
                 var videoPlayer = getMe();
                 vm.answerLocked = incoming.videoPhase !== 'ANSWERING' || incoming.classicAnswerRevealed === true || !!(videoPlayer && videoPlayer.answeredCurrentQuestion);
-                syncHostVideo(false);
+                syncHostVideo(false, previousRoom);
                 if (incoming.videoPhase === 'CONTINUING' && vm.hostVideoDuration > 0 && vm.hostVideoSeconds >= vm.hostVideoDuration) { vm.hostVideoEnded(); }
             }
 
@@ -5271,6 +5288,7 @@
 
         function answer(option) {
             if (vm.sessionLoginRequired) { return; }
+            var automatic = option && option.autoSubmitted === true;
             if (
                 !vm.room ||
                 vm.room.status !==
@@ -5279,16 +5297,12 @@
                 !option ||
                 vm.answerLocked ||
                 vm.hostVideoReplay ||
-                vm.claimingGift ||
-                vm.giftModalOpen ||
-                vm.rottenEggModalOpen ||
-                vm.demonBagModalOpen ||
+                (!automatic && (vm.claimingGift || vm.giftModalOpen || vm.rottenEggModalOpen || vm.demonBagModalOpen || vm.unfreezeModalOpen)) ||
                 vm.room.pendingSkillType ||
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
                 vm.isDemonPlayerEliminated() ||
-                vm.unfreezeModalOpen ||
                 isMeFrozen() ||
                 isWrongAnswerPenaltyActive()
             ) {
@@ -5296,7 +5310,7 @@
             }
 
             if (
-                (vm.countdown <= 0 && !(option.autoSubmitted === true && isGuessWordMode())) ||
+                (vm.countdown <= 0 && !automatic) ||
                 (vm.canControlQuestionAdvance() && vm.room.classicAnswerRevealed)
             ) {
                 return;
@@ -5308,7 +5322,7 @@
             var question =
                 vm.room.currentQuestion;
 
-            var exerciseGuessRequest = isGuessWordMode() && !!question.exercise;
+            var checkCurrentQuestion = automatic || (isGuessWordMode() && !!question.exercise);
             var videoAnswerRequest = vm.room.videoSynchronized === true;
             var submittedVideoMatchGeneration = videoMatchGeneration;
             var submittedRoomCode = vm.room.code;
@@ -5321,7 +5335,7 @@
                         vm.room.status !== 'PLAYING' || !vm.room.giftDrop || vm.room.giftDrop.gameId !== submittedGiftGameId)) { return false; }
                 if (videoAnswerRequest && (submittedVideoMatchGeneration !== videoMatchGeneration || !vm.room ||
                         vm.room.code !== submittedRoomCode || vm.room.status !== 'PLAYING')) { return false; }
-                return !exerciseGuessRequest || videoAnswerRequest || (vm.room && vm.room.code === submittedRoomCode &&
+                return !checkCurrentQuestion || videoAnswerRequest || (vm.room && vm.room.code === submittedRoomCode &&
                     vm.room.status === 'PLAYING' && current && current.id === question.id && current.sequence === question.sequence);
             }
 
@@ -5491,13 +5505,13 @@
 
             if (
                 autoSubmitted &&
-                autoSubmittedGuessQuestionKey === questionKey
+                autoSubmittedQuestionKey === questionKey
             ) {
                 return;
             }
 
             if (autoSubmitted) {
-                autoSubmittedGuessQuestionKey = questionKey;
+                autoSubmittedQuestionKey = questionKey;
                 /*
                  * Khóa ngay tại máy học sinh để không gửi lặp khi timer vẫn
                  * tick ở 0 trong lúc request đang đi tới server.
@@ -5604,11 +5618,10 @@
         }
 
 
-        function autoSubmitGuessWordAtTimeout() {
-            // Only Guess accepts timeout submissions in a server grace window.
-            if (isGuessWordMode() && vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise &&
-                    vm.room.status === 'PLAYING' && vm.room.guessPhase === 'QUESTION') {
-                vm.submitExercise(true); return;
+        function autoSubmitAnswerAtTimeout() {
+            if (vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise) {
+                if (!isGuessWordMode() || vm.room.guessPhase === 'QUESTION') { vm.submitExercise(true); }
+                return;
             }
             if (!isGuessWordMode() || !vm.room ||
                 vm.room.status !== 'PLAYING' ||
@@ -7655,7 +7668,7 @@
                  * tự nộp được server dành một khoảng đệm ngắn để tránh rớt
                  * câu trả lời đúng lúc đồng hồ vừa chuyển về 0.
                  */
-                autoSubmitGuessWordAtTimeout();
+                autoSubmitAnswerAtTimeout();
                 vm.answerLocked =
                     true;
             }

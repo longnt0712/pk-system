@@ -76,7 +76,7 @@ public class BattleOnlineVideoHostControlsTest {
         c.setAutoAdvance(enabled); c.setQuestionSequence(sequence); c.setQuestionEndsAt(deadline); c.setVideoQuestionRound(round); return c;
     }
     private long expire() {
-        long deadline=System.currentTimeMillis()-1L;set(room,"questionEndsAt",deadline);
+        long deadline=System.currentTimeMillis()-2000L;set(room,"questionEndsAt",deadline);
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",(Integer)get(room,"classicQuestionIndex"));return deadline;
     }
     private BattleOnlineClassicAnswerDto row(BattleOnlineVideoReviewDto review,String username) {
@@ -84,18 +84,20 @@ public class BattleOnlineVideoHostControlsTest {
     }
     private void reset() { service.destroy();service=null; }
 
-    @Test public void everyVideoModeCanHoldReviewAndHostNextWithoutRevealingBeforeExpiry() throws Exception {
+    @Test public void everyVideoModeRevealsAfterAllSubmissionsAndHoldsUntilHostNext() throws Exception {
         for(String mode:MODES) {
             setup(mode);rejected(()->service.setClassicAutoAdvance("VIDEO1","alice",control(false,1,0,0)));
             service.setClassicAutoAdvance("VIDEO1","host",control(false,1,0,0));
             BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
             BattleOnlineAnswerDto correct=answer(),wrong=answer();wrong.getExerciseAnswers().replaceAll((k,v)->Collections.singletonList("wrong"));
-            service.answer("VIDEO1","alice",correct);service.answer("VIDEO1","bob",wrong);
+            service.answer("VIDEO1","alice",correct);
             BattleOnlineRoomDto before=service.getRoom("VIDEO1","host");
             assertEquals(mode,"ANSWERING",before.getVideoPhase());assertEquals(mode,1,before.getCurrentQuestionIndex());
             assertFalse(mode,before.isClassicAnswerRevealed());assertNull(mode,before.getVideoReview());assertTrue(before.getClassicStudentAnswers().isEmpty());
             rejected(()->service.nextClassicQuestion("VIDEO1","host",control(false,1,opened.getQuestionEndsAt(),0)));
-            long deadline=expire();BattleOnlineRoomDto held=service.getRoom("VIDEO1","host");
+            service.answer("VIDEO1","bob",wrong);
+            BattleOnlineRoomDto held=service.getRoom("VIDEO1","host");long deadline=held.getQuestionEndsAt();
+            assertTrue(mode,deadline<opened.getQuestionEndsAt());
             assertTrue(mode,held.isClassicAnswerRevealed());assertEquals(mode,"ANSWERING",held.getVideoPhase());
             assertEquals(mode,1,held.getCurrentQuestionIndex());assertTrue(mode,held.getClassicCorrectAnswer().contains("yes"));
             BattleOnlineVideoReviewDto review=held.getVideoReview();assertNotNull(mode,review);assertEquals(1L,review.questionSequence);
@@ -113,6 +115,7 @@ public class BattleOnlineVideoHostControlsTest {
             rejected(()->service.nextClassicQuestion("VIDEO1","host",control(false,1,deadline-1L,0)));
             BattleOnlineRoomDto next=service.nextClassicQuestion("VIDEO1","host",control(false,1,deadline,0));
             assertEquals(mode,"WATCHING",next.getVideoPhase());assertEquals(mode,2,next.getCurrentQuestionIndex());
+            assertEquals(mode, 0D, next.getVideoPositionSeconds(), 0D);
             assertFalse(next.isClassicAnswerRevealed());assertTrue(next.getClassicStudentAnswers().isEmpty());assertEquals(1L,next.getVideoReview().questionSequence);
             rejected(()->service.nextClassicQuestion("VIDEO1","host",control(false,1,deadline,0)));
             service.videoEvent("VIDEO1","host",event("CUE",2,10));long last=expire();
