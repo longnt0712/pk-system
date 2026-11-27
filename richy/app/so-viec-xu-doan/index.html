@@ -7,8 +7,8 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#234d3d">
     <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
-    <link rel="stylesheet" href="styles.css">
-    <script type="module" src="app.js"></script>
+    <link rel="stylesheet" href="styles.css?v=2">
+    <script type="module" src="app.js?v=2"></script>
 </head>
 <body>
     <div class="page">
@@ -57,17 +57,33 @@
                 <button class="button button-primary" id="change-account" type="button">Đổi tài khoản Google</button>
             </section>
 
-            <section class="workspace" id="workspace" hidden aria-labelledby="workspace-heading">
-                <header class="workspace-heading">
-                    <div><h1 id="workspace-heading">Thành viên</h1><p id="workspace-description">Danh sách những người được mở và cập nhật sổ việc.</p></div>
-                    <button class="button button-primary" id="add-member" type="button" hidden>+ Thêm thành viên</button>
-                </header>
-                <p class="notice" id="workspace-error" role="alert" hidden></p>
-                <p class="status" id="workspace-status" role="status" aria-live="polite"></p>
-                <div class="members-panel">
-                    <div class="panel-heading"><span id="member-count" class="muted"></span></div>
-                    <div id="members" class="members" aria-live="polite"></div>
-                </div>
+            <section class="workspace" id="workspace" hidden aria-label="Sổ việc Xứ đoàn">
+                <nav class="workspace-nav" aria-label="Sổ việc">
+                    <button class="button button-subtle" id="show-tasks" type="button" aria-pressed="true" aria-controls="tasks-view">Công việc</button>
+                    <button class="button button-subtle" id="show-members" type="button" aria-pressed="false" aria-controls="members-view">Thành viên</button>
+                </nav>
+                <section id="tasks-view" aria-labelledby="tasks-heading">
+                    <header class="workspace-heading">
+                        <h1 id="tasks-heading">Công việc</h1>
+                        <button class="button button-primary" id="open-task-import" type="button" hidden>Nhập CSV công việc</button>
+                    </header>
+                    <p class="notice" id="tasks-error" role="alert" hidden></p>
+                    <p class="status" id="tasks-status" role="status" hidden></p>
+                    <p class="muted" id="task-count" role="status"></p>
+                    <div class="tasks-grid" id="tasks"></div>
+                </section>
+                <section id="members-view" hidden aria-labelledby="workspace-heading">
+                    <header class="workspace-heading">
+                        <div><h1 id="workspace-heading">Thành viên</h1><p id="workspace-description">Danh sách những người được mở và cập nhật sổ việc.</p></div>
+                        <button class="button button-primary" id="add-member" type="button" hidden>+ Thêm thành viên</button>
+                    </header>
+                    <p class="notice" id="workspace-error" role="alert" hidden></p>
+                    <p class="status" id="workspace-status" role="status" aria-live="polite"></p>
+                    <div class="members-panel">
+                        <div class="panel-heading"><span id="member-count" class="muted"></span></div>
+                        <div id="members" class="members" aria-live="polite"></div>
+                    </div>
+                </section>
             </section>
         </main>
     </div>
@@ -82,6 +98,23 @@
             <label class="checkbox"><input name="laQuanTri" type="checkbox"><span>Cấp quyền quản trị<small>Được quản lý thành viên, xóa việc và sửa danh mục.</small></span></label>
             <p class="notice" id="member-error" role="alert" hidden></p>
             <footer class="dialog-actions"><button class="button button-subtle" type="button" id="cancel-member">Hủy</button><button class="button button-primary" type="submit" id="save-member">Thêm thành viên</button></footer>
+        </form>
+    </dialog>
+    <dialog id="task-import-dialog" aria-labelledby="task-import-heading">
+        <form id="task-import-form">
+            <header class="dialog-heading">
+                <h2 id="task-import-heading">Nhập CSV công việc</h2>
+                <button class="close-button" id="close-task-import" type="button" aria-label="Đóng">×</button>
+            </header>
+            <p class="muted">Chọn file CSV có dòng tiêu đề bắt đầu bằng “Việc”.</p>
+            <label>File CSV<input id="task-csv-file" name="csv" type="file" accept=".csv,text/csv" required></label>
+            <p class="status" id="task-import-preview-status" role="status" hidden></p>
+            <ol class="task-preview" id="task-import-preview" hidden></ol>
+            <p class="notice" id="task-import-error" role="alert" hidden></p>
+            <footer class="dialog-actions">
+                <button class="button button-subtle" id="cancel-task-import" type="button">Hủy</button>
+                <button class="button button-primary" id="save-task-import" type="submit" disabled>Nhập công việc</button>
+            </footer>
         </form>
     </dialog>
     <noscript><p class="notice">Bạn cần bật JavaScript để đăng nhập và sử dụng sổ việc.</p></noscript>

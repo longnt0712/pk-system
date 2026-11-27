@@ -68,6 +68,7 @@ test('Thành viên đọc, thêm và cập nhật việc với đúng thông tin
     await assertSucceeds(getDocs(collection(db, 'members')));
     await assertSucceeds(getDocs(collection(db, 'categories')));
     await assertSucceeds(setDoc(doc(db, 'tasks', 'new'), {...task(memberEmail), ngay: ''}));
+    await assertFails(setDoc(doc(db, 'tasks', 'csv-' + 'd'.repeat(64)), task(memberEmail)));
     const reference = doc(db, 'tasks', 'example');
     const audit = {nguoiSuaCuoi: memberEmail, thoiGianSua: serverTimestamp()};
     await assertSucceeds(updateDoc(reference, {trangThai: 'Đang làm', ...audit}));
@@ -84,6 +85,9 @@ test('Thành viên đọc, thêm và cập nhật việc với đúng thông tin
 test('Quản trị quản lý thành viên, danh mục, xóa việc và thu quyền ngay', async () => {
     const admin = google(adminEmail);
     const member = google(memberEmail);
+    const importedId = 'csv-' + 'a'.repeat(64);
+    await assertSucceeds(setDoc(doc(admin, 'tasks', importedId), task(adminEmail)));
+    await assertSucceeds(getDoc(doc(member, 'tasks', importedId)));
     await assertSucceeds(setDoc(doc(admin, 'members', strangerEmail), profile(strangerEmail)));
     await assertFails(setDoc(doc(admin, 'members', 'invalid@example.test'), profile(strangerEmail, true)));
     await assertSucceeds(updateDoc(doc(admin, 'members', memberEmail), {laQuanTri: true}));

@@ -3,7 +3,8 @@ import {
     getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, connectAuthEmulator
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
 import {
-    getFirestore, collection, doc, onSnapshot, runTransaction, updateDoc, deleteDoc, connectFirestoreEmulator
+    getFirestore, collection, doc, onSnapshot, runTransaction, updateDoc, deleteDoc,
+    serverTimestamp, connectFirestoreEmulator
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js';
 import {newMember, normalizeEmail} from './member-data.js';
 
@@ -38,6 +39,38 @@ export function connectFirebase(config, useEmulators) {
             return onSnapshot(collection(database, 'members'), snapshot => {
                 receive(snapshot.docs.map(member => ({...member.data(), id: member.id})));
             }, fail);
+        },
+        watchTasks(receive, fail) {
+            return onSnapshot(collection(database, 'tasks'), {includeMetadataChanges: true}, snapshot => {
+                if (!snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
+                    receive(snapshot.docs.map(task => task.data()));
+                }
+            }, fail);
+        },
+        async importTasks(rows, email, canContinue) {
+            let added = 0;
+            const membership = doc(database, 'members', email);
+            // Dùng ID cố định và chỉ tạo việc chưa tồn tại, kể cả khi hai lần nhập chạy đồng thời.
+            for (let offset = 0; offset < rows.length; offset += 50) {
+                if (!canContinue()) { throw new Error('Quyền nhập CSV đã thay đổi.'); }
+                const batch = rows.slice(offset, offset + 50);
+                added += await runTransaction(database, async transaction => {
+                    const profile = await transaction.get(membership);
+                    if (profile.data()?.laQuanTri !== true) { throw new Error('Chỉ quản trị mới được nhập CSV.'); }
+                    const references = batch.map(row => doc(database, 'tasks', row.id));
+                    const existing = await Promise.all(references.map(reference => transaction.get(reference)));
+                    let created = 0;
+                    batch.forEach((row, index) => {
+                        if (existing[index].exists()) { return; }
+                        transaction.set(references[index], {
+                            ...row.task, nguoiTao: email, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()
+                        });
+                        created++;
+                    });
+                    return created;
+                });
+            }
+            return {added, skipped: rows.length - added};
         },
         async addMember(values) {
             const member = newMember(values);

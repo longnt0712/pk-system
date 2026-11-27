@@ -74,7 +74,8 @@ service cloud.firestore {
 
     match /tasks/{id} {
       allow read: if isMember();
-      allow create: if isMember() && validTask(request.resource.data)
+      allow create: if isMember() && (!id.matches('^csv-.*') || isAdmin())
+        && validTask(request.resource.data)
         && request.resource.data.nguoiTao == myEmail();
       allow update: if isMember() && validTask(request.resource.data)
         && request.resource.data.nguoiTao == resource.data.nguoiTao;

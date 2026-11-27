@@ -1,5 +1,6 @@
 import {firebaseConfig, useEmulators} from './firebase-config.js';
 import {normalizeEmail, initials, errorMessage} from './member-data.js';
+import {createTaskWorkspace} from './task-workspace.js';
 
 const byId = id => document.getElementById(id);
 const form = byId('member-form');
@@ -8,6 +9,18 @@ const state = {user: null, profile: null, members: [], epoch: 0, saving: false};
 let firebase;
 let stopProfile;
 let stopMembers;
+const taskWorkspace = createTaskWorkspace({byId, element, showMessage});
+
+function showWorkspaceView(view) {
+    const showTasks = view === 'tasks';
+    byId('tasks-view').hidden = !showTasks;
+    byId('members-view').hidden = showTasks;
+    byId('show-tasks').setAttribute('aria-pressed', String(showTasks));
+    byId('show-members').setAttribute('aria-pressed', String(!showTasks));
+}
+
+byId('show-tasks').addEventListener('click', () => showWorkspaceView('tasks'));
+byId('show-members').addEventListener('click', () => showWorkspaceView('members'));
 
 function showMessage(id, message) {
     const element = byId(id);
@@ -25,6 +38,8 @@ function clearMembers() {
 function clearPrivateData() {
     if (stopProfile) { stopProfile(); stopProfile = null; }
     clearMembers();
+    taskWorkspace.clear();
+    showWorkspaceView('tasks');
     state.profile = null;
     byId('workspace').hidden = true;
     byId('add-member').hidden = true;
@@ -45,6 +60,7 @@ function renderAccount() {
 
 function denyAccess() {
     clearMembers();
+    taskWorkspace.clear();
     state.profile = null;
     byId('workspace').hidden = true;
     byId('welcome').hidden = true;
@@ -123,9 +139,10 @@ function receiveProfile(profile, epoch) {
     byId('access-denied').hidden = true;
     byId('workspace').hidden = false;
     byId('add-member').hidden = profile.laQuanTri !== true;
+    taskWorkspace.setProfile(firebase, profile);
     byId('workspace-description').textContent = profile.laQuanTri ?
         'Bạn có thể thêm thành viên và quản lý quyền truy cập sổ việc.' :
-        'Bạn đã được cấp quyền xem và cập nhật sổ việc chung.';
+        'Danh sách những người đã được cấp quyền truy cập sổ việc.';
     showMessage('login-error', '');
     renderAccount();
     renderMembers();
@@ -160,6 +177,7 @@ function handleAuth(user) {
     stopProfile = firebase.watchMyMembership(user.email, profile => receiveProfile(profile, epoch), error => {
         if (epoch !== state.epoch) { return; }
         clearMembers();
+        taskWorkspace.clear();
         state.profile = null;
         byId('workspace').hidden = true;
         byId('welcome').hidden = false;
@@ -184,7 +202,7 @@ byId('sign-in').addEventListener('click', async () => {
 });
 
 async function logout() {
-    if (!firebase || state.saving) { return; }
+    if (!firebase || state.saving || taskWorkspace.importing) { return; }
     try { await firebase.signOut(); }
     catch (error) { showMessage(state.profile ? 'workspace-error' : 'login-error', errorMessage(error)); }
 }
@@ -240,7 +258,7 @@ async function start() {
         return;
     }
     try {
-        const {connectFirebase} = await import('./firebase.js');
+        const {connectFirebase} = await import('./firebase.js?v=2');
         firebase = connectFirebase(firebaseConfig, useEmulators);
         firebase.watchAuth(handleAuth);
     } catch (error) {

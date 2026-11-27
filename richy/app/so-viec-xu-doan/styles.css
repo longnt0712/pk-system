@@ -54,6 +54,8 @@ code { font-family: Consolas, monospace; font-size: 12px; }
 .access-card .button { margin-top: 14px; }
 .muted { color: var(--muted); font-size: 12px; line-height: 1.8; }
 .workspace { padding: 48px 0 72px; }
+.workspace-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+.workspace-nav button[aria-pressed=true] { background: #e8eedc; border-color: #c7d4bd; }
 .workspace-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 34px; }
 .workspace-heading h1 { font-size: 34px; font-weight: 600; letter-spacing: -1px; margin: 0 0 12px; }
 .workspace-heading p:last-child { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 0; }
@@ -69,6 +71,21 @@ code { font-family: Consolas, monospace; font-size: 12px; }
 .member-actions .button { font-size: 11px; padding: 9px 11px; }
 .delete-button { color: #9b443a; }
 .empty-state { padding: 30px 25px; color: var(--muted); font-size: 13px; }
+.tasks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.task-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.task-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.task-card h2 { font-size: 16px; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+.task-status { flex: none; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 600; }
+.status-todo { background: #f0f1ed; color: #4d5d52; }
+.status-active { background: #fff0cf; color: #78520b; }
+.status-done { background: #e7f1df; color: #38612a; }
+.task-meta { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 12px; margin: 14px 0 0; font-size: 13px; line-height: 1.5; }
+.task-meta dt { color: var(--muted); }
+.task-meta dd { margin: 0; overflow-wrap: anywhere; }
+.task-notes { margin-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.task-notes summary { min-height: 40px; padding-top: 12px; color: var(--green); cursor: pointer; }
+.task-notes p { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.task-preview { max-height: 150px; overflow: auto; padding-inline-start: 27px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 dialog { border: 1px solid var(--line); border-radius: 18px; padding: 30px; width: min(480px,calc(100% - 28px)); max-height: calc(100dvh - 36px); overflow: auto; color: #223c33; }
 dialog::backdrop { background: #182c276e; backdrop-filter: blur(3px); }
 .dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; }

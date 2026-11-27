@@ -5,6 +5,11 @@ import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PORT || 5505);
+const emulatorConfig = process.argv.includes('--emulator') && [
+    'export const firebaseConfig = {apiKey: "demo-api-key", authDomain: "demo-so-viec-xu-doan.firebaseapp.com",',
+    'projectId: "demo-so-viec-xu-doan", appId: "1:123:web:demo"};',
+    'export const useEmulators = true;'
+].join('\n');
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.md': 'text/plain', '.rules': 'text/plain'};
 
 createServer(async (request, response) => {
@@ -17,7 +22,7 @@ createServer(async (request, response) => {
         const filename = resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
         const type = types[extname(filename)];
         if (!filename.startsWith(root + sep) || !type) { response.writeHead(404).end(); return; }
-        const contents = await readFile(filename);
+        const contents = emulatorConfig && pathname === '/firebase-config.js' ? emulatorConfig : await readFile(filename);
         response.writeHead(200, {'Content-Type': type + '; charset=utf-8'});
         response.end(request.method === 'HEAD' ? undefined : contents);
     } catch { response.writeHead(404).end('Không tìm thấy tệp.'); }
