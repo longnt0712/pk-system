@@ -33,3 +33,14 @@ test('Bỏ qua dòng trùng và báo số dòng nếu thông tin về cùng mộ
 test('Từ chối ngày không tồn tại và báo dòng cần sửa', async () => {
     await assert.rejects(parseTaskCsv(header + '\nChuẩn bị,31/02/2026,Xong,Sinh hoạt,An,Mùa Vọng,'), /Dòng 2.*dd\/mm\/yyyy/);
 });
+
+test('Nhập giờ tùy chọn, giữ ID của việc cũ và phân biệt các khung giờ cùng ngày', async () => {
+    const row = '\nChuẩn bị,05/12/2026,Chưa làm,Sinh hoạt,An,Mùa Vọng,';
+    const previous = await parseTaskCsv(header + row);
+    const {tasks} = await parseTaskCsv(header + ',Giờ' + row + ',' + row + ',8:30' + row + ',18:00');
+    assert.equal(tasks[0].id, previous.tasks[0].id);
+    assert.equal(tasks[0].task.gio, undefined);
+    assert.deepEqual(tasks.slice(1).map(({task}) => task.gio), ['08:30', '18:00']);
+    assert.equal(new Set(tasks.map(({id}) => id)).size, 3);
+    await assert.rejects(parseTaskCsv(header + ',Giờ' + row + ',24:00'), /Dòng 2.*HH:mm/);
+});

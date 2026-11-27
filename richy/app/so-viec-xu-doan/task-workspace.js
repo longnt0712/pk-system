@@ -1,7 +1,28 @@
-import {parseTaskCsv, formatTaskDate} from './task-csv.js';
+import {parseTaskCsv, formatTaskDate} from './task-csv.js?v=4';
 import {errorMessage, normalizeEmail} from './member-data.js';
 
 const statusStyles = {'Chưa làm': 'status-todo', 'Đang làm': 'status-active', 'Xong': 'status-done'};
+const taskAssignees = task => Array.isArray(task.nguoiPhuTrach)
+    ? task.nguoiPhuTrach.filter(name => typeof name === 'string' && name.trim()) : [];
+const filterKey = value => String(value ?? '').trim().normalize('NFC').replace(/\s+/g, ' ').toLocaleLowerCase('vi');
+const searchKey = value => filterKey(value).normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
+
+function filterTasks(tasks, filters) {
+    const words = searchKey(filters.keyword).split(' ').filter(Boolean);
+    return tasks.filter(task => {
+        if (filters.status && task.trangThai !== filters.status) { return false; }
+        if (filters.department && filterKey(task.ban) !== filters.department) { return false; }
+        if (filters.campaign && filterKey(task.dot) !== filters.campaign) { return false; }
+        if (filters.assignee && !taskAssignees(task).some(name => filterKey(name) === filters.assignee)) { return false; }
+        if ((filters.firstDate || filters.lastDate) && (!task.ngay ||
+                (filters.firstDate && task.ngay < filters.firstDate) || (filters.lastDate && task.ngay > filters.lastDate))) { return false; }
+        if ((filters.firstTime || filters.lastTime) && (!task.gio ||
+                (filters.firstTime && task.gio < filters.firstTime) || (filters.lastTime && task.gio > filters.lastTime))) { return false; }
+        if (!words.length) { return true; }
+        const searchable = searchKey([task.tieuDe, task.ghiChu, task.ban, task.dot, task.trangThai, ...taskAssignees(task)].join(' '));
+        return words.every(word => searchable.includes(word));
+    });
+}
 
 export function createTaskWorkspace({byId, element, showMessage}) {
     const dialog = byId('task-import-dialog');
@@ -9,6 +30,8 @@ export function createTaskWorkspace({byId, element, showMessage}) {
     const input = byId('task-csv-file');
     const preview = byId('task-import-preview');
     const save = byId('save-task-import');
+    const filters = byId('task-filters');
+    const resetFilters = byId('reset-task-filters');
     let firebase;
     let profile;
     let publishedIds;
@@ -17,6 +40,7 @@ export function createTaskWorkspace({byId, element, showMessage}) {
     let session = 0;
     let selection = 0;
     let importing = false;
+    let allTasks = [];
     const canImport = () => profile?.laQuanTri === true;
 
     function resetPreview() {
@@ -44,12 +68,39 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         showMessage('tasks-status', '');
     }
 
-    function renderTasks(tasks) {
-        const sorted = [...tasks].sort((left, right) =>
-            (left.ngay || '9999-99-99').localeCompare(right.ngay || '9999-99-99') || left.tieuDe.localeCompare(right.tieuDe, 'vi')
-        );
-        byId('task-count').textContent = sorted.length + ' công việc';
-        const cards = sorted.map(task => {
+    function updateFilterOptions(select, values) {
+        const previous = select.value;
+        const previousLabel = select.selectedOptions[0]?.textContent;
+        const options = new Map();
+        for (const value of values) {
+            const key = filterKey(value);
+            if (key && !options.has(key)) { options.set(key, value.trim()); }
+        }
+        if (previous && !options.has(previous)) { options.set(previous, previousLabel); }
+        const entries = [...options].sort((left, right) => left[1].localeCompare(right[1], 'vi'));
+        select.replaceChildren(select.options[0], ...entries.map(([key, label]) => {
+            const option = element('option', '', label);
+            option.value = key;
+            return option;
+        }));
+        select.value = previous;
+    }
+
+    function renderTasks() {
+        if (filters.hidden) { return; }
+        const values = Object.fromEntries(new FormData(filters));
+        const hasFilters = Object.values(values).some(value => value.trim());
+        resetFilters.hidden = !hasFilters;
+        let error = '';
+        if (values.firstDate && values.lastDate && values.firstDate > values.lastDate) {
+            error = 'Ngày bắt đầu phải trước hoặc trùng ngày kết thúc.';
+        } else if (values.firstTime && values.lastTime && values.firstTime > values.lastTime) {
+            error = 'Giờ bắt đầu phải trước hoặc trùng giờ kết thúc.';
+        }
+        showMessage('task-filter-error', error);
+        const matching = error ? [] : filterTasks(allTasks, values);
+        byId('task-count').textContent = error ? '' : (hasFilters ? matching.length + '/' + allTasks.length : allTasks.length) + ' công việc';
+        const cards = matching.map(task => {
             const card = element('article', 'task-card');
             const heading = element('header', 'task-card-heading');
             heading.append(element('h2', '', task.tieuDe),
@@ -57,23 +108,34 @@ export function createTaskWorkspace({byId, element, showMessage}) {
             const meta = element('dl', 'task-meta');
             for (const [label, value] of [
                 ['Ngày', formatTaskDate(task.ngay)],
+                ['Giờ', task.gio],
                 ['Ban', task.ban || 'Chưa có ban'],
-                ['Phụ trách', task.nguoiPhuTrach?.filter(name => typeof name === 'string').join(', ') || '[chưa có tên]'],
+                ['Phụ trách', taskAssignees(task).join(', ') || '[chưa có tên]'],
                 ['Đợt', task.dot]
             ]) {
                 if (value) { meta.append(element('dt', '', label), element('dd', '', value)); }
             }
             card.append(heading, meta);
             if (task.ghiChu) {
-                const notes = element('details', 'task-notes');
-                notes.append(element('summary', '', 'Ghi chú'), element('p', '', task.ghiChu));
+                const notes = element('div', 'task-notes');
+                notes.append(element('strong', '', 'Ghi chú'), element('p', '', task.ghiChu));
                 card.append(notes);
             }
             return card;
         });
-        if (!cards.length) { cards.push(element('p', 'empty-state', 'Chưa có công việc nào.')); }
+        if (!cards.length && !error) {
+            cards.push(element('p', 'empty-state', hasFilters ? 'Không có công việc khớp bộ lọc.' : 'Chưa có công việc nào.'));
+        }
         byId('tasks').replaceChildren(...cards);
     }
+
+    filters.addEventListener('submit', event => event.preventDefault());
+    filters.addEventListener('input', renderTasks);
+    resetFilters.addEventListener('click', () => {
+        filters.reset();
+        filters.elements.keyword.focus();
+        renderTasks();
+    });
 
     function syncExistingTasks() {
         if (!canImport() || !publishedIds || syncStarted) { return; }
@@ -90,10 +152,19 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         firebase = connection;
         firebase.watchPublicTasks(tasks => {
             publishedIds = new Set(tasks.map(task => task.id));
+            allTasks = [...tasks].sort((left, right) =>
+                (left.ngay || '9999-99-99').localeCompare(right.ngay || '9999-99-99') ||
+                (left.gio || '99:99').localeCompare(right.gio || '99:99') || left.tieuDe.localeCompare(right.tieuDe, 'vi')
+            );
+            updateFilterOptions(filters.elements.assignee, tasks.flatMap(taskAssignees));
+            updateFilterOptions(filters.elements.department, tasks.map(task => task.ban));
+            updateFilterOptions(filters.elements.campaign, tasks.map(task => task.dot));
+            filters.hidden = false;
             showMessage('tasks-error', '');
-            renderTasks(tasks);
+            renderTasks();
             syncExistingTasks();
         }, error => {
+            filters.hidden = resetFilters.hidden = true;
             byId('tasks').replaceChildren();
             byId('task-count').textContent = '';
             showMessage('tasks-error', errorMessage(error));
@@ -140,7 +211,7 @@ export function createTaskWorkspace({byId, element, showMessage}) {
             if (activeSelection !== selection || !canImport()) { return; }
             tasksToImport = tasks;
             preview.replaceChildren(...tasks.slice(0, 8).map(({task}) =>
-                element('li', '', task.tieuDe + ' · ' + formatTaskDate(task.ngay))
+                element('li', '', task.tieuDe + ' · ' + [formatTaskDate(task.ngay), task.gio].filter(Boolean).join(' '))
             ));
             preview.hidden = false;
             const skipped = duplicates ? ' Bỏ qua ' + duplicates + ' dòng trùng trong file.' : '';

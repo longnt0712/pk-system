@@ -9,8 +9,8 @@ import {
 import {newMember, normalizeEmail} from './member-data.js';
 
 function publicTask(task) {
-    const {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu} = task;
-    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu};
+    const {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, gio} = task;
+    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
 }
 
 export function connectFirebase(config, useEmulators) {

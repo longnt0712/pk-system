@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="theme-color" content="#234d3d">
+    <meta name="theme-color" content="#731519">
     <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
-    <link rel="stylesheet" href="styles.css?v=3">
-    <script type="module" src="app.js?v=3"></script>
+    <link rel="stylesheet" href="styles.css?v=4">
+    <script type="module" src="app.js?v=4"></script>
 </head>
 <body>
     <div class="page">
@@ -50,7 +50,26 @@
                     </header>
                     <p class="notice" id="tasks-error" role="alert" hidden></p>
                     <p class="status" id="tasks-status" role="status" hidden></p>
-                    <p class="muted" id="task-count" role="status">Đang tải công việc…</p>
+                    <form class="task-filters" id="task-filters" role="search" aria-label="Lọc công việc" hidden>
+                        <label>Tìm công việc
+                            <input name="keyword" type="search" placeholder="Tên việc, người phụ trách hoặc ghi chú" autocomplete="off">
+                        </label>
+                        <div class="task-filter-fields">
+                            <div><label for="task-filter-status">Trạng thái</label><select id="task-filter-status" name="status"><option value="">Tất cả trạng thái</option><option>Chưa làm</option><option>Đang làm</option><option>Xong</option></select></div>
+                            <div><label for="task-filter-assignee">Người phụ trách</label><select id="task-filter-assignee" name="assignee"><option value="">Tất cả người phụ trách</option></select></div>
+                            <div><label for="task-filter-department">Ban phụ trách</label><select id="task-filter-department" name="department"><option value="">Tất cả ban</option></select></div>
+                            <div><label for="task-filter-campaign">Đợt</label><select id="task-filter-campaign" name="campaign"><option value="">Tất cả đợt</option></select></div>
+                            <label>Từ ngày<input name="firstDate" type="date"></label>
+                            <label>Đến ngày<input name="lastDate" type="date"></label>
+                            <label>Từ giờ<input name="firstTime" type="time"></label>
+                            <label>Đến giờ<input name="lastTime" type="time"></label>
+                        </div>
+                        <p class="filter-error" id="task-filter-error" role="status" hidden></p>
+                    </form>
+                    <div class="task-list-bar">
+                        <p class="muted" id="task-count" role="status">Đang tải công việc…</p>
+                        <button class="button button-subtle" id="reset-task-filters" type="button" hidden>Xóa bộ lọc</button>
+                    </div>
                     <div class="tasks-grid" id="tasks"></div>
                 </section>
                 <section id="members-view" hidden aria-labelledby="workspace-heading">
@@ -87,7 +106,7 @@
                 <h2 id="task-import-heading">Nhập CSV công việc</h2>
                 <button class="close-button" id="close-task-import" type="button" aria-label="Đóng">×</button>
             </header>
-            <p class="muted">Chọn file CSV có dòng tiêu đề bắt đầu bằng “Việc”.</p>
+            <p class="muted">Chọn file CSV có dòng tiêu đề bắt đầu bằng “Việc”. Có thể thêm cột “Giờ” theo dạng HH:mm.</p>
             <p class="muted">Các cột công việc trong file, gồm cả người phụ trách và ghi chú, sẽ hiển thị công khai.</p>
             <label>File CSV<input id="task-csv-file" name="csv" type="file" accept=".csv,text/csv" required></label>
             <p class="status" id="task-import-preview-status" role="status" hidden></p>

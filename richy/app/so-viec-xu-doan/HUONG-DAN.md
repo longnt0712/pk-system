@@ -51,9 +51,9 @@ Mở [Sổ việc trên máy](http://localhost:5505/) để xem danh sách công
 ## 5. Nhập danh sách công việc
 
 1. Sau khi đăng nhập bằng tài khoản quản trị, vào **Công việc → Nhập CSV công việc**.
-2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.
-3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Tên việc, ngày, trạng thái, ban, người phụ trách, đợt và ghi chú sẽ hiển thị công khai.
-4. Khi nhập lại, các việc có cùng tên, ngày, ban và đợt được bỏ qua. Trạng thái, người phụ trách và ghi chú đã lưu được giữ nguyên.
+2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Có thể thêm cột **Giờ** với giá trị HH:mm, ví dụ `18:30`. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.
+3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Tên việc, ngày, giờ (nếu có), trạng thái, ban, người phụ trách, đợt và ghi chú sẽ hiển thị công khai. Bộ lọc giờ dùng giờ đã nhập của từng công việc.
+4. Khi nhập lại, các việc có cùng tên, ngày, giờ, ban và đợt được bỏ qua. Trạng thái, người phụ trách và ghi chú đã lưu được giữ nguyên.
 
 Để thử thao tác nhập với dữ liệu giả lập, chạy `pnpm emulators` trong thư mục Sổ việc. Trong một cửa sổ PowerShell khác, chạy `node tools/serve.mjs --emulator`. Dùng một tài khoản Google giả lập và tạo bản ghi quản trị tương ứng trong Firestore Emulator theo mẫu ở phần 3.
 

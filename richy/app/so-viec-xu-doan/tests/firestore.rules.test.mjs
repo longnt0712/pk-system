@@ -122,12 +122,18 @@ test('Nhập nhiều việc và tạo bản công khai cùng giao dịch', async
     const {nguoiTao, nguoiSuaCuoi, thoiGianSua, ...view} = task(adminEmail);
     for (let index = 0; index < 8; index++) {
         const id = 'csv-' + index;
-        batch.set(doc(admin, 'tasks', id), {...view, nguoiTao, nguoiSuaCuoi, thoiGianSua});
-        batch.set(doc(admin, 'publicTasks', id), view);
+        const columns = index === 0 ? {...view, gio: '18:30'} : view;
+        batch.set(doc(admin, 'tasks', id), {...columns, nguoiTao, nguoiSuaCuoi, thoiGianSua});
+        batch.set(doc(admin, 'publicTasks', id), columns);
     }
     await assertSucceeds(batch.commit());
     await assertFails(setDoc(doc(admin, 'publicTasks', 'missing'), view));
-    assert.equal((await getDocs(collection(env.unauthenticatedContext().firestore(), 'publicTasks'))).size, 8);
+    const guest = env.unauthenticatedContext().firestore();
+    assert.equal((await getDocs(collection(guest, 'publicTasks'))).size, 8);
+    assert.equal((await getDoc(doc(guest, 'publicTasks', 'csv-0'))).data().gio, '18:30');
+    await assertFails(setDoc(doc(admin, 'publicTasks', 'csv-0'), view));
+    await assertFails(setDoc(doc(admin, 'publicTasks', 'csv-1'), {...view, gio: '19:30'}));
+    await assertFails(setDoc(doc(admin, 'tasks', 'csv-invalid'), {...task(adminEmail), gio: '24:00'}));
 });
 
 test('Việc đã công khai đồng bộ khi thành viên sửa hoặc quản trị xóa', async () => {

@@ -66,7 +66,14 @@ function isoDate(value) {
     throw new Error('Ngày phải là ngày hợp lệ theo dạng dd/mm/yyyy.');
 }
 
-function taskRecord(row, indexes) {
+function isoTime(value) {
+    if (!value) { return ''; }
+    const parts = /^(\d{1,2}):([0-5]\d)$/.exec(value);
+    if (!parts || Number(parts[1]) > 23) { throw new Error('Giờ phải hợp lệ theo dạng HH:mm.'); }
+    return parts[1].padStart(2, '0') + ':' + parts[2];
+}
+
+function taskRecord(row, indexes, timeIndex) {
     const [tieuDe, ngay, status, ban, names, dot, ghiChu] = indexes.map(index => row.fields[index] || '');
     if (!tieuDe) { throw new Error('Thiếu tên việc.'); }
     const trangThai = status ? statuses.find(option => key(option) === key(status)) : statuses[0];
@@ -75,7 +82,8 @@ function taskRecord(row, indexes) {
     if (tieuDe.length > 300 || ban.length > 120 || dot.length > 150 || ghiChu.length > 10000 || nguoiPhuTrach.length > 30) {
         throw new Error('Một cột vượt giới hạn độ dài hoặc có hơn 30 người phụ trách.');
     }
-    return {tieuDe, ngay: isoDate(ngay), trangThai, ban, nguoiPhuTrach, dot, ghiChu};
+    const gio = isoTime(row.fields[timeIndex] || '');
+    return {tieuDe, ngay: isoDate(ngay), trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
 }
 
 export async function parseTaskCsv(text) {
@@ -84,6 +92,7 @@ export async function parseTaskCsv(text) {
     if (headerPosition < 0) { throw new Error('Không tìm thấy dòng tiêu đề bắt đầu bằng “Việc”. Hãy chọn file CSV phân cách bằng dấu phẩy.'); }
     const header = rows[headerPosition].fields.map(key);
     const indexes = columns.map(column => header.indexOf(key(column)));
+    const timeIndex = header.indexOf(key('Giờ'));
     if (indexes.some(index => index < 0)) { throw new Error('File cần đủ 7 cột: ' + columns.join(', ') + '.'); }
     const unique = new Map();
     let duplicates = 0;
@@ -93,13 +102,15 @@ export async function parseTaskCsv(text) {
             if (row.fields.length > header.length && row.fields.slice(header.length).some(Boolean)) {
                 throw new Error('Thừa cột. Nếu một ô chứa dấu phẩy, hãy đặt cả ô trong dấu ngoặc kép.');
             }
-            const task = taskRecord(row, indexes);
+            const task = taskRecord(row, indexes, timeIndex);
             // Trạng thái, ghi chú và người phụ trách có thể thay đổi sau khi nhập.
-            const identity = JSON.stringify([key(task.tieuDe), task.ngay, key(task.ban), key(task.dot)]);
+            const identityFields = [key(task.tieuDe), task.ngay, key(task.ban), key(task.dot)];
+            if (task.gio) { identityFields.push(task.gio); }
+            const identity = JSON.stringify(identityFields);
             const previous = unique.get(identity);
             if (previous) {
                 if (JSON.stringify(previous.task) !== JSON.stringify(task)) {
-                    throw new Error('Trùng việc, ngày, ban và đợt với dòng ' + previous.line + ' nhưng nội dung khác.');
+                    throw new Error('Trùng việc, ngày, giờ, ban và đợt với dòng ' + previous.line + ' nhưng nội dung khác.');
                 }
                 duplicates++;
             } else {
