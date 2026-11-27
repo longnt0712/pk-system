@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    angular.module('Hrm.Question').factory('TestWordExport', ['$window', '$q', '$uibModal', 'ComprehensiveListening',
-        function ($window, $q, modal, listening) {
+    angular.module('Hrm.Question').factory('TestWordExport', ['$window', '$q', '$uibModal', 'ComprehensiveListening', 'ComprehensiveFindMistakes',
+        function ($window, $q, modal, listening, mistakes) {
             var libraryPromise;
             var modeNames = {READING: 'IELTS Reading', LISTENING: 'IELTS Listening', WRITING: 'IELTS Writing',
                 COMPREHENSIVE: 'Bài tập tổng hợp', DAILY_LISTENING: 'Daily Listening'};
@@ -135,6 +135,15 @@
                             if (plain(instruction) || /<img\b/i.test(instruction)) { add('html', instruction); }
                             if (type === 16 || type === 17) { add('paragraph', 'Write at least ' + (type === 16 ? '150' : '250') + ' words.'); add('lines', 12); return; }
                             if (group.listening) { addMedia(pack.pronounce, 'Audio'); add('html', group.listening); return; }
+                            if (type === 19) {
+                                var markedPassage = mistakes.parse(pack.motherTongue).parts.map(function (part) {
+                                    var text = escape(part.text);
+                                    return part.id ? '<strong>(' + label(part.id - 1) + ') ' + text + '</strong>' : text;
+                                }).join('').replace(/\r\n?|\n/g, '<br>');
+                                add('html', markedPassage);
+                                numbers.forEach(function (number) { add('paragraph', number + '. Vị trí: ____  Sửa thành: ____________________'); });
+                                return;
+                            }
                             if ([11,13,18].indexOf(type) >= 0) {
                                 if (type === 18) { addMedia(pack.pronounce, 'Audio'); }
                                 if (type === 13) { bank(answers(questions[0]).sort(function (a, b) { return plain(a).localeCompare(plain(b)); }), pack.title || 'Word bank'); }

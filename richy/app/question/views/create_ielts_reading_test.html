@@ -284,6 +284,7 @@
                                 <span><strong>{{vm.isWritingMode ? 'Đề Writing' : 'Câu hỏi'}}</strong><small>{{vm.isWritingMode ? 'Mỗi Task có đề bài và ô làm bài riêng' : 'Cuộn liên tục từ câu 1 đến câu ' + (vm.builderValidation.totalQuestions || 'n')}}</small></span>
                             </div>
                             <div>
+                                <button type="button" class="btn btn-default btn-sm" ng-if="vm.isComprehensiveMode" ng-click="vm.addFindMistakesPackage()"><i class="fa fa-plus"></i> Tìm và sửa lỗi</button>
                                 <button type="button" class="btn btn-info btn-sm" ng-if="vm.isVideoBuilder()" ng-click="vm.addVideoQuestion()"><i class="fa fa-plus"></i> Thêm câu hỏi video</button>
                                 <button ng-show="vm.createPackage == false && !vm.isWritingMode" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
                                 <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
@@ -305,7 +306,8 @@
                                 </div>
                                 <div class="col-md-6">
                                     <p class="form-control-static" ng-if="item.type == 18">Daily Listening (bài đã tạo trước đây)</p>
-                                    <ui-select ng-if="item.type != 18" ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <p class="form-control-static" ng-if="item.type == 19">Tìm và sửa lỗi (Find Mistakes)</p>
+                                    <ui-select ng-if="item.type != 18 && item.type != 19" ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="{{!vm.isWritingMode}}" placeholder="{{vm.isWritingMode ? 'Chọn Writing Task' : ''}}">{{$select.selected.name}}</ui-select-match>
                                         <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
@@ -334,7 +336,9 @@
                                            ng-change="vm.changeInTheProcessOfCreatingReadingTest(); vm.refreshBuilderValidation()" aria-label="Thời gian trả lời riêng của câu {{videoQuestion.ordinalNumber}}">
                                 </div>
                             </div>
-                            <textarea ng-if="item.type != 16 && item.type != 17 && item.type != 18" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-if="item.type != 16 && item.type != 17 && item.type != 18 && item.type != 19" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce-lazy ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <find-mistakes-builder ng-if="item.type == 19" pack="item" on-change="vm.updateFindMistakes(0, countChanged)"></find-mistakes-builder>
 
                             <section class="comprehensive-listening-builder" ng-if="item.type == 18">
                                 <label>Tên phần nghe</label>
@@ -407,7 +411,7 @@
 
 
 
-                            <div class="col-md-12" ng-show="!vm.isWritingMode && item.isHaveChildren == false && item.type != 18">
+                            <div class="col-md-12" ng-show="!vm.isWritingMode && item.isHaveChildren == false && item.type != 18 && item.type != 19">
                                 <div class="col-md-12">
                                     <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
                                 </div>
@@ -506,7 +510,7 @@
 
                             <hr ng-if="item.type != 16 && item.type != 17">
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 18 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 18 && item.type != 19 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
                                     <div class="comprehensive-video-cue-field" ng-if="vm.isVideoBuilder() && item.type == 1" ng-init="vm.videoTimeInput(q)">
                                         <label>Câu {{q.ordinalNumber}} xuất hiện tại (phút:giây)</label>
                                         <div class="comprehensive-video-cue-controls">

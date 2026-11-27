@@ -1,0 +1,25 @@
+<section class="find-mistakes-builder">
+    <label>
+        Đoạn văn tìm lỗi
+        <textarea class="form-control" rows="5" ng-model="$ctrl.text" ng-change="$ctrl.updateText()"
+                  maxlength="10000" placeholder="Ví dụ: Yesterday, she go to school."></textarea>
+    </label>
+    <p>Bôi đen từng từ hoặc cụm từ rồi bấm «Đánh dấu vùng chọn». Đánh dấu cả vị trí đúng để học sinh có lựa chọn.</p>
+    <button type="button" class="btn btn-default" ng-mousedown="$event.preventDefault()"
+            ng-click="$ctrl.markSelection()">Đánh dấu vùng chọn</button>
+    <p class="text-danger" role="alert" ng-if="$ctrl.selectionError" ng-bind="$ctrl.selectionError"></p>
+    <p class="text-danger" role="alert" ng-if="$ctrl.preview.invalid">Kiểm tra các dấu [[ và ]] trong đoạn văn.</p>
+    <p class="text-warning" role="status" ng-if="$ctrl.changedChoices">Vùng đã sửa cần được đánh dấu lỗi và nhập lại đáp án.</p>
+    <div class="find-mistakes-option" ng-repeat="candidate in $ctrl.preview.candidates track by candidate.id">
+        <label>
+            <input type="checkbox" ng-model="candidate.isError" ng-change="$ctrl.updateAnswers()">
+            <span ng-bind="candidate.id + '. ' + candidate.text"></span>
+            <span class="text-muted">(vị trí sai)</span>
+        </label>
+        <label ng-if="candidate.isError">
+            Đáp án sửa đúng
+            <input class="form-control" type="text" maxlength="200" ng-model="candidate.correction"
+                   ng-change="$ctrl.updateAnswers()">
+        </label>
+    </div>
+</section>

@@ -26,13 +26,14 @@
         'ComprehensiveFolders',
         '$q',
         'TestWordExport',
-        'uiTinymceService'
+        'uiTinymceService',
+        'ComprehensiveFindMistakes'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders,$q,wordExport,editorService) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders,$q,wordExport,editorService,mistakes) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -183,12 +184,13 @@
             {id: 16, name: "Writing Task 1", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 150 từ được tính là đạt"},
             {id: 17, name: "Writing Task 2", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 250 từ được tính là đạt"},
             {id: 18, name: "Daily Listening", notice: "Nhập link audio và transcript; hệ thống tự tạo ô trống và đáp án"},
+            {id: 19, name: "Tìm và sửa lỗi (Find Mistakes)", notice: "Chọn một từ hoặc cụm từ rồi nhập cách sửa, lần lượt cho từng lỗi"},
             {id: 2, name: "Filling Gaps — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true},
             {id: 3, name: "Filling Gaps Enter — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true}
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
             if (vm.isWritingMode) { return Number(type.id) === 16 || Number(type.id) === 17; }
-            return Number(type.id) !== 7 && Number(type.id) !== 18 &&
+            return Number(type.id) !== 7 && Number(type.id) !== 18 && Number(type.id) !== 19 &&
                 (vm.isListeningMode || Number(type.id) !== 15) &&
                 (vm.isComprehensiveMode || (Number(type.id) !== 16 && Number(type.id) !== 17));
         });
@@ -1511,6 +1513,26 @@
 
         vm.updateDailyListening = function () { vm.changeInTheProcessOfCreatingReadingTest(); };
 
+        vm.addFindMistakesPackage = function () {
+            if (!vm.isComprehensiveMode) { return; }
+            var passage = vm.ieltsReadingTest.subQuestions[0];
+            vm.insertPackageAfter(0, (passage.subQuestions || []).length - 1);
+            var pack = passage.subQuestions[passage.subQuestions.length - 1];
+            pack.type = 19;
+            pack.question = 'Tìm và sửa lỗi trong đoạn văn.';
+            if (!plainText(passage.question) && !vm.hasWritingTaskPackage() && !vm.isVideoBuilder()) { passage.type = 6; }
+            vm.updateFindMistakes(0);
+        };
+
+        vm.updateFindMistakes = function (partIndex, countChanged) {
+            if (countChanged) {
+                getPartQuestions(partIndex).forEach(function (entry, index) { entry.question.ordinalNumber = index + 1; });
+            }
+            vm.preparePart(partIndex);
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
+
         vm.addDailyListeningPackage = function () {
             if (!vm.isComprehensiveMode) { return; }
             var passage = vm.ieltsReadingTest.subQuestions[0];
@@ -1630,6 +1652,23 @@
                     }
                     if (Number(questionPackage.type) === 4) {
                         matchingHeadingQuestionCount += (questionPackage.subQuestions || []).length;
+                    }
+                    if (Number(questionPackage.type) === 19) {
+                        var passageChoices = mistakes.parse(questionPackage.motherTongue);
+                        var errorQuestions = questionPackage.subQuestions || [];
+                        var seenChoices = {};
+                        if (!vm.isComprehensiveMode || passageChoices.invalid || passageChoices.candidates.length <= errorQuestions.length) {
+                            addIssue('Tìm và sửa lỗi: đánh dấu các vị trí hợp lệ, gồm ít nhất một vị trí đúng.', packageTarget, partIndex);
+                        }
+                        if (!errorQuestions.length || errorQuestions.some(function (question) {
+                            var answer = (question.questionAnswers || [])[0];
+                            var key = mistakes.decode(answer && answer.answer && answer.answer.answer);
+                            if (!key || !key.text.trim() || key.text.length > 200 || !passageChoices.candidates[key.id - 1] || seenChoices[key.id]) { return true; }
+                            seenChoices[key.id] = true;
+                            return false;
+                        })) {
+                            addIssue('Tìm và sửa lỗi: chọn ít nhất một lỗi và nhập cách sửa cho từng lỗi.', packageTarget, partIndex);
+                        }
                     }
                     if (Number(questionPackage.type) === 18) {
                         if (!vm.isComprehensiveMode) { addIssue('Daily Listening chỉ dùng trong test tổng hợp.', packageTarget, partIndex); }
@@ -3052,6 +3091,7 @@
             var removeFromForm = function () {
                 passage.subQuestions.splice(packageIndex, 1);
                 renumberReadingPackages(partIndex);
+                if (item && Number(item.type) === 19) { vm.updateFindMistakes(partIndex, true); }
                 vm.getOrdinalNumber(vm.ieltsReadingTest);
                 vm.refreshBuilderValidation();
             };
@@ -3456,7 +3496,11 @@
                 return fallbackType || 1;
             }
             var numericType = /^\d+$/.test(String(value).trim()) ? Number(value) : NaN;
-            if (numericType === 18 || normalizedExcelText(value) === 'daily listening') {
+            var normalizedType = normalizedExcelText(value);
+            if (numericType === 19 || normalizedType === 'tim va sua loi (find mistakes)') {
+                throw new Error('Dùng nút Tìm và sửa lỗi trong trang tạo đề tổng hợp để đánh dấu vị trí và nhập cách sửa.');
+            }
+            if (numericType === 18 || normalizedType === 'daily listening') {
                 throw new Error('Daily Listening được tạo ở mục Tạo Daily Listening: nhập audio và transcript để hệ thống tự tạo ô trống.');
             }
             if (numericType >= 1 && numericType <= 15) {
@@ -3464,7 +3508,6 @@
                 if (numericType === 7) { return 5; }
                 return numericType;
             }
-            var normalizedType = normalizedExcelText(value);
             for (var i = 0; i < vm.types.length; i++) {
                 if (normalizedExcelText(vm.types[i].name) === normalizedType) {
                     if (Number(vm.types[i].id) === 6) { return 1; }
@@ -4310,7 +4353,7 @@
             };
             var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
             angular.forEach(vm.questionPackageTypes, function (type) {
-                if (Number(type.id) === 6 || Number(type.id) === 7 || Number(type.id) === 18) {
+                if (Number(type.id) === 6 || Number(type.id) === 7 || Number(type.id) === 18 || Number(type.id) === 19) {
                     return;
                 }
                 typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);

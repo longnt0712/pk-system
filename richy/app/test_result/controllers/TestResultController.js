@@ -585,6 +585,7 @@
             }
             var type = getResultQuestionType(item);
             var submittedAnswer = item && item.clientAnswer != null ? String(item.clientAnswer).trim() : '';
+            if (type == 19) { return item.findMistakeSubmitted || ''; }
             if (type == 18 && item.listeningTotalGaps != null) {
                 return item.listeningCorrectGaps + '/' + item.listeningTotalGaps + ' ô đúng (' +
                     Math.round(item.listeningCorrectGaps * 10000 / (item.listeningTotalGaps || 1)) / 100 + '%)';
@@ -607,6 +608,7 @@
             }
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
+            if (type == 19) { return item.findMistakeExpected || ''; }
 
             if (type == 18 && questionAnswer && questionAnswer.answer && questionAnswer.answer.answer === 'DAILY_LISTENING_RESPONSE') { return 'Đúng từ 90% tổng số ô trống'; }
 

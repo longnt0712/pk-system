@@ -8,10 +8,13 @@ import java.util.List;
 
 
 import org.joda.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionTopic;
+import com.globits.richy.question.ComprehensiveFindMistakes;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
@@ -497,7 +500,7 @@ public class QuestionDto implements Serializable  {
 			this.questionAnswers = new ArrayList<QuestionAnswerDto>();
 			List<QuestionAnswerDto> ret = new ArrayList<QuestionAnswerDto>();
 			for (QuestionAnswer item : domain.getQuestionAnswers()) {
-				ret.add(new QuestionAnswerDto(item));
+				ret.add(toQuestionAnswer(item));
 			}
 			
 			QuestionAnswerDto qad = new QuestionAnswerDto();
@@ -533,6 +536,21 @@ public class QuestionDto implements Serializable  {
 	    }
 	}
 	
+	private QuestionAnswerDto toQuestionAnswer(QuestionAnswer answer) {
+		if (ComprehensiveFindMistakes.isMistakeSlot(answer.getQuestion())) {
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			boolean admin = authentication != null && authentication.getAuthorities().stream()
+					.anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+			if (!admin) {
+				QuestionAnswerDto slot = new QuestionAnswerDto();
+				slot.setId(answer.getId());
+				slot.setOrdinalNumberQuestionAnswer(answer.getOrdinalNumber());
+				return slot;
+			}
+		}
+		return new QuestionAnswerDto(answer);
+	}
+
 	public ArrayList<QuestionDto> setListSubQuestions(Question domain) {
 		if(domain.getSubQuestions()!=null && domain.getSubQuestions().size()>0) {
 			ArrayList<QuestionDto> subQuestions =new ArrayList<QuestionDto>();
@@ -571,7 +589,7 @@ public class QuestionDto implements Serializable  {
 					sDto.setQuestionAnswers(new ArrayList<QuestionAnswerDto>());
 					List<QuestionAnswerDto> ret = new ArrayList<QuestionAnswerDto>();
 					for (QuestionAnswer item : q.getQuestionAnswers()) {
-						ret.add(new QuestionAnswerDto(item));
+						ret.add(toQuestionAnswer(item));
 					}
 					sDto.getQuestionAnswers().addAll(ret);
 					

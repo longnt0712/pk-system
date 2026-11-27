@@ -757,6 +757,7 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.findMistakesEditor = {};
         vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
         var writingTaskDraftTimer = null;
         vm.isComprehensiveRoute = /\/comprehensive_test(?:\/|$)/i.test($location.path());
@@ -1022,6 +1023,7 @@
 
         vm.getResultYourAnswer = function (item) {
             var type = getResultQuestionType(item);
+            if (type == 19) { return item.findMistakeSubmitted || ''; }
             if (type == 18 && item.listeningTotalGaps != null) {
                 return item.listeningCorrectGaps + '/' + item.listeningTotalGaps + ' ô đúng (' +
                     Math.round(item.listeningCorrectGaps * 10000 / (item.listeningTotalGaps || 1)) / 100 + '%)';
@@ -1042,6 +1044,7 @@
         vm.getResultCorrectAnswer = function (item) {
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
+            if (type == 19) { return item.findMistakeExpected || ''; }
 
             if (type == 18 && questionAnswer && questionAnswer.answer && questionAnswer.answer.answer === listening.responseMarker) { return 'Đúng từ 90% tổng số ô trống'; }
 
@@ -4887,6 +4890,14 @@
                 if (type === 18 && listening.isRuntime(entry.questionPackage) && !questionAnswers[0].clientAnswer) {
                     questionAnswers[0].clientAnswer = listening.serialize(listening.start(entry.questionPackage.motherTongue));
                 }
+                if (type === 19 && entry.questionPackage._findMistakesEdit) {
+                    var edit = entry.questionPackage._findMistakesEdit;
+                    var correction = String(edit.text || '').trim();
+                    if (correction && entry.questionPackage.subQuestions[edit.index] === question && questionAnswers[0]) {
+                        questionAnswers[0].clientAnswer = edit.candidate.id + '|' + correction;
+                        question.answered = true;
+                    }
+                }
                 var existingResults = [];
 
                 angular.forEach(results, function (result) {
@@ -4916,7 +4927,7 @@
                 var representativeAnswer = null;
                 var submittedAnswer = '';
 
-                if (type == 2 || type == 3 || type == 11 || type == 18 || type == 16 || type == 17) {
+                if (type == 2 || type == 3 || type == 11 || type == 18 || type == 16 || type == 17 || type == 19) {
                     representativeAnswer = questionAnswers.length ? questionAnswers[0] : null;
                     submittedAnswer = representativeAnswer && representativeAnswer.clientAnswer != null ?
                         String(representativeAnswer.clientAnswer).trim() : '';
@@ -4944,7 +4955,9 @@
                     return;
                 }
 
-                if (existingResults.length) {
+                if (type === 19) {
+                    results = results.filter(function (result) { return existingResults.indexOf(result) < 0; });
+                } else if (existingResults.length) {
                     angular.forEach(existingResults, function (existingResult) {
                         if (!existingResult.questionAnswer || existingResult.questionAnswer.id == null) {
                             existingResult.questionAnswer = representativeAnswer;
@@ -5168,8 +5181,9 @@
         vm.openStudyAnswerCheck = function () {
             if (vm.testSessionMode !== 'STUDY' || vm.isWritingRoute || vm.isPreviewMode || vm.isStartTest !== true) { return; }
             // Review the visible answer models only. Submission synchronization can retain older results.
-            var summary = {rows: [], total: 0, answered: 0, correct: 0, incorrect: 0, unanswered: 0};
+            var summary = {rows: [], total: 0, answered: 0, correct: 0, incorrect: 0, unanswered: 0, gradedOnSubmit: 0};
             angular.forEach(getReadingQuestionEntries(), function (entry) {
+                if (Number(entry.packageType) === 19) { summary.gradedOnSubmit++; return; }
                 var current = studyCurrentAnswer(entry), correctAnswers = studyCorrectAnswers(entry, current);
                 var submittedAnswer = current.text, correct = isStudyAnswerCorrect(entry, current, correctAnswers);
                 if (Number(entry.packageType) === 18 && typeof listening !== 'undefined' && listening.isRuntime(entry.questionPackage)) {
@@ -7522,6 +7536,20 @@
         };
         
         vm.isRuntimeDailyListening = listening.isRuntime;
+        vm.changeFindMistakesAnswer = function (pack) {
+            var ordinals = pack.subQuestions.map(function (question) { return Number(question.ordinalNumber); });
+            var results = (vm.testResult.questionAnswerTestResult || []).filter(function (result) {
+                return ordinals.indexOf(Number(result.ordinalNumber)) < 0;
+            });
+            pack.subQuestions.forEach(function (question) {
+                var answer = question.questionAnswers[0];
+                if (answer.id != null && answer.clientAnswer) {
+                    results.push({questionAnswer: answer, ordinalNumber: question.ordinalNumber, clientAnswer: answer.clientAnswer});
+                }
+            });
+            vm.testResult.questionAnswerTestResult = results;
+            saveReadingDraft();
+        };
         vm.changeDailyListeningAnswer = function (pack) {
             var question = pack.subQuestions[0], answer = question.questionAnswers[0];
             var results = vm.testResult.questionAnswerTestResult || [];

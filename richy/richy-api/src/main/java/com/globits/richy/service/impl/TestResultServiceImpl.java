@@ -38,6 +38,7 @@ import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.question.ComprehensiveListeningScore;
+import com.globits.richy.question.ComprehensiveFindMistakes;
 import com.globits.richy.question.IeltsNumberedAnswers;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.LearningDraft;
@@ -911,6 +912,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
 				|| Integer.valueOf(6).equals(dto.getTestType())) {
 			Set<QuestionAnswerTestResult> submitted = domain.getQuestionAnswerTestResult();
+			if (Integer.valueOf(6).equals(dto.getTestType())) { ComprehensiveFindMistakes.alignResponses(submitted); }
 			if (IeltsNumberedAnswers.supports(domain.getTestType()) && submitted != null) {
 				List<QuestionAnswerTestResult> rows = IeltsNumberedAnswers.scoringRows(domain);
 				if (rows.size() != submitted.size()) {

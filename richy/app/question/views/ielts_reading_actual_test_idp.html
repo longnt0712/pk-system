@@ -631,6 +631,7 @@
                                         </span>
                                     </span>
 
+                                    <find-mistakes-exercise ng-if="item.type == 19" pack="item" editor-state="vm.findMistakesEditor" locked="vm.isLearningReview || vm.isSubmittingTest" on-change="vm.changeFindMistakesAnswer(item)"></find-mistakes-exercise>
                                     <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
                                         <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
@@ -1060,6 +1061,7 @@
                                         </span>
                                     </span>
 
+                                    <find-mistakes-exercise ng-if="item.type == 19" pack="item" editor-state="vm.findMistakesEditor" locked="vm.isLearningReview || vm.isSubmittingTest" on-change="vm.changeFindMistakesAnswer(item)"></find-mistakes-exercise>
                                     <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
                                         <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
@@ -1468,6 +1470,7 @@
                                         </span>
                                     </span>
 
+                                    <find-mistakes-exercise ng-if="item.type == 19" pack="item" editor-state="vm.findMistakesEditor" locked="vm.isLearningReview || vm.isSubmittingTest" on-change="vm.changeFindMistakesAnswer(item)"></find-mistakes-exercise>
                                     <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
                                         <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
@@ -1863,6 +1866,7 @@
             </button>
         </header>
         <div class="idp-study-check-summary" aria-label="Tổng hợp kết quả">
+            <p ng-if="vm.studyAnswerCheck.gradedOnSubmit">Dạng Tìm và sửa lỗi được chấm sau khi nộp bài.</p>
             <div><strong>{{vm.studyAnswerCheck.total}}</strong><span>Tổng câu</span></div>
             <div class="is-correct"><strong>{{vm.studyAnswerCheck.correct}}</strong><span>Đúng</span></div>
             <div class="is-incorrect"><strong>{{vm.studyAnswerCheck.incorrect}}</strong><span>Sai</span></div>

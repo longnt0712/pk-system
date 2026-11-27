@@ -60,7 +60,7 @@ async function fixture(browser, {preload = true, modal = false, width = 1366} = 
         if (!modal) { module.value('$uibModal', {}); }
         window.APP_VERSION = 'word-export-test';
     }, {modal});
-    for (const name of ['ComprehensiveVideo', 'ComprehensiveListening', 'TestWordExport']) {
+    for (const name of ['ComprehensiveVideo', 'ComprehensiveListening', 'ComprehensiveFindMistakes', 'TestWordExport']) {
         await page.addScriptTag({path: path.join(app, 'question/business/' + name + '.js')});
     }
     if (preload) { await page.addScriptTag({path: path.join(app, 'assets/scripts/external/docx-9.6.1.js')}); }
@@ -119,6 +119,8 @@ test('Word export packages genuine OOXML and includes prompts/options for suppor
             description: 'PRIVATE_WRITING_SAMPLE_ONE', subQuestions: [question('', ['PRIVATE_WRITING_RESPONSE_ONE'])]});
         packages.push({type: 17, question: '<p>WRITING_PROMPT_TWO Discuss both views.</p>', motherTongue: '',
             description: 'PRIVATE_WRITING_SAMPLE_TWO', subQuestions: [question('', ['PRIVATE_WRITING_RESPONSE_TWO'])]});
+        packages.push({type: 19, question: 'Tìm và sửa lỗi.', motherTongue: 'Yesterday she [[eat lunch]] with [[Ana]].',
+            subQuestions: [question('', ['1|PRIVATE_FIND_MISTAKE_ANSWER'])]});
         const result = await build(page, exam(packages), {testMode: 'COMPREHENSIVE', shuffle: false});
         for (const file of ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/styles.xml']) { assert.ok(result.zip.file(file), file); }
         const styleIds = await page.evaluate(xml => {
@@ -138,6 +140,8 @@ test('Word export packages genuine OOXML and includes prompts/options for suppor
         }
         for (const type of [2, 3, 11, 13]) { assert.match(result.text, new RegExp('GAP_TYPE_' + type + '\\b')); }
         for (const marker of ['WRITING_PROMPT_ONE', 'WRITING_PROMPT_TWO', 'WORD_BANK_OPTION_0', 'WORD_BANK_OPTION_1']) { assert.ok(result.text.includes(marker), marker); }
+        assert.match(result.text, /Yesterday she \(A\) eat lunch with \(B\) Ana\./);
+        assert.match(result.text, /Vị trí: ____\s+Sửa thành:/);
         assert.doesNotMatch(result.text, /PRIVATE_|\}\{(?:SPACE|SENTENCE|HEADING)\}\{/);
         saveQa('supported-question-types.docx', result);
         assert.deepEqual(errors, []);

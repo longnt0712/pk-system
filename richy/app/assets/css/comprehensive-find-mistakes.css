@@ -1,0 +1,53 @@
+.find-mistakes-builder > label,
+.find-mistakes-builder textarea,
+.find-mistakes-option > label,
+.find-mistakes-correction > label {
+    display: block;
+    width: 100%;
+}
+
+.find-mistakes-option {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #dce2e9;
+    border-radius: 6px;
+}
+
+.find-mistakes-exercise { margin: 10px 0 24px; }
+.find-mistakes-anchor { display: block; }
+.find-mistakes-progress { font-weight: 600; }
+
+.find-mistakes-passage {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 2.1;
+}
+
+.find-mistakes-word {
+    display: inline;
+    padding: 3px 5px;
+    border: 1px solid #a4afc4;
+    border-radius: 5px;
+    background: #f5f7fb;
+    color: #233954;
+    font: inherit;
+    line-height: 1.4;
+    white-space: normal;
+    cursor: pointer;
+}
+
+.find-mistakes-word:disabled { cursor: default; }
+.find-mistakes-word:hover:not(:disabled),
+.find-mistakes-word.is-active { background: #dcf4f8; border-color: #00758a; }
+.find-mistakes-word.is-saved { background: #e6ebff; border-color: #5a6fb9; }
+
+.find-mistakes-correction {
+    display: block;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #a4afc4;
+    border-radius: 6px;
+}
+
+.find-mistakes-correction textarea { margin-top: 6px; }
+.find-mistakes-actions { display: flex; flex-wrap: wrap; gap: 6px; }

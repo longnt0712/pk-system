@@ -7,6 +7,7 @@ import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.question.ComprehensiveListeningScore;
+import com.globits.richy.question.ComprehensiveFindMistakes;
 
 public class QuestionAnswerTestResultDto implements Serializable{
 	private Long id;
@@ -36,8 +37,12 @@ public class QuestionAnswerTestResultDto implements Serializable{
     }
 	private Integer listeningTotalGaps;
 	private Integer listeningCorrectGaps;
+	private String findMistakeSubmitted;
+	private String findMistakeExpected;
 	public Integer getListeningTotalGaps() { return listeningTotalGaps; }
 	public Integer getListeningCorrectGaps() { return listeningCorrectGaps; }
+	public String getFindMistakeSubmitted() { return findMistakeSubmitted; }
+	public String getFindMistakeExpected() { return findMistakeExpected; }
 	
 	
 	
@@ -114,6 +119,13 @@ public class QuestionAnswerTestResultDto implements Serializable{
 			this.listeningTotalGaps = score.getTotal();
 			this.listeningCorrectGaps = score.getCorrect();
 			this.isCorrectTestResultDetail = score.isPassed();
+			return;
+		}
+		if (type == ComprehensiveFindMistakes.TYPE) {
+			this.findMistakeSubmitted = ComprehensiveFindMistakes.describe(selectedAnswer, clientAnswer);
+			this.findMistakeExpected = ComprehensiveFindMistakes.describe(selectedAnswer,
+					selectedAnswer.getAnswer() == null ? null : selectedAnswer.getAnswer().getAnswer());
+			this.isCorrectTestResultDetail = ComprehensiveFindMistakes.isCorrect(selectedAnswer, clientAnswer);
 			return;
 		}
 		String submittedAnswer = normalize(domain.getClientAnswer());

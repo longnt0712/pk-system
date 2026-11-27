@@ -2291,7 +2291,7 @@ public class QuestionServiceImpl implements QuestionService {
 				subQuestion.setDescription(sDto.getDescription());
 				subQuestion.setTitle(sDto.getTitle());
 				subQuestion.setPronounce(sDto.getPronounce());
-				if (sDto.getType() == 18) { subQuestion.setMotherTongue(sDto.getMotherTongue()); }
+				if (sDto.getType() == 18 || sDto.getType() == 19) { subQuestion.setMotherTongue(sDto.getMotherTongue()); }
 				subQuestion.setVideoUrl(sDto.getVideoUrl());
 				subQuestion.setVideoTimeSeconds(sDto.getVideoTimeSeconds());
 				subQuestion.setVideoAnswerSeconds(sDto.getVideoAnswerSeconds());
