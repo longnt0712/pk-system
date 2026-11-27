@@ -130,7 +130,8 @@
             </button>
 
 
-            <div class="battle-online-mode-grid">
+            <p class="alert alert-info" ng-if="vm.locksFindMistakesMode()">Đề có dạng Tìm và sửa lỗi nên phòng dùng Lụm trứng. Tất cả các đoạn tìm lỗi sẽ hiện cùng lúc. Cả phòng bóc trứng khi mọi học sinh đã sửa đúng hết hoặc hết giờ.</p>
+            <div class="battle-online-mode-grid" ng-if="!vm.locksFindMistakesMode()">
 
                 <button type="button"
                         class="battle-online-mode-card"
@@ -264,7 +265,7 @@
 
             <!-- CLASSIC -->
             <div class="battle-online-mode-settings"
-                 ng-if="vm.hostSettings.mode === 'CLASSIC'">
+                 ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'CLASSIC'">
 
                 <div class="battle-online-mode-badge">
                     🎯 CLASSIC MODE
@@ -292,10 +293,10 @@
 
             <!-- COUNTDOWN -->
             <div class="battle-online-mode-settings is-countdown"
-                 ng-if="!vm.room.videoSynchronized && (vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'LUM_NGAY' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE')">
+                 ng-if="vm.locksFindMistakesMode() || (!vm.room.videoSynchronized && (vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'LUM_NGAY' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE'))">
 
                 <div class="battle-online-mode-badge">
-                    {{vm.hostSettings.mode === 'LUM_NGAY' ? '🎁 LỤM NGAY' : vm.hostSettings.mode === 'DEMON_DEFENSE' ? '👹 DIỆT QUỶ NGU' : vm.hostSettings.mode === 'MONEY_BEG'
+                    {{vm.locksFindMistakesMode() ? '🎁 LỤM TRỨNG · TÌM VÀ SỬA LỖI' : vm.hostSettings.mode === 'LUM_NGAY' ? '🎁 LỤM NGAY' : vm.hostSettings.mode === 'DEMON_DEFENSE' ? '👹 DIỆT QUỶ NGU' : vm.hostSettings.mode === 'MONEY_BEG'
                         ? '🤑 XIN TÍ TIỀN MODE'
                         : (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
                             ? '👹 THOÁT KHỎI QUỶ NGU'
@@ -304,17 +305,17 @@
 
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label ng-if="!vm.room.videoSynchronized">TỔNG THỜI GIAN (PHÚT)</label>
+                        <label>{{vm.locksFindMistakesMode() ? 'THỜI GIAN SỬA LỖI (PHÚT)' : 'TỔNG THỜI GIAN (PHÚT)'}}</label>
 
                         <input type="number"
                                min="1"
                                max="180"
                                class="form-control"
                                ng-change="vm.markCountdownMinutesTouched()"
-                               ng-model="vm.hostSettings.countdownMinutes" ng-if="!vm.room.videoSynchronized">
+                               ng-model="vm.hostSettings.countdownMinutes">
                     </div>
 
-                    <div>
+                    <div ng-if="!vm.locksFindMistakesMode()">
                         <label>SAI BỊ KHÓA (GIÂY)</label>
 
                         <input type="number"
@@ -326,10 +327,10 @@
                     </div>
                 </div>
 
-                <p ng-if="vm.hostSettings.mode === 'COUNTDOWN' && !vm.room.videoSynchronized">
+                <p ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'COUNTDOWN' && !vm.room.videoSynchronized">
                     Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
                 </p>
-                <p ng-if="vm.hostSettings.mode === 'DEMON_DEFENSE'">
+                <p ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'DEMON_DEFENSE'">
                     Mỗi học sinh có một tháp pha lê, cả đội bảo vệ chung một hàng quỷ.
                     Đúng: bắn 1 tia sáng; streak 20/30/40: bắn 2/3/4 tia, tự nhắm quỷ gần nhất.
                     Quỷ NGU/RẤT NGU/SIÊU NGU có 1/2/3 máu, mỗi level cộng thêm 1 máu (quỷ không ra nhiều hơn, không nhanh hơn); điểm = máu.
@@ -344,13 +345,13 @@
                     Host điều hành ở chế độ khán giả. Học sinh nhận cảnh báo chữ và màu; máy rung khi Ngu Siêu Bá Khí xuất hiện.
                 </p>
 
-                <p ng-if="vm.hostSettings.mode === 'MONEY_BEG'">
+                <p ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'MONEY_BEG'">
                     Đồng hồ chạy ngay khi START. Mỗi người chọn 1 trong 3 mật khẩu;
                     skill HACK chiếm khoảng 7% số lượt skill. Khi HACK, người chơi
                     phải tìm đúng mật khẩu trong 6 lựa chọn thuộc 3 nhóm để lấy 40% điểm.
                 </p>
 
-                <p ng-if="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
+                <p ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
                     Mỗi người nhận câu random riêng và trả lời xong có câu tiếp ngay,
                     không chờ người khác. Đúng đẩy QUỶ NGU sang đối thủ 1 bước;
                     sai kéo quỷ về đội mình 1 bước; CHÁY LÊN đẩy 2 bước.
@@ -362,7 +363,7 @@
             </div>
 
             <div class="battle-online-mode-settings"
-                 ng-if="vm.hostSettings.mode === 'LUM_NGAY'">
+                 ng-if="vm.locksFindMistakesMode() || vm.hostSettings.mode === 'LUM_NGAY'">
                 <div class="battle-online-mode-badge">🎁 BOX QUÀ</div>
                 <div class="battle-online-setting-grid">
                     <div>
@@ -374,7 +375,7 @@
             </div>
 
             <div class="battle-online-mode-settings is-guess-word"
-                 ng-if="vm.hostSettings.mode === 'GUESS_WORD'">
+                 ng-if="!vm.locksFindMistakesMode() && vm.hostSettings.mode === 'GUESS_WORD'">
                 <div class="battle-online-mode-badge">🔤 GUESS THE WORD</div>
                 <div class="battle-online-setting-grid">
                     <div>

@@ -1392,6 +1392,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             normalizeDoubleActionPlayerLocked(room);
             syncDemonPlayersLocked(room, System.currentTimeMillis());
+            finishFindMistakesIfEveryoneReadyLocked(room);
 
             dto = snapshotLocked(room, username);
         }
@@ -1551,10 +1552,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 }
             }
 
-            room.settings.mode =
-                    normalizeMode(settings.getMode());
+            room.settings.mode = isFindMistakesRace(room) ? MODE_LUM_NGAY : normalizeMode(settings.getMode());
             room.settings.shuffleExerciseQuestions = "COMPREHENSIVE".equals(room.settings.questionSource)
-                    && settings.isShuffleExerciseQuestions();
+                    && !isFindMistakesRace(room) && settings.isShuffleExerciseQuestions();
             room.settings.skillsEnabled = settings.isSkillsEnabled();
             room.settings.disabledSkillTypes = normalizeDisabledSkillTypes(settings.getDisabledSkillTypes());
             room.settings.giftSpawnSeconds = clamp(settings.getGiftSpawnSeconds(), 1, 60);
@@ -1692,7 +1692,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.battleAttemptId = UUID.randomUUID().toString();
             room.recentEvents.clear();
 
-            if (MODE_GUESS_WORD.equals(room.settings.mode)) {
+            if (isFindMistakesRace(room)) {
+                startFindMistakesRaceLocked(room);
+            } else if (MODE_GUESS_WORD.equals(room.settings.mode)) {
                 startGuessWordLocked(room);
             } else if (isCountdownLikeMode(room.settings.mode)) {
                 startCountdownLocked(room);
@@ -1855,6 +1857,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             requireHost(room, username);
             requirePlaying(room);
+            if (room.findMistakesQuestion != null && !room.giftOpening && System.currentTimeMillis() < room.matchEndsAt) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ mọi học sinh sửa đúng hết hoặc hết giờ mới bóc trứng.");
+            }
             finishMatchLocked(room);
             result = snapshotLocked(room, username);
         }
@@ -1978,6 +1983,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return "COMPREHENSIVE".equals(room.settings.questionSource);
     }
 
+    private boolean isFindMistakesRace(RoomState room) {
+        return isComprehensiveRoom(room) && room.exerciseQuestionPlan != null && room.exerciseQuestionPlan.isFindMistakesRace();
+    }
+
     private int minimumSourceQuestions(RoomState room) { return isComprehensiveRoom(room) ? 1 : 4; }
 
     private boolean isExerciseQuestionOrderFixed(RoomState room) {
@@ -1985,6 +1994,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private boolean hasVideoQuestions(RoomState room) {
+        if (isFindMistakesRace(room)) { return false; }
         for (QuestionState question : room.preparedQuestions.values()) {
             if (videoContent(question) != null) { return true; }
         }
@@ -2062,6 +2072,25 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return count;
     }
 
+
+    private void startFindMistakesRaceLocked(RoomState room) {
+        List<BattleExerciseQuestions.Turn> parts = new ArrayList<>();
+        for (QuestionState question : room.preparedQuestions.values()) {
+            if (question.exercise != null && question.exercise.isFindMistakes()) { parts.add(question.exercise); }
+        }
+        BattleExerciseQuestions.Turn exercise = BattleExerciseQuestions.findMistakesRace(parts);
+        QuestionState question = new QuestionState();
+        question.id = exercise.id;
+        question.question = exercise.prompt;
+        question.meaning = exercise.prompt;
+        question.exercise = exercise;
+        room.findMistakesQuestion = question;
+        room.lumLuckyAppearance = battleMusicConfigService != null && "LIGHTNING".equals(battleMusicConfigService.getLumLuckyAppearance())
+                ? "LIGHTNING" : "PUMPKIN";
+        room.status = PLAYING;
+        room.matchEndsAt = System.currentTimeMillis() + room.settings.countdownMinutes * 60000L;
+        scheduleMatchFinish(room.code, room.matchEndsAt);
+    }
 
     private void startCountdownLocked(RoomState room) {
         int requested = clamp(
@@ -2200,6 +2229,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         RoomState room = requireRoom(roomCode);
 
+        if (isFindMistakesRace(room)) {
+            return answerFindMistakesRace(room, username, answerDto);
+        }
+
         if (MODE_GUESS_WORD.equals(room.settings.mode)) {
             return answerGuessWord(room, username, answerDto);
         }
@@ -2217,6 +2250,46 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 username,
                 answerDto
         );
+    }
+
+    private BattleOnlineAnswerResultDto answerFindMistakesRace(RoomState room, String username, BattleOnlineAnswerDto dto) {
+        BattleOnlineAnswerResultDto result = new BattleOnlineAnswerResultDto();
+        synchronized (room) {
+            requirePlaying(room);
+            PlayerState player = requirePlayer(room, username);
+            requireActivePlayer(player);
+            if (room.giftOpening || System.currentTimeMillis() >= room.matchEndsAt) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Vòng sửa lỗi đã kết thúc.");
+            }
+            QuestionState question = room.findMistakesQuestion;
+            validateAnswerDto(dto, question, 1L);
+            if (player.findMistakesRank > 0) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã hoàn thành. Hãy chờ vòng bóc trứng.");
+            }
+            int correctCount = question.exercise.correctFindMistakes(dto.getExerciseAnswers());
+            int total = question.exercise.content.items.size();
+            boolean complete = correctCount == total;
+            if (complete) {
+                player.findMistakesRank = ++room.lastFindMistakesRank;
+                player.correctCount = total;
+                finishFindMistakesIfEveryoneReadyLocked(room);
+            }
+            fillAnswerResult(result, player, complete, 0D, false, false);
+            result.setFindMistakesCorrect(correctCount);
+            result.setFindMistakesTotal(total);
+            result.setMessage(complete ? "Đã sửa đúng hết. Hạng " + player.findMistakesRank + "."
+                    : "Sửa đúng " + correctCount + "/" + total + " lỗi. Bạn có thể sửa tiếp rồi nộp lại.");
+            result.setRoom(snapshotLocked(room, username));
+        }
+        if (result.isCorrect()) { broadcastGeneric(room); }
+        return result;
+    }
+
+    private void finishFindMistakesIfEveryoneReadyLocked(RoomState room) {
+        if (room.findMistakesQuestion != null && PLAYING.equals(room.status) && !room.giftOpening
+                && room.players.values().stream().filter(player -> !player.spectator).allMatch(player -> player.findMistakesRank > 0)) {
+            finishMatchLocked(room);
+        }
     }
 
 
@@ -3206,6 +3279,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     completeMatchLocked(room);
                     throw new BattleOnlineException(HttpStatus.CONFLICT, "Đã hết thời gian bóc trứng.");
                 }
+            } else if (room.findMistakesQuestion != null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ vòng sửa lỗi kết thúc để bóc trứng.");
             } else if (room.videoSynchronized) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết video để bắt đầu bóc trứng.");
             } else if (now >= room.matchEndsAt) {
@@ -3228,7 +3303,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
             player.giftCredits--;
             player.giftCreditVersion++;
-            if (room.giftLightning != null && (!room.giftOpening || hasOutstandingGiftCreditsLocked(room))
+            if (findMistakesEggMinimum(player.findMistakesRank) == 0 && room.giftLightning != null
+                    && (!room.giftOpening || hasOutstandingGiftCreditsLocked(room))
                     && room.giftLightning.tryCollect(now, player.username, displayName(player))) {
                 gift = GiftDropGame.lightningGift(gift.id, room.lumLuckyAppearance);
             }
@@ -5963,7 +6039,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState player) {
 
-        if (room.giftOpening) {
+        if (room.giftOpening || room.findMistakesQuestion != null) {
             player.currentQuestion = null;
             player.currentSkillType = null;
             return;
@@ -6759,6 +6835,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
     }
 
+    private int findMistakesEggMinimum(int rank) {
+        switch (rank) {
+            case 1: return 40;
+            case 2: return 30;
+            case 3: return 10;
+            default: return 0;
+        }
+    }
+
     private void startGiftOpeningLocked(RoomState room) {
         room.giftOpening = true;
         room.giftOpeningEndsAt = System.currentTimeMillis() + 180000L;
@@ -6773,6 +6858,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         cancelMatchTimer(room.code);
 
         Map<String, Integer> credits = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> minimumPoints = new LinkedHashMap<>();
         for (PlayerState player : room.players.values()) {
             player.currentQuestion = null;
             player.currentSkillType = null;
@@ -6782,13 +6868,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.invertedUntil = 0L;
             player.burningUntil = 0L;
             player.wrongAnswerPenaltyUntil = 0L;
-            if (!player.spectator) { credits.put(player.username, player.giftCredits); }
+            if (!player.spectator) {
+                if (room.findMistakesQuestion != null) {
+                    player.giftCredits = 1;
+                    player.giftCreditVersion++;
+                    minimumPoints.put(player.username, findMistakesEggMinimum(player.findMistakesRank));
+                }
+                credits.put(player.username, player.giftCredits);
+            }
         }
         GiftDropGame previousGiftDrop = room.giftDrop;
         room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random);
         room.giftDrop.inheritDragonBallCollections(previousGiftDrop);
         room.giftLightning = new GiftLightningGame(System.currentTimeMillis(), room.giftOpeningEndsAt, random);
-        room.giftDrop.prepareFinalPools(credits);
+        room.giftDrop.prepareFinalPools(credits, minimumPoints);
         if (hasOutstandingGiftCreditsLocked(room)) { scheduleMatchFinish(room.code, room.giftOpeningEndsAt); }
     }
 
@@ -7536,6 +7629,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         BattleOnlineRoomSettingsDto roomSettingsDto =
                 copySettings(room.settings);
         roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
+        if (isFindMistakesRace(room)) {
+            roomSettingsDto.setFindMistakesTestIds(room.exerciseQuestionPlan.findMistakesTestIds());
+            dto.setFindMistakesRace(true);
+            PlayerState viewer = room.players.get(viewerUsername);
+            if (viewer != null && !viewer.spectator) {
+                dto.setFindMistakesRank(viewer.findMistakesRank);
+                dto.setFindMistakesEggMinimum(findMistakesEggMinimum(viewer.findMistakesRank));
+            }
+            int finished = 0, players = 0;
+            for (PlayerState player : room.players.values()) {
+                if (!player.spectator) {
+                    players++;
+                    if (player.findMistakesRank > 0) { finished++; }
+                }
+            }
+            dto.setFindMistakesFinished(finished);
+            dto.setFindMistakesPlayers(players);
+        }
         dto.setSettings(roomSettingsDto);
         if (room.giftDrop != null) {
             dto.setLumLuckyAppearance(room.lumLuckyAppearance);
@@ -7688,10 +7799,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
 
-        if (
-            PLAYING.equals(room.status) &&
-            isCountdownLikeMode(room.settings.mode)
-        ) {
+        if (PLAYING.equals(room.status) && room.findMistakesQuestion != null) {
+            if (!room.giftOpening) {
+                dto.setCurrentQuestion(toPublicQuestion(room.findMistakesQuestion, 1L, 1, 1, null));
+                dto.setCurrentQuestionIndex(1);
+            }
+            dto.setTotalQuestions(1);
+        } else if (PLAYING.equals(room.status) && isCountdownLikeMode(room.settings.mode)) {
             /*
              * Chỉ REST snapshot dành cho viewer mới có
              * câu cá nhân. WebSocket generic truyền null viewer.
@@ -8301,6 +8415,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.giftDrop = null;
         room.giftOpening = false;
         room.giftOpeningEndsAt = 0L;
+        room.findMistakesQuestion = null;
+        room.lastFindMistakesRank = 0;
         room.dumbBallPosition = 0;
         room.demonDefense = null;
         room.lastDemonSummaryAt = 0L;
@@ -8322,6 +8438,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.streak = 0;
         player.unfreezeCharges = 0;
         player.giftCredits = 0;
+        player.findMistakesRank = 0;
         player.giftCreditVersion = 0;
         player.demonRescues = 0;
         player.correctCount = 0;
@@ -9542,6 +9659,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         long matchEndsAt = 0L;
         boolean giftOpening;
         long giftOpeningEndsAt;
+        QuestionState findMistakesQuestion;
+        int lastFindMistakesRank;
         DemonDefenseGame demonDefense;
         GiftDropGame giftDrop;
         GiftLightningGame giftLightning;
@@ -9620,6 +9739,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         double score;
         int streak;
         int giftCredits;
+        int findMistakesRank;
         long giftCreditVersion;
         int unfreezeCharges;
         int demonRescues;

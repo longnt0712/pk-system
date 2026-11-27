@@ -412,3 +412,53 @@ test('a video Find Mistakes receipt shows partial credit for the finished turn',
  await new Promise(setImmediate);
  assert.deepEqual(plain(h.vm.videoAnswerToast),{correct:false,partial:true,label:'Sửa đúng 1/2 lỗi'});
 });
+
+test('selecting Find Mistakes forces Lụm trứng while the flagged test is selected',()=>{
+ const h=setup('host');
+ h.vm.questionSource='COMPREHENSIVE';
+ h.vm.hostSettings.mode='CLASSIC';
+ h.vm.addExerciseTest({id:100,title:'Thường'});
+ h.vm.addExerciseTest({id:101,title:'Sửa lỗi',findMistakes:true});
+ assert.equal(h.vm.locksFindMistakesMode(),true);
+ assert.equal(h.hooks.buildSettingsDto().mode,'LUM_NGAY');
+ assert.equal(h.hooks.buildSettingsDto().shuffleExerciseQuestions,false);
+ h.vm.removeExerciseTest({id:100});
+ assert.equal(h.vm.locksFindMistakesMode(),true);
+ h.vm.removeExerciseTest({id:101});
+ assert.equal(h.hooks.buildSettingsDto().mode,'CLASSIC');
+});
+
+test('a completed Find Mistakes player keeps their private rank through public updates and waits to open eggs',()=>{
+ const h=setup(), room=h.room('LUM_NGAY');
+ Object.assign(room,{findMistakesRace:true,findMistakesRank:1,findMistakesEggMinimum:40,giftCredits:1});
+ Object.assign(room.currentQuestion.exercise,{type:19,answerMode:'FIND_MISTAKES'});
+ h.hooks.applyRoom(room,false);
+ assert.equal(h.vm.exerciseInputDisabled(),true);
+ assert.equal(h.vm.giftClaimDisabled(),true);
+ h.vm.openGiftModal();
+ assert.equal(h.vm.giftModalOpen,false);
+ h.hooks.applyRoom({...room,findMistakesRank:null,findMistakesEggMinimum:0,findMistakesFinished:1},true);
+ assert.equal(h.vm.room.findMistakesRank,1);
+ assert.equal(h.vm.room.findMistakesEggMinimum,40);
+});
+
+test('the last player still sees the egg reward when its claim also finishes the race',async()=>{
+ const h=setup(), room=h.room('LUM_NGAY');
+ delete room.currentQuestion;
+ Object.assign(room,{findMistakesRace:true,findMistakesRank:1,findMistakesEggMinimum:40,giftOpening:true,
+  giftOpeningEndsAt:room.matchEndsAt,giftCredits:1,giftCreditVersion:1,
+  giftDrop:{gameId:'race-eggs',version:1,poolVersion:1,gifts:[{id:'egg1'}],claims:[],capacity:4}});
+ h.hooks.applyRoom(room,false);
+ assert.equal(h.vm.giftModalOpen,true);
+ const finished={...room,status:'FINISHED',giftOpening:false,giftCredits:0,giftCreditVersion:2,
+  giftDrop:{...room.giftDrop,version:2,poolVersion:2,gifts:[]}};
+ h.service.claimGift=()=>Promise.resolve({room:finished,rewardLevel:1,points:40});
+ await h.vm.claimGift({id:'egg1'});
+ assert.equal(h.vm.room.status,'FINISHED');
+ assert.equal(h.vm.giftModalOpen,true);
+ assert.equal(h.vm.lastGiftReward.points,40);
+ h.hooks.applyRoom({...finished},true);
+ assert.equal(h.vm.giftModalOpen,true);
+ h.vm.dismissGiftReward();
+ assert.equal(h.vm.giftModalOpen,false);
+});

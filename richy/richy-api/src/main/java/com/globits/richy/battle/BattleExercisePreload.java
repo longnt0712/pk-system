@@ -51,6 +51,13 @@ public class BattleExercisePreload {
             throw invalid("Tối đa 5000 câu hỏi trong một phòng.");
         }
 
+        List<Long> raceTestIds = new ArrayList<>();
+        Set<Long> testsWithMistakes = new LinkedHashSet<>();
+        for (Object[] row : rows) {
+            if ((Integer) row[4] == ComprehensiveFindMistakes.TYPE) { testsWithMistakes.add((Long) row[0]); }
+        }
+        for (Long id : testIds) { if (testsWithMistakes.contains(id)) { raceTestIds.add(id); } }
+
         Map<Long, List<QuestionRef>> questionsByTest = new HashMap<>();
         Long previousPart = null;
         Long previousGroup = null;
@@ -64,6 +71,7 @@ public class BattleExercisePreload {
             String videoUrl = (String) row[2];
             Long groupId = (Long) row[3];
             int type = (Integer) row[4];
+            if (!raceTestIds.isEmpty() && type != ComprehensiveFindMistakes.TYPE) { continue; }
             Long questionId = (Long) row[6];
             if (questionId == null) {
                 if (type != 16 && type != 17) {
@@ -96,14 +104,17 @@ public class BattleExercisePreload {
         for (Long testId : testIds) {
             List<QuestionRef> testQuestions = questionsByTest.get(testId);
             if (testQuestions == null || testQuestions.isEmpty()) {
+                if (!raceTestIds.isEmpty()) { continue; }
                 throw invalid("Đề tổng hợp chưa có câu hỏi.");
             }
             // A stable sort keeps the original question order for equal video times.
-            testQuestions.sort(Comparator.comparingInt((QuestionRef ref) -> ref.partPosition)
-                    .thenComparing(ref -> ref.videoTime, Comparator.nullsLast(Comparator.naturalOrder())));
+            if (raceTestIds.isEmpty()) {
+                testQuestions.sort(Comparator.comparingInt((QuestionRef ref) -> ref.partPosition)
+                        .thenComparing(ref -> ref.videoTime, Comparator.nullsLast(Comparator.naturalOrder())));
+            }
             questions.addAll(testQuestions);
         }
-        return new Plan(hostId, tests, questions);
+        return new Plan(hostId, tests, questions, raceTestIds);
     }
 
     public List<BattleExerciseQuestions.Turn> loadBatch(Plan plan, int offset, int limit) {
@@ -151,8 +162,10 @@ public class BattleExercisePreload {
                 for (Long id : ref.groupedQuestionIds) { groupedQuestions.add(requireNode(nodes, id, ref.groupId)); }
                 group.setSubQuestions(groupedQuestions);
             }
-            turns.add(BattleExerciseQuestions.fromQuestion(ref.testId, plan.tests.get(ref.testId).title,
-                    part, group, source, ref.questionIndex, first, random));
+            turns.add(plan.isFindMistakesRace()
+                    ? BattleExerciseQuestions.findMistakesRacePart(ref.testId, plan.tests.get(ref.testId).title, group, source)
+                    : BattleExerciseQuestions.fromQuestion(ref.testId, plan.tests.get(ref.testId).title,
+                            part, group, source, ref.questionIndex, first, random));
         }
         return turns;
     }
@@ -263,14 +276,18 @@ public class BattleExercisePreload {
         private final Long hostId;
         private final Map<Long, TestHeader> tests;
         private final List<QuestionRef> questions;
+        private final List<Long> raceTestIds;
 
-        private Plan(Long hostId, Map<Long, TestHeader> tests, List<QuestionRef> questions) {
+        private Plan(Long hostId, Map<Long, TestHeader> tests, List<QuestionRef> questions, List<Long> raceTestIds) {
             this.hostId = hostId;
             this.tests = tests;
             this.questions = questions;
+            this.raceTestIds = raceTestIds;
         }
 
         public int size() { return questions.size(); }
+        public boolean isFindMistakesRace() { return !raceTestIds.isEmpty(); }
+        public List<Long> findMistakesTestIds() { return new ArrayList<>(raceTestIds); }
 
         public List<String> titles() {
             List<String> titles = new ArrayList<>(tests.size());

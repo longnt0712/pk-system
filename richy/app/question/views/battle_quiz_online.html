@@ -1407,10 +1407,16 @@
 
 
             <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise && !(vm.isHost() && vm.room.videoSynchronized)" ng-show="vm.videoQuestionOpen()">
+                <p ng-if="vm.room.findMistakesRace" class="battle-exercise-race-progress" role="status"><strong>{{vm.room.findMistakesFinished}} / {{vm.room.findMistakesPlayers}}</strong> học sinh đã sửa đúng hết</p>
+                <div ng-if="vm.room.findMistakesRace && vm.room.findMistakesRank > 0" class="alert alert-success" role="status">
+                    <strong>Bạn đã hoàn thành hạng {{vm.room.findMistakesRank}}.</strong>
+                    <span ng-if="vm.room.findMistakesEggMinimum > 0"> Trứng của bạn từ {{vm.room.findMistakesEggMinimum}} điểm.</span>
+                    <span> Hãy chờ những học sinh còn lại hoặc đến khi hết giờ.</span>
+                </div>
                 <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
                 <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
-                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" find-mistakes-editor="vm.findMistakesEditor" disabled="!vm.isClassicHostPreview() && vm.exerciseInputDisabled()" on-answer="!vm.isClassicHostPreview() && vm.submitExercise(false)"></battle-exercise-form>
-                <button type="button" class="btn btn-primary" ng-if="!vm.isClassicHostPreview() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+                <battle-exercise-form ng-if="!vm.room.findMistakesRank" exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" find-mistakes-editor="vm.findMistakesEditor" disabled="!vm.isClassicHostPreview() && vm.exerciseInputDisabled()" on-answer="!vm.isClassicHostPreview() && vm.submitExercise(false)"></battle-exercise-form>
+                <button type="button" class="btn btn-primary" ng-if="!vm.isClassicHostPreview() && !vm.room.findMistakesRank && (!vm.room.findMistakesRace || !vm.isSpectator()) && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
                 <div class="battle-online-guess-host-actions"
                      ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' && vm.room.guessPhase === 'WAITING_HOST'">
                     <button type="button" class="is-reveal" ng-if="!vm.room.guessAnswerRevealed" ng-disabled="vm.revealingGuessAnswer" ng-click="vm.revealGuessAnswer()">💡 HIỆN ĐÁP ÁN ĐÚNG</button>
@@ -2042,7 +2048,7 @@
     </div>
 
     <div class="battle-online-gift-modal-backdrop"
-         ng-if="vm.giftModalOpen && vm.room && vm.room.status === 'PLAYING'"
+         ng-if="vm.giftModalOpen && vm.room && (vm.room.status === 'PLAYING' || (vm.room.findMistakesRace && vm.room.status === 'FINISHED' && vm.lastGiftReward))"
          ng-click="vm.dismissGiftReward()">
         <section id="battle-gift-modal" class="battle-online-gift-modal" role="dialog" aria-modal="true"
                  aria-labelledby="battle-gift-modal-title" tabindex="-1" ng-class="{'is-revealed': vm.lastGiftReward, 'is-rotten': vm.lastGiftReward.level === -1}">
@@ -2062,7 +2068,8 @@
                 🔮 +{{vm.room.giftDrop.dragonBallBoostStars}} điểm % tỉ lệ ra {{vm.room.giftDrop.dragonBallBoostPetLabel || 'pet điểm cao nhất'}} · {{vm.giftDragonBallBoostSeconds()}}s
             </div>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
-                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
+                <p class="battle-online-gift-modal-hint" ng-if="vm.room.findMistakesRace && vm.room.giftCredits > 0">Bạn được bóc 1 quả.<span ng-if="vm.room.findMistakesEggMinimum > 0"> Hạng {{vm.room.findMistakesRank}} được đảm bảo trứng từ {{vm.room.findMistakesEggMinimum}} điểm.</span></p>
+                <p class="battle-online-gift-modal-hint" ng-if="!vm.room.findMistakesRace && vm.room.giftOpening && vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
                 <p class="battle-online-gift-modal-hint" ng-if="!vm.room.giftOpening">Chọn 1 trong 3 quả trứng. Bóc xong bạn sẽ tiếp tục trả lời câu kế tiếp.</p>
                 <div class="battle-online-gift-host-controls" ng-if="vm.isHost() && vm.room.giftOpening">

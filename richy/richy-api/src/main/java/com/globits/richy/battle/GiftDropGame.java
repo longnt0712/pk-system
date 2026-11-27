@@ -107,6 +107,7 @@ public class GiftDropGame {
     private static class PlayerPool {
         final Map<String, Gift> gifts = new LinkedHashMap<String, Gift>();
         int capacity = POOL_SIZE;
+        int minimumPoints;
         long version;
     }
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
@@ -426,7 +427,25 @@ public class GiftDropGame {
         return giftForTicket(id, ticket, lightning, protectedFromRotten, stars, System.currentTimeMillis());
     }
     private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars, long now) {
+        return giftForTicket(id, ticket, lightning, protectedFromRotten, stars, now, 0);
+    }
+    private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars, long now, int minimumPoints) {
         int[] weights = weightsForEffects(lightning, protectedFromRotten, stars, now);
+        if (minimumPoints > 0) {
+            int firstPet = skillWeights.length + 2;
+            int eligibleWeight = 0;
+            for (int i = firstPet; i < weights.length; i++) {
+                if (pointsForReward(rewards.get(i - firstPet)) >= minimumPoints) { eligibleWeight += weights[i]; }
+            }
+            int eligibleTicket = (int) ((long) ticket * eligibleWeight / DRAW_RESOLUTION);
+            for (int i = firstPet; i < weights.length && eligibleWeight > 0; i++) {
+                PetRewardCatalog.Reward reward = rewards.get(i - firstPet);
+                if (pointsForReward(reward) < minimumPoints) { continue; }
+                if (eligibleTicket < weights[i]) { return petGift(id, reward); }
+                eligibleTicket -= weights[i];
+            }
+            return new Gift(id, 0, minimumPoints, null, null, "Trứng thưởng");
+        }
         int index = 0, remaining = ticket;
         // Reuse each egg's private ticket for the active effects; refreshing never rerolls it.
         while (index < weights.length - 1) {
@@ -455,10 +474,14 @@ public class GiftDropGame {
         return new Gift(id, reward.level, pointsForReward(reward), null, reward.image, reward.label);
     }
     public void prepareFinalPools(Map<String, Integer> credits) {
+        prepareFinalPools(credits, Collections.emptyMap());
+    }
+    public void prepareFinalPools(Map<String, Integer> credits, Map<String, Integer> minimumPoints) {
         playerPools.clear(); finalPools = true;
         if (credits != null) {
             for (Map.Entry<String, Integer> entry : credits.entrySet()) {
                 PlayerPool pool = new PlayerPool();
+                pool.minimumPoints = minimumPoints.getOrDefault(entry.getKey(), 0);
                 pool.capacity = Math.max(0, entry.getValue() == null ? 0 : entry.getValue()) + POOL_SIZE;
                 for (int i = 0; i < pool.capacity; i++) { Gift gift = drawGift(); pool.gifts.put(gift.id, gift); }
                 pool.version = 1L; playerPools.put(entry.getKey(), pool);
@@ -484,7 +507,7 @@ public class GiftDropGame {
         int stars = boost != null && boost.endsAt > now ? boost.stars : 0;
         // Resolve the same hidden ticket at claim time, including season transitions in final pools.
         return gift != null && gift.drawTicket >= 0
-                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars, now) : gift;
+                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars, now, pool.minimumPoints) : gift;
     }
     private long protectionEndsAt(String username) {
         Long endsAt = perryHatProtection.get(username);

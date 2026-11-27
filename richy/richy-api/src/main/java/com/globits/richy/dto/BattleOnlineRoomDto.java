@@ -77,6 +77,11 @@ public class BattleOnlineRoomDto implements Serializable {
      */
     private long matchEndsAt;
     private boolean giftOpening;
+    private boolean findMistakesRace;
+    private Integer findMistakesRank;
+    private int findMistakesEggMinimum;
+    private int findMistakesFinished;
+    private int findMistakesPlayers;
     private long giftOpeningEndsAt;
 
     private long serverTime;
@@ -280,6 +285,16 @@ public class BattleOnlineRoomDto implements Serializable {
     }
 
     public boolean isGiftOpening() { return giftOpening; }
+    public boolean isFindMistakesRace() { return findMistakesRace; }
+    public void setFindMistakesRace(boolean value) { findMistakesRace = value; }
+    public Integer getFindMistakesRank() { return findMistakesRank; }
+    public void setFindMistakesRank(Integer value) { findMistakesRank = value; }
+    public int getFindMistakesEggMinimum() { return findMistakesEggMinimum; }
+    public void setFindMistakesEggMinimum(int value) { findMistakesEggMinimum = value; }
+    public int getFindMistakesFinished() { return findMistakesFinished; }
+    public void setFindMistakesFinished(int value) { findMistakesFinished = value; }
+    public int getFindMistakesPlayers() { return findMistakesPlayers; }
+    public void setFindMistakesPlayers(int value) { findMistakesPlayers = value; }
     public void setGiftOpening(boolean value) { giftOpening = value; }
     public long getGiftOpeningEndsAt() { return giftOpeningEndsAt; }
     public void setGiftOpeningEndsAt(long value) { giftOpeningEndsAt = value; }

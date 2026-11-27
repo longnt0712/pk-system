@@ -10,6 +10,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     /* Topic được HOST chọn khi tạo phòng hoặc thay đổi trong LOBBY. */
     private String questionSource;
     private List<Long> exerciseTestIds = new ArrayList<Long>();
+    private List<Long> findMistakesTestIds = new ArrayList<Long>();
     private boolean shuffleExerciseQuestions = true;
 
     private List<Long> topicIds = new ArrayList<Long>();
@@ -80,6 +81,8 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     public void setQuestionSource(String questionSource) { this.questionSource = questionSource; }
     public List<Long> getExerciseTestIds() { return exerciseTestIds; }
     public void setExerciseTestIds(List<Long> exerciseTestIds) { this.exerciseTestIds = exerciseTestIds; }
+    public List<Long> getFindMistakesTestIds() { return findMistakesTestIds; }
+    public void setFindMistakesTestIds(List<Long> ids) { this.findMistakesTestIds = ids; }
     public boolean isShuffleExerciseQuestions() { return shuffleExerciseQuestions; }
     public void setShuffleExerciseQuestions(boolean shuffleExerciseQuestions) { this.shuffleExerciseQuestions = shuffleExerciseQuestions; }
 

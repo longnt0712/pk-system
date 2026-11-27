@@ -204,7 +204,7 @@ public class BattleExerciseCatalogTest {
         assertEquals(1, loader.loadBatch(loader.plan(ids, owner.getId()), 0, 50).size());
     }
 
-    @Test public void findMistakesKeepsEveryCorrectionTogetherInOneVideoBatchTurn() {
+    @Test public void findMistakesPreloadsOnlyMarkedPassagesAndCombinesThemInAuthoredOrder() {
         Question root = test("Find Mistakes");
         Question part = child(root, 1, 0, "Watch and correct");
         part.setVideoUrl("https://www.youtube.com/watch?v=ABCDEFGHIJK");
@@ -217,17 +217,24 @@ public class BattleExerciseCatalogTest {
         Question single = child(part, 2, 11, "A different question");
         single.setVideoTimeSeconds(65);
         addAnswer(child(single, 3, 0, "A common gap }{SPACE}{"), "gap");
+        Question second = child(part, 3, 19, "Another paragraph");
+        second.setMotherTongue("[[Last week]] she [[visit]] Hanoi.");
+        addAnswer(child(second, 4, 0, "Position 4"), "2|visited");
         prepare();
 
         BattleExercisePreload loader = preloader();
         BattleExercisePreload.Plan plan = loader.plan(Collections.singletonList(root.getId()), owner.getId());
         assertEquals(2, plan.size());
+        assertEquals(Collections.singletonList(root.getId()), plan.findMistakesTestIds());
         BattleExerciseQuestions.Turn turn = loader.loadBatch(plan, 0, 1).get(0);
         assertEquals(2, turn.content.items.size());
-        assertEquals(Integer.valueOf(45), turn.content.videoTimeSeconds);
-        assertEquals(55, turn.content.videoAnswerSeconds);
-        assertEquals("TEXT", loader.loadBatch(plan, 1, 1).get(0).content.answerMode);
+        assertNull(turn.content.videoTimeSeconds);
+        BattleExerciseQuestions.Turn race = BattleExerciseQuestions.findMistakesRace(Arrays.asList(turn, loader.loadBatch(plan, 1, 1).get(0)));
+        assertEquals(3, race.content.items.size());
+        assertTrue(race.content.findMistakesPassage.endsWith("[[Last week]] she [[visit]] Hanoi."));
+        assertEquals(1, race.correctFindMistakes(Collections.singletonMap(race.content.items.get(0).id, Collections.singletonList("6|visited"))));
         noHydration(8);
+        assertTrue(service.search(null, 1, 10).getContent().stream().anyMatch(test -> test.getId().equals(root.getId()) && test.isFindMistakes()));
     }
 
     @Test public void onlyPublishedComprehensiveRootsAreVisibleRegardlessOfClientStatusOrOwner() {
@@ -307,7 +314,7 @@ public class BattleExerciseCatalogTest {
         factory.getStatistics().clear(); page = service.search(null,4,2); assertEquals(5,page.getTotalElements()); assertTrue(page.getContent().isEmpty()); noHydration(1);
     }
 
-    @Test public void twelveLargeTestsUseExactlyTwoQueriesAndSerializeOnlyIdsAndTitles() throws Exception {
+    @Test public void twelveLargeTestsUseExactlyTwoQueriesAndSerializeOnlyPickerMetadata() throws Exception {
         TopicCategory category = new TopicCategory(); category.setName("Many topics"); em.persist(category);
         Topic topic = topic("Big linked content",owner,category); topic.setContent("SECRET_TOPIC_CONTENT");
         for (int root = 0; root < 12; root++) {
@@ -324,7 +331,7 @@ public class BattleExerciseCatalogTest {
         prepare(); long start = System.nanoTime(); Page<BattleOnlineExerciseTestDto> page = service.search(null,1,12);
         assertEquals(12,page.getTotalElements()); assertEquals(12,page.getContent().size()); noHydration(2);
         JsonNode json = new ObjectMapper().readTree(new ObjectMapper().writeValueAsString(page));
-        for (JsonNode item : json.get("content")) { assertEquals(2,item.size()); assertTrue(item.has("id")); assertTrue(item.has("title")); }
+        for (JsonNode item : json.get("content")) { assertEquals(3,item.size()); assertTrue(item.has("id")); assertTrue(item.has("title")); assertFalse(item.get("findMistakes").asBoolean()); }
         String payload = json.toString(); assertFalse(payload.contains("SECRET_")); assertFalse(payload.contains("subQuestions")); assertFalse(payload.contains("videoUrl"));
         System.out.println("Battle catalog: 12 roots + 396 nested questions + 360 answers: " + ((System.nanoTime()-start)/1000000L) + "ms; 2 SQL statements; 0 entity loads; 0 collection fetches.");
     }
@@ -366,7 +373,7 @@ public class BattleExerciseCatalogTest {
         String response = http.perform(post("/api/battle-online/exercise-tests/1/12").contentType("application/json").content("{\"testFolderId\":"+folderId+"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode json = new ObjectMapper().readTree(response); assertEquals(1,json.get("totalElements").asInt()); assertEquals("Visible",json.get("content").get(0).get("title").asText());
-        assertEquals(2,json.get("content").get(0).size());
+        assertEquals(3,json.get("content").get(0).size());
         SecurityContextHolder.clearContext(); http.perform(post("/api/battle-online/exercise-tests/1/12").contentType("application/json").content("{}"))
                 .andExpect(status().isUnauthorized());
     }

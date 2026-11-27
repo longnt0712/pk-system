@@ -58,6 +58,110 @@ public class BattleOnlineGiftDropTest {
     private BattleOnlineAnswerDto answerRequest() throws Exception {
         return answerRequest(alice, 1L, "A");
     }
+
+    private BattleOnlineRoomDto startFindMistakesRace(String... additionalPlayers) throws Exception {
+        set(room, "status", "LOBBY");
+        @SuppressWarnings("unchecked") Map<String, Object> players = (Map<String, Object>) get(room, "players");
+        for (String username : additionalPlayers) { players.put(username, player(username)); }
+        BattleExerciseQuestionsTest.prepareRoomWithExercise(service, room, BattleExerciseQuestionsTest.findMistakesTest());
+        List<Long> ids = Collections.singletonList(100L);
+        Constructor<BattleExercisePreload.Plan> constructor = BattleExercisePreload.Plan.class
+                .getDeclaredConstructor(Long.class, Map.class, List.class, List.class);
+        constructor.setAccessible(true);
+        set(room, "exerciseQuestionPlan", constructor.newInstance(null, Collections.emptyMap(), Collections.emptyList(), ids));
+        BattleOnlineRoomSettingsDto settings = new BattleOnlineRoomSettingsDto();
+        settings.setQuestionSource("COMPREHENSIVE");
+        settings.setExerciseTestIds(ids);
+        settings.setMode("CLASSIC");
+        settings.setCountdownMinutes(2);
+        assertEquals("LUM_NGAY", service.updateSettings("GIFTS1", "host", settings).getSettings().getMode());
+        return service.startMatch("GIFTS1", "host");
+    }
+
+    private BattleOnlineAnswerResultDto submitFindMistakes(String username, boolean complete) {
+        BattleOnlineQuestionDto question = service.getRoom("GIFTS1", username).getCurrentQuestion();
+        BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
+        answer.setQuestionId(question.getId());
+        answer.setQuestionSequence(question.getSequence());
+        Map<String, List<String>> values = new LinkedHashMap<>();
+        values.put("103", Collections.singletonList("2|went"));
+        if (complete) {
+            values.put("104", Collections.singletonList("3|bought"));
+            values.put("105", Collections.singletonList("4|two loaves of bread"));
+            values.put("106", Collections.singletonList("5|ran into"));
+        }
+        answer.setExerciseAnswers(values);
+        return service.answer("GIFTS1", username, answer);
+    }
+
+    @Test public void theRaceRanksCompleteSubmissionsAndOpensOneEggPerPlayerTogether() throws Exception {
+        BattleOnlineRoomDto started = startFindMistakesRace("carol", "dave");
+        assertTrue(started.isFindMistakesRace());
+        assertFalse(started.isVideoSynchronized());
+        assertEquals(4, started.getCurrentQuestion().getExercise().items.size());
+        assertEquals(4, started.getFindMistakesPlayers());
+        assertTrue(started.getMatchEndsAt() - started.getServerTime() > 110000L);
+        rejected("alice", "anything");
+        assertFalse(submitFindMistakes("bob", false).isCorrect());
+        assertEquals(Integer.valueOf(0), service.getRoom("GIFTS1", "bob").getFindMistakesRank());
+
+        String[] participants = {"alice", "bob", "carol", "dave"};
+        int[] floors = {40, 30, 10, 0};
+        for (int i = 0; i < participants.length; i++) {
+            BattleOnlineAnswerResultDto finished = submitFindMistakes(participants[i], true);
+            assertTrue(finished.isCorrect());
+            assertEquals(Integer.valueOf(i + 1), finished.getRoom().getFindMistakesRank());
+            assertEquals(floors[i], finished.getRoom().getFindMistakesEggMinimum());
+            assertEquals(i == participants.length - 1, finished.getRoom().isGiftOpening());
+        }
+        for (int i = 0; i < participants.length; i++) {
+            BattleOnlineRoomDto opening = service.getRoom("GIFTS1", participants[i]);
+            assertEquals(Integer.valueOf(1), opening.getGiftCredits());
+            assertNull(opening.getCurrentQuestion());
+            BattleOnlineGiftClaimResultDto egg = service.claimGift("GIFTS1", participants[i], request(opening.getGiftDrop().gifts.get(0).id));
+            assertTrue(egg.getPoints() >= floors[i]);
+        }
+        assertEquals("FINISHED", service.getRoom("GIFTS1", "alice").getStatus());
+    }
+
+    @Test public void theRaceWaitsUntilTheDeadlineAndGivesAnUnfinishedPlayerANormalEgg() throws Exception {
+        startFindMistakesRace();
+        assertTrue(submitFindMistakes("alice", true).isCorrect());
+        assertFalse(service.getRoom("GIFTS1", "alice").isGiftOpening());
+        try { submitFindMistakes("alice", true); fail("Completed player must wait"); } catch (BattleOnlineException expected) {}
+        try { service.finishMatch("GIFTS1", "host"); fail("Timer must remain open"); } catch (BattleOnlineException expected) {}
+        set(room, "matchEndsAt", System.currentTimeMillis() - 1L);
+        service.finishMatch("GIFTS1", "host");
+        BattleOnlineRoomDto unfinished = service.getRoom("GIFTS1", "bob");
+        assertTrue(unfinished.isGiftOpening());
+        assertEquals(Integer.valueOf(0), unfinished.getFindMistakesRank());
+        assertEquals(0, unfinished.getFindMistakesEggMinimum());
+        assertEquals(Integer.valueOf(1), unfinished.getGiftCredits());
+    }
+
+    @Test public void rankedEggsNeverResolveToLowPointRewardsAndOrdinaryEggsKeepTheirOriginalDraw() {
+        GiftDropGame game = new GiftDropGame(1, new Random() {
+            @Override public int nextInt(int bound) { return 0; }
+        });
+        Map<String, Integer> credits = new LinkedHashMap<>();
+        Map<String, Integer> floors = new LinkedHashMap<>();
+        for (int floor : new int[] {40, 30, 10, 0}) {
+            String player = "min" + floor;
+            credits.put(player, 1);
+            floors.put(player, floor);
+        }
+        game.prepareFinalPools(credits, floors);
+        for (Map.Entry<String, Integer> entry : floors.entrySet()) {
+            String player = entry.getKey();
+            boolean ranked = entry.getValue() > 0;
+            GiftDropGame.Gift reward = game.claim(player, game.snapshot(player).gifts.get(0).id, ranked);
+            if (ranked) {
+                assertTrue(reward.points >= entry.getValue());
+            } else {
+                assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL, reward.rewardLevel);
+            }
+        }
+    }
     private BattleOnlineAnswerDto answerRequest(Object player, long sequence, String answerKey) throws Exception {
         Object q = state("QuestionState");
         set(q, "id", 7L); set(q, "question", "hello"); set(q, "correctKey", "A"); set(q, "correctText", "xin chào");

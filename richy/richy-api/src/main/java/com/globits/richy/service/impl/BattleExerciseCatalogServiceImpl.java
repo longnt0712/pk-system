@@ -81,7 +81,8 @@ public class BattleExerciseCatalogServiceImpl implements BattleExerciseCatalogSe
         if (total == 0L || (long)index * size >= total) {
             return new PageImpl<BattleOnlineExerciseTestDto>(Collections.<BattleOnlineExerciseTestDto>emptyList(),pageable,total);
         }
-        Query rows = manager.createQuery("select new com.globits.richy.dto.BattleOnlineExerciseTestDto(s.id,s.title)" + where
+        Query rows = manager.createQuery("select new com.globits.richy.dto.BattleOnlineExerciseTestDto(s.id,s.title,"
+                + "(select count(g.id) from Question g where g.parent.parent.id = s.id and g.type = 19))" + where
                 + " order by s.ordinalNumber, s.createDate DESC, s.id DESC",BattleOnlineExerciseTestDto.class);
         configure(rows,parameters);
         rows.setFirstResult(index * size); rows.setMaxResults(size);

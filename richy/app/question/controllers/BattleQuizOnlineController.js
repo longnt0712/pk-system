@@ -298,13 +298,19 @@
         vm.addExerciseTest = function (test) {
             if (!test || vm.selectedExerciseTests.some(function (item) { return item.id === test.id; })) { return; }
             if (vm.selectedExerciseTests.length >= 10) { toastr.warning('Chọn tối đa 10 đề.'); return; }
-            vm.selectedExerciseTests.push({id: test.id, title: test.title || 'Đề tổng hợp ' + test.id});
+            vm.selectedExerciseTests.push({id: test.id, title: test.title || 'Đề tổng hợp ' + test.id,
+                findMistakes: test.findMistakes === true || undefined});
         };
         vm.removeExerciseTest = function (test) {
             vm.selectedExerciseTests = vm.selectedExerciseTests.filter(function (item) { return item.id !== test.id; });
         };
+        vm.locksFindMistakesMode = function () {
+            return vm.questionSource === 'COMPREHENSIVE' && vm.selectedExerciseTests.some(function (test) { return test.findMistakes; });
+        };
+        vm.isFindMistakesRace = function () { return !!(vm.room && vm.room.findMistakesRace); };
         vm.exerciseInputDisabled = function () {
             if (vm.sessionLoginRequired) { return true; }
+            if (vm.isFindMistakesRace() && vm.room.findMistakesRank > 0) { return true; }
             return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen || vm.rottenEggModalOpen || vm.demonBagModalOpen ||
                 !!vm.hostVideoReplay ||
                 (vm.room.videoSynchronized && vm.room.videoPhase !== 'ANSWERING') ||
@@ -860,7 +866,7 @@
         var rottenEggReturnFocus = null;
         vm.rottenEggThrowCost = rottenEggThrowCost;
         function isRottenEggPlay() {
-            return vm.isLumNgayMode() && vm.room.status === 'PLAYING' && !vm.room.giftOpening && !vm.room.videoSynchronized;
+            return vm.isLumNgayMode() && !vm.isFindMistakesRace() && vm.room.status === 'PLAYING' && !vm.room.giftOpening && !vm.room.videoSynchronized;
         }
         vm.showRottenEggThrow = function () {
             var player = getMe();
@@ -1022,6 +1028,7 @@
         }
         vm.giftClaimDisabled = function () {
             if (vm.sessionLoginRequired) { return true; }
+            if (vm.isFindMistakesRace() && !vm.room.giftOpening) { return true; }
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
                     !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
             if (vm.room.videoSynchronized) { return vm.room.giftOpening !== true; }
@@ -1084,6 +1091,7 @@
         }
         vm.openGiftModal = function () {
             var finalOpening = vm.room && vm.room.giftOpening === true;
+            if (vm.isFindMistakesRace() && !finalOpening) { return; }
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.isDragonBallCelebrationActive() || vm.claimingGift ||
                     vm.giftModalOpen || vm.rottenEggModalOpen || (vm.room.videoSynchronized && !finalOpening) ||
                     (!finalOpening && !(vm.room.giftCredits > 0)) || vm.room.pendingSkillType) { return; }
@@ -1125,8 +1133,9 @@
             return battleService.claimGift(code, gift.id).then(function (result) {
                 if (!vm.room || vm.room.code !== code ||
                         !vm.room.giftDrop || vm.room.giftDrop.gameId !== gameId) { return; }
+                var finalRaceReward = result.room && result.room.findMistakesRace && result.room.status === 'FINISHED';
                 applyRoom(result.room, false);
-                if (!result.room || result.room.status !== 'PLAYING' ||
+                if (!result.room || (!finalRaceReward && result.room.status !== 'PLAYING') ||
                         (result.room.videoSynchronized && result.room.giftOpening !== true)) { return; }
                 if (result.rewardLevel === -1 && canOfferRottenEgg() && (vm.room.players || []).some(isRottenEggTarget)) {
                     skillReturnFocus = giftModalReturnFocus;
@@ -1137,6 +1146,10 @@
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 if (result.rewardImage) { vm.lastGiftReward.rewardImage = result.rewardImage; }
                 if (result.rewardLabel) { vm.lastGiftReward.rewardLabel = result.rewardLabel; }
+                if (finalRaceReward) {
+                    vm.giftModalOpen = true;
+                    $window.document.body.classList.add('battle-gift-modal-open');
+                }
                 focusGiftModal('.battle-online-gift-continue');
             }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
             .finally(function () {
@@ -3726,6 +3739,11 @@
             }
             var sameVideoReviewRound = previousRoom && previousRoom.code === incoming.code &&
                 Number(previousRoom.videoQuestionRound || 0) === Number(incoming.videoQuestionRound || 0);
+            if (fromGenericSocket === true && previousRoom && previousRoom.code === incoming.code &&
+                    previousRoom.status === 'PLAYING' && incoming.status !== 'LOBBY' && incoming.findMistakesRace && incoming.findMistakesRank == null) {
+                incoming.findMistakesRank = previousRoom.findMistakesRank;
+                incoming.findMistakesEggMinimum = previousRoom.findMistakesEggMinimum;
+            }
             if (fromGenericSocket === true && sameVideoReviewRound && incoming.status !== 'LOBBY' &&
                     !(previousStatus !== 'PLAYING' && incoming.status === 'PLAYING') &&
                     incoming.hostUsername === vm.currentUser.username && !incoming.videoReview) {
@@ -3734,7 +3752,10 @@
             vm.room = incoming;
             syncTeamManagement(previousRoom, incoming);
             if (incoming.status === 'LOBBY' && isHost()) { $timeout(refreshLobbySettingsViewport, 0, false); }
-            if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
+            var preserveRaceEggReveal = incoming.findMistakesRace && incoming.status === 'FINISHED' && vm.lastGiftReward &&
+                previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
+                previousRoom.giftDrop.gameId === incoming.giftDrop.gameId;
+            if (vm.giftModalOpen && !preserveRaceEggReveal && (incoming.status !== 'PLAYING' ||
                     (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }
             var videoRoundChanged = !!(previousRoom && Number(previousRoom.videoQuestionRound || 0) !== Number(incoming.videoQuestionRound || 0));
             if (((!previousRoom || previousRoom.code !== incoming.code || previousStatus !== 'PLAYING') && incoming.status === 'PLAYING') || videoRoundChanged) {
@@ -3859,7 +3880,8 @@
                 if (!vm.lobbyTopicEditorOpen) {
                     vm.questionSource = incoming.settings.questionSource || 'VOCABULARY';
                     vm.selectedExerciseTests = (incoming.settings.exerciseTestIds || []).map(function (id, index) {
-                        return {id: id, title: (incoming.settings.topicNames || [])[index] || 'Đề tổng hợp ' + id};
+                        return {id: id, title: (incoming.settings.topicNames || [])[index] || 'Đề tổng hợp ' + id,
+                            findMistakes: (incoming.settings.findMistakesTestIds || []).indexOf(id) >= 0 || undefined};
                     });
                 }
                 /*
@@ -4143,7 +4165,7 @@
            ===================================================== */
 
         function selectMode(mode) {
-            if (!isHost()) {
+            if (!isHost() || vm.locksFindMistakesMode()) {
                 return;
             }
 
@@ -4298,9 +4320,9 @@
         function buildSettingsDto() {
             return {
                 questionSource: vm.questionSource,
-                shuffleExerciseQuestions: vm.questionSource === 'COMPREHENSIVE' && vm.hostSettings.shuffleExerciseQuestions === true,
+                shuffleExerciseQuestions: vm.questionSource === 'COMPREHENSIVE' && !vm.locksFindMistakesMode() && vm.hostSettings.shuffleExerciseQuestions === true,
                 exerciseTestIds: vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.map(function (test) { return test.id; }) : [],
-                mode:
+                mode: vm.locksFindMistakesMode() ? 'LUM_NGAY' : (
                     vm.hostSettings.mode === 'COUNTDOWN' ||
                     vm.hostSettings.mode === 'LUM_NGAY' ||
                     vm.hostSettings.mode === 'DEMON_DEFENSE' ||
@@ -4308,7 +4330,7 @@
                     vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
                     vm.hostSettings.mode === 'GUESS_WORD'
                         ? vm.hostSettings.mode
-                        : 'CLASSIC',
+                        : 'CLASSIC'),
 
                 questionCount:
                     clampInteger(

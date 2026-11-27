@@ -253,6 +253,39 @@ public final class BattleExerciseQuestions {
         return turn;
     }
 
+    static Turn findMistakesRacePart(Long testId, String testTitle, QuestionDto group, QuestionDto source) {
+        Turn turn = new Turn();
+        turn.id = source.getId();
+        turn.sourceTestId = testId;
+        turn.sourceTestTitle = testTitle;
+        return buildFindMistakes(turn, group, null);
+    }
+
+    public static Turn findMistakesRace(List<Turn> parts) {
+        if (parts.isEmpty()) { throw invalid("Đề chưa có đoạn Tìm và sửa lỗi."); }
+        Turn race = new Turn();
+        race.id = parts.get(0).id;
+        race.content = new BattleOnlineExerciseDto();
+        race.content.type = ComprehensiveFindMistakes.TYPE;
+        race.content.answerMode = FIND_MISTAKES;
+        race.content.findMistakesRace = true;
+        race.content.title = "Tìm và sửa lỗi";
+        race.content.instructionsHtml = "Sửa đúng tất cả lỗi để vào hàng chờ bóc trứng.";
+        race.mistakeCandidates = new ArrayList<>();
+        StringJoiner text = new StringJoiner("\n\n");
+        for (Turn part : parts) {
+            int offset = race.mistakeCandidates.size();
+            text.add(part.content.findMistakesPassage);
+            race.mistakeCandidates.addAll(part.mistakeCandidates);
+            part.mistakeCorrections.forEach((index, correction) -> race.mistakeCorrections.put(offset + index, correction));
+            race.content.items.addAll(part.content.items);
+            race.correctTexts.putAll(part.correctTexts);
+        }
+        race.content.findMistakesPassage = text.toString();
+        race.prompt = race.content.title;
+        return race;
+    }
+
     private static Turn buildListening(Turn turn, QuestionDto group, QuestionDto source, String passage, Random random) {
         String audio = listeningAudio(group);
         String transcript = group.getMotherTongue();
