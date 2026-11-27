@@ -1,6 +1,6 @@
 # Sổ việc Xứ đoàn
 
-Sổ việc gồm đăng nhập Google, cấp quyền theo email, quản lý thành viên và nhập danh sách công việc. Mở [Sổ việc Xứ đoàn](https://tnttphungkhoang.com/so-viec-xu-doan/index.html) hoặc dùng nút Sổ việc trong Dashboard và Tài liệu của TNTT.
+Ai có đường dẫn Sổ việc Xứ đoàn cũng có thể xem các công việc. Đăng nhập Google để mở phần Thành viên và thao tác theo quyền được cấp. Mở [Sổ việc Xứ đoàn](https://tnttphungkhoang.com/so-viec-xu-doan/index.html) hoặc dùng nút Sổ việc trong Dashboard và Tài liệu của TNTT.
 
 ## 1. Tạo project Firebase
 
@@ -42,7 +42,7 @@ cd richy/app/so-viec-xu-doan
 node tools/serve.mjs
 ```
 
-Mở [Sổ việc trên máy](http://localhost:5505/), bấm **Đăng nhập bằng Google** và chọn tài khoản quản trị đã cấu hình trong Firestore. Trang sẽ hiện tên ngắn và vai trò **Quản trị**. Chọn **Thành viên** để thấy nút **Thêm thành viên**.
+Mở [Sổ việc trên máy](http://localhost:5505/) để xem danh sách công khai. Bấm **Đăng nhập bằng Google** và chọn tài khoản quản trị đã cấu hình trong Firestore để sử dụng phần nhập CSV và quản lý thành viên.
 
 1. Trong cửa sổ ẩn danh, đăng nhập một tài khoản Google bạn dùng để thử. Nếu email chưa được cấp quyền, trang hiển thị **“Bạn chưa được cấp quyền, vui lòng liên hệ Trưởng xứ đoàn.”**
 2. Từ cửa sổ quản trị, thêm email thử nghiệm với quyền thành viên. Cửa sổ ẩn danh sẽ mở danh sách thành viên khi Firestore cập nhật. Nút **Thêm thành viên** chỉ xuất hiện với quản trị.
@@ -52,14 +52,14 @@ Mở [Sổ việc trên máy](http://localhost:5505/), bấm **Đăng nhập b�
 
 1. Sau khi đăng nhập bằng tài khoản quản trị, vào **Công việc → Nhập CSV công việc**.
 2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.
-3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Thành viên đã được cấp quyền thấy danh sách cập nhật trong tab **Công việc**.
+3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Tên việc, ngày, trạng thái, ban, người phụ trách, đợt và ghi chú sẽ hiển thị công khai.
 4. Khi nhập lại, các việc có cùng tên, ngày, ban và đợt được bỏ qua. Trạng thái, người phụ trách và ghi chú đã lưu được giữ nguyên.
 
 Để thử thao tác nhập với dữ liệu giả lập, chạy `pnpm emulators` trong thư mục Sổ việc. Trong một cửa sổ PowerShell khác, chạy `node tools/serve.mjs --emulator`. Dùng một tài khoản Google giả lập và tạo bản ghi quản trị tương ứng trong Firestore Emulator theo mẫu ở phần 3.
 
 ## 6. Đưa tính năng nhập lên website
 
-Sau khi duyệt triển khai, cập nhật Security Rules của project Firebase theo phần 3 để quyền nhập CSV được thực thi ở Firestore. Đẩy mã frontend đã duyệt lên nhánh `main` để máy chủ tự cập nhật.
+Sau khi duyệt triển khai, cập nhật Security Rules của project Firebase theo phần 3, rồi đẩy mã frontend lên nhánh `main`. Khi mở bản mới với tài khoản quản trị, Sổ việc tự đồng bộ các công việc đã nhập vào danh sách công khai. Mở lại link trong cửa sổ ẩn danh để kiểm tra.
 
 ## Kiểm tra Rules bằng dữ liệu giả lập
 

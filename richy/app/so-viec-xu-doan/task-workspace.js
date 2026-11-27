@@ -11,7 +11,8 @@ export function createTaskWorkspace({byId, element, showMessage}) {
     const save = byId('save-task-import');
     let firebase;
     let profile;
-    let stopTasks;
+    let publishedIds;
+    let syncStarted = false;
     let tasksToImport = [];
     let session = 0;
     let selection = 0;
@@ -34,18 +35,13 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         dialog.close();
     }
 
-    function clear() {
+    function clearProfile() {
         session++;
-        stopTasks?.();
-        stopTasks = null;
         profile = null;
-        firebase = null;
+        syncStarted = false;
         closeImport();
         byId('open-task-import').hidden = true;
-        byId('tasks').replaceChildren();
-        byId('task-count').textContent = '';
         showMessage('tasks-status', '');
-        showMessage('tasks-error', '');
     }
 
     function renderTasks(tasks) {
@@ -79,25 +75,36 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         byId('tasks').replaceChildren(...cards);
     }
 
-    function setProfile(connection, member) {
+    function syncExistingTasks() {
+        if (!canImport() || !publishedIds || syncStarted) { return; }
+        syncStarted = true;
+        const activeSession = session;
+        const canContinue = () => activeSession === session && canImport();
+        firebase.publishExistingTasks(publishedIds, normalizeEmail(profile.email), canContinue).catch(error => {
+            if (!canContinue()) { return; }
+            showMessage('tasks-status', 'Chưa đồng bộ được các việc đã nhập. ' + errorMessage(error));
+        });
+    }
+
+    function connect(connection) {
         firebase = connection;
+        firebase.watchPublicTasks(tasks => {
+            publishedIds = new Set(tasks.map(task => task.id));
+            showMessage('tasks-error', '');
+            renderTasks(tasks);
+            syncExistingTasks();
+        }, error => {
+            byId('tasks').replaceChildren();
+            byId('task-count').textContent = '';
+            showMessage('tasks-error', errorMessage(error));
+        });
+    }
+
+    function setProfile(member) {
         profile = member;
         byId('open-task-import').hidden = !canImport();
         if (!canImport() && dialog.open) { closeImport(); }
-        if (stopTasks) { return; }
-        const activeSession = session;
-        byId('task-count').textContent = 'Đang tải công việc…';
-        stopTasks = firebase.watchTasks(tasks => {
-            if (activeSession !== session) { return; }
-            showMessage('tasks-error', '');
-            renderTasks(tasks);
-        }, error => {
-            if (activeSession !== session) { return; }
-            byId('tasks').replaceChildren();
-            byId('task-count').textContent = '';
-            stopTasks = null;
-            showMessage('tasks-error', errorMessage(error));
-        });
+        syncExistingTasks();
     }
 
     byId('open-task-import').addEventListener('click', () => {
@@ -172,5 +179,5 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         }
     });
 
-    return {clear, setProfile, get importing() { return importing; }};
+    return {connect, clearProfile, setProfile, get importing() { return importing; }};
 }

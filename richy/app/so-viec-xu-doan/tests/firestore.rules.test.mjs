@@ -1,7 +1,8 @@
+import assert from 'node:assert/strict';
 import {after, before, beforeEach, test} from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {assertFails, assertSucceeds, initializeTestEnvironment} from '@firebase/rules-unit-testing';
-import {collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc} from 'firebase/firestore';
+import {collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch} from 'firebase/firestore';
 
 const adminEmail = 'admin@example.test';
 const memberEmail = 'member@example.test';
@@ -97,4 +98,59 @@ test('Quản trị quản lý thành viên, danh mục, xóa việc và thu quy�
     await assertFails(getDocs(collection(member, 'members')));
     await assertFails(getDocs(collection(member, 'tasks')));
     await assertFails(updateDoc(doc(member, 'categories', 'new'), {ten: 'Tên khác'}));
+});
+
+test('Khách xem đủ các cột công việc công khai, thông tin đăng nhập và quyền ghi vẫn riêng tư', async () => {
+    const admin = google(adminEmail);
+    const guest = env.unauthenticatedContext().firestore();
+    const {nguoiTao, nguoiSuaCuoi, thoiGianSua, ...view} = task(adminEmail);
+    const existing = doc(admin, 'publicTasks', 'example');
+    await assertFails(setDoc(existing, {...view, nguoiTao}));
+    await assertFails(setDoc(existing, {...view, ghiChu: 'Nội dung không có trong việc gốc'}));
+    await assertSucceeds(setDoc(existing, view));
+    const publicView = doc(guest, 'publicTasks', 'example');
+    assert.deepEqual((await assertSucceeds(getDoc(publicView))).data(), view);
+    await assertSucceeds(getDocs(collection(guest, 'publicTasks')));
+    await assertFails(getDocs(collection(guest, 'tasks')));
+    await assertFails(getDocs(collection(guest, 'members')));
+    await assertFails(updateDoc(publicView, {ghiChu: 'Sửa khi chưa đăng nhập'}));
+});
+
+test('Nhập nhiều việc và tạo bản công khai cùng giao dịch', async () => {
+    const admin = google(adminEmail);
+    const batch = writeBatch(admin);
+    const {nguoiTao, nguoiSuaCuoi, thoiGianSua, ...view} = task(adminEmail);
+    for (let index = 0; index < 8; index++) {
+        const id = 'csv-' + index;
+        batch.set(doc(admin, 'tasks', id), {...view, nguoiTao, nguoiSuaCuoi, thoiGianSua});
+        batch.set(doc(admin, 'publicTasks', id), view);
+    }
+    await assertSucceeds(batch.commit());
+    await assertFails(setDoc(doc(admin, 'publicTasks', 'missing'), view));
+    assert.equal((await getDocs(collection(env.unauthenticatedContext().firestore(), 'publicTasks'))).size, 8);
+});
+
+test('Việc đã công khai đồng bộ khi thành viên sửa hoặc quản trị xóa', async () => {
+    const admin = google(adminEmail);
+    const member = google(memberEmail);
+    const {nguoiTao, nguoiSuaCuoi, thoiGianSua, ...view} = task(adminEmail);
+    await setDoc(doc(admin, 'publicTasks', 'example'), view);
+    const original = doc(member, 'tasks', 'example');
+    const publicView = doc(member, 'publicTasks', 'example');
+    const audit = {nguoiSuaCuoi: memberEmail, thoiGianSua: serverTimestamp()};
+    await assertFails(updateDoc(original, {trangThai: 'Xong', ...audit}));
+    await assertFails(updateDoc(publicView, {trangThai: 'Xong'}));
+    const edit = writeBatch(member);
+    edit.update(original, {trangThai: 'Xong', ...audit});
+    edit.update(publicView, {trangThai: 'Xong'});
+    await assertSucceeds(edit.commit());
+    assert.equal((await getDoc(publicView)).data().trangThai, 'Xong');
+    const deleteOriginal = doc(admin, 'tasks', 'example');
+    const deletePublic = doc(admin, 'publicTasks', 'example');
+    await assertFails(deleteDoc(deleteOriginal));
+    await assertFails(deleteDoc(deletePublic));
+    const remove = writeBatch(admin);
+    remove.delete(deleteOriginal);
+    remove.delete(deletePublic);
+    await assertSucceeds(remove.commit());
 });

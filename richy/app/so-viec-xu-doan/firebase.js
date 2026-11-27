@@ -4,9 +4,14 @@ import {
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
 import {
     getFirestore, collection, doc, onSnapshot, runTransaction, updateDoc, deleteDoc,
-    serverTimestamp, connectFirestoreEmulator
+    serverTimestamp, getDocsFromServer, connectFirestoreEmulator
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js';
 import {newMember, normalizeEmail} from './member-data.js';
+
+function publicTask(task) {
+    const {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu} = task;
+    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu};
+}
 
 export function connectFirebase(config, useEmulators) {
     const app = initializeApp(config, 'so-viec-xu-doan');
@@ -22,6 +27,42 @@ export function connectFirebase(config, useEmulators) {
     }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({prompt: 'select_account'});
+    const tasks = collection(database, 'tasks');
+    const publicTasks = collection(database, 'publicTasks');
+
+    async function publishTaskRows(rows, email, canContinue) {
+        let added = 0;
+        const membership = doc(database, 'members', email);
+        // Mỗi bản công khai được đối chiếu với việc gốc trong Rules, nên chia thành giao dịch nhỏ.
+        for (let offset = 0; offset < rows.length; offset += 8) {
+            if (!canContinue()) { throw new Error('Quyền cập nhật công việc đã thay đổi.'); }
+            const batch = rows.slice(offset, offset + 8);
+            added += await runTransaction(database, async transaction => {
+                const profile = await transaction.get(membership);
+                if (profile.data()?.laQuanTri !== true) { throw new Error('Chỉ quản trị mới được nhập hoặc đồng bộ công việc.'); }
+                const sourceRefs = batch.map(row => doc(tasks, row.id));
+                const publicRefs = batch.map(row => doc(publicTasks, row.id));
+                const originals = await Promise.all(sourceRefs.map(reference => transaction.get(reference)));
+                const copies = await Promise.all(publicRefs.map(reference => transaction.get(reference)));
+                let created = 0;
+                batch.forEach((row, index) => {
+                    const original = originals[index].data();
+                    const content = original || row.task;
+                    if (!content) { return; }
+                    if (!original) {
+                        transaction.set(sourceRefs[index], {
+                            ...content, nguoiTao: email, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()
+                        });
+                        created++;
+                    }
+                    if (!copies[index].exists()) { transaction.set(publicRefs[index], publicTask(content)); }
+                });
+                return created;
+            });
+        }
+        return {added, skipped: rows.length - added};
+    }
+
     return {
         watchAuth: handler => onAuthStateChanged(auth, handler),
         signIn: () => signInWithPopup(auth, provider),
@@ -40,37 +81,18 @@ export function connectFirebase(config, useEmulators) {
                 receive(snapshot.docs.map(member => ({...member.data(), id: member.id})));
             }, fail);
         },
-        watchTasks(receive, fail) {
-            return onSnapshot(collection(database, 'tasks'), {includeMetadataChanges: true}, snapshot => {
+        watchPublicTasks(receive, fail) {
+            return onSnapshot(publicTasks, {includeMetadataChanges: true}, snapshot => {
                 if (!snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
-                    receive(snapshot.docs.map(task => task.data()));
+                    receive(snapshot.docs.map(task => ({...task.data(), id: task.id})));
                 }
             }, fail);
         },
-        async importTasks(rows, email, canContinue) {
-            let added = 0;
-            const membership = doc(database, 'members', email);
-            // Dùng ID cố định và chỉ tạo việc chưa tồn tại, kể cả khi hai lần nhập chạy đồng thời.
-            for (let offset = 0; offset < rows.length; offset += 50) {
-                if (!canContinue()) { throw new Error('Quyền nhập CSV đã thay đổi.'); }
-                const batch = rows.slice(offset, offset + 50);
-                added += await runTransaction(database, async transaction => {
-                    const profile = await transaction.get(membership);
-                    if (profile.data()?.laQuanTri !== true) { throw new Error('Chỉ quản trị mới được nhập CSV.'); }
-                    const references = batch.map(row => doc(database, 'tasks', row.id));
-                    const existing = await Promise.all(references.map(reference => transaction.get(reference)));
-                    let created = 0;
-                    batch.forEach((row, index) => {
-                        if (existing[index].exists()) { return; }
-                        transaction.set(references[index], {
-                            ...row.task, nguoiTao: email, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()
-                        });
-                        created++;
-                    });
-                    return created;
-                });
-            }
-            return {added, skipped: rows.length - added};
+        importTasks: publishTaskRows,
+        async publishExistingTasks(publishedIds, email, canContinue) {
+            const records = await getDocsFromServer(tasks);
+            const missing = records.docs.filter(task => !publishedIds.has(task.id)).map(task => ({id: task.id}));
+            await publishTaskRows(missing, email, canContinue);
         },
         async addMember(values) {
             const member = newMember(values);

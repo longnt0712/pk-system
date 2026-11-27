@@ -25,20 +25,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid #adbb77; outline-offs
 .brand strong { display: block; font-size: 17px; letter-spacing: -.5px; }
 .brand small { display: block; margin-top: 4px; font-size: 11px; letter-spacing: .7px; color: var(--muted); }
 main { flex: 1; }
-.welcome { min-height: 680px; display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 80px; padding: 64px 0 85px; }
-.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #6b7c51; margin: 0 0 20px; }
 h1, h2, p { overflow-wrap: anywhere; }
-.welcome h1 { font-size: clamp(35px, 4.2vw, 53px); line-height: 1.3; letter-spacing: -2px; font-weight: 600; margin: 0 0 26px; }
-.welcome-description { max-width: 470px; font-size: 15px; line-height: 1.95; color: var(--muted); margin: 0; }
-.login-card { padding: 44px; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: 0 15px 50px #21392c07; }
-.card-emblem { display: grid; place-items: center; width: 48px; height: 48px; background: #eff3e7; color: #618049; font-size: 34px; border-radius: 14px; margin-bottom: 25px; }
-.login-card h2 { font-size: 27px; font-weight: 600; letter-spacing: -.7px; margin: 0 0 12px; }
-.login-card > p { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 0 0 26px; }
 .button { min-height: 46px; padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--line); display: inline-flex; justify-content: center; align-items: center; gap: 12px; background: #fff; color: var(--green); line-height: 1.6; }
 .button-primary { color: #fff; border-color: var(--green); background: var(--green); }
 .button-primary:hover:enabled { background: #173e2f; }
 .button-subtle { background: transparent; }
-.google-button { width: 100%; margin: 4px 0 14px; }
+.google-button { gap: 8px; }
 .google-button:hover:enabled, .button-subtle:hover:enabled { background: #f3f6f0; }
 .status { min-height: 20px; font-size: 12px !important; color: var(--muted); line-height: 1.7; margin: 10px 0 0 !important; }
 .setup { padding-top: 20px; margin-top: 22px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.9; }
@@ -48,10 +40,6 @@ code { font-family: Consolas, monospace; font-size: 12px; }
 .account { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
 .account-name { font-size: 12px; font-weight: 500; }
 .role-pill { border-radius: 20px; padding: 5px 10px; font-size: 10px; font-weight: 600; background: #e8eedc; color: #526b39; }
-.access-card { max-width: 560px; padding: 44px; margin: 90px auto; background: white; border: 1px solid var(--line); border-radius: 20px; }
-.access-card h1 { font-size: 27px; line-height: 1.5; margin: 0 0 15px; }
-.access-card p { font-size: 14px; line-height: 1.9; }
-.access-card .button { margin-top: 14px; }
 .muted { color: var(--muted); font-size: 12px; line-height: 1.8; }
 .workspace { padding: 48px 0 72px; }
 .workspace-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
@@ -101,11 +89,7 @@ input:focus { outline: 2px solid #aaba83; outline-offset: 2px; }
 @media(max-width:760px) {
     .page { padding: 0 22px; }
     .site-header { min-height: 88px; gap: 15px; flex-wrap: wrap; padding: 18px 0; }
-    .welcome { grid-template-columns: 1fr; gap: 35px; min-height: 0; padding: 42px 0 50px; }
-    .welcome h1 { font-size: 35px; letter-spacing: -1.3px; }
-    .welcome h1 br { display: none; }
-    .welcome-description { font-size: 13px; }
-    .login-card { padding: 28px; }
+    .google-button { padding-inline: 12px; }
     .account { width: 100%; justify-content: flex-start; gap: 8px; }
     .account .button { margin-left: auto; }
     .workspace { padding: 30px 0 50px; }
@@ -116,8 +100,6 @@ input:focus { outline: 2px solid #aaba83; outline-offset: 2px; }
     .member-row { grid-template-columns: 36px minmax(0,1fr); padding: 20px 16px; gap: 12px; }
     .member-actions { grid-column: 2; justify-content: flex-start; }
     .avatar { width: 36px; height: 36px; }
-    .access-card { padding: 28px; margin: 45px auto; }
-    .access-card h1 { font-size: 24px; }
     dialog { padding: 23px; }
 }
 @media(prefers-reduced-motion:no-preference) { .button { transition: background-color .15s, opacity .15s; } }

@@ -72,14 +72,46 @@ service cloud.firestore {
         && data.thoiGianSua == request.time;
     }
 
+    function taskPath(id) {
+      return /databases/$(database)/documents/tasks/$(id);
+    }
+
+    function publicTaskPath(id) {
+      return /databases/$(database)/documents/publicTasks/$(id);
+    }
+
+    // Bản công khai chỉ chứa đúng các cột công việc hiển thị trên trang.
+    function matchesPublicTask(view, task) {
+      return view == {
+        'tieuDe': task.tieuDe,
+        'ngay': task.ngay,
+        'trangThai': task.trangThai,
+        'ban': task.ban,
+        'nguoiPhuTrach': task.nguoiPhuTrach,
+        'dot': task.dot,
+        'ghiChu': task.ghiChu
+      };
+    }
+
     match /tasks/{id} {
       allow read: if isMember();
       allow create: if isMember() && (!id.matches('^csv-.*') || isAdmin())
         && validTask(request.resource.data)
         && request.resource.data.nguoiTao == myEmail();
       allow update: if isMember() && validTask(request.resource.data)
-        && request.resource.data.nguoiTao == resource.data.nguoiTao;
-      allow delete: if isAdmin();
+        && request.resource.data.nguoiTao == resource.data.nguoiTao
+        && (!exists(publicTaskPath(id))
+          || matchesPublicTask(getAfter(publicTaskPath(id)).data, request.resource.data));
+      allow delete: if isAdmin() && !existsAfter(publicTaskPath(id));
+    }
+
+    match /publicTasks/{id} {
+      allow read: if true;
+      allow create, update: if isMember()
+        && matchesPublicTask(request.resource.data, getAfter(taskPath(id)).data)
+        && (isAdmin() || (getAfter(taskPath(id)).data.nguoiSuaCuoi == myEmail()
+          && getAfter(taskPath(id)).data.thoiGianSua == request.time));
+      allow delete: if isAdmin() && !existsAfter(taskPath(id));
     }
 
     match /categories/{id} {

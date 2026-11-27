@@ -7,8 +7,8 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#234d3d">
     <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
-    <link rel="stylesheet" href="styles.css?v=2">
-    <script type="module" src="app.js?v=2"></script>
+    <link rel="stylesheet" href="styles.css?v=3">
+    <script type="module" src="app.js?v=3"></script>
 </head>
 <body>
     <div class="page">
@@ -17,6 +17,10 @@
                 <span class="brand-mark" aria-hidden="true">✣</span>
                 <span><strong>Sổ việc Xứ đoàn</strong><small>TNTT Phùng Khoang</small></span>
             </a>
+            <button class="button google-button" id="sign-in" type="button" disabled>
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="">
+                <span>Đăng nhập bằng Google</span>
+            </button>
             <div class="account" id="account" hidden>
                 <span class="account-name" id="account-name"></span>
                 <span class="role-pill" id="account-role"></span>
@@ -25,40 +29,17 @@
         </header>
 
         <main>
-            <section class="welcome" id="welcome">
-                <div class="welcome-copy">
-                    <p class="eyebrow">Nội bộ xứ đoàn</p>
-                    <h1>Cùng theo dõi<br> công việc xứ đoàn.</h1>
-                    <p class="welcome-description">Dành cho Ban điều hành và các trưởng ban, ngành.</p>
-                </div>
-                <div class="login-card">
-                    <span class="card-emblem" aria-hidden="true">✣</span>
-                    <h2>Đăng nhập</h2>
-                    <p>Dùng tài khoản Google đã được cấp quyền để tiếp tục.</p>
-                    <button class="button google-button" id="sign-in" type="button" disabled>
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="">
-                        <span>Đăng nhập bằng Google</span>
-                    </button>
-                    <p class="status" id="login-status" role="status" aria-live="polite">Đang mở sổ việc…</p>
-                    <p class="notice" id="login-error" role="alert" hidden></p>
-                    <div class="setup" id="setup" hidden>
-                        <strong>Thiết lập Firebase</strong>
-                        <p>Điền cấu hình trong <code>firebase-config.js</code>, dán Security Rules và tạo thành viên quản trị đầu tiên.</p>
-                        <a href="HUONG-DAN.md" target="_blank" rel="noopener">Mở hướng dẫn từng bước ↗</a>
-                    </div>
-                </div>
-            </section>
+            <p class="status" id="login-status" role="status" hidden></p>
+            <p class="notice" id="login-error" role="alert" hidden></p>
+            <p class="notice" id="access-denied" role="status" hidden>Bạn chưa được cấp quyền, vui lòng liên hệ Trưởng xứ đoàn.</p>
+            <div class="setup" id="setup" hidden>
+                <strong>Thiết lập Firebase</strong>
+                <p>Điền cấu hình trong <code>firebase-config.js</code> và cài Security Rules.</p>
+                <a href="HUONG-DAN.md" target="_blank" rel="noopener">Mở hướng dẫn từng bước ↗</a>
+            </div>
 
-            <section class="access-card" id="access-denied" hidden aria-labelledby="denied-heading">
-                <span class="card-emblem" aria-hidden="true">✣</span>
-                <h1 id="denied-heading">Tài khoản đang chờ cấp quyền</h1>
-                <p>Bạn chưa được cấp quyền, vui lòng liên hệ Trưởng xứ đoàn.</p>
-                <p class="muted" id="denied-email"></p>
-                <button class="button button-primary" id="change-account" type="button">Đổi tài khoản Google</button>
-            </section>
-
-            <section class="workspace" id="workspace" hidden aria-label="Sổ việc Xứ đoàn">
-                <nav class="workspace-nav" aria-label="Sổ việc">
+            <section class="workspace" aria-label="Sổ việc Xứ đoàn">
+                <nav class="workspace-nav" id="workspace-nav" aria-label="Sổ việc" hidden>
                     <button class="button button-subtle" id="show-tasks" type="button" aria-pressed="true" aria-controls="tasks-view">Công việc</button>
                     <button class="button button-subtle" id="show-members" type="button" aria-pressed="false" aria-controls="members-view">Thành viên</button>
                 </nav>
@@ -69,7 +50,7 @@
                     </header>
                     <p class="notice" id="tasks-error" role="alert" hidden></p>
                     <p class="status" id="tasks-status" role="status" hidden></p>
-                    <p class="muted" id="task-count" role="status"></p>
+                    <p class="muted" id="task-count" role="status">Đang tải công việc…</p>
                     <div class="tasks-grid" id="tasks"></div>
                 </section>
                 <section id="members-view" hidden aria-labelledby="workspace-heading">
@@ -107,6 +88,7 @@
                 <button class="close-button" id="close-task-import" type="button" aria-label="Đóng">×</button>
             </header>
             <p class="muted">Chọn file CSV có dòng tiêu đề bắt đầu bằng “Việc”.</p>
+            <p class="muted">Các cột công việc trong file, gồm cả người phụ trách và ghi chú, sẽ hiển thị công khai.</p>
             <label>File CSV<input id="task-csv-file" name="csv" type="file" accept=".csv,text/csv" required></label>
             <p class="status" id="task-import-preview-status" role="status" hidden></p>
             <ol class="task-preview" id="task-import-preview" hidden></ol>
@@ -117,6 +99,6 @@
             </footer>
         </form>
     </dialog>
-    <noscript><p class="notice">Bạn cần bật JavaScript để đăng nhập và sử dụng sổ việc.</p></noscript>
+    <noscript><p class="notice">Bạn cần bật JavaScript để xem sổ việc.</p></noscript>
 </body>
 </html>
