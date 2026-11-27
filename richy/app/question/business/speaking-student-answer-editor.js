@@ -28,16 +28,35 @@
             var state = {context: context, loading: true, ready: false, saving: false, dirty: false, revision: 0, html: '', notes: [], error: '', status: 'Đang tải câu trả lời…'};
             var baseline = valueOf(state), pending = null, inFlightPayload = null, syncing = null, restoring = null, historyGeneration = 0, destroyed = false, lastBackup;
             state.history = {loading: false, versions: [], error: '', preview: null};
-            function readBackup() { try { return JSON.parse($window.localStorage.getItem(key) || 'null'); } catch (ignore) { return null; } }
+            function readBackup() {
+                try {
+                    var serialized = $window.localStorage.getItem(key);
+                    var draft = JSON.parse(serialized || 'null');
+                    return draft ? {serialized: serialized, draft: draft} : null;
+                } catch (ignore) { return null; }
+            }
+            function removeBackup(serialized) {
+                if (!serialized) { return; }
+                try { if ($window.localStorage.getItem(key) === serialized) { $window.localStorage.removeItem(key); } } catch (ignore) {}
+            }
+            function clearLastBackup() {
+                removeBackup(lastBackup);
+                lastBackup = null;
+                state.storageError = false;
+            }
             function backup() {
-                if (!state.dirty) { return; }
-                try { lastBackup = JSON.stringify({context: context, revision: state.revision, html: state.html, notes: state.notes}); $window.localStorage.setItem(key, lastBackup); state.storageError = false; }
-                catch (error) { state.storageError = true; }
+                if (!state.dirty) { clearLastBackup(); return; }
+                try {
+                    var serialized = JSON.stringify({context: context, revision: state.revision, html: state.html, notes: state.notes});
+                    $window.localStorage.setItem(key, serialized);
+                    lastBackup = serialized;
+                    state.storageError = false;
+                } catch (error) { state.storageError = true; }
             }
             function clearMatchingBackup(payload) {
-                var saved = readBackup();
+                var backupRecord = readBackup(), saved = backupRecord && backupRecord.draft;
                 if (saved && sameContext(saved.context, context) && Number(saved.context.userId) === Number(context.userId) && saved.revision === payload.revision && valueOf(saved) === valueOf(payload)) {
-                    try { $window.localStorage.removeItem(key); } catch (ignore) {}
+                    removeBackup(backupRecord.serialized);
                 }
             }
             function normalized(row) {
@@ -45,12 +64,13 @@
                 return {html: value.html, notes: value.notes, revision: Number(row.revision)};
             }
             function validRow(row) { return sameContext(row, context) && typeof row.revision === 'number' && Number.isInteger(row.revision) && row.revision >= 0 && typeof row.html === 'string' && Array.isArray(row.notes); }
-            function apply(row) { var data = normalized(row); state.html = data.html; state.notes = data.notes; state.revision = data.revision; baseline = valueOf(state); state.dirty = false; state.conflict = false; state.remote = null; state.invalid = false; }
+            function apply(row) { var data = normalized(row); state.html = data.html; state.notes = data.notes; state.revision = data.revision; baseline = valueOf(state); state.dirty = false; state.conflict = false; state.remote = null; state.invalid = false; state.storageError = false; lastBackup = null; }
             function receive(row) {
                 if (!validRow(row) || row.revision < state.revision) { return false; }
                 var remote = normalized(row), content = valueOf(remote), local = valueOf(state);
                 if (!state.dirty || content === local) {
-                    clearMatchingBackup({revision: state.revision, html: state.html, notes: state.notes}); apply(row); state.error = ''; state.status = 'Đã đồng bộ'; return true;
+                    clearMatchingBackup({revision: state.revision, html: state.html, notes: state.notes});
+                    clearLastBackup(); apply(row); state.error = ''; state.status = 'Đã đồng bộ'; return true;
                 }
                 if (content === baseline) {
                     // A separate A4-notebook edit bumps the answer revision without
@@ -81,10 +101,11 @@
                     if (destroyed) { return; }
                     if (!data || Number(data.setId) !== context.setId || Number(data.studentId) !== context.studentId || (!context.readOnly && data.canEdit !== true) || !Array.isArray(data.answers) || data.answers.length !== 1 || !validRow(data.answers[0])) { throw new Error('Câu trả lời nhận được không khớp học sinh hoặc câu hỏi.'); }
                     apply(data.answers[0]); state.ready = true;
-                    var saved = context.readOnly ? null : readBackup();
+                    var backupRecord = context.readOnly ? null : readBackup(), saved = backupRecord && backupRecord.draft;
                     if (saved && sameContext(saved.context, context) && Number(saved.context.userId) === context.userId && typeof saved.revision === 'number' && Number.isInteger(saved.revision) && saved.revision >= 0) {
                         var draft = normalized(saved);
                         if (valueOf(draft) !== baseline) {
+                            lastBackup = backupRecord.serialized;
                             state.html = draft.html; state.notes = draft.notes; state.dirty = true;
                             state.conflict = draft.revision !== state.revision; state.remote = copy(data.answers[0]);
                             state.revision = draft.revision;
@@ -98,10 +119,11 @@
                 if (context.readOnly) { return; }
                 if (!state.ready) { return; }
                 var value = clean(html, notes); state.html = value.html; state.notes = value.notes;
-                state.dirty = valueOf(state) !== baseline || !!(inFlightPayload && valueOf(state) !== valueOf(inFlightPayload)); state.invalid = state.html.length > 100000; state.error = state.invalid ? 'Câu trả lời quá dài (tối đa 100.000 ký tự định dạng). Bản nháp vẫn được giữ; hãy rút gọn trước khi lưu.' : '';
-                state.status = state.conflict ? 'Có thay đổi đồng thời; hãy đối chiếu trước khi lưu.' : state.dirty ? 'Đã giữ bản nháp trên thiết bị; chưa xác nhận đồng bộ.' : 'Đã đồng bộ';
-                if (!state.dirty && lastBackup) { try { if ($window.localStorage.getItem(key) === lastBackup) { $window.localStorage.removeItem(key); } } catch (ignore) {} }
+                state.dirty = valueOf(state) !== baseline || !!(inFlightPayload && valueOf(state) !== valueOf(inFlightPayload)); state.invalid = state.html.length > 100000; state.error = state.invalid ? 'Câu trả lời quá dài (tối đa 100.000 ký tự định dạng). Hãy rút gọn trước khi lưu.' : '';
                 backup();
+                if (state.conflict) { state.status = 'Có thay đổi đồng thời. Hãy đối chiếu trước khi lưu.'; }
+                else if (!state.dirty) { state.status = 'Đã đồng bộ'; }
+                else { state.status = state.storageError ? 'Có thay đổi chưa đồng bộ.' : 'Đã lưu bản nháp trên thiết bị. Đang chờ đồng bộ.'; }
             }
             function save() {
                 if (context.readOnly) { return $q.when(); }
@@ -112,15 +134,18 @@
                 inFlightPayload = payload;
                 state.saving = true; state.error = ''; state.status = 'Đang đồng bộ…'; backup();
                 pending = api.saveStudentAnswer(payload).then(function (ack) {
-                    if (!validRow(ack) || ack.revision < 1 || ack.revision < payload.revision || (ack.revision === payload.revision && valueOf(normalized(ack)) !== valueOf(payload))) { throw new Error('Chưa nhận đúng xác nhận lưu. Bản nháp vẫn được giữ.'); }
+                    if (!validRow(ack) || ack.revision < 1 || ack.revision < payload.revision || (ack.revision === payload.revision && valueOf(normalized(ack)) !== valueOf(payload))) { throw new Error('Chưa nhận đúng xác nhận lưu.'); }
                     clearMatchingBackup(payload);
-                    if (destroyed) { return ack; }
+                    if (destroyed) {
+                        if (valueOf(state) === valueOf(payload)) { clearLastBackup(); }
+                        return ack;
+                    }
                     var saved = normalized(ack); state.revision = saved.revision; baseline = valueOf(saved);
                     if (valueOf(state) === valueOf(payload)) { state.html = saved.html; state.notes = saved.notes; }
                     state.dirty = valueOf(state) !== baseline; state.status = state.dirty ? 'Có thay đổi mới đang chờ đồng bộ.' : 'Đã đồng bộ'; backup(); return ack;
                 }).catch(function (error) {
                     if (!destroyed) {
-                        state.error = (error.data && error.data.message) || error.message || 'Chưa đồng bộ được. Bản nháp trên thiết bị vẫn được giữ.'; state.status = 'Chưa đồng bộ'; backup();
+                        state.error = (error.data && error.data.message) || error.message || 'Chưa đồng bộ được lên máy chủ.'; state.status = 'Chưa đồng bộ'; backup();
                         if (error.status === 409) {
                             state.conflict = true;
                             api.studentAnswers(context.setId, context.studentId, context.questionId).then(function (data) {
@@ -134,7 +159,7 @@
             function overwriteReviewed() { if (!state.remote || !validRow(state.remote)) { return $q.when(); } state.revision = Number(state.remote.revision); baseline = valueOf(normalized(state.remote)); state.conflict = false; state.error = ''; state.dirty = valueOf(state) !== baseline; backup(); return save(); }
             function useServer() {
                 if (!state.remote || !validRow(state.remote)) { return; }
-                try { var saved = readBackup(); if (saved) { $window.localStorage.setItem(key + ':previous:' + Date.now(), JSON.stringify(saved)); } $window.localStorage.removeItem(key); } catch (ignore) {}
+                try { var saved = readBackup(); if (saved) { $window.localStorage.setItem(key + ':previous:' + Date.now(), saved.serialized); } $window.localStorage.removeItem(key); } catch (ignore) {}
                 apply(state.remote); state.conflict = false; state.error = ''; state.status = 'Đang xem bản đã lưu trên server';
             }
             function historyError(error) { state.history.error = (error.data && error.data.message) || error.message || 'Chưa tải được lịch sử. Bản đang sửa vẫn được giữ.'; }
@@ -196,7 +221,7 @@
                 '<button type="button" class="sp-button sp-answer-edit-mode" ng-if="ed.touchMode && !readOnly" ng-click="ed.toggleEditing()" ng-disabled="!ed.state.ready || ed.state.loading"><i class="fa" ng-class="ed.editing ? \'fa-check\' : \'fa-pencil\'" aria-hidden="true"></i> {{ed.editing ? \'Xong\' : \'Sửa câu trả lời\'}}</button>' +
                 '<button type="button" class="sp-button" ng-if="!hideHistory" ng-click="ed.openHistory()" ng-disabled="ed.state.loading"><i class="fa fa-history"></i> Lịch sử phiên bản</button><button type="button" class="sp-button" ng-if="ed.state.error && ed.state.ready && !ed.state.conflict" ng-click="ed.save()" ng-disabled="ed.state.saving">Thử đồng bộ lại</button></header>' +
                 '<div class="sp-answer-format" ng-if="!readOnly && (!ed.touchMode || ed.editing)" role="toolbar" aria-label="Định dạng câu trả lời"><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'bold\')" ng-disabled="ed.state.loading" aria-label="Chữ đậm"><b>B</b></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'italic\')" ng-disabled="ed.state.loading" aria-label="Chữ nghiêng"><i>I</i></button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.format(\'underline\')" ng-disabled="ed.state.loading" aria-label="Gạch chân"><u>U</u></button><span></span><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(true)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-sticky-note-o"></i> Take note</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.annotate(false)" ng-disabled="ed.state.loading || !ed.hasSelection"><i class="fa fa-pencil"></i> Highlight</button><button type="button" ng-mousedown="$event.preventDefault()" ng-click="ed.removeAnnotation()" ng-disabled="!ed.marker &amp;&amp; !ed.selectionMarker"><i class="fa fa-eraser"></i> Bỏ đánh dấu</button></div>' +
-                '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.storageError">Bộ nhớ thiết bị đã đầy; giữ trang mở để tự đồng bộ lên server.</p>' +
+                '<p class="sp-error-text" role="alert" ng-if="ed.state.error">{{ed.state.error}} <button class="sp-link" type="button" ng-if="ed.state.status===\'Chưa tải được\'" ng-click="ed.reload()">Tải lại</button></p><p class="sp-error-text" role="status" ng-if="ed.state.syncError">{{ed.state.syncError}}</p><p class="sp-error-text" role="alert" ng-if="ed.state.dirty &amp;&amp; ed.state.storageError">Chưa lưu được bản nháp trên thiết bị. Hãy giữ trang mở đến khi hiện “Đã đồng bộ”.</p>' +
                 '<div class="sp-answer-editable" contenteditable="false" role="textbox" aria-readonly="true" aria-multiline="true" aria-label="Câu trả lời riêng" data-placeholder="Viết câu trả lời của bạn…" spellcheck="true"></div>' +
                 '<small class="sp-muted" ng-if="ed.touchMode && !readOnly && !ed.editing && ed.state.ready">Nhấn giữ một từ rồi kéo để chọn cả đoạn.</small>' +
                 '<span class="sp-answer-touch-highlight" ng-repeat="rect in ed.selectionRects track by $index" ng-style="rect" aria-hidden="true"></span>' +

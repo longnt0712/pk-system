@@ -7,14 +7,62 @@ function registered(file){const values={};const module={factory(name,definition)
 const editor=registered('question/business/speaking-student-answer-editor.js');
 const context={setId:11,studentId:7,questionId:42,userId:9};
 function fixture(){
- const storage=new Map(),calls=[];let remote={...context,html:'<p>Original</p>',notes:[],revision:1},save=(payload)=>Promise.resolve({...payload,revision:payload.revision+1}),get=()=>Promise.resolve({setId:context.setId,studentId:context.studentId,canEdit:true,answers:[remote]});
+ const storage=new Map(),calls=[];let remote={...context,html:'<p>Original</p>',notes:[],revision:1},save=(payload)=>Promise.resolve({...payload,revision:payload.revision+1}),get=()=>Promise.resolve({setId:context.setId,studentId:context.studentId,canEdit:true,answers:[remote]}),backupError;
  const api={studentAnswers(...args){return get(...args);},saveStudentAnswer(payload){calls.push(plain(payload));return save(payload);}};
- const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
+ const win={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(backupError)throw backupError;storage.set(k,v);},removeItem:k=>storage.delete(k)}};
  const store=editor.SpeakingStudentAnswerStore(q,win,api),clean=(html,notes)=>({html:String(html||''),notes:plain(notes||[])});
- return{store,storage,calls,api,session:()=>store.open(context,clean),setSave(fn){save=fn;},setGet(fn){get=fn;},setRemote(row){remote=row;},remote:()=>remote};
+ return{store,storage,calls,api,session:()=>store.open(context,clean),setSave(fn){save=fn;},setGet(fn){get=fn;},setRemote(row){remote=row;},remote:()=>remote,setBackupError(error){backupError=error;}};
 }
 test('answer saves preserve formatting, anchored notes and exact student/question context before clearing the backup',async()=>{
  const f=fixture(),s=f.session();await s.load();const html='<p><b>Answer</b> <span class="ielts-annotation has-note" data-note-id="note-1">word</span></p>',notes=[{id:'note-1',text:'Remember this'}];s.change(html,notes);assert.equal(f.storage.size,1);await s.save();assert.equal(s.state.dirty,false);assert.equal(s.state.revision,2);assert.equal(f.storage.size,0);assert.deepEqual(f.calls[0],{setId:11,studentId:7,questionId:42,revision:1,html,notes});
+});
+
+test('a browser backup failure warns only until the current correction is synchronized', async () => {
+ const f = fixture(), s = f.session();
+ await s.load();
+ f.setBackupError(Object.assign(new Error('Quota exceeded'), {name:'QuotaExceededError'}));
+ s.change('<b>Teacher correction</b>', []);
+ assert.equal(s.state.storageError, true);
+ assert.equal(s.state.status, 'Có thay đổi chưa đồng bộ.');
+ f.setSave(() => Promise.reject({status:0}));
+ await s.save();
+ assert.equal(s.state.dirty, true);
+ assert.equal(s.state.storageError, true);
+ assert.equal(s.state.html, '<b>Teacher correction</b>');
+
+ const firstAck = deferred();
+ f.setSave(() => firstAck.promise);
+ const pending = s.save();
+ s.change('<b>Newer correction</b>', []);
+ firstAck.resolve({...f.calls[1], revision:2});
+ await pending;
+ assert.equal(s.state.dirty, true);
+ assert.equal(s.state.storageError, true);
+ assert.equal(s.state.html, '<b>Newer correction</b>');
+
+ f.setSave(payload => Promise.resolve({...payload, revision:3}));
+ await s.save();
+ assert.equal(s.state.status, 'Đã đồng bộ');
+ assert.equal(s.state.storageError, false);
+ assert.equal(s.state.dirty, false);
+ assert.equal(s.state.revision, 3);
+});
+
+test('a successful save clears a superseded backup even if a newer local write failed', async () => {
+ const f = fixture(), s = f.session();
+ await s.load();
+ s.change('Earlier edit', []);
+ s.destroy();
+ const reopened = f.session();
+ await reopened.load();
+ assert.equal(reopened.state.html, 'Earlier edit');
+ f.setBackupError(new Error('Quota exceeded'));
+ reopened.change('Final edit', []);
+ assert.equal(reopened.state.storageError, true);
+ await reopened.save();
+ assert.equal(reopened.state.status, 'Đã đồng bộ');
+ assert.equal(reopened.state.storageError, false);
+ assert.equal(f.storage.size, 0);
 });
 
 test('public read-only editor neither restores a draft nor writes changes while retaining remote notes',async()=>{

@@ -235,7 +235,7 @@
                 <div class="teaching-pdf-page" ng-repeat="page in pdf.pages track by page.number"
                      ng-attr-data-pdf-page="{{page.number}}" ng-style="page.style">
                     <div class="teaching-pdf-page-content" ng-if="page.active">
-                        <canvas></canvas>
+                        <canvas data-pdf-cover-image-edges></canvas>
                         <svg class="teaching-pdf-marks" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
                             <g ng-repeat="mark in pdf.state.marks | filter:{page:page.number}:true">
                                 <g ng-repeat="rect in mark.rects track by $index">

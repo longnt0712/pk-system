@@ -5,6 +5,28 @@ const vm = require('node:vm');
 const path = require('node:path');
 const {isDeepStrictEqual} = require('node:util');
 
+test('teaching PDF images cover fractional pixel edges while the default rounding is preserved', () => {
+    const reader = fs.readFileSync(path.join(__dirname, '../enrolment_class/views/teaching_pdf.html'), 'utf8');
+    assert.match(reader, /<canvas data-pdf-cover-image-edges>/);
+    const bundle = fs.readFileSync(path.join(__dirname, '../assets/vendor/pdfjs/pdf.min.js'), 'utf8');
+    const start = bundle.indexOf('function roundImageEdge(');
+    const end = bundle.indexOf('class CanvasExtraState', start);
+    assert.ok(start >= 0 && end > start);
+
+    const matrix = [2, 0, 0, -2, 10.6, 20.4];
+    const draw = vm.runInNewContext(bundle.slice(start, end) + '\ndrawImageAtIntegerCoords', {getCurrentTransform: () => matrix});
+    const image = {}, calls = [];
+    const canvasContext = {
+        setTransform(...args) { calls.push(args); },
+        drawImage(...args) { calls.push(args); }
+    };
+
+    draw(canvasContext, image, 0, 0, 10, 10, 0, -1, 1, 1);
+    assert.deepEqual(calls.splice(0), [[1, 0, 0, -1, 11, 22], [image, 0, 0, 10, 10, 0, 0, 2, 2], matrix]);
+    draw(canvasContext, image, 0, 0, 10, 10, 0, -1, 1, 1, true);
+    assert.deepEqual(calls, [[1, 0, 0, -1, 10, 23], [image, 0, 0, 10, 10, 0, 0, 3, 3], matrix]);
+});
+
 function fixture(saved = {}, completed = false, catalog = {}, collaboration, previousRun, pageMode = false) {
     const input = {value: '1', matches: () => true};
     const events = {}, documentEvents = {}, windowEvents = {}, renders = [], reads = [], writes = [], textLayers = [];
