@@ -44,4 +44,9 @@ test('Nhập giờ tùy chọn, giữ ID của việc cũ và phân biệt các 
     assert.deepEqual(tasks.slice(1).map(({task}) => task.gio), ['08:30', '18:00']);
     assert.equal(new Set(tasks.map(({id}) => id)).size, 3);
     await assert.rejects(parseTaskCsv(header + ',Giờ' + row + ',24:00'), /Dòng 2.*HH:mm/);
+    const withEnd = await parseTaskCsv(header + ',Từ giờ,Đến giờ' + row + ',08:30,9:45');
+    assert.equal(withEnd.tasks[0].task.gioKetThuc, '09:45');
+    assert.equal(withEnd.tasks[0].id, tasks[1].id);
+    await assert.rejects(parseTaskCsv(header + ',Từ giờ,Đến giờ' + row + ',09:45,09:15'), /Đến giờ phải bằng hoặc sau/);
+    await assert.rejects(parseTaskCsv(header + ',Đến giờ' + row + ',09:45'), /Điền Từ giờ/);
 });

@@ -182,11 +182,24 @@ test('Thành viên lưu việc mới kèm giờ và ghi chú cho khách xem tron
     }));
     const guestRef = doc(guest, 'publicTasks', originalRef.id);
     assert.deepEqual((await getDoc(guestRef)).data(), view);
-    await assertSucceeds(runTransaction(member, async transaction => {
+    const newTime = {...view, gio: '19:00'};
+    const range = {...newTime, gioKetThuc: '19:30'};
+    const saveEdit = (fields, publicFields = fields) => runTransaction(member, async transaction => {
         const original = (await transaction.get(originalRef)).data();
-        transaction.set(originalRef, {...columns, trangThai: 'Xong', nguoiTao: original.nguoiTao,
+        transaction.set(originalRef, {...fields, nguoiTao: original.nguoiTao,
             nguoiSuaCuoi, thoiGianSua: serverTimestamp()});
-        transaction.set(publicRef, {...columns, trangThai: 'Xong'});
-    }));
+        transaction.set(publicRef, publicFields);
+    });
+    await assertSucceeds(saveEdit(newTime));
+    assert.deepEqual((await getDoc(guestRef)).data(), newTime);
+    await assertFails(saveEdit({...range, gioKetThuc: '18:59'}));
+    await assertFails(saveEdit({...range, gio: ''}));
+    await assertFails(saveEdit({...range, gioKetThuc: '24:00'}));
+    await assertFails(saveEdit(range, {...range, gioKetThuc: '19:45'}));
+    await assertSucceeds(saveEdit(range));
+    assert.deepEqual((await getDoc(guestRef)).data(), range);
+    await assertSucceeds(saveEdit(newTime));
+    assert.deepEqual((await getDoc(guestRef)).data(), newTime);
+    await assertSucceeds(saveEdit({...columns, trangThai: 'Xong'}));
     assert.deepEqual((await getDoc(guestRef)).data(), {...columns, trangThai: 'Xong'});
 });

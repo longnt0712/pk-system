@@ -50,12 +50,12 @@ Mở [Sổ việc trên máy](http://localhost:5505/) để xem danh sách công
 
 ## 5. Thêm, sửa và nhập công việc
 
-Thành viên đã đăng nhập có thể chọn **Thêm công việc** hoặc bấm **Sửa** trên thẻ công việc. Điền các thông tin cần thiết rồi bấm **Lưu công việc**. Nội dung đã lưu cập nhật trên danh sách công khai.
+Thành viên đã đăng nhập có thể chọn **Thêm công việc** hoặc bấm **Sửa** trên thẻ công việc. Điền các thông tin cần thiết rồi bấm **Lưu công việc**. Có thể thêm **Đến giờ** nếu đã điền **Từ giờ**. Hai mốc nằm trong cùng ngày, ví dụ 09:15–09:45. Nội dung đã lưu cập nhật trên danh sách công khai.
 
 1. Sau khi đăng nhập bằng tài khoản quản trị, vào **Công việc → Nhập CSV công việc**.
-2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Có thể thêm cột **Giờ** với giá trị HH:mm, ví dụ `18:30`. Chọn một trong bốn trạng thái **Chưa làm**, **Đang làm**, **Xong** hoặc **Cha đã duyệt**. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.
-3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Tên việc, ngày, giờ (nếu có), trạng thái, ban, người phụ trách, đợt và ghi chú sẽ hiển thị công khai. Bộ lọc giờ dùng giờ đã nhập của từng công việc.
-4. Khi nhập lại, các việc có cùng tên, ngày, giờ, ban và đợt được bỏ qua. Trạng thái, người phụ trách và ghi chú đã lưu được giữ nguyên.
+2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Có thể thêm cột **Từ giờ** (hoặc **Giờ**) và **Đến giờ** với giá trị dạng HH:mm. Chọn một trong bốn trạng thái **Chưa làm**, **Đang làm**, **Xong** hoặc **Cha đã duyệt**. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.
+3. Kiểm tra số việc và các dòng xem trước, rồi bấm **Nhập công việc**. Tên việc, ngày, giờ (nếu có), trạng thái, ban, người phụ trách, đợt và ghi chú sẽ hiển thị công khai. Bộ lọc giờ hiển thị các công việc có thời gian trùng một phần hoặc toàn bộ với khoảng giờ đã chọn.
+4. Khi nhập lại, các việc có cùng tên, ngày, giờ bắt đầu, ban và đợt được bỏ qua. Giờ kết thúc, trạng thái, người phụ trách và ghi chú đã lưu được giữ nguyên.
 
 Để thử thao tác nhập với dữ liệu giả lập, chạy `pnpm emulators` trong thư mục Sổ việc. Trong một cửa sổ PowerShell khác, chạy `node tools/serve.mjs --emulator`. Dùng một tài khoản Google giả lập và tạo bản ghi quản trị tương ứng trong Firestore Emulator theo mẫu ở phần 3.
 

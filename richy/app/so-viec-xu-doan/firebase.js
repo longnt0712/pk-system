@@ -9,8 +9,11 @@ import {
 import {newMember, normalizeEmail} from './member-data.js';
 
 function publicTask(task) {
-    const {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, gio} = task;
-    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
+    const {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, gio, gioKetThuc} = task;
+    return {
+        tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu,
+        ...(gio ? {gio} : {}), ...(gioKetThuc ? {gioKetThuc} : {})
+    };
 }
 
 export function connectFirebase(config, useEmulators) {
@@ -83,7 +86,7 @@ export function connectFirebase(config, useEmulators) {
                     if (!content) { return; }
                     if (!original) {
                         transaction.set(sourceRefs[index], {
-                            ...content, nguoiTao: email, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()
+                            ...publicTask(content), nguoiTao: email, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()
                         });
                         created++;
                     }

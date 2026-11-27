@@ -1,4 +1,4 @@
-import {parseTaskCsv, formatTaskDate, taskFromFields} from './task-csv.js?v=6';
+import {parseTaskCsv, formatTaskDate, taskFromFields} from './task-csv.js?v=7';
 import {errorMessage, normalizeEmail} from './member-data.js';
 
 const statusStyles = {
@@ -8,6 +8,7 @@ const taskAssignees = task => Array.isArray(task.nguoiPhuTrach)
     ? task.nguoiPhuTrach.filter(name => typeof name === 'string' && name.trim()) : [];
 const filterKey = value => String(value ?? '').trim().normalize('NFC').replace(/\s+/g, ' ').toLocaleLowerCase('vi');
 const searchKey = value => filterKey(value).normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
+const formatTaskTime = task => [task.gio, task.gioKetThuc].filter(Boolean).join('–');
 
 function filterTasks(tasks, filters) {
     const words = searchKey(filters.keyword).split(' ').filter(Boolean);
@@ -19,7 +20,8 @@ function filterTasks(tasks, filters) {
         if ((filters.firstDate || filters.lastDate) && (!task.ngay ||
                 (filters.firstDate && task.ngay < filters.firstDate) || (filters.lastDate && task.ngay > filters.lastDate))) { return false; }
         if ((filters.firstTime || filters.lastTime) && (!task.gio ||
-                (filters.firstTime && task.gio < filters.firstTime) || (filters.lastTime && task.gio > filters.lastTime))) { return false; }
+                (filters.firstTime && (task.gioKetThuc || task.gio) < filters.firstTime) ||
+                (filters.lastTime && task.gio > filters.lastTime))) { return false; }
         if (!words.length) { return true; }
         const searchable = searchKey([task.tieuDe, task.ghiChu, task.ban, task.dot, task.trangThai, ...taskAssignees(task)].join(' '));
         return words.every(word => searchable.includes(word));
@@ -118,7 +120,7 @@ export function createTaskWorkspace({byId, element, showMessage}) {
             const meta = element('dl', 'task-meta');
             for (const [label, value] of [
                 ['Ngày', formatTaskDate(task.ngay)],
-                ['Giờ', task.gio],
+                ['Giờ', formatTaskTime(task)],
                 ['Ban', task.ban || 'Chưa có ban'],
                 ['Phụ trách', taskAssignees(task).join(', ') || '[chưa có tên]'],
                 ['Đợt', task.dot]
@@ -211,7 +213,7 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         editingTask = task;
         taskForm.reset();
         if (task) {
-            for (const field of ['tieuDe', 'ngay', 'gio', 'trangThai', 'ban', 'dot', 'ghiChu']) {
+            for (const field of ['tieuDe', 'ngay', 'gio', 'gioKetThuc', 'trangThai', 'ban', 'dot', 'ghiChu']) {
                 taskForm.elements[field].value = task[field] ?? '';
             }
             taskForm.elements.nguoiPhuTrach.value = taskAssignees(task).join(', ');
@@ -282,7 +284,12 @@ export function createTaskWorkspace({byId, element, showMessage}) {
             closeTaskEditor();
             showMessage('tasks-status', original ? 'Đã cập nhật công việc.' : 'Đã thêm công việc.');
         } catch (error) {
-            if (activeSession === session) { showMessage('task-save-error', errorMessage(error)); }
+            if (activeSession === session) {
+                const message = error?.code === 'permission-denied'
+                    ? 'Firestore đã từ chối lưu công việc. Hãy kiểm tra quyền thành viên và Security Rules của Sổ việc.'
+                    : errorMessage(error);
+                showMessage('task-save-error', message);
+            }
         } finally {
             saving = false;
             byId('task-editor-fields').disabled = taskSave.disabled = false;
@@ -323,7 +330,7 @@ export function createTaskWorkspace({byId, element, showMessage}) {
             if (activeSelection !== selection || !canImport()) { return; }
             tasksToImport = tasks;
             preview.replaceChildren(...tasks.slice(0, 8).map(({task}) =>
-                element('li', '', task.tieuDe + ' · ' + [formatTaskDate(task.ngay), task.gio].filter(Boolean).join(' '))
+                element('li', '', task.tieuDe + ' · ' + [formatTaskDate(task.ngay), formatTaskTime(task)].filter(Boolean).join(' '))
             ));
             preview.hidden = false;
             const skipped = duplicates ? ' Bỏ qua ' + duplicates + ' dòng trùng trong file.' : '';

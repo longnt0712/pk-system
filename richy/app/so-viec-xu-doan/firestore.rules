@@ -55,16 +55,22 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function validTime(value) {
+      return value is string && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+    }
+
     function validTask(data) {
       let time = data.get('gio', '');
+      let endTime = data.get('gioKetThuc', '');
       return data.keys().hasAll(['tieuDe', 'ngay', 'trangThai', 'ban', 'nguoiPhuTrach',
           'dot', 'ghiChu', 'nguoiTao', 'nguoiSuaCuoi', 'thoiGianSua'])
         && data.keys().hasOnly(['tieuDe', 'ngay', 'trangThai', 'ban', 'nguoiPhuTrach',
-          'dot', 'ghiChu', 'gio', 'nguoiTao', 'nguoiSuaCuoi', 'thoiGianSua'])
+          'dot', 'ghiChu', 'gio', 'gioKetThuc', 'nguoiTao', 'nguoiSuaCuoi', 'thoiGianSua'])
         && shortText(data.tieuDe, 300) && data.tieuDe.size() > 0
         && data.ngay is string
         && (data.ngay == '' || data.ngay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
-        && time is string && (time == '' || time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
+        && (time == '' || validTime(time))
+        && (endTime == '' || (time != '' && validTime(endTime) && time <= endTime))
         && data.trangThai in ['Chưa làm', 'Đang làm', 'Xong', 'Cha đã duyệt']
         && shortText(data.ban, 120)
         && data.nguoiPhuTrach is list && data.nguoiPhuTrach.size() <= 30
@@ -93,8 +99,9 @@ service cloud.firestore {
         'dot': task.dot,
         'ghiChu': task.ghiChu
       };
-      return view.diff(columns).affectedKeys().hasOnly(['gio'])
-        && view.get('gio', '') == task.get('gio', '');
+      return view.diff(columns).affectedKeys().hasOnly(['gio', 'gioKetThuc'])
+        && view.get('gio', '') == task.get('gio', '')
+        && view.get('gioKetThuc', '') == task.get('gioKetThuc', '');
     }
 
     match /tasks/{id} {

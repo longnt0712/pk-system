@@ -78,9 +78,12 @@ function isoTime(value) {
     return parts[1].padStart(2, '0') + ':' + parts[2];
 }
 
-function taskRecord(row, indexes, timeIndex) {
+function taskRecord(row, indexes, startTimeIndex, endTimeIndex) {
     const [tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu] = indexes.map(index => row.fields[index] || '');
-    return taskFromFields({tieuDe, ngay: isoDate(ngay), gio: row.fields[timeIndex], trangThai, ban, nguoiPhuTrach, dot, ghiChu});
+    return taskFromFields({
+        tieuDe, ngay: isoDate(ngay), trangThai, ban, nguoiPhuTrach, dot, ghiChu,
+        gio: row.fields[startTimeIndex], gioKetThuc: row.fields[endTimeIndex]
+    });
 }
 
 export function taskFromFields(fields) {
@@ -99,7 +102,13 @@ export function taskFromFields(fields) {
         throw new Error('Một cột vượt giới hạn độ dài hoặc có hơn 30 người phụ trách.');
     }
     const gio = isoTime((fields.gio || '').trim());
-    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
+    const gioKetThuc = isoTime((fields.gioKetThuc || '').trim());
+    if (gioKetThuc && !gio) { throw new Error('Điền Từ giờ trước khi nhập Đến giờ.'); }
+    if (gioKetThuc && gioKetThuc < gio) { throw new Error('Đến giờ phải bằng hoặc sau Từ giờ trong cùng ngày.'); }
+    return {
+        tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu,
+        ...(gio ? {gio} : {}), ...(gioKetThuc ? {gioKetThuc} : {})
+    };
 }
 
 export async function parseTaskCsv(text) {
@@ -108,7 +117,9 @@ export async function parseTaskCsv(text) {
     if (headerPosition < 0) { throw new Error('Không tìm thấy dòng tiêu đề bắt đầu bằng “Việc”. Hãy chọn file CSV phân cách bằng dấu phẩy.'); }
     const header = rows[headerPosition].fields.map(key);
     const indexes = columns.map(column => header.indexOf(key(column)));
-    const timeIndex = header.indexOf(key('Giờ'));
+    const firstTimeIndex = header.indexOf(key('Từ giờ'));
+    const startTimeIndex = firstTimeIndex >= 0 ? firstTimeIndex : header.indexOf(key('Giờ'));
+    const endTimeIndex = header.indexOf(key('Đến giờ'));
     if (indexes.some(index => index < 0)) { throw new Error('File cần đủ 7 cột: ' + columns.join(', ') + '.'); }
     const unique = new Map();
     let duplicates = 0;
@@ -118,8 +129,8 @@ export async function parseTaskCsv(text) {
             if (row.fields.length > header.length && row.fields.slice(header.length).some(Boolean)) {
                 throw new Error('Thừa cột. Nếu một ô chứa dấu phẩy, hãy đặt cả ô trong dấu ngoặc kép.');
             }
-            const task = taskRecord(row, indexes, timeIndex);
-            // Trạng thái, ghi chú và người phụ trách có thể thay đổi sau khi nhập.
+            const task = taskRecord(row, indexes, startTimeIndex, endTimeIndex);
+            // Giờ kết thúc, trạng thái, ghi chú và người phụ trách có thể thay đổi sau khi nhập.
             const identityFields = [key(task.tieuDe), task.ngay, key(task.ban), key(task.dot)];
             if (task.gio) { identityFields.push(task.gio); }
             const identity = JSON.stringify(identityFields);
