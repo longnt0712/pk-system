@@ -68,7 +68,8 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
     }
     const polls = new Set();
     const window = {getSelection: () => selection, addEventListener(name, handler) { windowEvents[name] = handler; }, requestAnimationFrame: setImmediate, cancelAnimationFrame: clearImmediate,
-        setTimeout(fn) { polls.add(fn); return fn; }, clearTimeout(fn) { polls.delete(fn); }, localStorage: collaboration?.storage};
+        setTimeout(fn) { polls.add(fn); return fn; }, clearTimeout(fn) { polls.delete(fn); }, localStorage: collaboration?.storage,
+        indexedDB: collaboration?.indexedDB};
     let selection = {isCollapsed: true};
     function timer(fn) {
         let handle;
@@ -81,7 +82,7 @@ function fixture(saved = {}, completed = false, catalog = {}, collaboration, pre
         GlobalWorkerOptions: {},
         getDocument() {
             const pdf = {
-                numPages: 20,
+                numPages: collaboration?.pageCount || 20,
                 async getPage(number) {
                     return {
                         getViewport({scale}) { return {width: 500 * scale, height: 700 * scale, userUnit: 1, rawDims: {pageWidth: 500, pageHeight: 700}}; },
@@ -322,6 +323,63 @@ test('reopening a PDF keeps the final scroll position even when an older tab clo
     assert.equal(reopened.ctrl.state.zoom, 1.4);
     assert.equal(reopened.container.scrollTop, position);
     assert.equal(reopened.container.scrollLeft, 70);
+    assert.equal(server.revision, 0);
+});
+
+test('the PDF restores the last scroll from IndexedDB when localStorage is full', async () => {
+    const key = 'teaching-pdf-view:7:1:run';
+    const local = new Map([[key, JSON.stringify({page: 3, x: 0, y: 0, zoom: 1})]]);
+    const positions = new Map();
+    let storageFull = true;
+    const storage = {
+        getItem(key) { return local.get(key) || null; },
+        setItem(key, value) {
+            if (storageFull) { throw new DOMException('Storage is full', 'QuotaExceededError'); }
+            local.set(key, value);
+        }
+    };
+    const store = {
+        get(key) {
+            const read = {};
+            queueMicrotask(() => { read.result = positions.get(key); read.onsuccess(); });
+            return read;
+        },
+        put(value, key) { queueMicrotask(() => positions.set(key, structuredClone(value))); }
+    };
+    const indexedDB = {
+        open() {
+            const request = {result: {transaction: () => ({objectStore: () => store})}};
+            queueMicrotask(() => request.onsuccess());
+            return request;
+        }
+    };
+    const server = {revision: 0, state: {page: 1, marks: []}};
+    const editor = {server, editorId: 7, storage, indexedDB, pageCount: 195};
+    const reader = () => fixture({}, false, {current: [{id: 'run'}]}, editor, 'run', true);
+    const original = reader();
+    await original.tick();
+    assert.equal(original.ctrl.pageInput, 3);
+    original.ctrl.setZoom(1.4);
+    await original.tick();
+    const top = original.sheet(93).offsetTop + 180;
+    original.container.scrollTop = top;
+    original.container.scrollLeft = 70;
+    original.events.scroll({target: original.container});
+    original.windowEvents.pagehide();
+    const reopened = reader();
+    await reopened.tick();
+    assert.equal(reopened.ctrl.pageInput, 93);
+    assert.equal(reopened.ctrl.state.zoom, 1.4);
+    assert.equal(reopened.container.scrollTop, top);
+    assert.equal(reopened.container.scrollLeft, 70);
+    assert.ok(reopened.renders.length < 12);
+
+    storageFull = false;
+    reopened.ctrl.go(94);
+    reopened.windowEvents.pagehide();
+    const later = reader();
+    await later.tick();
+    assert.equal(later.ctrl.pageInput, 94);
     assert.equal(server.revision, 0);
 });
 

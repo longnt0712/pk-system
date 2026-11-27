@@ -4,6 +4,7 @@
             <h2 id="teaching-pdf-title" ng-bind="pdf.run.name || (pdf.onPage ? 'Tài liệu PDF' : 'Quản lý tài liệu PDF')"></h2>
         </div>
         <div class="study-notebook-heading__actions">
+            <span ng-if="pdf.viewSaveFailed" class="study-notebook-status is-error" role="status">Chưa lưu được vị trí đọc</span>
             <span ng-if="pdf.run || (pdf.onPage && pdf.busy)" class="study-notebook-status" role="status"
                   ng-class="{'is-saved': pdf.run.completed || pdf.saveStatus === 'Đã đồng bộ', 'is-error': pdf.saveStatus === 'Chưa lưu'}">
                 {{pdf.run.completed ? 'Đã hoàn thành' : (pdf.busy ? 'Đang xử lý…' : (pdf.saveStatus || 'Tự động lưu'))}}

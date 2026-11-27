@@ -6,7 +6,8 @@
         function (modal, http, $q, settings, $controller) {
             var pdfAssets = new URL('assets/vendor/pdfjs/', document.baseURI);
             var version = encodeURIComponent(window.APP_VERSION || 'dev');
-            var engine;
+            var engine, viewDatabase;
+            var viewStore = 'positions';
             function pdfEngine() {
                 if (!engine) {
                     engine = import(new URL('pdf.min.js?v=' + version, pdfAssets).href).then(function (api) {
@@ -15,6 +16,35 @@
                     }).catch(function (error) { engine = null; throw error; });
                 }
                 return engine;
+            }
+
+            function openViewDatabase() {
+                if (!viewDatabase) {
+                    viewDatabase = new Promise(function (resolve) {
+                        var request;
+                        try { request = window.indexedDB.open('teaching-pdf-views', 1); }
+                        catch (error) { resolve(null); return; }
+                        request.onupgradeneeded = function () { request.result.createObjectStore(viewStore); };
+                        request.onerror = function () { resolve(null); };
+                        request.onblocked = function () { resolve(null); };
+                        request.onsuccess = function () {
+                            var database = request.result;
+                            database.onversionchange = function () { database.close(); viewDatabase = null; };
+                            resolve(database);
+                        };
+                    });
+                }
+                return viewDatabase;
+            }
+
+            function readViewBackup(database, key) {
+                return new Promise(function (resolve) {
+                    var request;
+                    try { request = database.transaction(viewStore).objectStore(viewStore).get(key); }
+                    catch (error) { resolve(null); return; }
+                    request.onsuccess = function () { resolve(request.result); };
+                    request.onerror = function () { resolve(null); };
+                });
             }
 
             function sessionUrl(classId, date) {
@@ -72,7 +102,7 @@
                         var vm = this, root, pdf, api, loadingTask, saveTimer, saveRequest;
                         var editId = 0, savedEditId = 0, destroyed = false, inkGesture;
                         var sharedState, conflicts, syncTimer, composingText;
-                        var viewTimer, viewKey, viewDirty = false, lastScroll;
+                        var viewTimer, viewKey, viewDb, viewDirty = false, viewUpdatedAt, lastScroll;
                         var batchSize = 5, renderQueue = [], renderingPages = 0, batchTimer, scrollFrame, zoomTimer, selectionTimer;
                         var layoutPending = false, activeStart = 0, activeEnd = 0;
                         var touchSelection = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -347,21 +377,23 @@
                                 if (destroyed) { return; }
                                 angular.extend(vm.run, data[0].data);
                                 vm.state = parseProgress(vm.run.progress, vm.run.editorId);
+                                var restored = $q.when();
                                 if (vm.run.editorId) {
                                     sharedState = angular.copy(vm.state);
                                     conflicts = new Map();
                                     vm.syncConflicts = [];
                                     viewKey = 'teaching-pdf-view:' + vm.run.editorId + ':' + classId + ':' + id;
-                                    restoreView();
+                                    restored = restoreView();
                                 }
-                                vm.zoomInput = vm.state.zoom;
                                 api = data[2];
                                 loadingTask = api.getDocument({data: data[1].data, isEvalSupported: false, enableXfa: false,
                                     cMapUrl: new URL('cmaps/', pdfAssets).href, cMapPacked: true,
                                     standardFontDataUrl: new URL('standard_fonts/', pdfAssets).href,
                                     wasmUrl: new URL('wasm/', pdfAssets).href, maxImageSize: 16000000});
-                                return $q.when(loadingTask.promise).then(function (doc) {
+                                return $q.all([loadingTask.promise, restored]).then(function (loaded) {
                                     if (destroyed) { return; }
+                                    var doc = loaded[0];
+                                    vm.zoomInput = vm.state.zoom;
                                     pdf = doc; vm.pageCount = doc.numPages;
                                     vm.state.page = Math.max(1, Math.min(vm.state.page, doc.numPages));
                                     vm.pageInput = vm.state.page;
@@ -417,37 +449,72 @@
                             }
                             vm.state.marks.push(mark);
                         }
+                        function savedLocalView(key) {
+                            try { return JSON.parse(window.localStorage.getItem(key)); }
+                            catch (error) { return null; }
+                        }
+                        function validView(saved) {
+                            return saved && Number.isInteger(saved.page) && saved.page > 0 && Number.isFinite(saved.zoom) &&
+                                saved.zoom >= .5 && saved.zoom <= 3 && Number.isFinite(saved.x) && saved.x >= 0 &&
+                                Number.isFinite(saved.y) && saved.y >= 0;
+                        }
                         function restoreView() {
-                            try {
-                                var saved = JSON.parse(window.localStorage.getItem(viewKey));
-                                if (saved && Number.isInteger(saved.page) && saved.page > 0 && Number.isFinite(saved.zoom) &&
-                                        saved.zoom >= .5 && saved.zoom <= 3 && Number.isFinite(saved.x) && saved.x >= 0 &&
-                                        Number.isFinite(saved.y) && saved.y >= 0) {
+                            var key = viewKey;
+                            return $q.when(openViewDatabase()).then(function (database) {
+                                if (destroyed || viewKey !== key) { return; }
+                                viewDb = database;
+                                return database ? readViewBackup(database, key) : null;
+                            }).then(function (backup) {
+                                if (destroyed || viewKey !== key) { return; }
+                                var saved = savedLocalView(key);
+                                if (validView(backup) && (!validView(saved) || backup.updatedAt > (saved.updatedAt || 0))) { saved = backup; }
+                                if (validView(saved)) {
                                     angular.extend(vm.state, {page: saved.page, zoom: saved.zoom, x: saved.x, y: saved.y,
                                         newTextSize: validTextSize(saved.newTextSize, defaultNewTextSize)});
                                 }
-                            } catch (ignore) {}
+                            });
                         }
                         function writeView() {
                             if (viewTimer) { timer.cancel(viewTimer); viewTimer = null; }
                             if (!viewKey || !viewDirty) { return; }
-                            var state = vm.state;
+                            var key = viewKey, state = vm.state;
+                            var saved = {page: state.page, zoom: state.zoom, x: state.x, y: state.y,
+                                newTextSize: state.newTextSize, updatedAt: viewUpdatedAt};
                             try {
-                                window.localStorage.setItem(viewKey, JSON.stringify({
-                                    page: state.page, zoom: state.zoom, x: state.x, y: state.y, newTextSize: state.newTextSize
-                                }));
+                                var previous = savedLocalView(key);
+                                if (!validView(previous) || !(previous.updatedAt > saved.updatedAt)) {
+                                    window.localStorage.setItem(key, JSON.stringify(saved));
+                                }
                                 viewDirty = false;
+                                vm.viewSaveFailed = false;
+                                return;
                             } catch (ignore) {}
+                            if (!viewDb) { vm.viewSaveFailed = true; return; }
+                            try {
+                                var transaction = viewDb.transaction(viewStore, 'readwrite');
+                                transaction.objectStore(viewStore).put(saved, key);
+                                transaction.onabort = function () {
+                                    scope.$evalAsync(function () {
+                                        if (!destroyed && key === viewKey && saved.updatedAt === viewUpdatedAt) {
+                                            viewDirty = true; vm.viewSaveFailed = true;
+                                        }
+                                    });
+                                };
+                                // Start the write before a reload or tab close can discard this view.
+                                if (transaction.commit) { transaction.commit(); }
+                                viewDirty = false;
+                                vm.viewSaveFailed = false;
+                            } catch (error) { vm.viewSaveFailed = true; }
                         }
                         function flushView() {
                             if (!viewKey) { return; }
                             // A tab can close before the next scroll animation frame runs.
-                            if (captureScrollPosition()) { viewDirty = true; }
+                            if (captureScrollPosition()) { viewDirty = true; viewUpdatedAt = Date.now(); }
                             writeView();
                         }
                         vm.viewChanged = function () {
                             if (!sharedState) { changed(); return; }
-                            viewDirty = true;
+                            viewDirty = true; viewUpdatedAt = Date.now();
                             if (viewTimer) { timer.cancel(viewTimer); }
                             viewTimer = timer(writeView, 250);
                         };
@@ -861,7 +928,8 @@
                             if (syncTimer) { window.clearTimeout(syncTimer); syncTimer = null; }
                             flushView();
                             sharedState = null; conflicts = null; vm.syncConflicts = []; composingText = null;
-                            viewKey = null; viewDirty = false; lastScroll = null;
+                            viewKey = null; viewDb = null; viewDirty = false; viewUpdatedAt = null; lastScroll = null;
+                            vm.viewSaveFailed = false;
                             endTextDrag();
                             finishInk(false);
                             lastTextTap = null;
