@@ -48,7 +48,9 @@ Mở [Sổ việc trên máy](http://localhost:5505/) để xem danh sách công
 2. Từ cửa sổ quản trị, thêm email thử nghiệm với quyền thành viên. Cửa sổ ẩn danh sẽ mở danh sách thành viên khi Firestore cập nhật. Nút **Thêm thành viên** chỉ xuất hiện với quản trị.
 3. Xóa quyền của email thử nghiệm trong cửa sổ quản trị. Cửa sổ ẩn danh sẽ quay lại thông báo chưa được cấp quyền.
 
-## 5. Nhập danh sách công việc
+## 5. Thêm, sửa và nhập công việc
+
+Thành viên đã đăng nhập có thể chọn **Thêm công việc** hoặc bấm **Sửa** trên thẻ công việc. Điền các thông tin cần thiết rồi bấm **Lưu công việc**. Nội dung đã lưu cập nhật trên danh sách công khai.
 
 1. Sau khi đăng nhập bằng tài khoản quản trị, vào **Công việc → Nhập CSV công việc**.
 2. Chọn file CSV UTF-8 có đủ cột **Việc**, **Ngày**, **Trạng thái**, **Ban phụ trách**, **Người phụ trách**, **Đợt** và **Ghi chú**. Sổ việc bỏ qua phần phía trên dòng tiêu đề **Việc** và các dòng trống. Ngày dùng dạng dd/mm/yyyy hoặc để trống. Có thể thêm cột **Giờ** với giá trị HH:mm, ví dụ `18:30`. Ghi nhiều người phụ trách bằng dấu phẩy trong cùng một ô.

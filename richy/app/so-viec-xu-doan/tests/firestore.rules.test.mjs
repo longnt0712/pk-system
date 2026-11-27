@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {after, before, beforeEach, test} from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {assertFails, assertSucceeds, initializeTestEnvironment} from '@firebase/rules-unit-testing';
-import {collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch} from 'firebase/firestore';
+import {collection, deleteDoc, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, updateDoc, writeBatch} from 'firebase/firestore';
 
 const adminEmail = 'admin@example.test';
 const memberEmail = 'member@example.test';
@@ -159,4 +159,26 @@ test('Việc đã công khai đồng bộ khi thành viên sửa hoặc quản t
     remove.delete(deleteOriginal);
     remove.delete(deletePublic);
     await assertSucceeds(remove.commit());
+});
+
+test('Thành viên lưu việc mới kèm giờ và ghi chú cho khách xem trong cùng giao dịch', async () => {
+    const member = google(memberEmail);
+    const guest = env.unauthenticatedContext().firestore();
+    const {nguoiTao, nguoiSuaCuoi, thoiGianSua, ...columns} = task(memberEmail);
+    const view = {...columns, gio: '18:45', ghiChu: 'Mang theo sổ sinh hoạt.'};
+    const originalRef = doc(collection(member, 'tasks'));
+    const publicRef = doc(member, 'publicTasks', originalRef.id);
+    await assertSucceeds(runTransaction(member, async transaction => {
+        transaction.set(originalRef, {...view, nguoiTao, nguoiSuaCuoi, thoiGianSua});
+        transaction.set(publicRef, view);
+    }));
+    const guestRef = doc(guest, 'publicTasks', originalRef.id);
+    assert.deepEqual((await getDoc(guestRef)).data(), view);
+    await assertSucceeds(runTransaction(member, async transaction => {
+        const original = (await transaction.get(originalRef)).data();
+        transaction.set(originalRef, {...columns, trangThai: 'Xong', nguoiTao: original.nguoiTao,
+            nguoiSuaCuoi, thoiGianSua: serverTimestamp()});
+        transaction.set(publicRef, {...columns, trangThai: 'Xong'});
+    }));
+    assert.deepEqual((await getDoc(guestRef)).data(), {...columns, trangThai: 'Xong'});
 });

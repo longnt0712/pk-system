@@ -60,10 +60,15 @@ function isoDate(value) {
     const parts = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
     if (parts) {
         const iso = parts[3] + '-' + parts[2].padStart(2, '0') + '-' + parts[1].padStart(2, '0');
-        const date = new Date(iso + 'T00:00:00Z');
-        if (Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === iso) { return iso; }
+        if (validIsoDate(iso)) { return iso; }
     }
     throw new Error('Ngày phải là ngày hợp lệ theo dạng dd/mm/yyyy.');
+}
+
+function validIsoDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { return false; }
+    const date = new Date(value + 'T00:00:00Z');
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function isoTime(value) {
@@ -74,16 +79,27 @@ function isoTime(value) {
 }
 
 function taskRecord(row, indexes, timeIndex) {
-    const [tieuDe, ngay, status, ban, names, dot, ghiChu] = indexes.map(index => row.fields[index] || '');
+    const [tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu] = indexes.map(index => row.fields[index] || '');
+    return taskFromFields({tieuDe, ngay: isoDate(ngay), gio: row.fields[timeIndex], trangThai, ban, nguoiPhuTrach, dot, ghiChu});
+}
+
+export function taskFromFields(fields) {
+    const tieuDe = fields.tieuDe.trim();
+    const ngay = fields.ngay;
+    const ban = fields.ban.trim();
+    const dot = fields.dot.trim();
+    const ghiChu = fields.ghiChu.trim();
     if (!tieuDe) { throw new Error('Thiếu tên việc.'); }
+    if (ngay && !validIsoDate(ngay)) { throw new Error('Ngày công việc không hợp lệ.'); }
+    const status = fields.trangThai.trim();
     const trangThai = status ? statuses.find(option => key(option) === key(status)) : statuses[0];
     if (!trangThai) { throw new Error('Trạng thái phải là Chưa làm, Đang làm hoặc Xong.'); }
-    const nguoiPhuTrach = names.split(',').map(name => name.trim()).filter(name => name && key(name) !== '[chưa có tên]');
+    const nguoiPhuTrach = fields.nguoiPhuTrach.split(',').map(name => name.trim()).filter(name => name && key(name) !== '[chưa có tên]');
     if (tieuDe.length > 300 || ban.length > 120 || dot.length > 150 || ghiChu.length > 10000 || nguoiPhuTrach.length > 30) {
         throw new Error('Một cột vượt giới hạn độ dài hoặc có hơn 30 người phụ trách.');
     }
-    const gio = isoTime(row.fields[timeIndex] || '');
-    return {tieuDe, ngay: isoDate(ngay), trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
+    const gio = isoTime((fields.gio || '').trim());
+    return {tieuDe, ngay, trangThai, ban, nguoiPhuTrach, dot, ghiChu, ...(gio ? {gio} : {})};
 }
 
 export async function parseTaskCsv(text) {

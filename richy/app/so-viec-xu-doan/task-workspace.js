@@ -1,4 +1,4 @@
-import {parseTaskCsv, formatTaskDate} from './task-csv.js?v=4';
+import {parseTaskCsv, formatTaskDate, taskFromFields} from './task-csv.js?v=5';
 import {errorMessage, normalizeEmail} from './member-data.js';
 
 const statusStyles = {'Chưa làm': 'status-todo', 'Đang làm': 'status-active', 'Xong': 'status-done'};
@@ -32,6 +32,9 @@ export function createTaskWorkspace({byId, element, showMessage}) {
     const save = byId('save-task-import');
     const filters = byId('task-filters');
     const resetFilters = byId('reset-task-filters');
+    const taskDialog = byId('task-dialog');
+    const taskForm = byId('task-form');
+    const taskSave = byId('save-task');
     let firebase;
     let profile;
     let publishedIds;
@@ -40,6 +43,8 @@ export function createTaskWorkspace({byId, element, showMessage}) {
     let session = 0;
     let selection = 0;
     let importing = false;
+    let saving = false;
+    let editingTask = null;
     let allTasks = [];
     const canImport = () => profile?.laQuanTri === true;
 
@@ -64,8 +69,11 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         profile = null;
         syncStarted = false;
         closeImport();
+        closeTaskEditor();
+        byId('task-actions').hidden = true;
         byId('open-task-import').hidden = true;
         showMessage('tasks-status', '');
+        renderTasks();
     }
 
     function updateFilterOptions(select, values) {
@@ -121,6 +129,15 @@ export function createTaskWorkspace({byId, element, showMessage}) {
                 notes.append(element('strong', '', 'Ghi chú'), element('p', '', task.ghiChu));
                 card.append(notes);
             }
+            if (profile) {
+                const footer = element('footer', 'task-card-footer');
+                const edit = element('button', 'button button-subtle', 'Sửa');
+                edit.type = 'button';
+                edit.setAttribute('aria-label', 'Sửa ' + task.tieuDe);
+                edit.addEventListener('click', () => openTaskEditor(task));
+                footer.append(edit);
+                card.append(footer);
+            }
             return card;
         });
         if (!cards.length && !error) {
@@ -173,10 +190,74 @@ export function createTaskWorkspace({byId, element, showMessage}) {
 
     function setProfile(member) {
         profile = member;
+        byId('task-actions').hidden = !profile;
         byId('open-task-import').hidden = !canImport();
         if (!canImport() && dialog.open) { closeImport(); }
+        renderTasks();
         syncExistingTasks();
     }
+
+    function openTaskEditor(task = null) {
+        if (!profile || saving || taskDialog.open) { return; }
+        editingTask = task;
+        taskForm.reset();
+        if (task) {
+            for (const field of ['tieuDe', 'ngay', 'gio', 'trangThai', 'ban', 'dot', 'ghiChu']) {
+                taskForm.elements[field].value = task[field] ?? '';
+            }
+            taskForm.elements.nguoiPhuTrach.value = taskAssignees(task).join(', ');
+        }
+        byId('task-dialog-heading').textContent = task ? 'Sửa công việc' : 'Thêm công việc';
+        showMessage('tasks-status', '');
+        showMessage('task-save-error', '');
+        taskDialog.showModal();
+        taskForm.elements.tieuDe.focus();
+    }
+
+    function closeTaskEditor() {
+        editingTask = null;
+        taskForm.reset();
+        taskDialog.close();
+    }
+
+    byId('add-task').addEventListener('click', () => openTaskEditor());
+    for (const id of ['close-task-dialog', 'cancel-task']) {
+        byId(id).addEventListener('click', () => { if (!saving) { closeTaskEditor(); } });
+    }
+    taskDialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        if (!saving) { closeTaskEditor(); }
+    });
+
+    taskForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!profile || saving || !taskForm.reportValidity()) { return; }
+        showMessage('task-save-error', '');
+        let content;
+        try {
+            content = taskFromFields(Object.fromEntries(new FormData(taskForm)));
+        } catch (error) {
+            showMessage('task-save-error', errorMessage(error));
+            return;
+        }
+        const activeSession = session;
+        const original = editingTask;
+        saving = true;
+        byId('task-editor-fields').disabled = taskSave.disabled = true;
+        taskSave.textContent = 'Đang lưu…';
+        try {
+            await firebase.saveTask(content, normalizeEmail(profile.email), original);
+            if (activeSession !== session) { return; }
+            closeTaskEditor();
+            showMessage('tasks-status', original ? 'Đã cập nhật công việc.' : 'Đã thêm công việc.');
+        } catch (error) {
+            if (activeSession === session) { showMessage('task-save-error', errorMessage(error)); }
+        } finally {
+            saving = false;
+            byId('task-editor-fields').disabled = taskSave.disabled = false;
+            taskSave.textContent = 'Lưu công việc';
+        }
+    });
 
     byId('open-task-import').addEventListener('click', () => {
         if (!canImport() || importing) { return; }
@@ -250,5 +331,5 @@ export function createTaskWorkspace({byId, element, showMessage}) {
         }
     });
 
-    return {connect, clearProfile, setProfile, get importing() { return importing; }};
+    return {connect, clearProfile, setProfile, get importing() { return importing; }, get saving() { return saving; }};
 }

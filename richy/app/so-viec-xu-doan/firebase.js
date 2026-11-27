@@ -30,6 +30,25 @@ export function connectFirebase(config, useEmulators) {
     const tasks = collection(database, 'tasks');
     const publicTasks = collection(database, 'publicTasks');
 
+    function saveTask(content, email, editing) {
+        const originalRef = editing ? doc(tasks, editing.id) : doc(tasks);
+        const publicRef = doc(publicTasks, originalRef.id);
+        const fields = publicTask(content);
+        return runTransaction(database, async transaction => {
+            let creator = email;
+            if (editing) {
+                const original = (await transaction.get(originalRef)).data();
+                if (!original) { throw new Error('Công việc này đã bị xóa.'); }
+                if (JSON.stringify(publicTask(original)) !== JSON.stringify(publicTask(editing))) {
+                    throw new Error('Công việc vừa được cập nhật. Hãy đóng và mở lại để sửa bản mới nhất.');
+                }
+                creator = original.nguoiTao;
+            }
+            transaction.set(originalRef, {...fields, nguoiTao: creator, nguoiSuaCuoi: email, thoiGianSua: serverTimestamp()});
+            transaction.set(publicRef, fields);
+        });
+    }
+
     async function publishTaskRows(rows, email, canContinue) {
         let added = 0;
         const membership = doc(database, 'members', email);
@@ -88,6 +107,7 @@ export function connectFirebase(config, useEmulators) {
                 }
             }, fail);
         },
+        saveTask,
         importTasks: publishTaskRows,
         async publishExistingTasks(publishedIds, email, canContinue) {
             const records = await getDocsFromServer(tasks);

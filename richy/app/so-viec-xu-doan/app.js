@@ -1,6 +1,6 @@
 import {firebaseConfig, useEmulators} from './firebase-config.js';
 import {normalizeEmail, initials, errorMessage} from './member-data.js';
-import {createTaskWorkspace} from './task-workspace.js?v=4';
+import {createTaskWorkspace} from './task-workspace.js?v=5';
 
 const byId = id => document.getElementById(id);
 const form = byId('member-form');
@@ -190,7 +190,7 @@ byId('sign-in').addEventListener('click', async () => {
 });
 
 async function logout() {
-    if (!firebase || state.saving || taskWorkspace.importing) { return; }
+    if (!firebase || state.saving || taskWorkspace.importing || taskWorkspace.saving) { return; }
     try { await firebase.signOut(); }
     catch (error) { showMessage('login-error', errorMessage(error)); }
 }
@@ -246,7 +246,7 @@ async function start() {
         return;
     }
     try {
-        const {connectFirebase} = await import('./firebase.js?v=4');
+        const {connectFirebase} = await import('./firebase.js?v=5');
         firebase = connectFirebase(firebaseConfig, useEmulators);
         taskWorkspace.connect(firebase);
         firebase.watchAuth(handleAuth);

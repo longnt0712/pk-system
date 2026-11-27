@@ -7,8 +7,8 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#731519">
     <title>Sổ việc Xứ đoàn | TNTT Phùng Khoang</title>
-    <link rel="stylesheet" href="styles.css?v=4">
-    <script type="module" src="app.js?v=4"></script>
+    <link rel="stylesheet" href="styles.css?v=5">
+    <script type="module" src="app.js?v=5"></script>
 </head>
 <body>
     <div class="page">
@@ -46,7 +46,10 @@
                 <section id="tasks-view" aria-labelledby="tasks-heading">
                     <header class="workspace-heading">
                         <h1 id="tasks-heading">Công việc</h1>
-                        <button class="button button-primary" id="open-task-import" type="button" hidden>Nhập CSV công việc</button>
+                        <div class="task-actions" id="task-actions" hidden>
+                            <button class="button button-subtle" id="open-task-import" type="button" hidden>Nhập CSV công việc</button>
+                            <button class="button button-primary" id="add-task" type="button">+ Thêm công việc</button>
+                        </div>
                     </header>
                     <p class="notice" id="tasks-error" role="alert" hidden></p>
                     <p class="status" id="tasks-status" role="status" hidden></p>
@@ -98,6 +101,30 @@
             <label class="checkbox"><input name="laQuanTri" type="checkbox"><span>Cấp quyền quản trị<small>Được quản lý thành viên, xóa việc và sửa danh mục.</small></span></label>
             <p class="notice" id="member-error" role="alert" hidden></p>
             <footer class="dialog-actions"><button class="button button-subtle" type="button" id="cancel-member">Hủy</button><button class="button button-primary" type="submit" id="save-member">Thêm thành viên</button></footer>
+        </form>
+    </dialog>
+    <dialog id="task-dialog" aria-labelledby="task-dialog-heading">
+        <form id="task-form">
+            <header class="dialog-heading">
+                <h2 id="task-dialog-heading">Thêm công việc</h2>
+                <button class="close-button" id="close-task-dialog" type="button" aria-label="Đóng">×</button>
+            </header>
+            <p class="muted">Thông tin công việc và ghi chú sẽ hiển thị công khai.</p>
+            <fieldset class="task-editor-fields" id="task-editor-fields">
+                <label class="task-field-wide">Tên công việc<input name="tieuDe" maxlength="300" required></label>
+                <label>Ngày<input name="ngay" type="date" max="9999-12-31"></label>
+                <label>Giờ<input name="gio" type="time"></label>
+                <div><label for="task-editor-status">Trạng thái</label><select id="task-editor-status" name="trangThai"><option>Chưa làm</option><option>Đang làm</option><option>Xong</option></select></div>
+                <label>Ban phụ trách<input name="ban" maxlength="120"></label>
+                <label class="task-field-wide">Người phụ trách<input name="nguoiPhuTrach" placeholder="Ví dụ Mai Lan, Phương Anh"></label>
+                <label class="task-field-wide">Đợt<input name="dot" maxlength="150"></label>
+                <label class="task-field-wide">Ghi chú<textarea name="ghiChu" rows="4" maxlength="10000"></textarea></label>
+            </fieldset>
+            <p class="notice" id="task-save-error" role="alert" hidden></p>
+            <footer class="dialog-actions">
+                <button class="button button-subtle" id="cancel-task" type="button">Hủy</button>
+                <button class="button button-primary" id="save-task" type="submit">Lưu công việc</button>
+            </footer>
         </form>
     </dialog>
     <dialog id="task-import-dialog" aria-labelledby="task-import-heading">
