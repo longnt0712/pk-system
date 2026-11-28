@@ -15,7 +15,8 @@ function editor(catalog = [summary(1), summary(2)]) {
     const requests = [], picks = [], selectedRequests = [];
     const vm = {assignableIeltsTests: [], scheduleTopics: [], scheduleListeningItems: [],
         scheduleDay: {tasks: [], scheduleDate: '2026-10-19'}, taskEditor: null,
-        taskDeadlineChanged() {}, loadTaskListeningItems() {}, loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
+        taskDeadlineChanged() {}, ensureScheduleTopicCategories() {}, loadTaskListeningItems() {},
+        loadTaskCategoryTopics() {}, initializeComprehensiveAssignment() {},
         isIeltsTask: task => task?.activityType === 'COMPREHENSIVE', ieltsPartsForTask: () => [1],
         selectAllTaskParts() { this.taskEditor.ieltsParts = [1]; },
         saveScheduleDay() { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); }};

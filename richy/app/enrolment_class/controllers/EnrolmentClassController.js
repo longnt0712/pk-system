@@ -2386,10 +2386,27 @@
             angular.forEach(topics, function (topic) { byId.set(String(topic.id), topic); });
             vm.scheduleTopics = Array.from(byId.values());
         };
+        function updateTaskVocabTitle(task) {
+            if ((task.title || '').trim() && task.title !== task._autoVocabTitle) {
+                delete task._autoVocabTitle;
+                return;
+            }
+            var topics = task.activityType === 'DAILY_VOCAB' ? vm.taskSelectedTopics(task) : [];
+            var name = topics.length ? (topics[0].name || '').trim() : '';
+            if (name) {
+                var title = 'Làm từ ' + name;
+                if (topics.length > 1 || title.length > 200) { title = title.slice(0, 199).trimEnd() + '…'; }
+                task._autoVocabTitle = task.title = title;
+            } else if (task._autoVocabTitle) {
+                task.title = '';
+                delete task._autoVocabTitle;
+            }
+        }
         vm.taskVocabTopicsChanged = function () {
             if (!vm.taskEditor) { return; }
             vm.taskEditor.topicIds = vm.taskTopicIds(vm.taskEditor);
             vm.taskEditor.topicId = vm.taskEditor.topicIds[0] || null;
+            updateTaskVocabTitle(vm.taskEditor);
         };
         vm.homeworkProgressPercent = function (progress) {
             if (!progress) { return 0; }
@@ -2593,6 +2610,7 @@
                 if (!vm.taskCategoryTopicsError) {
                     vm.taskCategoryTopics = topics;
                     vm.rememberScheduleTopics(topics);
+                    updateTaskVocabTitle(task);
                 }
             }, function () {
                 if (request !== taskCategoryTopicsRequest || vm.taskEditor !== task) { return; }
@@ -2718,6 +2736,7 @@
 			if (task.activityType === 'DAILY_VOCAB') {
 				task.topicIds = [];
 				task.topics = [];
+				updateTaskVocabTitle(task);
 			} else {
 				task.sourceQuestionId = null;
 				vm.scheduleListeningItems = [];
@@ -2761,6 +2780,7 @@
 			vm.taskEditor.testFolderId = null; vm.taskEditor.ieltsTestTitle = ''; vm.taskEditor.sourceQuestionTitle = '';
             vm.taskEditor.topicIds = vm.taskEditor.activityType === 'DAILY_VOCAB'
                 ? (vm.taskEditor.topicId == null ? [] : [vm.taskEditor.topicId]) : [];
+            updateTaskVocabTitle(vm.taskEditor);
             vm.taskEditorError = '';
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.activityType === 'DAILY_VOCAB'
 				|| vm.taskEditor.activityType === 'DAILY_LISTENING';

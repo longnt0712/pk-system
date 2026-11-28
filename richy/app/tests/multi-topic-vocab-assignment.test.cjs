@@ -31,7 +31,8 @@ function fixture(enabled = true) {
     const vm = {scheduleClass: {id: 5, multiTopicVocabEnabled: enabled}, scheduleDay: {scheduleDate: '2026-10-19', tasks: [],
         defaultHomeworkDeadline: '2026-10-31T18:00'}, scheduleTopics: structuredClone(topics), scheduleEntries: [], scheduleListeningItems: [],
         assignableIeltsTests: [], homeworkProgressLevels: [10,20,30,40,50,60,70,80,90],
-        isIeltsTask: () => false, ieltsPartsForTask: () => [1], loadTaskListeningItems() {}, refreshTaskExerciseVideo() {},
+        isIeltsTask: () => false, ieltsPartsForTask: () => [1], ensureScheduleTopicCategories() {},
+        loadTaskListeningItems() {}, refreshTaskExerciseVideo() {},
         taskHasComprehensiveVideo: () => false, buildScheduleCalendar() { this.calendarRefreshes = (this.calendarRefreshes || 0) + 1; }};
     const requests = [], topicRequests = [], modals = [];
     const context = nodeVm.createContext({vm, angular, $scope: {},
@@ -46,6 +47,26 @@ function fixture(enabled = true) {
     vm.openScheduleTask('HOMEWORK'); vm.taskEditor.title = 'Learn three topics';
     return {vm, requests, topicRequests, modals, context};
 }
+test('Daily Vocab fills the title from the selected topics and keeps a manually edited title', () => {
+    const {vm} = fixture();
+    vm.taskEditor.title = '';
+    vm.scheduleTopics[0].name = '9.2025.2.Test 11';
+    vm.taskEditor.topicIds = [11];
+    vm.taskVocabTopicsChanged();
+    assert.equal(vm.taskEditor.title, 'Làm từ 9.2025.2.Test 11');
+
+    vm.taskEditor.topicIds = [11,12];
+    vm.taskVocabTopicsChanged();
+    assert.equal(vm.taskEditor.title, 'Làm từ 9.2025.2.Test 11…');
+    vm.taskEditor.topicIds = [12];
+    vm.taskVocabTopicsChanged();
+    assert.equal(vm.taskEditor.title, 'Làm từ At the airport');
+
+    vm.taskEditor.title = 'Học từ và ghi ví dụ';
+    vm.taskEditor.topicIds = [11];
+    vm.taskVocabTopicsChanged();
+    assert.equal(vm.taskEditor.title, 'Học từ và ghi ví dụ');
+});
 test('changing category clears selected topics, reloads the catalog, and ignores late replies', async () => {
     const f = fixture(), vm = f.vm;
     assert.equal(f.topicRequests.length, 0);
@@ -82,6 +103,7 @@ test('one task saves multiple topics in its category, deduplicates IDs and resto
     f.topicRequests[0].resolve(topics.slice(0, 2)); await tick();
     vm.taskEditor.topicIds = [11, '12', 11]; vm.taskVocabTopicsChanged();
     assert.deepEqual(Array.from(vm.taskEditor.topicIds), [11,12]); assert.equal(vm.taskEditor.topicId, 11);
+    assert.equal(vm.taskEditor.title, 'Learn three topics');
     assert.deepEqual(Array.from(vm.taskSelectedTopics(vm.taskEditor), topic => topic.name), topics.slice(0, 2).map(topic => topic.name));
     vm.commitScheduleTask(); assert.equal(f.requests.length, 1);
     assert.deepEqual(Array.from(f.requests[0].payload.tasks[0].topicIds), [11,12]);
@@ -170,7 +192,7 @@ test('real modal and multi-select work on desktop and mobile, including save fai
                     vm.scheduleEntries = []; vm.scheduleListeningItems = []; vm.assignableIeltsTests = [];
                     vm.isIeltsTask = function () { return false; }; vm.ieltsPartsForTask = function () { return [1]; };
                     vm.taskHasComprehensiveVideo = function () { return false; };
-                    vm.loadTaskListeningItems = vm.refreshTaskExerciseVideo = vm.buildScheduleCalendar = angular.noop;
+                    vm.ensureScheduleTopicCategories = vm.loadTaskListeningItems = vm.refreshTaskExerciseVideo = vm.buildScheduleCalendar = angular.noop;
                     vm.taskStartLabel = function () { return '19/10/2026 18:00'; };
                     window.qaCategoryLoads = [];
                     var service = {getScheduleTopicsByCategory: function (key) {
@@ -191,7 +213,7 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             const dialog = page.locator('.class-task-editor-modal-window .modal-dialog'); await dialog.waitFor();
             const box = await dialog.boundingBox();
             assert.ok(Math.abs(box.width - (viewport.width > 767 ? viewport.width*.7 : viewport.width-16)) < 3);
-            await page.locator('.class-task-editor input[name="title"]').fill('Learn two topics');
+            const title = dialog.locator('input[name="title"]');
             const search = page.locator('.class-task-vocab-select input.ui-select-search');
             const chips = page.locator('.class-task-vocab-select .ui-select-match-item');
             const picker = dialog.locator('.class-task-category-trigger');
@@ -206,6 +228,7 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             await search.fill(topics[2].name);
             await page.locator('.class-task-vocab-select .ui-select-choices-row').filter({hasText: topics[2].name}).click();
             assert.equal(await chips.count(), 1);
+            assert.equal(await title.inputValue(), 'Làm từ Animal world');
             await picker.click();
             assert.equal(await tree.getByRole('button', {name:'Động vật',exact:true}).getAttribute('aria-pressed'), 'true');
             await dialog.getByRole('searchbox', {name:'Tìm nhóm bài',exact:true}).fill('du lich');
@@ -216,15 +239,18 @@ test('real modal and multi-select work on desktop and mobile, including save fai
             assert.match(await picker.innerText(), /Theo chủ đề \/ Du lịch/);
             assert.deepEqual(await page.evaluate(() => qaCategoryLoads), ['2','1']);
             assert.equal(await chips.count(), 0);
+            assert.equal(await title.inputValue(), '');
             for (const topic of topics.slice(0, 2)) {
                 await search.fill(topic.name);
                 await page.locator('.class-task-vocab-select .ui-select-choices-row').filter({hasText: topic.name}).click();
             }
             assert.equal(await chips.count(), 2);
+            assert.equal(await title.inputValue(), 'Làm từ Travel essentials…');
             const scroll = await page.locator('.class-task-editor-modal > .modal-body').evaluate(element => ({height:element.clientHeight,total:element.scrollHeight,overflow:getComputedStyle(element).overflowY}));
             assert.equal(scroll.overflow,'auto'); assert.ok(scroll.total > scroll.height);
             await page.getByRole('button',{name:'Thêm task',exact:true}).click();
             assert.deepEqual(await page.evaluate(() => qaPayload.tasks[0].topicIds),[11,12]);
+            assert.equal(await page.evaluate(() => qaPayload.tasks[0].title), 'Làm từ Travel essentials…');
             assert.equal(await page.getByRole('button',{name:'Hủy sửa',exact:true}).isDisabled(),true);
             await page.evaluate(() => qaScope.$apply(function () { qaPending.reject({data:{message:'Offline'}}); }));
             await page.getByRole('alert').waitFor();
