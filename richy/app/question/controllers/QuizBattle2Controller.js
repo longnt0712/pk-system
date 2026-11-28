@@ -931,7 +931,8 @@
 
         function buildBalancedStealScorePositions(
             totalQuestions,
-            blockedPositions
+            blockedPositions,
+            plannedCount
         ) {
             var total = parseInt(totalQuestions, 10);
             var positions = [];
@@ -944,8 +945,7 @@
                 }
             );
 
-            var skillCount =
-                getStealScoreSkillCount(total);
+            var skillCount = plannedCount == null ? getStealScoreSkillCount(total) : plannedCount;
 
             if (skillCount <= 0) {
                 return positions;
@@ -1077,6 +1077,7 @@
         var battleFreezeMap = {};
         var battleBreakStreakMap = {};
         var battleStealScoreMap = {};
+        var battleRedistributionMap = {};
 
         function cancelLazyTimers() {
             if (lazyPrepareTimer !== null) {
@@ -1140,6 +1141,12 @@
                 positionsToMap(
                     battleStealScorePositions
                 );
+            var tenths = battleFreezePositions.length * 7;
+            var remainder = tenths % 10;
+            var redistributionCount = Math.floor(tenths / 10) + (remainder > 0 && Math.random() * 10 < remainder ? 1 : 0);
+            battleRedistributionMap = positionsToMap(buildBalancedStealScorePositions(
+                vm.totalCard, blocked.concat(battleStealScorePositions), redistributionCount
+            ));
         }
 
         function applyBattleSkillsToQuestion(
@@ -1164,6 +1171,8 @@
                 battleStealScoreMap[globalIndex] === true;
 
             question.stealScoreConsumed = false;
+            question.hasRedistributionSkill = battleRedistributionMap[globalIndex] === true;
+            question.redistributionConsumed = false;
         }
 
         function applyBattleSkillsToQuestions(
@@ -1220,6 +1229,7 @@
             battleFreezeMap = {};
             battleBreakStreakMap = {};
             battleStealScoreMap = {};
+            battleRedistributionMap = {};
 
             if (clearQuestions === true) {
                 vm.rawQuestions = [];
@@ -2779,6 +2789,28 @@
             showStealScoreFx(1, stolen);
         }
 
+        function redistributableBattlePoints() {
+            var first = Number(vm.score1 || 0), second = Number(vm.score2 || 0);
+            return first === second ? 0 : Math.round(Math.max(0, first, second) * 0.05);
+        }
+
+        vm.canRedistributeBattleScore = function () {
+            return redistributableBattlePoints() > 0;
+        };
+
+        function triggerRedistributionSkill(player) {
+            var card = player === 1 ? vm.currentCard : vm.currentCard1;
+            if (!card || !card.hasRedistributionSkill || card.redistributionConsumed) { return; }
+            card.redistributionConsumed = true;
+            var points = redistributableBattlePoints();
+            if (!(points > 0)) { return; }
+            var receiver = vm.score1 > vm.score2 ? 2 : 1;
+            var firstDelta = receiver === 1 ? points : -points;
+            vm.score1 = roundBattleScore(vm.score1 + firstDelta);
+            vm.score2 = roundBattleScore(vm.score2 - firstDelta);
+            toastr.info('P' + (3 - receiver) + ' chuyển ' + points + ' điểm cho P' + receiver + '.', '⚖️ Chia điểm');
+        }
+
         /*
          * Nếu trả lời SAI câu có skill:
          * skill biến mất ngay và không thể kích hoạt lại
@@ -2805,6 +2837,7 @@
             if (card.hasStealScoreSkill === true) {
                 card.stealScoreConsumed = true;
             }
+            if (card.hasRedistributionSkill) { card.redistributionConsumed = true; }
         }
 
         function clearBattleEffects() {
@@ -3115,6 +3148,7 @@
                     triggerFreezeSkill(1);
                     triggerBreakStreakSkill(1);
                     triggerStealScoreSkill(1);
+                    triggerRedistributionSkill(1);
 
                     stillInAQuestion1 = false;
 
@@ -3155,6 +3189,7 @@
                     triggerFreezeSkill(2);
                     triggerBreakStreakSkill(2);
                     triggerStealScoreSkill(2);
+                    triggerRedistributionSkill(2);
 
                     stillInAQuestion2 = false;
 

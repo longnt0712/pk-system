@@ -62,6 +62,7 @@ import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.battle.DemonDefenseGame;
+import com.globits.richy.battle.BattleScoreRedistribution;
 import com.globits.richy.battle.GiftDropGame;
 import com.globits.richy.battle.GiftLightningGame;
 import com.globits.richy.dto.BattleOnlineGiftClaimDto;
@@ -145,6 +146,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final int VIDEO_RESUME_REWIND_SECONDS = 10;
 
     private static final String SKILL_FREEZE = "FREEZE";
+    private static final String SKILL_REDISTRIBUTE_SCORE = BattleScoreRedistribution.SKILL_TYPE;
     private static final String SKILL_INVERT = "INVERT";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
     private static final String SKILL_UNFREEZE = "UNFREEZE";
@@ -155,7 +157,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String SKILL_RESET_PASSWORD = "RESET_PASSWORD";
     private static final List<String> SKILL_TYPES = java.util.Arrays.asList(
             SKILL_FREEZE, SKILL_INVERT, SKILL_BREAK_STREAK, SKILL_UNFREEZE,
-            SKILL_STEAL_SCORE, SKILL_FIRE_UP, SKILL_MONEY_BEG, SKILL_RESET_PASSWORD);
+            SKILL_STEAL_SCORE, SKILL_FIRE_UP, SKILL_MONEY_BEG, SKILL_RESET_PASSWORD, SKILL_REDISTRIBUTE_SCORE);
 
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long INVERT_DURATION_MS = 7000L;
@@ -2886,6 +2888,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             boolean fireActivated =
                     SKILL_FIRE_UP.equals(earnedSkill);
+            int redistributedPoints = 0;
+            if (SKILL_REDISTRIBUTE_SCORE.equals(earnedSkill)) {
+                if (!afterMatchDeadline) { redistributedPoints = activateScoreRedistributionLocked(room, player, now); }
+                earnedSkill = null;
+            }
 
             if (fireActivated) {
                 /*
@@ -3002,6 +3009,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             describeFindMistakesGrade(result, question, correctedMistakes, scoreDelta);
+            if (redistributedPoints > 0) {
+                result.setMessage(result.getMessage() + " CHIA ĐIỂM: đã chuyển " + redistributedPoints + " điểm cho nhóm cuối.");
+            }
             completeVideoAnswerLocked(room, result);
             result.setRoom(
                     snapshotLocked(
@@ -3280,8 +3290,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (player.giftCredits <= 0) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã dùng hết lượt bóc trứng.");
             }
+            boolean canRedistribute = !room.giftOpening && isSkillEnabledLocked(room, SKILL_REDISTRIBUTE_SCORE)
+                    && redistributeScoresLocked(room, now, false) > 0;
             GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null,
-                    room.giftLightning != null && room.giftLightning.isActive(now), now);
+                    room.giftLightning != null && room.giftLightning.isActive(now), now, canRedistribute);
             if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
             player.giftCredits--;
             player.giftCreditVersion++;
@@ -3290,7 +3302,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     && room.giftLightning.tryCollect(now, player.username, displayName(player))) {
                 gift = GiftDropGame.lightningGift(gift.id, room.lumLuckyAppearance);
             }
-            if (gift.skillType != null) {
+            if (SKILL_REDISTRIBUTE_SCORE.equals(gift.skillType)) {
+                result.setRedistributedPoints(activateScoreRedistributionLocked(room, player, now));
+            } else if (gift.skillType != null) {
                 player.pendingSkillType = gift.skillType;
                 preparePendingSkillTargetsLocked(room, player);
             }
@@ -5208,6 +5222,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private boolean isSkillEnabledLocked(RoomState room, String type) {
         return room.settings.skillsEnabled && type != null &&
                 (!MODE_LUM_NGAY.equals(room.settings.mode) || GiftDropGame.SKILL_TYPES.contains(type)) &&
+                (!SKILL_REDISTRIBUTE_SCORE.equals(type) || !room.settings.disabledSkillTypes.contains(SKILL_FREEZE)) &&
                 !room.settings.disabledSkillTypes.contains(type);
     }
 
@@ -5234,6 +5249,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     blocked.add(position);
                 }
             }
+            addRedistributionToSkillPlanLocked(room, total);
             return;
         }
         int[] skillCounts = getCountdownSkillCounts(
@@ -5358,6 +5374,80 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.countdownSkillPlan.put(position, SKILL_MONEY_BEG);
         }
         room.countdownSkillPlan.values().removeAll(room.settings.disabledSkillTypes);
+        addRedistributionToSkillPlanLocked(room, total);
+    }
+
+    private void addRedistributionToSkillPlanLocked(RoomState room, int total) {
+        if (!isSkillEnabledLocked(room, SKILL_REDISTRIBUTE_SCORE)) { return; }
+        int freezes = Collections.frequency(room.countdownSkillPlan.values(), SKILL_FREEZE);
+        int count = BattleScoreRedistribution.skillCount(freezes, random);
+        for (Integer position : buildBalancedSkillPositions(total, count, room.countdownSkillPlan.keySet())) {
+            room.countdownSkillPlan.put(position, SKILL_REDISTRIBUTE_SCORE);
+        }
+    }
+
+    private int activateScoreRedistributionLocked(RoomState room, PlayerState actor, long now) {
+        int points = redistributeScoresLocked(room, now, true);
+        if (points > 0) { addSkillEventLocked(room, SKILL_REDISTRIBUTE_SCORE, actor, actor, points, now); }
+        return points;
+    }
+
+    private int redistributeScoresLocked(RoomState room, long now, boolean apply) {
+        if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
+            return room.demonDefense == null ? 0 : room.demonDefense.redistributeTeamScores(demonGameTime(room, now), apply);
+        }
+        List<PlayerState> ranking = rankedPlayerStatesLocked(room);
+        if (room.settings.teamCount < 2) {
+            Map<PlayerState, Double> scores = new LinkedHashMap<>();
+            for (PlayerState player : ranking) { scores.put(player, player.score); }
+            Map<PlayerState, Integer> changes = BattleScoreRedistribution.calculate(scores);
+            if (apply) { changes.forEach((player, points) -> player.score = roundScoreToOneDecimal(player.score + points)); }
+            return BattleScoreRedistribution.transferredPoints(changes);
+        }
+
+        Map<Integer, List<PlayerState>> teams = new LinkedHashMap<>();
+        for (PlayerState player : ranking) {
+            if (player.teamNumber >= 1 && player.teamNumber <= room.settings.teamCount) {
+                teams.computeIfAbsent(player.teamNumber, number -> new ArrayList<>()).add(player);
+            }
+        }
+        Map<Integer, Double> totals = new LinkedHashMap<>();
+        Map<Integer, Integer> correctCounts = new LinkedHashMap<>();
+        teams.forEach((number, members) -> {
+            totals.put(number, roundScoreToOneDecimal(members.stream().mapToDouble(member -> member.score).sum()));
+            correctCounts.put(number, members.stream().mapToInt(member -> member.correctCount).sum());
+        });
+        List<Integer> teamRanking = new ArrayList<>(teams.keySet());
+        teamRanking.sort(Comparator.<Integer>comparingDouble(totals::get).reversed()
+                .thenComparing(Comparator.<Integer>comparingInt(correctCounts::get).reversed())
+                .thenComparingInt(Integer::intValue));
+        Map<Integer, Double> rankedTotals = new LinkedHashMap<>();
+        teamRanking.forEach(number -> rankedTotals.put(number, totals.get(number)));
+        Map<Integer, Integer> changes = BattleScoreRedistribution.calculate(rankedTotals);
+        if (apply) { changes.forEach((number, points) -> adjustMemberScores(teams.get(number), points)); }
+        return BattleScoreRedistribution.transferredPoints(changes);
+    }
+
+    private void adjustMemberScores(List<PlayerState> members, int points) {
+        if (points > 0) {
+            int units = points * 10;
+            for (int i = 0; i < members.size(); i++) {
+                PlayerState member = members.get(members.size() - 1 - i);
+                int share = units / members.size() + (i < units % members.size() ? 1 : 0);
+                member.score = roundScoreToOneDecimal(member.score + share / 10D);
+            }
+            return;
+        }
+        long remaining = -10L * points;
+        long total = members.stream().mapToLong(member -> Math.round(Math.max(0D, member.score) * 10D)).sum();
+        for (PlayerState member : members) {
+            if (remaining == 0L || total == 0L) { break; }
+            long units = Math.round(Math.max(0D, member.score) * 10D);
+            long share = Math.round((double) remaining * units / total);
+            member.score = roundScoreToOneDecimal(member.score - share / 10D);
+            remaining -= share;
+            total -= units;
+        }
     }
 
 
@@ -5939,6 +6029,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             event.setMessage(actorName + " vừa ném trứng thối vào " + targetName + ".");
         } else if (SKILL_UNFREEZE.equals(skillType)) {
             event.setMessage(actorName + " vừa giải băng cho " + targetName + ".");
+        } else if (SKILL_REDISTRIBUTE_SCORE.equals(skillType)) {
+            event.setMessage(actorName + " vừa chuyển " + formatScore(amount) + " điểm từ nhóm đầu sang nhóm cuối.");
         } else if (SKILL_STEAL_SCORE.equals(skillType)) {
             event.setMessage(
                     actorName + " vừa cướp " + formatScore(amount) +
@@ -6343,7 +6435,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.passwordResetSkillIssued = true;
         } else {
             String plannedSkill = room.countdownSkillPlan.get(skillPosition);
-            player.currentSkillType = !MODE_LUM_NGAY.equals(room.settings.mode) && isSkillEnabledLocked(room, plannedSkill) ? plannedSkill : null;
+            player.currentSkillType = !MODE_LUM_NGAY.equals(room.settings.mode) && isSkillEnabledLocked(room, plannedSkill)
+                    && (!SKILL_REDISTRIBUTE_SCORE.equals(plannedSkill)
+                        || redistributeScoresLocked(room, System.currentTimeMillis(), false) > 0) ? plannedSkill : null;
         }
 
         player.uniqueWordIds.add(

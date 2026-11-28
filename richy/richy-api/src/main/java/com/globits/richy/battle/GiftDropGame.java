@@ -17,7 +17,8 @@ public class GiftDropGame {
     public static final long DRAGON_BALL_IMMUNITY_MILLIS = 180000L;
     public static final long DRAGON_BALL_CELEBRATION_MILLIS = 5000L;
     private static final int DRAGON_BALL_TICKETS = 8333; // 0.8333% per ball: previous 2.5% divided by three, rounded to whole tickets.
-    public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList("FREEZE", "STEAL_SCORE", "INVERT"));
+    public static final List<String> SKILL_TYPES = Collections.unmodifiableList(Arrays.asList(
+            "FREEZE", "STEAL_SCORE", "INVERT", BattleScoreRedistribution.SKILL_TYPE));
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
     private static final int ROTTEN_EGG_WEIGHT = 10000;
@@ -167,7 +168,12 @@ public class GiftDropGame {
     GiftDropGame(int basePoints, Random random, List<String> enabledSkills, List<PetRewardCatalog.Reward> catalog) {
         if (basePoints <= 0) { throw new IllegalArgumentException("Gift settings required"); }
         this.basePoints = basePoints; this.random = random;
-        for (String type : SKILL_TYPES) { if (enabledSkills != null && enabledSkills.contains(type)) { skillTypes.add(type); } }
+        for (String type : SKILL_TYPES) {
+            if (enabledSkills != null && enabledSkills.contains(type) &&
+                    (!BattleScoreRedistribution.SKILL_TYPE.equals(type) || enabledSkills.contains("FREEZE"))) {
+                skillTypes.add(type);
+            }
+        }
         List<PetRewardCatalog.Reward> sorted = new ArrayList<PetRewardCatalog.Reward>(catalog);
         Collections.sort(sorted, new Comparator<PetRewardCatalog.Reward>() {
             @Override public int compare(PetRewardCatalog.Reward left, PetRewardCatalog.Reward right) {
@@ -198,10 +204,16 @@ public class GiftDropGame {
         skillWeights = new int[skillTypes.size()];
         int rottenIndex = skillTypes.size(), perryHatIndex = rottenIndex + 1, commonOffset = perryHatIndex + 1;
         int[] originalWeights = new int[commonOffset + commonRewards.size()];
-        Arrays.fill(originalWeights, 0, skillTypes.size(), SKILL_EGG_WEIGHT);
+        int originalTotal = 2 * ROTTEN_EGG_WEIGHT;
+        for (int i = 0; i < skillTypes.size(); i++) {
+            int weight = BattleScoreRedistribution.SKILL_TYPE.equals(skillTypes.get(i))
+                    ? (int) Math.round(SKILL_EGG_WEIGHT * BattleScoreRedistribution.FREEZE_RATE_RATIO)
+                    : SKILL_EGG_WEIGHT;
+            originalWeights[i] = weight;
+            originalTotal += weight;
+        }
         originalWeights[rottenIndex] = ROTTEN_EGG_WEIGHT;
         originalWeights[perryHatIndex] = ROTTEN_EGG_WEIGHT;
-        int originalTotal = 2 * ROTTEN_EGG_WEIGHT + skillTypes.size() * SKILL_EGG_WEIGHT;
         int[] fixedTickets = new int[originalWeights.length];
         int fixedTotal = 0, fixedOriginalWeight = 0;
         for (int i = 0; i < commonRewards.size(); i++) {
@@ -430,21 +442,13 @@ public class GiftDropGame {
         return giftForTicket(id, ticket, lightning, protectedFromRotten, stars, now, 0);
     }
     private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars, long now, int minimumPoints) {
+        return giftForTicket(id, ticket, lightning, protectedFromRotten, stars, now, minimumPoints, true);
+    }
+    private Gift giftForTicket(String id, int ticket, boolean lightning, boolean protectedFromRotten, int stars,
+            long now, int minimumPoints, boolean allowRedistribution) {
         int[] weights = weightsForEffects(lightning, protectedFromRotten, stars, now);
         if (minimumPoints > 0) {
-            int firstPet = skillWeights.length + 2;
-            int eligibleWeight = 0;
-            for (int i = firstPet; i < weights.length; i++) {
-                if (pointsForReward(rewards.get(i - firstPet)) >= minimumPoints) { eligibleWeight += weights[i]; }
-            }
-            int eligibleTicket = (int) ((long) ticket * eligibleWeight / DRAW_RESOLUTION);
-            for (int i = firstPet; i < weights.length && eligibleWeight > 0; i++) {
-                PetRewardCatalog.Reward reward = rewards.get(i - firstPet);
-                if (pointsForReward(reward) < minimumPoints) { continue; }
-                if (eligibleTicket < weights[i]) { return petGift(id, reward); }
-                eligibleTicket -= weights[i];
-            }
-            return new Gift(id, 0, minimumPoints, null, null, "Trứng thưởng");
+            return qualifyingPetGift(id, ticket, minimumPoints, weights);
         }
         int index = 0, remaining = ticket;
         // Reuse each egg's private ticket for the active effects; refreshing never rerolls it.
@@ -453,6 +457,15 @@ public class GiftDropGame {
             if (remaining < weight) { break; }
             remaining -= weight; index++;
         }
+        if (!allowRedistribution && index < skillWeights.length &&
+                BattleScoreRedistribution.SKILL_TYPE.equals(skillTypes.get(index))) {
+            // Fall back to a common pet without granting additional chances at rare rewards.
+            for (int i = 0; i < rewards.size(); i++) {
+                PetRewardCatalog.Reward reward = rewards.get(i);
+                if (reward.dragonBallStars == 0 && weights[skillWeights.length + 2 + i] > 0) { return petGift(id, reward); }
+            }
+            return new Gift(id, 0, basePoints, null, null, "Trứng thưởng");
+        }
         Gift gift;
         if (index < skillWeights.length) { gift = new Gift(id, SKILL_EGG_LEVEL, 0D, skillTypes.get(index)); }
         else if (index == skillWeights.length) { gift = new Gift(id, ROTTEN_EGG_LEVEL, ROTTEN_EGG_POINTS); }
@@ -460,6 +473,22 @@ public class GiftDropGame {
             gift = new Gift(id, PERRY_HAT_LEVEL, PERRY_HAT_POINTS, null, "assets/images/learning-pets/perry/perry-hat.png", "Mũ Perry");
         } else { gift = petGift(id, rewards.get(index - skillWeights.length - 2)); }
         return new Gift(gift.id, gift.rewardLevel, gift.points, gift.skillType, gift.rewardImage, gift.rewardLabel, ticket);
+    }
+
+    private Gift qualifyingPetGift(String id, int ticket, int minimumPoints, int[] weights) {
+        int firstPet = skillWeights.length + 2;
+        int eligibleWeight = 0;
+        for (int i = firstPet; i < weights.length; i++) {
+            if (pointsForReward(rewards.get(i - firstPet)) >= minimumPoints) { eligibleWeight += weights[i]; }
+        }
+        int eligibleTicket = (int) ((long) ticket * eligibleWeight / DRAW_RESOLUTION);
+        for (int i = firstPet; i < weights.length && eligibleWeight > 0; i++) {
+            PetRewardCatalog.Reward reward = rewards.get(i - firstPet);
+            if (pointsForReward(reward) < minimumPoints) { continue; }
+            if (eligibleTicket < weights[i]) { return petGift(id, reward); }
+            eligibleTicket -= weights[i];
+        }
+        return new Gift(id, 0, minimumPoints, null, null, "Trứng thưởng");
     }
     public static Gift lightningGift(String id) {
         return lightningGift(id, "LIGHTNING");
@@ -496,6 +525,9 @@ public class GiftDropGame {
         return claim(username, id, lightning, System.currentTimeMillis());
     }
     public Gift claim(String username, String id, boolean lightning, long now) {
+        return claim(username, id, lightning, now, true);
+    }
+    public Gift claim(String username, String id, boolean lightning, long now, boolean allowRedistribution) {
         PlayerPool pool = playerPools.get(username);
         Gift gift = pool == null ? null : pool.gifts.remove(id);
         if (gift != null) {
@@ -507,7 +539,7 @@ public class GiftDropGame {
         int stars = boost != null && boost.endsAt > now ? boost.stars : 0;
         // Resolve the same hidden ticket at claim time, including season transitions in final pools.
         return gift != null && gift.drawTicket >= 0
-                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars, now, pool.minimumPoints) : gift;
+                ? giftForTicket(gift.id, gift.drawTicket, lightning, protectedFromRotten, stars, now, pool.minimumPoints, allowRedistribution) : gift;
     }
     private long protectionEndsAt(String username) {
         Long endsAt = perryHatProtection.get(username);

@@ -2095,9 +2095,11 @@
                 <span ng-if="vm.lastGiftReward.level >= 0 && (vm.lastGiftReward.level < 1001 || vm.lastGiftReward.level > 1007)">Level {{vm.lastGiftReward.level}}</span>
                 <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType && vm.lastGiftReward.level !== -4">+{{vm.lastGiftReward.points}} ĐIỂM</b>
                 <b class="battle-online-gift-points" ng-if="vm.lastGiftReward.level === -4">CẢ PHÒNG ĐƯỢC HƯỞNG TRONG 30 GIÂY</b>
-                <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
+                <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType === 'REDISTRIBUTE_SCORE'">ĐÃ CHUYỂN {{vm.formatScore(vm.lastGiftReward.redistributedPoints)}} ĐIỂM</b>
+                <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType && vm.lastGiftReward.skillType !== 'REDISTRIBUTE_SCORE'">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
                 <p ng-if="vm.lastGiftReward.level === -3">Mũ Perry bảo vệ bạn khỏi trứng thối trong 15 giây. Nhặt thêm mũ sẽ reset về 15 giây, không cộng dồn.</p>
-                <p ng-if="vm.lastGiftReward.level !== -4">Điểm đã được cộng cho bạn.</p>
+                <p ng-if="vm.lastGiftReward.skillType === 'REDISTRIBUTE_SCORE'">Điểm của nhóm dẫn đầu đã được chia cho nhóm cuối bảng.</p>
+                <p ng-if="vm.lastGiftReward.level !== -4 && vm.lastGiftReward.skillType !== 'REDISTRIBUTE_SCORE'">Điểm đã được cộng cho bạn.</p>
                 <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftOpening ? (vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG') : 'TIẾP TỤC →'}}</button>
             </div>
             <div class="battle-dragon-gift-collection" ng-include="vm.dragonBallCollectionTemplate"></div>

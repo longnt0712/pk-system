@@ -824,6 +824,7 @@
         vm.hostSkillsDirty = false;
         vm.skillOptions = [
             {type: 'FREEZE', name: 'Đóng băng', icon: '❄️'},
+            {type: 'REDISTRIBUTE_SCORE', name: 'Chia điểm', icon: '⚖️'},
             {type: 'INVERT', name: 'Đảo lộn', icon: '🙃'},
             {type: 'BREAK_STREAK', name: 'Phá streak', icon: '💥'},
             {type: 'STEAL_SCORE', name: 'Cướp điểm', icon: '💰'},
@@ -832,7 +833,7 @@
             {type: 'RESET_PASSWORD', name: 'Đặt lại mật khẩu', icon: '🔐'},
             {type: 'UNFREEZE', name: 'Giải băng đồng đội', icon: '🧊'}
         ];
-        var eggSkillTypes = ['FREEZE', 'STEAL_SCORE', 'INVERT'];
+        var eggSkillTypes = ['FREEZE', 'STEAL_SCORE', 'INVERT', 'REDISTRIBUTE_SCORE'];
         vm.eggSkillOptions = eggSkillTypes.map(function (type) {
             return vm.skillOptions.filter(function (skill) { return skill.type === type; })[0];
         });
@@ -858,6 +859,7 @@
         vm.isGameSkillEnabled = function (type) {
             return !!vm.room && vm.room.settings.skillsEnabled !== false &&
                 (vm.room.settings.mode !== 'LUM_NGAY' || eggSkillTypes.indexOf(type) >= 0) &&
+                (type !== 'REDISTRIBUTE_SCORE' || (vm.room.settings.disabledSkillTypes || []).indexOf('FREEZE') < 0) &&
                 (vm.room.settings.disabledSkillTypes || []).indexOf(type) < 0;
         };
         vm.claimingGift = false;
@@ -1160,6 +1162,7 @@
                     return;
                 }
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
+                if (result.redistributedPoints > 0) { vm.lastGiftReward.redistributedPoints = result.redistributedPoints; }
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 if (result.rewardImage) { vm.lastGiftReward.rewardImage = result.rewardImage; }
                 if (result.rewardLabel) { vm.lastGiftReward.rewardLabel = result.rewardLabel; }
@@ -6920,6 +6923,7 @@
 
         function getSkillLabel(type) {
             if (type === rottenEggSkill) { return 'NÉM TRỨNG THỐI'; }
+            if (type === 'REDISTRIBUTE_SCORE') { return 'CHIA ĐIỂM'; }
             if (type === 'FREEZE') {
                 return 'ĐÓNG BĂNG 3 GIÂY';
             }
@@ -6959,6 +6963,7 @@
 
         function getSkillIcon(type) {
             if (type === rottenEggSkill) { return '🥚'; }
+            if (type === 'REDISTRIBUTE_SCORE') { return '⚖️'; }
             if (type === 'UNFREEZE') { return '🧊'; }
             if (type === 'FREEZE') {
                 return '❄️';
@@ -7169,6 +7174,9 @@
             );
 
             if (event.type === rottenEggSkill) { return actor + ' vừa ném trứng thối vào ' + target + '.'; }
+            if (event.type === 'REDISTRIBUTE_SCORE') {
+                return actor + ' vừa chuyển ' + formatScore(event.amount) + ' điểm từ nhóm đầu sang nhóm cuối.';
+            }
 
             if (event.type === 'FREEZE') {
                 return actor + ' vừa đóng băng ' + target + ' trong 3 giây.';

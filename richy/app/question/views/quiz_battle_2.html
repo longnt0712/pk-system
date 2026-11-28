@@ -853,6 +853,12 @@
                         <strong>BỊ CƯỚP {{vm.stealScoreAmount1}} ĐIỂM!</strong>
                     </div>
 
+                    <div class="quiz-battle-2-steal-score-skill"
+                         ng-if="!vm.endGame && vm.currentCard.hasRedistributionSkill && !vm.currentCard.redistributionConsumed && vm.canRedistributeBattleScore()">
+                        <span class="quiz-battle-2-steal-score-icon">⚖️</span>
+                        <span>CHIA ĐIỂM</span>
+                    </div>
+
                     <div class="quiz-battle-2-break-streak-hit"
                          ng-if="vm.breakStreakHit1">
                         <span class="quiz-battle-2-break-streak-hit-icon">💥</span>
@@ -1009,6 +1015,12 @@
                          ng-if="vm.stealScoreHit2">
                         <span class="quiz-battle-2-steal-score-hit-icon">💸</span>
                         <strong>BỊ CƯỚP {{vm.stealScoreAmount2}} ĐIỂM!</strong>
+                    </div>
+
+                    <div class="quiz-battle-2-steal-score-skill"
+                         ng-if="!vm.endGame && vm.currentCard1.hasRedistributionSkill && !vm.currentCard1.redistributionConsumed && vm.canRedistributeBattleScore()">
+                        <span class="quiz-battle-2-steal-score-icon">⚖️</span>
+                        <span>CHIA ĐIỂM</span>
                     </div>
 
                     <div class="quiz-battle-2-break-streak-hit"

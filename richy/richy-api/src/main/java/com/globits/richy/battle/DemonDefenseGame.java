@@ -2,7 +2,6 @@ package com.globits.richy.battle;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -378,16 +377,31 @@ public final class DemonDefenseGame {
 
     public Snapshot snapshot(long now, boolean includeArena) { return snapshot(now, includeArena, 0); }
 
+    public int redistributeTeamScores(long now, boolean apply) {
+        Map<Integer, Double> scores = new LinkedHashMap<>();
+        for (TeamState team : rankedTeams(now)) {
+            if (team.eliminatedAt == 0L) { scores.put(team.number, (double) team.points); }
+        }
+        Map<Integer, Integer> changes = BattleScoreRedistribution.calculate(scores);
+        if (apply) {
+            changes.forEach((number, delta) -> teams.get(number).points += delta);
+        }
+        return BattleScoreRedistribution.transferredPoints(changes);
+    }
+
+    private List<TeamState> rankedTeams(long at) {
+        List<TeamState> ranked = new ArrayList<>(teams.values());
+        ranked.sort((a, b) -> compareResults(a, b, at));
+        return ranked;
+    }
+
     /**
      * @param viewerLane a student's own team: only that lane's demon positions are added (for the faint
      *                   background on their screen). Other lanes and shot animations stay host-only.
      */
     public Snapshot snapshot(long now, boolean includeArena, int viewerLane) {
         final long at = stoppedAt > 0L ? stoppedAt : now;
-        List<TeamState> ranked = new ArrayList<TeamState>(teams.values());
-        Collections.sort(ranked, new Comparator<TeamState>() {
-            public int compare(TeamState a, TeamState b) { return compareResults(a, b, at); }
-        });
+        List<TeamState> ranked = rankedTeams(at);
         List<Team> result = new ArrayList<Team>();
         int rank = 0, topLevel = 1;
         TeamState previous = null;

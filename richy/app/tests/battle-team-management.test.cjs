@@ -10,6 +10,7 @@ function setup(username='host') {
  const document={body:{classList:{add(){},remove(){}}},fullscreenElement:null,activeElement:null,
   getElementById(id){return id==='battle-team-manager-layer'?layer:id==='battle-team-manager'?modal:null;}};
  const angular={module(){return{controller(name,fn){Controller=fn;}};},copy:value=>JSON.parse(JSON.stringify(value)),fromJson:JSON.parse,noop(){},
+  isFunction:value=>typeof value==='function',
   forEach(items,fn){if(Array.isArray(items))items.forEach(fn);else Object.keys(items||{}).forEach(key=>fn(items[key],key));},
   element(){return{on(name,fn){gestures[name]=fn;},off(){}};}};
  nodeVm.runInNewContext(controller.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,

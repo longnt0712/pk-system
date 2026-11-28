@@ -14,6 +14,7 @@ function setup({spectator = true, ready = true, storedVolume = null, dangerTrack
         module() { return {controller(name, fn) { Controller = fn; }}; },
         forEach(items, fn) { (items || []).forEach(fn); },
         fromJson: JSON.parse, copy: value => JSON.parse(JSON.stringify(value)), noop() {},
+        isFunction(value) { return typeof value === 'function'; },
         element() { return {on(name, fn) { gestures[name] = fn; }, off() {}}; }
     };
     const $window = {

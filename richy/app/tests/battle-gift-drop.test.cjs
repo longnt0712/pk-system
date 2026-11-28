@@ -276,9 +276,9 @@ test('only an active player with credit can pick during the final egg phase',()=
   h.vm.claimGift({id:'gift1'});assert.equal(h.calls.length,0,state);
  }
 });
-test('egg mode offers only three skills and a claimed skill appears without adding prize points',async()=>{
+test('egg mode offers its supported skills and a claimed skill appears without adding prize points',async()=>{
  const h=setup('host');h.vm.hostSettings.mode='LUM_NGAY';
- assert.deepEqual(plain(h.vm.getHostSkillOptions().map(skill=>skill.type)),['FREEZE','STEAL_SCORE','INVERT']);
+ assert.deepEqual(plain(h.vm.getHostSkillOptions().map(skill=>skill.type)),['FREEZE','STEAL_SCORE','INVERT','REDISTRIBUTE_SCORE']);
  const player=setup();const enabled=player.room();enabled.settings.skillsEnabled=true;player.hooks.applyRoom(enabled,false);
  assert.equal(player.vm.isGameSkillEnabled('FIRE_UP'),false);assert.equal(player.vm.isGameSkillEnabled('INVERT'),true);
  player.vm.openGiftModal();const pending=player.vm.claimGift({id:'gift1'});
@@ -289,6 +289,15 @@ test('egg mode offers only three skills and a claimed skill appears without addi
  assert.equal(player.vm.getGiftRewardImage(-2,'INVERT'),player.vm.getGiftRewardImage(0));
  assert.equal(player.vm.skillTargetModalOpen,true);player.vm.dismissGiftReward();
  assert.equal(player.vm.giftClaimDisabled(),true);assert.equal(player.vm.giftModalOpen,true);
+});
+test('a redistribution egg reveals the transfer and skips target selection',async()=>{
+ const h=setup();const enabled=h.room();enabled.settings.skillsEnabled=true;h.hooks.applyRoom(enabled,false);
+ h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+ const next=h.room(1,2);next.settings.skillsEnabled=true;
+ h.resolve({rewardLevel:-2,skillType:'REDISTRIBUTE_SCORE',redistributedPoints:6,points:0,room:next});await pending;
+ assert.equal(h.vm.lastGiftReward.redistributedPoints,6);
+ assert.equal(h.vm.skillTargetModalOpen,false);
+ assert.equal(h.vm.getSkillLabel('REDISTRIBUTE_SCORE'),'CHIA ĐIỂM');
 });
 test('host egg dashboard has four columns, keeps live claim history and is host-only',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../question/views/battle_quiz_online.html'),'utf8');

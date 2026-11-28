@@ -265,6 +265,43 @@ public class BattleOnlineMatchControlsTest {
     @After public void cleanup() { if (service != null) { service.destroy(); } }
     private void rejected(Runnable action) { try { action.run(); fail("Must reject"); } catch (BattleOnlineException expected) {} }
 
+    @Test @SuppressWarnings("unchecked") public void countdownModesPlanRedistributionFromTheirFreezeSlots() throws Exception {
+        for (String mode : Arrays.asList("COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE")) {
+            setup(mode, false);
+            Object settings = get(room, "settings");
+            set(settings, "skillsEnabled", true);
+            List<Long> questionIds = (List<Long>) get(room, "countdownQuestionIds");
+            for (long id = 8; id < 207; id++) { questionIds.add(id); }
+            ReflectionTestUtils.invokeMethod(service, "buildCountdownSkillPlanLocked", room);
+            Map<Integer, String> plan = (Map<Integer, String>) get(room, "countdownSkillPlan");
+            int freezes = Collections.frequency(plan.values(), "FREEZE");
+            int redistributions = Collections.frequency(plan.values(), BattleScoreRedistribution.SKILL_TYPE);
+            assertTrue(mode, redistributions > 0);
+            assertEquals(mode, freezes * 0.7D, redistributions, 1D);
+            set(settings, "disabledSkillTypes", Collections.singletonList("FREEZE"));
+            ReflectionTestUtils.invokeMethod(service, "buildCountdownSkillPlanLocked", room);
+            assertFalse(mode, plan.containsValue(BattleScoreRedistribution.SKILL_TYPE));
+        }
+    }
+
+    @Test public void aCorrectCountdownAnswerAppliesTheTransferBeforeSendingTheNextQuestion() throws Exception {
+        setup("COUNTDOWN", false);
+        Object settings = get(room, "settings");
+        set(settings, "skillsEnabled", true);
+        set(settings, "teamCount", 0);
+        set(alice, "score", 120D); set(bob, "score", 10D);
+        set(bob, "currentSkillType", BattleScoreRedistribution.SKILL_TYPE);
+        BattleOnlineAnswerDto answer = new BattleOnlineAnswerDto();
+        answer.setQuestionId(7L); answer.setQuestionSequence(1L); answer.setAnswerKey("A");
+        BattleOnlineAnswerResultDto result = service.answer("CONTROL1", "bob", answer);
+        assertTrue(result.isCorrect());
+        assertEquals(114D, (Double) get(alice, "score"), 0D);
+        assertEquals(17D, (Double) get(bob, "score"), 0D);
+        assertEquals((Double) get(bob, "score"), result.getScore(), 0D);
+        assertNull(result.getRoom().getPendingSkillType());
+        assertEquals(BattleScoreRedistribution.SKILL_TYPE, result.getRoom().getRecentEvents().get(0).getType());
+    }
+
     @Test public void sharedQuestionsAddTenSecondsAndMatchClocksAddOneMinuteWithoutResettingProgress() throws Exception {
         for (String mode : MODES) {
             setup(mode, false);

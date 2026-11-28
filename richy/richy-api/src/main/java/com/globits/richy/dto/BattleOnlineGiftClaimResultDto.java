@@ -6,6 +6,9 @@ public class BattleOnlineGiftClaimResultDto {
     private String skillType;
     private String rewardImage;
     private String rewardLabel;
+    private int redistributedPoints;
+    public int getRedistributedPoints() { return redistributedPoints; }
+    public void setRedistributedPoints(int redistributedPoints) { this.redistributedPoints = redistributedPoints; }
     public String getRewardImage() { return rewardImage; }
     public void setRewardImage(String rewardImage) { this.rewardImage = rewardImage; }
     public String getRewardLabel() { return rewardLabel; }

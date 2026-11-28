@@ -39,6 +39,31 @@ public class BattleOnlineGiftDropTest {
     }
     @After public void cleanup() { service.destroy(); }
     private BattleOnlineGiftClaimDto request(String id) { BattleOnlineGiftClaimDto d=new BattleOnlineGiftClaimDto(); d.setGiftId(id); return d; }
+    @Test public void redistributionEggTransfersBetweenTeamsWithoutOpeningATargetModal() {
+        set(room, "giftOpening", false);
+        Object settings = get(room, "settings");
+        set(settings, "skillsEnabled", true);
+        set(settings, "teamCount", 2);
+        set(alice, "teamNumber", 1); set(bob, "teamNumber", 2);
+        set(alice, "score", 120D); set(bob, "score", 10D);
+        set(host, "score", 1000D);
+        set(alice, "giftCredits", 1);
+        final int[] ticket = {0};
+        pool = new GiftDropGame(10, new Random() {
+            @Override public int nextInt(int bound) { return ticket[0]; }
+        }, Arrays.asList("FREEZE", BattleScoreRedistribution.SKILL_TYPE));
+        set(room, "giftDrop", pool);
+        int[] weights = ReflectionTestUtils.invokeMethod(pool, "weightsForEffects", false, false, 0, System.currentTimeMillis());
+        ticket[0] = weights[0];
+        BattleOnlineGiftClaimResultDto result = service.claimGift("GIFTS1", "alice", request(pool.snapshot("alice").gifts.get(0).id));
+        assertEquals(BattleScoreRedistribution.SKILL_TYPE, result.getSkillType());
+        assertEquals(6, result.getRedistributedPoints());
+        assertNull(result.getRoom().getPendingSkillType());
+        assertEquals(114D, (Double) get(alice, "score"), 0D);
+        assertEquals(16D, (Double) get(bob, "score"), 0D);
+        assertEquals(1000D, (Double) get(host, "score"), 0D);
+        assertEquals(BattleScoreRedistribution.SKILL_TYPE, result.getRoom().getRecentEvents().get(0).getType());
+    }
     private int firstHatTicket() {
         GiftDropGame probability = new GiftDropGame(10,new Random(1));
         int[] weights = ReflectionTestUtils.invokeMethod(probability,"weightsForEffects",false,false,0,System.currentTimeMillis());
@@ -218,9 +243,10 @@ public class BattleOnlineGiftDropTest {
         }
     }
 
-    @Test public void eachSkillEggGrantsItsSkillAndUsingItPreservesTheUnansweredQuestion() throws Exception {
+    @Test public void eachTargetedSkillEggPreservesTheUnansweredQuestion() throws Exception {
         set(get(room,"settings"),"skillsEnabled",true);
         for (final String type : GiftDropGame.SKILL_TYPES) {
+            if (BattleScoreRedistribution.SKILL_TYPE.equals(type)) { continue; }
             set(room,"giftOpening",true);
             pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return 0; } },Collections.singletonList(type));
             set(room,"giftDrop",pool); service.getRoom("GIFTS1","alice"); answerRequest();

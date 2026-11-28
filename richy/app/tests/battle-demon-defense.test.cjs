@@ -14,6 +14,7 @@ function setup(username = 'alice') {
         module() { return {controller(name, fn) { Controller = fn; }}; },
         forEach(items, fn) { (items || []).forEach(fn); },
         copy(value) { return JSON.parse(JSON.stringify(value)); }, fromJson: JSON.parse,
+        isFunction(value) { return typeof value === 'function'; },
         noop() {}, element() { return {on() {}, off() {}}; }
     };
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
@@ -299,7 +300,7 @@ test('skill setting defaults on and is sent for every mode without being overwri
 
 test('all skills start selected; host can exclude and restore them independently in every mode', () => {
     const h = setup('host'); h.vm.room = h.room(); h.vm.room.status = 'LOBBY';
-    assert.equal(h.vm.skillOptions.length, 8);
+    assert.equal(h.vm.skillOptions.length, 9);
     assert.equal(h.vm.skillOptions.every(skill => h.vm.isHostSkillSelected(skill.type)), true);
     h.vm.toggleHostSkill('FREEZE'); h.vm.toggleHostSkill('UNFREEZE');
     assert.equal(h.vm.isHostSkillSelected('FREEZE'), false);
