@@ -316,6 +316,26 @@ public class BattleOnlineDemonDefenseTest {
         }
     }
 
+    @Test public void demonDefenseBlocksStealingButAllowsRedistribution() {
+        assertFalse((Boolean) ReflectionTestUtils.invokeMethod(service, "isSkillEnabledLocked", room, "STEAL_SCORE"));
+        assertTrue((Boolean) ReflectionTestUtils.invokeMethod(service, "isSkillEnabledLocked", room, BattleScoreRedistribution.SKILL_TYPE));
+
+        set(alice, "pendingSkillType", "STEAL_SCORE");
+        set(carol, "score", 100D);
+        BattleOnlineUseSkillDto request = new BattleOnlineUseSkillDto();
+        request.setSkillType("STEAL_SCORE");
+        request.setTargetUsername("carol");
+        try {
+            service.useSkill("DEMON1", "alice", request);
+            fail("Diệt Quỷ Ngu must reject Cướp điểm");
+        } catch (BattleOnlineException expected) {
+            assertEquals(100D, (Double) get(carol, "score"), 0D);
+        }
+
+        set(get(room, "settings"), "mode", "COUNTDOWN");
+        assertTrue((Boolean) ReflectionTestUtils.invokeMethod(service, "isSkillEnabledLocked", room, "STEAL_SCORE"));
+    }
+
     @SuppressWarnings("unchecked")
     private Queue<Runnable> queueExercisePreload(QuestionDto test) {
         BattleExercisePreload loader = spy(new BattleExercisePreload());

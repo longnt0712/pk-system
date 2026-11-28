@@ -837,8 +837,12 @@
         vm.eggSkillOptions = eggSkillTypes.map(function (type) {
             return vm.skillOptions.filter(function (skill) { return skill.type === type; })[0];
         });
+        var demonDefenseSkillOptions = vm.skillOptions.filter(function (skill) {
+            return skill.type !== 'STEAL_SCORE';
+        });
         vm.getHostSkillOptions = function () {
-            return vm.hostSettings.mode === 'LUM_NGAY' ? vm.eggSkillOptions : vm.skillOptions;
+            if (vm.hostSettings.mode === 'LUM_NGAY') { return vm.eggSkillOptions; }
+            return vm.hostSettings.mode === 'DEMON_DEFENSE' ? demonDefenseSkillOptions : vm.skillOptions;
         };
         function normalizeDisabledSkills(types) {
             return (Array.isArray(types) ? types : []).filter(function (type, index, all) {
@@ -850,7 +854,7 @@
         };
         vm.toggleHostSkill = function (type) {
             if (!isHost() || vm.savingSettings || vm.hostSettings.skillsEnabled === false ||
-                    !vm.skillOptions.some(function (skill) { return skill.type === type; })) { return; }
+                    !vm.getHostSkillOptions().some(function (skill) { return skill.type === type; })) { return; }
             var disabled = normalizeDisabledSkills(vm.hostSettings.disabledSkillTypes), index = disabled.indexOf(type);
             if (index < 0) { disabled.push(type); } else { disabled.splice(index, 1); }
             vm.hostSettings.disabledSkillTypes = disabled;
@@ -859,6 +863,7 @@
         vm.isGameSkillEnabled = function (type) {
             return !!vm.room && vm.room.settings.skillsEnabled !== false &&
                 (vm.room.settings.mode !== 'LUM_NGAY' || eggSkillTypes.indexOf(type) >= 0) &&
+                (vm.room.settings.mode !== 'DEMON_DEFENSE' || type !== 'STEAL_SCORE') &&
                 (type !== 'REDISTRIBUTE_SCORE' || (vm.room.settings.disabledSkillTypes || []).indexOf('FREEZE') < 0) &&
                 (vm.room.settings.disabledSkillTypes || []).indexOf(type) < 0;
         };

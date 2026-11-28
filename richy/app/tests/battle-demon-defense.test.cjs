@@ -332,6 +332,23 @@ test('only the host can change skill choices and master off preserves the indivi
     assert.equal(student.vm.hostSkillsDirty, false); assert.equal(student.vm.isHostSkillSelected('FREEZE'), true);
 });
 
+test('Diệt Quỷ Ngu omits Cướp điểm but supports Chia điểm', () => {
+    const h = setup('host');
+    h.vm.room = h.room();
+    h.vm.hostSettings.mode = 'DEMON_DEFENSE';
+    const skills = () => Array.from(h.vm.getHostSkillOptions(), skill => skill.type);
+    assert.equal(skills().includes('STEAL_SCORE'), false);
+    assert.equal(skills().includes('REDISTRIBUTE_SCORE'), true);
+    h.vm.toggleHostSkill('STEAL_SCORE');
+    assert.equal(h.vm.hostSkillsDirty, false);
+    assert.equal(h.vm.isGameSkillEnabled('STEAL_SCORE'), false);
+    assert.equal(h.vm.isGameSkillEnabled('REDISTRIBUTE_SCORE'), true);
+
+    h.vm.hostSettings.mode = h.vm.room.settings.mode = 'COUNTDOWN';
+    assert.equal(skills().includes('STEAL_SCORE'), true);
+    assert.equal(h.vm.isGameSkillEnabled('STEAL_SCORE'), true);
+});
+
 test('individual exclusions reject stale rescue and pending skill requests in the browser', () => {
     const h = setup(); h.vm.room = h.room();
     h.vm.room.settings.disabledSkillTypes = ['UNFREEZE','FREEZE'];

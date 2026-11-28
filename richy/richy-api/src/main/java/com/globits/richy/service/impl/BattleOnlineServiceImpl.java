@@ -5222,6 +5222,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private boolean isSkillEnabledLocked(RoomState room, String type) {
         return room.settings.skillsEnabled && type != null &&
                 (!MODE_LUM_NGAY.equals(room.settings.mode) || GiftDropGame.SKILL_TYPES.contains(type)) &&
+                (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || !SKILL_STEAL_SCORE.equals(type)) &&
                 (!SKILL_REDISTRIBUTE_SCORE.equals(type) || !room.settings.disabledSkillTypes.contains(SKILL_FREEZE)) &&
                 !room.settings.disabledSkillTypes.contains(type);
     }
