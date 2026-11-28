@@ -78,6 +78,7 @@ async function setup(items, options = {}) {
                 if (options.saveFails) return Promise.reject(Error('Offline'));
                 const index = cloud.findIndex(item => item.draftKey === body.draftKey);
                 if (index !== -1) cloud[index] = clone(body);
+                return Promise.resolve({data: {...clone(body), id: 1}});
             } else { throw Error('Unexpected write: ' + url); }
             return Promise.resolve({data: true});
         }
@@ -85,7 +86,11 @@ async function setup(items, options = {}) {
     const window = {
         localStorage: {
             get length() { return storage.size; }, key(index) { return [...storage.keys()][index]; },
-            getItem(key) { return storage.get(key) || null; }, setItem(key, value) { storage.set(key, value); },
+            getItem(key) { return storage.get(key) || null; },
+            setItem(key, value) {
+                if (options.storageWritesFail) throw Error('QuotaExceededError');
+                storage.set(key, value);
+            },
             removeItem(key) { storage.delete(key); }
         },
         sessionStorage: {getItem() { return null; }}, confirm() { return options.confirm !== false; },
@@ -232,6 +237,47 @@ for (const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']) {
         assert.equal(h.requests.some(r=>r.url.endsWith('draft/delete')),false);
     });
 }
+
+test('hiding a cloud Study draft works even when there is no room to cache it locally', async () => {
+    const study = ieltsItem('COMPREHENSIVE', {sessionMode: 'STUDY', assignmentTaskId: null,
+        questionStates: [{answer: 'Preserve this answer'}], annotationNotes: [{text: 'Preserve this note'}]});
+    const h = await setup([study], {localItems: [], storageWritesFail: true});
+    assert.equal(h.dashboard.resumeDrafts.length, 1);
+    const visible = h.dashboard.resumeDrafts[0];
+    h.holdRead();
+    h.dashboard.loadResumeDrafts();
+    const saving = h.dashboard.hideDraft(visible);
+    assert.equal(visible.hiding, true);
+    await saving;
+    h.releaseRead();
+    await tick();
+    await h.pet.refresh();
+    assert.equal(h.dashboard.resumeDrafts.length, 0, 'a read started before hiding cannot restore the reminder');
+    assert.equal(h.pet.drafts.length, 0);
+    assert.equal(h.cloud.length, 1, 'the existing server draft key is used');
+    const hidden = JSON.parse(h.cloud[0].payload);
+    assert.equal(hidden.hiddenFromDashboard, true);
+    assert.deepEqual(hidden.questionStates, [{answer: 'Preserve this answer'}]);
+    assert.deepEqual(hidden.annotationNotes, [{text: 'Preserve this note'}]);
+    assert.equal(h.requests.filter(request => request.method === 'POST').length, 1);
+
+    const staleAlias = {...study, draftKey: study.draftKey + ':attempt:' + hidden.clientAttemptKey};
+    const reopened = await setup([h.cloud[0], staleAlias], {localItems: [], storageWritesFail: true});
+    assert.equal(reopened.dashboard.resumeDrafts.length, 0);
+    assert.equal(reopened.pet.drafts.length, 0);
+});
+
+test('a failed hide with full storage keeps the draft visible and lets the learner retry', async () => {
+    const study = ieltsItem('COMPREHENSIVE', {sessionMode: 'STUDY', assignmentTaskId: null});
+    const h = await setup([study], {localItems: [], storageWritesFail: true, saveFails: true});
+    const visible = h.dashboard.resumeDrafts[0];
+    await h.dashboard.hideDraft(visible);
+    assert.equal(h.dashboard.resumeDrafts.length, 1);
+    assert.equal(h.pet.drafts.length, 1);
+    assert.equal(visible.hiding, false);
+    assert.match(visible.hideError, /thử lại/);
+    assert.equal(h.cloud[0].payload, study.payload);
+});
 test('legacy Study keys offer Hide and a real assignment remains Serious even with an old Study flag',async()=>{
     const legacy=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY',assignmentTaskId:null}),payload=JSON.parse(legacy.payload);delete payload.sessionMode;legacy.payload=JSON.stringify(payload);
     const assigned=ieltsItem('COMPREHENSIVE',{sessionMode:'STUDY'});const h=await setup([legacy,assigned]);

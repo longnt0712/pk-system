@@ -349,6 +349,21 @@
                 && first.ieltsAttemptKey === second.ieltsAttemptKey;
         }
 
+        var hiddenStudyReminders = Object.create(null);
+
+        function studyReminderKey(context, attemptKey) {
+            return context + ':attempt:' + (attemptKey || '');
+        }
+
+        function dismissStudyReminder(context, attemptKey, savedAt) {
+            var identity = studyReminderKey(context, attemptKey);
+            var hiddenAt = Math.max(hiddenStudyReminders[identity] || 0, savedAt);
+            hiddenStudyReminders[identity] = hiddenAt;
+            vm.resumeDrafts = vm.resumeDrafts.filter(function (item) {
+                return item.ieltsContext !== context || item.ieltsAttemptKey !== attemptKey || item.savedAt > hiddenAt;
+            });
+        }
+
         vm.loadResumeDrafts = function () {
             vm.resumeDrafts = [];
             // The TNTT dashboard has its own documents and notifications, not IELTS test drafts.
@@ -408,15 +423,20 @@
                 return storedPart || Number(draft.passageNumber) || null;
             }
 
-            function addIeltsDraft(key, draft, savedResult) {
-                if (!draft || !draft.testId || String(draft.userId) !== userId
-                        || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
+            function addIeltsDraft(key, draft, savedResult, fromServer) {
+                if (!draft || !draft.testId || String(draft.userId) !== userId || draft.completed === true) { return; }
                 var info = ieltsReminderInfo(key, draft, savedResult);
+                var savedAt = new Date(draft.savedAt || 0).getTime() || 0;
+                if (draft.hiddenFromDashboard === true) {
+                    dismissStudyReminder(info.context, info.attemptKey, savedAt);
+                    return;
+                }
                 if (info.confirmed) {
                     vm.resumeDrafts = vm.resumeDrafts.filter(function (item) { return item.ieltsContext !== info.context || item.ieltsAttemptKey !== info.attemptKey; });
                     return;
                 }
-                var savedAt = new Date(draft.savedAt || 0).getTime();
+                var hiddenAt = hiddenStudyReminders[studyReminderKey(info.context, info.attemptKey)];
+                if (hiddenAt !== undefined && savedAt <= hiddenAt) { return; }
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
                     || key.indexOf(ieltsPrefix + ':comprehensive') === 0;
                 var writing = draft.testMode === 'WRITING' || key.indexOf(ieltsPrefix + ':writing') === 0;
@@ -426,10 +446,11 @@
                 pushResumeDraft({
                     kind: comprehensive ? 'COMPREHENSIVE' : (writing ? 'IELTS_WRITING' : (listening ? 'IELTS_LISTENING' : 'IELTS_READING')),
                     storageKey: key,
+                    serverDraft: fromServer && info.sessionMode === 'STUDY' ? {key: key, payload: draft} : null,
                     resumeIdentity: info.context + (info.pending ? ':pending:' + info.attemptKey : ':active'),
                     ieltsContext: info.context, ieltsAttemptKey: info.attemptKey, pendingSave: info.pending,
                     title: draft.title || (comprehensive ? 'Bài tập tổng hợp' : (writing ? 'IELTS Writing Test' : (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'))),
-                    savedAt: isFinite(savedAt) ? savedAt : 0,
+                    savedAt: savedAt,
                     remainingSeconds: Number(draft.remainingSeconds) || 0,
                     elapsedSeconds: Number(draft.elapsedSeconds) || 0,
                     assignmentUntimed: draft.assignmentUntimed === true,
@@ -544,7 +565,7 @@
                             displayPayload = local;
                         }
                     } catch (ignoreServerCacheError) {}
-                    if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload, item.savedResult); }
+                    if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload, item.savedResult, displayPayload === payload); }
                     if (item.draftType === 'DAILY_VOCAB') { addDailyVocabDraft(item.draftKey, displayPayload); }
                     if (item.draftType === 'DAILY_VOCAB_PENDING') { addDailyVocabPending(item.draftKey, displayPayload); }
                     if (item.draftType === 'DAILY_LISTENING') { addDailyListeningDraft(item.draftKey, displayPayload); }
@@ -671,41 +692,70 @@
         };
 
         vm.hideDraft = function (draft) {
-            if (!vm.isStudyDraft(draft) || !draft.storageKey) { return; }
+            if (!vm.isStudyDraft(draft) || !draft.storageKey || draft.hiding) { return; }
 
             var localKeys = matchingIeltsLocalKeys(draft);
-            var storedDraft = null;
-            for (var keyIndex = 0; keyIndex < localKeys.length; keyIndex++) {
+            var storedDraft = draft.serverDraft && draft.serverDraft.payload;
+            var savedAt = storedDraft ? new Date(storedDraft.savedAt || 0).getTime() || 0 : 0;
+            localKeys.forEach(function (key) {
                 try {
-                    var candidate = JSON.parse($window.localStorage.getItem(localKeys[keyIndex]) || 'null');
-                    if (!candidate) { continue; }
-                    if (draft.ieltsContext) {
-                        var info = ieltsReminderInfo(localKeys[keyIndex], candidate);
-                        if (info.context !== draft.ieltsContext || info.attemptKey !== draft.ieltsAttemptKey) { continue; }
+                    var candidate = JSON.parse($window.localStorage.getItem(key) || 'null');
+                    if (!candidate) { return; }
+                    var candidateSavedAt = new Date(candidate.savedAt || 0).getTime() || 0;
+                    if (!storedDraft || candidateSavedAt >= savedAt) {
+                        storedDraft = candidate;
+                        savedAt = candidateSavedAt;
                     }
-                    storedDraft = candidate; break;
                 } catch (ignoreHiddenDraftReadError) {}
-            }
-            if (!storedDraft) { return; }
-
-            storedDraft.hiddenFromDashboard = true;
-            storedDraft.savedAt = new Date().toISOString();
-            try {
-                localKeys.forEach(function (key) { $window.localStorage.setItem(key, JSON.stringify(storedDraft)); });
-            } catch (ignoreHiddenDraftWriteError) { return; }
-
-            vm.resumeDrafts = vm.resumeDrafts.filter(function (item) {
-                return !(item.ieltsContext && item.ieltsContext === draft.ieltsContext && item.ieltsAttemptKey === draft.ieltsAttemptKey)
-                    && item.storageKey !== draft.storageKey;
             });
-            localKeys.forEach(function (key) { $rootScope.$broadcast('learningDraftDismissed', {draftKey: key, userId: vm.myUser.id}); });
+            if (!storedDraft) {
+                draft.hideError = 'Bản nháp đã thay đổi. Hãy tải lại trang và thử ẩn bài.';
+                return;
+            }
 
+            var hiddenAt = Math.max(Date.now(), savedAt + 1);
+            var payload = JSON.stringify(Object.assign({}, storedDraft, {
+                hiddenFromDashboard: true, savedAt: new Date(hiddenAt).toISOString()
+            }));
+            var storedLocally = false;
+            localKeys.forEach(function (key) {
+                try {
+                    $window.localStorage.setItem(key, payload);
+                    storedLocally = true;
+                } catch (ignoreHiddenDraftWriteError) {}
+            });
+
+            var userId = vm.myUser.id;
+            var cloudKey = draft.serverDraft ? draft.serverDraft.key : ieltsReminderCloudKey(draft);
+            function dismiss() {
+                if (vm.myUser.id !== userId) { return; }
+                dismissStudyReminder(draft.ieltsContext, draft.ieltsAttemptKey, hiddenAt);
+                $rootScope.$broadcast('learningDraftDismissed', {
+                    draftKey: draft.storageKey, userId: userId, ieltsContext: draft.ieltsContext,
+                    ieltsAttemptKey: draft.ieltsAttemptKey, hiddenAt: hiddenAt
+                });
+            }
+            if (storedLocally) { dismiss(); }
+
+            draft.hiding = true;
+            draft.hideError = '';
+            function showHideError() {
+                if (!storedLocally) { draft.hideError = 'Chưa ẩn được bài. Hãy thử lại.'; }
+            }
             var saveUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/save';
-            $http.post(saveUrl, {
-                draftKey: draft.ieltsContext ? ieltsReminderCloudKey(draft) : draft.storageKey,
-                draftType: 'IELTS', title: draft.title,
-                payload: JSON.stringify(storedDraft), savedAt: new Date(storedDraft.savedAt).getTime()
-            }).catch(angular.noop);
+            return $http.post(saveUrl, {
+                draftKey: cloudKey, draftType: 'IELTS', title: draft.title, payload: payload, savedAt: hiddenAt
+            }).then(function (response) {
+                if (storedLocally) { return; }
+                var saved = response.data;
+                if (saved && Number(saved.id) > 0 && saved.draftKey === cloudKey && saved.payload === payload) {
+                    dismiss();
+                } else {
+                    showHideError();
+                }
+            }, showHideError).finally(function () {
+                draft.hiding = false;
+            });
         };
 
         vm.loadCurrentUserFromCookie = function () {

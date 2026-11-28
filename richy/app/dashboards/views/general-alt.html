@@ -90,13 +90,15 @@
                     <span ng-if="!draft.pendingSave && draft.sessionMode !== 'STUDY' && !draft.assignmentUntimed && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
                     <span ng-if="draft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{draft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
                 </div>
+                <p class="reading-resume-error" ng-if="draft.hideError" role="alert">{{draft.hideError}}</p>
             </div>
             <div class="reading-resume-actions">
                 <button type="button" class="is-continue" ng-click="vm.resumeDraft(draft)">
                     <i class="fa" ng-class="draft.pendingSave ? 'fa-refresh' : 'fa-play'"></i> {{draft.pendingSave ? 'Lưu kết quả đang chờ' : 'Có, làm tiếp'}}
                 </button>
-                <button type="button" class="is-cancel" ng-if="vm.isStudyDraft(draft)" ng-click="vm.hideDraft(draft)" title="Chỉ ẩn lời nhắc, không xóa tiến trình">
-                    <i class="fa fa-eye-slash"></i> Ẩn bài
+                <button type="button" class="is-cancel" ng-if="vm.isStudyDraft(draft)" ng-click="vm.hideDraft(draft)"
+                        ng-disabled="draft.hiding" title="Chỉ ẩn lời nhắc, không xóa tiến trình">
+                    <i class="fa" ng-class="draft.hiding ? 'fa-spinner fa-spin' : 'fa-eye-slash'"></i> {{draft.hiding ? 'Đang ẩn…' : 'Ẩn bài'}}
                 </button>
                 <button type="button" class="is-cancel" ng-if="!vm.isStudyDraft(draft)" ng-click="vm.cancelDraft(draft)">
                     {{draft.pendingSave ? 'Bỏ kết quả' : 'Không, hủy bài'}}
@@ -1038,6 +1040,7 @@
     .student-resume-heading p { margin:0; font-size:13px; color:#70758e; }
     .student-assignment-kicker { color:#7057ee; font-size:11px; font-weight:900; letter-spacing:1px; }
     .student-assignment-count { flex:none; padding:8px 12px; border-radius:999px; color:#fff; background:linear-gradient(135deg,#735af2,#9b63f3); font-size:12px; font-weight:900; }
+    body:has(.student-resume-board) .learning-pet-message { display:none; }
     .reading-resume-card { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:15px; margin-top:14px; padding:16px; overflow:hidden; border:1px solid #cfc7ff; border-radius:18px; background:linear-gradient(125deg,#f2efff 0%,#fff 50%,#eafcff 100%); box-shadow:0 10px 24px rgba(92,73,194,.13); }
     .reading-resume-card:before { content:""; position:absolute; top:0; bottom:0; left:0; width:5px; background:linear-gradient(180deg,#745af2,#28c8bd); }
     .reading-resume-card:after { content:""; position:absolute; right:-45px; top:-55px; width:130px; height:130px; border-radius:50%; background:rgba(116,90,242,.07); pointer-events:none; }
@@ -1048,6 +1051,7 @@
     .reading-resume-title { margin:4px 0 6px; overflow:hidden; color:#49516e; font-size:13px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
     .reading-resume-meta { display:flex; flex-wrap:wrap; gap:6px 12px; color:#707892; font-size:11px; }
     .reading-resume-meta i { color:#6d5ae8; }
+    .reading-resume-error { margin:6px 0 0; color:#a14b56; font-size:12px; }
     .reading-resume-actions { position:relative; z-index:1; min-width:225px; display:flex; justify-content:flex-end; gap:7px; text-align:right; }
     .reading-resume-actions button { border:0; border-radius:11px; padding:9px 12px; font-size:11px; font-weight:900; transition:transform .18s ease,box-shadow .18s ease; }
     .reading-resume-actions button:hover { transform:translateY(-1px); }

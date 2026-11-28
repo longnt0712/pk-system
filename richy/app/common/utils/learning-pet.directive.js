@@ -27,6 +27,7 @@
             var greetingTimer = null;
             var petSeasonTimer = null;
             var draftsRevision = 0;
+            var hiddenStudyReminders = Object.create(null);
             var frameIndex = 0;
             var currentAnimation = '';
             var liveUser = null;
@@ -1278,7 +1279,7 @@
                         $window.localStorage.setItem(item.draftKey, item.payload);
                     }
                 } catch (ignoreDraftCache) {}
-                if (payload.completed === true || payload.hiddenFromDashboard === true) { return null; }
+                if (payload.completed === true || (item.draftType !== 'IELTS' && payload.hiddenFromDashboard === true)) { return null; }
 
                 function isPartSpecificIeltsDraft() {
                     if (payload.isPartAssignment === true) { return true; }
@@ -1307,6 +1308,7 @@
                 if (kind === 'IELTS') {
                     var info = ieltsReminderInfo(item.draftKey, payload, item.savedResult);
                     if (info.confirmed) { return null; }
+                    draft.hiddenFromDashboard = payload.hiddenFromDashboard === true;
                     draft.resumeIdentity = info.context + (info.pending ? ':pending:' + info.attemptKey : ':active');
                     draft.ieltsContext = info.context; draft.ieltsAttemptKey = info.attemptKey; draft.pendingSave = info.pending;
                     draft.assignmentTaskId = info.taskId; draft.assignmentParts = angular.copy(info.parts);
@@ -1369,8 +1371,29 @@
                 return draft;
             }
 
+            function studyReminderKey(draft) {
+                return draft.ieltsContext + ':attempt:' + (draft.ieltsAttemptKey || '');
+            }
+
+            function dismissStudyReminder(draft, savedAt) {
+                var identity = studyReminderKey(draft);
+                var hiddenAt = Math.max(hiddenStudyReminders[identity] || 0, savedAt);
+                hiddenStudyReminders[identity] = hiddenAt;
+                vm.drafts = vm.drafts.filter(function (item) {
+                    return item.ieltsContext !== draft.ieltsContext || item.ieltsAttemptKey !== draft.ieltsAttemptKey || item.savedAt > hiddenAt;
+                });
+            }
+
             function appendPetDraft(draft) {
                 if (!draft) { return; }
+                if (draft.ieltsContext) {
+                    if (draft.hiddenFromDashboard) {
+                        dismissStudyReminder(draft, draft.savedAt);
+                        return;
+                    }
+                    var hiddenAt = hiddenStudyReminders[studyReminderKey(draft)];
+                    if (hiddenAt !== undefined && draft.savedAt <= hiddenAt) { return; }
+                }
                 for (var index = 0; index < vm.drafts.length; index++) {
                     var existing = vm.drafts[index];
                     if (sameIeltsReminderRun(existing, draft)) {
@@ -1643,9 +1666,13 @@
                 var user = readCurrentUser();
                 if (!draft || !draft.draftKey || !user || String(draft.userId) !== String(user.id)) { return; }
                 draftsRevision++;
-                vm.drafts = vm.drafts.filter(function (item) {
-                    return item.storageKey !== draft.draftKey;
-                });
+                if (draft.ieltsContext) {
+                    dismissStudyReminder(draft, draft.hiddenAt);
+                } else {
+                    vm.drafts = vm.drafts.filter(function (item) {
+                        return item.storageKey !== draft.draftKey;
+                    });
+                }
                 updateMessage();
                 if (vm.visible) { playAnimation(derivedAnimation()); }
             });
