@@ -1308,7 +1308,10 @@
                 if (kind === 'IELTS') {
                     var info = ieltsReminderInfo(item.draftKey, payload, item.savedResult);
                     if (info.confirmed) { return null; }
-                    draft.hiddenFromDashboard = payload.hiddenFromDashboard === true;
+                    if (payload.hiddenFromDashboard === true) {
+                        dismissStudyReminder(info.context, info.attemptKey, draft.savedAt);
+                        return null;
+                    }
                     draft.resumeIdentity = info.context + (info.pending ? ':pending:' + info.attemptKey : ':active');
                     draft.ieltsContext = info.context; draft.ieltsAttemptKey = info.attemptKey; draft.pendingSave = info.pending;
                     draft.assignmentTaskId = info.taskId; draft.assignmentParts = angular.copy(info.parts);
@@ -1371,27 +1374,23 @@
                 return draft;
             }
 
-            function studyReminderKey(draft) {
-                return draft.ieltsContext + ':attempt:' + (draft.ieltsAttemptKey || '');
+            function studyReminderKey(context, attemptKey) {
+                return context + ':attempt:' + (attemptKey || '');
             }
 
-            function dismissStudyReminder(draft, savedAt) {
-                var identity = studyReminderKey(draft);
+            function dismissStudyReminder(context, attemptKey, savedAt) {
+                var identity = studyReminderKey(context, attemptKey);
                 var hiddenAt = Math.max(hiddenStudyReminders[identity] || 0, savedAt);
                 hiddenStudyReminders[identity] = hiddenAt;
                 vm.drafts = vm.drafts.filter(function (item) {
-                    return item.ieltsContext !== draft.ieltsContext || item.ieltsAttemptKey !== draft.ieltsAttemptKey || item.savedAt > hiddenAt;
+                    return item.ieltsContext !== context || item.ieltsAttemptKey !== attemptKey || item.savedAt > hiddenAt;
                 });
             }
 
             function appendPetDraft(draft) {
                 if (!draft) { return; }
                 if (draft.ieltsContext) {
-                    if (draft.hiddenFromDashboard) {
-                        dismissStudyReminder(draft, draft.savedAt);
-                        return;
-                    }
-                    var hiddenAt = hiddenStudyReminders[studyReminderKey(draft)];
+                    var hiddenAt = hiddenStudyReminders[studyReminderKey(draft.ieltsContext, draft.ieltsAttemptKey)];
                     if (hiddenAt !== undefined && draft.savedAt <= hiddenAt) { return; }
                 }
                 for (var index = 0; index < vm.drafts.length; index++) {
@@ -1667,7 +1666,7 @@
                 if (!draft || !draft.draftKey || !user || String(draft.userId) !== String(user.id)) { return; }
                 draftsRevision++;
                 if (draft.ieltsContext) {
-                    dismissStudyReminder(draft, draft.hiddenAt);
+                    dismissStudyReminder(draft.ieltsContext, draft.ieltsAttemptKey, draft.hiddenAt);
                 } else {
                     vm.drafts = vm.drafts.filter(function (item) {
                         return item.storageKey !== draft.draftKey;
